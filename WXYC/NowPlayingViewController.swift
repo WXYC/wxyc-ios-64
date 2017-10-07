@@ -129,7 +129,7 @@ class NowPlayingViewController: UIViewController {
         // Setup slider
         setupVolumeSlider()
         
-        var timer = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
+        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
         
     }
     
