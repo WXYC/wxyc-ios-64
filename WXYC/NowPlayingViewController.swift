@@ -183,13 +183,13 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     
     func setupPlayer() {
-        radioPlayer.view.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
-        radioPlayer.view.sizeToFit()
-        radioPlayer.movieSourceType = MPMovieSourceType.streaming
-        radioPlayer.isFullscreen = false
-        radioPlayer.shouldAutoplay = true
-        radioPlayer.prepareToPlay()
-        radioPlayer.controlStyle = MPMovieControlStyle.none
+        //radioPlayer.view.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
+        //radioPlayer.view.sizeToFit()
+        //radioPlayer.movieSourceType = MPMovieSourceType.streaming
+        //radioPlayer.isFullscreen = false
+        //radioPlayer.shouldAutoplay = true
+        //radioPlayer.prepareToPlay()
+        
     }
   
     func setupVolumeSlider() {
@@ -210,23 +210,22 @@ class NowPlayingViewController: UIViewController {
     }
     
     func stationDidChange() {
-        radioPlayer.stop()
+        radioPlayer.pause()
+        //radioPlayer.contentURL = URL(string: currentStation.stationStreamURL)
+        //radioPlayer.prepareToPlay()
+        //radioPlayer.play() no autoplay!
+        playButtonEnable()
+        //startNowPlayingAnimation()
         
-        radioPlayer.contentURL = URL(string: currentStation.stationStreamURL)
-        radioPlayer.prepareToPlay()
-        radioPlayer.play()
-        startNowPlayingAnimation()
-        
-        updateLabels(statusMessage: "Loading Station...")
+        updateLabels(statusMessage: "Loading...")
         
         // songLabel animate
         songLabel.animation = "flash"
-        songLabel.repeatCount = 2
         songLabel.animate()
         
         resetAlbumArtwork()
         
-        track.isPlaying = true
+        track.isPlaying = false
         NotificationCenter.default.post(name: .onPlaylistUpdate, object: nil)
     }
     
@@ -544,11 +543,26 @@ class NowPlayingViewController: UIViewController {
         // Update notification/lock screen
         let albumArtwork = MPMediaItemArtwork(image: track.artworkImage!)
         
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+        if track.isPlaying == true {
+            
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+                MPMediaItemPropertyArtist: track.artist,
+                MPMediaItemPropertyTitle: track.title,
+                MPMediaItemPropertyArtwork: albumArtwork,
+                MPMediaItemPropertyAlbumTitle: "WXYC",
+                MPNowPlayingInfoPropertyIsLiveStream: true,
+                MPNowPlayingInfoPropertyPlaybackRate: 1.0
+            ]
+        } else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyArtist: track.artist,
             MPMediaItemPropertyTitle: track.title,
-            MPMediaItemPropertyArtwork: albumArtwork
+            MPMediaItemPropertyArtwork: albumArtwork,
+            MPMediaItemPropertyAlbumTitle: "WXYC",
+            MPNowPlayingInfoPropertyIsLiveStream: true,
+            MPNowPlayingInfoPropertyPlaybackRate: 0.0
         ]
+        }
     }
     
     override func remoteControlReceived(with receivedEvent: UIEvent?) {
