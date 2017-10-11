@@ -41,6 +41,7 @@ class NowPlayingViewController: UIViewController {
     @IBOutlet weak var volumeParentView: UIView!
     @IBOutlet weak var slider = UISlider()
     
+    
     var currentStation: RadioStation!
     var downloadTask: URLSessionDownloadTask?
     var iPhone4 = false
@@ -50,8 +51,8 @@ class NowPlayingViewController: UIViewController {
     let radioPlayer = Player.radio
     var track: Track!
     var mpVolumeSlider = UISlider()
-
-
+    var obs: NSKeyValueObservation?
+    let audioSession = AVAudioSession.sharedInstance()
     
     //weak var delegate: NowPlayingViewControllerDelegate?
     
@@ -84,13 +85,7 @@ class NowPlayingViewController: UIViewController {
         // Create Now Playing BarItem
         createNowPlayingAnimation()
         
-        // Setup MPMoviePlayerController
-        // If you're building an app for a client, you may want to
-        // replace the MediaPlayer player with a more robust 
-        // streaming library/SDK. Preferably one that supports interruptions, etc.
-        // Most of the good streaming libaries are in Obj-C, however they
-        // will work nicely with this Swift code. There is a branch using RadioKit if 
-        // you need an example of how nicely this code integrates with libraries.
+        //Setup AVPlayer
         setupPlayer()
         
         // Notification for when app becomes active
@@ -99,7 +94,7 @@ class NowPlayingViewController: UIViewController {
             name: Notification.Name("UIApplicationDidBecomeActiveNotification"),
             object: nil)
         
-        // Notification for MediaPlayer metadata updated
+        // Notification for playlist updates
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.metadataUpdated),
             name: Notification.Name.onPlaylistUpdate,
@@ -110,6 +105,11 @@ class NowPlayingViewController: UIViewController {
             selector: #selector(NowPlayingViewController.sessionInterrupted),
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance())
+        
+        // Notification and Slider Updates for Volume Changes
+        self.obs = audioSession.observe( \.outputVolume ) { (av, change) in
+            self.slider?.setValue(av.outputVolume, animated: true)
+        }
         
         // Check for station change
         if newStation {
@@ -151,6 +151,7 @@ class NowPlayingViewController: UIViewController {
         NotificationCenter.default.removeObserver(self,
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance())
+        //TODO figure out how to deinit the volume change observer!
     }
     
 
@@ -204,6 +205,7 @@ class NowPlayingViewController: UIViewController {
             }
         }
         
+        slider?.setValue(AVAudioSession.sharedInstance().outputVolume, animated: true)
         let thumbImageNormal = UIImage(named: "slider-ball")
         slider?.setThumbImage(thumbImageNormal, for: .normal)
         
@@ -575,6 +577,13 @@ class NowPlayingViewController: UIViewController {
                 playPressed()
             case .remoteControlPause:
                 pausePressed()
+            case .remoteControlTogglePlayPause:
+                switch track.isPlaying {
+                case true:
+                    pausePressed()
+                case false:
+                    playPressed()
+                }
             default:
                 break
             }
