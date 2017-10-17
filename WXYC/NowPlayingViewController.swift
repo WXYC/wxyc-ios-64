@@ -41,6 +41,7 @@ class NowPlayingViewController: UIViewController {
     @IBOutlet weak var volumeParentView: UIView!
     @IBOutlet weak var slider = UISlider()
     
+    
     var currentStation: RadioStation!
     var downloadTask: URLSessionDownloadTask?
     var iPhone4 = false
@@ -50,8 +51,9 @@ class NowPlayingViewController: UIViewController {
     let radioPlayer = Player.radio
     var track: Track!
     var mpVolumeSlider = UISlider()
-
-
+    var obs: NSKeyValueObservation?
+    let audioSession = AVAudioSession.sharedInstance()
+    let streamURL = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc.mp3")
     
     //weak var delegate: NowPlayingViewControllerDelegate?
     
@@ -84,22 +86,13 @@ class NowPlayingViewController: UIViewController {
         // Create Now Playing BarItem
         createNowPlayingAnimation()
         
-        // Setup MPMoviePlayerController
-        // If you're building an app for a client, you may want to
-        // replace the MediaPlayer player with a more robust 
-        // streaming library/SDK. Preferably one that supports interruptions, etc.
-        // Most of the good streaming libaries are in Obj-C, however they
-        // will work nicely with this Swift code. There is a branch using RadioKit if 
-        // you need an example of how nicely this code integrates with libraries.
-        setupPlayer()
-        
         // Notification for when app becomes active
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.didBecomeActiveNotificationReceived),
             name: Notification.Name("UIApplicationDidBecomeActiveNotification"),
             object: nil)
         
-        // Notification for MediaPlayer metadata updated
+        // Notification for playlist updates
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.metadataUpdated),
             name: Notification.Name.onPlaylistUpdate,
@@ -110,6 +103,11 @@ class NowPlayingViewController: UIViewController {
             selector: #selector(NowPlayingViewController.sessionInterrupted),
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance())
+        
+        // Notification and Slider Updates for Volume Changes
+        self.obs = audioSession.observe( \.outputVolume ) { (av, change) in
+            self.slider?.setValue(av.outputVolume, animated: true)
+        }
         
         // Check for station change
         if newStation {
@@ -129,7 +127,7 @@ class NowPlayingViewController: UIViewController {
         // Setup slider
         setupVolumeSlider()
         
-        var timer = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
+        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
         
     }
     
@@ -138,6 +136,9 @@ class NowPlayingViewController: UIViewController {
         updateLabels()
         justBecameActive = true
         updateAlbumArtwork()
+        if track.isPlaying == false {
+            resetStream()
+        }
     }
     
     deinit {
@@ -151,6 +152,7 @@ class NowPlayingViewController: UIViewController {
         NotificationCenter.default.removeObserver(self,
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance())
+        //TODO figure out how to deinit the volume change observer!
     }
     
 
@@ -181,16 +183,6 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     // MARK: - Setup
     //*****************************************************************
-    
-    func setupPlayer() {
-        radioPlayer.view.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
-        radioPlayer.view.sizeToFit()
-        radioPlayer.movieSourceType = MPMovieSourceType.streaming
-        radioPlayer.isFullscreen = false
-        radioPlayer.shouldAutoplay = true
-        radioPlayer.prepareToPlay()
-        radioPlayer.controlStyle = MPMovieControlStyle.none
-    }
   
     func setupVolumeSlider() {
         // Note: This slider implementation uses a MPVolumeView
@@ -204,30 +196,37 @@ class NowPlayingViewController: UIViewController {
             }
         }
         
+        slider?.setValue(AVAudioSession.sharedInstance().outputVolume, animated: true)
         let thumbImageNormal = UIImage(named: "slider-ball")
         slider?.setThumbImage(thumbImageNormal, for: .normal)
         
     }
     
     func stationDidChange() {
-        radioPlayer.stop()
+        radioPlayer.pause()
+        resetStream()
+        //radioPlayer.contentURL = URL(string: currentStation.stationStreamURL)
+        //radioPlayer.prepareToPlay()
+        //radioPlayer.play() no autoplay!
+        playButtonEnable()
+        //startNowPlayingAnimation()
         
-        radioPlayer.contentURL = URL(string: currentStation.stationStreamURL)
-        radioPlayer.prepareToPlay()
-        radioPlayer.play()
-        startNowPlayingAnimation()
-        
-        updateLabels(statusMessage: "Loading Station...")
+        updateLabels(statusMessage: "Loading...")
         
         // songLabel animate
         songLabel.animation = "flash"
-        songLabel.repeatCount = 2
         songLabel.animate()
         
         resetAlbumArtwork()
         
-        track.isPlaying = true
+        track.isPlaying = false
         NotificationCenter.default.post(name: .onPlaylistUpdate, object: nil)
+    }
+    
+    func resetStream() {
+        let asset = AVAsset(url: streamURL!)
+        let playerItem = AVPlayerItem(asset: asset)
+        radioPlayer.replaceCurrentItem(with: playerItem)
     }
     
     //*****************************************************************
@@ -249,14 +248,16 @@ class NowPlayingViewController: UIViewController {
         
         // Update StationsVC
         //self.delegate?.trackPlayingToggled(track: self.track)
-    }
+       }
     
     @IBAction func pausePressed() {
+        
         track.isPlaying = false
         
         playButtonEnable()
         
         radioPlayer.pause()
+        resetStream()
         updateLabels(statusMessage: "Station Paused...")
         nowPlayingImageView.stopAnimating()
         
@@ -462,7 +463,7 @@ class NowPlayingViewController: UIViewController {
 
     func queryAlbumArt() {
         
-        UIApplication.shared.isNetworkActivityIndicatorVisible = true
+        UIApplication.shared.isNetworkActivityIndicatorVisible = false
                 
         if useLastFM {
             let queryURL: String
@@ -544,11 +545,26 @@ class NowPlayingViewController: UIViewController {
         // Update notification/lock screen
         let albumArtwork = MPMediaItemArtwork(image: track.artworkImage!)
         
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+        if track.isPlaying == true {
+            
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+                MPMediaItemPropertyArtist: track.artist,
+                MPMediaItemPropertyTitle: track.title,
+                MPMediaItemPropertyArtwork: albumArtwork,
+                MPMediaItemPropertyAlbumTitle: "WXYC",
+                MPNowPlayingInfoPropertyIsLiveStream: true,
+                MPNowPlayingInfoPropertyPlaybackRate: 1.0
+            ]
+        } else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyArtist: track.artist,
             MPMediaItemPropertyTitle: track.title,
-            MPMediaItemPropertyArtwork: albumArtwork
+            MPMediaItemPropertyArtwork: albumArtwork,
+            MPMediaItemPropertyAlbumTitle: "WXYC",
+            MPNowPlayingInfoPropertyIsLiveStream: true,
+            MPNowPlayingInfoPropertyPlaybackRate: 0.0
         ]
+        }
     }
     
     override func remoteControlReceived(with receivedEvent: UIEvent?) {
@@ -561,6 +577,13 @@ class NowPlayingViewController: UIViewController {
                 playPressed()
             case .remoteControlPause:
                 pausePressed()
+            case .remoteControlTogglePlayPause:
+                switch track.isPlaying {
+                case true:
+                    pausePressed()
+                case false:
+                    playPressed()
+                }
             default:
                 break
             }
@@ -652,10 +675,10 @@ class NowPlayingViewController: UIViewController {
             if let type = AVAudioSessionInterruptionType(rawValue: typeValue.uintValue){
                 if type == .began {
                     print("interruption: began")
-                    // Add your code here
+                    stationDidChange()
                 } else{
                     print("interruption: ended")
-                    // Add your code here
+                    playPressed()
                 }
             }
         }

@@ -116,7 +116,7 @@
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="dtX-QN-LoN">
                                 <rect key="frame" x="0.0" y="378" width="320" height="60"/>
                                 <subviews>
-                                    <view alpha="0.49999999999999961" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="zuj-rb-EKQ" userLabel="Volume View">
+                                    <view alpha="0.5" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="zuj-rb-EKQ" userLabel="Volume View">
                                         <rect key="frame" x="35" y="10" width="250" height="36"/>
                                         <subviews>
                                             <slider opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="0.5" minValue="0.0" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="iFC-eW-7WA">
@@ -200,6 +200,7 @@
                         <outlet property="artistLabel" destination="v3l-q6-g0h" id="s0B-6Y-MWu"/>
                         <outlet property="pauseButton" destination="k7t-tN-2wp" id="hY6-Tz-wKV"/>
                         <outlet property="playButton" destination="D3H-co-r2v" id="7vv-MG-kTG"/>
+                        <outlet property="slider" destination="iFC-eW-7WA" id="YhI-L2-iQh"/>
                         <outlet property="songLabel" destination="KC8-ZG-rx5" id="tNh-3K-qWW"/>
                         <outlet property="stationDescLabel" destination="RA9-OX-Xr1" id="uAM-NB-RRM"/>
                         <outlet property="volumeParentView" destination="zuj-rb-EKQ" id="KFg-Rk-y3Q"/>
@@ -268,7 +269,7 @@
                                     <constraint firstAttribute="height" constant="36" id="Gpj-99-oS5"/>
                                 </constraints>
                                 <fontDescription key="fontDescription" name="AvenirNext-Medium" family="Avenir Next" pointSize="16"/>
-                                <state key="normal" title="Okay">
+                                <state key="normal" title="Back to the music">
                                     <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </state>
                                 <connections>
