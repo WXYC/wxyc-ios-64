@@ -269,7 +269,7 @@
                                     <constraint firstAttribute="height" constant="36" id="Gpj-99-oS5"/>
                                 </constraints>
                                 <fontDescription key="fontDescription" name="AvenirNext-Medium" family="Avenir Next" pointSize="16"/>
-                                <state key="normal" title="Okay">
+                                <state key="normal" title="Back to the music">
                                     <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </state>
                                 <connections>
