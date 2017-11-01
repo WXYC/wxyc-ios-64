@@ -229,6 +229,12 @@ class NowPlayingViewController: UIViewController {
         radioPlayer.replaceCurrentItem(with: playerItem)
     }
     
+    @objc internal func playerItemFailedToPlayToEndTime(_ aNotification: Notification) {
+        if kDebugLog {
+            print("Network ERROR")
+        }
+        resetStream()
+    }
     //*****************************************************************
     // MARK: - Player Controls (Play/Pause/Volume)
     //*****************************************************************
@@ -248,6 +254,8 @@ class NowPlayingViewController: UIViewController {
         
         // Update StationsVC
         //self.delegate?.trackPlayingToggled(track: self.track)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(playerItemFailedToPlayToEndTime(_:)), name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
        }
     
     @IBAction func pausePressed() {
@@ -263,6 +271,8 @@ class NowPlayingViewController: UIViewController {
         
         // Update StationsVC
         //self.delegate?.trackPlayingToggled(track: self.track)
+        
+        NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
     }
     
     @IBAction func volumeChanged(_ sender:UISlider) {
