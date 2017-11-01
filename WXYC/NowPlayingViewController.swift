@@ -1,11 +1,3 @@
-//
-//  NowPlayingViewController.swift
-//  Swift Radio
-//
-//  Created by Matthew Fecher on 7/22/15.
-//  Copyright (c) 2015 MatthewFecher.com. All rights reserved.
-//
-
 import UIKit
 import MediaPlayer
 
