@@ -1,11 +1,3 @@
-//
-//  NowPlayingViewController.swift
-//  Swift Radio
-//
-//  Created by Matthew Fecher on 7/22/15.
-//  Copyright (c) 2015 MatthewFecher.com. All rights reserved.
-//
-
 import UIKit
 import MediaPlayer
 
@@ -229,6 +221,12 @@ class NowPlayingViewController: UIViewController {
         radioPlayer.replaceCurrentItem(with: playerItem)
     }
     
+    @objc internal func playerItemFailedToPlayToEndTime(_ aNotification: Notification) {
+        if kDebugLog {
+            print("Network ERROR")
+        }
+        resetStream()
+    }
     //*****************************************************************
     // MARK: - Player Controls (Play/Pause/Volume)
     //*****************************************************************
@@ -248,6 +246,8 @@ class NowPlayingViewController: UIViewController {
         
         // Update StationsVC
         //self.delegate?.trackPlayingToggled(track: self.track)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(playerItemFailedToPlayToEndTime(_:)), name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
        }
     
     @IBAction func pausePressed() {
@@ -263,6 +263,8 @@ class NowPlayingViewController: UIViewController {
         
         // Update StationsVC
         //self.delegate?.trackPlayingToggled(track: self.track)
+        
+        NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
     }
     
     @IBAction func volumeChanged(_ sender:UISlider) {
@@ -543,7 +545,11 @@ class NowPlayingViewController: UIViewController {
     func updateLockScreen() {
         
         // Update notification/lock screen
-        let albumArtwork = MPMediaItemArtwork(image: track.artworkImage!)
+        
+        let image:UIImage = track.artworkImage!
+        let albumArtwork = MPMediaItemArtwork.init(boundsSize: image.size, requestHandler: { (size) -> UIImage in
+            return image
+        })
         
         if track.isPlaying == true {
             

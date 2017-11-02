@@ -1,11 +1,3 @@
-//
-//  SwiftRadioUITests.swift
-//  SwiftRadioUITests
-//
-//  Created by Jonah Stiennon on 12/3/15.
-//  Copyright © 2015 matthewfecher.com. All rights reserved.
-//
-
 import XCTest
 
 class SwiftRadioUITests: XCTestCase {

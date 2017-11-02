@@ -1,11 +1,3 @@
-//
-//  UIImageView+AlbumArtDownload.swift
-//  Swift Radio
-//
-//  Created by Matthew Fecher on 3/31/15.
-//  Copyright (c) 2015 MatthewFecher.com. All rights reserved.
-//
-
 import UIKit
 
 extension UIImageView {
