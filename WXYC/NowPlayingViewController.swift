@@ -545,7 +545,11 @@ class NowPlayingViewController: UIViewController {
     func updateLockScreen() {
         
         // Update notification/lock screen
-        let albumArtwork = MPMediaItemArtwork(image: track.artworkImage!)
+        
+        let image:UIImage = track.artworkImage!
+        let albumArtwork = MPMediaItemArtwork.init(boundsSize: image.size, requestHandler: { (size) -> UIImage in
+            return image
+        })
         
         if track.isPlaying == true {
             
