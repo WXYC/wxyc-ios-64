@@ -1,11 +1,3 @@
-//
-//  UIImage+DropShadow.swift
-//  Swift Radio
-//
-//  Created by Matthew Fecher on 5/30/15.
-//  Copyright (c) 2015 MatthewFecher.com. All rights reserved.
-//
-
 import UIKit
 
 extension UIImageView {
