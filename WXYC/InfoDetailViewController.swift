@@ -9,8 +9,10 @@ class InfoDetailViewController: UIViewController, MFMailComposeViewControllerDel
     @IBOutlet weak var stationLongDescTextView: UITextView!
     @IBOutlet weak var okayButton: UIButton!
     @IBOutlet weak var feedbackButton: UIButton!
+    
     var currentStation: RadioStation!
     var downloadTask: URLSessionDownloadTask?
+
     //*****************************************************************
     // MARK: - ViewDidLoad
     //*****************************************************************
@@ -27,6 +29,17 @@ class InfoDetailViewController: UIViewController, MFMailComposeViewControllerDel
         downloadTask?.cancel()
         downloadTask = nil
     }
+    
+    func configureMailController() -> MFMailComposeViewController {
+        let mailComposerVC = MFMailComposeViewController()
+        mailComposerVC.mailComposeDelegate = self
+        mailComposerVC.setToRecipients(["dvd@wxyc.org"])
+        mailComposerVC.setSubject("Feedback on the WXYC app")
+        return mailComposerVC
+        }
+    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+        controller.dismiss(animated: true, completion: nil)
+        }
     
     //*****************************************************************
     // MARK: - UI Helpers
@@ -75,18 +88,6 @@ class InfoDetailViewController: UIViewController, MFMailComposeViewControllerDel
         stationImageView.applyShadow()
     }
     
-    func configureMailController() -> MFMailComposeViewController {
-        let mailComposerVC = MFMailComposeViewController()
-        mailComposerVC.mailComposeDelegate = self
-        
-        mailComposerVC.setToRecipients(["dvd@wxyc.org"])
-        mailComposerVC.setSubject("Feedback on the WXYC app")
-        return mailComposerVC
-    }
-    
-    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
-        controller.dismiss(animated: true, completion: nil)
-    }
     //*****************************************************************
     // MARK: - IBActions
     //*****************************************************************
@@ -98,8 +99,8 @@ class InfoDetailViewController: UIViewController, MFMailComposeViewControllerDel
         let mailComposeViewController = configureMailController()
         if MFMailComposeViewController.canSendMail() {
             self.present(mailComposeViewController, animated: true, completion: nil)
-        } else {
-        }
+            } else {
+            }
     }
     
     
