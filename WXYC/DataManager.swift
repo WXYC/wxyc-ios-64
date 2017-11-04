@@ -1,119 +1,151 @@
 import UIKit
 
-class DataManager {
-    
-    //*****************************************************************
-    // Helper class to get either local or remote JSON
-    //*****************************************************************
-    
-//    class func getStationDataWithSuccess(success: @escaping ((_ metaData: Data?) -> Void)) {
-//
-//        DispatchQueue.global(qos: .userInitiated).async {
-//            if useLocalStations {
-//                getDataFromFileWithSuccess() { data in
-//                    success(data)
-//                }
-//            } else {
-//                loadDataFromURL(url: URL(string: stationDataURL)!) { data, error in
-//                    if let urlData = data {
-//                        success(urlData)
-//                    }
-//                }
-//            }
-//        }
-//    }
-    
-    //*****************************************************************
-    // Load local JSON Data
-    //*****************************************************************
-    
-    class func getDataFromFileWithSuccess(success: (_ data: Data) -> Void) {
-        
-        if let filePath = Bundle.main.path(forResource: "stations", ofType:"json") {
-            do {
-                let data = try NSData(contentsOfFile:filePath,
-                    options: NSData.ReadingOptions.uncached) as Data
-                success(data)
-            } catch {
-                fatalError()
-            }
-        } else {
-            print("The local JSON file could not be found")
-        }
+enum Result<T> {
+    case success(T)
+    case error(Error)
+}
+
+public enum ServiceErrors: Error {
+    case noResults
+}
+
+final class Webservice {
+    func getCurrentPlaycut() -> Future<Playcut> {
+        return getPlaylist().chained(with: { playlist in
+            return Promise(value: playlist.playcuts.first)
+        })
     }
     
-    //*****************************************************************
-    // Get LastFM/iTunes Data
-    //*****************************************************************
-    
-    class func getTrackDataWithSuccess(queryURL: String, success: @escaping ((_ metaData: Data?) -> Void)) {
-
-        loadDataFromURL(url: URL(string: queryURL)!) { data, _ in
-            // Return Data
-            if let urlData = data {
-                success(urlData)
-            } else {
-                if kDebugLog { print("API TIMEOUT OR ERROR") }
-            }
+    private func getPlaylist() -> Future<Playlist> {
+        return URLSession.shared.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
+            let decoder = JSONDecoder()
+            return try decoder.decode(Playlist.self, from: data)
         }
     }
+}
 
-    //*****************************************************************
-    // Get Playlist Data
-    //*****************************************************************
-    
-    class func getPlaylistDataWithSuccess(queryURL: String, success: @escaping ((_ metaData: Data?) -> Void)) {
+extension Future where Value == Playcut {
+    func getArtwork() -> Future<UIImage> {
+        let promise = Promise<UIImage>()
+        
+        let lastFMArtworkRequest = getLastFMArtwork()
+        let iTunesArtworkRequest = getItunesArtwork()
 
-        loadDataFromURL(url: URL(string: queryURL)!) { data, _ in
-            // Return Data
-            if let urlData = data {
-                success(urlData)
-            } else {
-                if kDebugLog { print("API TIMEOUT OR ERROR") }
+        lastFMArtworkRequest.observe { imageResult in
+            switch imageResult {
+            case let .success(image):
+                promise.resolve(with: image)
+            case .error(_):
+                iTunesArtworkRequest.observe(with: { imageResult in
+                    switch imageResult {
+                    case let .success(image):
+                        promise.resolve(with: image)
+                    case let .error(error):
+                        if let defaultImage = UIImage(named: "albumArt") {
+                            promise.resolve(with: defaultImage)
+                        } else {
+                            promise.reject(with: error)
+                        }
+                    }
+                })
             }
         }
+        
+        return promise
     }
     
-    //*****************************************************************
-    // REUSABLE DATA/API CALL METHOD
-    //*****************************************************************
+    private func getLastFMArtwork() -> Future<UIImage> {
+        return chained(with: { playcut -> Future<UIImage> in
+            return playcut
+                .getLastFMAlbum()
+                .chained(with: { album -> Future<UIImage> in
+                    guard let albumArt = album.image.last else {
+                        throw LastFM.Errors.noAlbumArt
+                    }
+
+                    return albumArt.url.getImage()
+                })
+        })
+    }
     
-    class func loadDataFromURL(url: URL, completion:@escaping (_ data: Data?, _ error: Error?) -> Void) {
-        
-        let sessionConfig = URLSessionConfiguration.default
-        sessionConfig.allowsCellularAccess          = true
-        sessionConfig.timeoutIntervalForRequest     = 15
-        sessionConfig.timeoutIntervalForResource    = 30
-        sessionConfig.httpMaximumConnectionsPerHost = 1
-        
-        let session = URLSession(configuration: sessionConfig)
-        
-        // Use NSURLSession to get data from an NSURL
-        let loadDataTask = session.dataTask(with: url){ data, response, error in
-            if let responseError = error {
-                completion(nil, responseError)
-                
-                if kDebugLog { print("API ERROR: \(String(describing: error))") }
-                
-                // Stop activity Indicator
-                UIApplication.shared.isNetworkActivityIndicatorVisible = false
-                
-            } else if let httpResponse = response as? HTTPURLResponse {
-                if httpResponse.statusCode != 200 {
-                    let statusError = NSError(domain:"com.matthewfecher", code:httpResponse.statusCode, userInfo:[NSLocalizedDescriptionKey : "HTTP status code has unexpected value."])
+    private func getItunesArtwork() -> Future<UIImage> {
+        return chained(with: { playcut -> Future<UIImage> in
+            return playcut.getItunesItem().getAlbumArtwork()
+        })
+    }
+}
+
+extension Playcut {
+    func getItunesItem() -> Future<iTunes.SearchResults.Item> {
+        let url = iTunes.searchURL(for: self)
+        return URLSession.shared.request(url: url)
+            .chained(with: { data -> Promise<iTunes.SearchResults.Item> in
+                do {
+                    let decoder = JSONDecoder()
+                    let results = try decoder.decode(iTunes.SearchResults.self, from: data)
                     
-                    if kDebugLog { print("API: HTTP status code has unexpected value") }
-                    
-                    completion(nil, statusError)
-                    
-                } else {
-                    
-                    // Success, return data
-                    completion(data, nil)
+                    if let item = results.results.first {
+                        return Promise<iTunes.SearchResults.Item>(value: item)
+                    } else {
+                        throw ServiceErrors.noResults
+                    }
+                } catch {
+                    let result = Promise<iTunes.SearchResults.Item>()
+                    result.reject(with: error)
+                    return result
                 }
-            }
-        }
-        
-        loadDataTask.resume()
+            })
+    }
+    
+    func getLastFMAlbum() -> Future<LastFM.Album> {
+        let lastFMURL = LastFM.searchURL(for: self)
+        return URLSession.shared.request(url: lastFMURL)
+            .transformed(with: { data -> LastFM.Album in
+                let decoder = JSONDecoder()
+                let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: data)
+                
+                return searchResponse.album
+            })
+    }
+}
+
+extension Future where Value == URL {
+    func searchITunes() -> Future<iTunes.SearchResults.Item> {
+        return chained(with: { url -> Future<iTunes.SearchResults.Item> in
+            return URLSession.shared.request(url: url)
+                .chained(with: { data -> Promise<iTunes.SearchResults.Item> in
+                    do {
+                        let decoder = JSONDecoder()
+                        let results = try decoder.decode(iTunes.SearchResults.self, from: data)
+                        
+                        if let item = results.results.first {
+                            return Promise<iTunes.SearchResults.Item>(value: item)
+                        } else {
+                            throw ServiceErrors.noResults
+                        }
+                    } catch {
+                        let result = Promise<iTunes.SearchResults.Item>()
+                        result.reject(with: error)
+                        return result
+                    }
+            })
+        })
+    }
+}
+
+extension URL {
+    func getImage() -> Future<UIImage> {
+        return URLSession.shared.request(url: self)
+            .chained(with: { (data) -> Future<UIImage> in
+                return Promise(value: UIImage(data: data))
+            })
+    }
+}
+
+extension Future where Value == iTunes.SearchResults.Item {
+    func getAlbumArtwork() -> Future<UIImage> {
+        return chained(with: { item -> Future<UIImage> in
+            return item.artworkUrl100.getImage()
+        })
     }
 }

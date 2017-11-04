@@ -30,7 +30,7 @@ let searchable = true
 
 // Use LastFM or iTunes API
 // set to "false" to use iTunes
-let useLastFM = true
+let useLastFM = false
 
 //DVD's last.fm API apiKey
 
