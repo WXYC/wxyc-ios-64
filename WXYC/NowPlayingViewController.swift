@@ -327,13 +327,11 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     
     func resetAlbumArtwork() {
-        track.artworkLoaded = false
         track.artworkURL = currentStation.stationImageURL
         updateAlbumArtwork()
     }
     
     func updateAlbumArtwork() {
-        track.artworkLoaded = false
         if track.artworkURL.range(of: "http") != nil {
             // Attempt to download album art from an API
             if let url = URL(string: track.artworkURL) {
@@ -342,8 +340,7 @@ class NowPlayingViewController: UIViewController {
                     
                     // Update track struct
                     self.track.artworkImage = image
-                    self.track.artworkLoaded = true
-                    
+
                     // Turn off network activity indicator
                     UIApplication.shared.isNetworkActivityIndicatorVisible = false
                         
@@ -363,8 +360,7 @@ class NowPlayingViewController: UIViewController {
             // Local artwork
             self.albumImageView.image = UIImage(named: track.artworkURL)
             track.artworkImage = albumImageView.image
-            track.artworkLoaded = true
-            
+
             // Call delegate function that artwork updated
             //self.delegate?.artworkDidUpdate(track: self.track)
             
@@ -403,7 +399,6 @@ class NowPlayingViewController: UIViewController {
                 if kDebugLog { print("iTunes artURL: \(artURL)") }
             
                 self.track.artworkURL = artURL
-                self.track.artworkLoaded = true
                 self.updateAlbumArtwork()
             } else {
                 self.resetAlbumArtwork()
@@ -446,7 +441,6 @@ class NowPlayingViewController: UIViewController {
                     } else {
                         // LastFM image found!
                         self.track.artworkURL = artURL
-                        self.track.artworkLoaded = true
                         self.updateAlbumArtwork()
                     }
                     
