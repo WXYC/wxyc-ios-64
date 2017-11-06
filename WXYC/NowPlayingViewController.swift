@@ -29,7 +29,6 @@ class NowPlayingViewController: UIViewController {
     @IBOutlet weak var pauseButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var songLabel: SpringLabel!
-    @IBOutlet weak var stationDescLabel: UILabel!
     @IBOutlet weak var volumeParentView: UIView!
     @IBOutlet weak var slider = UISlider()
     
@@ -307,14 +306,6 @@ class NowPlayingViewController: UIViewController {
                 artistLabel.text = track.artist
             }
         }
-        
-        // Hide station description when album art is displayed or on iPhone 4
-        if track.artworkLoaded || iPhone4 {
-            stationDescLabel.isHidden = true
-        } else {
-            stationDescLabel.isHidden = false
-            stationDescLabel.text = currentStation.stationDesc
-        }
     }
     
     func playButtonEnable(enabled: Bool = true) {
@@ -363,22 +354,11 @@ class NowPlayingViewController: UIViewController {
         track.artworkLoaded = false
         track.artworkURL = currentStation.stationImageURL
         updateAlbumArtwork()
-        DispatchQueue.main.async(execute: {
-            //self.albumImageView.image = nil
-            self.stationDescLabel.isHidden = false
-        })
     }
     
     func updateAlbumArtwork() {
         track.artworkLoaded = false
         if track.artworkURL.range(of: "http") != nil {
-            
-            // Hide station description
-            DispatchQueue.main.async(execute: {
-                //self.albumImageView.image = nil
-                self.stationDescLabel.isHidden = false
-            })
-            
             // Attempt to download album art from an API
             if let url = URL(string: track.artworkURL) {
                 
@@ -395,7 +375,6 @@ class NowPlayingViewController: UIViewController {
                     self.albumImageView.animation = "fadeIn"
                     self.albumImageView.duration = 2
                     self.albumImageView.animate()
-                    self.stationDescLabel.isHidden = true
 
                     // Update lockscreen
                     self.updateLockScreen()
@@ -407,7 +386,6 @@ class NowPlayingViewController: UIViewController {
             
             // Hide the station description to make room for album art
             if track.artworkLoaded && !self.justBecameActive {
-                self.stationDescLabel.isHidden = true
                 self.justBecameActive = false
             }
             
