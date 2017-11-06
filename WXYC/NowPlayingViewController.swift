@@ -36,7 +36,6 @@ class NowPlayingViewController: UIViewController {
     var currentStation: RadioStation!
     var downloadTask: URLSessionDownloadTask?
     var iPhone4 = false
-    var justBecameActive = false
     var newStation = true
     var nowPlayingImageView: UIImageView!
     let radioPlayer = Player.radio
@@ -125,7 +124,6 @@ class NowPlayingViewController: UIViewController {
     @objc func didBecomeActiveNotificationReceived() {
         // View became active
         updateLabels()
-        justBecameActive = true
         updateAlbumArtwork()
         if track.isPlaying == false {
             resetStream()
@@ -383,12 +381,6 @@ class NowPlayingViewController: UIViewController {
                     //self.delegate?.artworkDidUpdate(track: self.track)
                 }
             }
-            
-            // Hide the station description to make room for album art
-            if track.artworkLoaded && !self.justBecameActive {
-                self.justBecameActive = false
-            }
-            
         } else if track.artworkURL != "" {
             // Local artwork
             self.albumImageView.image = UIImage(named: track.artworkURL)
