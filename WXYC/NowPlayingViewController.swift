@@ -35,7 +35,6 @@ class NowPlayingViewController: UIViewController {
     
     var currentStation: RadioStation!
     var downloadTask: URLSessionDownloadTask?
-    var iPhone4 = false
     var newStation = true
     var nowPlayingImageView: UIImageView!
     let radioPlayer = Player.radio
@@ -278,7 +277,6 @@ class NowPlayingViewController: UIViewController {
         let deviceHeight = self.view.bounds.height
         
         if deviceHeight == 480 {
-            iPhone4 = true
             albumHeightConstraint.constant = 106
             view.updateConstraints()
         } else if deviceHeight == 667 {
