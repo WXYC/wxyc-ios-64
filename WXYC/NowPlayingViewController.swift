@@ -35,7 +35,6 @@ class NowPlayingViewController: UIViewController {
     
     var currentStation: RadioStation!
     var downloadTask: URLSessionDownloadTask?
-    var newStation = true
     var nowPlayingImageView: UIImageView!
     let radioPlayer = Player.radio
     var track: Track!
@@ -95,19 +94,13 @@ class NowPlayingViewController: UIViewController {
             self.slider?.setValue(av.outputVolume, animated: true)
         }
         
-        // Check for station change
-        if newStation {
-            track = Track()
-            stationDidChange()
+        updateLabels()
+        albumImageView.image = track.artworkImage
+        
+        if !track.isPlaying {
+            pausePressed()
         } else {
-            updateLabels()
-            albumImageView.image = track.artworkImage
-            
-            if !track.isPlaying {
-                pausePressed()
-            } else {
-                nowPlayingImageView.startAnimating()
-            }
+            nowPlayingImageView.startAnimating()
         }
         
         // Setup slider
