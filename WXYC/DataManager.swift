@@ -56,15 +56,7 @@ extension Future where Value == Playcut {
     
     private func getLastFMArtwork() -> Future<UIImage> {
         return chained(with: { playcut -> Future<UIImage> in
-            return playcut
-                .getLastFMAlbum()
-                .chained(with: { album -> Future<UIImage> in
-                    guard let albumArt = album.image.last else {
-                        throw LastFM.Errors.noAlbumArt
-                    }
-
-                    return albumArt.url.getImage()
-                })
+            return playcut.getLastFMAlbum().getAlbumArtwork()
         })
     }
     
@@ -109,26 +101,22 @@ extension Playcut {
     }
 }
 
-extension Future where Value == URL {
-    func searchITunes() -> Future<iTunes.SearchResults.Item> {
-        return chained(with: { url -> Future<iTunes.SearchResults.Item> in
-            return URLSession.shared.request(url: url)
-                .chained(with: { data -> Promise<iTunes.SearchResults.Item> in
-                    do {
-                        let decoder = JSONDecoder()
-                        let results = try decoder.decode(iTunes.SearchResults.self, from: data)
-                        
-                        if let item = results.results.first {
-                            return Promise<iTunes.SearchResults.Item>(value: item)
-                        } else {
-                            throw ServiceErrors.noResults
-                        }
-                    } catch {
-                        let result = Promise<iTunes.SearchResults.Item>()
-                        result.reject(with: error)
-                        return result
-                    }
-            })
+extension Future where Value == iTunes.SearchResults.Item {
+    func getAlbumArtwork() -> Future<UIImage> {
+        return chained(with: { item -> Future<UIImage> in
+            return item.artworkUrl100.getImage()
+        })
+    }
+}
+
+extension Future where Value == LastFM.Album {
+    func getAlbumArtwork() -> Future<UIImage> {
+        return chained(with: { album -> Future<UIImage> in
+            guard let albumArt = album.image.last else {
+                throw LastFM.Errors.noAlbumArt
+            }
+            
+            return albumArt.url.getImage()
         })
     }
 }
@@ -139,13 +127,5 @@ extension URL {
             .chained(with: { (data) -> Future<UIImage> in
                 return Promise(value: UIImage(data: data))
             })
-    }
-}
-
-extension Future where Value == iTunes.SearchResults.Item {
-    func getAlbumArtwork() -> Future<UIImage> {
-        return chained(with: { item -> Future<UIImage> in
-            return item.artworkUrl100.getImage()
-        })
     }
 }
