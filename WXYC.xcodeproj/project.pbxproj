@@ -51,7 +51,6 @@
 		94DB0AAB1B98B762005ED993 /* TransitionZoom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A8E1B98B762005ED993 /* TransitionZoom.swift */; };
 		94DB0AAC1B98B762005ED993 /* UnwindSegue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A8F1B98B762005ED993 /* UnwindSegue.swift */; };
 		94E9761C1B1A8F3200F52B1E /* UIImage+DropShadow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94E9761B1B1A8F3200F52B1E /* UIImage+DropShadow.swift */; };
-		94ECF2671B94D80600D120A8 /* SwiftyJSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94ECF2661B94D80600D120A8 /* SwiftyJSON.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -114,7 +113,6 @@
 		94DB0A8E1B98B762005ED993 /* TransitionZoom.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TransitionZoom.swift; sourceTree = "<group>"; };
 		94DB0A8F1B98B762005ED993 /* UnwindSegue.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UnwindSegue.swift; sourceTree = "<group>"; };
 		94E9761B1B1A8F3200F52B1E /* UIImage+DropShadow.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIImage+DropShadow.swift"; sourceTree = "<group>"; };
-		94ECF2661B94D80600D120A8 /* SwiftyJSON.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SwiftyJSON.swift; path = WXYC/Libraries/SwiftyJSON.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,7 +199,6 @@
 		949BBB411ACCA2B6005B7C26 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
-				94ECF2661B94D80600D120A8 /* SwiftyJSON.swift */,
 				94DB0A711B98B762005ED993 /* Spring */,
 			);
 			name = Libraries;
@@ -436,7 +433,6 @@
 				94DB0AA91B98B762005ED993 /* SpringView.swift in Sources */,
 				94DB0AAB1B98B762005ED993 /* TransitionZoom.swift in Sources */,
 				9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */,
-				94ECF2671B94D80600D120A8 /* SwiftyJSON.swift in Sources */,
 				94D260961B45E3FA00DE671C /* AnimationFrames.swift in Sources */,
 				94DB0A9E1B98B762005ED993 /* LoadingView.swift in Sources */,
 				94DB0AA41B98B762005ED993 /* SpringButton.swift in Sources */,
