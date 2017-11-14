@@ -10,6 +10,5 @@ struct Track {
 	var album: String = ""
 	var artworkURL: String = ""
     var artworkImage = #imageLiteral(resourceName: "logo")
-	var isPlaying: Bool = false
 	var id: String = ""
 }
