@@ -66,7 +66,7 @@ class NowPlayingViewController: UIViewController {
         
         updateLabels()
         
-        if !track.isPlaying {
+        if !radioPlayer.isPlaying {
             pausePressed()
         } else {
             nowPlayingImageView.startAnimating()
@@ -84,7 +84,7 @@ class NowPlayingViewController: UIViewController {
     @objc func didBecomeActiveNotificationReceived() {
         // View became active
         updateLabels()
-        if track.isPlaying == false {
+        if !radioPlayer.isPlaying {
             resetStream()
         }
     }
@@ -151,8 +151,6 @@ class NowPlayingViewController: UIViewController {
         songLabel.animation = "flash"
         songLabel.animate()
         
-        track.isPlaying = false
-        
         self.checkPlaylist()
     }
     
@@ -173,7 +171,6 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     
     @IBAction func playPressed() {
-        track.isPlaying = true
         playButtonEnable(enabled: false)
         radioPlayer.play()
         updateLabels()
@@ -189,9 +186,6 @@ class NowPlayingViewController: UIViewController {
        }
     
     @IBAction func pausePressed() {
-        
-        track.isPlaying = false
-        
         playButtonEnable()
         
         radioPlayer.pause()
@@ -228,11 +222,9 @@ class NowPlayingViewController: UIViewController {
         if enabled {
             playButton.isEnabled = true
             pauseButton.isEnabled = false
-            track.isPlaying = false
         } else {
             playButton.isEnabled = false
             pauseButton.isEnabled = true
-            track.isPlaying = true
         }
     }
     
@@ -282,7 +274,7 @@ class NowPlayingViewController: UIViewController {
             MPMediaItemPropertyArtwork: albumArtwork,
             MPMediaItemPropertyAlbumTitle: track.album,
             MPNowPlayingInfoPropertyIsLiveStream: true,
-            MPNowPlayingInfoPropertyPlaybackRate: track.isPlaying ? 1.0 : 0.0
+            MPNowPlayingInfoPropertyPlaybackRate: radioPlayer.rate
         ]
     }
     
@@ -299,7 +291,7 @@ class NowPlayingViewController: UIViewController {
         case (.remoteControlPause):
             pausePressed()
         case (.remoteControlTogglePlayPause):
-            track.isPlaying ? pausePressed() : playPressed()
+            radioPlayer.isPlaying ? pausePressed() : playPressed()
         default:
             break
         }
@@ -386,5 +378,11 @@ class NowPlayingViewController: UIViewController {
         let searchURL : URL = URL(string: urlStr!)!
         activity.webpageURL = searchURL
         super.updateUserActivityState(activity)
+    }
+}
+
+private extension AVPlayer {
+    var isPlaying: Bool {
+        return rate == 0.0
     }
 }
