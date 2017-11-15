@@ -8,7 +8,6 @@ import MediaPlayer
 class NowPlayingViewController: UIViewController {
     let webservice = Webservice()
 
-    @IBOutlet weak var albumHeightConstraint: NSLayoutConstraint!
     @IBOutlet weak var albumImageView: SpringImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var pauseButton: UIButton!
@@ -65,7 +64,6 @@ class NowPlayingViewController: UIViewController {
         }
         
         updateLabels()
-        albumImageView.image = track.artworkImage
         
         if !track.isPlaying {
             pausePressed()
@@ -88,6 +86,10 @@ class NowPlayingViewController: UIViewController {
         if track.isPlaying == false {
             resetStream()
         }
+    }
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
     }
     
     deinit {
@@ -259,15 +261,15 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
-        if segue.identifier == "InfoDetail" {
-            let infoController = segue.destination as! InfoDetailViewController
-            infoController.currentStation = currentStation
+        guard segue.identifier == "InfoDetail" else {
+            return
         }
-    }
-    
-    @IBAction func infoButtonPressed(_ sender: UIButton) {
-        performSegue(withIdentifier: "InfoDetail", sender: self)
+        
+        guard let infoDetailViewController = segue.destination as? InfoDetailViewController else {
+            return
+        }
+        
+        infoDetailViewController.currentStation = currentStation
     }
     
     @IBAction func shareButtonPressed(_ sender: UIButton) {
