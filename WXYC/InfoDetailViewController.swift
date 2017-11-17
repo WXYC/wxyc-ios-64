@@ -4,18 +4,12 @@ class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationLongDescTextView: UITextView!
     @IBOutlet weak var feedbackButton: UIButton!
     
-    var currentStation: RadioStation?
-    
-    override var prefersStatusBarHidden: Bool {
-        return true
-    }
-    
     // MARK: Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        stationLongDescTextView.text = currentStation?.longDesc
+        stationLongDescTextView.text = RadioStation.WXYC.longDesc
     }
     
     // MARK: IBActions
