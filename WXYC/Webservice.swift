@@ -40,12 +40,8 @@ extension Future where Value == Playcut {
                     switch imageResult {
                     case let .success(image):
                         promise.resolve(with: image)
-                    case let .error(error):
-                        if let defaultImage = UIImage(named: "albumArt") {
-                            promise.resolve(with: defaultImage)
-                        } else {
-                            promise.reject(with: error)
-                        }
+                    case .error(_):
+                        promise.resolve(with: #imageLiteral(resourceName: "logo"))
                     }
                 })
             }
