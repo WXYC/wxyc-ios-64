@@ -8,7 +8,6 @@ import MediaPlayer
 class NowPlayingViewController: UIViewController {
     let webservice = Webservice()
 
-    @IBOutlet weak var albumHeightConstraint: NSLayoutConstraint!
     @IBOutlet weak var albumImageView: SpringImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var pauseButton: UIButton!
@@ -17,13 +16,6 @@ class NowPlayingViewController: UIViewController {
     @IBOutlet weak var volumeParentView: UIView!
     @IBOutlet weak var slider = UISlider()
     
-    let currentStation = RadioStation(
-        name: "WXYC - Chapel Hill",
-        streamURL: URL.WXYCStream.absoluteString,
-        imageURL: "",
-        desc: "",
-        longDesc: "WXYC 89.3 FM is the non-commercial student-run radio station of the University of North Carolina at Chapel Hill. We broadcast at 1100 watts from the student union on the UNC campus, 24 hours a day, 365 days a year. Our coverage area encompasses approximately 900 square miles in and around Chapel Hill, Durham, Pittsboro, Apex, and parts of Raleigh."
-    )
     var nowPlayingImageView: UIImageView!
     let radioPlayer = AVPlayer(url: URL.WXYCStream)
     var track: Track = Track()
@@ -33,7 +25,15 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     // MARK: - ViewDidLoad
     //*****************************************************************
-    
+
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+    }
+
+    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+        super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -41,7 +41,7 @@ class NowPlayingViewController: UIViewController {
         setupUserActivity()
         
         // Set View Title
-        self.title = currentStation.name
+        self.title = RadioStation.WXYC.name
         
         // Create Now Playing BarItem
         createNowPlayingAnimation()
@@ -65,9 +65,8 @@ class NowPlayingViewController: UIViewController {
         }
         
         updateLabels()
-        albumImageView.image = track.artworkImage
         
-        if !track.isPlaying {
+        if !radioPlayer.isPlaying {
             pausePressed()
         } else {
             nowPlayingImageView.startAnimating()
@@ -85,9 +84,13 @@ class NowPlayingViewController: UIViewController {
     @objc func didBecomeActiveNotificationReceived() {
         // View became active
         updateLabels()
-        if track.isPlaying == false {
+        if !radioPlayer.isPlaying {
             resetStream()
         }
+    }
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
     }
     
     deinit {
@@ -148,8 +151,6 @@ class NowPlayingViewController: UIViewController {
         songLabel.animation = "flash"
         songLabel.animate()
         
-        track.isPlaying = false
-        
         self.checkPlaylist()
     }
     
@@ -170,7 +171,6 @@ class NowPlayingViewController: UIViewController {
     //*****************************************************************
     
     @IBAction func playPressed() {
-        track.isPlaying = true
         playButtonEnable(enabled: false)
         radioPlayer.play()
         updateLabels()
@@ -186,9 +186,6 @@ class NowPlayingViewController: UIViewController {
        }
     
     @IBAction func pausePressed() {
-        
-        track.isPlaying = false
-        
         playButtonEnable()
         
         radioPlayer.pause()
@@ -212,7 +209,7 @@ class NowPlayingViewController: UIViewController {
         if statusMessage != "" {
             // There's a an interruption or pause in the audio queue
             songLabel.text = statusMessage
-            artistLabel.text = currentStation.name
+            artistLabel.text = RadioStation.WXYC.name
             
         } else {
             // Radio is (hopefully) streaming properly
@@ -225,11 +222,9 @@ class NowPlayingViewController: UIViewController {
         if enabled {
             playButton.isEnabled = true
             pauseButton.isEnabled = false
-            track.isPlaying = false
         } else {
             playButton.isEnabled = false
             pauseButton.isEnabled = true
-            track.isPlaying = true
         }
     }
     
@@ -254,25 +249,9 @@ class NowPlayingViewController: UIViewController {
         self.navigationItem.rightBarButtonItem = barItem
     }
     
-    //*****************************************************************
-    // MARK: - Segue
-    //*****************************************************************
-    
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
-        if segue.identifier == "InfoDetail" {
-            let infoController = segue.destination as! InfoDetailViewController
-            infoController.currentStation = currentStation
-        }
-    }
-    
-    @IBAction func infoButtonPressed(_ sender: UIButton) {
-        performSegue(withIdentifier: "InfoDetail", sender: self)
-    }
-    
     @IBAction func shareButtonPressed(_ sender: UIButton) {
-        let songToShare = "I'm listening to \(track.title) on \(currentStation.name)"
-        let activityViewController = UIActivityViewController(activityItems: [songToShare, track.artworkImage!], applicationActivities: nil)
+        let songToShare = "I'm listening to \(track.title) on \(RadioStation.WXYC.name)"
+        let activityViewController = UIActivityViewController(activityItems: [songToShare, track.artworkImage], applicationActivities: nil)
         present(activityViewController, animated: true, completion: nil)
     }
     
@@ -284,7 +263,7 @@ class NowPlayingViewController: UIViewController {
         
         // Update notification/lock screen
         
-        let image:UIImage = track.artworkImage!
+        let image:UIImage = track.artworkImage
         let albumArtwork = MPMediaItemArtwork.init(boundsSize: image.size, requestHandler: { (size) -> UIImage in
             return image
         })
@@ -295,7 +274,7 @@ class NowPlayingViewController: UIViewController {
             MPMediaItemPropertyArtwork: albumArtwork,
             MPMediaItemPropertyAlbumTitle: track.album,
             MPNowPlayingInfoPropertyIsLiveStream: true,
-            MPNowPlayingInfoPropertyPlaybackRate: track.isPlaying ? 1.0 : 0.0
+            MPNowPlayingInfoPropertyPlaybackRate: radioPlayer.rate
         ]
     }
     
@@ -312,7 +291,7 @@ class NowPlayingViewController: UIViewController {
         case (.remoteControlPause):
             pausePressed()
         case (.remoteControlTogglePlayPause):
-            track.isPlaying ? pausePressed() : playPressed()
+            radioPlayer.isPlaying ? pausePressed() : playPressed()
         default:
             break
         }
@@ -331,8 +310,8 @@ class NowPlayingViewController: UIViewController {
         self.track.album = playcut.releaseTitle
         
         if self.track.artist == "" && self.track.title == "" {
-            self.track.artist = self.currentStation.desc
-            self.track.title = self.currentStation.name
+            self.track.artist = RadioStation.WXYC.desc
+            self.track.title = RadioStation.WXYC.name
         }
         
         guard currentSongName != self.track.title else {
@@ -399,5 +378,11 @@ class NowPlayingViewController: UIViewController {
         let searchURL : URL = URL(string: urlStr!)!
         activity.webpageURL = searchURL
         super.updateUserActivityState(activity)
+    }
+}
+
+private extension AVPlayer {
+    var isPlaying: Bool {
+        return rate == 0.0
     }
 }

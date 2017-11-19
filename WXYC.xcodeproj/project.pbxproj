@@ -13,7 +13,10 @@
 		235102031FB95B8800ED3DDF /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
 		235102041FB9691700ED3DDF /* Misc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A821B98B762005ED993 /* Misc.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
+		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
+		345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */; };
 		348E6EE51FAE693000B77665 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */; };
+		34E7C6881FBF77FC00825164 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */; };
 		9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
 		9409E1241ABF6FEA00312E2B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1221ABF6FEA00312E2B /* Main.storyboard */; };
 		9409E1261ABF6FEA00312E2B /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
@@ -74,7 +77,10 @@
 		2C5545BA1C1124DE00728469 /* SwiftRadioUITests.swift */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = SwiftRadioUITests.swift; path = WXYCUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwiftRadioUITests.swift; path = ../WXYCUITests/SwiftRadioUITests.swift; sourceTree = "<group>"; };
 		2C5545BE1C1124DE00728469 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
+		345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
 		348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		9409E1161ABF6FEA00312E2B /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9409E11A1ABF6FEA00312E2B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -224,7 +230,10 @@
 			isa = PBXGroup;
 			children = (
 				94D1D0A41AD6D6230022CA11 /* InfoDetailViewController.swift */,
+				34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */,
 				9409E13F1ABF78B000312E2B /* NowPlayingViewController.swift */,
+				345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */,
+				345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */,
 			);
 			name = ViewControllers;
 			sourceTree = "<group>";
@@ -393,8 +402,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				34E7C6881FBF77FC00825164 /* InfoDetailViewController.xib in Resources */,
 				9409E1241ABF6FEA00312E2B /* Main.storyboard in Resources */,
 				94DB0A9F1B98B762005ED993 /* LoadingView.xib in Resources */,
+				345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */,
 				94DB0A9C1B98B762005ED993 /* Info.plist in Resources */,
 				9409E1261ABF6FEA00312E2B /* Images.xcassets in Resources */,
 				348E6EE51FAE693000B77665 /* LaunchScreen.storyboard in Resources */,
@@ -455,6 +466,7 @@
 				94DB0A991B98B762005ED993 /* DesignableTextView.swift in Sources */,
 				94DB0AA21B98B762005ED993 /* Spring.swift in Sources */,
 				94AC70AE1AD05C6200652982 /* RadioStation.swift in Sources */,
+				345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */,
 				94DB0A9A1B98B762005ED993 /* DesignableView.swift in Sources */,
 				235102011FB95A1300ED3DDF /* WXYC.swift in Sources */,
 			);

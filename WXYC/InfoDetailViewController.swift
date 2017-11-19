@@ -4,14 +4,12 @@ class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationLongDescTextView: UITextView!
     @IBOutlet weak var feedbackButton: UIButton!
     
-    var currentStation: RadioStation!
-
-    // MARK: Life cycle
-
+    // MARK: Lifecycle
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        stationLongDescTextView.text = currentStation.longDesc
+        stationLongDescTextView.text = RadioStation.WXYC.longDesc
     }
     
     // MARK: IBActions
@@ -34,6 +32,10 @@ class InfoDetailViewController: UIViewController {
 
             present(alert, animated: true, completion: nil)
         }
+    }
+    
+    @IBAction func popBack(_ sender: UIBarButtonItem) {
+        self.navigationController?.popViewController(animated: true)
     }
 }
 
