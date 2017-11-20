@@ -49,7 +49,7 @@ class NowPlayingViewController: UIViewController {
         // Notification for when app becomes active
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.didBecomeActiveNotificationReceived),
-            name: Notification.Name("UIApplicationDidBecomeActiveNotification"),
+            name: Notification.Name.UIApplicationDidBecomeActive,
             object: nil)
         
         
@@ -96,7 +96,7 @@ class NowPlayingViewController: UIViewController {
     deinit {
         // Be a good citizen
         NotificationCenter.default.removeObserver(self,
-            name: Notification.Name("UIApplicationDidBecomeActiveNotification"),
+            name: Notification.Name.UIApplicationDidBecomeActive,
             object: nil)
         NotificationCenter.default.removeObserver(self,
             name: Notification.Name.AVAudioSessionInterruption,
