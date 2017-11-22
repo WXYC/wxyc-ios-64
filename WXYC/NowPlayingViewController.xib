@@ -43,11 +43,8 @@
                 <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="equalSpacing" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="73O-O1-JSH">
                     <rect key="frame" x="16" y="62" width="343" height="563"/>
                     <subviews>
-                        <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" adjustsImageSizeForAccessibilityContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="kaH-js-ooq" customClass="SpringImageView" customModule="WXYC" customModuleProvider="target">
+                        <imageView userInteractionEnabled="NO" alpha="0.0" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" adjustsImageSizeForAccessibilityContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="kaH-js-ooq">
                             <rect key="frame" x="0.0" y="0.0" width="343" height="343"/>
-                            <accessibility key="accessibilityConfiguration">
-                                <accessibilityTraits key="traits" image="YES" notEnabled="YES"/>
-                            </accessibility>
                             <constraints>
                                 <constraint firstAttribute="width" secondItem="kaH-js-ooq" secondAttribute="height" multiplier="1:1" id="78q-6E-XgL"/>
                             </constraints>
@@ -128,15 +125,22 @@
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="UpO-zR-qBA" userLabel="Bottom Spacer View">
                     <rect key="frame" x="0.0" y="625" width="375" height="42"/>
                 </view>
+                <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="aUh-g4-cQA">
+                    <rect key="frame" x="16" y="62" width="343" height="343"/>
+                </imageView>
             </subviews>
             <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
             <constraints>
                 <constraint firstItem="73O-O1-JSH" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leadingMargin" id="6gm-8n-PYZ"/>
                 <constraint firstAttribute="trailing" secondItem="5oY-uF-rMB" secondAttribute="trailing" id="BGj-hF-c7Z"/>
+                <constraint firstItem="aUh-g4-cQA" firstAttribute="leading" secondItem="kaH-js-ooq" secondAttribute="leading" id="CgX-uf-epG"/>
                 <constraint firstAttribute="trailingMargin" secondItem="73O-O1-JSH" secondAttribute="trailing" id="E9W-Q9-Bsy"/>
+                <constraint firstItem="aUh-g4-cQA" firstAttribute="trailing" secondItem="kaH-js-ooq" secondAttribute="trailing" id="Eeb-QB-zlE"/>
                 <constraint firstItem="73O-O1-JSH" firstAttribute="top" secondItem="gr3-1x-L4g" secondAttribute="bottom" id="HmI-Y5-8G2"/>
                 <constraint firstAttribute="bottom" secondItem="5oY-uF-rMB" secondAttribute="bottom" id="KNv-2Y-aYM"/>
                 <constraint firstItem="UpO-zR-qBA" firstAttribute="top" secondItem="73O-O1-JSH" secondAttribute="bottom" id="LMI-Bg-Wdu"/>
+                <constraint firstItem="aUh-g4-cQA" firstAttribute="top" secondItem="kaH-js-ooq" secondAttribute="top" id="POI-cQ-rXO"/>
+                <constraint firstItem="aUh-g4-cQA" firstAttribute="bottom" secondItem="kaH-js-ooq" secondAttribute="bottom" id="U8X-Md-UMV"/>
                 <constraint firstItem="5oY-uF-rMB" firstAttribute="top" secondItem="qeg-Di-hy3" secondAttribute="top" id="W4k-KU-WQ8"/>
                 <constraint firstAttribute="bottom" secondItem="UpO-zR-qBA" secondAttribute="bottom" id="Wnl-YD-YkQ"/>
                 <constraint firstItem="gr3-1x-L4g" firstAttribute="top" secondItem="ynv-Nz-ij6" secondAttribute="top" id="acV-hC-UYe"/>

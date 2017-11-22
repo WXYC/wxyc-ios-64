@@ -8,7 +8,7 @@ import MediaPlayer
 class NowPlayingViewController: UIViewController {
     let webservice = Webservice()
 
-    @IBOutlet weak var albumImageView: SpringImageView!
+    @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var pauseButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
@@ -79,6 +79,7 @@ class NowPlayingViewController: UIViewController {
         
         _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
         
+        self.albumImageView.image = UIImage(named: "logo")
     }
     
     @objc func didBecomeActiveNotificationReceived() {
