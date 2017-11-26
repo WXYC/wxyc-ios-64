@@ -8,7 +8,7 @@ import MediaPlayer
 class NowPlayingViewController: UIViewController {
     let webservice = Webservice()
 
-    @IBOutlet weak var albumImageView: SpringImageView!
+    @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var pauseButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
@@ -49,7 +49,7 @@ class NowPlayingViewController: UIViewController {
         // Notification for when app becomes active
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.didBecomeActiveNotificationReceived),
-            name: Notification.Name("UIApplicationDidBecomeActiveNotification"),
+            name: Notification.Name.UIApplicationDidBecomeActive,
             object: nil)
         
         
@@ -79,6 +79,7 @@ class NowPlayingViewController: UIViewController {
         
         _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
         
+        self.albumImageView.image = UIImage(named: "logo")
     }
     
     @objc func didBecomeActiveNotificationReceived() {
@@ -96,7 +97,7 @@ class NowPlayingViewController: UIViewController {
     deinit {
         // Be a good citizen
         NotificationCenter.default.removeObserver(self,
-            name: Notification.Name("UIApplicationDidBecomeActiveNotification"),
+            name: Notification.Name.UIApplicationDidBecomeActive,
             object: nil)
         NotificationCenter.default.removeObserver(self,
             name: Notification.Name.AVAudioSessionInterruption,
