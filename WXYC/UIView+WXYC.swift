@@ -28,7 +28,7 @@ extension UIView {
 }
 
 extension UIImage {
-    var defaultNowPlayingInfoCenterImage: UIImage {
+    static var defaultNowPlayingInfoCenterImage: UIImage {
         let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
         let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
         logoView.contentMode = .scaleAspectFit

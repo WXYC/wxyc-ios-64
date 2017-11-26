@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		231E5BDC1FCB658C00894F18 /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */; };
+		231E5BDE1FCB6F2B00894F18 /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */; };
 		235101FD1FB9002100ED3DDF /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
 		235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		235102011FB95A1300ED3DDF /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
@@ -43,6 +45,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingService.swift; sourceTree = "<group>"; };
+		231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockscreenInfoService.swift; sourceTree = "<group>"; };
 		235101FC1FB9002000ED3DDF /* Future.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
 		235101FE1FB93B4500ED3DDF /* LastFM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
 		235102001FB95A1300ED3DDF /* WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
@@ -170,6 +174,8 @@
 				9409E13F1ABF78B000312E2B /* NowPlayingViewController.swift */,
 				345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */,
 				345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */,
+				231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */,
+				231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */,
 			);
 			name = ViewControllers;
 			sourceTree = "<group>";
@@ -335,12 +341,14 @@
 				94D1D0A51AD6D6230022CA11 /* InfoDetailViewController.swift in Sources */,
 				949BBB401ACC9DEE005B7C26 /* Webservice.swift in Sources */,
 				235101FD1FB9002100ED3DDF /* Future.swift in Sources */,
+				231E5BDC1FCB658C00894F18 /* NowPlayingService.swift in Sources */,
 				94D260981B45E8B800DE671C /* Track.swift in Sources */,
 				9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */,
 				94D260961B45E3FA00DE671C /* AnimationFrames.swift in Sources */,
 				94DB0AA21B98B762005ED993 /* Spring.swift in Sources */,
 				94AC70AE1AD05C6200652982 /* RadioStation.swift in Sources */,
 				345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */,
+				231E5BDE1FCB6F2B00894F18 /* LockscreenInfoService.swift in Sources */,
 				235102011FB95A1300ED3DDF /* WXYC.swift in Sources */,
 				23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */,
 			);

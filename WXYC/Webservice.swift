@@ -112,13 +112,13 @@ extension Future where Value == iTunes.SearchResults.Item {
 }
 
 extension Future where Value == LastFM.Album {
-    func getAlbumArtwork() -> Future<UIImage> {
+    private func getAlbumArtwork() -> Future<UIImage> {
         return chained(with: { album -> Future<UIImage> in
             return album.embiggenAlbumArtURL().getImage()
         })
     }
     
-    func getLowResAlbumArtwork() -> Future<UIImage> {
+    private func getLowResAlbumArtwork() -> Future<UIImage> {
         return chained(with: { album -> Future<UIImage> in
             guard let albumArt = album.image.last else {
                 throw LastFM.Errors.noAlbumArt
