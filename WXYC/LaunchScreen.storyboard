@@ -4,7 +4,7 @@
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13770"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13527"/>
         <capability name="Aspect ratio constraints" minToolsVersion="5.1"/>
         <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
@@ -57,10 +57,10 @@
                                 <rect key="frame" x="0.0" y="0.0" width="414" height="736"/>
                             </imageView>
                             <view contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Vwc-Jl-wue" userLabel="Top Spacer View">
-                                <rect key="frame" x="0.0" y="20.000000000000004" width="414" height="61.333333333333343"/>
+                                <rect key="frame" x="0.0" y="20" width="414" height="77.666666666666671"/>
                             </view>
                             <stackView contentMode="scaleToFill" axis="vertical" distribution="equalSpacing" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="6dG-p5-EJX">
-                                <rect key="frame" x="20" y="81.333333333333314" width="374" height="593.66666666666674"/>
+                                <rect key="frame" x="20" y="97.666666666666686" width="374" height="561.33333333333326"/>
                                 <subviews>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" adjustsImageSizeForAccessibilityContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="ulb-xF-IRb" userLabel="Album Image View">
                                         <rect key="frame" x="0.0" y="0.0" width="374" height="374"/>
@@ -81,7 +81,7 @@
                                                 <nil key="highlightedColor"/>
                                             </label>
                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text=" " textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="MkW-wI-0JV" userLabel="Artist Name">
-                                                <rect key="frame" x="8.6666666666666572" y="45.000000000000057" width="4.6666666666666679" height="24.666666666666671"/>
+                                                <rect key="frame" x="8.6666666666666572" y="44.999999999999943" width="4.6666666666666679" height="24.666666666666671"/>
                                                 <fontDescription key="fontDescription" name="AvenirNext-Regular" family="Avenir Next" pointSize="18"/>
                                                 <color key="textColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                                 <nil key="highlightedColor"/>
@@ -89,41 +89,18 @@
                                         </subviews>
                                         <edgeInsets key="layoutMargins" top="16" left="8" bottom="8" right="8"/>
                                     </stackView>
-                                    <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="n8Z-BR-rus" userLabel="Volume Container">
-                                        <rect key="frame" x="0.0" y="483.66666666666669" width="374" height="50.000000000000057"/>
-                                        <subviews>
-                                            <imageView hidden="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="vol-min" translatesAutoresizingMaskIntoConstraints="NO" id="TFV-xn-dhT" userLabel="Volume Min">
-                                                <rect key="frame" x="0.0" y="19" width="11" height="12"/>
-                                            </imageView>
-                                            <slider hidden="YES" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" value="0.5" minValue="0.0" maxValue="1" translatesAutoresizingMaskIntoConstraints="NO" id="lnC-mT-qgJ">
-                                                <rect key="frame" x="17" y="10" width="335" height="31"/>
-                                            </slider>
-                                            <imageView hidden="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="vol-max" translatesAutoresizingMaskIntoConstraints="NO" id="riJ-V3-ghC" userLabel="Volume Max">
-                                                <rect key="frame" x="358" y="18" width="16" height="14"/>
-                                            </imageView>
-                                        </subviews>
-                                        <constraints>
-                                            <constraint firstItem="TFV-xn-dhT" firstAttribute="leading" secondItem="n8Z-BR-rus" secondAttribute="leading" id="Czw-WV-aFA"/>
-                                            <constraint firstItem="TFV-xn-dhT" firstAttribute="centerY" secondItem="n8Z-BR-rus" secondAttribute="centerY" id="FZF-6y-ily"/>
-                                            <constraint firstAttribute="trailing" secondItem="riJ-V3-ghC" secondAttribute="trailing" id="NmN-ou-QYd"/>
-                                            <constraint firstItem="riJ-V3-ghC" firstAttribute="leading" secondItem="lnC-mT-qgJ" secondAttribute="trailing" constant="8" id="QcB-j9-Z4Y"/>
-                                            <constraint firstItem="lnC-mT-qgJ" firstAttribute="centerY" secondItem="n8Z-BR-rus" secondAttribute="centerY" id="khC-Ej-lvb"/>
-                                            <constraint firstItem="riJ-V3-ghC" firstAttribute="centerY" secondItem="n8Z-BR-rus" secondAttribute="centerY" id="qgD-Qg-dH2"/>
-                                            <constraint firstItem="lnC-mT-qgJ" firstAttribute="leading" secondItem="TFV-xn-dhT" secondAttribute="trailing" constant="8" id="wPK-EY-obu"/>
-                                        </constraints>
-                                    </view>
                                     <stackView opaque="NO" contentMode="scaleToFill" distribution="equalSpacing" alignment="center" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="rtL-a6-sVv" userLabel="Controls Container">
-                                        <rect key="frame" x="139" y="549.66666666666663" width="96" height="44"/>
+                                        <rect key="frame" x="139" y="483.66666666666669" width="96" height="77.666666666666686"/>
                                         <subviews>
                                             <button opaque="NO" alpha="0.0" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="wkC-Xu-0eP">
-                                                <rect key="frame" x="0.0" y="0.0" width="44" height="44"/>
+                                                <rect key="frame" x="0.0" y="16.666666666666629" width="44" height="44"/>
                                                 <constraints>
                                                     <constraint firstAttribute="width" constant="44" id="BOh-ww-DCh"/>
                                                 </constraints>
                                                 <state key="normal" image="btn-pause"/>
                                             </button>
                                             <button opaque="NO" alpha="0.0" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ecs-5P-WUV">
-                                                <rect key="frame" x="52" y="0.0" width="44" height="44"/>
+                                                <rect key="frame" x="52" y="16.666666666666629" width="44" height="44"/>
                                                 <state key="normal" image="btn-play"/>
                                             </button>
                                         </subviews>
@@ -132,11 +109,11 @@
                                 <constraints>
                                     <constraint firstAttribute="trailing" secondItem="ulb-xF-IRb" secondAttribute="trailing" id="4oU-ne-oTq"/>
                                     <constraint firstItem="ulb-xF-IRb" firstAttribute="leading" secondItem="6dG-p5-EJX" secondAttribute="leading" id="5Aj-lk-Org"/>
-                                    <constraint firstItem="n8Z-BR-rus" firstAttribute="leading" secondItem="6dG-p5-EJX" secondAttribute="leading" id="sgs-eS-kJR"/>
+                                    <constraint firstItem="rtL-a6-sVv" firstAttribute="height" secondItem="fU5-Rd-0wm" secondAttribute="height" id="kY3-6C-L2v"/>
                                 </constraints>
                             </stackView>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="y9o-xH-SSV" userLabel="Bottom Spacer View">
-                                <rect key="frame" x="0.0" y="675" width="414" height="61"/>
+                                <rect key="frame" x="0.0" y="659" width="414" height="77"/>
                             </view>
                             <button hidden="YES" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="infoDark" showsTouchWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Syx-Eu-9jM">
                                 <rect key="frame" x="372" y="698" width="22" height="22"/>
@@ -178,7 +155,5 @@
         <image name="btn-pause" width="44" height="44"/>
         <image name="btn-play" width="44" height="44"/>
         <image name="logo" width="2000" height="2000"/>
-        <image name="vol-max" width="16" height="14"/>
-        <image name="vol-min" width="11" height="12"/>
     </resources>
 </document>
