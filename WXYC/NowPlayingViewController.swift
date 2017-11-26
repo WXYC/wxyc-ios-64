@@ -71,11 +71,7 @@ class NowPlayingViewController: UIViewController {
     }
     
     @objc func didBecomeActiveNotificationReceived() {
-        // View became active
         updateLabels()
-        if !radioPlayer.isPlaying {
-            resetStream()
-        }
     }
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
