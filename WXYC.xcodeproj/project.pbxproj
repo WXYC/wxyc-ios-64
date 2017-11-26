@@ -11,6 +11,7 @@
 		235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		235102011FB95A1300ED3DDF /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
 		235102031FB95B8800ED3DDF /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
+		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
 		345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */; };
@@ -46,6 +47,7 @@
 		235101FE1FB93B4500ED3DDF /* LastFM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
 		235102001FB95A1300ED3DDF /* WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
 		235102021FB95B8800ED3DDF /* iTunes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iTunes.swift; sourceTree = "<group>"; };
+		23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIView+WXYC.swift"; sourceTree = "<group>"; };
 		2C5545BA1C1124DE00728469 /* SwiftRadioUITests.swift */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = SwiftRadioUITests.swift; path = WXYCUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwiftRadioUITests.swift; path = ../WXYCUITests/SwiftRadioUITests.swift; sourceTree = "<group>"; };
 		2C5545BE1C1124DE00728469 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -176,6 +178,7 @@
 			isa = PBXGroup;
 			children = (
 				94D260951B45E3FA00DE671C /* AnimationFrames.swift */,
+				23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */,
 			);
 			name = "UI Helpers";
 			sourceTree = "<group>";
@@ -339,6 +342,7 @@
 				94AC70AE1AD05C6200652982 /* RadioStation.swift in Sources */,
 				345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */,
 				235102011FB95A1300ED3DDF /* WXYC.swift in Sources */,
+				23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
