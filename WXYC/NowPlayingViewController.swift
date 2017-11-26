@@ -13,14 +13,10 @@ class NowPlayingViewController: UIViewController {
     @IBOutlet weak var pauseButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var songLabel: SpringLabel!
-    @IBOutlet weak var volumeParentView: UIView!
-    @IBOutlet weak var slider = UISlider()
     
     var nowPlayingImageView: UIImageView!
     let radioPlayer = AVPlayer(url: URL.WXYCStream)
     var track: Track = Track()
-    var mpVolumeSlider = UISlider()
-    var obs: NSKeyValueObservation?
     
     //*****************************************************************
     // MARK: - ViewDidLoad
@@ -59,11 +55,6 @@ class NowPlayingViewController: UIViewController {
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance())
         
-        // Notification and Slider Updates for Volume Changes
-        self.obs = AVAudioSession.sharedInstance().observe( \.outputVolume ) { (av, change) in
-            self.slider?.setValue(av.outputVolume, animated: true)
-        }
-        
         updateLabels()
         
         if !radioPlayer.isPlaying {
@@ -73,9 +64,6 @@ class NowPlayingViewController: UIViewController {
         }
         
         stationDidChange()
-        
-        // Setup slider
-        setupVolumeSlider()
         
         _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
         
@@ -117,28 +105,6 @@ class NowPlayingViewController: UIViewController {
         if case let .success(image) = result {
             DispatchQueue.main.async { self.albumImageView.image = image }
         }
-    }
-
-    //*****************************************************************
-    // MARK: - Setup
-    //*****************************************************************
-  
-    func setupVolumeSlider() {
-        // Note: This slider implementation uses a MPVolumeView
-        // The volume slider only works in devices, not the simulator.
-        volumeParentView.backgroundColor = UIColor.clear
-        let volumeView = MPVolumeView(frame: volumeParentView.bounds)
-        for view in volumeView.subviews {
-            let uiview: UIView = view as UIView
-            if (uiview.description as NSString).range(of: "MPVolumeSlider").location != NSNotFound {
-                mpVolumeSlider = (uiview as! UISlider)
-            }
-        }
-        
-        slider?.setValue(AVAudioSession.sharedInstance().outputVolume, animated: true)
-        let thumbImageNormal = UIImage(named: "slider-ball")
-        slider?.setThumbImage(thumbImageNormal, for: .normal)
-        
     }
     
     func stationDidChange() {
@@ -195,10 +161,6 @@ class NowPlayingViewController: UIViewController {
         nowPlayingImageView.stopAnimating()
         
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
-    }
-    
-    @IBAction func volumeChanged(_ sender:UISlider) {
-        mpVolumeSlider.value = sender.value
     }
     
     //*****************************************************************
