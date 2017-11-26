@@ -269,7 +269,7 @@ class NowPlayingViewController: UIViewController {
         self.track.artist = playcut.artistName
         self.track.title = playcut.songTitle
         self.track.id = "\(playcut.id)"
-        self.track.album = playcut.releaseTitle
+        self.track.album = playcut.releaseTitle ?? ""
         
         if self.track.artist == "" && self.track.title == "" {
             self.track.artist = RadioStation.WXYC.desc
