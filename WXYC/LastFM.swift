@@ -13,13 +13,23 @@ public struct LastFM {
     
     public struct Album: Codable {
         public struct AlbumArt: Codable {
-            public enum Size: String, Codable {
+            public enum Size: String, Codable, Comparable {
                 case small
                 case medium
                 case large
                 case extralarge
                 case mega
                 case unknown = ""
+                
+                public static func <(lhs: LastFM.Album.AlbumArt.Size, rhs: LastFM.Album.AlbumArt.Size) -> Bool {
+                    let ordering: [Size] = [.unknown, .small, .medium, .large, .extralarge, .mega]
+                    
+                    guard let lOrdinal = ordering.index(of: lhs), let rOrdinal = ordering.index(of: rhs) else {
+                        return false
+                    }
+                    
+                    return lOrdinal < rOrdinal
+                }
             }
             
             let url: URL
@@ -34,6 +44,14 @@ public struct LastFM {
         let name: String
         let artist: String
         let image: [AlbumArt]
+        
+        var largestAlbumArt: AlbumArt {
+            let allArt = image.sorted { (leftAlbumArt, rightAlbumArt) -> Bool in
+                return leftAlbumArt.size < rightAlbumArt.size
+            }
+            
+            return allArt.last!
+        }
     }
     
     static func searchURL(`for` playcut: Playcut, apiKey: String = apiKey) -> URL {
