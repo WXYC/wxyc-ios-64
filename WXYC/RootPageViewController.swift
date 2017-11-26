@@ -3,10 +3,20 @@ import UIKit
 class RootPageViewController: UIPageViewController {
     let nowPlayingViewController: NowPlayingViewController
     let infoDetailViewController: InfoDetailViewController
+    
+    let nowPlayingService: NowPlayingService
+    let lockscreenInfoService: LockscreenInfoService
+    
+    let webservice: Webservice
 
     required init?(coder: NSCoder) {
         nowPlayingViewController = NowPlayingViewController.loadFromNib()
         infoDetailViewController = InfoDetailViewController.loadFromNib()
+        
+        nowPlayingService = NowPlayingService(delegate: nowPlayingViewController)
+        lockscreenInfoService = LockscreenInfoService()
+        
+        webservice = Webservice()
 
         super.init(coder: coder)
     }
@@ -24,10 +34,32 @@ class RootPageViewController: UIPageViewController {
                                 completion: nil)
 
         self.dataSource = self
+        
+        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
+        
+        self.checkPlaylist()
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
+    }
+    
+    @objc func checkPlaylist() {
+        let playcutRequest = webservice.getCurrentPlaycut()
+        playcutRequest.observe(with: self.updateWith(playcutResult:))
+        
+        let imageRequest = playcutRequest.getArtwork()
+        imageRequest.observe(with: self.update(artworkResult:))
+    }
+    
+    func updateWith(playcutResult result: Result<Playcut>) {
+        nowPlayingService.updateWith(playcutResult: result)
+        lockscreenInfoService.updateWith(playcutResult: result)
+    }
+    
+    func update(artworkResult: Result<UIImage>) {
+        nowPlayingService.update(artworkResult: artworkResult)
+        lockscreenInfoService.update(artworkResult: artworkResult)
     }
 }
 

@@ -5,8 +5,19 @@ import MediaPlayer
 // NowPlayingViewController
 //*****************************************************************
 
-class NowPlayingViewController: UIViewController {
-    let webservice = Webservice()
+class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
+    func update(nowPlayingInfo: NowPlayingInfo) {
+        self.songLabel.text = nowPlayingInfo.primaryHeading
+        self.artistLabel.text = nowPlayingInfo.secondaryHeading
+    }
+    
+    func update(artwork: UIImage) {
+        UIView.animate(withDuration: 0.25, animations: {
+            self.albumImageView.image = artwork
+        })
+    }
+    
+//    let webservice = Webservice()
 
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
@@ -68,7 +79,7 @@ class NowPlayingViewController: UIViewController {
         
         stationDidChange()
         
-        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
+//        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
         
         self.albumImageView.image = UIImage(named: "logo")
     }
@@ -92,21 +103,23 @@ class NowPlayingViewController: UIViewController {
         //TODO figure out how to deinit the volume change observer!
     }
     
-    @objc func checkPlaylist() {
-        let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: self.updateWith(playcutResult:))
-        
-        let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.update(artworkResult:))
-    }
+//    @objc func checkPlaylist() {
+//        let playcutRequest = webservice.getCurrentPlaycut()
+//        playcutRequest.observe(with: self.updateWith(playcutResult:))
+//
+//        let imageRequest = playcutRequest.getArtwork()
+//        imageRequest.observe(with: self.update(artworkResult:))
+//    }
     
-    func update(artworkResult: Result<UIImage>) {
-        if case let .success(image) = artworkResult {
-            DispatchQueue.main.async {
-                self.albumImageView.image = image
-            }
-        }
-    }
+//    func update(artworkResult: Result<UIImage>) {
+//        if case let .success(image) = artworkResult {
+//            DispatchQueue.main.async {
+//                UIView.animate(withDuration: 0.25, animations: {
+//                    self.albumImageView.image = image
+//                })
+//            }
+//        }
+//    }
     
     func stationDidChange() {
         radioPlayer.pause()
@@ -119,7 +132,7 @@ class NowPlayingViewController: UIViewController {
         songLabel.animation = "flash"
         songLabel.animate()
         
-        self.checkPlaylist()
+//        self.checkPlaylist()
     }
     
     func resetStream() {
