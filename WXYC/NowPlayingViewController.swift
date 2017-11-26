@@ -16,8 +16,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
             self.albumImageView.image = artwork
         })
     }
-    
-//    let webservice = Webservice()
 
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
@@ -25,7 +23,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var songLabel: SpringLabel!
     
-    var nowPlayingImageView: UIImageView!
     let radioPlayer = AVPlayer(url: URL.WXYCStream)
     var track: Track = Track()
     
@@ -50,16 +47,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         // Set View Title
         self.title = RadioStation.WXYC.name
         
-        // Create Now Playing BarItem
-        createNowPlayingAnimation()
-        
-        // Notification for when app becomes active
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(NowPlayingViewController.didBecomeActiveNotificationReceived),
-            name: Notification.Name.UIApplicationDidBecomeActive,
-            object: nil)
-        
-        
         // Notification for AVAudioSession Interruption (e.g. Phone call)
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.sessionInterrupted),
@@ -69,23 +56,9 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         // Remote events for play/pause taps on headphones
         UIApplication.shared.beginReceivingRemoteControlEvents()
         
-        updateLabels()
-        
         if !radioPlayer.isPlaying {
             pausePressed()
-        } else {
-            nowPlayingImageView.startAnimating()
         }
-        
-        stationDidChange()
-        
-//        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
-        
-        self.albumImageView.image = UIImage(named: "logo")
-    }
-    
-    @objc func didBecomeActiveNotificationReceived() {
-        updateLabels()
     }
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -95,44 +68,8 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     deinit {
         // Be a good citizen
         NotificationCenter.default.removeObserver(self,
-            name: Notification.Name.UIApplicationDidBecomeActive,
-            object: nil)
-        NotificationCenter.default.removeObserver(self,
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance())
-        //TODO figure out how to deinit the volume change observer!
-    }
-    
-//    @objc func checkPlaylist() {
-//        let playcutRequest = webservice.getCurrentPlaycut()
-//        playcutRequest.observe(with: self.updateWith(playcutResult:))
-//
-//        let imageRequest = playcutRequest.getArtwork()
-//        imageRequest.observe(with: self.update(artworkResult:))
-//    }
-    
-//    func update(artworkResult: Result<UIImage>) {
-//        if case let .success(image) = artworkResult {
-//            DispatchQueue.main.async {
-//                UIView.animate(withDuration: 0.25, animations: {
-//                    self.albumImageView.image = image
-//                })
-//            }
-//        }
-//    }
-    
-    func stationDidChange() {
-        radioPlayer.pause()
-        resetStream()
-        playButtonEnable()
-        
-        updateLabels(statusMessage: "Loading...")
-        
-        // songLabel animate
-        songLabel.animation = "flash"
-        songLabel.animate()
-        
-//        self.checkPlaylist()
     }
     
     func resetStream() {
@@ -154,14 +91,10 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     @IBAction func playPressed() {
         playButtonEnable(enabled: false)
         radioPlayer.play()
-        updateLabels()
         
         // songLabel Animation
         songLabel.animation = "flash"
         songLabel.animate()
-        
-        // Start NowPlaying Animation
-        nowPlayingImageView.startAnimating()
         
         NotificationCenter.default.addObserver(self, selector: #selector(playerItemFailedToPlayToEndTime(_:)), name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
        }
@@ -171,8 +104,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         
         radioPlayer.pause()
         resetStream()
-        updateLabels(statusMessage: "Station Paused...")
-        nowPlayingImageView.stopAnimating()
         
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
     }
@@ -181,76 +112,15 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     // MARK: - UI Helper Methods
     //*****************************************************************
     
-    func updateLabels(statusMessage: String? = nil) {
-        if let statusMessage = statusMessage {
-            // There's a an interruption or pause in the audio queue
-            songLabel.text = statusMessage
-            artistLabel.text = RadioStation.WXYC.name
-        } else {
-            // Radio is (hopefully) streaming properly
-            songLabel.text = track.title
-            artistLabel.text = track.artist
-        }
-    }
-    
     func playButtonEnable(enabled: Bool = true) {
-        if enabled {
-            playButton.isEnabled = true
-            pauseButton.isEnabled = false
-        } else {
-            playButton.isEnabled = false
-            pauseButton.isEnabled = true
-        }
-    }
-    
-    func createNowPlayingAnimation() {
-        
-        // Setup ImageView
-        nowPlayingImageView = UIImageView(image: UIImage(named: "NowPlayingBars-3"))
-        nowPlayingImageView.autoresizingMask = []
-        nowPlayingImageView.contentMode = UIViewContentMode.center
-        
-        // Create Animation
-        nowPlayingImageView.animationImages = AnimationFrames.createFrames()
-        nowPlayingImageView.animationDuration = 0.7
-        
-        // Create Top BarButton
-        let barButton = UIButton(type: UIButtonType.custom)
-        barButton.frame = CGRect(x: 0,y: 0,width: 40,height: 40);
-        barButton.addSubview(nowPlayingImageView)
-        nowPlayingImageView.center = barButton.center
-        
-        let barItem = UIBarButtonItem(customView: barButton)
-        self.navigationItem.rightBarButtonItem = barItem
+        playButton.isEnabled = enabled
+        pauseButton.isEnabled = !enabled
     }
     
     @IBAction func shareButtonPressed(_ sender: UIButton) {
         let songToShare = "I'm listening to \(track.title) on \(RadioStation.WXYC.name)"
         let activityViewController = UIActivityViewController(activityItems: [songToShare, track.artworkImage], applicationActivities: nil)
         present(activityViewController, animated: true, completion: nil)
-    }
-    
-    //*****************************************************************
-    // MARK: - MPNowPlayingInfoCenter (Lock screen)
-    //*****************************************************************
-    
-    func updateLockScreen() {
-        
-        // Update notification/lock screen
-        
-        let image: UIImage = track.artworkImage
-        let albumArtwork = MPMediaItemArtwork.init(boundsSize: image.size, requestHandler: { (size) -> UIImage in
-            return image
-        })
-        
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
-            MPMediaItemPropertyArtist: track.artist,
-            MPMediaItemPropertyTitle: track.title,
-            MPMediaItemPropertyArtwork: albumArtwork,
-            MPMediaItemPropertyAlbumTitle: track.album,
-            MPNowPlayingInfoPropertyIsLiveStream: true,
-            MPNowPlayingInfoPropertyPlaybackRate: radioPlayer.rate
-        ]
     }
     
     override func remoteControlReceived(with receivedEvent: UIEvent?) {
@@ -272,48 +142,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         }
     }
     
-    func updateWith(playcutResult result: Result<Playcut>) {
-        guard case let .success(playcut) = result else {
-            return
-        }
-        
-        let currentSongName = self.track.title
-        
-        self.track.artist = playcut.artistName
-        self.track.title = playcut.songTitle
-        self.track.id = "\(playcut.id)"
-        self.track.album = playcut.releaseTitle ?? ""
-        
-        if self.track.artist == "" && self.track.title == "" {
-            self.track.artist = RadioStation.WXYC.desc
-            self.track.title = RadioStation.WXYC.name
-        }
-        
-        guard currentSongName != self.track.title else {
-            return
-        }
-        
-        DispatchQueue.main.async {
-            if kDebugLog {
-                print("METADATA artist: \(self.track.artist) | title: \(self.track.title) | album: \(self.track.album)")
-            }
-            
-            // Update Labels
-            self.artistLabel.text = self.track.artist
-            self.songLabel.text = self.track.title
-            self.updateUserActivityState(self.userActivity!)
-            
-            // songLabel animation
-            self.songLabel.animation = "zoomIn"
-            self.songLabel.duration = 1.5
-            self.songLabel.damping = 1
-            self.songLabel.animate()
-            
-            // Query API for album art
-            self.updateLockScreen()
-        }
-    }
-    
     //*****************************************************************
     // MARK: - AVAudio Sesssion Interrupted
     //*****************************************************************
@@ -324,7 +152,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
             if let type = AVAudioSessionInterruptionType(rawValue: typeValue.uintValue){
                 if type == .began {
                     print("interruption: began")
-                    stationDidChange()
                 } else{
                     print("interruption: ended")
                     playPressed()
