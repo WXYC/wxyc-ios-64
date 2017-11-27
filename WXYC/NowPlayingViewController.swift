@@ -32,9 +32,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         // Setup handoff functionality - GH
         setupUserActivity()
         
-        // Set View Title
-        self.title = RadioStation.WXYC.name
-        
         // Notification for AVAudioSession Interruption (e.g. Phone call)
         NotificationCenter.default.addObserver(self,
             selector: #selector(NowPlayingViewController.sessionInterrupted),
@@ -47,10 +44,6 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         if !radioPlayer.isPlaying {
             pausePressed()
         }
-    }
-    
-    override var preferredStatusBarStyle: UIStatusBarStyle {
-        return .lightContent
     }
     
     deinit {
