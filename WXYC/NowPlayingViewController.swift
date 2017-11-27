@@ -23,6 +23,7 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var songLabel: SpringLabel!
     
+    // TODO: this is getting axed when I replace the play/pause button. Plus all the notification handlers below.
     let radioPlayer = AVPlayer(url: URL.WXYCStream)
     
     override func viewDidLoad() {
@@ -74,7 +75,7 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     //*****************************************************************
     // MARK: - Player Controls (Play/Pause/Volume)
     //*****************************************************************
-    
+    // TODO: Combine into play/pause button and extract AVPlayer into its own object handled by the RootViewController
     @IBAction func playPressed() {
         playButtonEnable(enabled: false)
         radioPlayer.play()
