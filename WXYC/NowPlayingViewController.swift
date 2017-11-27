@@ -24,20 +24,7 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     @IBOutlet weak var songLabel: SpringLabel!
     
     let radioPlayer = AVPlayer(url: URL.WXYCStream)
-    var track: Track = Track()
     
-    //*****************************************************************
-    // MARK: - ViewDidLoad
-    //*****************************************************************
-
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder)
-    }
-
-    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
-        super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
-    }
-
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -118,8 +105,9 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     }
     
     @IBAction func shareButtonPressed(_ sender: UIButton) {
-        let songToShare = "I'm listening to \(track.title) on \(RadioStation.WXYC.name)"
-        let activityViewController = UIActivityViewController(activityItems: [songToShare, track.artworkImage], applicationActivities: nil)
+        // TODO: Extract
+        let songToShare = "I'm listening to [song] on \(RadioStation.WXYC.name)"
+        let activityViewController = UIActivityViewController(activityItems: [songToShare, self.albumImageView.image ?? UIImage()], applicationActivities: nil)
         present(activityViewController, animated: true, completion: nil)
     }
     
