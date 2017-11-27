@@ -3,12 +3,25 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 48;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		231E5BDC1FCB658C00894F18 /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */; };
 		231E5BDE1FCB6F2B00894F18 /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */; };
+		231E5BE61FCBD5ED00894F18 /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 231E5BE51FCBD5EC00894F18 /* NotificationCenter.framework */; };
+		231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */; };
+		231E5BEC1FCBD5ED00894F18 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */; };
+		231E5BF01FCBD5ED00894F18 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 231E5BE31FCBD5EC00894F18 /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC70AD1AD05C6200652982 /* RadioStation.swift */; };
+		231E5BF61FCBD7A100894F18 /* Track.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260971B45E8B800DE671C /* Track.swift */; };
+		231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
+		231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
+		231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
+		231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
+		231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
+		231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
+		231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
 		235101FD1FB9002100ED3DDF /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
 		235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		235102011FB95A1300ED3DDF /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
@@ -34,6 +47,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		231E5BEE1FCBD5ED00894F18 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9409E10E1ABF6FE900312E2B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 231E5BE21FCBD5EC00894F18;
+			remoteInfo = "Today Widget";
+		};
 		2C5545BF1C1124DE00728469 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9409E10E1ABF6FE900312E2B /* Project object */;
@@ -43,9 +63,28 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		231E5BF41FCBD5ED00894F18 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				231E5BF01FCBD5ED00894F18 /* Today Widget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingService.swift; sourceTree = "<group>"; };
 		231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockscreenInfoService.swift; sourceTree = "<group>"; };
+		231E5BE31FCBD5EC00894F18 /* Today Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Today Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		231E5BE51FCBD5EC00894F18 /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
+		231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
+		231E5BEB1FCBD5ED00894F18 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
+		231E5BED1FCBD5ED00894F18 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		235101FC1FB9002000ED3DDF /* Future.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
 		235101FE1FB93B4500ED3DDF /* LastFM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
 		235102001FB95A1300ED3DDF /* WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
@@ -75,6 +114,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		231E5BE01FCBD5EC00894F18 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				231E5BE61FCBD5ED00894F18 /* NotificationCenter.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2C5545B71C1124DE00728469 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -92,6 +139,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		231E5BE41FCBD5EC00894F18 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				231E5BE51FCBD5EC00894F18 /* NotificationCenter.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		231E5BE71FCBD5ED00894F18 /* Today Widget */ = {
+			isa = PBXGroup;
+			children = (
+				231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */,
+				231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */,
+				231E5BED1FCBD5ED00894F18 /* Info.plist */,
+			);
+			path = "Today Widget";
+			sourceTree = "<group>";
+		};
 		2C5545BB1C1124DE00728469 /* WXYCUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -108,6 +173,8 @@
 				9409E1181ABF6FEA00312E2B /* WXYC */,
 				949BBB411ACCA2B6005B7C26 /* Libraries */,
 				2C5545BB1C1124DE00728469 /* WXYCUITests */,
+				231E5BE71FCBD5ED00894F18 /* Today Widget */,
+				231E5BE41FCBD5EC00894F18 /* Frameworks */,
 				9409E1171ABF6FEA00312E2B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,6 +184,7 @@
 			children = (
 				9409E1161ABF6FEA00312E2B /* WXYC.app */,
 				2C5545BA1C1124DE00728469 /* SwiftRadioUITests.swift */,
+				231E5BE31FCBD5EC00894F18 /* Today Widget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -212,6 +280,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		231E5BE21FCBD5EC00894F18 /* Today Widget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 231E5BF31FCBD5ED00894F18 /* Build configuration list for PBXNativeTarget "Today Widget" */;
+			buildPhases = (
+				231E5BDF1FCBD5EC00894F18 /* Sources */,
+				231E5BE01FCBD5EC00894F18 /* Frameworks */,
+				231E5BE11FCBD5EC00894F18 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Today Widget";
+			productName = "Today Widget";
+			productReference = 231E5BE31FCBD5EC00894F18 /* Today Widget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		2C5545B91C1124DE00728469 /* WXYCUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2C5545C31C1124DE00728469 /* Build configuration list for PBXNativeTarget "WXYCUITests" */;
@@ -237,10 +322,12 @@
 				9409E1121ABF6FEA00312E2B /* Sources */,
 				9409E1131ABF6FEA00312E2B /* Frameworks */,
 				9409E1141ABF6FEA00312E2B /* Resources */,
+				231E5BF41FCBD5ED00894F18 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				231E5BEF1FCBD5ED00894F18 /* PBXTargetDependency */,
 			);
 			name = WXYC;
 			productName = RadioPro;
@@ -254,10 +341,14 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftMigration = 0700;
-				LastSwiftUpdateCheck = 0710;
+				LastSwiftUpdateCheck = 0910;
 				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = wxyc.org;
 				TargetAttributes = {
+					231E5BE21FCBD5EC00894F18 = {
+						CreatedOnToolsVersion = 9.1;
+						ProvisioningStyle = Automatic;
+					};
 					2C5545B91C1124DE00728469 = {
 						CreatedOnToolsVersion = 7.1;
 						LastSwiftMigration = 0810;
@@ -276,7 +367,7 @@
 				};
 			};
 			buildConfigurationList = 9409E1111ABF6FE900312E2B /* Build configuration list for PBXProject "WXYC" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -290,11 +381,21 @@
 			targets = (
 				9409E1151ABF6FEA00312E2B /* WXYC */,
 				2C5545B91C1124DE00728469 /* WXYCUITests */,
+				231E5BE21FCBD5EC00894F18 /* Today Widget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		231E5BE11FCBD5EC00894F18 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */,
+				231E5BEC1FCBD5ED00894F18 /* MainInterface.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2C5545B81C1124DE00728469 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -317,6 +418,22 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		231E5BDF1FCBD5EC00894F18 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */,
+				231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */,
+				231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */,
+				231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */,
+				231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */,
+				231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */,
+				231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */,
+				231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */,
+				231E5BF61FCBD7A100894F18 /* Track.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2C5545B61C1124DE00728469 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -353,6 +470,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		231E5BEF1FCBD5ED00894F18 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 231E5BE21FCBD5EC00894F18 /* Today Widget */;
+			targetProxy = 231E5BEE1FCBD5ED00894F18 /* PBXContainerItemProxy */;
+		};
 		2C5545C01C1124DE00728469 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9409E1151ABF6FEA00312E2B /* WXYC */;
@@ -361,6 +483,14 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				231E5BEB1FCBD5ED00894F18 /* Base */,
+			);
+			name = MainInterface.storyboard;
+			sourceTree = "<group>";
+		};
 		9409E1221ABF6FEA00312E2B /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -372,6 +502,57 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		231E5BF11FCBD5ED00894F18 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				INFOPLIST_FILE = "Today Widget/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 11.1;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Today-Widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		231E5BF21FCBD5ED00894F18 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				INFOPLIST_FILE = "Today Widget/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 11.1;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Today-Widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		2C5545C11C1124DE00728469 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -504,6 +685,7 @@
 		9409E1391ABF6FEA00312E2B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -528,6 +710,7 @@
 		9409E13A1ABF6FEA00312E2B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -552,6 +735,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		231E5BF31FCBD5ED00894F18 /* Build configuration list for PBXNativeTarget "Today Widget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				231E5BF11FCBD5ED00894F18 /* Debug */,
+				231E5BF21FCBD5ED00894F18 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		2C5545C31C1124DE00728469 /* Build configuration list for PBXNativeTarget "WXYCUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
