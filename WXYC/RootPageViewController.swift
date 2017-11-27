@@ -53,13 +53,17 @@ class RootPageViewController: UIPageViewController {
     }
     
     func updateWith(playcutResult result: Result<Playcut>) {
-        nowPlayingService.updateWith(playcutResult: result)
-        lockscreenInfoService.updateWith(playcutResult: result)
+        DispatchQueue.main.async {
+            self.nowPlayingService.updateWith(playcutResult: result)
+            self.lockscreenInfoService.updateWith(playcutResult: result)
+        }
     }
     
     func update(artworkResult: Result<UIImage>) {
-        nowPlayingService.update(artworkResult: artworkResult)
-        lockscreenInfoService.update(artworkResult: artworkResult)
+        DispatchQueue.main.async {
+            self.nowPlayingService.update(artworkResult: artworkResult)
+            self.lockscreenInfoService.update(artworkResult: artworkResult)
+        }
     }
 }
 
@@ -89,4 +93,3 @@ extension UIViewController {
         return self.init(nibName: nibName, bundle: nil)
     }
 }
-

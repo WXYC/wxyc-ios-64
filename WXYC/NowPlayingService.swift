@@ -35,24 +35,20 @@ final class NowPlayingService {
     }
     
     public func updateWith(playcutResult: Result<Playcut>) {
-        DispatchQueue.main.async {
-            switch playcutResult {
-            case .success(let playcut):
-                self.delegate.update(nowPlayingInfo: NowPlayingInfo(primaryHeading: playcut.songTitle, secondaryHeading: playcut.artistName))
-            case .error(_):
-                self.delegate.update(nowPlayingInfo: NowPlayingInfo.default)
-            }
+        switch playcutResult {
+        case .success(let playcut):
+            self.delegate.update(nowPlayingInfo: NowPlayingInfo(primaryHeading: playcut.songTitle, secondaryHeading: playcut.artistName))
+        case .error(_):
+            self.delegate.update(nowPlayingInfo: NowPlayingInfo.default)
         }
     }
     
     public func update(artworkResult: Result<UIImage>) {
-        DispatchQueue.main.async {
-            switch artworkResult {
-            case .success(let image):
-                self.delegate.update(artwork: image)
-            case .error(_):
-                self.delegate.update(artwork: #imageLiteral(resourceName: "logo"))
-            }
+        switch artworkResult {
+        case .success(let image):
+            self.delegate.update(artwork: image)
+        case .error(_):
+            self.delegate.update(artwork: #imageLiteral(resourceName: "logo"))
         }
     }
 }
