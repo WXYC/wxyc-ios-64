@@ -32,9 +32,9 @@ struct Playcut: PlaylistItem, Codable {
     let chronOrderID: Int
     let request: Bool = false
     let songTitle: String
-    let labelName: String
+    let labelName: String?
     let artistName: String
-    let releaseTitle: String
+    let releaseTitle: String?
 }
 
 struct Talkset: PlaylistItem, Codable {
