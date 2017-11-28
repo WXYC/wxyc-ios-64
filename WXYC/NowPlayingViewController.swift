@@ -26,12 +26,19 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     @IBOutlet weak var pauseButton: UIButton!
     @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var songLabel: SpringLabel!
+    @IBOutlet weak var playbackButton: PlaybackButton!
     
     // TODO: this is getting axed when I replace the play/pause button. Plus all the notification handlers below.
     let radioPlayer = AVPlayer(url: URL.WXYCStream)
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        self.playbackButton.contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        self.playbackButton.adjustMargin = 1
+        self.playbackButton.backgroundColor = UIColor.clear
+        playbackButton.addTarget(self, action: #selector(playPauseTapped(_:)), for: .touchUpInside)
+        playbackButton.setButtonColor(.black)
         
         // Setup handoff functionality - GH
         setupUserActivity()
@@ -72,6 +79,18 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     //*****************************************************************
     // MARK: - Player Controls (Play/Pause/Volume)
     //*****************************************************************
+    
+    @objc func playPauseTapped(_ sender: PlaybackButton) {
+        switch playbackButton.buttonState {
+        case .pausing:
+            playbackButton.setButtonState(.playing, animated: true)
+        case .playing:
+            playbackButton.setButtonState(.pausing, animated: true)
+        default:
+            break
+        }
+    }
+    
     // TODO: Combine into play/pause button and extract AVPlayer into its own object handled by the RootViewController
     @IBAction func playPressed() {
         playButtonEnable(enabled: false)

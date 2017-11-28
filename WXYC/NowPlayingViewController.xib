@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="13529" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="13770" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
     <device id="retina4_7" orientation="portrait">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13527"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13770"/>
         <capability name="Aspect ratio constraints" minToolsVersion="5.1"/>
         <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
@@ -23,6 +23,7 @@
                 <outlet property="artistLabel" destination="jer-8J-EI4" id="m5V-Iz-bIn"/>
                 <outlet property="pauseButton" destination="LKG-Es-Fgr" id="Egn-en-Ect"/>
                 <outlet property="playButton" destination="fqy-ax-9CX" id="eY5-fC-RZD"/>
+                <outlet property="playbackButton" destination="PS1-Ct-BQW" id="CHI-w6-FV9"/>
                 <outlet property="songLabel" destination="pun-VA-gRV" id="yON-rm-C4R"/>
                 <outlet property="view" destination="qeg-Di-hy3" id="ryA-Ji-F6q"/>
             </connections>
@@ -97,6 +98,11 @@
                 <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="aUh-g4-cQA">
                     <rect key="frame" x="16" y="78" width="343" height="343"/>
                 </imageView>
+                <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="PS1-Ct-BQW" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
+                    <rect key="frame" x="155" y="295" width="64" height="77"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                    <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                </view>
             </subviews>
             <constraints>
                 <constraint firstItem="73O-O1-JSH" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leadingMargin" id="6gm-8n-PYZ"/>
@@ -116,6 +122,7 @@
                 <constraint firstItem="gr3-1x-L4g" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leading" id="pMH-35-KJA"/>
             </constraints>
             <viewLayoutGuide key="safeArea" id="ynv-Nz-ij6"/>
+            <point key="canvasLocation" x="25.5" y="51.5"/>
         </view>
     </objects>
     <resources>
