@@ -56,6 +56,12 @@ extension Future where Value == Playcut {
         })
     }
     
+    private func getLowResLastFMArtwork() -> Future<UIImage> {
+        return chained(with: { playcut -> Future<UIImage> in
+            return playcut.getLastFMAlbum().getLowResAlbumArtwork()
+        })
+    }
+    
     private func getItunesArtwork() -> Future<UIImage> {
         return chained(with: { playcut -> Future<UIImage> in
             return playcut.getItunesItem().getAlbumArtwork()
@@ -108,6 +114,12 @@ extension Future where Value == iTunes.SearchResults.Item {
 extension Future where Value == LastFM.Album {
     func getAlbumArtwork() -> Future<UIImage> {
         return chained(with: { album -> Future<UIImage> in
+            return album.embiggenAlbumArtURL().getImage()
+        })
+    }
+    
+    func getLowResAlbumArtwork() -> Future<UIImage> {
+        return chained(with: { album -> Future<UIImage> in
             guard let albumArt = album.image.last else {
                 throw LastFM.Errors.noAlbumArt
             }
@@ -123,5 +135,11 @@ extension URL {
             .chained(with: { (data) -> Future<UIImage> in
                 return Promise(value: UIImage(data: data))
             })
+    }
+}
+
+extension LastFM.Album {
+    func embiggenAlbumArtURL() -> URL {
+        return largestAlbumArt.url
     }
 }

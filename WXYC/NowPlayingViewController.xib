@@ -19,7 +19,7 @@
     <objects>
         <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="NowPlayingViewController" customModule="WXYC" customModuleProvider="target">
             <connections>
-                <outlet property="albumImageView" destination="kaH-js-ooq" id="kPx-3P-cU9"/>
+                <outlet property="albumImageView" destination="aUh-g4-cQA" id="4Xf-pl-Vjc"/>
                 <outlet property="artistLabel" destination="jer-8J-EI4" id="m5V-Iz-bIn"/>
                 <outlet property="pauseButton" destination="LKG-Es-Fgr" id="Egn-en-Ect"/>
                 <outlet property="playButton" destination="fqy-ax-9CX" id="eY5-fC-RZD"/>
