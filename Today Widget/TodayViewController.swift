@@ -69,8 +69,6 @@ class TodayViewController: UIViewController, NCWidgetProviding {
         self.labelsStackView.alignment = self.labelAlignment(forDisplayMode: activeDisplayMode)
 
         self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
-//        print(maxSize)
-//        print(self.view.systemLayoutSizeFitting(maxSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel))
     }
 
     func containerAxis(forDisplayMode displayMode: NCWidgetDisplayMode) -> UILayoutConstraintAxis {

@@ -30,6 +30,7 @@
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
 		345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */; };
+		346D62761FCDDAAA00954ADF /* PlayPauseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 346D62751FCDDAAA00954ADF /* PlayPauseView.swift */; };
 		348E6EE51FAE693000B77665 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */; };
 		34E7C6881FBF77FC00825164 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */; };
 		9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
@@ -95,6 +96,7 @@
 		2C5545BE1C1124DE00728469 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
 		345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
+		346D62751FCDDAAA00954ADF /* PlayPauseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayPauseView.swift; sourceTree = "<group>"; };
 		348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		9409E1161ABF6FEA00312E2B /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -242,6 +244,7 @@
 				345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */,
 				231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */,
 				231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */,
+				346D62751FCDDAAA00954ADF /* PlayPauseView.swift */,
 			);
 			name = ViewControllers;
 			sourceTree = "<group>";
@@ -452,6 +455,7 @@
 				94D260911B45D20000DE671C /* SwiftRadio-Settings.swift in Sources */,
 				94DB0AA61B98B762005ED993 /* SpringLabel.swift in Sources */,
 				9409E1401ABF78B000312E2B /* NowPlayingViewController.swift in Sources */,
+				346D62761FCDDAAA00954ADF /* PlayPauseView.swift in Sources */,
 				94D1D0A51AD6D6230022CA11 /* InfoDetailViewController.swift in Sources */,
 				949BBB401ACC9DEE005B7C26 /* Webservice.swift in Sources */,
 				235101FD1FB9002100ED3DDF /* Future.swift in Sources */,
