@@ -64,6 +64,9 @@ class NowPlayingViewController: UIViewController {
             self.slider?.setValue(av.outputVolume, animated: true)
         }
         
+        // Remote events for play/pause taps on headphones
+        UIApplication.shared.beginReceivingRemoteControlEvents()
+        
         updateLabels()
         
         if !radioPlayer.isPlaying {
@@ -264,7 +267,7 @@ class NowPlayingViewController: UIViewController {
         
         // Update notification/lock screen
         
-        let image:UIImage = track.artworkImage
+        let image: UIImage = track.artworkImage
         let albumArtwork = MPMediaItemArtwork.init(boundsSize: image.size, requestHandler: { (size) -> UIImage in
             return image
         })
@@ -286,12 +289,12 @@ class NowPlayingViewController: UIViewController {
             return
         }
         
-        switch (receivedEvent.subtype) {
-        case (.remoteControlPlay):
+        switch receivedEvent.subtype {
+        case .remoteControlPlay:
             playPressed()
-        case (.remoteControlPause):
+        case .remoteControlPause:
             pausePressed()
-        case (.remoteControlTogglePlayPause):
+        case .remoteControlTogglePlayPause:
             radioPlayer.isPlaying ? pausePressed() : playPressed()
         default:
             break
@@ -384,6 +387,6 @@ class NowPlayingViewController: UIViewController {
 
 private extension AVPlayer {
     var isPlaying: Bool {
-        return rate == 0.0
+        return rate > 0.0
     }
 }
