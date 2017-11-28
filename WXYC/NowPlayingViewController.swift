@@ -12,9 +12,13 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
     }
     
     func update(artwork: UIImage) {
-        UIView.animate(withDuration: 0.25, animations: {
-            self.albumImageView.image = artwork
-        })
+        UIView.transition(
+            with: self.albumImageView,
+            duration: 0.25,
+            options: [.transitionCrossDissolve],
+            animations: { self.albumImageView.image = artwork },
+            completion: nil
+        )
     }
 
     @IBOutlet weak var albumImageView: UIImageView!
