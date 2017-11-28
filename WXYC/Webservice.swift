@@ -120,6 +120,12 @@ extension Future where Value == LastFM.Album {
     
     private func getLowResAlbumArtwork() -> Future<UIImage> {
         return chained(with: { album -> Future<UIImage> in
+            return album.embiggenAlbumArtURL().getImage()
+        })
+    }
+    
+    func getLowResAlbumArtwork() -> Future<UIImage> {
+        return chained(with: { album -> Future<UIImage> in
             guard let albumArt = album.image.last else {
                 throw LastFM.Errors.noAlbumArt
             }
