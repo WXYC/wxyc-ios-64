@@ -71,11 +71,7 @@ class NowPlayingViewController: UIViewController {
     }
     
     @objc func didBecomeActiveNotificationReceived() {
-        // View became active
         updateLabels()
-        if !radioPlayer.isPlaying {
-            resetStream()
-        }
     }
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -95,15 +91,17 @@ class NowPlayingViewController: UIViewController {
     
     @objc func checkPlaylist() {
         let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: self.update(with:))
+        playcutRequest.observe(with: self.updateWith(playcutResult:))
         
         let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.handle(result:))
+        imageRequest.observe(with: self.update(artworkResult:))
     }
     
-    func handle(result: Result<UIImage>) {
-        if case let .success(image) = result {
-            DispatchQueue.main.async { self.albumImageView.image = image }
+    func update(artworkResult: Result<UIImage>) {
+        if case let .success(image) = artworkResult {
+            DispatchQueue.main.async {
+                self.albumImageView.image = image
+            }
         }
     }
     
@@ -167,13 +165,11 @@ class NowPlayingViewController: UIViewController {
     // MARK: - UI Helper Methods
     //*****************************************************************
     
-    func updateLabels(statusMessage: String = "") {
-        
-        if statusMessage != "" {
+    func updateLabels(statusMessage: String? = nil) {
+        if let statusMessage = statusMessage {
             // There's a an interruption or pause in the audio queue
             songLabel.text = statusMessage
             artistLabel.text = RadioStation.WXYC.name
-            
         } else {
             // Radio is (hopefully) streaming properly
             songLabel.text = track.title
@@ -226,7 +222,7 @@ class NowPlayingViewController: UIViewController {
         
         // Update notification/lock screen
         
-        let image:UIImage = track.artworkImage
+        let image: UIImage = track.artworkImage
         let albumArtwork = MPMediaItemArtwork.init(boundsSize: image.size, requestHandler: { (size) -> UIImage in
             return image
         })
@@ -248,19 +244,19 @@ class NowPlayingViewController: UIViewController {
             return
         }
         
-        switch (receivedEvent.subtype) {
-        case (.remoteControlPlay):
+        switch receivedEvent.subtype {
+        case .remoteControlPlay:
             playPressed()
-        case (.remoteControlPause):
+        case .remoteControlPause:
             pausePressed()
-        case (.remoteControlTogglePlayPause):
+        case .remoteControlTogglePlayPause:
             radioPlayer.isPlaying ? pausePressed() : playPressed()
         default:
             break
         }
     }
     
-    func update(with result: Result<Playcut>) {
+    func updateWith(playcutResult result: Result<Playcut>) {
         guard case let .success(playcut) = result else {
             return
         }
@@ -346,6 +342,6 @@ class NowPlayingViewController: UIViewController {
 
 private extension AVPlayer {
     var isPlaying: Bool {
-        return rate == 0.0
+        return rate > 0.0
     }
 }
