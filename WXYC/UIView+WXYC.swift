@@ -29,6 +29,14 @@ extension UIView {
 
 extension UIImage {
     static var defaultNowPlayingInfoCenterImage: UIImage {
+        if DispatchQueue.main == OperationQueue.current?.underlyingQueue {
+            return makeImage()
+        } else {
+            return DispatchQueue.main.sync(execute: makeImage)
+        }
+    }
+    
+    private static func makeImage() -> UIImage {
         let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
         let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
         logoView.contentMode = .scaleAspectFit
