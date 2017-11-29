@@ -13,38 +13,10 @@
             <objects>
                 <pageViewController autoresizesArchivedViewToFullSize="NO" transitionStyle="scroll" navigationOrientation="horizontal" spineLocation="none" id="lpA-9g-JvS" customClass="RootPageViewController" customModule="WXYC" customModuleProvider="target" sceneMemberID="viewController">
                     <navigationItem key="navigationItem" id="0yo-RO-2aZ"/>
-                    <connections>
-                        <segue destination="tXI-AB-wlc" kind="replace" splitViewControllerTargetIndex="1" id="LQc-mT-kZT"/>
-                    </connections>
                 </pageViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="5Mt-uv-JUz" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="525" y="79"/>
-        </scene>
-        <!--View Controller-->
-        <scene sceneID="4Ou-QB-Kqn">
-            <objects>
-                <viewController id="tXI-AB-wlc" sceneMemberID="viewController">
-                    <layoutGuides>
-                        <viewControllerLayoutGuide type="top" id="NFa-68-gMw"/>
-                        <viewControllerLayoutGuide type="bottom" id="Wbk-Uo-EVC"/>
-                    </layoutGuides>
-                    <view key="view" contentMode="scaleToFill" id="jxM-SO-hPw">
-                        <rect key="frame" x="0.0" y="0.0" width="320" height="568"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <subviews>
-                            <pageControl opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" numberOfPages="3" translatesAutoresizingMaskIntoConstraints="NO" id="cSg-qA-zsC">
-                                <rect key="frame" x="174" y="241" width="39" height="37"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                            </pageControl>
-                        </subviews>
-                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                    </view>
-                    <navigationItem key="navigationItem" id="Y0S-D1-Ee4"/>
-                </viewController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="a5v-54-aAT" userLabel="First Responder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="950" y="79"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="Bcs-Yz-xe4">
