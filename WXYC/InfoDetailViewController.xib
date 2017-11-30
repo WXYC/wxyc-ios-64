@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="13770" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="13529" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
     <device id="retina3_5" orientation="portrait">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13770"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13527"/>
         <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -28,9 +28,6 @@
             <rect key="frame" x="0.0" y="0.0" width="320" height="480"/>
             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
             <subviews>
-                <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="background" translatesAutoresizingMaskIntoConstraints="NO" id="p85-NG-qPP" userLabel="Background Image View">
-                    <rect key="frame" x="0.0" y="0.0" width="320" height="480"/>
-                </imageView>
                 <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" reversesTitleShadowWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="zUR-QX-pZi">
                     <rect key="frame" x="16" y="414" width="288" height="50"/>
                     <color key="backgroundColor" red="1" green="0.0" blue="0.0" alpha="0.5" colorSpace="calibratedRGB"/>
@@ -53,23 +50,15 @@
                     <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
                 </textView>
             </subviews>
-            <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
             <constraints>
                 <constraint firstItem="zUR-QX-pZi" firstAttribute="trailing" secondItem="jpM-s2-5PS" secondAttribute="trailingMargin" id="HW4-e0-Ze2"/>
-                <constraint firstAttribute="trailing" secondItem="p85-NG-qPP" secondAttribute="trailing" id="OPg-rF-OLf"/>
-                <constraint firstItem="p85-NG-qPP" firstAttribute="top" secondItem="jpM-s2-5PS" secondAttribute="top" id="Okl-PF-yLC"/>
                 <constraint firstItem="aat-2h-nxb" firstAttribute="centerY" secondItem="jpM-s2-5PS" secondAttribute="centerY" id="aHn-JA-jGE"/>
                 <constraint firstItem="2Tu-jI-IFF" firstAttribute="bottom" secondItem="zUR-QX-pZi" secondAttribute="bottom" constant="16" id="edp-QB-YrL"/>
                 <constraint firstItem="zUR-QX-pZi" firstAttribute="leading" secondItem="jpM-s2-5PS" secondAttribute="leadingMargin" id="koz-3U-iab"/>
                 <constraint firstItem="aat-2h-nxb" firstAttribute="leading" secondItem="jpM-s2-5PS" secondAttribute="leadingMargin" id="m1r-Y0-zwE"/>
-                <constraint firstItem="p85-NG-qPP" firstAttribute="leading" secondItem="jpM-s2-5PS" secondAttribute="leading" id="qMY-Rf-B2S"/>
-                <constraint firstAttribute="bottom" secondItem="p85-NG-qPP" secondAttribute="bottom" id="rLM-kS-XaF"/>
                 <constraint firstItem="aat-2h-nxb" firstAttribute="trailing" secondItem="jpM-s2-5PS" secondAttribute="trailingMargin" id="tgl-rV-qhQ"/>
             </constraints>
             <viewLayoutGuide key="safeArea" id="2Tu-jI-IFF"/>
         </view>
     </objects>
-    <resources>
-        <image name="background" width="1242" height="2208"/>
-    </resources>
 </document>
