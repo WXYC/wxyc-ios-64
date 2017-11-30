@@ -23,7 +23,10 @@ class TodayViewController: UIViewController, NCWidgetProviding {
         super.viewDidLoad()
 
         if let context = self.extensionContext {
-            context.widgetLargestAvailableDisplayMode = .expanded
+            // TODO: 🐛🔨. I'm commenting this out for now because there's a sizing issue in the expanded mode.
+            // We consistently report a height too high for our content. I played around with some layout code, but
+            // never got to the bottom of this. Anyway, the widget is a bit ungainly in the expanded layout.
+            // context.widgetLargestAvailableDisplayMode = .expanded
 
             self.containerStackView.axis = self.containerAxis(forDisplayMode: context.widgetActiveDisplayMode)
             self.labelsStackView.alignment = self.labelAlignment(forDisplayMode: context.widgetActiveDisplayMode)
