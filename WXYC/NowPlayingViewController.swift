@@ -1,26 +1,7 @@
 import UIKit
 import MediaPlayer
 
-//*****************************************************************
-// NowPlayingViewController
-//*****************************************************************
-
-class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
-    func update(nowPlayingInfo: NowPlayingInfo) {
-        self.songLabel.text = nowPlayingInfo.primaryHeading
-        self.artistLabel.text = nowPlayingInfo.secondaryHeading
-    }
-    
-    func update(artwork: UIImage) {
-        UIView.transition(
-            with: self.albumImageView,
-            duration: 0.25,
-            options: [.transitionCrossDissolve],
-            animations: { self.albumImageView.image = artwork },
-            completion: nil
-        )
-    }
-
+class NowPlayingViewController: UIViewController {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var pauseButton: UIButton!
@@ -76,9 +57,8 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         }
         resetStream()
     }
-    //*****************************************************************
+    
     // MARK: - Player Controls (Play/Pause/Volume)
-    //*****************************************************************
     
     @objc func playPauseTapped(_ sender: PlaybackButton) {
         switch playbackButton.buttonState {
@@ -112,9 +92,7 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
     }
     
-    //*****************************************************************
     // MARK: - UI Helper Methods
-    //*****************************************************************
     
     func playButtonEnable(enabled: Bool = true) {
         playButton.isEnabled = enabled
@@ -147,11 +125,8 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         }
     }
     
-    //*****************************************************************
     // MARK: - AVAudio Sesssion Interrupted
-    //*****************************************************************
     
-    // Example code on handling AVAudio interruptions (e.g. Phone calls)
     @objc func sessionInterrupted(notification: NSNotification) {
         if let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber{
             if let type = AVAudioSessionInterruptionType(rawValue: typeValue.uintValue){
@@ -165,9 +140,7 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         }
     }
     
-    //*****************************************************************
     // MARK: - Handoff Functionality - GH
-    //*****************************************************************
     
     func setupUserActivity() {
         let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb ) //"com.graemeharrison.handoff.googlesearch" //NSUserActivityTypeBrowsingWeb
@@ -187,6 +160,24 @@ class NowPlayingViewController: UIViewController, NowPlayingServiceDelegate {
         super.updateUserActivityState(activity)
     }
 }
+
+extension NowPlayingViewController: NowPlayingServiceDelegate {
+    func update(nowPlayingInfo: NowPlayingInfo) {
+        self.songLabel.text = nowPlayingInfo.primaryHeading
+        self.artistLabel.text = nowPlayingInfo.secondaryHeading
+    }
+    
+    func update(artwork: UIImage) {
+        UIView.transition(
+            with: self.albumImageView,
+            duration: 0.25,
+            options: [.transitionCrossDissolve],
+            animations: { self.albumImageView.image = artwork },
+            completion: nil
+        )
+    }
+}
+
 
 private extension AVPlayer {
     var isPlaying: Bool {
