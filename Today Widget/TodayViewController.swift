@@ -64,6 +64,12 @@ class TodayViewController: UIViewController {
             }, completion: nil)
         }
     }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        // If the user taps on the today widget, open the app.
+        let url = URL(string: "wxyc://")!
+        self.extensionContext?.open(url, completionHandler: nil)
+    }
 }
 
 extension TodayViewController: NCWidgetProviding {
