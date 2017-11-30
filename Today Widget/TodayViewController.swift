@@ -9,7 +9,7 @@
 import UIKit
 import NotificationCenter
 
-class TodayViewController: UIViewController, NCWidgetProviding {
+class TodayViewController: UIViewController {
     @IBOutlet weak var songLabel: UILabel!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var albumArtworkImageView: UIImageView!
@@ -40,7 +40,9 @@ class TodayViewController: UIViewController, NCWidgetProviding {
         imageRequest.observe(with: self.updateWith(artworkResult:))
     }
     
-    func updateWith(playcutResult result: Result<Playcut>) {
+    // MARK: Webservice request handlers
+    
+    private func updateWith(playcutResult result: Result<Playcut>) {
         guard case let .success(playcut) = result else {
             return
         }
@@ -51,7 +53,7 @@ class TodayViewController: UIViewController, NCWidgetProviding {
         }
     }
     
-    func updateWith(artworkResult: Result<UIImage>) {
+    private func updateWith(artworkResult: Result<UIImage>) {
         DispatchQueue.main.async {
             UIView.transition(with: self.view, duration: 0.25, options: [.transitionCrossDissolve], animations: {
                 if case let .success(artwork) = artworkResult {
@@ -62,19 +64,21 @@ class TodayViewController: UIViewController, NCWidgetProviding {
             }, completion: nil)
         }
     }
-    
+}
+
+extension TodayViewController: NCWidgetProviding {
     func widgetPerformUpdate(completionHandler: (@escaping (NCUpdateResult) -> Void)) {
         completionHandler(NCUpdateResult.newData)
     }
-
+    
     func widgetActiveDisplayModeDidChange(_ activeDisplayMode: NCWidgetDisplayMode, withMaximumSize maxSize: CGSize) {
         self.containerStackView.axis = self.containerAxis(forDisplayMode: activeDisplayMode)
         self.labelsStackView.alignment = self.labelAlignment(forDisplayMode: activeDisplayMode)
-
+        
         self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
     }
-
-    func containerAxis(forDisplayMode displayMode: NCWidgetDisplayMode) -> UILayoutConstraintAxis {
+    
+    private func containerAxis(forDisplayMode displayMode: NCWidgetDisplayMode) -> UILayoutConstraintAxis {
         switch displayMode {
         case .compact:
             return .horizontal
@@ -82,8 +86,8 @@ class TodayViewController: UIViewController, NCWidgetProviding {
             return .vertical
         }
     }
-
-    func labelAlignment(forDisplayMode displayMode: NCWidgetDisplayMode) -> UIStackViewAlignment {
+    
+    private func labelAlignment(forDisplayMode displayMode: NCWidgetDisplayMode) -> UIStackViewAlignment {
         switch displayMode {
         case .compact:
             return .leading
