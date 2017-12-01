@@ -21,6 +21,7 @@
 		231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
 		231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
 		231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
+		2347D68A1FD1BE0800A7F77E /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */; };
 		235101FD1FB9002100ED3DDF /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
 		235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		235102011FB95A1300ED3DDF /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
@@ -85,6 +86,7 @@
 		231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
 		231E5BEB1FCBD5ED00894F18 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
 		231E5BED1FCBD5ED00894F18 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayer.swift; sourceTree = "<group>"; };
 		235101FC1FB9002000ED3DDF /* Future.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
 		235101FE1FB93B4500ED3DDF /* LastFM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
 		235102001FB95A1300ED3DDF /* WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 				231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */,
 				231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */,
 				34AC2AF31FCF5DC100F72879 /* PlaybackButton.swift */,
+				2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */,
 			);
 			name = ViewControllers;
 			sourceTree = "<group>";
@@ -451,6 +454,7 @@
 				235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */,
 				34AC2AF41FCF5DC100F72879 /* PlaybackButton.swift in Sources */,
 				94DB0AA51B98B762005ED993 /* SpringImageView.swift in Sources */,
+				2347D68A1FD1BE0800A7F77E /* RadioPlayer.swift in Sources */,
 				94D260911B45D20000DE671C /* SwiftRadio-Settings.swift in Sources */,
 				94DB0AA61B98B762005ED993 /* SpringLabel.swift in Sources */,
 				9409E1401ABF78B000312E2B /* NowPlayingViewController.swift in Sources */,
