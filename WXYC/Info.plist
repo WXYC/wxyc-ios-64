@@ -20,6 +20,19 @@
 	<string>2.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>org.wxyc.ios</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>wxyc</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>006</string>
 	<key>LSRequiresIPhoneOS</key>
