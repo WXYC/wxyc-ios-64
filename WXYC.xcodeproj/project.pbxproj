@@ -14,7 +14,6 @@
 		231E5BEC1FCBD5ED00894F18 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */; };
 		231E5BF01FCBD5ED00894F18 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 231E5BE31FCBD5EC00894F18 /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC70AD1AD05C6200652982 /* RadioStation.swift */; };
-		231E5BF61FCBD7A100894F18 /* Track.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260971B45E8B800DE671C /* Track.swift */; };
 		231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
 		231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
@@ -430,7 +429,6 @@
 				231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */,
 				231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */,
 				231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */,
-				231E5BF61FCBD7A100894F18 /* Track.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
