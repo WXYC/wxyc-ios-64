@@ -9,8 +9,7 @@ class NowPlayingViewController: UIViewController {
     @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var playbackButton: PlaybackButton!
     
-    // TODO: this is getting axed when I replace the play/pause button. Plus all the notification handlers below.
-    let radioPlayer = AVPlayer(url: URL.WXYCStream)
+    let radioPlayer = RadioPlayer()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,38 +23,12 @@ class NowPlayingViewController: UIViewController {
         // Setup handoff functionality - GH
         setupUserActivity()
         
-        // Notification for AVAudioSession Interruption (e.g. Phone call)
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(NowPlayingViewController.sessionInterrupted),
-            name: Notification.Name.AVAudioSessionInterruption,
-            object: AVAudioSession.sharedInstance())
-        
         // Remote events for play/pause taps on headphones
         UIApplication.shared.beginReceivingRemoteControlEvents()
         
         if !radioPlayer.isPlaying {
             pausePressed()
         }
-    }
-    
-    deinit {
-        // Be a good citizen
-        NotificationCenter.default.removeObserver(self,
-            name: Notification.Name.AVAudioSessionInterruption,
-            object: AVAudioSession.sharedInstance())
-    }
-    
-    func resetStream() {
-        let asset = AVAsset(url: URL.WXYCStream)
-        let playerItem = AVPlayerItem(asset: asset)
-        radioPlayer.replaceCurrentItem(with: playerItem)
-    }
-    
-    @objc internal func playerItemFailedToPlayToEndTime(_ aNotification: Notification) {
-        if kDebugLog {
-            print("Network ERROR")
-        }
-        resetStream()
     }
     
     // MARK: - Player Controls (Play/Pause/Volume)
@@ -71,7 +44,6 @@ class NowPlayingViewController: UIViewController {
         }
     }
     
-    // TODO: Combine into play/pause button and extract AVPlayer into its own object handled by the RootViewController
     @IBAction func playPressed() {
         playButtonEnable(enabled: false)
         radioPlayer.play()
@@ -79,17 +51,11 @@ class NowPlayingViewController: UIViewController {
         // songLabel Animation
         songLabel.animation = "flash"
         songLabel.animate()
-        
-        NotificationCenter.default.addObserver(self, selector: #selector(playerItemFailedToPlayToEndTime(_:)), name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
-       }
+    }
     
     @IBAction func pausePressed() {
         playButtonEnable()
-        
         radioPlayer.pause()
-        resetStream()
-        
-        NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
     }
     
     // MARK: - UI Helper Methods
@@ -122,21 +88,6 @@ class NowPlayingViewController: UIViewController {
             radioPlayer.isPlaying ? pausePressed() : playPressed()
         default:
             break
-        }
-    }
-    
-    // MARK: - AVAudio Sesssion Interrupted
-    
-    @objc func sessionInterrupted(notification: NSNotification) {
-        if let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber{
-            if let type = AVAudioSessionInterruptionType(rawValue: typeValue.uintValue){
-                if type == .began {
-                    print("interruption: began")
-                } else{
-                    print("interruption: ended")
-                    playPressed()
-                }
-            }
         }
     }
     
@@ -175,12 +126,5 @@ extension NowPlayingViewController: NowPlayingServiceDelegate {
             animations: { self.albumImageView.image = artwork },
             completion: nil
         )
-    }
-}
-
-
-private extension AVPlayer {
-    var isPlaying: Bool {
-        return rate > 0.0
     }
 }
