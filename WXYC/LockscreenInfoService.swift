@@ -60,7 +60,7 @@ final class LockscreenInfoService {
         } else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = [
                 MPMediaItemPropertyArtist: RadioStation.WXYC.name,
-                MPMediaItemPropertyTitle: RadioStation.WXYC.desc,
+                MPMediaItemPropertyTitle: RadioStation.WXYC.secondaryName,
                 MPMediaItemPropertyArtwork: UIImage.defaultNowPlayingInfoCenterImage,
                 MPNowPlayingInfoPropertyIsLiveStream: self.playbackRate > 0.0,
                 MPNowPlayingInfoPropertyPlaybackRate: self.playbackRate

@@ -14,7 +14,7 @@ struct NowPlayingInfo {
     
     static let `default` = NowPlayingInfo(
         primaryHeading: RadioStation.WXYC.name,
-        secondaryHeading: RadioStation.WXYC.desc
+        secondaryHeading: RadioStation.WXYC.secondaryName
     )
 }
 
