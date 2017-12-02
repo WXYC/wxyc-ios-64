@@ -9,7 +9,7 @@ class InfoDetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        stationLongDescTextView.text = RadioStation.WXYC.longDesc
+        stationLongDescTextView.text = RadioStation.WXYC.description
     }
     
     // MARK: IBActions

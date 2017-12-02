@@ -1,21 +1,15 @@
-import Foundation
-
 struct RadioStation {
-    let name     : String
-    let streamURL: String
-    let imageURL : String
-    let desc     : String
-    let longDesc : String
+    let name: String
+    let secondaryName: String
+    let description: String
 }
 
 extension RadioStation {
     static var WXYC: RadioStation {
         return RadioStation(
             name: "WXYC",
-            streamURL: URL.WXYCStream.absoluteString,
-            imageURL: "",
-            desc: "89.3 Chapel Hill",
-            longDesc: "WXYC 89.3 FM is the non-commercial student-run radio station of the University of North Carolina at Chapel Hill. We broadcast at 1100 watts from the student union on the UNC campus, 24 hours a day, 365 days a year. Our coverage area encompasses approximately 900 square miles in and around Chapel Hill, Durham, Pittsboro, Apex, and parts of Raleigh."
+            secondaryName: "89.3 Chapel Hill",
+            description: "WXYC 89.3 FM is the non-commercial student-run radio station of the University of North Carolina at Chapel Hill. We broadcast at 1100 watts from the student union on the UNC campus, 24 hours a day, 365 days a year. Our coverage area encompasses approximately 900 square miles in and around Chapel Hill, Durham, Pittsboro, Apex, and parts of Raleigh."
         )
     }
 }
