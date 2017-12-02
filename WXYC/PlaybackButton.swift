@@ -150,7 +150,7 @@ extension PlaybackLayer: CAAnimationDelegate {
 }
 
 @objc @IBDesignable class PlaybackButton : UIButton {
-    var playbackLayer: PlaybackLayer {
+    private var playbackLayer: PlaybackLayer {
         return self.layer as! PlaybackLayer
     }
     
@@ -183,8 +183,10 @@ extension PlaybackLayer: CAAnimationDelegate {
         self.playbackLayer.set(status: status, animated: animated)
     }
     
-    func setButtonColor(_ color: UIColor) {
-        self.playbackLayer.color = color
+    override var tintColor: UIColor! {
+        didSet {
+            self.playbackLayer.color = tintColor
+        }
     }
     
     override class var layerClass: AnyClass {
