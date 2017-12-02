@@ -21,8 +21,6 @@
             <connections>
                 <outlet property="albumImageView" destination="aUh-g4-cQA" id="4Xf-pl-Vjc"/>
                 <outlet property="artistLabel" destination="jer-8J-EI4" id="m5V-Iz-bIn"/>
-                <outlet property="pauseButton" destination="LKG-Es-Fgr" id="Egn-en-Ect"/>
-                <outlet property="playButton" destination="fqy-ax-9CX" id="eY5-fC-RZD"/>
                 <outlet property="playbackButton" destination="PS1-Ct-BQW" id="CHI-w6-FV9"/>
                 <outlet property="songLabel" destination="pun-VA-gRV" id="yON-rm-C4R"/>
                 <outlet property="view" destination="qeg-Di-hy3" id="ryA-Ji-F6q"/>
@@ -34,10 +32,10 @@
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
             <subviews>
                 <view contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gr3-1x-L4g" userLabel="Top Spacer View">
-                    <rect key="frame" x="0.0" y="20" width="375" height="58"/>
+                    <rect key="frame" x="0.0" y="20" width="375" height="64"/>
                 </view>
                 <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="equalSpacing" alignment="center" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="73O-O1-JSH">
-                    <rect key="frame" x="16" y="78" width="343" height="531"/>
+                    <rect key="frame" x="16" y="84" width="343" height="519"/>
                     <subviews>
                         <imageView userInteractionEnabled="NO" alpha="0.0" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" adjustsImageSizeForAccessibilityContentSizeCategory="YES" translatesAutoresizingMaskIntoConstraints="NO" id="kaH-js-ooq">
                             <rect key="frame" x="0.0" y="0.0" width="343" height="343"/>
@@ -63,46 +61,29 @@
                             </subviews>
                             <edgeInsets key="layoutMargins" top="16" left="8" bottom="8" right="8"/>
                         </stackView>
-                        <stackView opaque="NO" contentMode="scaleToFill" distribution="equalSpacing" alignment="center" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="0mU-wP-BEA" userLabel="Controls Container">
-                            <rect key="frame" x="123.5" y="453" width="96" height="78"/>
-                            <subviews>
-                                <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="LKG-Es-Fgr">
-                                    <rect key="frame" x="0.0" y="17" width="44" height="44"/>
-                                    <constraints>
-                                        <constraint firstAttribute="width" constant="44" id="lEl-nH-1rI"/>
-                                    </constraints>
-                                    <state key="normal" image="btn-pause"/>
-                                    <connections>
-                                        <action selector="pausePressed" destination="-1" eventType="touchUpInside" id="7A7-Cx-YvC"/>
-                                    </connections>
-                                </button>
-                                <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fqy-ax-9CX">
-                                    <rect key="frame" x="52" y="17" width="44" height="44"/>
-                                    <state key="normal" image="btn-play"/>
-                                    <connections>
-                                        <action selector="playPressed" destination="-1" eventType="touchUpInside" id="tSZ-lL-Hqa"/>
-                                    </connections>
-                                </button>
-                            </subviews>
-                        </stackView>
+                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="PS1-Ct-BQW" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
+                            <rect key="frame" x="139.5" y="453" width="64" height="66"/>
+                            <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                            <constraints>
+                                <constraint firstAttribute="width" secondItem="PS1-Ct-BQW" secondAttribute="height" multiplier="32:33" id="dgZ-42-WHq"/>
+                                <constraint firstAttribute="width" constant="64" id="eTi-Rk-Un3"/>
+                            </constraints>
+                            <connections>
+                                <action selector="playPauseTapped:" destination="-1" eventType="touchUpInside" id="HMo-Rf-qlJ"/>
+                            </connections>
+                        </view>
                     </subviews>
                     <constraints>
-                        <constraint firstItem="ObE-Kg-JtH" firstAttribute="height" secondItem="0mU-wP-BEA" secondAttribute="height" id="IkG-qU-w0F"/>
                         <constraint firstItem="kaH-js-ooq" firstAttribute="leading" secondItem="73O-O1-JSH" secondAttribute="leading" id="cbV-aJ-H0F"/>
                         <constraint firstAttribute="trailing" secondItem="kaH-js-ooq" secondAttribute="trailing" id="hRY-Td-v05"/>
                     </constraints>
                 </stackView>
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="UpO-zR-qBA" userLabel="Bottom Spacer View">
-                    <rect key="frame" x="0.0" y="609" width="375" height="58"/>
+                    <rect key="frame" x="0.0" y="603" width="375" height="64"/>
                 </view>
                 <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="aUh-g4-cQA">
-                    <rect key="frame" x="16" y="78" width="343" height="343"/>
+                    <rect key="frame" x="16" y="84" width="343" height="343"/>
                 </imageView>
-                <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="PS1-Ct-BQW" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
-                    <rect key="frame" x="155" y="295" width="64" height="77"/>
-                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                    <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
-                </view>
             </subviews>
             <constraints>
                 <constraint firstItem="73O-O1-JSH" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leadingMargin" id="6gm-8n-PYZ"/>
@@ -126,8 +107,6 @@
         </view>
     </objects>
     <resources>
-        <image name="btn-pause" width="44" height="44"/>
-        <image name="btn-play" width="44" height="44"/>
         <image name="logo" width="2000" height="2000"/>
     </resources>
 </document>
