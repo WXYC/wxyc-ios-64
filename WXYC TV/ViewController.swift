@@ -11,7 +11,7 @@ import UIKit
 class ViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceDelegate {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
-    @IBOutlet weak var songLabel: UILabel!
+    @IBOutlet weak var songLabel: SpringLabel!
     
     lazy var nowPlayingService: NowPlayingService = {
         return NowPlayingService(delegate: self)
