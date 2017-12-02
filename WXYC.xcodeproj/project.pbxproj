@@ -40,6 +40,7 @@
 		235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		235102011FB95A1300ED3DDF /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
 		235102031FB95B8800ED3DDF /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
+		23A3F3EF1FD36228007B660C /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */; };
 		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
@@ -500,6 +501,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23A3F3EF1FD36228007B660C /* NowPlayingService.swift in Sources */,
 				231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */,
 				231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */,
 				231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */,
