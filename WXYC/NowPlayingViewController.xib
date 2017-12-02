@@ -64,6 +64,7 @@
                         <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="PS1-Ct-BQW" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
                             <rect key="frame" x="139.5" y="453" width="64" height="66"/>
                             <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                            <color key="tintColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                             <constraints>
                                 <constraint firstAttribute="width" secondItem="PS1-Ct-BQW" secondAttribute="height" multiplier="32:33" id="dgZ-42-WHq"/>
                                 <constraint firstAttribute="width" constant="64" id="eTi-Rk-Un3"/>
@@ -81,16 +82,21 @@
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="UpO-zR-qBA" userLabel="Bottom Spacer View">
                     <rect key="frame" x="0.0" y="603" width="375" height="64"/>
                 </view>
+                <pageControl opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" numberOfPages="3" translatesAutoresizingMaskIntoConstraints="NO" id="gPJ-gA-dz7">
+                    <rect key="frame" x="0.0" y="1213" width="375" height="37"/>
+                </pageControl>
                 <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="aUh-g4-cQA">
                     <rect key="frame" x="16" y="84" width="343" height="343"/>
                 </imageView>
             </subviews>
             <constraints>
+                <constraint firstItem="gPJ-gA-dz7" firstAttribute="leading" secondItem="ynv-Nz-ij6" secondAttribute="leading" id="5Fa-ng-jMX"/>
                 <constraint firstItem="73O-O1-JSH" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leadingMargin" id="6gm-8n-PYZ"/>
                 <constraint firstItem="aUh-g4-cQA" firstAttribute="leading" secondItem="kaH-js-ooq" secondAttribute="leading" id="CgX-uf-epG"/>
                 <constraint firstAttribute="trailingMargin" secondItem="73O-O1-JSH" secondAttribute="trailing" id="E9W-Q9-Bsy"/>
                 <constraint firstItem="aUh-g4-cQA" firstAttribute="trailing" secondItem="kaH-js-ooq" secondAttribute="trailing" id="Eeb-QB-zlE"/>
                 <constraint firstItem="73O-O1-JSH" firstAttribute="top" secondItem="gr3-1x-L4g" secondAttribute="bottom" id="HmI-Y5-8G2"/>
+                <constraint firstItem="ynv-Nz-ij6" firstAttribute="bottom" secondItem="gPJ-gA-dz7" secondAttribute="bottom" constant="-583" id="Jqk-VJ-4HO"/>
                 <constraint firstItem="UpO-zR-qBA" firstAttribute="top" secondItem="73O-O1-JSH" secondAttribute="bottom" id="LMI-Bg-Wdu"/>
                 <constraint firstItem="aUh-g4-cQA" firstAttribute="top" secondItem="kaH-js-ooq" secondAttribute="top" id="POI-cQ-rXO"/>
                 <constraint firstItem="aUh-g4-cQA" firstAttribute="bottom" secondItem="kaH-js-ooq" secondAttribute="bottom" id="U8X-Md-UMV"/>
@@ -101,6 +107,7 @@
                 <constraint firstAttribute="trailing" secondItem="UpO-zR-qBA" secondAttribute="trailing" id="l3Z-xh-eUj"/>
                 <constraint firstItem="UpO-zR-qBA" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leading" id="lfm-BO-WTr"/>
                 <constraint firstItem="gr3-1x-L4g" firstAttribute="leading" secondItem="qeg-Di-hy3" secondAttribute="leading" id="pMH-35-KJA"/>
+                <constraint firstItem="ynv-Nz-ij6" firstAttribute="trailing" secondItem="gPJ-gA-dz7" secondAttribute="trailing" id="qAS-MU-yNb"/>
             </constraints>
             <viewLayoutGuide key="safeArea" id="ynv-Nz-ij6"/>
             <point key="canvasLocation" x="25.5" y="51.5"/>
