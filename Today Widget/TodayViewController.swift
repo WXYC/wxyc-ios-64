@@ -12,13 +12,16 @@ import NotificationCenter
 class TodayViewController: UIViewController {
     @IBOutlet weak var songLabel: UILabel!
     @IBOutlet weak var artistLabel: UILabel!
-    @IBOutlet weak var albumArtworkImageView: UIImageView!
+    @IBOutlet weak var albumImageView: UIImageView!
 
     @IBOutlet weak var containerStackView: UIStackView!
     @IBOutlet weak var labelsStackView: UIStackView!
 
     let webservice = Webservice()
-
+    lazy var nowPlayingService: NowPlayingService = {
+        return NowPlayingService(delegate: self)
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -34,35 +37,10 @@ class TodayViewController: UIViewController {
         }
 
         let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: self.updateWith(playcutResult:))
-
+        playcutRequest.observe(with: nowPlayingService.updateWith(playcutResult:))
+        
         let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.updateWith(artworkResult:))
-    }
-    
-    // MARK: Webservice request handlers
-    
-    private func updateWith(playcutResult result: Result<Playcut>) {
-        guard case let .success(playcut) = result else {
-            return
-        }
-
-        DispatchQueue.main.async {
-            self.songLabel.text = playcut.songTitle
-            self.artistLabel.text = playcut.artistName
-        }
-    }
-    
-    private func updateWith(artworkResult: Result<UIImage>) {
-        DispatchQueue.main.async {
-            UIView.transition(with: self.view, duration: 0.25, options: [.transitionCrossDissolve], animations: {
-                if case let .success(artwork) = artworkResult {
-                    self.albumArtworkImageView.image = artwork
-                } else {
-                    self.albumArtworkImageView.image = #imageLiteral(resourceName: "logo")
-                }
-            }, completion: nil)
-        }
+        imageRequest.observe(with: nowPlayingService.update(artworkResult:))
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -99,6 +77,34 @@ extension TodayViewController: NCWidgetProviding {
             return .leading
         case .expanded:
             return .center
+        }
+    }
+}
+
+extension TodayViewController: NowPlayingServiceDelegate {
+    func update(nowPlayingInfo: NowPlayingInfo) {
+        DispatchQueue.main.async {
+            self.songLabel.text = nowPlayingInfo.primaryHeading
+            self.artistLabel.text = nowPlayingInfo.secondaryHeading
+        }
+    }
+    
+    func update(artwork: UIImage) {
+        DispatchQueue.main.async {
+            UIView.transition(
+                with: self.albumImageView,
+                duration: 0.25,
+                options: [.transitionCrossDissolve],
+                animations: { self.albumImageView.image = artwork },
+                completion: nil
+            )
+        }
+    }
+    
+    func update(userActivityState: NSUserActivity) {
+        DispatchQueue.main.async {
+            self.userActivity = userActivityState
+            self.userActivity?.becomeCurrent()
         }
     }
 }
