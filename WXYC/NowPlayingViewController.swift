@@ -28,7 +28,7 @@ class NowPlayingViewController: UIViewController {
     
     // MARK: - Player Controls (Play/Pause)
     
-    @IBAction @objc func playPauseTapped(_ sender: PlaybackButton) {
+    @IBAction @objc func playPauseTapped(_ sender: UIButton) {
         switch playbackButton.status {
         case .paused:
             playPressed()

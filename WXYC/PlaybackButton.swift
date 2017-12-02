@@ -192,6 +192,7 @@ extension PlaybackLayer: CAAnimationDelegate {
     }
     
     private func addPlaybackLayer() {
+        playbackLayer.contentsScale = UIScreen.main.scale
         playbackLayer.frame = self.bounds
         playbackLayer.playbackValue = PlaybackButtonState.paused.value
         playbackLayer.color = self.tintColor
