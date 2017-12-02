@@ -110,7 +110,6 @@
 		231E5BED1FCBD5ED00894F18 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayer.swift; sourceTree = "<group>"; };
 		2347D68F1FD323F600A7F77E /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		2347D6911FD323F600A7F77E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		2347D6931FD323F600A7F77E /* TVViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVViewController.swift; sourceTree = "<group>"; };
 		2347D6961FD323F600A7F77E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TVMain.storyboard; sourceTree = "<group>"; };
 		2347D6981FD323F600A7F77E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -199,7 +198,6 @@
 		2347D6901FD323F600A7F77E /* WXYC TV */ = {
 			isa = PBXGroup;
 			children = (
-				2347D6911FD323F600A7F77E /* AppDelegate.swift */,
 				2347D6931FD323F600A7F77E /* TVViewController.swift */,
 				2347D6951FD323F600A7F77E /* TVMain.storyboard */,
 				2347D6981FD323F600A7F77E /* Assets.xcassets */,
