@@ -18,8 +18,7 @@
     <objects>
         <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="InfoDetailViewController" customModule="WXYC" customModuleProvider="target">
             <connections>
-                <outlet property="feedbackButton" destination="zUR-QX-pZi" id="2mP-c0-xeu"/>
-                <outlet property="stationLongDescTextView" destination="aat-2h-nxb" id="AeG-Tx-IdN"/>
+                <outlet property="stationDescriptionTextView" destination="aat-2h-nxb" id="g6g-CM-Qe9"/>
                 <outlet property="view" destination="jpM-s2-5PS" id="pmz-e8-Wy1"/>
             </connections>
         </placeholder>
