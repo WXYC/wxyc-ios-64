@@ -10,9 +10,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Trying a thing
         try! AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback)
         try! AVAudioSession.sharedInstance().setActive(true)
-        
-        // Make status bar white
-        UINavigationBar.appearance().barStyle = .black
+
+        #if os(iOS)
+            // Make status bar white
+            UINavigationBar.appearance().barStyle = .black
+        #endif
         
         return true
     }
