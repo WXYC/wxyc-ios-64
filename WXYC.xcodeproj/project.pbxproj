@@ -22,6 +22,20 @@
 		231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
 		231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
 		2347D68A1FD1BE0800A7F77E /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */; };
+		2347D6921FD323F600A7F77E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6911FD323F600A7F77E /* AppDelegate.swift */; };
+		2347D6941FD323F600A7F77E /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6931FD323F600A7F77E /* ViewController.swift */; };
+		2347D6971FD323F600A7F77E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6951FD323F600A7F77E /* Main.storyboard */; };
+		2347D6991FD323F600A7F77E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6981FD323F600A7F77E /* Assets.xcassets */; };
+		2347D69E1FD32BBE00A7F77E /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */; };
+		2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
+		2347D6A01FD32C9D00A7F77E /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */; };
+		2347D6A11FD32CA300A7F77E /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
+		2347D6A21FD32CAA00A7F77E /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
+		2347D6A31FD32D2C00A7F77E /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC70AD1AD05C6200652982 /* RadioStation.swift */; };
+		2347D6A41FD32D3C00A7F77E /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
+		2347D6A51FD32DA400A7F77E /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
+		2347D6A61FD32DAE00A7F77E /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
+		2347D6A71FD32FFD00A7F77E /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
 		235101FD1FB9002100ED3DDF /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
 		235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		235102011FB95A1300ED3DDF /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
@@ -87,6 +101,12 @@
 		231E5BEB1FCBD5ED00894F18 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
 		231E5BED1FCBD5ED00894F18 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayer.swift; sourceTree = "<group>"; };
+		2347D68F1FD323F600A7F77E /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2347D6911FD323F600A7F77E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		2347D6931FD323F600A7F77E /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		2347D6961FD323F600A7F77E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		2347D6981FD323F600A7F77E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2347D69A1FD323F600A7F77E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		235101FC1FB9002000ED3DDF /* Future.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
 		235101FE1FB93B4500ED3DDF /* LastFM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
 		235102001FB95A1300ED3DDF /* WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
@@ -125,6 +145,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2347D68C1FD323F600A7F77E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2C5545B71C1124DE00728469 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -160,6 +187,18 @@
 			path = "Today Widget";
 			sourceTree = "<group>";
 		};
+		2347D6901FD323F600A7F77E /* WXYC TV */ = {
+			isa = PBXGroup;
+			children = (
+				2347D6911FD323F600A7F77E /* AppDelegate.swift */,
+				2347D6931FD323F600A7F77E /* ViewController.swift */,
+				2347D6951FD323F600A7F77E /* Main.storyboard */,
+				2347D6981FD323F600A7F77E /* Assets.xcassets */,
+				2347D69A1FD323F600A7F77E /* Info.plist */,
+			);
+			path = "WXYC TV";
+			sourceTree = "<group>";
+		};
 		2C5545BB1C1124DE00728469 /* WXYCUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -177,6 +216,7 @@
 				949BBB411ACCA2B6005B7C26 /* Libraries */,
 				2C5545BB1C1124DE00728469 /* WXYCUITests */,
 				231E5BE71FCBD5ED00894F18 /* Today Widget */,
+				2347D6901FD323F600A7F77E /* WXYC TV */,
 				231E5BE41FCBD5EC00894F18 /* Frameworks */,
 				9409E1171ABF6FEA00312E2B /* Products */,
 			);
@@ -188,6 +228,7 @@
 				9409E1161ABF6FEA00312E2B /* WXYC.app */,
 				2C5545BA1C1124DE00728469 /* SwiftRadioUITests.swift */,
 				231E5BE31FCBD5EC00894F18 /* Today Widget.appex */,
+				2347D68F1FD323F600A7F77E /* WXYC TV.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -302,6 +343,23 @@
 			productReference = 231E5BE31FCBD5EC00894F18 /* Today Widget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		2347D68E1FD323F600A7F77E /* WXYC TV */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2347D69D1FD323F600A7F77E /* Build configuration list for PBXNativeTarget "WXYC TV" */;
+			buildPhases = (
+				2347D68B1FD323F600A7F77E /* Sources */,
+				2347D68C1FD323F600A7F77E /* Frameworks */,
+				2347D68D1FD323F600A7F77E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "WXYC TV";
+			productName = "WXYC TV";
+			productReference = 2347D68F1FD323F600A7F77E /* WXYC TV.app */;
+			productType = "com.apple.product-type.application";
+		};
 		2C5545B91C1124DE00728469 /* WXYCUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2C5545C31C1124DE00728469 /* Build configuration list for PBXNativeTarget "WXYCUITests" */;
@@ -346,12 +404,16 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftMigration = 0700;
-				LastSwiftUpdateCheck = 0910;
+				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = wxyc.org;
 				TargetAttributes = {
 					231E5BE21FCBD5EC00894F18 = {
 						CreatedOnToolsVersion = 9.1;
+						ProvisioningStyle = Automatic;
+					};
+					2347D68E1FD323F600A7F77E = {
+						CreatedOnToolsVersion = 9.2;
 						ProvisioningStyle = Automatic;
 					};
 					2C5545B91C1124DE00728469 = {
@@ -387,6 +449,7 @@
 				9409E1151ABF6FEA00312E2B /* WXYC */,
 				2C5545B91C1124DE00728469 /* WXYCUITests */,
 				231E5BE21FCBD5EC00894F18 /* Today Widget */,
+				2347D68E1FD323F600A7F77E /* WXYC TV */,
 			);
 		};
 /* End PBXProject section */
@@ -398,6 +461,16 @@
 			files = (
 				231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */,
 				231E5BEC1FCBD5ED00894F18 /* MainInterface.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2347D68D1FD323F600A7F77E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2347D6A71FD32FFD00A7F77E /* Images.xcassets in Resources */,
+				2347D6991FD323F600A7F77E /* Assets.xcassets in Resources */,
+				2347D6971FD323F600A7F77E /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -435,6 +508,24 @@
 				231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */,
 				231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */,
 				231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2347D68B1FD323F600A7F77E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2347D6A51FD32DA400A7F77E /* SwiftRadio-Settings.swift in Sources */,
+				2347D6A21FD32CAA00A7F77E /* LastFM.swift in Sources */,
+				2347D69E1FD32BBE00A7F77E /* NowPlayingService.swift in Sources */,
+				2347D6941FD323F600A7F77E /* ViewController.swift in Sources */,
+				2347D6A11FD32CA300A7F77E /* WXYC.swift in Sources */,
+				2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */,
+				2347D6A61FD32DAE00A7F77E /* iTunes.swift in Sources */,
+				2347D6921FD323F600A7F77E /* AppDelegate.swift in Sources */,
+				2347D6A41FD32D3C00A7F77E /* Future.swift in Sources */,
+				2347D6A31FD32D2C00A7F77E /* RadioStation.swift in Sources */,
+				2347D6A01FD32C9D00A7F77E /* RadioPlayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -497,6 +588,14 @@
 			name = MainInterface.storyboard;
 			sourceTree = "<group>";
 		};
+		2347D6951FD323F600A7F77E /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				2347D6961FD323F600A7F77E /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
 		9409E1221ABF6FEA00312E2B /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -556,6 +655,57 @@
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 4.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		2347D69B1FD323F600A7F77E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				INFOPLIST_FILE = "WXYC TV/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.tvos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 11.1;
+			};
+			name = Debug;
+		};
+		2347D69C1FD323F600A7F77E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_STYLE = Automatic;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				INFOPLIST_FILE = "WXYC TV/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.tvos;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 11.1;
 			};
 			name = Release;
 		};
@@ -738,6 +888,15 @@
 			buildConfigurations = (
 				231E5BF11FCBD5ED00894F18 /* Debug */,
 				231E5BF21FCBD5ED00894F18 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2347D69D1FD323F600A7F77E /* Build configuration list for PBXNativeTarget "WXYC TV" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2347D69B1FD323F600A7F77E /* Debug */,
+				2347D69C1FD323F600A7F77E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
