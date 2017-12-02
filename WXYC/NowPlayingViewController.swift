@@ -15,8 +15,8 @@ class NowPlayingViewController: UIViewController {
         self.playbackButton.contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
         self.playbackButton.adjustMargin = 1
         self.playbackButton.backgroundColor = UIColor.clear
-        playbackButton.addTarget(self, action: #selector(playPauseTapped(_:)), for: .touchUpInside)
-        playbackButton.setButtonColor(.black)
+        self.playbackButton.addTarget(self, action: #selector(playPauseTapped(_:)), for: .touchUpInside)
+        self.playbackButton.setButtonColor(.white)
         
         // Setup handoff functionality - GH
         setupUserActivity()
