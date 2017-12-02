@@ -11,7 +11,7 @@
 		231E5BDE1FCB6F2B00894F18 /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDD1FCB6F2B00894F18 /* LockscreenInfoService.swift */; };
 		231E5BE61FCBD5ED00894F18 /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 231E5BE51FCBD5EC00894F18 /* NotificationCenter.framework */; };
 		231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */; };
-		231E5BEC1FCBD5ED00894F18 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */; };
+		231E5BEC1FCBD5ED00894F18 /* TodayMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 231E5BEA1FCBD5ED00894F18 /* TodayMain.storyboard */; };
 		231E5BF01FCBD5ED00894F18 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 231E5BE31FCBD5EC00894F18 /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC70AD1AD05C6200652982 /* RadioStation.swift */; };
 		231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
@@ -22,9 +22,8 @@
 		231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
 		231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
 		2347D68A1FD1BE0800A7F77E /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */; };
-		2347D6921FD323F600A7F77E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6911FD323F600A7F77E /* AppDelegate.swift */; };
-		2347D6941FD323F600A7F77E /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6931FD323F600A7F77E /* ViewController.swift */; };
-		2347D6971FD323F600A7F77E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6951FD323F600A7F77E /* Main.storyboard */; };
+		2347D6941FD323F600A7F77E /* TVViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6931FD323F600A7F77E /* TVViewController.swift */; };
+		2347D6971FD323F600A7F77E /* TVMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6951FD323F600A7F77E /* TVMain.storyboard */; };
 		2347D6991FD323F600A7F77E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6981FD323F600A7F77E /* Assets.xcassets */; };
 		2347D69E1FD32BBE00A7F77E /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231E5BDB1FCB658B00894F18 /* NowPlayingService.swift */; };
 		2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
@@ -48,6 +47,7 @@
 		23A3F3F61FD36B5F007B660C /* SpringLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A891B98B762005ED993 /* SpringLabel.swift */; };
 		23A3F3F71FD36B69007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
 		23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
+		23A3F3FA1FD372AF007B660C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
 		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
@@ -56,7 +56,7 @@
 		34AC2AF41FCF5DC100F72879 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34AC2AF31FCF5DC100F72879 /* PlaybackButton.swift */; };
 		34E7C6881FBF77FC00825164 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */; };
 		9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
-		9409E1241ABF6FEA00312E2B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1221ABF6FEA00312E2B /* Main.storyboard */; };
+		9409E1241ABF6FEA00312E2B /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1221ABF6FEA00312E2B /* iOSMain.storyboard */; };
 		9409E1261ABF6FEA00312E2B /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
 		9409E1401ABF78B000312E2B /* NowPlayingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E13F1ABF78B000312E2B /* NowPlayingViewController.swift */; };
 		949BBB401ACC9DEE005B7C26 /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
@@ -106,13 +106,13 @@
 		231E5BE31FCBD5EC00894F18 /* Today Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Today Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		231E5BE51FCBD5EC00894F18 /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
-		231E5BEB1FCBD5ED00894F18 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
+		231E5BEB1FCBD5ED00894F18 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TodayMain.storyboard; sourceTree = "<group>"; };
 		231E5BED1FCBD5ED00894F18 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayer.swift; sourceTree = "<group>"; };
 		2347D68F1FD323F600A7F77E /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2347D6911FD323F600A7F77E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		2347D6931FD323F600A7F77E /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
-		2347D6961FD323F600A7F77E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		2347D6931FD323F600A7F77E /* TVViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVViewController.swift; sourceTree = "<group>"; };
+		2347D6961FD323F600A7F77E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TVMain.storyboard; sourceTree = "<group>"; };
 		2347D6981FD323F600A7F77E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2347D69A1FD323F600A7F77E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		235101FC1FB9002000ED3DDF /* Future.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
@@ -132,7 +132,7 @@
 		9409E1161ABF6FEA00312E2B /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9409E11A1ABF6FEA00312E2B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		9409E1231ABF6FEA00312E2B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		9409E1231ABF6FEA00312E2B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/iOSMain.storyboard; sourceTree = "<group>"; };
 		9409E1251ABF6FEA00312E2B /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		9409E13F1ABF78B000312E2B /* NowPlayingViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingViewController.swift; sourceTree = "<group>"; };
 		949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Webservice.swift; sourceTree = "<group>"; };
@@ -190,7 +190,7 @@
 			isa = PBXGroup;
 			children = (
 				231E5BE81FCBD5ED00894F18 /* TodayViewController.swift */,
-				231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */,
+				231E5BEA1FCBD5ED00894F18 /* TodayMain.storyboard */,
 				231E5BED1FCBD5ED00894F18 /* Info.plist */,
 			);
 			path = "Today Widget";
@@ -200,8 +200,8 @@
 			isa = PBXGroup;
 			children = (
 				2347D6911FD323F600A7F77E /* AppDelegate.swift */,
-				2347D6931FD323F600A7F77E /* ViewController.swift */,
-				2347D6951FD323F600A7F77E /* Main.storyboard */,
+				2347D6931FD323F600A7F77E /* TVViewController.swift */,
+				2347D6951FD323F600A7F77E /* TVMain.storyboard */,
 				2347D6981FD323F600A7F77E /* Assets.xcassets */,
 				2347D69A1FD323F600A7F77E /* Info.plist */,
 			);
@@ -258,7 +258,7 @@
 				94E976191B1A8BFB00F52B1E /* Model */,
 				94AC70AF1AD05C7400652982 /* Networking */,
 				9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */,
-				9409E1221ABF6FEA00312E2B /* Main.storyboard */,
+				9409E1221ABF6FEA00312E2B /* iOSMain.storyboard */,
 				348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */,
 				9409E1251ABF6FEA00312E2B /* Images.xcassets */,
 				9409E1191ABF6FEA00312E2B /* Supporting Files */,
@@ -483,7 +483,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */,
-				231E5BEC1FCBD5ED00894F18 /* MainInterface.storyboard in Resources */,
+				231E5BEC1FCBD5ED00894F18 /* TodayMain.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -493,7 +493,7 @@
 			files = (
 				2347D6A71FD32FFD00A7F77E /* Images.xcassets in Resources */,
 				2347D6991FD323F600A7F77E /* Assets.xcassets in Resources */,
-				2347D6971FD323F600A7F77E /* Main.storyboard in Resources */,
+				2347D6971FD323F600A7F77E /* TVMain.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -509,7 +509,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				34E7C6881FBF77FC00825164 /* InfoDetailViewController.xib in Resources */,
-				9409E1241ABF6FEA00312E2B /* Main.storyboard in Resources */,
+				9409E1241ABF6FEA00312E2B /* iOSMain.storyboard in Resources */,
 				345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */,
 				9409E1261ABF6FEA00312E2B /* Images.xcassets in Resources */,
 				348E6EE51FAE693000B77665 /* LaunchScreen.storyboard in Resources */,
@@ -545,14 +545,14 @@
 				2347D6A51FD32DA400A7F77E /* SwiftRadio-Settings.swift in Sources */,
 				2347D6A21FD32CAA00A7F77E /* LastFM.swift in Sources */,
 				23A3F3F51FD36B5E007B660C /* SpringLabel.swift in Sources */,
+				23A3F3FA1FD372AF007B660C /* AppDelegate.swift in Sources */,
 				2347D69E1FD32BBE00A7F77E /* NowPlayingService.swift in Sources */,
 				23A3F3F41FD3678A007B660C /* NowPlayingPresentable.swift in Sources */,
-				2347D6941FD323F600A7F77E /* ViewController.swift in Sources */,
+				2347D6941FD323F600A7F77E /* TVViewController.swift in Sources */,
 				23A3F3F71FD36B69007B660C /* Spring.swift in Sources */,
 				2347D6A11FD32CA300A7F77E /* WXYC.swift in Sources */,
 				2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */,
 				2347D6A61FD32DAE00A7F77E /* iTunes.swift in Sources */,
-				2347D6921FD323F600A7F77E /* AppDelegate.swift in Sources */,
 				2347D6A41FD32D3C00A7F77E /* Future.swift in Sources */,
 				2347D6A31FD32D2C00A7F77E /* RadioStation.swift in Sources */,
 				2347D6A01FD32C9D00A7F77E /* RadioPlayer.swift in Sources */,
@@ -611,28 +611,28 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
-		231E5BEA1FCBD5ED00894F18 /* MainInterface.storyboard */ = {
+		231E5BEA1FCBD5ED00894F18 /* TodayMain.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
 				231E5BEB1FCBD5ED00894F18 /* Base */,
 			);
-			name = MainInterface.storyboard;
+			name = TodayMain.storyboard;
 			sourceTree = "<group>";
 		};
-		2347D6951FD323F600A7F77E /* Main.storyboard */ = {
+		2347D6951FD323F600A7F77E /* TVMain.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
 				2347D6961FD323F600A7F77E /* Base */,
 			);
-			name = Main.storyboard;
+			name = TVMain.storyboard;
 			sourceTree = "<group>";
 		};
-		9409E1221ABF6FEA00312E2B /* Main.storyboard */ = {
+		9409E1221ABF6FEA00312E2B /* iOSMain.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
 				9409E1231ABF6FEA00312E2B /* Base */,
 			);
-			name = Main.storyboard;
+			name = iOSMain.storyboard;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
