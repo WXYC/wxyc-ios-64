@@ -25,6 +25,7 @@ protocol NowPlayingServiceDelegate {
 }
 
 final class NowPlayingService {
+    private let webservice = Webservice()
     private let delegate: NowPlayingServiceDelegate
     
     init(delegate: NowPlayingServiceDelegate) {
@@ -33,6 +34,20 @@ final class NowPlayingService {
         DispatchQueue.main.async {
             self.delegate.update(nowPlayingInfo: NowPlayingInfo.default)
         }
+    }
+    
+    public func start() {
+        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
+        
+        self.checkPlaylist()
+    }
+    
+    @objc private func checkPlaylist() {
+        let playcutRequest = webservice.getCurrentPlaycut()
+        playcutRequest.observe(with: self.updateWith(playcutResult:))
+        
+        let imageRequest = playcutRequest.getArtwork()
+        imageRequest.observe(with: self.update(artworkResult:))
     }
     
     public func updateWith(playcutResult: Result<Playcut>) {
