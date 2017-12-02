@@ -9,7 +9,7 @@
 import UIKit
 
 protocol NowPlayingPresentable {
-    weak var songLabel: UILabel! { get }
+    weak var songLabel: SpringLabel! { get }
     weak var artistLabel: UILabel! { get }
     weak var albumImageView: UIImageView! { get }
 }

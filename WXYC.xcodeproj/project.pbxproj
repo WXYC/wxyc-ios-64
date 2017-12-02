@@ -44,6 +44,10 @@
 		23A3F3F21FD36759007B660C /* NowPlayingPresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A3F3F11FD36759007B660C /* NowPlayingPresentable.swift */; };
 		23A3F3F31FD36789007B660C /* NowPlayingPresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A3F3F11FD36759007B660C /* NowPlayingPresentable.swift */; };
 		23A3F3F41FD3678A007B660C /* NowPlayingPresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A3F3F11FD36759007B660C /* NowPlayingPresentable.swift */; };
+		23A3F3F51FD36B5E007B660C /* SpringLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A891B98B762005ED993 /* SpringLabel.swift */; };
+		23A3F3F61FD36B5F007B660C /* SpringLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A891B98B762005ED993 /* SpringLabel.swift */; };
+		23A3F3F71FD36B69007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
+		23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
 		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
@@ -516,9 +520,11 @@
 			files = (
 				23A3F3EF1FD36228007B660C /* NowPlayingService.swift in Sources */,
 				231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */,
+				23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */,
 				231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */,
 				231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */,
 				231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */,
+				23A3F3F61FD36B5F007B660C /* SpringLabel.swift in Sources */,
 				23A3F3F31FD36789007B660C /* NowPlayingPresentable.swift in Sources */,
 				231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */,
 				231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */,
@@ -533,9 +539,11 @@
 			files = (
 				2347D6A51FD32DA400A7F77E /* SwiftRadio-Settings.swift in Sources */,
 				2347D6A21FD32CAA00A7F77E /* LastFM.swift in Sources */,
+				23A3F3F51FD36B5E007B660C /* SpringLabel.swift in Sources */,
 				2347D69E1FD32BBE00A7F77E /* NowPlayingService.swift in Sources */,
 				23A3F3F41FD3678A007B660C /* NowPlayingPresentable.swift in Sources */,
 				2347D6941FD323F600A7F77E /* ViewController.swift in Sources */,
+				23A3F3F71FD36B69007B660C /* Spring.swift in Sources */,
 				2347D6A11FD32CA300A7F77E /* WXYC.swift in Sources */,
 				2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */,
 				2347D6A61FD32DAE00A7F77E /* iTunes.swift in Sources */,

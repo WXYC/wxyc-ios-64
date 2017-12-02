@@ -10,7 +10,7 @@ import UIKit
 import NotificationCenter
 
 class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceDelegate {
-    @IBOutlet weak var songLabel: UILabel!
+    @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var albumImageView: UIImageView!
 
