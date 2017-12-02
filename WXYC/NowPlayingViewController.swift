@@ -21,9 +21,6 @@ class NowPlayingViewController: UIViewController {
         self.playbackButton.addTarget(self, action: #selector(playPauseTapped(_:)), for: .touchUpInside)
         self.playbackButton.setButtonColor(.white)
         
-        // Setup handoff functionality - GH
-        setupUserActivity()
-        
         // Remote events for play/pause taps on headphones
         UIApplication.shared.beginReceivingRemoteControlEvents()
         
@@ -32,7 +29,7 @@ class NowPlayingViewController: UIViewController {
         }
     }
     
-    // MARK: - Player Controls (Play/Pause/Volume)
+    // MARK: - Player Controls (Play/Pause)
     
     @IBAction @objc func playPauseTapped(_ sender: PlaybackButton) {
         switch playbackButton.buttonState {
@@ -43,29 +40,6 @@ class NowPlayingViewController: UIViewController {
         default:
             break
         }
-    }
-    
-    func playPressed() {
-        playbackButton.setButtonState(.playing, animated: true)
-        radioPlayer.play()
-        
-        // songLabel Animation
-        songLabel.animation = "flash"
-        songLabel.animate()
-    }
-    
-    func pausePressed() {
-        playbackButton.setButtonState(.paused, animated: true)
-        radioPlayer.pause()
-    }
-    
-    // MARK: - UI Helper Methods
-    
-    @IBAction func shareButtonPressed(_ sender: UIButton) {
-        // TODO: Extract
-        let songToShare = "I'm listening to [song] on \(RadioStation.WXYC.name)"
-        let activityViewController = UIActivityViewController(activityItems: [songToShare, self.albumImageView.image ?? UIImage()], applicationActivities: nil)
-        present(activityViewController, animated: true, completion: nil)
     }
     
     override func remoteControlReceived(with receivedEvent: UIEvent?) {
@@ -87,23 +61,32 @@ class NowPlayingViewController: UIViewController {
         }
     }
     
-    // MARK: - Handoff Functionality - GH
-    
-    func setupUserActivity() {
-        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb ) //"com.graemeharrison.handoff.googlesearch" //NSUserActivityTypeBrowsingWeb
-        userActivity = activity
-        let url = "https://www.google.com/search?q=\(self.artistLabel.text!)+\(self.songLabel.text!)"
-        let urlStr = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        let searchURL : URL = URL(string: urlStr!)!
-        activity.webpageURL = searchURL
-        userActivity?.becomeCurrent()
+    func playPressed() {
+        playbackButton.setButtonState(.playing, animated: true)
+        radioPlayer.play()
+        
+        songLabel.animation = Spring.AnimationPreset.Flash.rawValue
+        songLabel.animate()
     }
     
+    func pausePressed() {
+        playbackButton.setButtonState(.paused, animated: true)
+        radioPlayer.pause()
+    }
+    
+    // MARK: - Sharing
+    
+    @IBAction func shareButtonPressed(_ sender: UIButton) {
+        // TODO: Extract
+        let songToShare = "I'm listening to [song] on \(RadioStation.WXYC.name)"
+        let activityViewController = UIActivityViewController(activityItems: [songToShare, self.albumImageView.image ?? UIImage()], applicationActivities: nil)
+        present(activityViewController, animated: true, completion: nil)
+    }
+    
+    // MARK: - Handoff
+    
     override func updateUserActivityState(_ activity: NSUserActivity) {
-        let url = "https://www.google.com/search?q=\(self.artistLabel.text!)+\(self.songLabel.text!)"
-        let urlStr = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        let searchURL : URL = URL(string: urlStr!)!
-        activity.webpageURL = searchURL
+        activity.webpageURL = self.userActivity?.webpageURL
         super.updateUserActivityState(activity)
     }
 }
@@ -122,5 +105,10 @@ extension NowPlayingViewController: NowPlayingServiceDelegate {
             animations: { self.albumImageView.image = artwork },
             completion: nil
         )
+    }
+    
+    func update(userActivityState: NSUserActivity) {
+        self.userActivity = userActivityState
+        self.userActivity?.becomeCurrent()
     }
 }
