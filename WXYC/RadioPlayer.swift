@@ -58,9 +58,6 @@ final class RadioPlayer {
     }
     
     @objc private func playerItemFailedToPlayToEndTime(_ aNotification: Notification) {
-        if kDebugLog {
-            print("Network ERROR")
-        }
         resetStream()
     }
     
