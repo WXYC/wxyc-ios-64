@@ -1,15 +1,14 @@
 import MessageUI
 
 class InfoDetailViewController: UIViewController {
-    @IBOutlet weak var stationLongDescTextView: UITextView!
-    @IBOutlet weak var feedbackButton: UIButton!
+    @IBOutlet weak var stationDescriptionTextView: UITextView!
     
     // MARK: Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        stationLongDescTextView.text = RadioStation.WXYC.description
+        stationDescriptionTextView.text = RadioStation.WXYC.description
     }
     
     // MARK: IBActions
