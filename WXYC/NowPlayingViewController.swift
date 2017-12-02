@@ -15,9 +15,6 @@ class NowPlayingViewController: UIViewController {
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.playbackButton.contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-        self.playbackButton.adjustMargin = 1
-        self.playbackButton.backgroundColor = UIColor.clear
         self.playbackButton.addTarget(self, action: #selector(playPauseTapped(_:)), for: .touchUpInside)
         self.playbackButton.setButtonColor(.white)
         
@@ -32,13 +29,11 @@ class NowPlayingViewController: UIViewController {
     // MARK: - Player Controls (Play/Pause)
     
     @IBAction @objc func playPauseTapped(_ sender: PlaybackButton) {
-        switch playbackButton.buttonState {
+        switch playbackButton.status {
         case .paused:
             playPressed()
         case .playing:
             pausePressed()
-        default:
-            break
         }
     }
     
@@ -62,7 +57,7 @@ class NowPlayingViewController: UIViewController {
     }
     
     func playPressed() {
-        playbackButton.setButtonState(.playing, animated: true)
+        playbackButton.status = .playing
         radioPlayer.play()
         
         songLabel.animation = Spring.AnimationPreset.Flash.rawValue
@@ -70,7 +65,7 @@ class NowPlayingViewController: UIViewController {
     }
     
     func pausePressed() {
-        playbackButton.setButtonState(.paused, animated: true)
+        playbackButton.status = .paused
         radioPlayer.pause()
     }
     
