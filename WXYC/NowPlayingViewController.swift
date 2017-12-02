@@ -12,6 +12,9 @@ class NowPlayingViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        self.albumImageView.layer.cornerRadius = 6.0
+        self.albumImageView.layer.masksToBounds = true
+        
         self.playbackButton.contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
         self.playbackButton.adjustMargin = 1
         self.playbackButton.backgroundColor = UIColor.clear
