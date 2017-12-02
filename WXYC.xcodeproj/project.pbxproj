@@ -48,6 +48,7 @@
 		23A3F3F71FD36B69007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
 		23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
 		23A3F3FA1FD372AF007B660C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
+		23A3F3FC1FD37531007B660C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
 		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
@@ -209,6 +210,9 @@
 		23A3F3F01FD3674A007B660C /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				94E976191B1A8BFB00F52B1E /* Model */,
+				94AC70AF1AD05C7400652982 /* Networking */,
+				9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */,
 				23A3F3F11FD36759007B660C /* NowPlayingPresentable.swift */,
 			);
 			path = Shared;
@@ -253,9 +257,6 @@
 			isa = PBXGroup;
 			children = (
 				94D2608E1B45D0F800DE671C /* ViewControllers */,
-				94E976191B1A8BFB00F52B1E /* Model */,
-				94AC70AF1AD05C7400652982 /* Networking */,
-				9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */,
 				9409E1221ABF6FEA00312E2B /* iOSMain.storyboard */,
 				348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */,
 				9409E1251ABF6FEA00312E2B /* Images.xcassets */,
@@ -290,6 +291,7 @@
 				235101FC1FB9002000ED3DDF /* Future.swift */,
 			);
 			name = Networking;
+			path = ../WXYC;
 			sourceTree = "<group>";
 		};
 		94D2608E1B45D0F800DE671C /* ViewControllers */ = {
@@ -337,6 +339,7 @@
 				235102021FB95B8800ED3DDF /* iTunes.swift */,
 			);
 			name = Model;
+			path = ../WXYC;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -529,6 +532,7 @@
 				231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */,
 				23A3F3F61FD36B5F007B660C /* SpringLabel.swift in Sources */,
 				23A3F3F31FD36789007B660C /* NowPlayingPresentable.swift in Sources */,
+				23A3F3FC1FD37531007B660C /* AppDelegate.swift in Sources */,
 				231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */,
 				231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */,
 				231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */,
