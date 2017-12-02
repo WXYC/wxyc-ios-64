@@ -4,8 +4,6 @@ import MediaPlayer
 class NowPlayingViewController: UIViewController {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
-    @IBOutlet weak var pauseButton: UIButton!
-    @IBOutlet weak var playButton: UIButton!
     @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var playbackButton: PlaybackButton!
     
@@ -33,19 +31,19 @@ class NowPlayingViewController: UIViewController {
     
     // MARK: - Player Controls (Play/Pause/Volume)
     
-    @objc func playPauseTapped(_ sender: PlaybackButton) {
+    @IBAction @objc func playPauseTapped(_ sender: PlaybackButton) {
         switch playbackButton.buttonState {
-        case .pausing:
-            playbackButton.setButtonState(.playing, animated: true)
+        case .paused:
+            playPressed()
         case .playing:
-            playbackButton.setButtonState(.pausing, animated: true)
+            pausePressed()
         default:
             break
         }
     }
     
-    @IBAction func playPressed() {
-        playButtonEnable(enabled: false)
+    func playPressed() {
+        playbackButton.setButtonState(.playing, animated: true)
         radioPlayer.play()
         
         // songLabel Animation
@@ -53,17 +51,12 @@ class NowPlayingViewController: UIViewController {
         songLabel.animate()
     }
     
-    @IBAction func pausePressed() {
-        playButtonEnable()
+    func pausePressed() {
+        playbackButton.setButtonState(.paused, animated: true)
         radioPlayer.pause()
     }
     
     // MARK: - UI Helper Methods
-    
-    func playButtonEnable(enabled: Bool = true) {
-        playButton.isEnabled = enabled
-        pauseButton.isEnabled = !enabled
-    }
     
     @IBAction func shareButtonPressed(_ sender: UIButton) {
         // TODO: Extract

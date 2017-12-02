@@ -11,7 +11,7 @@ import UIKit
 
 @objc public enum PlaybackButtonState : Int {
     case none = 0
-    case pausing
+    case paused
     case playing
     case pending
     
@@ -19,7 +19,7 @@ import UIKit
         switch self {
         case .none:
             return 0.0
-        case .pausing:
+        case .paused:
             return 1.0
         case .playing:
             return 0.0
@@ -32,7 +32,7 @@ import UIKit
         switch self {
         case .none:
             return UIColor.white.cgColor
-        case .pausing:
+        case .paused:
             return layer.pausingColor.cgColor
         case .playing:
             return layer.playingColor.cgColor
@@ -42,14 +42,14 @@ import UIKit
     }
 }
 
-@objc open class PlaybackLayer: CALayer {
+@objc @IBDesignable open class PlaybackLayer: CALayer {
     
     fileprivate static let kAnimationKey = "playbackValue"
     fileprivate static let kAnimationIdentifier = "playbackLayerAnimation"
     
     open var adjustMarginValue: CGFloat = 0
     open var contentEdgeInsets = UIEdgeInsets.zero
-    open var buttonState = PlaybackButtonState.pausing
+    open var buttonState = PlaybackButtonState.paused
     @objc open var playbackValue: CGFloat = 1.0 {
         didSet {
             setNeedsDisplay()
@@ -124,7 +124,7 @@ import UIKit
         switch self.buttonState {
         case .none:
             return
-        case .pausing, .pending, .playing:
+        case .paused, .pending, .playing:
             
             let rect = context.boundingBoxOfClipPath
             let baseWidth = rect.width
@@ -176,7 +176,7 @@ extension PlaybackLayer: CAAnimationDelegate {
     }
 }
 
-@objc open class PlaybackButton : UIButton {
+@objc @IBDesignable open class PlaybackButton : UIButton {
     
     static let kDefaultDuration: CFTimeInterval = 0.24
     open var playbackLayer: PlaybackLayer?
@@ -187,7 +187,7 @@ extension PlaybackLayer: CAAnimationDelegate {
     }
     
     open var buttonState: PlaybackButtonState {
-        return self.playbackLayer?.buttonState ?? PlaybackButtonState.pausing
+        return self.playbackLayer?.buttonState ?? PlaybackButtonState.paused
     }
     
     open override var contentEdgeInsets: UIEdgeInsets {
@@ -230,7 +230,7 @@ extension PlaybackLayer: CAAnimationDelegate {
         switch buttonState {
         case .none:
             break
-        case .pausing:
+        case .paused:
             self.playbackLayer?.pausingColor = color
         case .playing:
             self.playbackLayer?.playingColor = color
@@ -244,7 +244,7 @@ extension PlaybackLayer: CAAnimationDelegate {
         playbackLayer.frame = self.bounds
         playbackLayer.adjustMarginValue = self.adjustMargin
         playbackLayer.contentEdgeInsets = self.contentEdgeInsets
-        playbackLayer.playbackValue = PlaybackButtonState.pausing.value
+        playbackLayer.playbackValue = PlaybackButtonState.paused.value
         playbackLayer.pausingColor = self.tintColor
         playbackLayer.playingColor = self.tintColor
         playbackLayer.pendingColor = self.tintColor
