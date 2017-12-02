@@ -8,12 +8,11 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceDelegate {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: UILabel!
     
-    let webservice = Webservice()
     lazy var nowPlayingService: NowPlayingService = {
         return NowPlayingService(delegate: self)
     }()
@@ -25,20 +24,10 @@ class ViewController: UIViewController {
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
-        
-        self.checkPlaylist()
+        self.nowPlayingService.start()
         self.radioPlayer.play()
     }
 
-    @objc private func checkPlaylist() {
-        let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: nowPlayingService.updateWith(playcutResult:))
-        
-        let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: nowPlayingService.update(artworkResult:))
-    }
-    
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         for press in presses {
             switch press.type {
@@ -56,34 +45,5 @@ class ViewController: UIViewController {
     
     func pausePressed() {
         radioPlayer.pause()
-    }
-
-}
-
-extension ViewController: NowPlayingServiceDelegate {
-    func update(nowPlayingInfo: NowPlayingInfo) {
-        DispatchQueue.main.async {
-            self.songLabel.text = nowPlayingInfo.primaryHeading
-            self.artistLabel.text = nowPlayingInfo.secondaryHeading
-        }
-    }
-    
-    func update(artwork: UIImage) {
-        DispatchQueue.main.async {
-            UIView.transition(
-                with: self.albumImageView,
-                duration: 0.25,
-                options: [.transitionCrossDissolve],
-                animations: { self.albumImageView.image = artwork },
-                completion: nil
-            )
-        }
-    }
-    
-    func update(userActivityState: NSUserActivity) {
-        DispatchQueue.main.async {
-            self.userActivity = userActivityState
-            self.userActivity?.becomeCurrent()
-        }
     }
 }
