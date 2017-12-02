@@ -15,20 +15,13 @@ class NowPlayingViewController: UIViewController {
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.playbackButton.addTarget(self, action: #selector(playPauseTapped(_:)), for: .touchUpInside)
-        self.playbackButton.setButtonColor(.white)
-        
         // Remote events for play/pause taps on headphones
         UIApplication.shared.beginReceivingRemoteControlEvents()
-        
-        if !radioPlayer.isPlaying {
-            pausePressed()
-        }
     }
     
     // MARK: - Player Controls (Play/Pause)
     
-    @IBAction @objc func playPauseTapped(_ sender: UIButton) {
+    @IBAction func playPauseTapped(_ sender: UIButton) {
         switch playbackButton.status {
         case .paused:
             playPressed()

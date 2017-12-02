@@ -21,7 +21,7 @@
             <connections>
                 <outlet property="albumImageView" destination="aUh-g4-cQA" id="4Xf-pl-Vjc"/>
                 <outlet property="artistLabel" destination="jer-8J-EI4" id="m5V-Iz-bIn"/>
-                <outlet property="playbackButton" destination="PS1-Ct-BQW" id="CHI-w6-FV9"/>
+                <outlet property="playbackButton" destination="LPE-0F-oTA" id="lOh-TE-bXo"/>
                 <outlet property="songLabel" destination="pun-VA-gRV" id="yON-rm-C4R"/>
                 <outlet property="view" destination="qeg-Di-hy3" id="ryA-Ji-F6q"/>
             </connections>
@@ -61,18 +61,17 @@
                             </subviews>
                             <edgeInsets key="layoutMargins" top="16" left="8" bottom="8" right="8"/>
                         </stackView>
-                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="PS1-Ct-BQW" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
-                            <rect key="frame" x="-16" y="453" width="64" height="66"/>
-                            <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
-                            <color key="tintColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="LPE-0F-oTA" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
+                            <rect key="frame" x="139.5" y="453" width="64" height="66"/>
                             <constraints>
-                                <constraint firstAttribute="width" secondItem="PS1-Ct-BQW" secondAttribute="height" multiplier="32:33" id="dgZ-42-WHq"/>
-                                <constraint firstAttribute="width" constant="64" id="eTi-Rk-Un3"/>
+                                <constraint firstAttribute="height" constant="66" id="XLQ-ib-oBD"/>
+                                <constraint firstAttribute="width" constant="64" id="rb2-Wa-IIR"/>
                             </constraints>
+                            <color key="tintColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                             <connections>
-                                <action selector="playPauseTapped:" destination="-1" eventType="touchUpInside" id="HMo-Rf-qlJ"/>
+                                <action selector="playPauseTapped:" destination="-1" eventType="touchUpInside" id="X8B-nV-h8A"/>
                             </connections>
-                        </view>
+                        </button>
                     </subviews>
                     <constraints>
                         <constraint firstItem="kaH-js-ooq" firstAttribute="leading" secondItem="73O-O1-JSH" secondAttribute="leading" id="cbV-aJ-H0F"/>
