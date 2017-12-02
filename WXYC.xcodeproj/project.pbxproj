@@ -433,6 +433,11 @@
 					2347D68E1FD323F600A7F77E = {
 						CreatedOnToolsVersion = 9.2;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.BackgroundModes.appletvos = {
+								enabled = 1;
+							};
+						};
 					};
 					2C5545B91C1124DE00728469 = {
 						CreatedOnToolsVersion = 7.1;
