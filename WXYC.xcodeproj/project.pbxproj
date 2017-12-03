@@ -48,7 +48,6 @@
 		23A3F3F71FD36B69007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
 		23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94DB0A851B98B762005ED993 /* Spring.swift */; };
 		23A3F3FA1FD372AF007B660C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
-		23A3F3FC1FD37531007B660C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
 		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
@@ -532,7 +531,6 @@
 				231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */,
 				23A3F3F61FD36B5F007B660C /* SpringLabel.swift in Sources */,
 				23A3F3F31FD36789007B660C /* NowPlayingPresentable.swift in Sources */,
-				23A3F3FC1FD37531007B660C /* AppDelegate.swift in Sources */,
 				231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */,
 				231E5BF51FCBD7A100894F18 /* RadioStation.swift in Sources */,
 				231E5BE91FCBD5ED00894F18 /* TodayViewController.swift in Sources */,
