@@ -7,26 +7,72 @@ enum Result<T> {
 
 public enum ServiceErrors: Error {
     case noResults
+    case noNewData
 }
 
 final class Webservice {
+    // I noticed that after running the app for a while the album artwork would consistently start returning low res
+    // images from the iTunes API. As you may have guessed, Last.FM rate limits calls to their APIs. The rule of thumb
+    // is no more than 5 calls in 5 minutes from a given IP.
+    // The workaround, as I've done here, is to cache the previous result from the WXYC API. If the new result matches,
+    // we stop the chain of service calls.
+    private var lastFetchedPlaycut: Playcut?
+    
     func getCurrentPlaycut() -> Future<Playcut> {
-        return getPlaylist().chained(with: { playlist in
-            return Promise(value: playlist.playcuts.first)
+        return getPlaylist().transformed(with: { playlist -> Playcut in
+            guard let playcut = playlist.playcuts.first else {
+                throw ServiceErrors.noResults
+            }
+            
+            if playcut == self.lastFetchedPlaycut {
+                throw ServiceErrors.noNewData
+            } else {
+                self.lastFetchedPlaycut = playcut
+            }
+
+            return playcut
         })
     }
     
     private func getPlaylist() -> Future<Playlist> {
         return URLSession.shared.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
             let decoder = JSONDecoder()
-            return try decoder.decode(Playlist.self, from: data)
+            let playlist = try decoder.decode(Playlist.self, from: data)
+
+            
+            return playlist
         }
     }
 }
 
 extension Future where Value == Playcut {
     func getArtwork() -> Future<UIImage> {
-        return getLastFMArtwork() || getItunesArtwork()
+        let promise = Promise<UIImage>()
+
+        let lastFMArtworkRequest = getLastFMArtwork()
+        let iTunesArtworkRequest = getItunesArtwork()
+
+        lastFMArtworkRequest.observe { imageResult in
+            switch imageResult {
+            case let .success(image):
+                promise.resolve(with: image)
+            case .error(let error):
+                if (error as? ServiceErrors) != ServiceErrors.noNewData {
+                    iTunesArtworkRequest.observe(with: { imageResult in
+                        switch imageResult {
+                        case let .success(image):
+                            promise.resolve(with: image)
+                        case .error(_):
+                            promise.resolve(with: #imageLiteral(resourceName: "logo"))
+                        }
+                    })
+                } else {
+                    promise.reject(with: error)
+                }
+            }
+        }
+
+        return promise
     }
     
     private func getLastFMArtwork() -> Future<UIImage> {
