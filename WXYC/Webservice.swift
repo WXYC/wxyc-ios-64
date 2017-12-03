@@ -26,28 +26,7 @@ final class Webservice {
 
 extension Future where Value == Playcut {
     func getArtwork() -> Future<UIImage> {
-        let promise = Promise<UIImage>()
-        
-        let lastFMArtworkRequest = getLastFMArtwork()
-        let iTunesArtworkRequest = getItunesArtwork()
-
-        lastFMArtworkRequest.observe { imageResult in
-            switch imageResult {
-            case let .success(image):
-                promise.resolve(with: image)
-            case .error(_):
-                iTunesArtworkRequest.observe(with: { imageResult in
-                    switch imageResult {
-                    case let .success(image):
-                        promise.resolve(with: image)
-                    case .error(_):
-                        promise.resolve(with: #imageLiteral(resourceName: "logo"))
-                    }
-                })
-            }
-        }
-        
-        return promise
+        return getLastFMArtwork() || getItunesArtwork()
     }
     
     private func getLastFMArtwork() -> Future<UIImage> {
