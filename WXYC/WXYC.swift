@@ -2,7 +2,7 @@ import Foundation
 
 extension URL {
     static var WXYCPlaylist: URL {
-        return URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=1")!
+        return URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=15")!
     }
     
     static var WXYCStream: URL {
@@ -26,7 +26,7 @@ extension PlaylistItem {
     }
 }
 
-struct Playcut: PlaylistItem, Codable {
+struct Playcut: PlaylistItem, Codable, Equatable {
     let id: Int
     let hour: Int
     let chronOrderID: Int
@@ -37,19 +37,25 @@ struct Playcut: PlaylistItem, Codable {
     let releaseTitle: String?
 }
 
-struct Talkset: PlaylistItem, Codable {
+struct Talkset: PlaylistItem, Codable, Equatable {
     let id: Int
     let hour: Int
     let chronOrderID: Int
 }
 
-struct Breakpoint: PlaylistItem, Codable {
+struct Breakpoint: PlaylistItem, Codable, Equatable {
     let id: Int
     let hour: Int
     let chronOrderID: Int
 }
 
-struct Playlist: Codable {
+struct Playlist: Codable, Equatable {
+    static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
+        return lhs.playcuts == rhs.playcuts
+            && lhs.talksets == rhs.talksets
+            && lhs.breakpoints == rhs.breakpoints
+    }
+    
     let playcuts: [Playcut]
     let talksets: [Talkset]
     let breakpoints: [Breakpoint]
