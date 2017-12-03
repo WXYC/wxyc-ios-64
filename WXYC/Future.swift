@@ -76,7 +76,7 @@ extension Future {
         return promise
     }
     
-    static func `repeat`(_ future: @escaping () -> (Future), timeInterval: TimeInterval = 30) -> Future {
+    static func `repeat`(_ future: @escaping () -> (Future), timeInterval: TimeInterval = 1) -> Future {
         let promise = Promise<Value>()
         
         let timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
