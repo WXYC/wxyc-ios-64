@@ -61,7 +61,7 @@ final class LockscreenInfoService: PlaylistServiceObserver {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = [
                 MPMediaItemPropertyArtist: RadioStation.WXYC.name,
                 MPMediaItemPropertyTitle: RadioStation.WXYC.secondaryName,
-                MPMediaItemPropertyArtwork: UIImage.defaultNowPlayingInfoCenterImage,
+                MPMediaItemPropertyArtwork: mediaItemArtwork(),
                 MPNowPlayingInfoPropertyIsLiveStream: self.playbackRate > 0.0,
                 MPNowPlayingInfoPropertyPlaybackRate: self.playbackRate
             ]
