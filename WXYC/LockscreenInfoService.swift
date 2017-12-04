@@ -9,7 +9,7 @@
 import UIKit
 import MediaPlayer
 
-final class LockscreenInfoService {
+final class LockscreenInfoService: PlaylistServiceObserver {
     private enum ServiceError: Error {
         case noPlaycut
         case noArtwork
@@ -24,7 +24,7 @@ final class LockscreenInfoService {
         self.updateNowPlayingInfoCenter()
     }
     
-    public func update(artworkResult: Result<UIImage>) {
+    func updateWith(artworkResult: Result<UIImage>) {
         self.artworkResult = artworkResult
         self.updateNowPlayingInfoCenter()
     }

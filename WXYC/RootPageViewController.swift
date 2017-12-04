@@ -4,6 +4,7 @@ class RootPageViewController: UIPageViewController {
     let nowPlayingViewController = NowPlayingViewController.loadFromNib()
     let infoDetailViewController = InfoDetailViewController.loadFromNib()
     
+    let playlistService = PlaylistService()
     let nowPlayingService: NowPlayingService
     let lockscreenInfoService = LockscreenInfoService()
     
@@ -50,7 +51,10 @@ class RootPageViewController: UIPageViewController {
     }
     
     private func setUpPlaylistPolling() {
-        self.nowPlayingService.start()
+        self.playlistService.add(
+            self.nowPlayingService,
+            self.lockscreenInfoService
+        )
     }
     
     // MARK - Customization

@@ -50,6 +50,9 @@
 		23A3F3FA1FD372AF007B660C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
 		23C292321FCB1DF400A47DFC /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C292311FCB1DF300A47DFC /* UIView+WXYC.swift */; };
 		2C5545BD1C1124DE00728469 /* SwiftRadioUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */; };
+		344136EC1FD4FBF9002B5488 /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344136EB1FD4FBF9002B5488 /* PlaylistService.swift */; };
+		344136ED1FD4FC9D002B5488 /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344136EB1FD4FBF9002B5488 /* PlaylistService.swift */; };
+		344136EE1FD4FC9D002B5488 /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344136EB1FD4FBF9002B5488 /* PlaylistService.swift */; };
 		345B0BBD1FBF6CAD00C580B0 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */; };
 		345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */; };
 		348E6EE51FAE693000B77665 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */; };
@@ -123,6 +126,7 @@
 		2C5545BA1C1124DE00728469 /* SwiftRadioUITests.swift */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = SwiftRadioUITests.swift; path = WXYCUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C5545BC1C1124DE00728469 /* SwiftRadioUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwiftRadioUITests.swift; path = ../WXYCUITests/SwiftRadioUITests.swift; sourceTree = "<group>"; };
 		2C5545BE1C1124DE00728469 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		344136EB1FD4FBF9002B5488 /* PlaylistService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
 		345B0BBC1FBF6CAD00C580B0 /* RootPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
 		345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
 		348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -288,6 +292,7 @@
 			children = (
 				949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */,
 				235101FC1FB9002000ED3DDF /* Future.swift */,
+				344136EB1FD4FBF9002B5488 /* PlaylistService.swift */,
 			);
 			name = Networking;
 			path = ../WXYC;
@@ -525,6 +530,7 @@
 			files = (
 				23A3F3EF1FD36228007B660C /* NowPlayingService.swift in Sources */,
 				231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */,
+				344136EE1FD4FC9D002B5488 /* PlaylistService.swift in Sources */,
 				23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */,
 				231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */,
 				231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */,
@@ -555,6 +561,7 @@
 				2347D6A61FD32DAE00A7F77E /* iTunes.swift in Sources */,
 				2347D6A41FD32D3C00A7F77E /* Future.swift in Sources */,
 				2347D6A31FD32D2C00A7F77E /* RadioStation.swift in Sources */,
+				344136ED1FD4FC9D002B5488 /* PlaylistService.swift in Sources */,
 				2347D6A01FD32C9D00A7F77E /* RadioPlayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -574,6 +581,7 @@
 				235102031FB95B8800ED3DDF /* iTunes.swift in Sources */,
 				235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */,
 				34AC2AF41FCF5DC100F72879 /* PlaybackButton.swift in Sources */,
+				344136EC1FD4FBF9002B5488 /* PlaylistService.swift in Sources */,
 				94DB0AA51B98B762005ED993 /* SpringImageView.swift in Sources */,
 				2347D68A1FD1BE0800A7F77E /* RadioPlayer.swift in Sources */,
 				94D260911B45D20000DE671C /* SwiftRadio-Settings.swift in Sources */,
