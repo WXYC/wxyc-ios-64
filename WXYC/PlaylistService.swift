@@ -15,7 +15,7 @@ protocol PlaylistServiceObserver {
 }
 
 final class PlaylistService {
-    let webservice = Webservice()
+    private let webservice = Webservice()
     private var observers = [PlaylistServiceObserver]()
     
     init() {
@@ -33,12 +33,21 @@ final class PlaylistService {
     }
     
     func updateWith(playcutResult: Result<Playcut>) {
+        if case let .error(error) = playcutResult, (error as? ServiceErrors) == .noNewData {
+            return
+        }
+        
         for observer in observers {
             observer.updateWith(playcutResult: playcutResult)
         }
+        
     }
     
     func update(artworkResult: Result<UIImage>) {
+        if case let .error(error) = artworkResult, (error as? ServiceErrors) == .noNewData {
+            return
+        }
+        
         for observer in observers {
             observer.updateWith(artworkResult: artworkResult)
         }
