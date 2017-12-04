@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import MediaPlayer
 
 class TVViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
@@ -22,8 +23,19 @@ class TVViewController: UIViewController, NowPlayingPresentable, PlaylistService
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
+        self.setUpRemoteCommands()
         self.playlistService.add(self)
         self.radioPlayer.play()
+    }
+    
+    private func setUpRemoteCommands() {
+        let playCommand = MPRemoteCommandCenter.shared().playCommand
+        playCommand.isEnabled = true
+        playCommand.addTarget(self, action: #selector(playPressed))
+        
+        let pauseCommand = MPRemoteCommandCenter.shared().pauseCommand
+        pauseCommand.isEnabled = true
+        pauseCommand.addTarget(self, action: #selector(pausePressed))
     }
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
@@ -37,11 +49,11 @@ class TVViewController: UIViewController, NowPlayingPresentable, PlaylistService
         }
     }
     
-    func playPressed() {
+    @objc private func playPressed() {
         radioPlayer.play()
     }
     
-    func pausePressed() {
+    @objc private func pausePressed() {
         radioPlayer.pause()
     }
 }
