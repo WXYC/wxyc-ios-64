@@ -16,6 +16,13 @@ final class RadioPlayer {
         // Notification for AVAudioSession Interruption (e.g. Phone call)
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(RadioPlayer.applicationEnteredBackground),
+            name: Notification.Name.UIApplicationDidEnterBackground,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(RadioPlayer.sessionInterrupted),
             name: Notification.Name.AVAudioSessionInterruption,
             object: AVAudioSession.sharedInstance()
@@ -36,6 +43,8 @@ final class RadioPlayer {
     }
     
     public func play() {
+        try! AVAudioSession.sharedInstance().setActive(true)
+        
         player.play()
         
         NotificationCenter.default.addObserver(
@@ -67,7 +76,7 @@ final class RadioPlayer {
         player.replaceCurrentItem(with: playerItem)
     }
     
-    // MARK: - AVAudio Sesssion Interrupted
+    // MARK: AVAudioSesssion interruptions
     
     @objc func sessionInterrupted(notification: NSNotification) {
         if let typeValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber{
@@ -81,6 +90,14 @@ final class RadioPlayer {
             }
         }
     }
+    
+    // MARK: Application lifecycle
+    
+    @objc func applicationEnteredBackground(notification: NSNotification) {
+        if !self.player.isPlaying {
+            try! AVAudioSession.sharedInstance().setActive(false)
+        }
+    }
 }
 
 
@@ -89,3 +106,4 @@ private extension AVPlayer {
         return rate > 0.0
     }
 }
+
