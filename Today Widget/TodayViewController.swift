@@ -17,6 +17,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
     @IBOutlet weak var containerStackView: UIStackView!
     @IBOutlet weak var labelsStackView: UIStackView!
 
+    let playlistService = PlaylistService()
     lazy var nowPlayingService: NowPlayingService = {
         return NowPlayingService(delegate: self)
     }()
@@ -35,7 +36,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        self.nowPlayingService.start()
+        self.playlistService.add(self.nowPlayingService)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

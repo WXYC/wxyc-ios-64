@@ -24,8 +24,7 @@ protocol NowPlayingServiceDelegate {
     func update(userActivityState: NSUserActivity)
 }
 
-final class NowPlayingService {
-    private let webservice = Webservice()
+final class NowPlayingService: PlaylistServiceObserver {
     private let delegate: NowPlayingServiceDelegate
     
     init(delegate: NowPlayingServiceDelegate) {
@@ -34,20 +33,6 @@ final class NowPlayingService {
         DispatchQueue.main.async {
             self.delegate.update(nowPlayingInfo: NowPlayingInfo.default)
         }
-    }
-    
-    public func start() {
-        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
-        
-        self.checkPlaylist()
-    }
-    
-    @objc private func checkPlaylist() {
-        let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: self.updateWith(playcutResult:))
-        
-        let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.update(artworkResult:))
     }
     
     public func updateWith(playcutResult: Result<Playcut>) {
@@ -60,7 +45,7 @@ final class NowPlayingService {
         }
     }
     
-    public func update(artworkResult: Result<UIImage>) {
+    public func updateWith(artworkResult: Result<UIImage>) {
         switch artworkResult {
         case .success(let image):
             self.delegate.update(artwork: image)
@@ -80,3 +65,25 @@ extension Playcut {
         return activity
     }
 }
+
+extension Future {
+    static func `repeat`(_ future: @escaping () -> (Future), timeInterval: TimeInterval = 30) -> Future {
+        let promise = Promise<Value>()
+        
+        let timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
+            future().observe(with: { result in
+                switch result {
+                case .success(let success):
+                    promise.resolve(with: success)
+                case .error(let error):
+                    promise.reject(with: error)
+                }
+            })
+        }
+        
+        timer.fire()
+        
+        return promise
+    }
+}
+
