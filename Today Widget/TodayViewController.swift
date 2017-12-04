@@ -17,7 +17,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServ
     @IBOutlet weak var containerStackView: UIStackView!
     @IBOutlet weak var labelsStackView: UIStackView!
 
-    let playlistService = PlaylistService()
+    var playlistService: PlaylistService?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,7 +33,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServ
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        self.playlistService.add(self)
+        self.playlistService = PlaylistService(with: self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

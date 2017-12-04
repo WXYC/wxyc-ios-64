@@ -14,7 +14,7 @@ class TVViewController: UIViewController, NowPlayingPresentable, PlaylistService
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!
     
-    let playlistService = PlaylistService()
+    var playlistService: PlaylistService?
     let radioPlayer = RadioPlayer()
     
     override func viewDidLoad() {
@@ -24,7 +24,7 @@ class TVViewController: UIViewController, NowPlayingPresentable, PlaylistService
         self.albumImageView.layer.masksToBounds = true
         
         self.setUpRemoteCommands()
-        self.playlistService.add(self)
+        self.playlistService = PlaylistService(with: self)
         self.radioPlayer.play()
     }
     
