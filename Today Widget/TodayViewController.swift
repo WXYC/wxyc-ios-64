@@ -9,7 +9,7 @@
 import UIKit
 import NotificationCenter
 
-class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceDelegate {
+class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var albumImageView: UIImageView!
@@ -18,9 +18,6 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
     @IBOutlet weak var labelsStackView: UIStackView!
 
     let playlistService = PlaylistService()
-    lazy var nowPlayingService: NowPlayingService = {
-        return NowPlayingService(delegate: self)
-    }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -36,7 +33,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        self.playlistService.add(self.nowPlayingService)
+        self.playlistService.add(self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

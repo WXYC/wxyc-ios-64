@@ -8,14 +8,12 @@
 
 import UIKit
 
-class TVViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceDelegate {
+class TVViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!
     
-    lazy var nowPlayingService: NowPlayingService = {
-        return NowPlayingService(delegate: self)
-    }()
+    let playlistService = PlaylistService()
     let radioPlayer = RadioPlayer()
     
     override func viewDidLoad() {
@@ -24,7 +22,7 @@ class TVViewController: UIViewController, NowPlayingPresentable, NowPlayingServi
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.nowPlayingService.start()
+        self.playlistService.add(self)
         self.radioPlayer.play()
     }
 
