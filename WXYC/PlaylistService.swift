@@ -44,26 +44,3 @@ final class PlaylistService {
         }
     }
 }
-
-struct NowPlayingInfoService: PlaylistServiceObserver {
-    let updateNowPlayingInfo: (NowPlayingInfo) -> ()
-    let updateArtwork: (UIImage) -> ()
-    
-    func updateWith(playcutResult: Result<Playcut>) {
-        switch playcutResult {
-        case .success(let playcut):
-            updateNowPlayingInfo(NowPlayingInfo(primaryHeading: playcut.songTitle, secondaryHeading: playcut.artistName))
-        case .error(_):
-            updateNowPlayingInfo(NowPlayingInfo.default)
-        }
-    }
-    
-    func updateWith(artworkResult: Result<UIImage>) {
-        switch artworkResult {
-        case .success(let image):
-            updateArtwork(image)
-        case .error(_):
-            updateArtwork(#imageLiteral(resourceName: "logo"))
-        }
-    }
-}

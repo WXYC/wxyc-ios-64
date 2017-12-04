@@ -1,7 +1,7 @@
 import UIKit
 import MediaPlayer
 
-class NowPlayingViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceDelegate {
+class NowPlayingViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!

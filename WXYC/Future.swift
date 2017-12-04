@@ -75,6 +75,25 @@ extension Future {
         
         return promise
     }
+    
+    static func `repeat`(_ future: @escaping () -> (Future), timeInterval: TimeInterval = 30) -> Future {
+        let promise = Promise<Value>()
+        
+        let timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
+            future().observe(with: { result in
+                switch result {
+                case .success(let success):
+                    promise.resolve(with: success)
+                case .error(let error):
+                    promise.reject(with: error)
+                }
+            })
+        }
+        
+        timer.fire()
+        
+        return promise
+    }
 }
 
 struct CombinedError: Error {

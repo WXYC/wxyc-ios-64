@@ -5,7 +5,6 @@ class RootPageViewController: UIPageViewController {
     let infoDetailViewController = InfoDetailViewController.loadFromNib()
     
     let playlistService = PlaylistService()
-    let nowPlayingService: NowPlayingService
     let lockscreenInfoService = LockscreenInfoService()
     
     var pages: [UIViewController] {
@@ -20,8 +19,6 @@ class RootPageViewController: UIPageViewController {
     // MARK: Life cycle
 
     required init?(coder: NSCoder) {
-        nowPlayingService = NowPlayingService(delegate: nowPlayingViewController)
-        
         super.init(coder: coder)
     }
 
@@ -52,7 +49,7 @@ class RootPageViewController: UIPageViewController {
     
     private func setUpPlaylistPolling() {
         self.playlistService.add(
-            self.nowPlayingService,
+            self.nowPlayingViewController,
             self.lockscreenInfoService
         )
     }
