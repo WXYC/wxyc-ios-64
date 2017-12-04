@@ -9,16 +9,16 @@
 import UIKit
 import NotificationCenter
 
-class TodayViewController: UIViewController {
-    @IBOutlet weak var songLabel: UILabel!
+class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
+    @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var artistLabel: UILabel!
-    @IBOutlet weak var albumArtworkImageView: UIImageView!
+    @IBOutlet weak var albumImageView: UIImageView!
 
     @IBOutlet weak var containerStackView: UIStackView!
     @IBOutlet weak var labelsStackView: UIStackView!
 
-    let webservice = Webservice()
-
+    let playlistService = PlaylistService()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -33,36 +33,7 @@ class TodayViewController: UIViewController {
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: self.updateWith(playcutResult:))
-
-        let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.updateWith(artworkResult:))
-    }
-    
-    // MARK: Webservice request handlers
-    
-    private func updateWith(playcutResult result: Result<Playcut>) {
-        guard case let .success(playcut) = result else {
-            return
-        }
-
-        DispatchQueue.main.async {
-            self.songLabel.text = playcut.songTitle
-            self.artistLabel.text = playcut.artistName
-        }
-    }
-    
-    private func updateWith(artworkResult: Result<UIImage>) {
-        DispatchQueue.main.async {
-            UIView.transition(with: self.view, duration: 0.25, options: [.transitionCrossDissolve], animations: {
-                if case let .success(artwork) = artworkResult {
-                    self.albumArtworkImageView.image = artwork
-                } else {
-                    self.albumArtworkImageView.image = #imageLiteral(resourceName: "logo")
-                }
-            }, completion: nil)
-        }
+        self.playlistService.add(self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

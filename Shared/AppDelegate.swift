@@ -7,12 +7,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         
-        // Trying a thing
         try! AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback)
-        try! AVAudioSession.sharedInstance().setActive(true)
         
-        // Make status bar white
-        UINavigationBar.appearance().barStyle = .black
+        #if os(iOS)
+            // Make status bar white
+            UINavigationBar.appearance().barStyle = .black
+        #endif
         
         return true
     }

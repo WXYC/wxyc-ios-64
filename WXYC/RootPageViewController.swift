@@ -4,7 +4,7 @@ class RootPageViewController: UIPageViewController {
     let nowPlayingViewController = NowPlayingViewController.loadFromNib()
     let infoDetailViewController = InfoDetailViewController.loadFromNib()
     
-    let nowPlayingService: NowPlayingService
+    let playlistService = PlaylistService()
     let lockscreenInfoService = LockscreenInfoService()
     
     var pages: [UIViewController] {
@@ -19,8 +19,6 @@ class RootPageViewController: UIPageViewController {
     // MARK: Life cycle
 
     required init?(coder: NSCoder) {
-        nowPlayingService = NowPlayingService(delegate: nowPlayingViewController)
-        
         super.init(coder: coder)
     }
 
@@ -50,39 +48,16 @@ class RootPageViewController: UIPageViewController {
     }
     
     private func setUpPlaylistPolling() {
-        _ = Timer.scheduledTimer(timeInterval: 30, target: self, selector: #selector(self.checkPlaylist), userInfo: nil, repeats: true)
-        
-        self.checkPlaylist()
+        self.playlistService.add(
+            self.nowPlayingViewController,
+            self.lockscreenInfoService
+        )
     }
     
     // MARK - Customization
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
-    }
-    
-    // MARK: Playlist stuff
-    
-    @objc private func checkPlaylist() {
-        let playcutRequest = webservice.getCurrentPlaycut()
-        playcutRequest.observe(with: self.updateWith(playcutResult:))
-        
-        let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.update(artworkResult:))
-    }
-    
-    private func updateWith(playcutResult result: Result<Playcut>) {
-        DispatchQueue.main.async {
-            self.nowPlayingService.updateWith(playcutResult: result)
-            self.lockscreenInfoService.updateWith(playcutResult: result)
-        }
-    }
-    
-    private func update(artworkResult: Result<UIImage>) {
-        DispatchQueue.main.async {
-            self.nowPlayingService.update(artworkResult: artworkResult)
-            self.lockscreenInfoService.update(artworkResult: artworkResult)
-        }
     }
 }
 

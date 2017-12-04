@@ -53,6 +53,57 @@ extension Future {
             return try Promise(value: closure(value))
         }
     }
+    
+    static func ||(lhs: Future, rhs: Future) -> Future {
+        let promise = Promise<Value>()
+        
+        lhs.observe { result in
+            switch result {
+            case let .success(value):
+                promise.resolve(with: value)
+            case .error(let firstError):
+                rhs.observe(with: { imageResult in
+                    switch imageResult {
+                    case let .success(value):
+                        promise.resolve(with: value)
+                    case let .error(secondError):
+                        promise.reject(with: CombinedError(firstError, secondError))
+                    }
+                })
+            }
+        }
+        
+        return promise
+    }
+    
+    static func `repeat`(_ future: @escaping () -> (Future), timeInterval: TimeInterval = 30) -> Future {
+        let promise = Promise<Value>()
+        
+        let timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: true) { _ in
+            future().observe(with: { result in
+                switch result {
+                case .success(let success):
+                    promise.resolve(with: success)
+                case .error(let error):
+                    promise.reject(with: error)
+                }
+            })
+        }
+        
+        timer.fire()
+        
+        return promise
+    }
+}
+
+struct CombinedError: Error {
+    let first: Error
+    let second: Error
+    
+    init(_ first: Error, _ second: Error) {
+        self.first = first
+        self.second = second
+    }
 }
 
 class Promise<Value>: Future<Value> {

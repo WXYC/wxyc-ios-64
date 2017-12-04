@@ -1,7 +1,7 @@
 import UIKit
 import MediaPlayer
 
-class NowPlayingViewController: UIViewController {
+class NowPlayingViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!
@@ -76,27 +76,5 @@ class NowPlayingViewController: UIViewController {
     override func updateUserActivityState(_ activity: NSUserActivity) {
         activity.webpageURL = self.userActivity?.webpageURL
         super.updateUserActivityState(activity)
-    }
-}
-
-extension NowPlayingViewController: NowPlayingServiceDelegate {
-    func update(nowPlayingInfo: NowPlayingInfo) {
-        self.songLabel.text = nowPlayingInfo.primaryHeading
-        self.artistLabel.text = nowPlayingInfo.secondaryHeading
-    }
-    
-    func update(artwork: UIImage) {
-        UIView.transition(
-            with: self.albumImageView,
-            duration: 0.25,
-            options: [.transitionCrossDissolve],
-            animations: { self.albumImageView.image = artwork },
-            completion: nil
-        )
-    }
-    
-    func update(userActivityState: NSUserActivity) {
-        self.userActivity = userActivityState
-        self.userActivity?.becomeCurrent()
     }
 }

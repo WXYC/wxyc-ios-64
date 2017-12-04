@@ -2,7 +2,7 @@ import Foundation
 
 extension URL {
     static var WXYCPlaylist: URL {
-        return URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=15")!
+        return URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=1")!
     }
     
     static var WXYCStream: URL {
