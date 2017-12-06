@@ -17,6 +17,7 @@ protocol PlaylistServiceObserver {
 final class PlaylistService {
     private let webservice = Webservice()
     private var observers: [PlaylistServiceObserver]
+    private let playcutRequest: Future<Playcut>
     
     init(with initialObservers: PlaylistServiceObserver...) {
         self.observers = []
@@ -24,11 +25,8 @@ final class PlaylistService {
             self.observers.append(observer)
         }
         
-        let playcutRequest = Future.repeat(webservice.getCurrentPlaycut)
+        playcutRequest = Future.repeat(webservice.getCurrentPlaycut)
         playcutRequest.observe(with: self.updateWith(playcutResult:))
-        
-        let imageRequest = playcutRequest.getArtwork()
-        imageRequest.observe(with: self.update(artworkResult:))
     }
     
     func add(_ observers: PlaylistServiceObserver...) {
@@ -46,6 +44,12 @@ final class PlaylistService {
             observer.updateWith(playcutResult: playcutResult)
         }
         
+        guard case let .success(playcut) = playcutResult else {
+            return
+        }
+        
+        let imageRequest = playcut.getArtwork()
+        imageRequest.observe(with: self.update(artworkResult:))
     }
     
     func update(artworkResult: Result<UIImage>) {

@@ -38,59 +38,31 @@ final class Webservice {
         return URLSession.shared.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
             let decoder = JSONDecoder()
             let playlist = try decoder.decode(Playlist.self, from: data)
-
             
             return playlist
         }
     }
 }
 
-extension Future where Value == Playcut {
+extension Playcut {
     func getArtwork() -> Future<UIImage> {
-        let promise = Promise<UIImage>()
-
-        let lastFMArtworkRequest = getLastFMArtwork()
-        let iTunesArtworkRequest = getItunesArtwork()
-
-        lastFMArtworkRequest.observe { imageResult in
-            switch imageResult {
-            case let .success(image):
-                promise.resolve(with: image)
-            case .error(let error):
-                if (error as? ServiceErrors) != ServiceErrors.noNewData {
-                    iTunesArtworkRequest.observe(with: { imageResult in
-                        switch imageResult {
-                        case let .success(image):
-                            promise.resolve(with: image)
-                        case .error(_):
-                            promise.resolve(with: #imageLiteral(resourceName: "logo"))
-                        }
-                    })
-                } else {
-                    promise.reject(with: error)
-                }
-            }
-        }
-
-        return promise
+        return getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
     }
     
     private func getLastFMArtwork() -> Future<UIImage> {
-        return chained(with: { playcut -> Future<UIImage> in
-            return playcut.getLastFMAlbum().getAlbumArtwork()
-        })
+        return getLastFMAlbum().getAlbumArtwork()
     }
     
     private func getLowResLastFMArtwork() -> Future<UIImage> {
-        return chained(with: { playcut -> Future<UIImage> in
-            return playcut.getLastFMAlbum().getLowResAlbumArtwork()
-        })
+        return getLastFMAlbum().getLowResAlbumArtwork()
     }
     
     private func getItunesArtwork() -> Future<UIImage> {
-        return chained(with: { playcut -> Future<UIImage> in
-            return playcut.getItunesItem().getAlbumArtwork()
-        })
+        return getItunesItem().getAlbumArtwork()
+    }
+    
+    private func getDefaultArtwork() -> Future<UIImage> {
+        return Promise(value: #imageLiteral(resourceName: "logo"))
     }
 }
 
@@ -137,7 +109,7 @@ extension Future where Value == iTunes.SearchResults.Item {
 }
 
 extension Future where Value == LastFM.Album {
-    private func getAlbumArtwork() -> Future<UIImage> {
+    fileprivate func getAlbumArtwork() -> Future<UIImage> {
         return chained(with: { album -> Future<UIImage> in
             return album.embiggenAlbumArtURL().getImage()
         })
