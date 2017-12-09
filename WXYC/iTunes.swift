@@ -14,7 +14,7 @@ struct iTunes {
     }
     
     static func searchURL(`for` playcut: Playcut) -> URL {
-        var components = URLComponents(string: "http://itunes.apple.com")!
+        var components = URLComponents(string: "https://itunes.apple.com")!
         components.path = "/search"
         components.queryItems = [
             URLQueryItem(name: "term", value: playcut.artistName + " " + playcut.songTitle),
