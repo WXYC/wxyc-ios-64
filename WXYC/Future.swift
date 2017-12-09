@@ -117,6 +117,7 @@ class Promise<Value>: Future<Value> {
     }
     
     func reject(with error: Error) {
+        print("rejected: \(error.localizedDescription)")
         result = .error(error)
     }
 }
