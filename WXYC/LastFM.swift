@@ -55,7 +55,7 @@ public struct LastFM {
     }
     
     static func searchURL(`for` playcut: Playcut, apiKey: String = apiKey) -> URL {
-        var components = URLComponents(string: "http://ws.audioscrobbler.com")!
+        var components = URLComponents(string: "https://ws.audioscrobbler.com")!
         components.path = "/2.0/"
         components.queryItems = [
             URLQueryItem(name: "api_key", value: apiKey),
