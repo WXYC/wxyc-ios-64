@@ -54,6 +54,9 @@
 		345B0BC11FBF6D6C00C580B0 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */; };
 		348E6EE51FAE693000B77665 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */; };
 		34AC2AF41FCF5DC100F72879 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34AC2AF31FCF5DC100F72879 /* PlaybackButton.swift */; };
+		34B0639520150F1A007C771B /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B0639420150F1A007C771B /* Cache.swift */; };
+		34B0639620163866007C771B /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B0639420150F1A007C771B /* Cache.swift */; };
+		34B0639720163867007C771B /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B0639420150F1A007C771B /* Cache.swift */; };
 		34E7C6881FBF77FC00825164 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */; };
 		9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E11B1ABF6FEA00312E2B /* AppDelegate.swift */; };
 		9409E1241ABF6FEA00312E2B /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1221ABF6FEA00312E2B /* iOSMain.storyboard */; };
@@ -127,6 +130,7 @@
 		345B0BC01FBF6D6C00C580B0 /* NowPlayingViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
 		348E6EE41FAE693000B77665 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		34AC2AF31FCF5DC100F72879 /* PlaybackButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackButton.swift; sourceTree = "<group>"; };
+		34B0639420150F1A007C771B /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		34E7C6871FBF77FC00825164 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		9409E1161ABF6FEA00312E2B /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9409E11A1ABF6FEA00312E2B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -336,6 +340,7 @@
 				235101FE1FB93B4500ED3DDF /* LastFM.swift */,
 				235102001FB95A1300ED3DDF /* WXYC.swift */,
 				235102021FB95B8800ED3DDF /* iTunes.swift */,
+				34B0639420150F1A007C771B /* Cache.swift */,
 			);
 			name = Model;
 			path = ../WXYC;
@@ -529,6 +534,7 @@
 				231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */,
 				231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */,
 				231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */,
+				34B0639720163867007C771B /* Cache.swift in Sources */,
 				23A3F3F61FD36B5F007B660C /* SpringLabel.swift in Sources */,
 				23A3F3F31FD36789007B660C /* NowPlayingPresentable.swift in Sources */,
 				231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */,
@@ -543,6 +549,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2347D6A51FD32DA400A7F77E /* SwiftRadio-Settings.swift in Sources */,
+				34B0639620163866007C771B /* Cache.swift in Sources */,
 				2347D6A21FD32CAA00A7F77E /* LastFM.swift in Sources */,
 				23A3F3F51FD36B5E007B660C /* SpringLabel.swift in Sources */,
 				23A3F3FA1FD372AF007B660C /* AppDelegate.swift in Sources */,
@@ -575,6 +582,7 @@
 				235101FF1FB93B4500ED3DDF /* LastFM.swift in Sources */,
 				34AC2AF41FCF5DC100F72879 /* PlaybackButton.swift in Sources */,
 				344136EC1FD4FBF9002B5488 /* PlaylistService.swift in Sources */,
+				34B0639520150F1A007C771B /* Cache.swift in Sources */,
 				94DB0AA51B98B762005ED993 /* SpringImageView.swift in Sources */,
 				2347D68A1FD1BE0800A7F77E /* RadioPlayer.swift in Sources */,
 				94D260911B45D20000DE671C /* SwiftRadio-Settings.swift in Sources */,

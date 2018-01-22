@@ -8,9 +8,12 @@ enum Result<T> {
 public enum ServiceErrors: Error {
     case noResults
     case noNewData
+    case noCachedResult
 }
 
 final class Webservice {
+    private let cache = Cache.WXYC
+    
     // I noticed that after running the app for a while the album artwork would consistently start returning low res
     // images from the iTunes API. As you may have guessed, Last.FM rate limits calls to their APIs. The rule of thumb
     // is no more than 5 calls in 5 minutes from a given IP.
@@ -19,7 +22,7 @@ final class Webservice {
     private var lastFetchedPlaycut: Playcut?
     
     func getCurrentPlaycut() -> Future<Playcut> {
-        return getPlaylist().transformed(with: { playlist -> Playcut in
+        return getCachedPlaycut() || getPlaylist().transformed(with: { playlist -> Playcut in
             guard let playcut = playlist.playcuts.first else {
                 throw ServiceErrors.noResults
             }
@@ -27,11 +30,15 @@ final class Webservice {
             if playcut == self.lastFetchedPlaycut {
                 throw ServiceErrors.noNewData
             } else {
-                self.lastFetchedPlaycut = playcut
+                self.cache[Cache.CacheKeys.playcut.rawValue] = playcut
             }
 
             return playcut
         })
+    }
+    
+    private func getCachedPlaycut() -> Future<Playcut> {
+        return self.cache.getPlaycut()
     }
     
     private func getPlaylist() -> Future<Playlist> {
@@ -138,5 +145,23 @@ extension URL {
 extension LastFM.Album {
     func embiggenAlbumArtURL() -> URL {
         return largestAlbumArt.url
+    }
+}
+
+extension Cache {
+    enum CacheKeys: String {
+        case playcut
+    }
+    
+    func getPlaycut() -> Future<Playcut> {
+        let promise = Promise<Playcut>()
+        
+        if let cachedPlaycut: Playcut = self[CacheKeys.playcut.rawValue] {
+            promise.resolve(with: cachedPlaycut)
+        } else {
+            promise.reject(with: ServiceErrors.noCachedResult)
+        }
+        
+        return promise
     }
 }
