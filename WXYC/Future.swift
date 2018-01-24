@@ -19,7 +19,12 @@ class Future<Value> {
     }
 }
 
+
 extension Future {
+    enum FutureError: Error {
+        case transformationFailure
+    }
+    
     func chained<NextValue>(with closure: @escaping (Value) throws -> Future<NextValue>) -> Future<NextValue> {
         let promise = Promise<NextValue>()
         
@@ -51,6 +56,16 @@ extension Future {
     func transformed<NextValue>(with closure: @escaping (Value) throws -> NextValue) -> Future<NextValue> {
         return chained { value in
             return try Promise(value: closure(value))
+        }
+    }
+    
+    func transformed<NextValue>(with closure: @escaping (Value) -> NextValue?) -> Future<NextValue> {
+        return chained { value in
+            if let value = closure(value) {
+                return Promise(value: value)
+            } else {
+                throw FutureError.transformationFailure
+            }
         }
     }
     
