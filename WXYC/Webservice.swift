@@ -26,19 +26,34 @@ final class Webservice {
             guard let playcut = playlist.playcuts.first else {
                 throw ServiceErrors.noResults
             }
+
+            // Retrieve the playcut from the cache, for later comparison
+            let cachedPlaycut: Playcut? = self.cache[Cache.CacheKey.playcut]
             
-            if playcut == self.lastFetchedPlaycut {
+            // We cache the playcut. It may be that this playcut is already in the cache. That's okay, because what we really
+            // want is to reset the timestamp of the cache record
+            self.cache[Cache.CacheKey.playcut] = playcut
+            
+            if playcut == cachedPlaycut {
                 throw ServiceErrors.noNewData
             } else {
-                self.cache[Cache.CacheKeys.playcut.rawValue] = playcut
+                return playcut
             }
-
-            return playcut
         })
     }
     
     private func getCachedPlaycut() -> Future<Playcut> {
-        return self.cache.getPlaycut()
+        let cachedPlaycutRequest: Future<Playcut> = self.cache.getCachedValue(key: Cache.CacheKey.playcut)
+        
+        cachedPlaycutRequest.observe { result in
+            // We receive an error in the event that the cached record either expired or wasn't there to begin with.
+            if case .error(_) = result {
+                // We therefore need to evict the cached artwork associated with the playcut.
+                self.cache[Cache.CacheKey.artwork] = nil as UIImage?
+            }
+        }
+        
+        return cachedPlaycutRequest
     }
     
     private func getPlaylist() -> Future<Playlist> {
@@ -53,7 +68,14 @@ final class Webservice {
 
 extension Playcut {
     func getArtwork() -> Future<UIImage> {
-        return getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
+        return getCachedArtwork() || getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
+    }
+    
+    private func getCachedArtwork() -> Future<UIImage> {
+        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: Cache.CacheKey.artwork)
+        let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
+
+        return imageRequest
     }
     
     private func getLastFMArtwork() -> Future<UIImage> {
@@ -149,15 +171,16 @@ extension LastFM.Album {
 }
 
 extension Cache {
-    enum CacheKeys: String {
+    enum CacheKey: String {
         case playcut
+        case artwork
     }
     
-    func getPlaycut() -> Future<Playcut> {
-        let promise = Promise<Playcut>()
+    func getCachedValue<Value: Codable>(key: CacheKey) -> Future<Value> {
+        let promise = Promise<Value>()
         
-        if let cachedPlaycut: Playcut = self[CacheKeys.playcut.rawValue] {
-            promise.resolve(with: cachedPlaycut)
+        if let cachedValue: Value = self[key] {
+            promise.resolve(with: cachedValue)
         } else {
             promise.reject(with: ServiceErrors.noCachedResult)
         }

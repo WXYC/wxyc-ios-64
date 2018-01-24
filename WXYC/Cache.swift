@@ -3,11 +3,7 @@ import Foundation
 struct CachedRecord<Value: Codable>: Codable {
     let value: Value
     let timestamp: TimeInterval = Date.timeIntervalSinceReferenceDate
-    var lifespan: TimeInterval = 30
-    
-    init(value: Value) {
-        self.value = value
-    }
+    let lifespan: TimeInterval = 30
     
     var isExpired: Bool {
         return Date.timeIntervalSinceReferenceDate - self.timestamp > self.lifespan
@@ -15,15 +11,15 @@ struct CachedRecord<Value: Codable>: Codable {
 }
 
 final class Cache {
-    let defaults: UserDefaults
+    private let defaults: UserDefaults
     
     init(defaults: UserDefaults) {
         self.defaults = defaults
     }
     
-    subscript<Value: Codable>(key: String) -> Value? {
+    subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
         get {
-            guard let encodedCachedRecord = self.defaults.object(forKey: key) as? Data else {
+            guard let encodedCachedRecord = self.defaults.object(forKey: key.rawValue) as? Data else {
                 return nil
             }
             
@@ -40,16 +36,17 @@ final class Cache {
             return cachedRecord.value
         }
         set {
-            guard let newValue = newValue else {
-                return
+            if let newValue = newValue {
+                
+                let cachedRecord = CachedRecord(value: newValue)
+                
+                let encoder = JSONEncoder()
+                let encodedCachedRecord = try? encoder.encode(cachedRecord)
+                
+                self.defaults.set(encodedCachedRecord, forKey: key.rawValue)
+            } else {
+                self.defaults.set(nil, forKey: key.rawValue)
             }
-            
-            let cachedRecord = CachedRecord(value: newValue)
-            
-            let encoder = JSONEncoder()
-            let encodedCachedRecord = try? encoder.encode(cachedRecord)
-            
-            self.defaults.set(encodedCachedRecord, forKey: key)
         }
     }
 }
