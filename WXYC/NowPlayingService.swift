@@ -1,27 +1,27 @@
 import UIKit
 
+/// A service request will either succeed with a value or fail with an error, never both.
 enum Result<T> {
     case success(T)
     case error(Error)
 }
 
+/// `NowPlayingService` will throw one of these errors, depending
 public enum ServiceErrors: Error {
     case noResults
     case noNewData
     case noCachedResult
 }
 
-final class Webservice {
-    private let cache = Cache.WXYC
+/// `NowPlayingService` is responsible for retrieving the now playing
+public final class NowPlayingService {
+    private let cache: Cache
     
-    // I noticed that after running the app for a while the album artwork would consistently start returning low res
-    // images from the iTunes API. As you may have guessed, Last.FM rate limits calls to their APIs. The rule of thumb
-    // is no more than 5 calls in 5 minutes from a given IP.
-    // The workaround, as I've done here, is to cache the previous result from the WXYC API. If the new result matches,
-    // we stop the chain of service calls.
-    private var lastFetchedPlaycut: Playcut?
+    public init(cache: Cache = .WXYC) {
+        self.cache = cache
+    }
     
-    func getCurrentPlaycut() -> Future<Playcut> {
+    public func getCurrentPlaycut() -> Future<Playcut> {
         return getCachedPlaycut() || getPlaylist().transformed(with: { playlist -> Playcut in
             guard let playcut = playlist.playcuts.first else {
                 throw ServiceErrors.noResults
@@ -49,7 +49,7 @@ final class Webservice {
             // We receive an error in the event that the cached record either expired or wasn't there to begin with.
             if case .error(_) = result {
                 // We therefore need to evict the cached artwork associated with the playcut.
-                self.cache[Cache.CacheKey.artwork] = nil as UIImage?
+                self.cache[Cache.CacheKey.artwork] = nil as Data?
             }
         }
         
@@ -68,7 +68,12 @@ final class Webservice {
 
 extension Playcut {
     func getArtwork() -> Future<UIImage> {
-        return getCachedArtwork() || getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
+        let request = getCachedArtwork() || getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
+        request.onSuccess { image in
+            Cache.WXYC[Cache.CacheKey.artwork] = UIImagePNGRepresentation(image)
+        }
+        
+        return request
     }
     
     private func getCachedArtwork() -> Future<UIImage> {
@@ -95,24 +100,67 @@ extension Playcut {
     }
 }
 
+struct WebRequest<A> {
+    let url: URL
+    let transform: (Data) throws -> A
+}
+
+extension WebRequest where A: Codable {
+    init(url: URL) {
+        self.url = url
+        self.transform = { data in
+            let decoder = JSONDecoder()
+            return try decoder.decode(A.self, from: data)
+        }
+    }
+}
+
+extension WebRequest {
+    static func iTunesItemRequest(for playcut: Playcut) -> WebRequest<iTunes.SearchResults.Item> {
+        let url = iTunes.searchURL(for: playcut)
+        
+        return WebRequest<iTunes.SearchResults.Item>(url: url, transform: { data in
+            let decoder = JSONDecoder()
+            let results = try decoder.decode(iTunes.SearchResults.self, from: data)
+            
+            if let item = results.results.first {
+                return item
+            } else {
+                throw ServiceErrors.noResults
+            }
+        })
+    }
+}
+
+extension URLSession {
+    func getItunesItem(for playcut: Playcut) -> Future<iTunes.SearchResults.Item> {
+        let url = iTunes.searchURL(for: playcut)
+        return self.request(url: url)
+            .transformed(with: { data -> iTunes.SearchResults.Item in
+                let decoder = JSONDecoder()
+                let results = try decoder.decode(iTunes.SearchResults.self, from: data)
+                
+                if let item = results.results.first {
+                    return item
+                } else {
+                    throw ServiceErrors.noResults
+                }
+            })
+    }
+}
+
 extension Playcut {
     func getItunesItem() -> Future<iTunes.SearchResults.Item> {
         let url = iTunes.searchURL(for: self)
         return URLSession.shared.request(url: url)
-            .chained(with: { data -> Promise<iTunes.SearchResults.Item> in
-                do {
-                    let decoder = JSONDecoder()
-                    let results = try decoder.decode(iTunes.SearchResults.self, from: data)
-                    
-                    if let item = results.results.first {
-                        return Promise<iTunes.SearchResults.Item>(value: item)
-                    } else {
-                        throw ServiceErrors.noResults
-                    }
-                } catch {
-                    let result = Promise<iTunes.SearchResults.Item>()
-                    result.reject(with: error)
-                    return result
+            .transformed(with: { data -> iTunes.SearchResults.Item in
+                let decoder = JSONDecoder()
+                let results = try decoder.decode(iTunes.SearchResults.self, from: data)
+
+                if let item = results.results.first {
+                    return item
+                } else {
+                    throw ServiceErrors.noResults
                 }
             })
     }
@@ -170,7 +218,7 @@ extension LastFM.Album {
     }
 }
 
-extension Cache {
+private extension Cache {
     enum CacheKey: String {
         case playcut
         case artwork
@@ -186,5 +234,11 @@ extension Cache {
         }
         
         return promise
+    }
+}
+
+public extension Cache {
+    static var WXYC: Cache {
+        return Cache(defaults: UserDefaults(suiteName: "org.wxyc.apps")!)
     }
 }

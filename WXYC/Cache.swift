@@ -10,7 +10,7 @@ struct CachedRecord<Value: Codable>: Codable {
     }
 }
 
-final class Cache {
+public final class Cache {
     private let defaults: UserDefaults
     
     init(defaults: UserDefaults) {
@@ -37,7 +37,6 @@ final class Cache {
         }
         set {
             if let newValue = newValue {
-                
                 let cachedRecord = CachedRecord(value: newValue)
                 
                 let encoder = JSONEncoder()
@@ -48,11 +47,5 @@ final class Cache {
                 self.defaults.set(nil, forKey: key.rawValue)
             }
         }
-    }
-}
-
-extension Cache {
-    static var WXYC: Cache {
-        return Cache(defaults: UserDefaults(suiteName: "org.wxyc.apps")!)
     }
 }

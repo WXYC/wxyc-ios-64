@@ -14,8 +14,6 @@ class RootPageViewController: UIPageViewController {
         ]
     }
     
-    let webservice = Webservice()
-    
     // MARK: Life cycle
 
     required init?(coder: NSCoder) {
