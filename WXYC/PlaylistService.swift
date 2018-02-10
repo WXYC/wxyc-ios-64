@@ -15,7 +15,7 @@ protocol PlaylistServiceObserver {
 }
 
 final class PlaylistService {
-    private let webservice = Webservice()
+    private let nowPlayingService = NowPlayingService()
     private var observers: [PlaylistServiceObserver]
     private let playcutRequest: Future<Playcut>
     
@@ -25,7 +25,7 @@ final class PlaylistService {
             self.observers.append(observer)
         }
         
-        playcutRequest = Future.repeat(webservice.getCurrentPlaycut)
+        playcutRequest = Future.repeat(nowPlayingService.getCurrentPlaycut)
         playcutRequest.observe(with: self.updateWith(playcutResult:))
     }
     

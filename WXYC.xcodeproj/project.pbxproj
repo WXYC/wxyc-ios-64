@@ -16,7 +16,7 @@
 		231E5BF71FCBD7A100894F18 /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
 		231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
 		231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102021FB95B8800ED3DDF /* iTunes.swift */; };
-		231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
+		231E5BFA1FCBD7A100894F18 /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* NowPlayingService.swift */; };
 		231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FC1FB9002000ED3DDF /* Future.swift */; };
 		231E5BFC1FCBD92200894F18 /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
 		231E5BFD1FCBDE5700894F18 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
@@ -24,7 +24,7 @@
 		2347D6941FD323F600A7F77E /* TVViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6931FD323F600A7F77E /* TVViewController.swift */; };
 		2347D6971FD323F600A7F77E /* TVMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6951FD323F600A7F77E /* TVMain.storyboard */; };
 		2347D6991FD323F600A7F77E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2347D6981FD323F600A7F77E /* Assets.xcassets */; };
-		2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
+		2347D69F1FD32BCC00A7F77E /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* NowPlayingService.swift */; };
 		2347D6A01FD32C9D00A7F77E /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2347D6891FD1BE0800A7F77E /* RadioPlayer.swift */; };
 		2347D6A11FD32CA300A7F77E /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235102001FB95A1300ED3DDF /* WXYC.swift */; };
 		2347D6A21FD32CAA00A7F77E /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235101FE1FB93B4500ED3DDF /* LastFM.swift */; };
@@ -62,7 +62,7 @@
 		9409E1241ABF6FEA00312E2B /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1221ABF6FEA00312E2B /* iOSMain.storyboard */; };
 		9409E1261ABF6FEA00312E2B /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9409E1251ABF6FEA00312E2B /* Images.xcassets */; };
 		9409E1401ABF78B000312E2B /* NowPlayingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9409E13F1ABF78B000312E2B /* NowPlayingViewController.swift */; };
-		949BBB401ACC9DEE005B7C26 /* Webservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */; };
+		949BBB401ACC9DEE005B7C26 /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949BBB3F1ACC9DEE005B7C26 /* NowPlayingService.swift */; };
 		94AC70AE1AD05C6200652982 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94AC70AD1AD05C6200652982 /* RadioStation.swift */; };
 		94D1D0A51AD6D6230022CA11 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D1D0A41AD6D6230022CA11 /* InfoDetailViewController.swift */; };
 		94D260911B45D20000DE671C /* SwiftRadio-Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */; };
@@ -138,7 +138,7 @@
 		9409E1231ABF6FEA00312E2B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/iOSMain.storyboard; sourceTree = "<group>"; };
 		9409E1251ABF6FEA00312E2B /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		9409E13F1ABF78B000312E2B /* NowPlayingViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingViewController.swift; sourceTree = "<group>"; };
-		949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Webservice.swift; sourceTree = "<group>"; };
+		949BBB3F1ACC9DEE005B7C26 /* NowPlayingService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingService.swift; sourceTree = "<group>"; };
 		94AC70AD1AD05C6200652982 /* RadioStation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RadioStation.swift; sourceTree = "<group>"; };
 		94D1D0A41AD6D6230022CA11 /* InfoDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InfoDetailViewController.swift; sourceTree = "<group>"; };
 		94D260901B45D20000DE671C /* SwiftRadio-Settings.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "SwiftRadio-Settings.swift"; sourceTree = "<group>"; };
@@ -290,7 +290,7 @@
 		94AC70AF1AD05C7400652982 /* Networking */ = {
 			isa = PBXGroup;
 			children = (
-				949BBB3F1ACC9DEE005B7C26 /* Webservice.swift */,
+				949BBB3F1ACC9DEE005B7C26 /* NowPlayingService.swift */,
 				235101FC1FB9002000ED3DDF /* Future.swift */,
 				344136EB1FD4FBF9002B5488 /* PlaylistService.swift */,
 			);
@@ -531,7 +531,7 @@
 				231E5BF81FCBD7A100894F18 /* WXYC.swift in Sources */,
 				344136EE1FD4FC9D002B5488 /* PlaylistService.swift in Sources */,
 				23A3F3F81FD36B6B007B660C /* Spring.swift in Sources */,
-				231E5BFA1FCBD7A100894F18 /* Webservice.swift in Sources */,
+				231E5BFA1FCBD7A100894F18 /* NowPlayingService.swift in Sources */,
 				231E5BFB1FCBD7A100894F18 /* Future.swift in Sources */,
 				231E5BF91FCBD7A100894F18 /* iTunes.swift in Sources */,
 				34B0639720163867007C771B /* Cache.swift in Sources */,
@@ -557,7 +557,7 @@
 				2347D6941FD323F600A7F77E /* TVViewController.swift in Sources */,
 				23A3F3F71FD36B69007B660C /* Spring.swift in Sources */,
 				2347D6A11FD32CA300A7F77E /* WXYC.swift in Sources */,
-				2347D69F1FD32BCC00A7F77E /* Webservice.swift in Sources */,
+				2347D69F1FD32BCC00A7F77E /* NowPlayingService.swift in Sources */,
 				2347D6A61FD32DAE00A7F77E /* iTunes.swift in Sources */,
 				2347D6A41FD32D3C00A7F77E /* Future.swift in Sources */,
 				2347D6A31FD32D2C00A7F77E /* RadioStation.swift in Sources */,
@@ -590,7 +590,7 @@
 				94DB0AA61B98B762005ED993 /* SpringLabel.swift in Sources */,
 				9409E1401ABF78B000312E2B /* NowPlayingViewController.swift in Sources */,
 				94D1D0A51AD6D6230022CA11 /* InfoDetailViewController.swift in Sources */,
-				949BBB401ACC9DEE005B7C26 /* Webservice.swift in Sources */,
+				949BBB401ACC9DEE005B7C26 /* NowPlayingService.swift in Sources */,
 				235101FD1FB9002100ED3DDF /* Future.swift in Sources */,
 				9409E11C1ABF6FEA00312E2B /* AppDelegate.swift in Sources */,
 				94D260961B45E3FA00DE671C /* AnimationFrames.swift in Sources */,

@@ -1,6 +1,6 @@
 import Foundation
 
-class Future<Value> {
+public class Future<Value> {
     fileprivate var result: Result<Value>? {
         didSet { result.map(report) }
     }
@@ -66,6 +66,12 @@ extension Future {
             } else {
                 throw FutureError.transformationFailure
             }
+        }
+    }
+    
+    func onSuccess(_ closure: @escaping (Value) -> Void) {
+        _ = transformed { value -> Void in
+            closure(value)
         }
     }
     
