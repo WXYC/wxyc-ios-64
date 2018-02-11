@@ -1,9 +1,12 @@
 import Foundation
 
+let defaultLifespan: TimeInterval = 30
+
 struct CachedRecord<Value: Codable>: Codable {
+    
     let value: Value
     let timestamp: TimeInterval = Date.timeIntervalSinceReferenceDate
-    let lifespan: TimeInterval = 30
+    let lifespan: TimeInterval
     
     var isExpired: Bool {
         return Date.timeIntervalSinceReferenceDate - self.timestamp > self.lifespan
@@ -13,11 +16,23 @@ struct CachedRecord<Value: Codable>: Codable {
 public final class Cache {
     private let defaults: UserDefaults
     
-    init(defaults: UserDefaults) {
+    public init(defaults: UserDefaults) {
         self.defaults = defaults
     }
     
-    subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
+    public subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
+        get {
+            return self[key, defaultLifespan]
+        }
+        set {
+            self[key, defaultLifespan] = newValue
+        }
+    }
+    
+    public subscript<Key: RawRepresentable, Value: Codable>(
+        key: Key,
+        lifespan: TimeInterval
+        ) -> Value? where Key.RawValue == String {
         get {
             guard let encodedCachedRecord = self.defaults.object(forKey: key.rawValue) as? Data else {
                 return nil
@@ -37,7 +52,7 @@ public final class Cache {
         }
         set {
             if let newValue = newValue {
-                let cachedRecord = CachedRecord(value: newValue)
+                let cachedRecord = CachedRecord(value: newValue, lifespan: lifespan)
                 
                 let encoder = JSONEncoder()
                 let encodedCachedRecord = try? encoder.encode(cachedRecord)
