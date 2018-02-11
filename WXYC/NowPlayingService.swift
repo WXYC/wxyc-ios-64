@@ -13,12 +13,18 @@ public enum ServiceErrors: Error {
     case noCachedResult
 }
 
+public protocol WebSession {
+    func request(url: URL) -> Future<Data>
+}
+
 /// `NowPlayingService` is responsible for retrieving the now playing
 public final class NowPlayingService {
     private let cache: Cache
+    private let webSession: URLSession
     
-    public init(cache: Cache = .WXYC) {
+    public init(cache: Cache = .WXYC, webSession: URLSession = URLSession.shared) {
         self.cache = cache
+        self.webSession = webSession
     }
     
     public func getCurrentPlaycut() -> Future<Playcut> {
@@ -66,7 +72,7 @@ public final class NowPlayingService {
     }
 }
 
-extension Playcut {
+internal extension Playcut {
     func getArtwork() -> Future<UIImage> {
         let request = getCachedArtwork() || getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
         request.onSuccess { image in
@@ -203,8 +209,8 @@ extension Future where Value == LastFM.Album {
     }
 }
 
-extension URL {
-    func getImage() -> Future<UIImage> {
+public extension URL {
+    public func getImage() -> Future<UIImage> {
         return URLSession.shared.request(url: self)
             .chained(with: { (data) -> Future<UIImage> in
                 return Promise(value: UIImage(data: data))
@@ -212,7 +218,25 @@ extension URL {
     }
 }
 
-extension LastFM.Album {
+extension URLSession: WebSession {
+    public func request(url: URL) -> Future<Data> {
+        let promise = Promise<Data>()
+        
+        let task = dataTask(with: url) { data, _, error in
+            if let error = error {
+                promise.reject(with: error)
+            } else {
+                promise.resolve(with: data ?? Data())
+            }
+        }
+        
+        task.resume()
+        
+        return promise
+    }
+}
+
+private extension LastFM.Album {
     func embiggenAlbumArtURL() -> URL {
         return largestAlbumArt.url
     }

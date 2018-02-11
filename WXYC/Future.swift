@@ -142,21 +142,3 @@ class Promise<Value>: Future<Value> {
         result = .error(error)
     }
 }
-
-extension URLSession {
-    func request(url: URL) -> Future<Data> {
-        let promise = Promise<Data>()
-        
-        let task = dataTask(with: url) { data, _, error in
-            if let error = error {
-                promise.reject(with: error)
-            } else {
-                promise.resolve(with: data ?? Data())
-            }
-        }
-        
-        task.resume()
-        
-        return promise
-    }
-}
