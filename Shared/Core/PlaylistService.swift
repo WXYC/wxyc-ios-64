@@ -9,17 +9,17 @@
 import Foundation
 import UIKit
 
-protocol PlaylistServiceObserver {
+public protocol PlaylistServiceObserver: class {
     func updateWith(playcutResult: Result<Playcut>)
     func updateWith(artworkResult: Result<UIImage>)
 }
 
-final class PlaylistService {
+public final class PlaylistService {
     private let nowPlayingService = NowPlayingService()
     private var observers: [PlaylistServiceObserver]
     private let playcutRequest: Future<Playcut>
     
-    init(with initialObservers: PlaylistServiceObserver...) {
+    public init(with initialObservers: PlaylistServiceObserver...) {
         self.observers = []
         for observer in initialObservers {
             self.observers.append(observer)

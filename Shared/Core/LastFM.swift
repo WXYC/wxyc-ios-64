@@ -1,6 +1,11 @@
 import Foundation
 
 public struct LastFM {
+    enum API {
+        static let Key    = "45f85235ffc46cbb8769d545c8059399"
+        static let Secret = "f57464fb062d51b6581bf6dc8321f40a"
+    }
+    
     private init() { }
     
     public enum Errors: Error {
@@ -54,7 +59,7 @@ public struct LastFM {
         }
     }
     
-    static func searchURL(`for` playcut: Playcut, apiKey: String = apiKey) -> URL {
+    static func searchURL(`for` playcut: Playcut, apiKey: String = API.Key) -> URL {
         var components = URLComponents(string: "https://ws.audioscrobbler.com")!
         components.path = "/2.0/"
         components.queryItems = [
