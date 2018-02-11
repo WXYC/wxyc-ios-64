@@ -37,7 +37,7 @@ public struct Playcut: PlaylistItem, Codable, Equatable {
     public let releaseTitle: String?
 }
 
-extension Playcut {
+public extension Playcut {
     func userActivityState() -> NSUserActivity {
         let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
         let url: String! = "https://www.google.com/search?q=\(artistName)+\(songTitle)"

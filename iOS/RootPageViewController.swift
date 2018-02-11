@@ -1,4 +1,5 @@
 import UIKit
+import Core
 
 class RootPageViewController: UIPageViewController {
     let nowPlayingViewController = NowPlayingViewController.loadFromNib()

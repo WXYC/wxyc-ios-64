@@ -8,6 +8,9 @@
 
 import UIKit
 import NotificationCenter
+import UI
+import Core
+import Spring
 
 class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var songLabel: SpringLabel!

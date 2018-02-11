@@ -7,14 +7,16 @@
 //
 
 import UIKit
+import Spring
+import Core
 
-protocol NowPlayingPresentable {
-    weak var songLabel: SpringLabel! { get }
-    weak var artistLabel: UILabel! { get }
-    weak var albumImageView: UIImageView! { get }
+public protocol NowPlayingPresentable: class {
+    var songLabel: SpringLabel! { get }
+    var artistLabel: UILabel! { get }
+    var albumImageView: UIImageView! { get }
 }
 
-extension PlaylistServiceObserver where Self: UIResponder & NowPlayingPresentable {
+public extension PlaylistServiceObserver where Self: UIResponder & NowPlayingPresentable {
     func updateWith(playcutResult: Result<Playcut>) {
         DispatchQueue.main.async {
             switch playcutResult {

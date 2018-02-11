@@ -1,4 +1,5 @@
 import MessageUI
+import Core
 
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!

@@ -9,7 +9,7 @@
 import Foundation
 import AVFoundation
 
-final class RadioPlayer {
+public final class RadioPlayer {
     private let player = AVPlayer(url: URL.WXYCStream)
     
     public init() {

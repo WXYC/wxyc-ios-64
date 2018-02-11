@@ -1,7 +1,7 @@
 import UIKit
 
 /// A service request will either succeed with a value or fail with an error, never both.
-enum Result<T> {
+public enum Result<T> {
     case success(T)
     case error(Error)
 }

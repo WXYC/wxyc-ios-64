@@ -8,6 +8,9 @@
 
 import UIKit
 import MediaPlayer
+import Core
+import UI
+import Spring
 
 class TVViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
