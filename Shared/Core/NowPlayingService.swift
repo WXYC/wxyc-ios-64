@@ -17,12 +17,16 @@ public protocol WebSession {
     func request(url: URL) -> Future<Data>
 }
 
+public protocol Cachable {
+    subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String { get set }
+}
+
 /// `NowPlayingService` is responsible for retrieving the now playing
 public final class NowPlayingService {
-    private let cache: Cache
-    private let webSession: URLSession
+    private var cache: Cachable
+    private let webSession: WebSession
     
-    public init(cache: Cache = .WXYC, webSession: URLSession = URLSession.shared) {
+    public init(cache: Cachable = Cache.WXYC, webSession: WebSession = URLSession.shared) {
         self.cache = cache
         self.webSession = webSession
     }
@@ -34,11 +38,11 @@ public final class NowPlayingService {
             }
 
             // Retrieve the playcut from the cache, for later comparison
-            let cachedPlaycut: Playcut? = self.cache[Cache.CacheKey.playcut]
+            let cachedPlaycut: Playcut? = self.cache[CacheKey.playcut]
             
             // We cache the playcut. It may be that this playcut is already in the cache. That's okay, because what we really
             // want is to reset the timestamp of the cache record
-            self.cache[Cache.CacheKey.playcut] = playcut
+            self.cache[CacheKey.playcut] = playcut
             
             if playcut == cachedPlaycut {
                 throw ServiceErrors.noNewData
@@ -49,13 +53,13 @@ public final class NowPlayingService {
     }
     
     private func getCachedPlaycut() -> Future<Playcut> {
-        let cachedPlaycutRequest: Future<Playcut> = self.cache.getCachedValue(key: Cache.CacheKey.playcut)
+        let cachedPlaycutRequest: Future<Playcut> = self.cache.getCachedValue(key: CacheKey.playcut)
         
         cachedPlaycutRequest.observe { result in
             // We receive an error in the event that the cached record either expired or wasn't there to begin with.
             if case .error(_) = result {
                 // We therefore need to evict the cached artwork associated with the playcut.
-                self.cache[Cache.CacheKey.artwork] = nil as Data?
+                self.cache[CacheKey.artwork] = nil as Data?
             }
         }
         
@@ -76,14 +80,14 @@ internal extension Playcut {
     func getArtwork() -> Future<UIImage> {
         let request = getCachedArtwork() || getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
         request.onSuccess { image in
-            Cache.WXYC[Cache.CacheKey.artwork] = UIImagePNGRepresentation(image)
+            Cache.WXYC[CacheKey.artwork] = UIImagePNGRepresentation(image)
         }
         
         return request
     }
     
     private func getCachedArtwork() -> Future<UIImage> {
-        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: Cache.CacheKey.artwork)
+        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: CacheKey.artwork)
         let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
 
         return imageRequest
@@ -242,12 +246,12 @@ private extension LastFM.Album {
     }
 }
 
-private extension Cache {
-    enum CacheKey: String {
-        case playcut
-        case artwork
-    }
-    
+public enum CacheKey: String {
+    case playcut
+    case artwork
+}
+
+private extension Cachable {
     func getCachedValue<Value: Codable>(key: CacheKey) -> Future<Value> {
         let promise = Promise<Value>()
         
