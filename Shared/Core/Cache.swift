@@ -13,10 +13,20 @@ struct CachedRecord<Value: Codable>: Codable {
     }
 }
 
-public final class Cache {
-    private let defaults: UserDefaults
+public protocol Defaults {
+    func object(forKey defaultName: String) -> Any?
     
-    public init(defaults: UserDefaults) {
+    func set(_ value: Any?, forKey defaultName: String)
+}
+
+extension UserDefaults: Defaults {
+    
+}
+
+public final class Cache: Cachable {
+    private let defaults: Defaults
+    
+    public init(defaults: Defaults) {
         self.defaults = defaults
     }
     
@@ -32,7 +42,7 @@ public final class Cache {
     public subscript<Key: RawRepresentable, Value: Codable>(
         key: Key,
         lifespan: TimeInterval
-        ) -> Value? where Key.RawValue == String {
+    ) -> Value? where Key.RawValue == String {
         get {
             guard let encodedCachedRecord = self.defaults.object(forKey: key.rawValue) as? Data else {
                 return nil
