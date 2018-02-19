@@ -19,7 +19,6 @@
 		343400482030A1CD00FC778F /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */; };
 		343400492030A1CD00FC778F /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */; };
 		3434004A2030A1CD00FC778F /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
-		3434004B2030A1CD00FC778F /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBF22030A1CC00FC778F /* Info.plist */; };
 		343400572030A1CD00FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		343400582030A1CD00FC778F /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
 		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
@@ -602,7 +601,6 @@
 				343400432030A1CD00FC778F /* LaunchScreen.xib in Resources */,
 				343400442030A1CD00FC778F /* iOSMain.storyboard in Resources */,
 				343400492030A1CD00FC778F /* NowPlayingViewController.xib in Resources */,
-				3434004B2030A1CD00FC778F /* Info.plist in Resources */,
 				343400462030A1CD00FC778F /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
