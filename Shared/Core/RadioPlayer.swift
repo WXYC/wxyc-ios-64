@@ -9,7 +9,7 @@
 import Foundation
 import AVFoundation
 
-final class RadioPlayer {
+public final class RadioPlayer {
     private let player = AVPlayer(url: URL.WXYCStream)
     
     public init() {
@@ -100,10 +100,8 @@ final class RadioPlayer {
     }
 }
 
-
 private extension AVPlayer {
     var isPlaying: Bool {
         return rate > 0.0
     }
 }
-

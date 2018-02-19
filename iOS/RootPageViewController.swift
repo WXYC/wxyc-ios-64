@@ -1,4 +1,5 @@
 import UIKit
+import Core
 
 class RootPageViewController: UIPageViewController {
     let nowPlayingViewController = NowPlayingViewController.loadFromNib()
@@ -13,8 +14,6 @@ class RootPageViewController: UIPageViewController {
             infoDetailViewController
         ]
     }
-    
-    let webservice = Webservice()
     
     // MARK: Life cycle
 

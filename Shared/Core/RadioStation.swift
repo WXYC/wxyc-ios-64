@@ -1,10 +1,10 @@
-struct RadioStation {
-    let name: String
-    let secondaryName: String
-    let description: String
+public struct RadioStation {
+    public let name: String
+    public let secondaryName: String
+    public let description: String
 }
 
-extension RadioStation {
+public extension RadioStation {
     static var WXYC: RadioStation {
         return RadioStation(
             name: "WXYC",

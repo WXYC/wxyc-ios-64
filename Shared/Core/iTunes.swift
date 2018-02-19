@@ -1,6 +1,6 @@
 import Foundation
 
-struct iTunes {
+public struct iTunes {
     private init() { }
     
     struct SearchResults: Codable {
