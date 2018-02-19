@@ -8,6 +8,7 @@
 
 import UIKit
 import MediaPlayer
+import Core
 
 final class LockscreenInfoService: PlaylistServiceObserver {
     private enum ServiceError: Error {

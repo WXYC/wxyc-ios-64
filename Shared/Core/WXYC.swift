@@ -10,13 +10,13 @@ extension URL {
     }
 }
     
-protocol PlaylistItem: Comparable {
+public protocol PlaylistItem: Comparable {
     var id: Int { get }
     var hour: Int { get }
     var chronOrderID: Int { get }
 }
 
-extension PlaylistItem {
+public extension PlaylistItem {
     static func ==(lhs: Self, rhs: Self) -> Bool {
         return lhs.chronOrderID == rhs.chronOrderID
     }
@@ -26,18 +26,18 @@ extension PlaylistItem {
     }
 }
 
-struct Playcut: PlaylistItem, Codable, Equatable {
-    let id: Int
-    let hour: Int
-    let chronOrderID: Int
-    let request: Bool = false
-    let songTitle: String
-    let labelName: String?
-    let artistName: String
-    let releaseTitle: String?
+public struct Playcut: PlaylistItem, Codable, Equatable {
+    public let id: Int
+    public let hour: Int
+    public let chronOrderID: Int
+    public let request: Bool = false
+    public let songTitle: String
+    public let labelName: String?
+    public let artistName: String
+    public let releaseTitle: String?
 }
 
-extension Playcut {
+public extension Playcut {
     func userActivityState() -> NSUserActivity {
         let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
         let url: String! = "https://www.google.com/search?q=\(artistName)+\(songTitle)"

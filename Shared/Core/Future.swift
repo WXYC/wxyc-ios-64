@@ -1,6 +1,6 @@
 import Foundation
 
-class Future<Value> {
+public class Future<Value> {
     fileprivate var result: Result<Value>? {
         didSet { result.map(report) }
     }
@@ -19,7 +19,12 @@ class Future<Value> {
     }
 }
 
+
 extension Future {
+    enum FutureError: Error {
+        case transformationFailure
+    }
+    
     func chained<NextValue>(with closure: @escaping (Value) throws -> Future<NextValue>) -> Future<NextValue> {
         let promise = Promise<NextValue>()
         
@@ -54,7 +59,23 @@ extension Future {
         }
     }
     
-    static func ||(lhs: Future, rhs: Future) -> Future {
+    func transformed<NextValue>(with closure: @escaping (Value) -> NextValue?) -> Future<NextValue> {
+        return chained { value in
+            if let value = closure(value) {
+                return Promise(value: value)
+            } else {
+                throw FutureError.transformationFailure
+            }
+        }
+    }
+    
+    func onSuccess(_ closure: @escaping (Value) -> Void) {
+        _ = transformed { value -> Void in
+            closure(value)
+        }
+    }
+    
+    static func ||(lhs: Future, rhs: @escaping @autoclosure () -> (Future)) -> Future {
         let promise = Promise<Value>()
         
         lhs.observe { result in
@@ -62,7 +83,7 @@ extension Future {
             case let .success(value):
                 promise.resolve(with: value)
             case .error(let firstError):
-                rhs.observe(with: { imageResult in
+                rhs().observe(with: { imageResult in
                     switch imageResult {
                     case let .success(value):
                         promise.resolve(with: value)
@@ -119,23 +140,5 @@ class Promise<Value>: Future<Value> {
     func reject(with error: Error) {
         print("rejected: \(error.localizedDescription)")
         result = .error(error)
-    }
-}
-
-extension URLSession {
-    func request(url: URL) -> Future<Data> {
-        let promise = Promise<Data>()
-        
-        let task = dataTask(with: url) { data, _, error in
-            if let error = error {
-                promise.reject(with: error)
-            } else {
-                promise.resolve(with: data ?? Data())
-            }
-        }
-        
-        task.resume()
-        
-        return promise
     }
 }

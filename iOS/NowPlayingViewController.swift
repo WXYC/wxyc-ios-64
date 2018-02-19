@@ -1,7 +1,10 @@
 import UIKit
 import MediaPlayer
+import UI
+import Core
+import Spring
 
-class NowPlayingViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
+final class NowPlayingViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!
