@@ -75,7 +75,7 @@ extension Future {
         }
     }
     
-    static func ||(lhs: Future, rhs: Future) -> Future {
+    static func ||(lhs: Future, rhs: @escaping @autoclosure () -> (Future)) -> Future {
         let promise = Promise<Value>()
         
         lhs.observe { result in
@@ -83,7 +83,7 @@ extension Future {
             case let .success(value):
                 promise.resolve(with: value)
             case .error(let firstError):
-                rhs.observe(with: { imageResult in
+                rhs().observe(with: { imageResult in
                     switch imageResult {
                     case let .success(value):
                         promise.resolve(with: value)

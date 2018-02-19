@@ -32,7 +32,7 @@ public final class NowPlayingService {
     }
     
     public func getCurrentPlaycut() -> Future<Playcut> {
-        return getCachedPlaycut() || getPlaylist().transformed(with: { playlist -> Playcut in
+        return self.getCachedPlaycut() || self.getPlaylist().transformed(with: { playlist -> Playcut in
             guard let playcut = playlist.playcuts.first else {
                 throw ServiceErrors.noResults
             }
@@ -67,7 +67,7 @@ public final class NowPlayingService {
     }
     
     private func getPlaylist() -> Future<Playlist> {
-        return URLSession.shared.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
+        return webSession.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
             let decoder = JSONDecoder()
             let playlist = try decoder.decode(Playlist.self, from: data)
             
@@ -78,12 +78,7 @@ public final class NowPlayingService {
 
 internal extension Playcut {
     func getArtwork() -> Future<UIImage> {
-        let request = getCachedArtwork() || getLastFMArtwork() || getItunesArtwork() || getDefaultArtwork()
-        request.onSuccess { image in
-            Cache.WXYC[CacheKey.artwork] = UIImagePNGRepresentation(image)
-        }
-        
-        return request
+        return self.getCachedArtwork() || self.getNetworkArtwork() || self.getDefaultArtwork()
     }
     
     private func getCachedArtwork() -> Future<UIImage> {
@@ -91,6 +86,16 @@ internal extension Playcut {
         let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
 
         return imageRequest
+    }
+    
+    private func getNetworkArtwork() -> Future<UIImage> {
+        let request = self.getLastFMArtwork() || self.getItunesArtwork()
+        
+        request.onSuccess { image in
+            Cache.WXYC[CacheKey.artwork] = UIImagePNGRepresentation(image)
+        }
+        
+        return request
     }
     
     private func getLastFMArtwork() -> Future<UIImage> {
