@@ -100,10 +100,8 @@ public final class RadioPlayer {
     }
 }
 
-
 private extension AVPlayer {
     var isPlaying: Bool {
         return rate > 0.0
     }
 }
-
