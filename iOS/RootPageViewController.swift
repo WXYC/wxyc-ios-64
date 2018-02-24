@@ -31,8 +31,13 @@ class RootPageViewController: UIPageViewController {
     
     private func setUpBackground() {
         let backgroundImageView = UIImageView(image: #imageLiteral(resourceName: "background"))
+        backgroundImageView.translatesAutoresizingMaskIntoConstraints = false
         view.insertSubview(backgroundImageView, at: 0)
-        backgroundImageView.frame = view.bounds
+        
+        view.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor).isActive = true
+        view.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor).isActive = true
+        view.topAnchor.constraint(equalTo: backgroundImageView.topAnchor).isActive = true
+        view.bottomAnchor.constraint(equalTo: backgroundImageView.bottomAnchor).isActive = true
     }
     
     private func setUpPages() {
@@ -57,6 +62,18 @@ class RootPageViewController: UIPageViewController {
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
+    }
+    
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        
+        viewControllers?.forEach({ $0.viewWillLayoutSubviews() })
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        viewControllers?.forEach({ $0.viewDidLayoutSubviews() })
     }
 }
 
