@@ -7,22 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3434003E2030A1CD00FC778F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */; };
-		3434003F2030A1CD00FC778F /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */; };
-		343400402030A1CD00FC778F /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE52030A1CC00FC778F /* RootPageViewController.swift */; };
-		343400412030A1CD00FC778F /* NowPlayingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE62030A1CC00FC778F /* NowPlayingViewController.swift */; };
-		343400422030A1CD00FC778F /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */; };
-		343400432030A1CD00FC778F /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE82030A1CC00FC778F /* LaunchScreen.xib */; };
-		343400442030A1CD00FC778F /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */; };
-		343400452030A1CD00FC778F /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
-		343400462030A1CD00FC778F /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
-		343400482030A1CD00FC778F /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */; };
-		343400492030A1CD00FC778F /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */; };
-		3434004A2030A1CD00FC778F /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
-		343400572030A1CD00FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
-		343400582030A1CD00FC778F /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
+		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
+		341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */; };
+		341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
+		341FBAB72041E7AB00CD2F36 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE52030A1CC00FC778F /* RootPageViewController.swift */; };
+		341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */; };
+		341FBAB92041E7AB00CD2F36 /* NowPlayingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE62030A1CC00FC778F /* NowPlayingViewController.swift */; };
+		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
+		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
+		341FBABD2041E7AB00CD2F36 /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
+		341FBABE2041E7AB00CD2F36 /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
+		341FBABF2041E7AB00CD2F36 /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
+		341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */; };
+		341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */; };
+		341FBAC32041E7AB00CD2F36 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE82030A1CC00FC778F /* LaunchScreen.xib */; };
+		341FBAC42041E7AB00CD2F36 /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */; };
+		341FBAC52041E7AB00CD2F36 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */; };
+		341FBAC62041E7AB00CD2F36 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
+		341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 343400632030A1E700FC778F /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
-		343400702030A1E700FC778F /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 343400632030A1E700FC778F /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		343400752030A20D00FC778F /* TodayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434F4E82030A1C600FC778F /* TodayViewController.swift */; };
 		343400762030A21200FC778F /* TodayMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434F4E92030A1C600FC778F /* TodayMain.storyboard */; };
 		343400862030A2AC00FC778F /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* WXYC.swift */; };
@@ -47,9 +50,6 @@
 		343400DF2030D71A00FC778F /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
 		343400E02030D71A00FC778F /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
 		343400E12030D72400FC778F /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
-		343400E82030DCE900FC778F /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
-		343400E92030DCE900FC778F /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
-		343400EA2030DCE900FC778F /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
 		343400EF2030E15000FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		343400F02030E32400FC778F /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3434FC0B2030A1CC00FC778F /* Info.plist */; };
 		343400F12030E45A00FC778F /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
@@ -60,7 +60,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		3434006E2030A1E700FC778F /* PBXContainerItemProxy */ = {
+		341FBAB22041E7AB00CD2F36 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
 			proxyType = 1;
@@ -81,23 +81,16 @@
 			remoteGlobalIDString = 343400A12030A2ED00FC778F;
 			remoteInfo = Spring;
 		};
-		34765F652030F33E005C8321 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 3434F4C32030A1A700FC778F;
-			remoteInfo = WXYC;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		343400742030A1E700FC778F /* Embed App Extensions */ = {
+		341FBAC72041E7AB00CD2F36 /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				343400702030A1E700FC778F /* Today Widget.appex in Embed App Extensions */,
+				341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -132,13 +125,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		341FBACC2041E7AB00CD2F36 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		341FBACD2041E7AC00CD2F36 /* iOS Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "iOS Info.plist"; path = "/Users/jakebromberg/source/personal/wxyc-ios-64/iOS/iOS Info.plist"; sourceTree = "<absolute>"; };
 		343400632030A1E700FC778F /* Today Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Today Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		3434007F2030A29600FC778F /* libCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400942030A2C200FC778F /* libUI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUI.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400A22030A2ED00FC778F /* libSpring.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSpring.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		3434F4C42030A1A700FC778F /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3434F4E82030A1C600FC778F /* TodayViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
 		3434F4EA2030A1C600FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TodayMain.storyboard; sourceTree = "<group>"; };
 		3434F4EB2030A1C600FC778F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -155,7 +149,6 @@
 		3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LockscreenInfoService.swift; sourceTree = "<group>"; };
 		3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
 		3434FBF12030A1CC00FC778F /* PlaybackButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaybackButton.swift; sourceTree = "<group>"; };
-		3434FBF22030A1CC00FC778F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingPresentable.swift; sourceTree = "<group>"; };
 		3434FBF72030A1CC00FC778F /* WXYC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
 		3434FBF92030A1CC00FC778F /* Future.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
@@ -181,6 +174,16 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		341FBABC2041E7AB00CD2F36 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				341FBABD2041E7AB00CD2F36 /* libCore.a in Frameworks */,
+				341FBABE2041E7AB00CD2F36 /* libSpring.a in Frameworks */,
+				341FBABF2041E7AB00CD2F36 /* libUI.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		343400602030A1E700FC778F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -223,16 +226,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		3434F4C12030A1A700FC778F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				343400E82030DCE900FC778F /* libCore.a in Frameworks */,
-				343400E92030DCE900FC778F /* libSpring.a in Frameworks */,
-				343400EA2030DCE900FC778F /* libUI.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		34765F5D2030F33E005C8321 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -267,13 +260,13 @@
 		3434F4C52030A1A700FC778F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				3434F4C42030A1A700FC778F /* WXYC.app */,
 				343400632030A1E700FC778F /* Today Widget.appex */,
 				3434007F2030A29600FC778F /* libCore.a */,
 				343400942030A2C200FC778F /* libUI.a */,
 				343400A22030A2ED00FC778F /* libSpring.a */,
 				343400BB2030D62300FC778F /* WXYC TV.app */,
 				34765F602030F33E005C8321 /* WXYCTests.xctest */,
+				341FBACC2041E7AB00CD2F36 /* WXYC.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -294,7 +287,7 @@
 			children = (
 				3434FBEE2030A1CC00FC778F /* AnimationFrames.swift */,
 				3434FBED2030A1CC00FC778F /* Images.xcassets */,
-				3434FBF22030A1CC00FC778F /* Info.plist */,
+				341FBACD2041E7AC00CD2F36 /* iOS Info.plist */,
 				3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */,
 				3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */,
 				3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */,
@@ -382,6 +375,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		341FBAB02041E7AB00CD2F36 /* WXYC */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 341FBAC92041E7AB00CD2F36 /* Build configuration list for PBXNativeTarget "WXYC" */;
+			buildPhases = (
+				341FBAB32041E7AB00CD2F36 /* Sources */,
+				341FBABC2041E7AB00CD2F36 /* Frameworks */,
+				341FBAC02041E7AB00CD2F36 /* Resources */,
+				341FBAC72041E7AB00CD2F36 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				341FBAB12041E7AB00CD2F36 /* PBXTargetDependency */,
+			);
+			name = WXYC;
+			productName = WXYC;
+			productReference = 341FBACC2041E7AB00CD2F36 /* WXYC.app */;
+			productType = "com.apple.product-type.application";
+		};
 		343400622030A1E700FC778F /* Today Widget */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 343400712030A1E700FC778F /* Build configuration list for PBXNativeTarget "Today Widget" */;
@@ -469,25 +481,6 @@
 			productReference = 343400BB2030D62300FC778F /* WXYC TV.app */;
 			productType = "com.apple.product-type.application";
 		};
-		3434F4C32030A1A700FC778F /* WXYC */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 3434F4E12030A1A900FC778F /* Build configuration list for PBXNativeTarget "WXYC" */;
-			buildPhases = (
-				3434F4C02030A1A700FC778F /* Sources */,
-				3434F4C12030A1A700FC778F /* Frameworks */,
-				3434F4C22030A1A700FC778F /* Resources */,
-				343400742030A1E700FC778F /* Embed App Extensions */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				3434006F2030A1E700FC778F /* PBXTargetDependency */,
-			);
-			name = WXYC;
-			productName = WXYC;
-			productReference = 3434F4C42030A1A700FC778F /* WXYC.app */;
-			productType = "com.apple.product-type.application";
-		};
 		34765F5F2030F33E005C8321 /* WXYCTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 34765F672030F33E005C8321 /* Build configuration list for PBXNativeTarget "WXYCTests" */;
@@ -499,7 +492,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				34765F662030F33E005C8321 /* PBXTargetDependency */,
 			);
 			name = WXYCTests;
 			productName = WXYCTests;
@@ -516,6 +508,9 @@
 				LastUpgradeCheck = 0930;
 				ORGANIZATIONNAME = WXYC;
 				TargetAttributes = {
+					341FBAB02041E7AB00CD2F36 = {
+						ProvisioningStyle = Automatic;
+					};
 					343400622030A1E700FC778F = {
 						CreatedOnToolsVersion = 9.3;
 						ProvisioningStyle = Automatic;
@@ -533,10 +528,6 @@
 						ProvisioningStyle = Automatic;
 					};
 					343400BA2030D62300FC778F = {
-						CreatedOnToolsVersion = 9.3;
-						ProvisioningStyle = Automatic;
-					};
-					3434F4C32030A1A700FC778F = {
 						CreatedOnToolsVersion = 9.3;
 						ProvisioningStyle = Automatic;
 					};
@@ -560,7 +551,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				3434F4C32030A1A700FC778F /* WXYC */,
+				341FBAB02041E7AB00CD2F36 /* WXYC */,
 				343400622030A1E700FC778F /* Today Widget */,
 				343400BA2030D62300FC778F /* WXYC TV */,
 				3434007E2030A29600FC778F /* Core */,
@@ -572,6 +563,19 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		341FBAC02041E7AB00CD2F36 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */,
+				341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */,
+				341FBAC32041E7AB00CD2F36 /* LaunchScreen.xib in Resources */,
+				341FBAC42041E7AB00CD2F36 /* iOSMain.storyboard in Resources */,
+				341FBAC52041E7AB00CD2F36 /* NowPlayingViewController.xib in Resources */,
+				341FBAC62041E7AB00CD2F36 /* Images.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		343400612030A1E700FC778F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -592,19 +596,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		3434F4C22030A1A700FC778F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				3434003F2030A1CD00FC778F /* InfoDetailViewController.xib in Resources */,
-				3434003E2030A1CD00FC778F /* LaunchScreen.storyboard in Resources */,
-				343400432030A1CD00FC778F /* LaunchScreen.xib in Resources */,
-				343400442030A1CD00FC778F /* iOSMain.storyboard in Resources */,
-				343400492030A1CD00FC778F /* NowPlayingViewController.xib in Resources */,
-				343400462030A1CD00FC778F /* Images.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		34765F5E2030F33E005C8321 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -615,6 +606,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		341FBAB32041E7AB00CD2F36 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
+				341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */,
+				341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */,
+				341FBAB72041E7AB00CD2F36 /* RootPageViewController.swift in Sources */,
+				341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */,
+				341FBAB92041E7AB00CD2F36 /* NowPlayingViewController.swift in Sources */,
+				341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */,
+				341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3434005F2030A1E700FC778F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -667,21 +673,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		3434F4C02030A1A700FC778F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				3434004A2030A1CD00FC778F /* PlaybackButton.swift in Sources */,
-				343400422030A1CD00FC778F /* UIView+WXYC.swift in Sources */,
-				343400582030A1CD00FC778F /* Spring.swift in Sources */,
-				343400402030A1CD00FC778F /* RootPageViewController.swift in Sources */,
-				343400482030A1CD00FC778F /* LockscreenInfoService.swift in Sources */,
-				343400412030A1CD00FC778F /* NowPlayingViewController.swift in Sources */,
-				343400452030A1CD00FC778F /* InfoDetailViewController.swift in Sources */,
-				343400572030A1CD00FC778F /* AppDelegate.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		34765F5C2030F33E005C8321 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -694,10 +685,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		3434006F2030A1E700FC778F /* PBXTargetDependency */ = {
+		341FBAB12041E7AB00CD2F36 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 343400622030A1E700FC778F /* Today Widget */;
-			targetProxy = 3434006E2030A1E700FC778F /* PBXContainerItemProxy */;
+			targetProxy = 341FBAB22041E7AB00CD2F36 /* PBXContainerItemProxy */;
 		};
 		3434009D2030A2D500FC778F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -708,11 +699,6 @@
 			isa = PBXTargetDependency;
 			target = 343400A12030A2ED00FC778F /* Spring */;
 			targetProxy = 343400AC2030A30000FC778F /* PBXContainerItemProxy */;
-		};
-		34765F662030F33E005C8321 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 3434F4C32030A1A700FC778F /* WXYC */;
-			targetProxy = 34765F652030F33E005C8321 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -752,6 +738,40 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		341FBACA2041E7AB00CD2F36 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				INFOPLIST_FILE = "$(SRCROOT)/../iOS/iOS Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iOS;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		341FBACB2041E7AB00CD2F36 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				INFOPLIST_FILE = "$(SRCROOT)/../iOS/iOS Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iOS;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 4.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		343400722030A1E700FC778F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -959,6 +979,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -1012,44 +1033,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
 				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		3434F4E22030A1A900FC778F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				INFOPLIST_FILE = "$(SRCROOT)/../iOS/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iOS;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		3434F4E32030A1A900FC778F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				INFOPLIST_FILE = "$(SRCROOT)/../iOS/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iOS;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1088,6 +1076,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		341FBAC92041E7AB00CD2F36 /* Build configuration list for PBXNativeTarget "WXYC" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				341FBACA2041E7AB00CD2F36 /* Debug */,
+				341FBACB2041E7AB00CD2F36 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		343400712030A1E700FC778F /* Build configuration list for PBXNativeTarget "Today Widget" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1138,15 +1135,6 @@
 			buildConfigurations = (
 				3434F4DF2030A1A900FC778F /* Debug */,
 				3434F4E02030A1A900FC778F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		3434F4E12030A1A900FC778F /* Build configuration list for PBXNativeTarget "WXYC" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				3434F4E22030A1A900FC778F /* Debug */,
-				3434F4E32030A1A900FC778F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
