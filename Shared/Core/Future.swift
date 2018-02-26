@@ -83,8 +83,8 @@ extension Future {
             case let .success(value):
                 promise.resolve(with: value)
             case .error(let firstError):
-                rhs().observe(with: { imageResult in
-                    switch imageResult {
+                rhs().observe(with: { result in
+                    switch result {
                     case let .success(value):
                         promise.resolve(with: value)
                     case let .error(secondError):
