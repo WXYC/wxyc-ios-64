@@ -37,18 +37,9 @@ public final class NowPlayingService {
                 throw ServiceErrors.noResults
             }
 
-            // Retrieve the playcut from the cache, for later comparison
-            let cachedPlaycut: Playcut? = self.cache[CacheKey.playcut]
-            
-            // We cache the playcut. It may be that this playcut is already in the cache. That's okay, because what we really
-            // want is to reset the timestamp of the cache record
             self.cache[CacheKey.playcut] = playcut
             
-            if playcut == cachedPlaycut {
-                throw ServiceErrors.noNewData
-            } else {
-                return playcut
-            }
+            return playcut
         })
     }
     
