@@ -18,6 +18,7 @@ public final class PlaylistService {
     private let nowPlayingService = NowPlayingService()
     private var observers: [PlaylistServiceObserver]
     private let playcutRequest: Future<Playcut>
+    private var lastPlaycut: Playcut?
     
     public init(with initialObservers: PlaylistServiceObserver...) {
         self.observers = []
@@ -36,10 +37,6 @@ public final class PlaylistService {
     }
     
     func updateWith(playcutResult: Result<Playcut>) {
-        if case let .error(error) = playcutResult, (error as? ServiceErrors) == .noNewData {
-            return
-        }
-        
         for observer in observers {
             observer.updateWith(playcutResult: playcutResult)
         }
@@ -47,6 +44,12 @@ public final class PlaylistService {
         guard case let .success(playcut) = playcutResult else {
             return
         }
+        
+        guard playcut != self.lastPlaycut else {
+            return
+        }
+        
+        self.lastPlaycut = playcut
         
         let imageRequest = playcut.getArtwork()
         imageRequest.observe(with: self.update(artworkResult:))
