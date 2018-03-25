@@ -7,6 +7,8 @@
 //
 
 import XCTest
+import UI
+import Spring
 @testable import Core
 
 enum Fixture {
@@ -32,6 +34,8 @@ enum Fixture {
 }
 
 final class TestWebSession: WebSession {
+    var dummyRequest: (URL) -> Future<Data> = { _ in Future() }
+    
     func request(url: URL) -> Future<Data> {
         print(">>>>>", url)
         return Future()
@@ -107,6 +111,36 @@ final class TestCache: Cachable {
     }
 }
 
+@objcMembers final class TestNowPlayingPresentable: UIResponder, NowPlayingPresentable, PlaylistServiceObserver {
+    @objc final class TrapLabel: UILabel {
+        var trap = { }
+        override var text: String? {
+            didSet {
+//                super.text = newValue
+                trap()
+            }
+//            get {
+//                return super.text
+//            }
+        }
+    }
+    
+    var trap = { } {
+        didSet {
+            (artistLabel as! TrapLabel).trap = trap
+        }
+    }
+    
+    let songLabel: SpringLabel! = {
+        let songLabel = SpringLabel()
+//        songLabel.obser
+        
+        return songLabel
+    }()
+    let artistLabel: UILabel! = TrapLabel()
+    let albumImageView: UIImageView! = UIImageView()
+}
+
 class NowPlayingServiceTests: XCTestCase {
     
     override func setUp() {
@@ -151,6 +185,12 @@ class NowPlayingServiceTests: XCTestCase {
     
     func testGettingTwoDifferentPlaycuts() {
         let webSession = TestWebSession()
+        webSession.dummyRequest = { _ in
+            let encoder = JSONEncoder()
+            let data = try! encoder.encode(Fixture.playcut1)
+            return Promise(value: data)
+        }
+        
         let defaults = TestDefaults()
         defaults.playcut = Fixture.playcut1
         
@@ -159,14 +199,23 @@ class NowPlayingServiceTests: XCTestCase {
             webSession: webSession
         )
         
-        nowPlayingService.getCurrentPlaycut().observe { result in
-            guard case .success(let playcut) = result else {
-                fatalError()
-            }
-            
-            XCTAssertEqual(playcut, Fixture.playcut1)
-        }
+        let nowPlayingPresentable = TestNowPlayingPresentable()
+        let group = DispatchGroup()
+        nowPlayingPresentable.trap = { group.leave() }
+        
+        group.enter()
+        
+        let playlistService = PlaylistService(service: nowPlayingService, initialObservers: nowPlayingPresentable)
+        playlistService.updateWith(playcutResult: Result.success(Fixture.playcut1))
+        
+        group.wait()
+        
+        XCTAssertNotEqual(nowPlayingPresentable.songLabel.text, RadioStation.WXYC.name)
+        XCTAssertNotEqual(nowPlayingPresentable.artistLabel.text, RadioStation.WXYC.secondaryName)
+
     }
     
-    
+    func testExpiredCacheWithSamePlaylistResult() {
+        
+    }
 }
