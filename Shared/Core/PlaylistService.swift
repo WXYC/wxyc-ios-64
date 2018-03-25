@@ -15,12 +15,14 @@ public protocol PlaylistServiceObserver: class {
 }
 
 public final class PlaylistService {
-    private let nowPlayingService = NowPlayingService()
+    private let nowPlayingService: NowPlayingService
     private var observers: [PlaylistServiceObserver]
     private let playcutRequest: Future<Playcut>
     private var lastPlaycut: Playcut?
     
-    public init(with initialObservers: PlaylistServiceObserver...) {
+    public init(service: NowPlayingService = NowPlayingService(), initialObservers: PlaylistServiceObserver...) {
+        self.nowPlayingService = service
+        
         self.observers = []
         for observer in initialObservers {
             self.observers.append(observer)
