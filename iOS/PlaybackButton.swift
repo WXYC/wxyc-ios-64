@@ -26,18 +26,19 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
 }
 
 @objc @IBDesignable class PlaybackLayer: CALayer {
-    
-    private static let kAnimationKey = "playbackValue"
-    private static let kAnimationIdentifier = "playbackLayerAnimation"
+    private static let AnimationKey = "playbackValue"
+    private static let AnimationIdentifier = "playbackLayerAnimation"
     
     private var adjustMarginValue: CGFloat = 0
     private var contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-    var status = PlaybackButtonState.paused
+    var status: PlaybackButtonState = .paused
+    
     @objc var playbackValue: CGFloat = 1.0 {
         didSet {
             setNeedsDisplay()
         }
     }
+    
     var color = UIColor.white
     var playbackAnimationDuration: CFTimeInterval = DefaultsPlaybackDuration
     
@@ -71,14 +72,14 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
         self.status = status
         
         if animated {
-            if self.animation(forKey: PlaybackLayer.kAnimationIdentifier) != nil {
-                self.removeAnimation(forKey: PlaybackLayer.kAnimationIdentifier)
+            if self.animation(forKey: PlaybackLayer.AnimationIdentifier) != nil {
+                self.removeAnimation(forKey: PlaybackLayer.AnimationIdentifier)
             }
             
             let fromValue: CGFloat = self.playbackValue
             let toValue: CGFloat = status.value
             
-            let animation = CABasicAnimation(keyPath: PlaybackLayer.kAnimationKey)
+            let animation = CABasicAnimation(keyPath: PlaybackLayer.AnimationKey)
             animation.fromValue = fromValue
             animation.toValue = toValue
             animation.duration = self.playbackAnimationDuration
@@ -86,14 +87,15 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
             animation.fillMode = kCAFillModeForwards
             animation.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
             animation.delegate = self
-            self.add(animation, forKey: PlaybackLayer.kAnimationIdentifier)
+            
+            self.add(animation, forKey: PlaybackLayer.AnimationIdentifier)
         } else {
             self.playbackValue = status.value
         }
     }
     
     override class func needsDisplay(forKey key: String) -> Bool {
-        if key == PlaybackLayer.kAnimationKey {
+        if key == PlaybackLayer.AnimationKey {
             return true
         }
         return CALayer.needsDisplay(forKey: key)
@@ -139,8 +141,8 @@ extension PlaybackLayer: CAAnimationDelegate {
     
     func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
         if flag {
-            if self.animation(forKey: PlaybackLayer.kAnimationIdentifier) != nil {
-                self.removeAnimation(forKey: PlaybackLayer.kAnimationIdentifier)
+            if self.animation(forKey: PlaybackLayer.AnimationIdentifier) != nil {
+                self.removeAnimation(forKey: PlaybackLayer.AnimationIdentifier)
             }
             if let toValue : CGFloat = anim.value(forKey: "toValue") as? CGFloat {
                 self.playbackValue = toValue

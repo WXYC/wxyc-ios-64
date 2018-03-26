@@ -51,7 +51,6 @@
 		343400E02030D71A00FC778F /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
 		343400E12030D72400FC778F /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
 		343400EF2030E15000FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
-		343400F02030E32400FC778F /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3434FC0B2030A1CC00FC778F /* Info.plist */; };
 		343400F12030E45A00FC778F /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34953E0D206851A80010505C /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
 		34953E18206882760010505C /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
@@ -60,6 +59,7 @@
 		34A067CE20393E42003D2919 /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* WXYC.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34BB8E58204B5AAF0089F6C7 /* NowPlayingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348369202030F88A0029E28E /* NowPlayingServiceTests.swift */; };
+		34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D908542113EE4800AB8C79 /* RadioPlayerController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -83,13 +83,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 343400A12030A2ED00FC778F;
 			remoteInfo = Spring;
-		};
-		34953E15206882390010505C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 341FBAB02041E7AB00CD2F36;
-			remoteInfo = WXYC;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -182,6 +175,7 @@
 		34765F622030F33E005C8321 /* CacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheTests.swift; sourceTree = "<group>"; };
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
 		34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		34D908542113EE4800AB8C79 /* RadioPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -351,6 +345,7 @@
 				3434FBFE2030A1CC00FC778F /* Cache.swift */,
 				3434FBFF2030A1CC00FC778F /* RadioStation.swift */,
 				3434FC002030A1CC00FC778F /* NowPlayingService.swift */,
+				34D908542113EE4800AB8C79 /* RadioPlayerController.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -506,7 +501,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				34953E16206882390010505C /* PBXTargetDependency */,
 			);
 			name = "WXYC Tests";
 			productName = "WXYC Tests";
@@ -520,7 +514,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0930;
-				LastUpgradeCheck = 0930;
+				LastUpgradeCheck = 0940;
 				ORGANIZATIONNAME = WXYC;
 				TargetAttributes = {
 					341FBAB02041E7AB00CD2F36 = {
@@ -604,7 +598,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				343400F02030E32400FC778F /* Info.plist in Resources */,
 				343400F12030E45A00FC778F /* Images.xcassets in Resources */,
 				343400D82030D6C800FC778F /* Assets.xcassets in Resources */,
 				343400D92030D6D200FC778F /* TVMain.storyboard in Resources */,
@@ -644,6 +637,7 @@
 			files = (
 				343400862030A2AC00FC778F /* WXYC.swift in Sources */,
 				343400882030A2AC00FC778F /* Future.swift in Sources */,
+				34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */,
 				343400892030A2AC00FC778F /* PlaylistService.swift in Sources */,
 				3434008A2030A2AC00FC778F /* LastFM.swift in Sources */,
 				3434008B2030A2AC00FC778F /* RadioPlayer.swift in Sources */,
@@ -707,11 +701,6 @@
 			isa = PBXTargetDependency;
 			target = 343400A12030A2ED00FC778F /* Spring */;
 			targetProxy = 343400AC2030A30000FC778F /* PBXContainerItemProxy */;
-		};
-		34953E16206882390010505C /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 341FBAB02041E7AB00CD2F36 /* WXYC */;
-			targetProxy = 34953E15206882390010505C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

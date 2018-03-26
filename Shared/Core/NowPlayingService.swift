@@ -4,6 +4,14 @@ import UIKit
 public enum Result<T> {
     case success(T)
     case error(Error)
+    
+    func flatten() -> T? {
+        guard case .success(let value) = self else {
+            return nil
+        }
+        
+        return value
+    }
 }
 
 /// `NowPlayingService` will throw one of these errors, depending
@@ -73,7 +81,7 @@ internal extension Playcut {
     }
     
     private func getCachedArtwork() -> Future<UIImage> {
-        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: CacheKey.artwork)
+        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: .artwork)
         let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
 
         return imageRequest
