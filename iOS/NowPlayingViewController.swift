@@ -10,7 +10,8 @@ final class NowPlayingViewController: UIViewController, NowPlayingPresentable, P
     @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var playbackButton: PlaybackButton!
     
-    let radioPlayer = RadioPlayer()
+    let radioPlayerController = RadioPlayerController()
+    var radioPlayerStateObservation: Any?
     
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
@@ -26,59 +27,51 @@ final class NowPlayingViewController: UIViewController, NowPlayingPresentable, P
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        // Remote events for play/pause taps on headphones
-        UIApplication.shared.beginReceivingRemoteControlEvents()
+        self.radioPlayerStateObservation = self.radioPlayerController.observePlaybackState(self.playbackStateChanged)
     }
     
-    // MARK: - Player Controls (Play/Pause)
+    // MARK: Private
     
-    @IBAction func playPauseTapped(_ sender: UIButton) {
+    private func playbackStateChanged(playbackState: PlaybackState) {
+        switch playbackState {
+        case .paused:
+            playbackButton.set(status: .paused, animated: self.shouldAnimateButtonTransition)
+        case .playing:
+            playbackButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
+            
+            songLabel.animation = Spring.AnimationPreset.Flash.rawValue
+            songLabel.animate()
+        }
+    }
+    
+    private var shouldAnimateButtonTransition: Bool {
+        return UIApplication.shared.applicationState == .active
+    }
+    
+    // MARK: Player Controls (Play/Pause)
+    
+    @IBAction private func playPauseTapped(_ sender: UIButton) {
         switch playbackButton.status {
         case .paused:
-            playPressed()
+            self.radioPlayerController.play()
         case .playing:
-            pausePressed()
+            self.radioPlayerController.pause()
         }
-    }
-    
-    override func remoteControlReceived(with receivedEvent: UIEvent?) {
-        super.remoteControlReceived(with: receivedEvent)
-        
-        guard let receivedEvent = receivedEvent else {
-            return
-        }
-        
-        switch receivedEvent.subtype {
-        case .remoteControlPlay:
-            playPressed()
-        case .remoteControlPause:
-            pausePressed()
-        case .remoteControlTogglePlayPause:
-            radioPlayer.isPlaying ? pausePressed() : playPressed()
-        default:
-            break
-        }
-    }
-    
-    func playPressed() {
-        playbackButton.status = .playing
-        radioPlayer.play()
-        
-        songLabel.animation = Spring.AnimationPreset.Flash.rawValue
-        songLabel.animate()
-    }
-    
-    func pausePressed() {
-        playbackButton.status = .paused
-        radioPlayer.pause()
     }
     
     // MARK: - Sharing
     
-    @IBAction func shareButtonPressed(_ sender: UIButton) {
-        // TODO: Extract
-        let songToShare = "I'm listening to [song] on \(RadioStation.WXYC.name)"
-        let activityViewController = UIActivityViewController(activityItems: [songToShare, self.albumImageView.image ?? UIImage()], applicationActivities: nil)
+    @IBAction private func shareButtonPressed(_ sender: UIButton) {
+        let activityItems: [Any] = [
+            "I'm listening to [song] on \(RadioStation.WXYC.name)",
+            self.albumImageView.image ?? UIImage()
+        ]
+        
+        let activityViewController = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+        
         present(activityViewController, animated: true, completion: nil)
     }
     

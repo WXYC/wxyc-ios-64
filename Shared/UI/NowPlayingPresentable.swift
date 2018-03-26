@@ -10,6 +10,12 @@ import UIKit
 import Spring
 import Core
 
+public struct NowPlayingPresentation {
+    let song: String
+    let artist: String
+    let albumImage: UIImage?
+}
+
 public protocol NowPlayingPresentable: class {
     var songLabel: SpringLabel! { get }
     var artistLabel: UILabel! { get }

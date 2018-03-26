@@ -34,12 +34,25 @@ enum Fixture {
 }
 
 final class TestWebSession: WebSession {
-    var dummyRequest: (URL) -> Future<Data> = { _ in Future() }
+    var playcutFixtures: [Playcut] = [Fixture.playcut1]
     
     func request(url: URL) -> Future<Data> {
-        print(">>>>>", url)
-        return Future()
+        let result = self.future(atIndex: self.currentIndex)
+        currentIndex = (currentIndex + 1) % self.playcutFixtures.endIndex
+        
+        return result
     }
+    
+    // MARK: Private
+
+    private var currentIndex = 0
+
+    private func future(atIndex: Int) -> Future<Data> {
+        let encoder = JSONEncoder()
+        let data = try! encoder.encode(self.playcutFixtures[self.currentIndex])
+        return Promise(value: data)
+    }
+    
 }
 
 final class TestDefaults: Defaults {
@@ -111,34 +124,17 @@ final class TestCache: Cachable {
     }
 }
 
-@objcMembers final class TestNowPlayingPresentable: UIResponder, NowPlayingPresentable, PlaylistServiceObserver {
-    @objc final class TrapLabel: UILabel {
-        var trap = { }
-        override var text: String? {
-            didSet {
-//                super.text = newValue
-                trap()
-            }
-//            get {
-//                return super.text
-//            }
-        }
+final class TestPlaylistServiceObserver: PlaylistServiceObserver {
+    var playcutResult: Result<Playcut>?
+    var artworkResult: Result<UIImage>?
+
+    func updateWith(playcutResult: Result<Playcut>) {
+        self.playcutResult = playcutResult
     }
     
-    var trap = { } {
-        didSet {
-            (artistLabel as! TrapLabel).trap = trap
-        }
+    func updateWith(artworkResult: Result<UIImage>) {
+        self.artworkResult = artworkResult
     }
-    
-    let songLabel: SpringLabel! = {
-        let songLabel = SpringLabel()
-//        songLabel.obser
-        
-        return songLabel
-    }()
-    let artistLabel: UILabel! = TrapLabel()
-    let albumImageView: UIImageView! = UIImageView()
 }
 
 class NowPlayingServiceTests: XCTestCase {
@@ -184,12 +180,25 @@ class NowPlayingServiceTests: XCTestCase {
     }
     
     func testGettingTwoDifferentPlaycuts() {
+        let playlistObserver = TestPlaylistServiceObserver()
+
+        let nowPlayingService = self.createNowPlayingService()
+        _ = PlaylistService(
+            service: nowPlayingService,
+            initialObservers: playlistObserver
+        )
+
+        _ = nowPlayingService.getCurrentPlaycut()
+        
+        let playcut = playlistObserver.playcutResult?.flatten()
+        XCTAssertNotEqual(playcut?.songTitle, RadioStation.WXYC.name)
+        XCTAssertNotEqual(playcut?.songTitle, RadioStation.WXYC.secondaryName)
+
+    }
+    
+    func createNowPlayingService() -> NowPlayingService {
         let webSession = TestWebSession()
-        webSession.dummyRequest = { _ in
-            let encoder = JSONEncoder()
-            let data = try! encoder.encode(Fixture.playcut1)
-            return Promise(value: data)
-        }
+        webSession.playcutFixtures = [Fixture.playcut1, Fixture.playcut2]
         
         let defaults = TestDefaults()
         defaults.playcut = Fixture.playcut1
@@ -199,20 +208,7 @@ class NowPlayingServiceTests: XCTestCase {
             webSession: webSession
         )
         
-        let nowPlayingPresentable = TestNowPlayingPresentable()
-        let group = DispatchGroup()
-        nowPlayingPresentable.trap = { group.leave() }
-        
-        group.enter()
-        
-        let playlistService = PlaylistService(service: nowPlayingService, initialObservers: nowPlayingPresentable)
-        playlistService.updateWith(playcutResult: Result.success(Fixture.playcut1))
-        
-        group.wait()
-        
-        XCTAssertNotEqual(nowPlayingPresentable.songLabel.text, RadioStation.WXYC.name)
-        XCTAssertNotEqual(nowPlayingPresentable.artistLabel.text, RadioStation.WXYC.secondaryName)
-
+        return nowPlayingService
     }
     
     func testExpiredCacheWithSamePlaylistResult() {
