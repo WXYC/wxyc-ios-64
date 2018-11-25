@@ -7,6 +7,8 @@
 //
 
 import XCTest
+import UI
+import Spring
 @testable import Core
 
 enum Fixture {
@@ -32,10 +34,25 @@ enum Fixture {
 }
 
 final class TestWebSession: WebSession {
+    var playcutFixtures: [Playcut] = [Fixture.playcut1]
+    
     func request(url: URL) -> Future<Data> {
-        print(">>>>>", url)
-        return Future()
+        let result = self.future(atIndex: self.currentIndex)
+        currentIndex = (currentIndex + 1) % self.playcutFixtures.endIndex
+        
+        return result
     }
+    
+    // MARK: Private
+
+    private var currentIndex = 0
+
+    private func future(atIndex: Int) -> Future<Data> {
+        let encoder = JSONEncoder()
+        let data = try! encoder.encode(self.playcutFixtures[self.currentIndex])
+        return Promise(value: data)
+    }
+    
 }
 
 final class TestDefaults: Defaults {
@@ -107,6 +124,19 @@ final class TestCache: Cachable {
     }
 }
 
+final class TestPlaylistServiceObserver: PlaylistServiceObserver {
+    var playcutResult: Result<Playcut>?
+    var artworkResult: Result<UIImage>?
+
+    func updateWith(playcutResult: Result<Playcut>) {
+        self.playcutResult = playcutResult
+    }
+    
+    func updateWith(artworkResult: Result<UIImage>) {
+        self.artworkResult = artworkResult
+    }
+}
+
 class NowPlayingServiceTests: XCTestCase {
     
     override func setUp() {
@@ -150,7 +180,26 @@ class NowPlayingServiceTests: XCTestCase {
     }
     
     func testGettingTwoDifferentPlaycuts() {
+        let playlistObserver = TestPlaylistServiceObserver()
+
+        let nowPlayingService = self.createNowPlayingService()
+        _ = PlaylistService(
+            service: nowPlayingService,
+            initialObservers: playlistObserver
+        )
+
+        _ = nowPlayingService.getCurrentPlaycut()
+        
+        let playcut = playlistObserver.playcutResult?.flatten()
+        XCTAssertNotEqual(playcut?.songTitle, RadioStation.WXYC.name)
+        XCTAssertNotEqual(playcut?.songTitle, RadioStation.WXYC.secondaryName)
+
+    }
+    
+    func createNowPlayingService() -> NowPlayingService {
         let webSession = TestWebSession()
+        webSession.playcutFixtures = [Fixture.playcut1, Fixture.playcut2]
+        
         let defaults = TestDefaults()
         defaults.playcut = Fixture.playcut1
         
@@ -159,14 +208,10 @@ class NowPlayingServiceTests: XCTestCase {
             webSession: webSession
         )
         
-        nowPlayingService.getCurrentPlaycut().observe { result in
-            guard case .success(let playcut) = result else {
-                fatalError()
-            }
-            
-            XCTAssertEqual(playcut, Fixture.playcut1)
-        }
+        return nowPlayingService
     }
     
-    
+    func testExpiredCacheWithSamePlaylistResult() {
+        
+    }
 }

@@ -36,7 +36,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServ
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        self.playlistService = PlaylistService(with: self)
+        self.playlistService = PlaylistService(initialObservers: self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

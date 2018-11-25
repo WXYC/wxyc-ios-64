@@ -4,6 +4,14 @@ import UIKit
 public enum Result<T> {
     case success(T)
     case error(Error)
+    
+    func flatten() -> T? {
+        guard case .success(let value) = self else {
+            return nil
+        }
+        
+        return value
+    }
 }
 
 /// `NowPlayingService` will throw one of these errors, depending
@@ -37,18 +45,9 @@ public final class NowPlayingService {
                 throw ServiceErrors.noResults
             }
 
-            // Retrieve the playcut from the cache, for later comparison
-            let cachedPlaycut: Playcut? = self.cache[CacheKey.playcut]
-            
-            // We cache the playcut. It may be that this playcut is already in the cache. That's okay, because what we really
-            // want is to reset the timestamp of the cache record
             self.cache[CacheKey.playcut] = playcut
             
-            if playcut == cachedPlaycut {
-                throw ServiceErrors.noNewData
-            } else {
-                return playcut
-            }
+            return playcut
         })
     }
     
@@ -82,7 +81,7 @@ internal extension Playcut {
     }
     
     private func getCachedArtwork() -> Future<UIImage> {
-        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: CacheKey.artwork)
+        let dataRequest: Future<Data> = Cache.WXYC.getCachedValue(key: .artwork)
         let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
 
         return imageRequest
