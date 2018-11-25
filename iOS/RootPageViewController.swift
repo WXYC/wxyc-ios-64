@@ -52,7 +52,7 @@ class RootPageViewController: UIPageViewController {
     }
     
     private func setUpPlaylistPolling() {
-        self.playlistService = PlaylistService(with:
+        self.playlistService = PlaylistService(initialObservers:
             self.nowPlayingViewController,
             self.lockscreenInfoService
         )
