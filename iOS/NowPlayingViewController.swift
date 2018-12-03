@@ -39,7 +39,7 @@ final class NowPlayingViewController: UIViewController, NowPlayingPresentable, P
         case .playing:
             playbackButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
             
-            songLabel.animation = Spring.AnimationPreset.Flash.rawValue
+            songLabel.animation = .Flash
             songLabel.animate()
         }
     }
