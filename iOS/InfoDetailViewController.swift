@@ -26,7 +26,7 @@ class InfoDetailViewController: UIViewController {
             }))
 
             alert.addAction(UIAlertAction(title: "Settings", style: .default, handler: { _ in
-                let settingsURL = URL(string: UIApplicationOpenSettingsURLString)!
+                let settingsURL = URL(string: UIApplication.openSettingsURLString)!
                 UIApplication.shared.open(settingsURL)
             }))
 
