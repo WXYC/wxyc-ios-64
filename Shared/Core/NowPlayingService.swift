@@ -91,7 +91,7 @@ internal extension Playcut {
         let request = self.getLastFMArtwork() || self.getItunesArtwork()
         
         request.onSuccess { image in
-            Cache.WXYC[CacheKey.artwork] = UIImagePNGRepresentation(image)
+            Cache.WXYC[CacheKey.artwork] = image.pngData()
         }
         
         return request
