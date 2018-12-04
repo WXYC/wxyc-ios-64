@@ -176,6 +176,7 @@
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
 		34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		34D908542113EE4800AB8C79 /* RadioPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerController.swift; sourceTree = "<group>"; };
+		AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WXYC TV.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -256,6 +257,7 @@
 		3434F4BB2030A1A700FC778F = {
 			isa = PBXGroup;
 			children = (
+				AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */,
 				3434FBF32030A1CC00FC778F /* Shared */,
 				3434FBE22030A1CC00FC778F /* iOS */,
 				3434F4E72030A1C600FC778F /* Today Widget */,
@@ -539,6 +541,14 @@
 					343400BA2030D62300FC778F = {
 						CreatedOnToolsVersion = 9.3;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 0;
+							};
+							com.apple.Keychain = {
+								enabled = 0;
+							};
+						};
 					};
 					344C0D86204B5A1C008FCB05 = {
 						CreatedOnToolsVersion = 9.2;
@@ -748,7 +758,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/../iOS/iOS Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -765,7 +775,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/../iOS/iOS Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -780,7 +790,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/../Today Widget/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -796,7 +806,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/../Today Widget/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -905,7 +915,7 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/../tvOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.tv-app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
 				SWIFT_VERSION = 4.0;
@@ -922,7 +932,7 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/../tvOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.tv-app";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
 				SWIFT_VERSION = 4.0;
