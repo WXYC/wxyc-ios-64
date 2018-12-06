@@ -10,12 +10,6 @@ import UIKit
 import Spring
 import Core
 
-public struct NowPlayingPresentation {
-    let song: String
-    let artist: String
-    let albumImage: UIImage?
-}
-
 public protocol NowPlayingPresentable: class {
     var songLabel: SpringLabel! { get }
     var artistLabel: UILabel! { get }
@@ -40,23 +34,25 @@ public extension PlaylistServiceObserver where Self: UIResponder & NowPlayingPre
     }
     
     func updateWith(artworkResult: Result<UIImage>) {
-        let artwork: UIImage
-        
-        switch artworkResult {
-        case .success(let image):
-            artwork = image
-        case .error(_):
-            artwork = #imageLiteral(resourceName: "logo")
-        }
-        
         DispatchQueue.main.async {
             UIView.transition(
                 with: self.albumImageView,
                 duration: 0.25,
                 options: [.transitionCrossDissolve],
-                animations: { self.albumImageView.image = artwork },
+                animations: { self.albumImageView.image = artworkResult.nowPlayingImage },
                 completion: nil
             )
+        }
+    }
+}
+
+extension Result where T == UIImage {
+    var nowPlayingImage: UIImage {
+        switch self {
+        case .success(let image):
+            return image
+        case .error(_):
+            return #imageLiteral(resourceName: "logo")
         }
     }
 }

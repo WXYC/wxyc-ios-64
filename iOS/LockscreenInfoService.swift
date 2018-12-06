@@ -11,61 +11,82 @@ import MediaPlayer
 import Core
 
 final class LockscreenInfoService: PlaylistServiceObserver {
-    private enum ServiceError: Error {
-        case noPlaycut
-        case noArtwork
+    private var nowPlayingInfo = [String : Any]() {
+        didSet {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = self.nowPlayingInfo
+        }
     }
     
-    private var playcutResult = Result<Playcut>.error(ServiceError.noPlaycut)
-    private var artworkResult = Result<UIImage>.error(ServiceError.noArtwork)
-    private var playbackRate: Float = 0.0
-    
     public func updateWith(playcutResult: Result<Playcut>) {
-        self.playcutResult = playcutResult
-        self.updateNowPlayingInfoCenter()
+        self.nowPlayingInfo.update(with: playcutResult.playcutMediaItems)
     }
     
     func updateWith(artworkResult: Result<UIImage>) {
-        self.artworkResult = artworkResult
-        self.updateNowPlayingInfoCenter()
+        self.nowPlayingInfo[MPMediaItemPropertyArtwork] = artworkResult.mediaItemArtwork
     }
-    
-    public func update(playbackRate: Float) {
-        self.playbackRate = playbackRate
-        self.updateNowPlayingInfoCenter()
-    }
-    
-    private func mediaItemArtwork() -> MPMediaItemArtwork {
+}
+
+extension Result where T == UIImage {
+    var mediaItemArtwork: MPMediaItemArtwork {
         let screenWidth = UIScreen.main.bounds.size.width
         let boundsSize = CGSize(width: screenWidth, height: screenWidth)
         
         return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
-            if case .success(let artwork) = self.artworkResult {
+            if case .success(let artwork) = self {
                 return artwork
             } else {
                 return UIImage.defaultNowPlayingInfoCenterImage
             }
         }
     }
-    
-    private func updateNowPlayingInfoCenter() {
-        if case .success(let playcut) = playcutResult {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = [
-                MPMediaItemPropertyArtist: playcut.artistName,
+}
+
+extension Result where T == Playcut {
+    var playcutMediaItems: [String: Any] {
+        if case .success(let playcut) = self {
+            return [
+                MPMediaItemPropertyArtist : playcut.artistName,
                 MPMediaItemPropertyTitle: playcut.songTitle,
-                MPMediaItemPropertyArtwork: self.mediaItemArtwork(),
-                MPMediaItemPropertyAlbumTitle: playcut.releaseTitle ?? "",
-                MPNowPlayingInfoPropertyIsLiveStream: self.playbackRate > 0.0,
-                MPNowPlayingInfoPropertyPlaybackRate: self.playbackRate
+                MPMediaItemPropertyAlbumTitle: playcut.releaseTitle ?? ""
             ]
         } else {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = [
-                MPMediaItemPropertyArtist: RadioStation.WXYC.name,
+            return [
+                MPMediaItemPropertyArtist : RadioStation.WXYC.name,
                 MPMediaItemPropertyTitle: RadioStation.WXYC.secondaryName,
-                MPMediaItemPropertyArtwork: mediaItemArtwork(),
-                MPNowPlayingInfoPropertyIsLiveStream: self.playbackRate > 0.0,
-                MPNowPlayingInfoPropertyPlaybackRate: self.playbackRate
+                MPMediaItemPropertyAlbumTitle: ""
             ]
+        }
+    }
+}
+
+extension UIImage {
+    static var defaultNowPlayingInfoCenterImage: UIImage {
+        let makeImage: () -> UIImage = {
+            let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
+            let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
+            logoView.contentMode = .scaleAspectFit
+            
+            let width = UIScreen.main.bounds.width
+            backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: width)
+            logoView.frame = backgroundView.frame
+            
+            backgroundView.addSubview(logoView)
+            
+            return backgroundView.snapshot()!
+        }
+        
+        if DispatchQueue.main == OperationQueue.current?.underlyingQueue {
+            return makeImage()
+        } else {
+            return DispatchQueue.main.sync(execute: makeImage)
+        }
+    }
+}
+
+extension Dictionary {
+    mutating func update(with dict: Dictionary<Key, Value>) {
+        for (key, value) in dict {
+            self[key] = value
         }
     }
 }

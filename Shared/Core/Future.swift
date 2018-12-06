@@ -11,6 +11,12 @@ public class Future<Value> {
         callbacks.append(callback)
         result.map(callback)
     }
+    
+    func observe(with callbacks: [Callback]) {
+        for callback in callbacks {
+            self.observe(with: callback)
+        }
+    }
         
     private func report(result: Result<Value>) {
         for callback in callbacks {

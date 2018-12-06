@@ -10,7 +10,7 @@ extension URL {
     }
 }
     
-public protocol PlaylistItem: Comparable {
+public protocol PlaylistItem: Comparable, Codable {
     var id: Int { get }
     var hour: Int { get }
     var chronOrderID: Int { get }
@@ -26,7 +26,7 @@ public extension PlaylistItem {
     }
 }
 
-public struct Playcut: PlaylistItem, Codable, Equatable {
+public struct Playcut: PlaylistItem {
     public let id: Int
     public let hour: Int
     public let chronOrderID: Int
@@ -48,25 +48,19 @@ public extension Playcut {
     }
 }
 
-struct Talkset: PlaylistItem, Codable, Equatable {
+struct Talkset: PlaylistItem {
     let id: Int
     let hour: Int
     let chronOrderID: Int
 }
 
-struct Breakpoint: PlaylistItem, Codable, Equatable {
+struct Breakpoint: PlaylistItem {
     let id: Int
     let hour: Int
     let chronOrderID: Int
 }
 
 struct Playlist: Codable, Equatable {
-    static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
-        return lhs.playcuts == rhs.playcuts
-            && lhs.talksets == rhs.talksets
-            && lhs.breakpoints == rhs.breakpoints
-    }
-    
     let playcuts: [Playcut]
     let talksets: [Talkset]
     let breakpoints: [Breakpoint]
