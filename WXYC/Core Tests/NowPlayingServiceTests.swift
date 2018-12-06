@@ -56,19 +56,18 @@ final class TestWebSession: WebSession {
 }
 
 final class TestDefaults: Defaults {
-    var playcut: Playcut? = nil
+    var store = [String:Any?]()
     
     func object(forKey defaultName: String) -> Any? {
         guard defaultName == "playcut" else {
             fatalError()
         }
         
-        return self.playcut
+        return self.store[defaultName] as Any?
     }
     
     func set(_ value: Any?, forKey defaultName: String) {
-        print(">>>>>", value, defaultName)
-        UserDefaults.standard.setValue(value, forKey: defaultName)
+        self.store[defaultName] = value
     }
 }
 
@@ -150,10 +149,11 @@ class NowPlayingServiceTests: XCTestCase {
     func testSuccessfullyRetrievingFromCache() {
         let webSession = TestWebSession()
         let defaults = TestDefaults()
-        defaults.playcut = Fixture.playcut1
+        let cache = Cache(defaults: defaults)
+        cache[Core.CacheKey.playcut] = Fixture.playcut1
         
         let nowPlayingService = NowPlayingService(
-            cache: Cache(defaults: defaults),
+            cache: cache,
             webSession: webSession
         )
         
@@ -185,7 +185,8 @@ class NowPlayingServiceTests: XCTestCase {
         let nowPlayingService = self.createNowPlayingService()
         _ = PlaylistService(
             service: nowPlayingService,
-            initialObservers: playlistObserver
+            artworkService: ArtworkService(),
+            initialObservers: [playlistObserver]
         )
 
         _ = nowPlayingService.getCurrentPlaycut()
@@ -201,10 +202,11 @@ class NowPlayingServiceTests: XCTestCase {
         webSession.playcutFixtures = [Fixture.playcut1, Fixture.playcut2]
         
         let defaults = TestDefaults()
-        defaults.playcut = Fixture.playcut1
-        
+        let cache = Cache(defaults: defaults)
+        cache[Core.CacheKey.playcut] = Fixture.playcut1
+
         let nowPlayingService = NowPlayingService(
-            cache: Cache(defaults: defaults),
+            cache: cache,
             webSession: webSession
         )
         

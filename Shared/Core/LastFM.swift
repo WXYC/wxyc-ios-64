@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LastFM {
+struct LastFM {
     enum API {
         static let Key    = "45f85235ffc46cbb8769d545c8059399"
         static let Secret = "f57464fb062d51b6581bf6dc8321f40a"
@@ -8,17 +8,17 @@ public struct LastFM {
     
     private init() { }
     
-    public enum Errors: Error {
+    enum Errors: Error {
         case noAlbumArt
     }
     
-    public struct SearchResponse: Codable {
+    struct SearchResponse: Codable {
         let album: Album
     }
     
-    public struct Album: Codable {
-        public struct AlbumArt: Codable {
-            public enum Size: String, Codable, Comparable {
+    struct Album: Codable {
+        struct AlbumArt: Codable {
+            enum Size: String, Codable, Comparable {
                 case small
                 case medium
                 case large
@@ -26,7 +26,7 @@ public struct LastFM {
                 case mega
                 case unknown = ""
                 
-                public static func <(lhs: LastFM.Album.AlbumArt.Size, rhs: LastFM.Album.AlbumArt.Size) -> Bool {
+                static func <(lhs: LastFM.Album.AlbumArt.Size, rhs: LastFM.Album.AlbumArt.Size) -> Bool {
                     let ordering: [Size] = [.unknown, .small, .medium, .large, .extralarge, .mega]
                     
                     guard let lOrdinal = ordering.index(of: lhs), let rOrdinal = ordering.index(of: rhs) else {

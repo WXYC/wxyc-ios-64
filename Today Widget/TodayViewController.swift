@@ -33,10 +33,10 @@ class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServ
 
             self.containerStackView.axis = self.containerAxis(forDisplayMode: context.widgetActiveDisplayMode)
             self.labelsStackView.alignment = self.labelAlignment(forDisplayMode: context.widgetActiveDisplayMode)
-            self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
+            self.preferredContentSize = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        self.playlistService = PlaylistService(initialObservers: self)
+        self.playlistService = PlaylistService(observers: self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -55,10 +55,10 @@ extension TodayViewController: NCWidgetProviding {
         self.containerStackView.axis = self.containerAxis(forDisplayMode: activeDisplayMode)
         self.labelsStackView.alignment = self.labelAlignment(forDisplayMode: activeDisplayMode)
         
-        self.preferredContentSize = self.view.systemLayoutSizeFitting(UILayoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
+        self.preferredContentSize = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
     }
     
-    private func containerAxis(forDisplayMode displayMode: NCWidgetDisplayMode) -> UILayoutConstraintAxis {
+    private func containerAxis(forDisplayMode displayMode: NCWidgetDisplayMode) -> NSLayoutConstraint.Axis {
         switch displayMode {
         case .compact:
             return .horizontal
@@ -67,7 +67,7 @@ extension TodayViewController: NCWidgetProviding {
         }
     }
     
-    private func labelAlignment(forDisplayMode displayMode: NCWidgetDisplayMode) -> UIStackViewAlignment {
+    private func labelAlignment(forDisplayMode displayMode: NCWidgetDisplayMode) -> UIStackView.Alignment {
         switch displayMode {
         case .compact:
             return .leading

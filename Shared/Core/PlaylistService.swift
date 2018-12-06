@@ -16,54 +16,32 @@ public protocol PlaylistServiceObserver: class {
 
 public final class PlaylistService {
     private let nowPlayingService: NowPlayingService
-    private var observers: [PlaylistServiceObserver]
+    private let artworkService: ArtworkService
+    
     private let playcutRequest: Future<Playcut>
-    private var lastPlaycut: Playcut?
+    private let artworkRequest: Future<UIImage>
+
+    private let observers: [PlaylistServiceObserver]
     
-    public init(service: NowPlayingService = NowPlayingService(), initialObservers: PlaylistServiceObserver...) {
+    public convenience init(observers: PlaylistServiceObserver...) {
+        self.init(service: NowPlayingService(), artworkService: ArtworkService(), initialObservers: observers)
+    }
+    
+    init(service: NowPlayingService,
+         artworkService: ArtworkService,
+         initialObservers: [PlaylistServiceObserver]) {
         self.nowPlayingService = service
+        self.artworkService = artworkService
         
-        self.observers = []
-        for observer in initialObservers {
-            self.observers.append(observer)
-        }
+        self.observers = initialObservers
         
-        playcutRequest = Future.repeat(nowPlayingService.getCurrentPlaycut)
-        playcutRequest.observe(with: self.updateWith(playcutResult:))
-    }
-    
-    func add(_ observers: PlaylistServiceObserver...) {
-        for observer in observers {
-            self.observers.append(observer)
-        }
-    }
-    
-    func updateWith(playcutResult: Result<Playcut>) {
-        for observer in observers {
-            observer.updateWith(playcutResult: playcutResult)
-        }
+        self.playcutRequest = Future.repeat(self.nowPlayingService.getCurrentPlaycut)
+        self.artworkRequest = self.playcutRequest.chained(with: self.artworkService.getArtwork(for:))
+
+        let playcutCallbacks = initialObservers.map { $0.updateWith(playcutResult:) }
+        self.playcutRequest.observe(with: playcutCallbacks)
         
-        guard case let .success(playcut) = playcutResult else {
-            return
-        }
-        
-        guard playcut != self.lastPlaycut else {
-            return
-        }
-        
-        self.lastPlaycut = playcut
-        
-        let imageRequest = playcut.getArtwork()
-        imageRequest.observe(with: self.update(artworkResult:))
-    }
-    
-    func update(artworkResult: Result<UIImage>) {
-        if case let .error(error) = artworkResult, (error as? ServiceErrors) == .noNewData {
-            return
-        }
-        
-        for observer in observers {
-            observer.updateWith(artworkResult: artworkResult)
-        }
+        let artworkCallbacks = initialObservers.map { $0.updateWith(artworkResult:) }
+        self.artworkRequest.observe(with: artworkCallbacks)
     }
 }
