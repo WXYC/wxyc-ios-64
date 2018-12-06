@@ -9,7 +9,7 @@ extension URL {
         return URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc.mp3")!
     }
 }
-    
+
 public protocol PlaylistItem: Comparable, Codable {
     var id: Int { get }
     var hour: Int { get }
@@ -35,17 +35,6 @@ public struct Playcut: PlaylistItem {
     public let labelName: String?
     public let artistName: String
     public let releaseTitle: String?
-}
-
-public extension Playcut {
-    func userActivityState() -> NSUserActivity {
-        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        let url: String! = "https://www.google.com/search?q=\(artistName)+\(songTitle)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        activity.webpageURL = URL(string: url)
-        
-        return activity
-    }
 }
 
 struct Talkset: PlaylistItem {

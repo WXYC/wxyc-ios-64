@@ -20,7 +20,7 @@ struct CachedRecord<Value: Codable>: Codable {
     }
 }
 
-public protocol Defaults {
+protocol Defaults {
     func object(forKey defaultName: String) -> Any?
     
     func set(_ value: Any?, forKey defaultName: String)
@@ -84,6 +84,12 @@ final class Cache: Cachable {
                 self.defaults.set(nil, forKey: key.rawValue)
             }
         }
+    }
+}
+
+extension Cache {
+    static var WXYC: Cache {
+        return Cache(defaults: UserDefaults(suiteName: "org.wxyc.apps")!)
     }
 }
 

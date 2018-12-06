@@ -15,22 +15,22 @@ public enum Result<T> {
 }
 
 /// `NowPlayingService` will throw one of these errors, depending
-public enum ServiceErrors: Error {
+enum ServiceErrors: Error {
     case noResults
     case noNewData
     case noCachedResult
 }
 
-public protocol WebSession {
+protocol WebSession {
     func request(url: URL) -> Future<Data>
 }
 
-public protocol Cachable {
+protocol Cachable {
     subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String { get set }
 }
 
 /// `NowPlayingService` is responsible for retrieving the now playing
-public final class NowPlayingService {
+final class NowPlayingService {
     private var cache: Cachable
     private let webSession: WebSession
     
@@ -39,7 +39,7 @@ public final class NowPlayingService {
         self.webSession = webSession
     }
     
-    public func getCurrentPlaycut() -> Future<Playcut> {
+    func getCurrentPlaycut() -> Future<Playcut> {
         return self.getCachedPlaycut() || self.getPlaylist().transformed(with: { playlist -> Playcut in
             guard let playcut = playlist.playcuts.first else {
                 throw ServiceErrors.noResults
@@ -76,7 +76,7 @@ public final class NowPlayingService {
 }
 
 extension URLSession: WebSession {
-    public func request(url: URL) -> Future<Data> {
+    func request(url: URL) -> Future<Data> {
         let promise = Promise<Data>()
         
         let task = dataTask(with: url) { data, _, error in
@@ -90,11 +90,5 @@ extension URLSession: WebSession {
         task.resume()
         
         return promise
-    }
-}
-
-extension Cache {
-    static var WXYC: Cache {
-        return Cache(defaults: UserDefaults(suiteName: "org.wxyc.apps")!)
     }
 }

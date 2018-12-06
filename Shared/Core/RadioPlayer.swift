@@ -10,17 +10,17 @@ import Foundation
 import AVFoundation
 
 internal final class RadioPlayer {
-    public let streamURL: URL
+    let streamURL: URL
     
-    public init(streamURL: URL = URL.WXYCStream) {
+    init(streamURL: URL = URL.WXYCStream) {
         self.streamURL = streamURL
     }
     
-    public var isPlaying: Bool {
+    var isPlaying: Bool {
         return player.isPlaying
     }
     
-    public func play() {
+    func play() {
         if self.isPlaying {
             return
         }
@@ -30,7 +30,7 @@ internal final class RadioPlayer {
         player.play()
     }
     
-    public func pause() {
+    func pause() {
         player.pause()
         self.resetStream()
     }

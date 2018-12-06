@@ -1,13 +1,15 @@
 import Foundation
 
-public class Future<Value> {
+class Future<Value> {
+    typealias Callback = (Result<Value>) -> Void
+    
     fileprivate var result: Result<Value>? {
         didSet { result.map(report) }
     }
     
-    private lazy var callbacks = [(Result<Value>) -> Void]()
+    private lazy var callbacks = [Callback]()
     
-    func observe(with callback: @escaping (Result<Value>) -> Void) {
+    func observe(with callback: @escaping Callback) {
         callbacks.append(callback)
         result.map(callback)
     }
