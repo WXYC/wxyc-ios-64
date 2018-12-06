@@ -30,14 +30,19 @@ extension UserDefaults: Defaults {
     
 }
 
-public final class Cache: Cachable {
+enum CacheKey: String {
+    case playcut
+    case artwork
+}
+
+final class Cache: Cachable {
     private let defaults: Defaults
     
-    public init(defaults: Defaults) {
+    init(defaults: Defaults) {
         self.defaults = defaults
     }
     
-    public subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
+    subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
         get {
             return self[key, defaultLifespan]
         }
@@ -46,7 +51,7 @@ public final class Cache: Cachable {
         }
     }
     
-    public subscript<Key: RawRepresentable, Value: Codable>(
+    subscript<Key: RawRepresentable, Value: Codable>(
         key: Key,
         lifespan: TimeInterval
     ) -> Value? where Key.RawValue == String {
@@ -79,5 +84,19 @@ public final class Cache: Cachable {
                 self.defaults.set(nil, forKey: key.rawValue)
             }
         }
+    }
+}
+
+extension Cachable {
+    func getCachedValue<Value: Codable>(key: CacheKey) -> Future<Value> {
+        let promise = Promise<Value>()
+        
+        if let cachedValue: Value = self[key] {
+            promise.resolve(with: cachedValue)
+        } else {
+            promise.reject(with: ServiceErrors.noCachedResult)
+        }
+        
+        return promise
     }
 }
