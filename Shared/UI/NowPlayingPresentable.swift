@@ -14,22 +14,17 @@ public protocol NowPlayingPresentable: class {
     var songLabel: SpringLabel! { get }
     var artistLabel: UILabel! { get }
     var albumImageView: UIImageView! { get }
+    var userActivity: NSUserActivity? { get set }
 }
 
-public extension PlaylistServiceObserver where Self: UIResponder & NowPlayingPresentable {
+public extension NowPlayingPresentable where Self: PlaylistServiceObserver {
     func updateWith(playcutResult: Result<Playcut>) {
         DispatchQueue.main.async {
-            switch playcutResult {
-            case .success(let playcut):
-                self.songLabel.text = playcut.songTitle
-                self.artistLabel.text = playcut.artistName
-                
-                self.userActivity = playcut.userActivityState()
-                self.userActivity?.becomeCurrent()
-            case .error(_):
-                self.songLabel.text = RadioStation.WXYC.name
-                self.artistLabel.text = RadioStation.WXYC.secondaryName
-            }
+            self.songLabel.text = playcutResult.songTitle
+            self.artistLabel.text = playcutResult.artistName
+            
+            self.userActivity = playcutResult.userActivity
+            self.userActivity?.becomeCurrent()
         }
     }
     
@@ -46,6 +41,43 @@ public extension PlaylistServiceObserver where Self: UIResponder & NowPlayingPre
     }
 }
 
+extension Result where T == Playcut {
+    var songTitle: String {
+        switch self {
+        case .success(let playcut):
+            return playcut.songTitle
+        case .error(_):
+            return RadioStation.WXYC.name
+        }
+    }
+    
+    var artistName: String {
+        switch self {
+        case .success(let playcut):
+            return playcut.artistName
+        case .error(_):
+            return RadioStation.WXYC.secondaryName
+        }
+    }
+    
+    var userActivity: NSUserActivity {
+        switch self {
+        case .success(let playcut):
+            let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+            let url: String! = "https://www.google.com/search?q=\(playcut.artistName)+\(playcut.songTitle)"
+                .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+            activity.webpageURL = URL(string: url)
+            
+            return activity
+        case .error(_):
+            let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+            activity.webpageURL = URL(string: "https://wxyc.org")!
+            
+            return activity
+        }
+    }
+}
+
 extension Result where T == UIImage {
     var nowPlayingImage: UIImage {
         switch self {
@@ -56,15 +88,3 @@ extension Result where T == UIImage {
         }
     }
 }
-
-extension Playcut {
-    func userActivityState() -> NSUserActivity {
-        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
-        let url: String! = "https://www.google.com/search?q=\(artistName)+\(songTitle)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        activity.webpageURL = URL(string: url)
-        
-        return activity
-    }
-}
-
