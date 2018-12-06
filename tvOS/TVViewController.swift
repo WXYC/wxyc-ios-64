@@ -27,6 +27,6 @@ class TVViewController: UIViewController, NowPlayingPresentable, PlaylistService
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.playlistService = PlaylistService(initialObservers: self)
+        self.playlistService = PlaylistService(observers: self)
     }
 }

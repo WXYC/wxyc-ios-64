@@ -7,7 +7,7 @@
 //
 
 import XCTest
-import Core
+@testable import Core
 
 class WXYCTests: XCTestCase {
     let cache = Cache(defaults: UserDefaults())

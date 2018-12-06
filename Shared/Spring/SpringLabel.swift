@@ -25,7 +25,6 @@ import UIKit
 public class SpringLabel: UILabel, Springable {
     @IBInspectable public var autostart: Bool = false
     @IBInspectable public var autohide: Bool = false
-    @IBInspectable public var animation: String = ""
     @IBInspectable public var force: CGFloat = 1
     @IBInspectable public var delay: CGFloat = 0
     @IBInspectable public var duration: CGFloat = 0.7
@@ -37,36 +36,9 @@ public class SpringLabel: UILabel, Springable {
     @IBInspectable public var scaleX: CGFloat = 1
     @IBInspectable public var scaleY: CGFloat = 1
     @IBInspectable public var rotate: CGFloat = 0
-    @IBInspectable public var curve: String = ""
+    
+    public var animation: SpringAnimation = .Flash
+    public var curve: SpringAnimationCurve = .EaseInOut
     public var opacity: CGFloat = 1
     public var animateFrom: Bool = false
-
-    lazy private var spring : Spring = Spring(self)
-
-    override public func awakeFromNib() {
-        super.awakeFromNib()
-        self.spring.customAwakeFromNib()
-    }
-
-    public override func layoutSubviews() {
-        super.layoutSubviews()
-        spring.customLayoutSubviews()
-    }
-
-    public func animate() {
-        self.spring.animate()
-    }
-
-    public func animateNext(completion: @escaping () -> ()) {
-        self.spring.animateNext(completion: completion)
-    }
-
-    public func animateTo() {
-        self.spring.animateTo()
-    }
-
-    public func animateToNext(completion: @escaping () -> ()) {
-        self.spring.animateToNext(completion: completion)
-    }
-
 }

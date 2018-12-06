@@ -31,19 +31,19 @@ public final class RadioPlayerController {
         
         self.inputObservations = [
             notificationCenter.addObserver(
-                forName: .UIApplicationDidEnterBackground,
+                forName: UIApplication.didEnterBackgroundNotification,
                 object: nil,
                 queue: nil,
                 using: self.applicationDidEnterBackground
             ),
             notificationCenter.addObserver(
-                forName: .UIApplicationWillEnterForeground,
+                forName: UIApplication.willEnterForegroundNotification,
                 object: nil,
                 queue: nil,
                 using: self.applicationWillEnterForeground
             ),
             notificationCenter.addObserver(
-                forName: .AVAudioSessionInterruption,
+                forName: AVAudioSession.interruptionNotification,
                 object: nil,
                 queue: nil,
                 using: self.sessionInterrupted
@@ -157,7 +157,7 @@ fileprivate extension Notification {
             return false
         }
         
-        guard let type = AVAudioSessionInterruptionType(rawValue: typeValue.uintValue) else {
+        guard let type = AVAudioSession.InterruptionType(rawValue: typeValue.uintValue) else {
             return false
         }
         
