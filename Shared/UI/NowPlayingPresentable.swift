@@ -56,3 +56,15 @@ extension Result where T == UIImage {
         }
     }
 }
+
+extension Playcut {
+    func userActivityState() -> NSUserActivity {
+        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+        let url: String! = "https://www.google.com/search?q=\(artistName)+\(songTitle)"
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+        activity.webpageURL = URL(string: url)
+        
+        return activity
+    }
+}
+

@@ -28,7 +28,7 @@
 		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
 		343400752030A20D00FC778F /* TodayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434F4E82030A1C600FC778F /* TodayViewController.swift */; };
 		343400762030A21200FC778F /* TodayMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434F4E92030A1C600FC778F /* TodayMain.storyboard */; };
-		343400862030A2AC00FC778F /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* WXYC.swift */; };
+		343400862030A2AC00FC778F /* PlaylistItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistItem.swift */; };
 		343400882030A2AC00FC778F /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF92030A1CC00FC778F /* Future.swift */; };
 		343400892030A2AC00FC778F /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFA2030A1CC00FC778F /* PlaylistService.swift */; };
 		3434008A2030A2AC00FC778F /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFB2030A1CC00FC778F /* LastFM.swift */; };
@@ -59,7 +59,7 @@
 		34953E18206882760010505C /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
 		34953E19206882760010505C /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
 		34953E1A206882760010505C /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
-		34A067CE20393E42003D2919 /* WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* WXYC.swift */; };
+		34A067CE20393E42003D2919 /* PlaylistItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistItem.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D908542113EE4800AB8C79 /* RadioPlayerController.swift */; };
 /* End PBXBuildFile section */
@@ -162,7 +162,7 @@
 		3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
 		3434FBF12030A1CC00FC778F /* PlaybackButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaybackButton.swift; sourceTree = "<group>"; };
 		3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingPresentable.swift; sourceTree = "<group>"; };
-		3434FBF72030A1CC00FC778F /* WXYC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WXYC.swift; sourceTree = "<group>"; };
+		3434FBF72030A1CC00FC778F /* PlaylistItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistItem.swift; sourceTree = "<group>"; };
 		3434FBF92030A1CC00FC778F /* Future.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
 		3434FBFA2030A1CC00FC778F /* PlaylistService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
 		3434FBFB2030A1CC00FC778F /* LastFM.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
@@ -358,7 +358,7 @@
 		3434FBF62030A1CC00FC778F /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				3434FBF72030A1CC00FC778F /* WXYC.swift */,
+				3434FBF72030A1CC00FC778F /* PlaylistItem.swift */,
 				3434FBF92030A1CC00FC778F /* Future.swift */,
 				3434FBFA2030A1CC00FC778F /* PlaylistService.swift */,
 				3434FBFB2030A1CC00FC778F /* LastFM.swift */,
@@ -694,7 +694,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				343400752030A20D00FC778F /* TodayViewController.swift in Sources */,
-				34A067CE20393E42003D2919 /* WXYC.swift in Sources */,
+				34A067CE20393E42003D2919 /* PlaylistItem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -702,7 +702,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				343400862030A2AC00FC778F /* WXYC.swift in Sources */,
+				343400862030A2AC00FC778F /* PlaylistItem.swift in Sources */,
 				343400882030A2AC00FC778F /* Future.swift in Sources */,
 				34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */,
 				343400892030A2AC00FC778F /* PlaylistService.swift in Sources */,

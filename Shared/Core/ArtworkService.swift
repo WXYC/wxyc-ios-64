@@ -9,7 +9,7 @@
 import Foundation
 import UIKit
 
-public final class ArtworkService {
+final class ArtworkService {
     private let cache: Cachable
     private let session: WebSession
     
