@@ -63,18 +63,6 @@ class RootPageViewController: UIPageViewController {
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
     }
-    
-    override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        
-        viewControllers?.forEach({ $0.viewWillLayoutSubviews() })
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-        viewControllers?.forEach({ $0.viewDidLayoutSubviews() })
-    }
 }
 
 extension RootPageViewController: UIPageViewControllerDataSource {

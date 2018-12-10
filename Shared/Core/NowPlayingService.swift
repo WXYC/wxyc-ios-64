@@ -1,35 +1,5 @@
-import UIKit
+import Foundation
 
-/// A service request will either succeed with a value or fail with an error, never both.
-public enum Result<T> {
-    case success(T)
-    case error(Error)
-    
-    func flatten() -> T? {
-        guard case .success(let value) = self else {
-            return nil
-        }
-        
-        return value
-    }
-}
-
-/// `NowPlayingService` will throw one of these errors, depending
-enum ServiceErrors: Error {
-    case noResults
-    case noNewData
-    case noCachedResult
-}
-
-protocol WebSession {
-    func request(url: URL) -> Future<Data>
-}
-
-protocol Cachable {
-    subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String { get set }
-}
-
-/// `NowPlayingService` is responsible for retrieving the now playing
 final class NowPlayingService {
     private var cache: Cachable
     private let webSession: WebSession
@@ -40,15 +10,7 @@ final class NowPlayingService {
     }
     
     func getCurrentPlaycut() -> Future<Playcut> {
-        return self.getCachedPlaycut() || self.getPlaylist().transformed(with: { playlist -> Playcut in
-            guard let playcut = playlist.playcuts.first else {
-                throw ServiceErrors.noResults
-            }
-
-            self.cache[CacheKey.playcut] = playcut
-            
-            return playcut
-        })
+        return self.getCachedPlaycut() || self.getRemotePlaycut()
     }
     
     private func getCachedPlaycut() -> Future<Playcut> {
@@ -65,13 +27,25 @@ final class NowPlayingService {
         return cachedPlaycutRequest
     }
     
-    private func getPlaylist() -> Future<Playlist> {
-        return webSession.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
+    private func getRemotePlaycut() -> Future<Playcut> {
+        let playlistRequest = webSession.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
             let decoder = JSONDecoder()
             let playlist = try decoder.decode(Playlist.self, from: data)
             
             return playlist
         }
+        
+        let playcutRequest = playlistRequest.transformed(with: { playlist -> Playcut in
+            guard let playcut = playlist.playcuts.first else {
+                throw ServiceErrors.noResults
+            }
+            
+            self.cache[CacheKey.playcut] = playcut
+            
+            return playcut
+        })
+        
+        return playcutRequest
     }
 }
 
