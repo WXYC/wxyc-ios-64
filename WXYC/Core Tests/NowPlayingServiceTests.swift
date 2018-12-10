@@ -191,10 +191,18 @@ class NowPlayingServiceTests: XCTestCase {
 
         _ = nowPlayingService.getCurrentPlaycut()
         
-        let playcut = playlistObserver.playcutResult?.flatten()
-        XCTAssertNotEqual(playcut?.songTitle, RadioStation.WXYC.name)
-        XCTAssertNotEqual(playcut?.songTitle, RadioStation.WXYC.secondaryName)
+        guard let playcutResult = playlistObserver.playcutResult else {
+            XCTFail()
+            return
+        }
+        
+        guard case .success(let playcut) = playcutResult else {
+            XCTFail()
+            return
+        }
 
+        XCTAssertNotEqual(playcut.songTitle, RadioStation.WXYC.name)
+        XCTAssertNotEqual(playcut.songTitle, RadioStation.WXYC.secondaryName)
     }
     
     func createNowPlayingService() -> NowPlayingService {

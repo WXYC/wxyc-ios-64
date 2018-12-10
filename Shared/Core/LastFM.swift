@@ -1,16 +1,7 @@
 import Foundation
 
 struct LastFM {
-    enum API {
-        static let Key    = "45f85235ffc46cbb8769d545c8059399"
-        static let Secret = "f57464fb062d51b6581bf6dc8321f40a"
-    }
-    
     private init() { }
-    
-    enum Errors: Error {
-        case noAlbumArt
-    }
     
     struct SearchResponse: Codable {
         let album: Album
@@ -18,22 +9,19 @@ struct LastFM {
     
     struct Album: Codable {
         struct AlbumArt: Codable {
-            enum Size: String, Codable, Comparable {
+            enum Size: String, Codable, Comparable, CaseIterable {
+                case unknown = ""
                 case small
                 case medium
                 case large
                 case extralarge
                 case mega
-                case unknown = ""
                 
-                static func <(lhs: LastFM.Album.AlbumArt.Size, rhs: LastFM.Album.AlbumArt.Size) -> Bool {
-                    let ordering: [Size] = [.unknown, .small, .medium, .large, .extralarge, .mega]
+                static func <(lhs: Size, rhs: Size) -> Bool {
+                    let lIndex = self.allCases.index(of: lhs)!
+                    let rIndex = self.allCases.index(of: rhs)!
                     
-                    guard let lOrdinal = ordering.index(of: lhs), let rOrdinal = ordering.index(of: rhs) else {
-                        return false
-                    }
-                    
-                    return lOrdinal < rOrdinal
+                    return lIndex < rIndex
                 }
             }
             
@@ -58,12 +46,16 @@ struct LastFM {
             return allArt.last!
         }
     }
-    
-    static func searchURL(`for` playcut: Playcut, apiKey: String = API.Key) -> URL {
+}
+
+final class LastFMLocator: RemoteArtworkLocator {
+    func makeSearchURL(for playcut: Playcut) -> URL {
+        let key = "45f85235ffc46cbb8769d545c8059399"
+        
         var components = URLComponents(string: "https://ws.audioscrobbler.com")!
         components.path = "/2.0/"
         components.queryItems = [
-            URLQueryItem(name: "api_key", value: apiKey),
+            URLQueryItem(name: "api_key", value: key),
             URLQueryItem(name: "method",  value: "album.getInfo"),
             URLQueryItem(name: "artist",  value: playcut.artistName),
             URLQueryItem(name: "album",   value: playcut.releaseTitle),
@@ -71,5 +63,12 @@ struct LastFM {
         ]
         
         return components.url!
+    }
+    
+    func extractURL(from data: Data) throws -> URL {
+        let decoder = JSONDecoder()
+        let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: data)
+        
+        return searchResponse.album.largestAlbumArt.url
     }
 }

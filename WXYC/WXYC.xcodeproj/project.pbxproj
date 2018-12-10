@@ -56,11 +56,10 @@
 		34425DBE21B8BAE100C8DD5F /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
 		34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
 		34425DC621B8BB9A00C8DD5F /* NowPlayingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348369202030F88A0029E28E /* NowPlayingServiceTests.swift */; };
-		34953E18206882760010505C /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
-		34953E19206882760010505C /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
-		34953E1A206882760010505C /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
 		34A067CE20393E42003D2919 /* PlaylistItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistItem.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
+		34A2CA0321B9E4B100A31F48 /* ServiceTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */; };
+		34B1882A21BB2B98005ADD84 /* Discogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1882821BB29E0005ADD84 /* Discogs.swift */; };
 		34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D908542113EE4800AB8C79 /* RadioPlayerController.swift */; };
 /* End PBXBuildFile section */
 
@@ -182,10 +181,11 @@
 		34425DA321B8A16E00C8DD5F /* ArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkService.swift; sourceTree = "<group>"; };
 		34425DB921B8BAE100C8DD5F /* Core Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Core Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		34425DBD21B8BAE100C8DD5F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		344C0D87204B5A1C008FCB05 /* WXYC Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "WXYC Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		344C0D8B204B5A1C008FCB05 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		34765F622030F33E005C8321 /* CacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CacheTests.swift; path = "../WXYC Tests/CacheTests.swift"; sourceTree = "<group>"; };
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
+		34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTypes.swift; sourceTree = "<group>"; };
+		34B1882821BB29E0005ADD84 /* Discogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discogs.swift; sourceTree = "<group>"; };
 		34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		34D908542113EE4800AB8C79 /* RadioPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerController.swift; sourceTree = "<group>"; };
 		AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WXYC TV.entitlements"; sourceTree = "<group>"; };
@@ -252,16 +252,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		34953E17206882710010505C /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				34953E18206882760010505C /* libCore.a in Frameworks */,
-				34953E19206882760010505C /* libSpring.a in Frameworks */,
-				34953E1A206882760010505C /* libUI.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -298,7 +288,6 @@
 				343400A22030A2ED00FC778F /* libSpring.a */,
 				343400BB2030D62300FC778F /* WXYC TV.app */,
 				341FBACC2041E7AB00CD2F36 /* WXYC.app */,
-				344C0D87204B5A1C008FCB05 /* WXYC Tests.xctest */,
 				34425DB921B8BAE100C8DD5F /* Core Tests.xctest */,
 			);
 			name = Products;
@@ -364,11 +353,13 @@
 				3434FBF92030A1CC00FC778F /* Future.swift */,
 				3434FBFA2030A1CC00FC778F /* PlaylistService.swift */,
 				3434FBFB2030A1CC00FC778F /* LastFM.swift */,
+				34B1882821BB29E0005ADD84 /* Discogs.swift */,
 				3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */,
 				3434FBFD2030A1CC00FC778F /* iTunes.swift */,
 				3434FBFE2030A1CC00FC778F /* Cache.swift */,
 				3434FBFF2030A1CC00FC778F /* RadioStation.swift */,
 				3434FC002030A1CC00FC778F /* NowPlayingService.swift */,
+				34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */,
 				34D908542113EE4800AB8C79 /* RadioPlayerController.swift */,
 				34425DA321B8A16E00C8DD5F /* ArtworkService.swift */,
 			);
@@ -542,22 +533,6 @@
 			productReference = 34425DB921B8BAE100C8DD5F /* Core Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		344C0D86204B5A1C008FCB05 /* WXYC Tests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 344C0D91204B5A1D008FCB05 /* Build configuration list for PBXNativeTarget "WXYC Tests" */;
-			buildPhases = (
-				344C0D83204B5A1C008FCB05 /* Sources */,
-				34953E17206882710010505C /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "WXYC Tests";
-			productName = "WXYC Tests";
-			productReference = 344C0D87204B5A1C008FCB05 /* WXYC Tests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -608,12 +583,6 @@
 						CreatedOnToolsVersion = 10.1;
 						ProvisioningStyle = Automatic;
 					};
-					344C0D86204B5A1C008FCB05 = {
-						CreatedOnToolsVersion = 9.2;
-						LastSwiftMigration = 1010;
-						ProvisioningStyle = Automatic;
-						TestTargetID = 341FBAB02041E7AB00CD2F36;
-					};
 				};
 			};
 			buildConfigurationList = 3434F4BF2030A1A700FC778F /* Build configuration list for PBXProject "WXYC" */;
@@ -635,7 +604,6 @@
 				3434007E2030A29600FC778F /* Core */,
 				343400932030A2C200FC778F /* UI */,
 				343400A12030A2ED00FC778F /* Spring */,
-				344C0D86204B5A1C008FCB05 /* WXYC Tests */,
 				34425DB821B8BAE100C8DD5F /* Core Tests */,
 			);
 		};
@@ -717,7 +685,9 @@
 				34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */,
 				343400892030A2AC00FC778F /* PlaylistService.swift in Sources */,
 				3434008A2030A2AC00FC778F /* LastFM.swift in Sources */,
+				34B1882A21BB2B98005ADD84 /* Discogs.swift in Sources */,
 				3434008B2030A2AC00FC778F /* RadioPlayer.swift in Sources */,
+				34A2CA0321B9E4B100A31F48 /* ServiceTypes.swift in Sources */,
 				3434008C2030A2AC00FC778F /* iTunes.swift in Sources */,
 				3434008D2030A2AC00FC778F /* Cache.swift in Sources */,
 				3434008E2030A2AC00FC778F /* RadioStation.swift in Sources */,
@@ -759,13 +729,6 @@
 			files = (
 				34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */,
 				34425DC621B8BB9A00C8DD5F /* NowPlayingServiceTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		344C0D83204B5A1C008FCB05 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1170,40 +1133,6 @@
 			};
 			name = Release;
 		};
-		344C0D8F204B5A1D008FCB05 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				INFOPLIST_FILE = "WXYC Tests/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.ipad.WXYC-Tests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.2;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WXYC.app/WXYC";
-			};
-			name = Debug;
-		};
-		344C0D90204B5A1D008FCB05 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				INFOPLIST_FILE = "WXYC Tests/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 11.2;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.ipad.WXYC-Tests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 4.2;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WXYC.app/WXYC";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1275,15 +1204,6 @@
 			buildConfigurations = (
 				34425DC221B8BAE100C8DD5F /* Debug */,
 				34425DC321B8BAE100C8DD5F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		344C0D91204B5A1D008FCB05 /* Build configuration list for PBXNativeTarget "WXYC Tests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				344C0D8F204B5A1D008FCB05 /* Debug */,
-				344C0D90204B5A1D008FCB05 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

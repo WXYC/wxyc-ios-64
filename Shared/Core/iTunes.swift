@@ -12,8 +12,10 @@ struct iTunes {
             let artworkUrl100: URL
         }
     }
-    
-    static func searchURL(`for` playcut: Playcut) -> URL {
+}
+
+final class iTunesLocator: RemoteArtworkLocator {
+    func makeSearchURL(for playcut: Playcut) -> URL {
         var components = URLComponents(string: "https://itunes.apple.com")!
         components.path = "/search"
         
@@ -30,5 +32,16 @@ struct iTunes {
         }
         
         return components.url!
+    }
+    
+    func extractURL(from data: Data) throws -> URL {
+        let decoder = JSONDecoder()
+        let results = try decoder.decode(iTunes.SearchResults.self, from: data)
+        
+        if let item = results.results.first {
+            return item.artworkUrl100
+        } else {
+            throw ServiceErrors.noResults
+        }
     }
 }
