@@ -24,7 +24,7 @@ public final class PlaylistService {
     private let observers: [PlaylistServiceObserver]
     
     public convenience init(observers: PlaylistServiceObserver...) {
-        self.init(service: NowPlayingService(), artworkService: ArtworkService(), initialObservers: observers)
+        self.init(service: NowPlayingService(), artworkService: ArtworkService.shared, initialObservers: observers)
     }
     
     init(service: NowPlayingService,

@@ -14,8 +14,8 @@ struct iTunes {
     }
 }
 
-final class iTunesLocator: RemoteArtworkLocator {
-    func makeSearchURL(for playcut: Playcut) -> URL {
+final class iTunesConfiguration: RemoteArtworkFetcherConfiguration {
+    static func makeSearchURL(for playcut: Playcut) -> URL {
         var components = URLComponents(string: "https://itunes.apple.com")!
         components.path = "/search"
         
@@ -34,7 +34,7 @@ final class iTunesLocator: RemoteArtworkLocator {
         return components.url!
     }
     
-    func extractURL(from data: Data) throws -> URL {
+    static func extractURL(from data: Data) throws -> URL {
         let decoder = JSONDecoder()
         let results = try decoder.decode(iTunes.SearchResults.self, from: data)
         
