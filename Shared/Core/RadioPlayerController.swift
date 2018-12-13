@@ -18,11 +18,13 @@ public enum PlaybackState {
 public final class RadioPlayerController {
     public typealias PlaybackStateObserver = (PlaybackState) -> ()
     
-    public convenience init() {
+    public static let shared = RadioPlayerController()
+    
+    private convenience init() {
         self.init(radioPlayer: RadioPlayer())
     }
     
-    init(
+    private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
@@ -72,18 +74,16 @@ public final class RadioPlayerController {
     // MARK: Public methods
     
     public func play() {
-        try? AVAudioSession.sharedInstance().setActive(true)
-        self.radioPlayer.play()
-        self.playbackStateObserver?(.playing)
+        self.playbackState = .playing
     }
     
     public func pause() {
-        self.radioPlayer.pause()
-        self.playbackStateObserver?(.paused)
+        self.playbackState = .paused
     }
     
     public func observePlaybackState(_ observer: @escaping PlaybackStateObserver) {
-        self.playbackStateObserver = observer
+        self.playbackStateObservers.append(observer)
+        observer(self.playbackState)
     }
     
     // MARK: Private
@@ -92,7 +92,31 @@ public final class RadioPlayerController {
     
     private var inputObservations: [Any]? = nil
     
-    private var playbackStateObserver: PlaybackStateObserver?
+    private var playbackState: PlaybackState = .paused {
+        didSet {
+            guard oldValue != self.playbackState else {
+                return
+            }
+            
+            switch self.playbackState {
+            case .playing:
+                try? AVAudioSession.sharedInstance().setActive(true)
+                self.radioPlayer.play()
+            case .paused:
+                self.radioPlayer.pause()
+            }
+            
+            self.updateObservers(self.playbackState)
+        }
+    }
+    
+    private var playbackStateObservers: [PlaybackStateObserver] = []
+    
+    private func updateObservers(_ state: PlaybackState) {
+        for observer in self.playbackStateObservers {
+            observer(state)
+        }
+    }
     
     // MARK: External Playback Command handlers
     
@@ -124,7 +148,7 @@ public final class RadioPlayerController {
         if self.radioPlayer.isPlaying {
             self.play()
         } else {
-            self.playbackStateObserver?(.paused)
+            self.pause()
         }
     }
     

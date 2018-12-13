@@ -45,6 +45,7 @@
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>NSUserActivityTypeBrowsingWeb</string>
+		<string>INPlayMediaIntent</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
