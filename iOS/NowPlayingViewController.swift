@@ -10,7 +10,6 @@ final class NowPlayingViewController: UIViewController, NowPlayingPresentable, P
     @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var playbackButton: PlaybackButton!
     
-    let radioPlayerController = RadioPlayerController()
     var radioPlayerStateObservation: Any?
     
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
@@ -27,7 +26,7 @@ final class NowPlayingViewController: UIViewController, NowPlayingPresentable, P
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.radioPlayerStateObservation = self.radioPlayerController.observePlaybackState(self.playbackStateChanged)
+        self.radioPlayerStateObservation = RadioPlayerController.shared.observePlaybackState(self.playbackStateChanged)
     }
     
     // MARK: Private
@@ -53,9 +52,9 @@ final class NowPlayingViewController: UIViewController, NowPlayingPresentable, P
     @IBAction private func playPauseTapped(_ sender: UIButton) {
         switch playbackButton.status {
         case .paused:
-            self.radioPlayerController.play()
+            RadioPlayerController.shared.play()
         case .playing:
-            self.radioPlayerController.pause()
+            RadioPlayerController.shared.pause()
         }
     }
     
