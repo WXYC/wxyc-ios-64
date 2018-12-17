@@ -5,6 +5,8 @@ import Core
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    let cache = Cache.WXYC
+    
     enum UserSettingsKeys: String {
         case intentDonated
     }
@@ -34,11 +36,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         interaction.donate()
         
-        UserDefaults.standard[UserSettingsKeys.intentDonated] = true
+        self.cache[UserSettingsKeys.intentDonated] = true
     }
     
     func shouldDonateSiriIntent() -> Bool {
-        return UserDefaults.standard[UserSettingsKeys.intentDonated] == true
+        return self.cache[UserSettingsKeys.intentDonated] == true
     }
     
     // MARK: UIApplicationDelegate

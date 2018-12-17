@@ -2,46 +2,46 @@
 //  PlaylistService.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 12/3/17.
-//  Copyright © 2017 wxyc.org. All rights reserved.
+//  Created by Jake Bromberg on 12/15/18.
+//  Copyright © 2018 WXYC. All rights reserved.
 //
 
 import Foundation
-import UIKit
 
-public protocol PlaylistServiceObserver: class {
-    func updateWith(playcutResult: Result<Playcut>)
-    func updateWith(artworkResult: Result<UIImage>)
-}
-
-public final class PlaylistService {
-    private let nowPlayingService: NowPlayingService
-    private let artworkService: ArtworkService
+public class PlaylistService {
+    private var cache: Cache
+    private let webSession: WebSession
+    private var playlistRequest: Future<Playlist>?
     
-    private let playcutRequest: Future<Playcut>
-    private let artworkRequest: Future<UIImage>
+    init(cache: Cache = .WXYC, webSession: WebSession = URLSession.shared) {
+        self.cache = cache
+        self.webSession = webSession
+        
+        self.playlistRequest = Future.repeat({ self.getCachedPlaylist() || self.getRemotePlaylist() })
+    }
 
-    private let observers: [PlaylistServiceObserver]
+    public static let shared = PlaylistService()
     
-    public convenience init(observers: PlaylistServiceObserver...) {
-        self.init(service: NowPlayingService(), artworkService: ArtworkService.shared, initialObservers: observers)
+    public func getPlaylist() -> Future<Playlist> {
+        return self.playlistRequest!
     }
     
-    init(service: NowPlayingService,
-         artworkService: ArtworkService,
-         initialObservers: [PlaylistServiceObserver]) {
-        self.nowPlayingService = service
-        self.artworkService = artworkService
-        
-        self.observers = initialObservers
-        
-        self.playcutRequest = Future.repeat(self.nowPlayingService.getCurrentPlaycut)
-        self.artworkRequest = self.playcutRequest.chained(with: self.artworkService.getArtwork(for:))
+    private func getCachedPlaylist() -> Future<Playlist> {
+        if let playlist: Playlist = self.cache[CacheKey.playlist] {
+            return Promise(value: playlist)
+        } else {
+            return Promise(error: ServiceErrors.noCachedResult)
+        }
+    }
 
-        let playcutCallbacks = initialObservers.map { $0.updateWith(playcutResult:) }
-        self.playcutRequest.observe(with: playcutCallbacks)
-        
-        let artworkCallbacks = initialObservers.map { $0.updateWith(artworkResult:) }
-        self.artworkRequest.observe(with: artworkCallbacks)
+    private func getRemotePlaylist() -> Future<Playlist> {
+        return self.webSession.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
+            let decoder = JSONDecoder()
+            let playlist = try decoder.decode(Playlist.self, from: data)
+            
+            self.cache[CacheKey.playlist] = playlist
+            
+            return playlist
+        }
     }
 }

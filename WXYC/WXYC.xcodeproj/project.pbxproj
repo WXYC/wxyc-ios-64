@@ -30,13 +30,12 @@
 		343400762030A21200FC778F /* TodayMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434F4E92030A1C600FC778F /* TodayMain.storyboard */; };
 		343400862030A2AC00FC778F /* PlaylistItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistItem.swift */; };
 		343400882030A2AC00FC778F /* Future.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF92030A1CC00FC778F /* Future.swift */; };
-		343400892030A2AC00FC778F /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFA2030A1CC00FC778F /* PlaylistService.swift */; };
+		343400892030A2AC00FC778F /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFA2030A1CC00FC778F /* NowPlayingService.swift */; };
 		3434008A2030A2AC00FC778F /* LastFM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFB2030A1CC00FC778F /* LastFM.swift */; };
 		3434008B2030A2AC00FC778F /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */; };
 		3434008C2030A2AC00FC778F /* iTunes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFD2030A1CC00FC778F /* iTunes.swift */; };
 		3434008D2030A2AC00FC778F /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFE2030A1CC00FC778F /* Cache.swift */; };
 		3434008E2030A2AC00FC778F /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFF2030A1CC00FC778F /* RadioStation.swift */; };
-		3434008F2030A2AC00FC778F /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC002030A1CC00FC778F /* NowPlayingService.swift */; };
 		3434009B2030A2CD00FC778F /* NowPlayingPresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */; };
 		343400A92030A2F600FC778F /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
 		343400AA2030A2F600FC778F /* SpringImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC042030A1CC00FC778F /* SpringImageView.swift */; };
@@ -56,6 +55,9 @@
 		34425DBE21B8BAE100C8DD5F /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
 		34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
 		34425DC621B8BB9A00C8DD5F /* NowPlayingServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348369202030F88A0029E28E /* NowPlayingServiceTests.swift */; };
+		34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */; };
+		34585AE121C5AEA8009662FA /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585ADF21C5AE9C009662FA /* PlaylistService.swift */; };
+		34585AE421C7142D009662FA /* ServiceUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585AE221C71401009662FA /* ServiceUtilities.swift */; };
 		34A067CE20393E42003D2919 /* PlaylistItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistItem.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34A2CA0321B9E4B100A31F48 /* ServiceTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */; };
@@ -162,13 +164,12 @@
 		3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingPresentable.swift; sourceTree = "<group>"; };
 		3434FBF72030A1CC00FC778F /* PlaylistItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistItem.swift; sourceTree = "<group>"; };
 		3434FBF92030A1CC00FC778F /* Future.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Future.swift; sourceTree = "<group>"; };
-		3434FBFA2030A1CC00FC778F /* PlaylistService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
+		3434FBFA2030A1CC00FC778F /* NowPlayingService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingService.swift; sourceTree = "<group>"; };
 		3434FBFB2030A1CC00FC778F /* LastFM.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LastFM.swift; sourceTree = "<group>"; };
 		3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RadioPlayer.swift; sourceTree = "<group>"; };
 		3434FBFD2030A1CC00FC778F /* iTunes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = iTunes.swift; sourceTree = "<group>"; };
 		3434FBFE2030A1CC00FC778F /* Cache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		3434FBFF2030A1CC00FC778F /* RadioStation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RadioStation.swift; sourceTree = "<group>"; };
-		3434FC002030A1CC00FC778F /* NowPlayingService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingService.swift; sourceTree = "<group>"; };
 		3434FC012030A1CC00FC778F /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3434FC032030A1CC00FC778F /* Spring.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Spring.swift; sourceTree = "<group>"; };
 		3434FC042030A1CC00FC778F /* SpringImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpringImageView.swift; sourceTree = "<group>"; };
@@ -181,6 +182,9 @@
 		34425DB921B8BAE100C8DD5F /* Core Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Core Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		34425DBD21B8BAE100C8DD5F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		344C0D8B204B5A1C008FCB05 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistViewController.swift; sourceTree = "<group>"; };
+		34585ADF21C5AE9C009662FA /* PlaylistService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
+		34585AE221C71401009662FA /* ServiceUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceUtilities.swift; sourceTree = "<group>"; };
 		34765F622030F33E005C8321 /* CacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CacheTests.swift; path = "../WXYC Tests/CacheTests.swift"; sourceTree = "<group>"; };
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
 		34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTypes.swift; sourceTree = "<group>"; };
@@ -319,6 +323,7 @@
 				3434FBF12030A1CC00FC778F /* PlaybackButton.swift */,
 				3434FBE52030A1CC00FC778F /* RootPageViewController.swift */,
 				3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */,
+				34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */,
 			);
 			name = iOS;
 			path = ../iOS;
@@ -349,17 +354,18 @@
 			children = (
 				3434FBF72030A1CC00FC778F /* PlaylistItem.swift */,
 				3434FBF92030A1CC00FC778F /* Future.swift */,
-				3434FBFA2030A1CC00FC778F /* PlaylistService.swift */,
+				3434FBFA2030A1CC00FC778F /* NowPlayingService.swift */,
 				3434FBFB2030A1CC00FC778F /* LastFM.swift */,
 				34B1882821BB29E0005ADD84 /* Discogs.swift */,
 				3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */,
 				3434FBFD2030A1CC00FC778F /* iTunes.swift */,
 				3434FBFE2030A1CC00FC778F /* Cache.swift */,
 				3434FBFF2030A1CC00FC778F /* RadioStation.swift */,
-				3434FC002030A1CC00FC778F /* NowPlayingService.swift */,
 				34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */,
 				34D908542113EE4800AB8C79 /* RadioPlayerController.swift */,
 				34425DA321B8A16E00C8DD5F /* ArtworkService.swift */,
+				34585ADF21C5AE9C009662FA /* PlaylistService.swift */,
+				34585AE221C71401009662FA /* ServiceUtilities.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -659,6 +665,7 @@
 				341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */,
 				341FBAB72041E7AB00CD2F36 /* RootPageViewController.swift in Sources */,
 				341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */,
+				34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */,
 				341FBAB92041E7AB00CD2F36 /* NowPlayingViewController.swift in Sources */,
 				341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */,
 				341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */,
@@ -681,7 +688,7 @@
 				343400862030A2AC00FC778F /* PlaylistItem.swift in Sources */,
 				343400882030A2AC00FC778F /* Future.swift in Sources */,
 				34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */,
-				343400892030A2AC00FC778F /* PlaylistService.swift in Sources */,
+				343400892030A2AC00FC778F /* NowPlayingService.swift in Sources */,
 				3434008A2030A2AC00FC778F /* LastFM.swift in Sources */,
 				34B1882A21BB2B98005ADD84 /* Discogs.swift in Sources */,
 				3434008B2030A2AC00FC778F /* RadioPlayer.swift in Sources */,
@@ -690,7 +697,8 @@
 				3434008D2030A2AC00FC778F /* Cache.swift in Sources */,
 				3434008E2030A2AC00FC778F /* RadioStation.swift in Sources */,
 				34425DA421B8A16E00C8DD5F /* ArtworkService.swift in Sources */,
-				3434008F2030A2AC00FC778F /* NowPlayingService.swift in Sources */,
+				34585AE121C5AEA8009662FA /* PlaylistService.swift in Sources */,
+				34585AE421C7142D009662FA /* ServiceUtilities.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

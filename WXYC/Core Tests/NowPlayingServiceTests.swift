@@ -123,7 +123,7 @@ final class TestCache: Cachable {
     }
 }
 
-final class TestPlaylistServiceObserver: PlaylistServiceObserver {
+final class TestNowPlayingServiceObserver: NowPlayingServiceObserver {
     var playcutResult: Result<Playcut>?
     var artworkResult: Result<UIImage>?
 
@@ -157,7 +157,7 @@ class NowPlayingServiceTests: XCTestCase {
             webSession: webSession
         )
         
-        nowPlayingService.getCurrentPlaycut().observe { result in
+        nowPlayingService.getPlaycut().observe { result in
             guard case .success(let playcut) = result else {
                 fatalError()
             }
@@ -176,22 +176,22 @@ class NowPlayingServiceTests: XCTestCase {
             webSession: webSession
         )
         
-        _ = nowPlayingService.getCurrentPlaycut()
+        _ = nowPlayingService.getPlaycut()
     }
     
     func testGettingTwoDifferentPlaycuts() {
-        let playlistObserver = TestPlaylistServiceObserver()
+        let playcutObserver = TestNowPlayingServiceObserver()
 
         let nowPlayingService = self.createNowPlayingService()
-        _ = PlaylistService(
+        _ = nowPlayingService(
             service: nowPlayingService,
             artworkService: ArtworkService(),
-            initialObservers: [playlistObserver]
+            initialObservers: [playcutObserver]
         )
 
-        _ = nowPlayingService.getCurrentPlaycut()
+        _ = nowPlayingService.getPlaycut()
         
-        guard let playcutResult = playlistObserver.playcutResult else {
+        guard let playcutResult = playcutObserver.playcutResult else {
             XCTFail()
             return
         }
@@ -221,7 +221,7 @@ class NowPlayingServiceTests: XCTestCase {
         return nowPlayingService
     }
     
-    func testExpiredCacheWithSamePlaylistResult() {
+    func testExpiredCacheWithSamePlaycutResult() {
         
     }
 }

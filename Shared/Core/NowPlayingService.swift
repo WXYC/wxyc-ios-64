@@ -1,68 +1,50 @@
-import Foundation
+//
+//  PlaycutService.swift
+//  WXYC
+//
+//  Created by Jake Bromberg on 12/3/17.
+//  Copyright © 2017 wxyc.org. All rights reserved.
+//
 
-final class NowPlayingService {
-    private var cache: Cachable
-    private let webSession: WebSession
-    
-    init(cache: Cachable = Cache.WXYC, webSession: WebSession = URLSession.shared) {
-        self.cache = cache
-        self.webSession = webSession
-    }
-    
-    func getCurrentPlaycut() -> Future<Playcut> {
-        return self.getCachedPlaycut() || self.getRemotePlaycut()
-    }
-    
-    private func getCachedPlaycut() -> Future<Playcut> {
-        let cachedPlaycutRequest: Future<Playcut> = self.cache.getCachedValue(key: .playcut)
-        
-        cachedPlaycutRequest.observe { result in
-            // We receive an error in the event that the cached record either expired or wasn't there to begin with.
-            if case .error(_) = result {
-                // We therefore need to evict the cached artwork associated with the playcut.
-                self.cache[CacheKey.artwork] = nil as Data?
-            }
-        }
-        
-        return cachedPlaycutRequest
-    }
-    
-    private func getRemotePlaycut() -> Future<Playcut> {
-        let playlistRequest = webSession.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
-            let decoder = JSONDecoder()
-            let playlist = try decoder.decode(Playlist.self, from: data)
-            
-            return playlist
-        }
-        
-        let playcutRequest = playlistRequest.transformed(with: { playlist -> Playcut in
-            guard let playcut = playlist.playcuts.first else {
-                throw ServiceErrors.noResults
-            }
-            
-            self.cache[CacheKey.playcut] = playcut
-            
-            return playcut
-        })
-        
-        return playcutRequest
-    }
+import Foundation
+import UIKit
+
+public protocol NowPlayingServiceObserver: class {
+    func updateWith(playcutResult: Result<Playcut>)
+    func updateWith(artworkResult: Result<UIImage>)
 }
 
-extension URLSession: WebSession {
-    func request(url: URL) -> Future<Data> {
-        let promise = Promise<Data>()
+public final class NowPlayingService {
+    private let playlistService: PlaylistService
+    private let artworkService: ArtworkService
+    
+    private let playcutRequest: Future<Playcut>
+    private let artworkRequest: Future<UIImage>
+
+    private let observers: [NowPlayingServiceObserver]
+    
+    public convenience init(observers: NowPlayingServiceObserver...) {
+        self.init(playlistService: PlaylistService(), artworkService: ArtworkService.shared, initialObservers: observers)
+    }
+    
+    init(playlistService: PlaylistService,
+         artworkService: ArtworkService,
+         initialObservers: [NowPlayingServiceObserver]) {
+        self.playlistService = playlistService
+        self.artworkService = artworkService
         
-        let task = dataTask(with: url) { data, _, error in
-            if let error = error {
-                promise.reject(with: error)
-            } else {
-                promise.resolve(with: data ?? Data())
-            }
+        self.observers = initialObservers
+        
+        self.playcutRequest = self.playlistService.getPlaylist().transformed { playlist in
+            return playlist.playcuts.first
         }
         
-        task.resume()
+        self.artworkRequest = self.playcutRequest.chained(with: self.artworkService.getArtwork(for:))
+
+        let playcutCallbacks = initialObservers.map { $0.updateWith(playcutResult:) }
+        self.playcutRequest.observe(with: playcutCallbacks)
         
-        return promise
+        let artworkCallbacks = initialObservers.map { $0.updateWith(artworkResult:) }
+        self.artworkRequest.observe(with: artworkCallbacks)
     }
 }

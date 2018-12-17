@@ -32,31 +32,71 @@ extension UserDefaults: Defaults {
 
 enum CacheKey: String {
     case playcut
+    case playlist
     case artwork
 }
 
-final class Cache: Cachable {
+public final class Cache {
+    public static var WXYC: Cache {
+        return Cache(defaults: UserDefaults(suiteName: "org.wxyc.apps")!)
+    }
+    
     private let defaults: Defaults
     
     init(defaults: Defaults) {
         self.defaults = defaults
     }
-    
-    subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
+
+    public subscript<Key: Codable, Value: Codable>(_ key: Key) -> Future<Value> {
         get {
-            return self[key, defaultLifespan]
-        }
-        set {
-            self[key, defaultLifespan] = newValue
+            guard let json = try? key.JSONEncode() else {
+                return Promise(error: ServiceErrors.noCachedResult)
+            }
+            
+            guard let value: Value = self[json, defaultLifespan] else {
+                return Promise(error: ServiceErrors.noCachedResult)
+            }
+            
+            return Promise(value: value)
         }
     }
     
-    subscript<Key: RawRepresentable, Value: Codable>(
-        key: Key,
-        lifespan: TimeInterval
-    ) -> Value? where Key.RawValue == String {
+    public subscript<Key: Codable, Value: Codable>(_ key: Key) -> Value? {
         get {
-            guard let encodedCachedRecord = self.defaults.object(forKey: key.rawValue) as? Data else {
+            guard let json = try? key.JSONEncode() else {
+                return nil
+            }
+            
+            guard let value: Value = self[json, defaultLifespan] else {
+                return nil
+            }
+            
+            return value
+        }
+        set {
+            guard let json = try? key.JSONEncode() else {
+                return
+            }
+            
+            self[json] = newValue
+        }
+    }
+    
+    public subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
+        get {
+            return self[key.rawValue, defaultLifespan]
+        }
+        set {
+            self[key.rawValue, defaultLifespan] = newValue
+        }
+    }
+    
+    private subscript<Value: Codable>(
+        key: String,
+        lifespan: TimeInterval
+    ) -> Value? {
+        get {
+            guard let encodedCachedRecord = self.defaults.object(forKey: key) as? Data else {
                 return nil
             }
             
@@ -79,30 +119,21 @@ final class Cache: Cachable {
                 let encoder = JSONEncoder()
                 let encodedCachedRecord = try? encoder.encode(cachedRecord)
                 
-                self.defaults.set(encodedCachedRecord, forKey: key.rawValue)
+                self.defaults.set(encodedCachedRecord, forKey: key)
             } else {
-                self.defaults.set(nil, forKey: key.rawValue)
+                self.defaults.set(nil, forKey: key)
             }
         }
     }
 }
 
-extension Cache {
-    static var WXYC: Cache {
-        return Cache(defaults: UserDefaults(suiteName: "org.wxyc.apps")!)
-    }
-}
+private let encoder = JSONEncoder()
+private let decoder = JSONDecoder()
 
-extension Cachable {
-    func getCachedValue<Value: Codable>(key: CacheKey) -> Future<Value> {
-        let promise = Promise<Value>()
-        
-        if let cachedValue: Value = self[key] {
-            promise.resolve(with: cachedValue)
-        } else {
-            promise.reject(with: ServiceErrors.noCachedResult)
-        }
-        
-        return promise
+extension Encodable {
+    func JSONEncode() throws -> String {
+        let data = try encoder.encode(self)
+        let string = try decoder.decode(String.self, from: data)
+        return string
     }
 }

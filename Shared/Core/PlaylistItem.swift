@@ -10,20 +10,10 @@ extension URL {
     }
 }
 
-public protocol PlaylistItem: Comparable, Codable {
+public protocol PlaylistItem: Codable {
     var id: Int { get }
     var hour: Int { get }
     var chronOrderID: Int { get }
-}
-
-public extension PlaylistItem {
-    static func ==(lhs: Self, rhs: Self) -> Bool {
-        return lhs.chronOrderID == rhs.chronOrderID
-    }
-    
-    static func <(lhs: Self, rhs: Self) -> Bool {
-        return lhs.chronOrderID < rhs.chronOrderID
-    }
 }
 
 public struct Playcut: PlaylistItem {
@@ -37,20 +27,37 @@ public struct Playcut: PlaylistItem {
     public let releaseTitle: String?
 }
 
-struct Talkset: PlaylistItem {
-    let id: Int
-    let hour: Int
-    let chronOrderID: Int
+public struct Talkset: PlaylistItem {
+    public let id: Int
+    public let hour: Int
+    public let chronOrderID: Int
 }
 
-struct Breakpoint: PlaylistItem {
-    let id: Int
-    let hour: Int
-    let chronOrderID: Int
+public struct Breakpoint: PlaylistItem {
+    public let id: Int
+    public let hour: Int
+    public let chronOrderID: Int
 }
 
-struct Playlist: Codable, Equatable {
+public struct Playlist: Codable {
     let playcuts: [Playcut]
     let talksets: [Talkset]
     let breakpoints: [Breakpoint]
+    
+    public var playlistItems: [PlaylistItem] {
+        var items: [PlaylistItem] = []
+        items.append(contentsOf: playcuts)
+        items.append(contentsOf: talksets)
+        items.append(contentsOf: breakpoints)
+
+        return items.sorted(by: \.chronOrderID, comparator: >)
+    }
+}
+
+public extension Sequence {
+    func sorted<T: Comparable>(by keyPath: KeyPath<Element, T>, comparator: (T, T) -> Bool = { $0 < $1 }) -> [Element] {
+        return sorted(by: { (e1, e2) -> Bool in
+            return comparator(e1[keyPath: keyPath], e2[keyPath: keyPath])
+        })
+    }
 }

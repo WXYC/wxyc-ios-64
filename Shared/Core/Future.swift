@@ -1,6 +1,6 @@
 import Foundation
 
-class Future<Value> {
+public class Future<Value> {
     typealias Callback = (Result<Value>) -> Void
     
     fileprivate var result: Result<Value>? {
@@ -29,7 +29,7 @@ class Future<Value> {
 
 
 extension Future {
-    enum FutureError: Error {
+    enum FutureError: String, Error {
         case transformationFailure
     }
     
@@ -77,7 +77,7 @@ extension Future {
         }
     }
     
-    func onSuccess(_ closure: @escaping (Value) -> Void) {
+    public func onSuccess(_ closure: @escaping (Value) -> Void) {
         _ = transformed { value -> Void in
             closure(value)
         }
@@ -125,20 +125,26 @@ extension Future {
     }
 }
 
-struct CombinedError: Error {
-    let first: Error
-    let second: Error
+struct CombinedError: LocalizedError {
+    let errorDescription: String
     
     init(_ first: Error, _ second: Error) {
-        self.first = first
-        self.second = second
+        let descriptions: Set<String> = [first.localizedDescription, second.localizedDescription]
+        self.errorDescription = descriptions.joined(separator: ", ")
     }
 }
 
 class Promise<Value>: Future<Value> {
     init(value: Value? = nil) {
         super.init()
+        
         result = value.map(Result.success)
+    }
+    
+    init(error: Error) {
+        super.init()
+        
+        result = .error(error)
     }
     
     func resolve(with value: Value) {
@@ -146,7 +152,7 @@ class Promise<Value>: Future<Value> {
     }
     
     func reject(with error: Error) {
-        print("rejected: \(error.localizedDescription)")
+        print("rejected: \(error)")
         result = .error(error)
     }
 }

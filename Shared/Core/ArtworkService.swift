@@ -9,10 +9,10 @@
 import Foundation
 import UIKit
 
-final class ArtworkService {
-    static var shared: ArtworkService = {
+public final class ArtworkService {
+    public static var shared: ArtworkService = {
         return ArtworkService(fetchers: [
-            CachedArtworkFetcher(cache: Cache.WXYC),
+            CachedArtworkFetcher(cache: .WXYC),
             RemoteArtworkFetcher<DiscogsConfiguration>(),
             RemoteArtworkFetcher<LastFMConfiguration>(),
             RemoteArtworkFetcher<iTunesConfiguration>(),
@@ -26,7 +26,7 @@ final class ArtworkService {
         self.fetchers = fetchers
     }
     
-    func getArtwork(for playcut: Playcut) -> Future<UIImage> {
+    public func getArtwork(for playcut: Playcut) -> Future<UIImage> {
         let (first, rest) = (self.fetchers.first!, self.fetchers.dropFirst())
         return rest.reduce(first.getArtwork(for: playcut), { $0 || $1.getArtwork(for: playcut) })
     }
@@ -37,17 +37,14 @@ protocol ArtworkFetcher {
 }
 
 final class CachedArtworkFetcher: ArtworkFetcher {
-    let cache: Cachable
+    let cache: Cache
     
-    init(cache: Cachable = Cache.WXYC) {
+    init(cache: Cache = .WXYC) {
         self.cache = cache
     }
     
     func getArtwork(for playcut: Playcut) -> Future<UIImage> {
-        let dataRequest: Future<Data> = self.cache.getCachedValue(key: .artwork)
-        let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
-        
-        return imageRequest
+        return self.cache[playcut].transformed(with: UIImage.init(data:))
     }
 }
 
@@ -64,9 +61,9 @@ protocol RemoteArtworkFetcherConfiguration {
 
 final class RemoteArtworkFetcher<Configuration: RemoteArtworkFetcherConfiguration>: ArtworkFetcher {
     let session: WebSession
-    let cache: Cachable
+    let cache: Cache
     
-    init(cache: Cachable = Cache.WXYC, session: WebSession = URLSession.shared) {
+    init(cache: Cache = .WXYC, session: WebSession = URLSession.shared) {
         self.cache = cache
         self.session = session
     }
@@ -91,7 +88,7 @@ final class RemoteArtworkFetcher<Configuration: RemoteArtworkFetcherConfiguratio
             })
         
         imageRequest.onSuccess { image in
-            self.cache[CacheKey.artwork] = image.pngData()
+            self.cache[url] = image.pngData()
         }
         
         return imageRequest
