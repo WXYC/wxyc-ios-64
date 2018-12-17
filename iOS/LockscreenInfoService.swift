@@ -10,7 +10,7 @@ import UIKit
 import MediaPlayer
 import Core
 
-final class LockscreenInfoService: PlaylistServiceObserver {
+final class LockscreenInfoService: NowPlayingServiceObserver {
     private var nowPlayingInfo = [String : Any]() {
         didSet {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = self.nowPlayingInfo

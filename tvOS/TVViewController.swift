@@ -12,12 +12,12 @@ import Core
 import UI
 import Spring
 
-class TVViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
+class TVViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!
     
-    var playlistService: PlaylistService?
+    var nowPlayingService: NowPlayingService?
     let radioPlayerController = RadioPlayerController()
     var radioPlayerStateObservation: Any?
 
@@ -27,6 +27,6 @@ class TVViewController: UIViewController, NowPlayingPresentable, PlaylistService
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.playlistService = PlaylistService(observers: self)
+        self.nowPlayingService = NowPlayingService(observers: self)
     }
 }

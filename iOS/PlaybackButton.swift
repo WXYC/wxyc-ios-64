@@ -29,7 +29,6 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
     private static let AnimationKey = "playbackValue"
     private static let AnimationIdentifier = "playbackLayerAnimation"
     
-    private var adjustMarginValue: CGFloat = 0
     private var contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
     var status: PlaybackButtonState = .paused
     
@@ -44,12 +43,13 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
     
     override init() {
         super.init()
+        
+        self.backgroundColor = UIColor.clear.cgColor
     }
     
     override init(layer: Any) {
         super.init(layer: layer)
         if let playbackLayer = layer as? PlaybackLayer {
-            self.adjustMarginValue = playbackLayer.adjustMarginValue
             self.status = playbackLayer.status
             self.playbackValue = playbackLayer.playbackValue
             self.color = playbackLayer.color
@@ -102,35 +102,37 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
     }
     
     override func draw(in context: CGContext) {
+        context.clear(self.visibleRect)
+        
         let rect = context.boundingBoxOfClipPath
-        let baseWidth = rect.width
-        let baseHeight = rect.height
-        let topMargin: CGFloat = self.contentEdgeInsets.top
-        let leftMargin: CGFloat = self.contentEdgeInsets.left
+
+        let halfWidth = rect.width / 2.0
+        let eighthWidth = halfWidth / 2.0
+        let sixteenthWidth: CGFloat = eighthWidth / 2.0
+        let thirtySecondWidth: CGFloat = sixteenthWidth / 2.0
+
+        let componentWidth: CGFloat = sixteenthWidth * (1 + self.playbackValue)
+        let insetMargin: CGFloat = thirtySecondWidth * (1 - self.playbackValue)
         
-        let drawHalfWidth: CGFloat = (baseWidth - leftMargin * 2) / 2.0
-        let drawQuarterWidth: CGFloat = drawHalfWidth / 2.0
-        let subtractWidth: CGFloat = drawHalfWidth - drawQuarterWidth
-        let width: CGFloat = drawQuarterWidth + subtractWidth * self.playbackValue
+        let firstHalfMargin: CGFloat = eighthWidth + insetMargin
+        let secondHalfMargin = halfWidth + insetMargin
+
+        let halfHeight = rect.height / 2.0
+        let quarterHeight: CGFloat = halfHeight / 2.0
+        let sixteenthHeight: CGFloat = halfHeight / 4.0
         
-        let playingMargin: CGFloat = drawQuarterWidth / 2.0 * self.adjustMarginValue
-        let pausingMargin: CGFloat = drawQuarterWidth / 2.0
-        let subtractMargin: CGFloat = playingMargin - pausingMargin
-        let adjustMargin: CGFloat = pausingMargin + subtractMargin * self.playbackValue
+        let h1: CGFloat = sixteenthHeight * self.playbackValue
+        let h2: CGFloat = quarterHeight * self.playbackValue
         
-        let height: CGFloat = baseHeight - topMargin * 2
-        let h1: CGFloat = height / 4.0 * self.playbackValue
-        let h2: CGFloat = height / 2.0 * self.playbackValue
+        context.move(to: CGPoint(x: firstHalfMargin, y: quarterHeight))
+        context.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + h1))
+        context.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + halfHeight - h1))
+        context.addLine(to: CGPoint(x: firstHalfMargin, y: quarterHeight + halfHeight))
         
-        context.move(to: CGPoint(x: leftMargin + adjustMargin, y: topMargin))
-        context.addLine(to: CGPoint(x: leftMargin + adjustMargin + width, y: topMargin + h1))
-        context.addLine(to: CGPoint(x: leftMargin + adjustMargin + width, y: topMargin + height - h1))
-        context.addLine(to: CGPoint(x: leftMargin + adjustMargin, y: topMargin + height))
-        
-        context.move(to: CGPoint(x: leftMargin + drawHalfWidth + adjustMargin, y: topMargin + h1))
-        context.addLine(to: CGPoint(x: leftMargin + drawHalfWidth + adjustMargin + width, y: topMargin + h2))
-        context.addLine(to: CGPoint(x: leftMargin + drawHalfWidth + adjustMargin + width, y: topMargin + height - h2))
-        context.addLine(to: CGPoint(x: leftMargin + drawHalfWidth + adjustMargin, y: topMargin + height - h1))
+        context.move(to: CGPoint(x: secondHalfMargin, y: quarterHeight + h1))
+        context.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + h2))
+        context.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + halfHeight - h2))
+        context.addLine(to: CGPoint(x: secondHalfMargin, y: quarterHeight + halfHeight - h1))
         
         context.setFillColor(self.color.cgColor)
         context.fillPath()
@@ -140,34 +142,37 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
 extension PlaybackLayer: CAAnimationDelegate {
     
     func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
-        if flag {
-            if self.animation(forKey: PlaybackLayer.AnimationIdentifier) != nil {
-                self.removeAnimation(forKey: PlaybackLayer.AnimationIdentifier)
-            }
-            if let toValue : CGFloat = anim.value(forKey: "toValue") as? CGFloat {
-                self.playbackValue = toValue
-            }
+        guard flag else {
+            return
+        }
+
+        if self.animation(forKey: PlaybackLayer.AnimationIdentifier) != nil {
+            self.removeAnimation(forKey: PlaybackLayer.AnimationIdentifier)
+        }
+
+        if let toValue: CGFloat = anim.value(forKey: "toValue") as? CGFloat {
+            self.playbackValue = toValue
         }
     }
 }
 
 @objc @IBDesignable class PlaybackButton : UIButton {
-    private var playbackLayer: PlaybackLayer {
-        return self.layer as! PlaybackLayer
+    override var layer: PlaybackLayer {
+        return super.layer as! PlaybackLayer
     }
     
     var duration: CFTimeInterval = DefaultsPlaybackDuration {
         didSet {
-            self.playbackLayer.playbackAnimationDuration = self.duration
+            self.layer.playbackAnimationDuration = self.duration
         }
     }
     
     var status: PlaybackButtonState {
         get {
-            return self.playbackLayer.status
+            return self.layer.status
         }
         set {
-            self.playbackLayer.set(status: newValue, animated: true)
+            self.layer.set(status: newValue, animated: true)
         }
     }
         
@@ -182,12 +187,12 @@ extension PlaybackLayer: CAAnimationDelegate {
     }
     
     func set(status: PlaybackButtonState, animated: Bool = true) {
-        self.playbackLayer.set(status: status, animated: animated)
+        self.layer.set(status: status, animated: animated)
     }
     
     override var tintColor: UIColor! {
         didSet {
-            self.playbackLayer.color = tintColor
+            self.layer.color = tintColor
         }
     }
     
@@ -196,10 +201,10 @@ extension PlaybackLayer: CAAnimationDelegate {
     }
     
     private func addPlaybackLayer() {
-        playbackLayer.contentsScale = UIScreen.main.scale
-        playbackLayer.frame = self.bounds
-        playbackLayer.playbackValue = PlaybackButtonState.paused.value
-        playbackLayer.color = self.tintColor
-        playbackLayer.playbackAnimationDuration = self.duration
+        layer.contentsScale = UIScreen.main.scale
+        layer.frame = self.bounds
+        layer.playbackValue = PlaybackButtonState.paused.value
+        layer.color = self.tintColor
+        layer.playbackAnimationDuration = self.duration
     }
 }
