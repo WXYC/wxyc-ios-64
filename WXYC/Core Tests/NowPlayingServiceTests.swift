@@ -71,68 +71,16 @@ final class TestDefaults: Defaults {
     }
 }
 
-final class TestCache: Cachable {
-    private let defaults: Defaults
-    
-    public init(defaults: Defaults) {
-        self.defaults = defaults
-    }
-    
-    public subscript<Key: RawRepresentable, Value: Codable>(_ key: Key) -> Value? where Key.RawValue == String {
-        get {
-            return self[key, defaultLifespan]
-        }
-        set {
-            self[key, defaultLifespan] = newValue
-        }
-    }
-    
-    public subscript<Key: RawRepresentable, Value: Codable>(
-        key: Key,
-        lifespan: TimeInterval
-        ) -> Value? where Key.RawValue == String {
-        get {
-            guard let encodedCachedRecord = self.defaults.object(forKey: key.rawValue) as? Data else {
-                return nil
-            }
-            
-            let decoder = JSONDecoder()
-            
-            guard let cachedRecord = try? decoder.decode(CachedRecord<Value>.self, from: encodedCachedRecord) else {
-                return nil
-            }
-            
-            guard !cachedRecord.isExpired else {
-                return nil
-            }
-            
-            return cachedRecord.value
-        }
-        set {
-            if let newValue = newValue {
-                let cachedRecord = CachedRecord(value: newValue, lifespan: lifespan)
-                
-                let encoder = JSONEncoder()
-                let encodedCachedRecord = try? encoder.encode(cachedRecord)
-                
-                self.defaults.set(encodedCachedRecord, forKey: key.rawValue)
-            } else {
-                self.defaults.set(nil, forKey: key.rawValue)
-            }
-        }
-    }
-}
-
-final class TestPlaylistServiceObserver: PlaylistServiceObserver {
-    var playcutResult: Result<Playcut>?
-    var artworkResult: Result<UIImage>?
+struct TestObserver: NowPlayingServiceObserver {
+    let updatePlaycut: (Result<Playcut>) -> ()
+    let updateArtwork: (Result<UIImage>) -> ()
 
     func updateWith(playcutResult: Result<Playcut>) {
-        self.playcutResult = playcutResult
+        updatePlaycut(playcutResult)
     }
     
     func updateWith(artworkResult: Result<UIImage>) {
-        self.artworkResult = artworkResult
+        updateArtwork(artworkResult)
     }
 }
 
@@ -148,16 +96,21 @@ class NowPlayingServiceTests: XCTestCase {
     
     func testSuccessfullyRetrievingFromCache() {
         let webSession = TestWebSession()
-        let defaults = TestDefaults()
-        let cache = Cache(defaults: defaults)
-        cache[Core.CacheKey.playcut] = Fixture.playcut1
+        let cache = TestDefaults()
+        let cacheCoordinator = Cache(cache: cache)
+        cacheCoordinator.set(value: Fixture.playcut1, for: CacheKey.playcut, lifespan: DefaultLifespan)
+        
+        let playlistService = PlaylistService(cacheCoordinator: cacheCoordinator, webSession: webSession)
+        let observer = TestObserver(updatePlaycut: <#T##(Result<Playcut>) -> ()#>, updateArtwork: <#T##(Result<UIImage>) -> ()#>)
         
         let nowPlayingService = NowPlayingService(
-            cache: cache,
-            webSession: webSession
+            playlistService: playlistService,
+            artworkService: ArtworkService.shared,
+            initialObservers: []
         )
         
-        nowPlayingService.getCurrentPlaycut().observe { result in
+        nowPlayingService
+        nowPlayingService.getPlaycut().observe { result in
             guard case .success(let playcut) = result else {
                 fatalError()
             }
@@ -168,30 +121,33 @@ class NowPlayingServiceTests: XCTestCase {
     
     func testExpiredCache() {
         let webSession = TestWebSession()
-        let defaults = TestDefaults()
-        let cache = TestCache(defaults: defaults)
+        let cache = TestDefaults()
+        let cacheCoordinator = Cache(cache: cache)
+        
+        let playlistService = PlaylistService(cacheCoordinator: cacheCoordinator, webSession: webSession)
         
         let nowPlayingService = NowPlayingService(
-            cache: cache,
-            webSession: webSession
+            playlistService: playlistService,
+            artworkService: ArtworkService.shared,
+            initialObservers: []
         )
-        
-        _ = nowPlayingService.getCurrentPlaycut()
+
+        _ = nowPlayingService.getPlaycut()
     }
     
     func testGettingTwoDifferentPlaycuts() {
-        let playlistObserver = TestPlaylistServiceObserver()
+        let playcutObserver = TestNowPlayingServiceObserver()
 
         let nowPlayingService = self.createNowPlayingService()
-        _ = PlaylistService(
+        _ = nowPlayingService(
             service: nowPlayingService,
             artworkService: ArtworkService(),
-            initialObservers: [playlistObserver]
+            initialObservers: [playcutObserver]
         )
 
-        _ = nowPlayingService.getCurrentPlaycut()
+        _ = nowPlayingService.getPlaycut()
         
-        guard let playcutResult = playlistObserver.playcutResult else {
+        guard let playcutResult = playcutObserver.playcutResult else {
             XCTFail()
             return
         }
@@ -209,19 +165,19 @@ class NowPlayingServiceTests: XCTestCase {
         let webSession = TestWebSession()
         webSession.playcutFixtures = [Fixture.playcut1, Fixture.playcut2]
         
-        let defaults = TestDefaults()
-        let cache = Cache(defaults: defaults)
-        cache[Core.CacheKey.playcut] = Fixture.playcut1
+        let cache = TestDefaults()
+        let cacheCoordinator = Cache(cache: cache)
+        cacheCoordinator[Core.CacheKey.playcut] = Fixture.playcut1
 
         let nowPlayingService = NowPlayingService(
-            cache: cache,
+            cacheCoordinator: cacheCoordinator,
             webSession: webSession
         )
         
         return nowPlayingService
     }
     
-    func testExpiredCacheWithSamePlaylistResult() {
+    func testExpiredCacheWithSamePlaycutResult() {
         
     }
 }

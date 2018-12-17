@@ -17,7 +17,7 @@ public protocol NowPlayingPresentable: class {
     var userActivity: NSUserActivity? { get set }
 }
 
-public extension NowPlayingPresentable where Self: PlaylistServiceObserver {
+public extension NowPlayingPresentable where Self: NowPlayingServiceObserver {
     func updateWith(playcutResult: Result<Playcut>) {
         DispatchQueue.main.async {
             self.songLabel.text = playcutResult.songTitle

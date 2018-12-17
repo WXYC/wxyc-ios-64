@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="14460.31" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14460.20"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" indentationWidth="10" id="sSc-y0-tik" customClass="PlaycutCell">
+            <rect key="frame" x="0.0" y="0.0" width="375" height="540"/>
+            <autoresizingMask key="autoresizingMask"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="sSc-y0-tik" id="8T7-rP-RM9">
+                <rect key="frame" x="0.0" y="0.0" width="375" height="539.5"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <visualEffectView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="EVw-u0-bAI">
+                        <rect key="frame" x="16" y="31" width="343" height="498"/>
+                        <view key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" insetsLayoutMarginsFromSafeArea="NO" id="WTA-3c-epo">
+                            <rect key="frame" x="0.0" y="0.0" width="343" height="498"/>
+                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                            <subviews>
+                                <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" verticalCompressionResistancePriority="751" translatesAutoresizingMaskIntoConstraints="NO" id="gaM-xs-VPz" userLabel="Album Art">
+                                    <rect key="frame" x="0.0" y="0.0" width="343" height="343"/>
+                                    <constraints>
+                                        <constraint firstAttribute="width" secondItem="gaM-xs-VPz" secondAttribute="height" id="5z2-e8-M9g"/>
+                                    </constraints>
+                                </imageView>
+                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="252" text="Artist" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontForContentSizeCategory="YES" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="mlN-jf-Dle" userLabel="Artist">
+                                    <rect key="frame" x="8" y="351" width="180" height="31.5"/>
+                                    <fontDescription key="fontDescription" style="UICTFontTextStyleTitle1"/>
+                                    <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                    <nil key="highlightedColor"/>
+                                </label>
+                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" verticalCompressionResistancePriority="751" text="Song Title" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="2T4-2A-kao" userLabel="Song Title">
+                                    <rect key="frame" x="8" y="382.5" width="180" height="107.5"/>
+                                    <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                    <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                    <nil key="highlightedColor"/>
+                                </label>
+                                <button opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" horizontalCompressionResistancePriority="749" verticalCompressionResistancePriority="749" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="94H-o4-YiF" customClass="InkingButton" customModule="WXYC">
+                                    <rect key="frame" x="188" y="343" width="155" height="155"/>
+                                    <constraints>
+                                        <constraint firstAttribute="width" secondItem="94H-o4-YiF" secondAttribute="height" id="SC5-UM-K1L"/>
+                                    </constraints>
+                                    <state key="normal" title="•••">
+                                        <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                    </state>
+                                    <connections>
+                                        <action selector="displayShareSheet" destination="sSc-y0-tik" eventType="touchUpInside" id="l4A-v2-no7"/>
+                                    </connections>
+                                </button>
+                            </subviews>
+                            <constraints>
+                                <constraint firstItem="gaM-xs-VPz" firstAttribute="top" secondItem="WTA-3c-epo" secondAttribute="top" id="1FQ-4i-8p5"/>
+                                <constraint firstItem="2T4-2A-kao" firstAttribute="leading" secondItem="WTA-3c-epo" secondAttribute="leading" constant="8" id="1Gi-T3-jhs"/>
+                                <constraint firstAttribute="trailing" secondItem="gaM-xs-VPz" secondAttribute="trailing" id="4q5-2T-JHK"/>
+                                <constraint firstAttribute="bottom" secondItem="94H-o4-YiF" secondAttribute="bottom" id="9Sg-Qo-jws"/>
+                                <constraint firstAttribute="trailing" secondItem="94H-o4-YiF" secondAttribute="trailing" id="L6B-1I-Rzs"/>
+                                <constraint firstItem="2T4-2A-kao" firstAttribute="top" secondItem="mlN-jf-Dle" secondAttribute="bottom" id="N7L-uZ-MJr"/>
+                                <constraint firstItem="94H-o4-YiF" firstAttribute="leading" secondItem="2T4-2A-kao" secondAttribute="trailing" id="OwO-Oz-nzC"/>
+                                <constraint firstItem="mlN-jf-Dle" firstAttribute="top" secondItem="gaM-xs-VPz" secondAttribute="bottom" constant="8" id="VRh-JM-RmL"/>
+                                <constraint firstAttribute="bottom" secondItem="2T4-2A-kao" secondAttribute="bottom" constant="8" id="i57-oy-FdT"/>
+                                <constraint firstItem="mlN-jf-Dle" firstAttribute="leading" secondItem="WTA-3c-epo" secondAttribute="leading" constant="8" id="iEh-oX-ctc"/>
+                                <constraint firstItem="gaM-xs-VPz" firstAttribute="leading" secondItem="WTA-3c-epo" secondAttribute="leading" id="oi3-4s-O3O"/>
+                                <constraint firstItem="94H-o4-YiF" firstAttribute="leading" secondItem="mlN-jf-Dle" secondAttribute="trailing" id="ufh-9i-EcP"/>
+                                <constraint firstItem="94H-o4-YiF" firstAttribute="top" secondItem="gaM-xs-VPz" secondAttribute="bottom" id="zpF-Bz-deA"/>
+                            </constraints>
+                        </view>
+                        <blurEffect style="light"/>
+                    </visualEffectView>
+                </subviews>
+                <constraints>
+                    <constraint firstItem="EVw-u0-bAI" firstAttribute="leading" secondItem="8T7-rP-RM9" secondAttribute="leadingMargin" id="K14-Te-9Js"/>
+                    <constraint firstItem="EVw-u0-bAI" firstAttribute="top" secondItem="8T7-rP-RM9" secondAttribute="topMargin" id="Qj3-Gx-fb8"/>
+                    <constraint firstAttribute="trailingMargin" secondItem="EVw-u0-bAI" secondAttribute="trailing" id="cO5-AU-zzp"/>
+                    <constraint firstAttribute="bottomMargin" secondItem="EVw-u0-bAI" secondAttribute="bottom" id="i0x-pO-UmF"/>
+                </constraints>
+            </tableViewCellContentView>
+            <connections>
+                <outlet property="actionButton" destination="94H-o4-YiF" id="mbd-eL-3QN"/>
+                <outlet property="artistLabel" destination="mlN-jf-Dle" id="rOJ-0l-ZMT"/>
+                <outlet property="artworkImageView" destination="gaM-xs-VPz" id="pPF-b2-kyB"/>
+                <outlet property="containerView" destination="EVw-u0-bAI" id="tT3-aa-4D9"/>
+                <outlet property="songLabel" destination="2T4-2A-kao" id="1Iz-n9-StX"/>
+            </connections>
+            <point key="canvasLocation" x="-93.599999999999994" y="469.56521739130437"/>
+        </tableViewCell>
+    </objects>
+</document>
