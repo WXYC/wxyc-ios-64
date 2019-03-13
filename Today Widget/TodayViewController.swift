@@ -12,7 +12,7 @@ import UI
 import Core
 import Spring
 
-class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
+class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceObserver {
     @IBOutlet weak var songLabel: SpringLabel!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var albumImageView: UIImageView!
@@ -20,7 +20,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServ
     @IBOutlet weak var containerStackView: UIStackView!
     @IBOutlet weak var labelsStackView: UIStackView!
 
-    var playlistService: PlaylistService?
+    var nowPlayingService: NowPlayingService?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -36,7 +36,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, PlaylistServ
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
 
-        self.playlistService = PlaylistService(observers: self)
+        self.nowPlayingService = NowPlayingService(observers: self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

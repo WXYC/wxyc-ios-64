@@ -4,7 +4,7 @@ import UI
 import Core
 import Spring
 
-final class NowPlayingViewController: UIViewController, NowPlayingPresentable, PlaylistServiceObserver {
+final class NowPlayingViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: SpringLabel!

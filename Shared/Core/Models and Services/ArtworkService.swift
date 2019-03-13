@@ -9,16 +9,14 @@
 import Foundation
 import UIKit
 
-final class ArtworkService {
-    static var shared: ArtworkService = {
-        return ArtworkService(fetchers: [
-            CachedArtworkFetcher(cache: Cache.WXYC),
-            RemoteArtworkFetcher<DiscogsConfiguration>(),
-            RemoteArtworkFetcher<LastFMConfiguration>(),
-            RemoteArtworkFetcher<iTunesConfiguration>(),
-            DefaultArtworkFetcher()
-        ])
-    }()
+public final class ArtworkService {
+    public static let shared = ArtworkService(fetchers: [
+        CachedArtworkFetcher(cacheCoordinator: .AlbumArt),
+        RemoteArtworkFetcher<DiscogsConfiguration>(),
+        RemoteArtworkFetcher<LastFMConfiguration>(),
+        RemoteArtworkFetcher<iTunesConfiguration>(),
+        DefaultArtworkFetcher()
+    ])
     
     private let fetchers: [ArtworkFetcher]
     
@@ -26,7 +24,7 @@ final class ArtworkService {
         self.fetchers = fetchers
     }
     
-    func getArtwork(for playcut: Playcut) -> Future<UIImage> {
+    public func getArtwork(for playcut: Playcut) -> Future<UIImage> {
         let (first, rest) = (self.fetchers.first!, self.fetchers.dropFirst())
         return rest.reduce(first.getArtwork(for: playcut), { $0 || $1.getArtwork(for: playcut) })
     }
@@ -37,23 +35,30 @@ protocol ArtworkFetcher {
 }
 
 final class CachedArtworkFetcher: ArtworkFetcher {
-    let cache: Cachable
+    let cacheCoordinator: CacheCoordinator
     
-    init(cache: Cachable = Cache.WXYC) {
-        self.cache = cache
+    init(cacheCoordinator: CacheCoordinator = .WXYCPlaylist) {
+        self.cacheCoordinator = cacheCoordinator
     }
     
     func getArtwork(for playcut: Playcut) -> Future<UIImage> {
-        let dataRequest: Future<Data> = self.cache.getCachedValue(key: .artwork)
-        let imageRequest: Future<UIImage> =  dataRequest.transformed(with: UIImage.init)
+        let request: Future<Data> = self.cacheCoordinator.getValue(for: playcut)
         
-        return imageRequest
+        request.observe { result in
+            if case let .error(error) = result {
+                print(error)
+            }
+        }
+        
+        return request.transformed(with: UIImage.init(data:))
     }
 }
 
 final class DefaultArtworkFetcher: ArtworkFetcher {
+    static let defaultArtworkPromise = Promise(value: #imageLiteral(resourceName: "logo"))
+    
     func getArtwork(for playcut: Playcut) -> Future<UIImage> {
-        return Promise(value: #imageLiteral(resourceName: "logo"))
+        return DefaultArtworkFetcher.defaultArtworkPromise
     }
 }
 
@@ -64,10 +69,10 @@ protocol RemoteArtworkFetcherConfiguration {
 
 final class RemoteArtworkFetcher<Configuration: RemoteArtworkFetcherConfiguration>: ArtworkFetcher {
     let session: WebSession
-    let cache: Cachable
+    let cacheCoordinator: CacheCoordinator
     
-    init(cache: Cachable = Cache.WXYC, session: WebSession = URLSession.shared) {
-        self.cache = cache
+    init(cacheCoordinator: CacheCoordinator = .AlbumArt, session: WebSession = URLSession.shared) {
+        self.cacheCoordinator = cacheCoordinator
         self.session = session
     }
     
@@ -76,6 +81,10 @@ final class RemoteArtworkFetcher<Configuration: RemoteArtworkFetcherConfiguratio
         let imageURLRequest = self.session.request(url: searchURLRequest)
             .transformed(with: Configuration.extractURL(from:))
         let downloadImageRequest = imageURLRequest.chained(with: self.getArtwork(at:))
+        
+        downloadImageRequest.onSuccess { image in
+            self.cacheCoordinator.set(value: image.pngData(), for: playcut, lifespan: .distantFuture)
+        }
         
         return downloadImageRequest
     }
@@ -89,11 +98,7 @@ final class RemoteArtworkFetcher<Configuration: RemoteArtworkFetcherConfiguratio
                 
                 return image
             })
-        
-        imageRequest.onSuccess { image in
-            self.cache[CacheKey.artwork] = image.pngData()
-        }
-        
+                
         return imageRequest
     }
 }
