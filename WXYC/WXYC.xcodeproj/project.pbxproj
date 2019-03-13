@@ -10,9 +10,7 @@
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */; };
 		341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
-		341FBAB72041E7AB00CD2F36 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE52030A1CC00FC778F /* RootPageViewController.swift */; };
 		341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */; };
-		341FBAB92041E7AB00CD2F36 /* NowPlayingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE62030A1CC00FC778F /* NowPlayingViewController.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		341FBABD2041E7AB00CD2F36 /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
@@ -22,7 +20,6 @@
 		341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */; };
 		341FBAC32041E7AB00CD2F36 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE82030A1CC00FC778F /* LaunchScreen.xib */; };
 		341FBAC42041E7AB00CD2F36 /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */; };
-		341FBAC52041E7AB00CD2F36 /* NowPlayingViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */; };
 		341FBAC62041E7AB00CD2F36 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 343400632030A1E700FC778F /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
@@ -176,15 +173,12 @@
 		3434F4EB2030A1C600FC778F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
-		3434FBE52030A1CC00FC778F /* RootPageViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
-		3434FBE62030A1CC00FC778F /* NowPlayingViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingViewController.swift; sourceTree = "<group>"; };
 		3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+WXYC.swift"; sourceTree = "<group>"; };
 		3434FBE92030A1CC00FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
 		3434FBEB2030A1CC00FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/iOSMain.storyboard; sourceTree = "<group>"; };
 		3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InfoDetailViewController.swift; sourceTree = "<group>"; };
 		3434FBED2030A1CC00FC778F /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LockscreenInfoService.swift; sourceTree = "<group>"; };
-		3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = NowPlayingViewController.xib; sourceTree = "<group>"; };
 		3434FBF12030A1CC00FC778F /* PlaybackButton.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaybackButton.swift; sourceTree = "<group>"; };
 		3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NowPlayingPresentable.swift; sourceTree = "<group>"; };
 		3434FBF72030A1CC00FC778F /* PlaylistItem.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PlaylistItem.swift; sourceTree = "<group>"; };
@@ -375,10 +369,7 @@
 				3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */,
 				3434FBE82030A1CC00FC778F /* LaunchScreen.xib */,
 				3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */,
-				3434FBE62030A1CC00FC778F /* NowPlayingViewController.swift */,
-				3434FBF02030A1CC00FC778F /* NowPlayingViewController.xib */,
 				3434FBF12030A1CC00FC778F /* PlaybackButton.swift */,
-				3434FBE52030A1CC00FC778F /* RootPageViewController.swift */,
 				3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */,
 				348534A2222F4DF4002AA181 /* Playlist */,
 				3441BFE421D171300087D6AB /* SpinningAnimation.swift */,
@@ -759,7 +750,6 @@
 				341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */,
 				341FBAC32041E7AB00CD2F36 /* LaunchScreen.xib in Resources */,
 				341FBAC42041E7AB00CD2F36 /* iOSMain.storyboard in Resources */,
-				341FBAC52041E7AB00CD2F36 /* NowPlayingViewController.xib in Resources */,
 				34FA49B1223876F0001D6040 /* TalksetCell.xib in Resources */,
 				341FBAC62041E7AB00CD2F36 /* Images.xcassets in Resources */,
 			);
@@ -811,12 +801,10 @@
 				341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */,
 				348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */,
 				348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */,
-				341FBAB72041E7AB00CD2F36 /* RootPageViewController.swift in Sources */,
 				3435D4982225BA1D00EA9226 /* CacheUtilities.swift in Sources */,
 				341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */,
 				34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */,
 				34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */,
-				341FBAB92041E7AB00CD2F36 /* NowPlayingViewController.swift in Sources */,
 				3441BFE521D171300087D6AB /* SpinningAnimation.swift in Sources */,
 				341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */,
 				341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */,

@@ -140,7 +140,6 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
 }
 
 extension PlaybackLayer: CAAnimationDelegate {
-    
     func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
         guard flag else {
             return
