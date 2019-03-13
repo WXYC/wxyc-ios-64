@@ -5,40 +5,46 @@ import Core
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    let cacheCoordinator = CacheCoordinator.WXYCPlaylist
+    var nowPlayingService: NowPlayingService?
+    let lockscreenInfoService = LockscreenInfoService()
+
     enum UserSettingsKeys: String {
         case intentDonated
     }
     
     func donateSiriIntentIfNeeded() {
-        guard self.shouldDonateSiriIntent() else {
-            return
+        self.shouldDonateSiriIntent().onSuccess { shouldDonateSiriIntent in
+            guard shouldDonateSiriIntent else {
+                return
+            }
+            
+            let mediaItem = INMediaItem(
+                identifier: "com.wxyc.ios.intent.play",
+                title: "Play",
+                type: .musicStation,
+                artwork: nil
+            )
+            
+            let intent = INPlayMediaIntent(
+                mediaItems: [mediaItem],
+                mediaContainer: nil,
+                playShuffled: nil,
+                playbackRepeatMode: .none,
+                resumePlayback: false
+            )
+            
+            intent.suggestedInvocationPhrase = "Play WXYC"
+            let interaction = INInteraction(intent: intent, response: nil)
+            
+            interaction.donate()
+            
+            self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
         }
-        
-        let mediaItem = INMediaItem(
-            identifier: "com.wxyc.ios.intent.play",
-            title: "Play",
-            type: .musicStation,
-            artwork: nil
-        )
-        
-        let intent = INPlayMediaIntent(
-            mediaItems: [mediaItem],
-            mediaContainer: nil,
-            playShuffled: nil,
-            playbackRepeatMode: .none,
-            resumePlayback: false
-        )
-        
-        intent.suggestedInvocationPhrase = "Play WXYC"
-        let interaction = INInteraction(intent: intent, response: nil)
-        
-        interaction.donate()
-        
-        UserDefaults.standard[UserSettingsKeys.intentDonated] = true
     }
     
-    func shouldDonateSiriIntent() -> Bool {
-        return UserDefaults.standard[UserSettingsKeys.intentDonated] == true
+    func shouldDonateSiriIntent() -> Future<Bool> {
+        return self.cacheCoordinator.getValue(for: UserSettingsKeys.intentDonated)
     }
     
     // MARK: UIApplicationDelegate
@@ -55,6 +61,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         #endif
         
         self.donateSiriIntentIfNeeded()
+        
+        self.nowPlayingService = NowPlayingService(observers: self.lockscreenInfoService)
         
         return true
     }
