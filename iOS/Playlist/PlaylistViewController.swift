@@ -7,9 +7,7 @@
 //
 
 import UIKit
-import UI
 import Core
-import Spring
 
 class PlaylistViewController: UITableViewController, PlaylistPresentable {
     var viewModels: [PlaylistCellViewModel] = []
