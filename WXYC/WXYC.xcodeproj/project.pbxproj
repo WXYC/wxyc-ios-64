@@ -9,12 +9,10 @@
 /* Begin PBXBuildFile section */
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */; };
-		341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
 		341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		341FBABD2041E7AB00CD2F36 /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
-		341FBABE2041E7AB00CD2F36 /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
 		341FBABF2041E7AB00CD2F36 /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
 		341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */; };
 		341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */; };
@@ -34,18 +32,13 @@
 		3434008D2030A2AC00FC778F /* CacheCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFE2030A1CC00FC778F /* CacheCoordinator.swift */; };
 		3434008E2030A2AC00FC778F /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFF2030A1CC00FC778F /* RadioStation.swift */; };
 		3434009B2030A2CD00FC778F /* NowPlayingPresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */; };
-		343400A92030A2F600FC778F /* Spring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC032030A1CC00FC778F /* Spring.swift */; };
-		343400AA2030A2F600FC778F /* SpringImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC042030A1CC00FC778F /* SpringImageView.swift */; };
-		343400AB2030A2F600FC778F /* SpringLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC052030A1CC00FC778F /* SpringLabel.swift */; };
 		343400B42030A61800FC778F /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
 		343400B52030A61E00FC778F /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
-		343400B62030A61E00FC778F /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
 		343400D82030D6C800FC778F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FC072030A1CC00FC778F /* Assets.xcassets */; };
 		343400D92030D6D200FC778F /* TVMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FC082030A1CC00FC778F /* TVMain.storyboard */; };
 		343400DA2030D6D600FC778F /* TVViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC0A2030A1CC00FC778F /* TVViewController.swift */; };
 		343400DF2030D71A00FC778F /* libCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3434007F2030A29600FC778F /* libCore.a */; };
 		343400E02030D71A00FC778F /* libUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400942030A2C200FC778F /* libUI.a */; };
-		343400E12030D72400FC778F /* libSpring.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400A22030A2ED00FC778F /* libSpring.a */; };
 		343400EF2030E15000FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		343400F12030E45A00FC778F /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		3435D4932224A34F00EA9226 /* ThreadSafe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4912224A2F900EA9226 /* ThreadSafe.swift */; };
@@ -94,13 +87,6 @@
 			remoteGlobalIDString = 3434007E2030A29600FC778F;
 			remoteInfo = Core;
 		};
-		343400AC2030A30000FC778F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 343400A12030A2ED00FC778F;
-			remoteInfo = Spring;
-		};
 		34425DBF21B8BAE100C8DD5F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
@@ -148,15 +134,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		343400A02030A2ED00FC778F /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "include/$(PRODUCT_NAME)";
-			dstSubfolderSpec = 16;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -166,7 +143,6 @@
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		3434007F2030A29600FC778F /* libCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400942030A2C200FC778F /* libUI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libUI.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		343400A22030A2ED00FC778F /* libSpring.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSpring.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3434F4E82030A1C600FC778F /* TodayViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
 		3434F4EA2030A1C600FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TodayMain.storyboard; sourceTree = "<group>"; };
@@ -190,9 +166,6 @@
 		3434FBFE2030A1CC00FC778F /* CacheCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CacheCoordinator.swift; sourceTree = "<group>"; };
 		3434FBFF2030A1CC00FC778F /* RadioStation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RadioStation.swift; sourceTree = "<group>"; };
 		3434FC012030A1CC00FC778F /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		3434FC032030A1CC00FC778F /* Spring.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Spring.swift; sourceTree = "<group>"; };
-		3434FC042030A1CC00FC778F /* SpringImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpringImageView.swift; sourceTree = "<group>"; };
-		3434FC052030A1CC00FC778F /* SpringLabel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpringLabel.swift; sourceTree = "<group>"; };
 		3434FC072030A1CC00FC778F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3434FC092030A1CC00FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TVMain.storyboard; sourceTree = "<group>"; };
 		3434FC0A2030A1CC00FC778F /* TVViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TVViewController.swift; sourceTree = "<group>"; };
@@ -240,7 +213,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				341FBABD2041E7AB00CD2F36 /* libCore.a in Frameworks */,
-				341FBABE2041E7AB00CD2F36 /* libSpring.a in Frameworks */,
 				341FBABF2041E7AB00CD2F36 /* libUI.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -250,7 +222,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				343400B52030A61E00FC778F /* libCore.a in Frameworks */,
-				343400B62030A61E00FC778F /* libSpring.a in Frameworks */,
 				343400B42030A61800FC778F /* libUI.a in Frameworks */,
 				343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */,
 			);
@@ -270,18 +241,10 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		3434009F2030A2ED00FC778F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		343400B82030D62300FC778F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				343400E12030D72400FC778F /* libSpring.a in Frameworks */,
 				343400DF2030D71A00FC778F /* libCore.a in Frameworks */,
 				343400E02030D71A00FC778F /* libUI.a in Frameworks */,
 			);
@@ -338,7 +301,6 @@
 				343400632030A1E700FC778F /* Today Widget.appex */,
 				3434007F2030A29600FC778F /* libCore.a */,
 				343400942030A2C200FC778F /* libUI.a */,
-				343400A22030A2ED00FC778F /* libSpring.a */,
 				343400BB2030D62300FC778F /* WXYC TV.app */,
 				341FBACC2041E7AB00CD2F36 /* WXYC.app */,
 				34425DB921B8BAE100C8DD5F /* Core Tests.xctest */,
@@ -384,7 +346,6 @@
 			children = (
 				3434FBF42030A1CC00FC778F /* UI */,
 				3434FBF62030A1CC00FC778F /* Core */,
-				3434FC022030A1CC00FC778F /* Spring */,
 				3434FC012030A1CC00FC778F /* AppDelegate.swift */,
 			);
 			name = Shared;
@@ -410,16 +371,6 @@
 				3435D4912224A2F900EA9226 /* ThreadSafe.swift */,
 			);
 			path = Core;
-			sourceTree = "<group>";
-		};
-		3434FC022030A1CC00FC778F /* Spring */ = {
-			isa = PBXGroup;
-			children = (
-				3434FC032030A1CC00FC778F /* Spring.swift */,
-				3434FC042030A1CC00FC778F /* SpringImageView.swift */,
-				3434FC052030A1CC00FC778F /* SpringLabel.swift */,
-			);
-			path = Spring;
 			sourceTree = "<group>";
 		};
 		3434FC062030A1CC00FC778F /* tvOS */ = {
@@ -575,29 +526,11 @@
 			buildRules = (
 			);
 			dependencies = (
-				343400AD2030A30000FC778F /* PBXTargetDependency */,
 				3434009D2030A2D500FC778F /* PBXTargetDependency */,
 			);
 			name = UI;
 			productName = UI;
 			productReference = 343400942030A2C200FC778F /* libUI.a */;
-			productType = "com.apple.product-type.library.static";
-		};
-		343400A12030A2ED00FC778F /* Spring */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 343400A62030A2EE00FC778F /* Build configuration list for PBXNativeTarget "Spring" */;
-			buildPhases = (
-				3434009E2030A2ED00FC778F /* Sources */,
-				3434009F2030A2ED00FC778F /* Frameworks */,
-				343400A02030A2ED00FC778F /* CopyFiles */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = Spring;
-			productName = Spring;
-			productReference = 343400A22030A2ED00FC778F /* libSpring.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 		343400BA2030D62300FC778F /* WXYC TV */ = {
@@ -686,11 +619,6 @@
 						LastSwiftMigration = 1010;
 						ProvisioningStyle = Automatic;
 					};
-					343400A12030A2ED00FC778F = {
-						CreatedOnToolsVersion = 9.3;
-						LastSwiftMigration = 1010;
-						ProvisioningStyle = Automatic;
-					};
 					343400BA2030D62300FC778F = {
 						CreatedOnToolsVersion = 9.3;
 						ProvisioningStyle = Automatic;
@@ -731,7 +659,6 @@
 				343400BA2030D62300FC778F /* WXYC TV */,
 				3434007E2030A29600FC778F /* Core */,
 				343400932030A2C200FC778F /* UI */,
-				343400A12030A2ED00FC778F /* Spring */,
 				34425DB821B8BAE100C8DD5F /* Core Tests */,
 				34B1890421C1C8BA005ADD84 /* iOS Intents Extension */,
 			);
@@ -798,7 +725,6 @@
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
 				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
 				341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */,
-				341FBAB62041E7AB00CD2F36 /* Spring.swift in Sources */,
 				348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */,
 				348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */,
 				3435D4982225BA1D00EA9226 /* CacheUtilities.swift in Sources */,
@@ -855,16 +781,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		3434009E2030A2ED00FC778F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				343400A92030A2F600FC778F /* Spring.swift in Sources */,
-				343400AA2030A2F600FC778F /* SpringImageView.swift in Sources */,
-				343400AB2030A2F600FC778F /* SpringLabel.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		343400B72030D62300FC778F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -902,11 +818,6 @@
 			isa = PBXTargetDependency;
 			target = 3434007E2030A29600FC778F /* Core */;
 			targetProxy = 3434009C2030A2D500FC778F /* PBXContainerItemProxy */;
-		};
-		343400AD2030A30000FC778F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 343400A12030A2ED00FC778F /* Spring */;
-			targetProxy = 343400AC2030A30000FC778F /* PBXContainerItemProxy */;
 		};
 		34425DC021B8BAE100C8DD5F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1061,34 +972,6 @@
 			name = Debug;
 		};
 		3434009A2030A2C200FC778F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "appletvsimulator appletvos iphonesimulator iphoneos";
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		343400A72030A2EE00FC778F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "appletvsimulator appletvos iphonesimulator iphoneos";
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		343400A82030A2EE00FC778F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -1352,15 +1235,6 @@
 			buildConfigurations = (
 				343400992030A2C200FC778F /* Debug */,
 				3434009A2030A2C200FC778F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		343400A62030A2EE00FC778F /* Build configuration list for PBXNativeTarget "Spring" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				343400A72030A2EE00FC778F /* Debug */,
-				343400A82030A2EE00FC778F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

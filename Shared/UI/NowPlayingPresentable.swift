@@ -7,11 +7,10 @@
 //
 
 import UIKit
-import Spring
 import Core
 
 public protocol NowPlayingPresentable: class {
-    var songLabel: SpringLabel! { get }
+    var songLabel: UILabel! { get }
     var artistLabel: UILabel! { get }
     var albumImageView: UIImageView! { get }
     var userActivity: NSUserActivity? { get set }
