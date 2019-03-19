@@ -65,6 +65,10 @@
 		34B1882A21BB2B98005ADD84 /* Discogs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1882821BB29E0005ADD84 /* Discogs.swift */; };
 		34B1890821C1C8BA005ADD84 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1890721C1C8BA005ADD84 /* IntentHandler.swift */; };
 		34B1890C21C1C8BA005ADD84 /* iOS Intents Extension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */; };
+		34CEF92022417B1C00D120F7 /* PlaylistCellViewModelProducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91F22417B1C00D120F7 /* PlaylistCellViewModelProducer.swift */; };
+		34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF92122417C0000D120F7 /* PlaycutActivityItem.swift */; };
+		34CEFA8E22419F5900D120F7 /* PlaylistCellViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEFA8D22419F5900D120F7 /* PlaylistCellViewModel.swift */; };
 		34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D908542113EE4800AB8C79 /* RadioPlayerController.swift */; };
 		34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FA49A82231BD9C001D6040 /* InkingButton.swift */; };
 		34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49AA2236ED93001D6040 /* PlaycutCell.xib */; };
@@ -199,6 +203,10 @@
 		34B1890721C1C8BA005ADD84 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
 		34B1890921C1C8BA005ADD84 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistDataSource.swift; sourceTree = "<group>"; };
+		34CEF91F22417B1C00D120F7 /* PlaylistCellViewModelProducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistCellViewModelProducer.swift; sourceTree = "<group>"; };
+		34CEF92122417C0000D120F7 /* PlaycutActivityItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaycutActivityItem.swift; sourceTree = "<group>"; };
+		34CEFA8D22419F5900D120F7 /* PlaylistCellViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistCellViewModel.swift; sourceTree = "<group>"; };
 		34D908542113EE4800AB8C79 /* RadioPlayerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadioPlayerController.swift; sourceTree = "<group>"; };
 		34FA49A82231BD9C001D6040 /* InkingButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InkingButton.swift; sourceTree = "<group>"; };
 		34FA49AA2236ED93001D6040 /* PlaycutCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PlaycutCell.xib; sourceTree = "<group>"; };
@@ -436,15 +444,12 @@
 		348534A2222F4DF4002AA181 /* Playlist */ = {
 			isa = PBXGroup;
 			children = (
-				348534A7222F4E6D002AA181 /* BreakpointCell.swift */,
-				34FA49AE2238766A001D6040 /* BreakpointCell.xib */,
-				348534A3222F4E0D002AA181 /* PlaycutCell.swift */,
-				34FA49AA2236ED93001D6040 /* PlaycutCell.xib */,
-				3441BFE221D145F40087D6AB /* PlayerHeader.swift */,
-				348534A022287A65002AA181 /* PlayerHeader.xib */,
+				34CEF91E22417AB900D120F7 /* Playlist Cells */,
 				34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */,
-				348534A5222F4E51002AA181 /* TalksetCell.swift */,
-				34FA49B0223876F0001D6040 /* TalksetCell.xib */,
+				34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */,
+				34CEF91F22417B1C00D120F7 /* PlaylistCellViewModelProducer.swift */,
+				34CEF92122417C0000D120F7 /* PlaycutActivityItem.swift */,
+				34CEFA8D22419F5900D120F7 /* PlaylistCellViewModel.swift */,
 			);
 			path = Playlist;
 			sourceTree = "<group>";
@@ -456,6 +461,21 @@
 				34B1890921C1C8BA005ADD84 /* Info.plist */,
 			);
 			path = "iOS Intents Extension";
+			sourceTree = "<group>";
+		};
+		34CEF91E22417AB900D120F7 /* Playlist Cells */ = {
+			isa = PBXGroup;
+			children = (
+				348534A7222F4E6D002AA181 /* BreakpointCell.swift */,
+				34FA49AE2238766A001D6040 /* BreakpointCell.xib */,
+				348534A3222F4E0D002AA181 /* PlaycutCell.swift */,
+				34FA49AA2236ED93001D6040 /* PlaycutCell.xib */,
+				3441BFE221D145F40087D6AB /* PlayerHeader.swift */,
+				348534A022287A65002AA181 /* PlayerHeader.xib */,
+				348534A5222F4E51002AA181 /* TalksetCell.swift */,
+				34FA49B0223876F0001D6040 /* TalksetCell.xib */,
+			);
+			path = "Playlist Cells";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -722,12 +742,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				34CEF92022417B1C00D120F7 /* PlaylistCellViewModelProducer.swift in Sources */,
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
+				34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */,
 				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
 				341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */,
 				348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */,
 				348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */,
 				3435D4982225BA1D00EA9226 /* CacheUtilities.swift in Sources */,
+				34CEFA8E22419F5900D120F7 /* PlaylistCellViewModel.swift in Sources */,
+				34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */,
 				341FBAB82041E7AB00CD2F36 /* LockscreenInfoService.swift in Sources */,
 				34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */,
 				34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */,
