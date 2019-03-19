@@ -20,7 +20,7 @@ final class PlaycutCell: UITableViewCell {
     
     // MARK: Configuration
     
-    func configure(with image: UIImage, token: AnyEquatable) {
+    func configure(with image: UIImage, token: Int) {
         guard token == self.token else {
             return
         }
@@ -32,7 +32,7 @@ final class PlaycutCell: UITableViewCell {
         }
     }
     
-    var token: AnyEquatable?
+    var token: Int?
     
     // MARK: Overrides
     
