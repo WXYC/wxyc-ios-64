@@ -18,7 +18,11 @@ class PlaylistViewController: UITableViewController, PlaylistPresentable {
         self.playlistDataSource.add(observer: self)
         self.tableView.rowHeight = UITableView.automaticDimension
         self.tableView.sectionHeaderHeight = UITableView.automaticDimension
+        self.tableView.estimatedSectionHeaderHeight = 222
         self.tableView.backgroundColor = .clear
+        
+        let nib = UINib(nibName: NSStringFromClass(PlayerHeader.self), bundle: nil)
+        self.tableView.register(nib, forHeaderFooterViewReuseIdentifier: NSStringFromClass(PlayerHeader.self))
     }
     
     // MARK: PlaylistPresentable
@@ -34,28 +38,8 @@ class PlaylistViewController: UITableViewController, PlaylistPresentable {
         return 1
     }
     
-    private static let header: PlayerHeader = {
-        let header = PlayerHeader()
-        
-        let view = UIView()
-        view.backgroundColor = .clear
-        header.backgroundView = view
-
-        return header
-    }()
-    
-    override func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        let size = PlaylistViewController.header.systemLayoutSizeFitting(
-            tableView.bounds.size,
-            withHorizontalFittingPriority: .required,
-            verticalFittingPriority: .defaultHigh
-        )
-        
-        return size.height
-    }
-    
     override func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        return PlaylistViewController.header
+        return tableView.dequeueReusableHeaderFooterView(withIdentifier: NSStringFromClass(PlayerHeader.self))
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
