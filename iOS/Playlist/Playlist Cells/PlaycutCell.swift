@@ -26,9 +26,13 @@ final class PlaycutCell: UITableViewCell {
         }
         
         DispatchQueue.main.async {
-            UIView.animate(withDuration: 0.25, animations: {
-                self.artworkImageView.image = image
-            })
+            UIView.transition(
+                with: self.artworkImageView,
+                duration: 0.25,
+                options: [.transitionCrossDissolve],
+                animations: { self.artworkImageView.image = image },
+                completion: nil
+            )
         }
     }
     
