@@ -16,47 +16,47 @@
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
             <subviews>
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="5RG-En-Phc">
-                    <rect key="frame" x="0.0" y="0.0" width="1125" height="182"/>
+                    <rect key="frame" x="16" y="0.0" width="1093" height="249"/>
                     <subviews>
                         <visualEffectView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="xz7-an-Hp9">
-                            <rect key="frame" x="0.0" y="0.0" width="820" height="182"/>
+                            <rect key="frame" x="0.0" y="0.0" width="1120.5" height="249"/>
                             <view key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" id="P0N-Zk-g7f">
-                                <rect key="frame" x="0.0" y="0.0" width="820" height="182"/>
+                                <rect key="frame" x="0.0" y="0.0" width="1120.5" height="249"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <subviews>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="257" verticalHuggingPriority="252" verticalCompressionResistancePriority="748" insetsLayoutMarginsFromSafeArea="NO" image="Cassette Right Arch" translatesAutoresizingMaskIntoConstraints="NO" id="XAc-LJ-KKd">
-                                        <rect key="frame" x="716" y="0.0" width="104" height="182"/>
+                                        <rect key="frame" x="978.5" y="0.0" width="142.5" height="249"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="XAc-LJ-KKd" secondAttribute="height" multiplier="71:124" id="eO0-dt-MiX"/>
                                         </constraints>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" verticalHuggingPriority="251" horizontalCompressionResistancePriority="749" image="Cassette Background" translatesAutoresizingMaskIntoConstraints="NO" id="MRG-3n-gv2">
-                                        <rect key="frame" x="288" y="0.0" width="428" height="182"/>
+                                        <rect key="frame" x="393.5" y="0.0" width="585" height="249"/>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" verticalHuggingPriority="251" horizontalCompressionResistancePriority="749" image="Cassette Center" translatesAutoresizingMaskIntoConstraints="NO" id="KK7-92-suf">
-                                        <rect key="frame" x="288" y="-3" width="428" height="182"/>
+                                        <rect key="frame" x="393.5" y="-3" width="585" height="249"/>
                                     </imageView>
                                     <button clearsContextBeforeDrawing="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="255" verticalHuggingPriority="251" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="CGx-so-9Ne" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
-                                        <rect key="frame" x="0.0" y="0.0" width="182.5" height="182"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="249" height="249"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="CGx-so-9Ne" secondAttribute="height" multiplier="1:1" id="FeC-CO-Il5"/>
                                         </constraints>
                                         <color key="tintColor" red="0.2666666667" green="0.3411764706" blue="0.3803921569" alpha="1" colorSpace="calibratedRGB"/>
                                     </button>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="257" verticalHuggingPriority="252" verticalCompressionResistancePriority="748" insetsLayoutMarginsFromSafeArea="NO" image="Cassette Left Arch" translatesAutoresizingMaskIntoConstraints="NO" id="RKz-o2-d6e">
-                                        <rect key="frame" x="182.5" y="0.0" width="105.5" height="182"/>
+                                        <rect key="frame" x="249" y="0.0" width="144.5" height="249"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="RKz-o2-d6e" secondAttribute="height" multiplier="18:31" id="UYw-s8-mxh"/>
                                         </constraints>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Cassette Reel" translatesAutoresizingMaskIntoConstraints="NO" id="GDu-yh-lQA">
-                                        <rect key="frame" x="675.5" y="50.5" width="81" height="81"/>
+                                        <rect key="frame" x="923" y="69" width="111" height="111"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="GDu-yh-lQA" secondAttribute="height" id="z56-cK-egy"/>
                                         </constraints>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Cassette Reel" translatesAutoresizingMaskIntoConstraints="NO" id="dFV-Km-x0k">
-                                        <rect key="frame" x="247.5" y="50.5" width="81" height="81"/>
+                                        <rect key="frame" x="338" y="69" width="111" height="111"/>
                                     </imageView>
                                 </subviews>
                                 <constraints>
@@ -92,7 +92,6 @@
                             <blurEffect style="light"/>
                         </visualEffectView>
                     </subviews>
-                    <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                     <constraints>
                         <constraint firstItem="xz7-an-Hp9" firstAttribute="top" secondItem="5RG-En-Phc" secondAttribute="top" id="Ffx-bv-cxT"/>
                         <constraint firstAttribute="bottom" secondItem="xz7-an-Hp9" secondAttribute="bottom" id="d30-tu-Xjq"/>
@@ -103,10 +102,10 @@
             </subviews>
             <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
             <constraints>
-                <constraint firstItem="SvY-n8-eWU" firstAttribute="trailing" secondItem="5RG-En-Phc" secondAttribute="trailing" id="3AK-5I-Lzy"/>
+                <constraint firstItem="SvY-n8-eWU" firstAttribute="trailing" secondItem="5RG-En-Phc" secondAttribute="trailing" constant="16" id="3AK-5I-Lzy"/>
                 <constraint firstItem="5RG-En-Phc" firstAttribute="top" secondItem="SvY-n8-eWU" secondAttribute="top" id="OHZ-3e-Uz7"/>
-                <constraint firstItem="5RG-En-Phc" firstAttribute="leading" secondItem="SvY-n8-eWU" secondAttribute="leading" id="cNX-TR-b1R"/>
-                <constraint firstItem="SvY-n8-eWU" firstAttribute="bottom" secondItem="5RG-En-Phc" secondAttribute="bottom" id="hmx-Vm-42b"/>
+                <constraint firstItem="5RG-En-Phc" firstAttribute="leading" secondItem="SvY-n8-eWU" secondAttribute="leading" constant="16" id="cNX-TR-b1R"/>
+                <constraint firstItem="SvY-n8-eWU" firstAttribute="bottom" secondItem="5RG-En-Phc" secondAttribute="bottom" constant="8" id="hmx-Vm-42b"/>
             </constraints>
             <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
             <viewLayoutGuide key="safeArea" id="SvY-n8-eWU"/>
