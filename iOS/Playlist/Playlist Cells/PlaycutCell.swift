@@ -60,7 +60,7 @@ final class PlaycutCell: UITableViewCell {
             return
         }
         
-        let viewController = UIActivityViewController(activityItems: [self.artworkImageView.image ?? #imageLiteral(resourceName: "logo"), activity.activityTitle!, URL(string: "http://wxyc.org")!], applicationActivities: [activity])
+        let viewController = UIActivityViewController(activityItems: [self.artworkImageView.image ?? #imageLiteral(resourceName: "logo"), activity.activityTitle!, URL(string: "http://wxyc.org")!], applicationActivities: [])
         
         self.window?.rootViewController?.present(viewController, animated: true, completion: nil)
     }
