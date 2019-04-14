@@ -19,24 +19,8 @@ class PlayerHeader: UITableViewHeaderFooterView {
     private var radioPlayerStateObservation: Any?
     private var isPlaying = false
     
-    required convenience init?(coder aDecoder: NSCoder) {
-        self.init(reuseIdentifier: nil)
-    }
-    
-    override required init(reuseIdentifier: String?) {
-        super.init(reuseIdentifier: reuseIdentifier)
-        
-        guard let view = PlayerHeader.loadFromNib(owner: self) else {
-            fatalError()
-        }
-        
-        self.addSubview(view)
-        self.addConstraints([
-            self.topAnchor.constraint(equalTo: view.topAnchor),
-            self.rightAnchor.constraint(equalTo: view.rightAnchor),
-            self.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            self.leftAnchor.constraint(equalTo: view.leftAnchor),
-        ])
+    override func awakeFromNib() {
+        super.awakeFromNib()
         
         self.cassetteContainer.layer.cornerRadius = 6.0
         self.cassetteContainer.layer.masksToBounds = true
