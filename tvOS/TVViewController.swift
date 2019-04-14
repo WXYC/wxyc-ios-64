@@ -10,12 +10,11 @@ import UIKit
 import MediaPlayer
 import Core
 import UI
-import Spring
 
 class TVViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceObserver {
     @IBOutlet weak var albumImageView: UIImageView!
     @IBOutlet weak var artistLabel: UILabel!
-    @IBOutlet weak var songLabel: SpringLabel!
+    @IBOutlet weak var songLabel: UILabel!
     
     var nowPlayingService: NowPlayingService?
     let radioPlayerController = RadioPlayerController()

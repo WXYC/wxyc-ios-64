@@ -20,19 +20,23 @@ final class PlaycutCell: UITableViewCell {
     
     // MARK: Configuration
     
-    func configure(with image: UIImage, token: AnyEquatable) {
+    func configure(with image: UIImage, token: Int) {
         guard token == self.token else {
             return
         }
         
         DispatchQueue.main.async {
-            UIView.animate(withDuration: 0.25, animations: {
-                self.artworkImageView.image = image
-            })
+            UIView.transition(
+                with: self.artworkImageView,
+                duration: 0.25,
+                options: [.transitionCrossDissolve],
+                animations: { self.artworkImageView.image = image },
+                completion: nil
+            )
         }
     }
     
-    var token: AnyEquatable?
+    var token: Int?
     
     // MARK: Overrides
     
@@ -56,7 +60,7 @@ final class PlaycutCell: UITableViewCell {
             return
         }
         
-        let viewController = UIActivityViewController(activityItems: [self.artworkImageView.image ?? #imageLiteral(resourceName: "logo"), activity.activityTitle!, URL(string: "http://wxyc.org")!], applicationActivities: [activity])
+        let viewController = UIActivityViewController(activityItems: [self.artworkImageView.image ?? #imageLiteral(resourceName: "logo"), activity.activityTitle!, URL(string: "http://wxyc.org")!], applicationActivities: [])
         
         self.window?.rootViewController?.present(viewController, animated: true, completion: nil)
     }

@@ -8,7 +8,6 @@
 
 import XCTest
 import UI
-import Spring
 @testable import Core
 
 enum Fixture {
