@@ -22,7 +22,6 @@ class PlaylistViewController: UITableViewController, PlaylistPresentable {
         self.tableView.estimatedSectionHeaderHeight = 222
         self.tableView.backgroundColor = .clear
         self.tableView.contentOffset = .zero
-        self.tableView.contentInsetAdjustmentBehavior = .never
         
         let nib = UINib(nibName: NSStringFromClass(PlayerHeader.self), bundle: nil)
         self.tableView.register(nib, forHeaderFooterViewReuseIdentifier: NSStringFromClass(PlayerHeader.self))
