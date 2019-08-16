@@ -2,7 +2,7 @@ import UIKit
 import Core
 
 final class RootPageViewController: UIPageViewController {
-    let nowPlayingViewController = PlaylistViewController()
+    let nowPlayingViewController = PlaylistViewController(style: .grouped)
     let infoDetailViewController = InfoDetailViewController()
     
     var playlistService: PlaylistService?
@@ -17,16 +17,11 @@ final class RootPageViewController: UIPageViewController {
     
     // MARK: Life cycle
     
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-    }
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         self.setUpBackground()
         self.setUpPages()
-        self.setUpPlaylistPolling()
     }
     
     private func setUpBackground() {
@@ -50,14 +45,7 @@ final class RootPageViewController: UIPageViewController {
             completion: nil
         )
     }
-    
-    private func setUpPlaylistPolling() {
-//        self.playlistService = PlaylistService(observers:
-//            self.nowPlayingViewController,
-//                                               self.lockscreenInfoService
-//        )
-    }
-    
+        
     // MARK - Customization
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
