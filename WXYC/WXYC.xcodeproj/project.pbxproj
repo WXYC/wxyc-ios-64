@@ -17,7 +17,6 @@
 		341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */; };
 		341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */; };
 		341FBAC32041E7AB00CD2F36 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE82030A1CC00FC778F /* LaunchScreen.xib */; };
-		341FBAC42041E7AB00CD2F36 /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */; };
 		341FBAC62041E7AB00CD2F36 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 343400632030A1E700FC778F /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
@@ -55,6 +54,8 @@
 		34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */; };
 		34585AE121C5AEA8009662FA /* PlaylistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585ADF21C5AE9C009662FA /* PlaylistService.swift */; };
 		34585AE421C7142D009662FA /* ServiceUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585AE221C71401009662FA /* ServiceUtilities.swift */; };
+		345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345CF90B2307193A00865B56 /* RootPageViewController.swift */; };
+		345CF90E2307250A00865B56 /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 345CF90D2307250A00865B56 /* iOSMain.storyboard */; };
 		348534A122287A65002AA181 /* PlayerHeader.xib in Resources */ = {isa = PBXBuildFile; fileRef = 348534A022287A65002AA181 /* PlayerHeader.xib */; };
 		348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A3222F4E0D002AA181 /* PlaycutCell.swift */; };
 		348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A5222F4E51002AA181 /* TalksetCell.swift */; };
@@ -155,7 +156,6 @@
 		3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+WXYC.swift"; sourceTree = "<group>"; };
 		3434FBE92030A1CC00FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
-		3434FBEB2030A1CC00FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/iOSMain.storyboard; sourceTree = "<group>"; };
 		3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InfoDetailViewController.swift; sourceTree = "<group>"; };
 		3434FBED2030A1CC00FC778F /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LockscreenInfoService.swift; sourceTree = "<group>"; };
@@ -189,6 +189,8 @@
 		34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistViewController.swift; sourceTree = "<group>"; };
 		34585ADF21C5AE9C009662FA /* PlaylistService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
 		34585AE221C71401009662FA /* ServiceUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceUtilities.swift; sourceTree = "<group>"; };
+		345CF90B2307193A00865B56 /* RootPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
+		345CF90D2307250A00865B56 /* iOSMain.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = iOSMain.storyboard; sourceTree = "<group>"; };
 		34765F622030F33E005C8321 /* CacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CacheTests.swift; path = "../WXYC Tests/CacheTests.swift"; sourceTree = "<group>"; };
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
 		348534A022287A65002AA181 /* PlayerHeader.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PlayerHeader.xib; sourceTree = "<group>"; };
@@ -335,7 +337,6 @@
 				341FBACD2041E7AC00CD2F36 /* iOS Info.plist */,
 				3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */,
 				3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */,
-				3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */,
 				3434FBE32030A1CC00FC778F /* LaunchScreen.storyboard */,
 				3434FBE82030A1CC00FC778F /* LaunchScreen.xib */,
 				3434FBEF2030A1CC00FC778F /* LockscreenInfoService.swift */,
@@ -344,6 +345,8 @@
 				348534A2222F4DF4002AA181 /* Playlist */,
 				3441BFE421D171300087D6AB /* SpinningAnimation.swift */,
 				34FA49A82231BD9C001D6040 /* InkingButton.swift */,
+				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
+				345CF90D2307250A00865B56 /* iOSMain.storyboard */,
 			);
 			name = iOS;
 			path = ../iOS;
@@ -692,11 +695,11 @@
 			files = (
 				34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */,
 				341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */,
+				345CF90E2307250A00865B56 /* iOSMain.storyboard in Resources */,
 				348534A122287A65002AA181 /* PlayerHeader.xib in Resources */,
 				34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */,
 				341FBAC22041E7AB00CD2F36 /* LaunchScreen.storyboard in Resources */,
 				341FBAC32041E7AB00CD2F36 /* LaunchScreen.xib in Resources */,
-				341FBAC42041E7AB00CD2F36 /* iOSMain.storyboard in Resources */,
 				34FA49B1223876F0001D6040 /* TalksetCell.xib in Resources */,
 				341FBAC62041E7AB00CD2F36 /* Images.xcassets in Resources */,
 			);
@@ -744,6 +747,7 @@
 			files = (
 				34CEF92022417B1C00D120F7 /* PlaylistCellViewModelProducer.swift in Sources */,
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
+				345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */,
 				34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */,
 				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
 				341FBAB52041E7AB00CD2F36 /* UIView+WXYC.swift in Sources */,
@@ -870,14 +874,6 @@
 				3434FBE92030A1CC00FC778F /* Base */,
 			);
 			name = LaunchScreen.xib;
-			sourceTree = "<group>";
-		};
-		3434FBEA2030A1CC00FC778F /* iOSMain.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				3434FBEB2030A1CC00FC778F /* Base */,
-			);
-			name = iOSMain.storyboard;
 			sourceTree = "<group>";
 		};
 		3434FC082030A1CC00FC778F /* TVMain.storyboard */ = {
