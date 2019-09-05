@@ -70,8 +70,10 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         switch viewController {
         case nowPlayingViewController:
             return nil
+        case infoDetailViewController:
+            return nowPlayingViewController
         default:
-            return infoDetailViewController
+            fatalError()
         }
     }
     
@@ -79,8 +81,10 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         switch viewController {
         case nowPlayingViewController:
             return infoDetailViewController
-        default:
+        case infoDetailViewController:
             return nil
+        default:
+            fatalError()
         }
     }
     
