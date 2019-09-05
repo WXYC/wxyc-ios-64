@@ -45,7 +45,7 @@ final class RootPageViewController: UIPageViewController {
             completion: nil
         )
     }
-        
+    
     // MARK - Customization
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -93,9 +93,3 @@ extension RootPageViewController: UIPageViewControllerDataSource {
     }
 }
 
-extension UIViewController {
-    static func loadFromNib() -> Self {
-        let nibName = String(describing: self)
-        return self.init(nibName: nibName, bundle: nil)
-    }
-}

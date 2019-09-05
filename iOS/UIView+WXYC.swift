@@ -25,16 +25,4 @@ extension UIView {
         
         return image
     }
-    
-    class func loadFromNib(bundle: Bundle = .main, owner: Any?, options: [UINib.OptionsKey : Any]? = nil) -> UIView? {
-        guard let nib = bundle.loadNibNamed(NSStringFromClass(self), owner: owner, options: options) else {
-            return nil
-        }
-        
-        for view in nib where view is UIView {
-            return view as? UIView
-        }
-        
-        return nil
-    }
 }
