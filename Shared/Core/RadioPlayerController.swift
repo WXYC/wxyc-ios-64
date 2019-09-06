@@ -73,6 +73,15 @@ public final class RadioPlayerController {
     
     // MARK: Public methods
     
+    public func toggle() {
+        switch self.playbackState {
+        case .paused:
+            self.playbackState = .playing
+        case .playing:
+            self.playbackState = .paused
+        }
+    }
+    
     public func play() {
         self.playbackState = .playing
     }
