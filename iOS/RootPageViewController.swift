@@ -45,7 +45,7 @@ final class RootPageViewController: UIPageViewController {
             completion: nil
         )
     }
-        
+    
     // MARK - Customization
     
     override var preferredStatusBarStyle: UIStatusBarStyle {
@@ -70,8 +70,10 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         switch viewController {
         case nowPlayingViewController:
             return nil
+        case infoDetailViewController:
+            return nowPlayingViewController
         default:
-            return infoDetailViewController
+            fatalError()
         }
     }
     
@@ -79,8 +81,10 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         switch viewController {
         case nowPlayingViewController:
             return infoDetailViewController
-        default:
+        case infoDetailViewController:
             return nil
+        default:
+            fatalError()
         }
     }
     
@@ -93,9 +97,3 @@ extension RootPageViewController: UIPageViewControllerDataSource {
     }
 }
 
-extension UIViewController {
-    static func loadFromNib() -> Self {
-        let nibName = String(describing: self)
-        return self.init(nibName: nibName, bundle: nil)
-    }
-}

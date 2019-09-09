@@ -16,8 +16,14 @@ class PlayerHeader: UITableViewHeaderFooterView {
     @IBOutlet private var cassetteLeftReel: UIImageView!
     @IBOutlet private var cassetteRightReel: UIImageView!
     
-    private var radioPlayerStateObservation: Any?
-    private var isPlaying = false
+    // MARK: Public
+    
+    override func prepareForReuse() {
+        // Does science explain why simply overriding this method fixes a bug where the cassette
+        // reels stop spinning if we scroll them off screen and back on again?
+    }
+    
+    // MARK: Overrides
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -28,29 +34,22 @@ class PlayerHeader: UITableViewHeaderFooterView {
         self.setUpPlayback()
     }
     
-    func setUpPlayback() {
-        self.radioPlayerStateObservation = RadioPlayerController.shared.observePlaybackState(self.playbackStateChanged)
-        self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
-    }
-    
     override class var requiresConstraintBasedLayout: Bool {
         return true
     }
     
     // MARK: Private
     
+    private func setUpPlayback() {
+        RadioPlayerController.shared.observePlaybackState(self.playbackStateChanged)
+        self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
+    }
+    
     @objc private func playPauseTapped(_ sender: UIButton) {
-        switch self.isPlaying {
-        case true:
-            RadioPlayerController.shared.play()
-        case false:
-            RadioPlayerController.shared.pause()
-        }
+        RadioPlayerController.shared.toggle()
     }
     
     private func playbackStateChanged(playbackState: PlaybackState) {
-        self.isPlaying.toggle()
-        
         switch playbackState {
         case .paused:
             self.cassetteLeftReel.stopSpin()
