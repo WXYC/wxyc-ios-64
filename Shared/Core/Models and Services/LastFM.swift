@@ -18,8 +18,8 @@ struct LastFM {
                 case mega
                 
                 static func <(lhs: Size, rhs: Size) -> Bool {
-                    let lIndex = self.allCases.index(of: lhs)!
-                    let rIndex = self.allCases.index(of: rhs)!
+                    let lIndex = self.allCases.firstIndex(of: lhs)!
+                    let rIndex = self.allCases.firstIndex(of: rhs)!
                     
                     return lIndex < rIndex
                 }

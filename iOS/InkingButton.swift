@@ -80,7 +80,7 @@ public class InkingButton: UIButton {
     
     public override var isEnabled: Bool {
         set {
-            super.isEnabled = isEnabled
+            super.isEnabled = newValue
 
             self.setNeedsLayout()
         }
