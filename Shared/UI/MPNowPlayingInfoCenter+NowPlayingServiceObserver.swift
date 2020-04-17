@@ -10,29 +10,27 @@ import UIKit
 import MediaPlayer
 import Core
 
-final class LockscreenInfoService: NowPlayingServiceObserver {
-    private var nowPlayingInfo = [String : Any]() {
-        didSet {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = self.nowPlayingInfo
-        }
+extension MPNowPlayingInfoCenter: NowPlayingServiceObserver {
+    public func update(playcut: Playcut?) {
+        if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
+        
+        self.nowPlayingInfo?.update(with: playcut.playcutMediaItems)
     }
     
-    public func updateWith(playcutResult: Result<Playcut>) {
-        self.nowPlayingInfo.update(with: playcutResult.playcutMediaItems)
-    }
-    
-    func updateWith(artworkResult: Result<UIImage>) {
-        self.nowPlayingInfo[MPMediaItemPropertyArtwork] = artworkResult.mediaItemArtwork
+    public func update(artwork: UIImage?) {
+        if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
+        
+        self.nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork.mediaItemArtwork
     }
 }
 
-extension Result where T == UIImage {
+extension Optional where Wrapped == UIImage {
     var mediaItemArtwork: MPMediaItemArtwork {
         let screenWidth = UIScreen.main.bounds.size.width
         let boundsSize = CGSize(width: screenWidth, height: screenWidth)
         
         return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
-            if case .success(let artwork) = self {
+            if case .some(let artwork) = self {
                 return artwork
             } else {
                 return UIImage.defaultNowPlayingInfoCenterImage
@@ -41,9 +39,9 @@ extension Result where T == UIImage {
     }
 }
 
-extension Result where T == Playcut {
+extension Optional where Wrapped == Playcut {
     var playcutMediaItems: [String: Any] {
-        if case .success(let playcut) = self {
+        if case .some(let playcut) = self {
             return [
                 MPMediaItemPropertyArtist : playcut.artistName,
                 MPMediaItemPropertyTitle: playcut.songTitle,

@@ -7,10 +7,12 @@
 //
 
 import XCTest
+import Combine
 @testable import Core
 
 class WXYCTests: XCTestCase {
     let cacheCoordinator = CacheCoordinator(cache: UserDefaults())
+    var observation: Cancellable?
     
     enum Key: String {
         case test
@@ -26,13 +28,13 @@ class WXYCTests: XCTestCase {
         
         self.cacheCoordinator.set(value: 1, for: Key.test, lifespan: 0)
         
-        let future: Future<Int> = self.cacheCoordinator.getValue(for: Key.test)
+        let future: AnyPublisher<Int, Error> = self.cacheCoordinator.value(for: Key.test)
         
-        future.observe { result in
+        self.observation = future.sink { result in
             switch result {
             case .success(_):
                 XCTFail()
-            case .error(_):
+            case .failure(_):
                 expectation.fulfill()
             }
         }

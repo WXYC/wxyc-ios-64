@@ -7,50 +7,53 @@
 //
 
 import Foundation
+import Combine
+
+protocol PlaylistFetcher {
+    func getPlaylist() -> AnyPublisher<Playlist, Error>
+}
+
+extension CacheCoordinator: PlaylistFetcher {
+    func getPlaylist() -> AnyPublisher<Playlist, Error> {
+        return self.value(for: PlaylistCacheKeys.playlist)
+    }
+}
+
+extension URLSession: PlaylistFetcher {
+    func getPlaylist() -> AnyPublisher<Playlist, Error> {
+        let decoder = JSONDecoder()
+        return self.dataTaskPublisher(for: URL.WXYCPlaylist)
+            .map { (data, _) in data }
+            .decode(type: Playlist.self, decoder: decoder)
+            .eraseToAnyPublisher()
+    }
+}
 
 public class PlaylistService {
-    private var cacheCoordinator: CacheCoordinator
-    private let webSession: WebSession
-    private var playlistRequest: Future<Playlist>?
-    
-    init(cacheCoordinator: CacheCoordinator = .WXYCPlaylist, webSession: WebSession = URLSession.shared) {
-        self.cacheCoordinator = cacheCoordinator
-        self.webSession = webSession
-        
-        self.playlistRequest = Future.repeat({ self.getCachedPlaylist() || self.getRemotePlaylist() })
-    }
-
     public static let shared = PlaylistService()
     
-    public func getPlaylist() -> Future<Playlist> {
-        return self.playlistRequest!
-    }
-    
-    private func getCachedPlaylist() -> Future<Playlist> {
-        let request: Future<Playlist> =
-            self.cacheCoordinator.getValue(for: PlaylistCacheKeys.playlist)
-        
-        request.observe { result in
-            if case let .error(error) = result {
-                print(error)
-            }
-        }
-        
-        return request
-    }
-
-    private func getRemotePlaylist() -> Future<Playlist> {
-        return self.webSession.request(url: URL.WXYCPlaylist).transformed { data -> Playlist in
-            let decoder = JSONDecoder()
-            let playlist = try decoder.decode(Playlist.self, from: data)
-            
-            self.cacheCoordinator.set(
+    @Published public private(set) var playlist: Playlist = .empty {
+        didSet {
+            cacheCoordinator.set(
                 value: playlist,
                 for: PlaylistCacheKeys.playlist,
                 lifespan: DefaultLifespan
             )
-            
-            return playlist
         }
+    }
+    
+    private var cacheCoordinator: CacheCoordinator
+    private var cacheSink: Cancellable? = nil
+    
+    private init(
+        cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
+        cachedFetcher: PlaylistFetcher = CacheCoordinator.WXYCPlaylist,
+        remoteFetcher: PlaylistFetcher = URLSession.shared
+    ) {
+        self.cacheCoordinator = cacheCoordinator
+        self.cacheSink = (cachedFetcher.getPlaylist() || remoteFetcher.getPlaylist())
+            .onSuccess({ [weak self] playlist in
+                self?.playlist = playlist
+            })
     }
 }

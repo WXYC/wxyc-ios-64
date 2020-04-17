@@ -1,20 +1,89 @@
 import UIKit
-import AVFoundation
-import Intents
+import Combine
 import Core
+import UI
+import MediaPlayer
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
-    var nowPlayingService: NowPlayingService?
-    let lockscreenInfoService = LockscreenInfoService()
+  
+    var nowPlayingObservation: Cancellable?
+    var shouldDonateSiriIntentObservation: Cancellable?
 
+//    enum UserSettingsKeys: String {
+//        case intentDonated
+//    }
+    
+//    func donateSiriIntentIfNeeded() {
+//        self.shouldDonateSiriIntentObservation  = self.shouldDonateSiriIntent().sink { shouldDonateSiriIntent in
+//            guard shouldDonateSiriIntent else {
+//                return
+//            }
+//
+//            let mediaItem = INMediaItem(
+//                identifier: "com.wxyc.ios.intent.play",
+//                title: "Play",
+//                type: .musicStation,
+//                artwork: nil
+//            )
+//
+//            let intent = INPlayMediaIntent(
+//                mediaItems: [mediaItem],
+//                mediaContainer: nil,
+//                playShuffled: nil,
+//                playbackRepeatMode: .none,
+//                resumePlayback: false
+//            )
+//
+//            intent.suggestedInvocationPhrase = "Play WXYC"
+//            let interaction = INInteraction(intent: intent, response: nil)
+//
+//            interaction.donate()
+//
+//            self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
+//        }
+//    }
+    
+//    func shouldDonateSiriIntent() -> AnyPublisher<Bool, Never> {
+//        return self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
+//            .replaceError(with: true)
+//            .eraseToAnyPublisher()
+//    }
+    
+    // MARK: UIApplicationDelegate
+    
+    var window: UIWindow?
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        
+        #if os(iOS)
+            // Make status bar white
+            UINavigationBar.appearance().barStyle = .black
+            self.donateSiriIntentIfNeeded()
+        #endif
+        
+        self.nowPlayingObservation = NowPlayingService.shared.subscribe(MPNowPlayingInfoCenter.default())
+        
+        return true
+    }
+
+    func applicationWillTerminate(_ application: UIApplication) {
+        UIApplication.shared.endReceivingRemoteControlEvents()
+    }
+}
+
+#if os(iOS)
+import Intents
+
+extension AppDelegate {
     enum UserSettingsKeys: String {
         case intentDonated
     }
     
     func donateSiriIntentIfNeeded() {
-        self.shouldDonateSiriIntent().onSuccess { shouldDonateSiriIntent in
+        self.shouldDonateSiriIntentObservation  = self.shouldDonateSiriIntent().sink { shouldDonateSiriIntent in
             guard shouldDonateSiriIntent else {
                 return
             }
@@ -42,34 +111,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
         }
     }
-    
-    func shouldDonateSiriIntent() -> Future<Bool> {
-        return self.cacheCoordinator.getValue(for: UserSettingsKeys.intentDonated)
-    }
-    
-    // MARK: UIApplicationDelegate
-    
-    var window: UIWindow?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-        
-        #if os(iOS)
-            // Make status bar white
-            UINavigationBar.appearance().barStyle = .black
-        #endif
-        
-        self.donateSiriIntentIfNeeded()
-        
-        self.nowPlayingService = NowPlayingService(observers: self.lockscreenInfoService)
-        
-        return true
+    func shouldDonateSiriIntent() -> AnyPublisher<Bool, Never> {
+        return self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
+            .replaceError(with: true)
+            .eraseToAnyPublisher()
     }
 
-    func applicationWillTerminate(_ application: UIApplication) {
-        UIApplication.shared.endReceivingRemoteControlEvents()
-    }
-    
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
         RadioPlayerController.shared.play()
         
@@ -77,3 +125,4 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         completionHandler(response)
     }
 }
+#endif
