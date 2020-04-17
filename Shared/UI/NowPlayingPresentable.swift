@@ -8,6 +8,7 @@
 
 import UIKit
 import Core
+import Combine
 
 public protocol NowPlayingPresentable: class {
     var songLabel: UILabel! { get }
@@ -17,58 +18,54 @@ public protocol NowPlayingPresentable: class {
 }
 
 public extension NowPlayingPresentable where Self: NowPlayingServiceObserver {
-    func updateWith(playcutResult: Result<Playcut>) {
-        DispatchQueue.main.async {
-            self.songLabel.text = playcutResult.songTitle
-            self.artistLabel.text = playcutResult.artistName
-            
-            self.userActivity = playcutResult.userActivity
-            self.userActivity?.becomeCurrent()
-        }
+    func update(playcut: Playcut?) {
+        self.songLabel.text = playcut.songTitle
+        self.artistLabel.text = playcut.artistName
+        
+        self.userActivity = playcut.userActivity
+        self.userActivity?.becomeCurrent()
     }
     
-    func updateWith(artworkResult: Result<UIImage>) {
-        DispatchQueue.main.async {
-            UIView.transition(
-                with: self.albumImageView,
-                duration: 0.25,
-                options: [.transitionCrossDissolve],
-                animations: { self.albumImageView.image = artworkResult.nowPlayingImage },
-                completion: nil
-            )
-        }
+    func update(artwork: UIImage?) {
+        UIView.transition(
+            with: self.albumImageView,
+            duration: 0.25,
+            options: [.transitionCrossDissolve],
+            animations: { self.albumImageView.image = artwork.nowPlayingImage },
+            completion: nil
+        )
     }
 }
 
-extension Result where T == Playcut {
+extension Optional where Wrapped == Playcut {
     var songTitle: String {
         switch self {
-        case .success(let playcut):
+        case .some(let playcut):
             return playcut.songTitle
-        case .error(_):
+        case .none:
             return RadioStation.WXYC.name
         }
     }
     
     var artistName: String {
         switch self {
-        case .success(let playcut):
+        case .some(let playcut):
             return playcut.artistName
-        case .error(_):
+        case .none:
             return RadioStation.WXYC.secondaryName
         }
     }
     
     var userActivity: NSUserActivity {
         switch self {
-        case .success(let playcut):
+        case .some(let playcut):
             let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
             let url: String! = "https://www.google.com/search?q=\(playcut.artistName)+\(playcut.songTitle)"
                 .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
             activity.webpageURL = URL(string: url)
             
             return activity
-        case .error(_):
+        case .none:
             let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
             activity.webpageURL = URL(string: "https://wxyc.org")!
             
@@ -77,12 +74,12 @@ extension Result where T == Playcut {
     }
 }
 
-extension Result where T == UIImage {
+extension Optional where Wrapped == UIImage {
     var nowPlayingImage: UIImage {
         switch self {
-        case .success(let image):
+        case .some(let image):
             return image
-        case .error(_):
+        case .none:
             return #imageLiteral(resourceName: "logo")
         }
     }

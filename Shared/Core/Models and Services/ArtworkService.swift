@@ -8,97 +8,98 @@
 
 import Foundation
 import UIKit
+import Combine
 
 public final class ArtworkService {
     public static let shared = ArtworkService(fetchers: [
-        CachedArtworkFetcher(cacheCoordinator: .AlbumArt),
-        RemoteArtworkFetcher<DiscogsConfiguration>(),
-        RemoteArtworkFetcher<LastFMConfiguration>(),
-        RemoteArtworkFetcher<iTunesConfiguration>(),
-        DefaultArtworkFetcher()
+        CacheCoordinator.AlbumArt,
+        RemoteArtworkFetcher(configuration: .discogs),
+        RemoteArtworkFetcher(configuration: .lastFM),
+        RemoteArtworkFetcher(configuration: .iTunes),
     ])
-    
+
     private let fetchers: [ArtworkFetcher]
-    
+
     private init(fetchers: [ArtworkFetcher]) {
         self.fetchers = fetchers
     }
-    
-    public func getArtwork(for playcut: Playcut) -> Future<UIImage> {
+
+    public func getArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error> {
         let (first, rest) = (self.fetchers.first!, self.fetchers.dropFirst())
-        return rest.reduce(first.getArtwork(for: playcut), { $0 || $1.getArtwork(for: playcut) })
+        return rest
+            .reduce(first.fetchArtwork(for: playcut), { $0 || $1.fetchArtwork(for: playcut) })
+            .eraseToAnyPublisher()
     }
 }
 
 protocol ArtworkFetcher {
-    func getArtwork(for playcut: Playcut) -> Future<UIImage>
+    func fetchArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error>
 }
 
-final class CachedArtworkFetcher: ArtworkFetcher {
-    let cacheCoordinator: CacheCoordinator
-    
-    init(cacheCoordinator: CacheCoordinator = .WXYCPlaylist) {
-        self.cacheCoordinator = cacheCoordinator
-    }
-    
-    func getArtwork(for playcut: Playcut) -> Future<UIImage> {
-        let request: Future<Data> = self.cacheCoordinator.getValue(for: playcut)
-        
-        request.observe { result in
-            if case let .error(error) = result {
-                print(error)
-            }
-        }
-        
-        return request.transformed(with: UIImage.init(data:))
+extension CacheCoordinator: ArtworkFetcher {
+    func fetchArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error> {
+        return self.value(for: playcut)
+            .print()
+            .compactMap(UIImage.init(data:))
+            .eraseToAnyPublisher()
     }
 }
 
-final class DefaultArtworkFetcher: ArtworkFetcher {
-    static let defaultArtworkPromise = Promise(value: #imageLiteral(resourceName: "logo"))
-    
-    func getArtwork(for playcut: Playcut) -> Future<UIImage> {
-        return DefaultArtworkFetcher.defaultArtworkPromise
+internal final class RemoteArtworkFetcher: ArtworkFetcher {
+    internal struct Configuration {
+        let makeSearchURL: (Playcut) -> URL
+        let extractURL: (Data) throws -> URL
     }
-}
-
-protocol RemoteArtworkFetcherConfiguration {
-    static func makeSearchURL(for playcut: Playcut) -> URL
-    static func extractURL(from data: Data) throws -> URL
-}
-
-final class RemoteArtworkFetcher<Configuration: RemoteArtworkFetcherConfiguration>: ArtworkFetcher {
-    let session: WebSession
-    let cacheCoordinator: CacheCoordinator
     
-    init(cacheCoordinator: CacheCoordinator = .AlbumArt, session: WebSession = URLSession.shared) {
+    private let session: WebSession
+    private let cacheCoordinator: CacheCoordinator
+    private let configuration: Configuration
+    
+    private var cacheOperation: Cancellable?
+    
+    internal init(
+        configuration: Configuration,
+        cacheCoordinator: CacheCoordinator = .AlbumArt,
+        session: WebSession = URLSession.shared
+    ) {
+        self.configuration = configuration
         self.cacheCoordinator = cacheCoordinator
         self.session = session
     }
     
-    func getArtwork(for playcut: Playcut) -> Future<UIImage> {
-        let searchURLRequest = Configuration.makeSearchURL(for: playcut)
-        let imageURLRequest = self.session.request(url: searchURLRequest)
-            .transformed(with: Configuration.extractURL(from:))
-        let downloadImageRequest = imageURLRequest.chained(with: self.getArtwork(at:))
+    internal func fetchArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error> {
+        let downloadArtworkRequest = self
+            .findArtworkURL(for: playcut)
+            .flatMap(self.downloadArtwork)
+            .eraseToAnyPublisher()
         
-        downloadImageRequest.onSuccess { image in
+        self.cacheOperation = downloadArtworkRequest.onSuccess { image in
             self.cacheCoordinator.set(value: image.pngData(), for: playcut, lifespan: .distantFuture)
         }
         
-        return downloadImageRequest
+        return downloadArtworkRequest
     }
     
-    private func getArtwork(at url: URL) -> Future<UIImage> {
-        let imageRequest = self.session.request(url: url)
-            .transformed(with: { data -> UIImage in
+    private func findArtworkURL(for playcut: Playcut) -> AnyPublisher<URL, Error> {
+        let searchURLRequest = self.configuration.makeSearchURL(playcut)
+        return self.session
+            .dataTaskPublisher(for: searchURLRequest)
+            .map(\.data)
+            .tryMap(self.configuration.extractURL)
+            .eraseToAnyPublisher()
+    }
+    
+    private func downloadArtwork(at url: URL) -> AnyPublisher<UIImage, Error> {
+        return self.session
+            .dataTaskPublisher(for: url)
+            .print()
+            .tryMap { (data: Data, response: URLResponse) -> UIImage in
                 guard let image = UIImage(data: data) else {
                     throw ServiceErrors.noResults
                 }
-                
+
                 return image
-            })
-                
-        return imageRequest
+            }
+            .eraseToAnyPublisher()
     }
 }

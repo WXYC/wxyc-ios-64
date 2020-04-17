@@ -8,6 +8,7 @@
 
 import UIKit
 import Core
+import Combine
 
 @objc(PlayerHeader)
 class PlayerHeader: UITableViewHeaderFooterView {
@@ -40,8 +41,11 @@ class PlayerHeader: UITableViewHeaderFooterView {
     
     // MARK: Private
     
+    private var playbackStateObservation: Cancellable?
+    
     private func setUpPlayback() {
-        RadioPlayerController.shared.observePlaybackState(self.playbackStateChanged)
+        self.playbackStateObservation =
+            RadioPlayerController.shared.$playbackState.sink(receiveValue: self.playbackStateChanged)
         self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
     }
     

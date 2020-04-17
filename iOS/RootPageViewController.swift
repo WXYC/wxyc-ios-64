@@ -5,9 +5,6 @@ final class RootPageViewController: UIPageViewController {
     let nowPlayingViewController = PlaylistViewController(style: .grouped)
     let infoDetailViewController = InfoDetailViewController()
     
-    var playlistService: PlaylistService?
-    let lockscreenInfoService = LockscreenInfoService()
-    
     var pages: [UIViewController] {
         return [
             nowPlayingViewController,

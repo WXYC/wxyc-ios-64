@@ -1,5 +1,5 @@
 //
-//  PlaylistCaching.swift
+//  PlaylistCacheKeys.swift
 //  WXYC
 //
 //  Created by Jake Bromberg on 2/26/19.

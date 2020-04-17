@@ -16,8 +16,9 @@ class TVViewController: UIViewController, NowPlayingPresentable, NowPlayingServi
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var songLabel: UILabel!
     
-    var nowPlayingService: NowPlayingService?
-    let radioPlayerController = RadioPlayerController()
+    var nowPlayingObservation: Any?
+
+    let radioPlayerController = RadioPlayerController.shared
     var radioPlayerStateObservation: Any?
 
     override func viewDidLoad() {
@@ -26,6 +27,6 @@ class TVViewController: UIViewController, NowPlayingPresentable, NowPlayingServi
         self.albumImageView.layer.cornerRadius = 6.0
         self.albumImageView.layer.masksToBounds = true
         
-        self.nowPlayingService = NowPlayingService(observers: self)
+        self.nowPlayingObservation = NowPlayingService.shared.subscribe(self)
     }
 }
