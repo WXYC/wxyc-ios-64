@@ -9,6 +9,7 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
+import Combine
 
 public enum PlaybackState {
     case playing
@@ -16,13 +17,7 @@ public enum PlaybackState {
 }
 
 public final class RadioPlayerController {
-    public typealias PlaybackStateObserver = (PlaybackState) -> ()
-    
     public static let shared = RadioPlayerController()
-    
-    private convenience init() {
-        self.init(radioPlayer: RadioPlayer())
-    }
     
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
@@ -31,43 +26,28 @@ public final class RadioPlayerController {
     ) {
         self.radioPlayer = radioPlayer
         
+        func notificationObserver(for name: Notification.Name, sink: @escaping (Notification) -> ()) -> AnyCancellable {
+            return notificationCenter.publisher(for: name)
+                .sink(receiveValue: sink)
+        }
+        
+        func remoteCommandObserver(
+            for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
+            handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
+        ) -> Any {
+            return remoteCommandCenter[keyPath: command].addTarget(handler: handler)
+        }
+        
         self.inputObservations = [
-            notificationCenter.addObserver(
-                forName: UIApplication.didEnterBackgroundNotification,
-                object: nil,
-                queue: nil,
-                using: self.applicationDidEnterBackground
-            ),
-            notificationCenter.addObserver(
-                forName: UIApplication.willEnterForegroundNotification,
-                object: nil,
-                queue: nil,
-                using: self.applicationWillEnterForeground
-            ),
-            notificationCenter.addObserver(
-                forName: AVAudioSession.interruptionNotification,
-                object: nil,
-                queue: nil,
-                using: self.sessionInterrupted
-            ),
-            notificationCenter.addObserver(
-                forName: .AVPlayerItemPlaybackStalled,
-                object: nil,
-                queue: nil,
-                using: self.playbackStalled
-            ),
-            remoteCommandCenter.playCommand.addTarget(
-                handler: self.remotePlayCommand
-            ),
-            remoteCommandCenter.pauseCommand.addTarget(
-                handler: self.remotePauseOrStopCommand
-            ),
-            remoteCommandCenter.stopCommand.addTarget(
-                handler: self.remotePauseOrStopCommand
-            ),
-            remoteCommandCenter.togglePlayPauseCommand.addTarget(
-                handler: self.remotePauseOrStopCommand
-            ),
+            notificationObserver(for: UIApplication.didEnterBackgroundNotification, sink: self.applicationDidEnterBackground),
+            notificationObserver(for: UIApplication.willEnterForegroundNotification, sink: self.applicationWillEnterForeground),
+            notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
+            notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
+            
+            remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
+            remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
+            remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
+            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
         ]
     }
     
@@ -90,18 +70,13 @@ public final class RadioPlayerController {
         self.playbackState = .paused
     }
     
-    public func observePlaybackState(_ observer: @escaping PlaybackStateObserver) {
-        self.playbackStateObservers.append(observer)
-        observer(self.playbackState)
-    }
-    
     // MARK: Private
     
     private let radioPlayer: RadioPlayer
     
     private var inputObservations: [Any]? = nil
     
-    private var playbackState: PlaybackState = .paused {
+    @Published public var playbackState: PlaybackState = .paused {
         didSet {
             guard oldValue != self.playbackState else {
                 return
@@ -114,28 +89,20 @@ public final class RadioPlayerController {
             case .paused:
                 self.radioPlayer.pause()
             }
-            
-            self.updateObservers(self.playbackState)
         }
     }
+}
+
+private extension RadioPlayerController {
+    // MARK: AVPlayer handlers
     
-    private var playbackStateObservers: [PlaybackStateObserver] = []
-    
-    private func updateObservers(_ state: PlaybackState) {
-        for observer in self.playbackStateObservers {
-            observer(state)
-        }
-    }
-    
-    // MARK: External Playback Command handlers
-    
-    @objc private func playbackStalled(_ notification: Notification) {
-        // Have you tried switching it off and back on?
+    func playbackStalled(_ notification: Notification) {
+        // Have you tried turning it off and on again?
         self.radioPlayer.pause()
         self.radioPlayer.play()
     }
     
-    @objc func sessionInterrupted(notification: Notification) {
+    func sessionInterrupted(notification: Notification) {
         if notification.isAudioInterruptionBegan {
             self.pause()
         } else {
@@ -145,7 +112,7 @@ public final class RadioPlayerController {
     
     // MARK: External playback command handlers
     
-    @objc func applicationDidEnterBackground(notification: Notification) {
+    func applicationDidEnterBackground(notification: Notification) {
         guard !self.radioPlayer.isPlaying else {
             return
         }
@@ -153,7 +120,7 @@ public final class RadioPlayerController {
         try? AVAudioSession.sharedInstance().setActive(false)
     }
     
-    @objc func applicationWillEnterForeground(notification: Notification) {
+    func applicationWillEnterForeground(notification: Notification) {
         if self.radioPlayer.isPlaying {
             self.play()
         } else {
@@ -161,19 +128,19 @@ public final class RadioPlayerController {
         }
     }
     
-    @objc func remotePlayCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+    func remotePlayCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         self.play()
 
         return .success
     }
     
-    @objc func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+    func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         self.pause()
 
         return .success
     }
     
-    @objc func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+    func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         if self.radioPlayer.isPlaying {
             self.pause()
         } else {

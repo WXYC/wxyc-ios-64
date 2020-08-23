@@ -8,6 +8,7 @@
 
 import UIKit
 import NotificationCenter
+import Combine
 import UI
 import Core
 
@@ -20,7 +21,8 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
     @IBOutlet weak var labelsStackView: UIStackView!
 
     var nowPlayingService: NowPlayingService?
-    
+    var nowPlayingObservation: Cancellable?
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -34,8 +36,6 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
             self.labelsStackView.alignment = self.labelAlignment(forDisplayMode: context.widgetActiveDisplayMode)
             self.preferredContentSize = self.view.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize, withHorizontalFittingPriority: .defaultHigh, verticalFittingPriority: .fittingSizeLevel)
         }
-
-        self.nowPlayingService = NowPlayingService(observers: self)
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -63,7 +63,9 @@ extension TodayViewController: NCWidgetProviding {
             return .horizontal
         case .expanded:
             return .vertical
-        }
+        @unknown default:
+          fatalError()
+      }
     }
     
     private func labelAlignment(forDisplayMode displayMode: NCWidgetDisplayMode) -> UIStackView.Alignment {
@@ -72,6 +74,8 @@ extension TodayViewController: NCWidgetProviding {
             return .leading
         case .expanded:
             return .center
-        }
+        @unknown default:
+          fatalError()
+      }
     }
 }

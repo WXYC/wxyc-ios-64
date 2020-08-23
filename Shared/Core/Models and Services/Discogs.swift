@@ -18,8 +18,8 @@ struct Discogs {
     }
 }
 
-final class DiscogsConfiguration: RemoteArtworkFetcherConfiguration {
-    static func makeSearchURL(for playcut: Playcut) -> URL {
+extension RemoteArtworkFetcher.Configuration {
+    static var discogs = Self(makeSearchURL: { playcut in
         let key    = "tYvsaskeJxOQbWoZSSkh"
         let secret = "vZuPZFFDerXIPrBfSNnNyDhXjpIUiyXi"
         
@@ -32,10 +32,10 @@ final class DiscogsConfiguration: RemoteArtworkFetcherConfiguration {
             URLQueryItem(name: "secret", value: secret),
         ]
         
+        print(components.url!)
+        
         return components.url!
-    }
-    
-    static func extractURL(from data: Data) throws -> URL {
+    }, extractURL: { data in
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: data)
@@ -45,5 +45,5 @@ final class DiscogsConfiguration: RemoteArtworkFetcherConfiguration {
         }
         
         return albumURL
-    }
+    })
 }

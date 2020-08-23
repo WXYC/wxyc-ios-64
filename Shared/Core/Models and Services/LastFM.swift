@@ -48,8 +48,8 @@ struct LastFM {
     }
 }
 
-final class LastFMConfiguration: RemoteArtworkFetcherConfiguration {
-    static func makeSearchURL(for playcut: Playcut) -> URL {
+extension RemoteArtworkFetcher.Configuration {
+    static var lastFM = Self(makeSearchURL: { playcut in
         let key = "45f85235ffc46cbb8769d545c8059399"
         
         var components = URLComponents(string: "https://ws.audioscrobbler.com")!
@@ -63,12 +63,10 @@ final class LastFMConfiguration: RemoteArtworkFetcherConfiguration {
         ]
         
         return components.url!
-    }
-    
-    static func extractURL(from data: Data) throws -> URL {
+    }, extractURL: { data in
         let decoder = JSONDecoder()
         let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: data)
         
         return searchResponse.album.largestAlbumArt.url
-    }
+    })
 }

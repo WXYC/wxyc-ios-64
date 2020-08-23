@@ -1,10 +1,5 @@
 import Foundation
 
-public enum Result<T> {
-    case success(T)
-    case error(Error)
-}
-
 public extension TimeInterval {
     static let distantFuture = Date.distantFuture.timeIntervalSince1970
 }
@@ -17,5 +12,5 @@ enum ServiceErrors: String, LocalizedError {
 }
 
 protocol WebSession {
-    func request(url: URL) -> Future<Data>
+    func dataTaskPublisher(for url: URL) -> URLSession.DataTaskPublisher
 }
