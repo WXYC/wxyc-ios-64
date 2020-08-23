@@ -7,51 +7,30 @@
 //
 
 import Foundation
+import Combine
 import Core
 
-protocol PlaylistPresentable {
-  func updateWith(viewModels: [PlaylistCellViewModel])
-}
-
 final class PlaylistDataSource {
-  typealias CellViewModel = PlaylistItem & PlaylistCellViewModelProducer
-  
-  static let shared = PlaylistDataSource()
-  
-  init(playlistService: PlaylistService = .shared) {
-    playlistService.getPlaylist().onSuccess(self.updateWith(playlist:))
-  }
-  
-  func add(observer: PlaylistPresentable) {
-    self.observers.append(observer)
-    observer.updateWith(viewModels: self.cellViewModels)
-  }
-  
-  private var observers: [PlaylistPresentable] = []
-  
-  private var cellViewModels: [PlaylistCellViewModel] = [] {
-    didSet {
-      self.updateObservers()
-    }
-  }
-  
-  private var playlistItems: [PlaylistItem] = []
-  
-  private func updateWith(playlist: Playlist) {
-    if self.playlistItems == playlist.playlistItems {
-      return
+    typealias CellViewModel = PlaylistEntry & PlaylistCellViewModelProducer
+    
+    static let shared = PlaylistDataSource()
+    
+    @Published private(set) var viewModels: [PlaylistCellViewModel] = []
+    
+    init(playlistService: PlaylistService = .shared) {
+        self.observation = playlistService.$playlist
+            .map(\.entries.cellViewModels)
+            .receive(on: RunLoop.main)
+            .assign(to: \.viewModels, on: self)
     }
     
-    self.playlistItems = playlist.playlistItems
-    let filteredItems = self.playlistItems.lazy.compactMap { $0 as? CellViewModel }
-    self.cellViewModels = filteredItems[\.cellViewModel]
-  }
-  
-  func updateObservers() {
-    DispatchQueue.main.async {
-      for observer in self.observers {
-        observer.updateWith(viewModels: self.cellViewModels)
-      }
+    private var observation: Cancellable? = nil
+}
+
+extension Sequence where Element == PlaylistEntry {
+    var cellViewModels: [PlaylistCellViewModel] {
+        return self
+            .compactMap { $0 as? PlaylistCellViewModelProducer }
+            .map { $0.cellViewModel }
     }
-  }
 }

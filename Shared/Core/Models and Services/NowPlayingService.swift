@@ -8,43 +8,75 @@
 
 import Foundation
 import UIKit
+import Combine
 
 public protocol NowPlayingServiceObserver: class {
-    func updateWith(playcutResult: Result<Playcut>)
-    func updateWith(artworkResult: Result<UIImage>)
+    func update(playcut: Playcut?)
+    func update(artwork: UIImage?)
 }
 
 public final class NowPlayingService {
+    public static let shared = NowPlayingService()
+    
+    @Published private var playcut: Playcut? = nil
+    @Published private var artwork: UIImage? = nil
+
     private let playlistService: PlaylistService
     private let artworkService: ArtworkService
     
-    private let playcutRequest: Future<Playcut>
-    private let artworkRequest: Future<UIImage>
+    private var playcutObservation: Cancellable? = nil
+    private var artworkObservation: Cancellable? = nil
 
-    private let observers: [NowPlayingServiceObserver]
-    
-    public convenience init(observers: NowPlayingServiceObserver...) {
-        self.init(playlistService: PlaylistService(), artworkService: ArtworkService.shared, initialObservers: observers)
-    }
-    
-    init(playlistService: PlaylistService,
-         artworkService: ArtworkService,
-         initialObservers: [NowPlayingServiceObserver]) {
+    init(
+        playlistService: PlaylistService = .shared,
+        artworkService: ArtworkService = .shared
+    ) {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
-        self.observers = initialObservers
+        let playcutRequest = self.playlistService
+            .$playlist
+            .map(\.playcuts.first)
+            .receive(on: RunLoop.main)
+            .eraseToAnyPublisher()
+
+        self.playcutObservation = playcutRequest
+            .assign(to: \.playcut, on: self)
         
-        self.playcutRequest = self.playlistService.getPlaylist().transformed { playlist in
-            return playlist.playcuts.first
+        self.artworkObservation = playcutRequest
+            .map(self.artworkService.getArtwork(for:))
+            .assign(to: \.artwork, on: self)
+        
+    }
+    
+    public func subscribe(_ observer: NowPlayingServiceObserver) -> Cancellable {
+        return AnyCancellable.Combine(
+            self.$artwork.sink(receiveValue: observer.update(artwork:)),
+            self.$playcut.sink(receiveValue: observer.update(playcut:))
+        )
+    }
+}
+
+extension Publisher {
+    func map<Wrapped, Mapped>(_ transform: @escaping (Wrapped) -> AnyPublisher<Mapped, Error>)
+        -> AnyPublisher<Mapped?, Never>
+        where Self.Output == Optional<Wrapped>
+    {
+        return self
+            .tryMap(Self.Output.unwrap)
+            .flatMap(transform)
+            .map(Optional.init)
+            .catch { _ in Just<Mapped?>(nil) }
+            .eraseToAnyPublisher()
+    }
+}
+
+extension Optional {
+    static func unwrap(optional: Optional) throws -> Wrapped {
+        guard case .some(let wrapped) = optional else {
+            throw NSError()
         }
         
-        self.artworkRequest = self.playcutRequest.chained(with: self.artworkService.getArtwork(for:))
-
-        let playcutCallbacks = initialObservers.map { $0.updateWith(playcutResult:) }
-        self.playcutRequest.observe(with: playcutCallbacks)
-        
-        let artworkCallbacks = initialObservers.map { $0.updateWith(artworkResult:) }
-        self.artworkRequest.observe(with: artworkCallbacks)
+        return wrapped
     }
 }

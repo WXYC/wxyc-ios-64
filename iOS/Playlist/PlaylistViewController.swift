@@ -7,15 +7,18 @@
 //
 
 import UIKit
+import Combine
 import Core
 
-class PlaylistViewController: UITableViewController, PlaylistPresentable {
+class PlaylistViewController: UITableViewController {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared
-    var reuseIdentifiers: [String] = []
+    var reuseIdentifiers: Set<String> = []
+    var playlistDataSourceObservation: Cancellable? = nil
     
     override func viewDidLoad() {
-        self.playlistDataSource.add(observer: self)
+        self.playlistDataSourceObservation =
+            self.playlistDataSource.$viewModels.sink(receiveValue: self.update(viewModels:))
         
         self.tableView.rowHeight = UITableView.automaticDimension
         self.tableView.estimatedRowHeight = 500
@@ -32,7 +35,7 @@ class PlaylistViewController: UITableViewController, PlaylistPresentable {
     
     // MARK: PlaylistPresentable
     
-    func updateWith(viewModels: [PlaylistCellViewModel]) {
+    func update(viewModels: [PlaylistCellViewModel]) {
         self.viewModels = viewModels
         self.tableView.reloadData()
     }
@@ -60,7 +63,7 @@ class PlaylistViewController: UITableViewController, PlaylistPresentable {
             
             tableView.register(nib, forCellReuseIdentifier: className)
 
-            self.reuseIdentifiers.append(viewModel.reuseIdentifier)
+            self.reuseIdentifiers.insert(viewModel.reuseIdentifier)
         }
         
         let cell = tableView.dequeueReusableCell(withIdentifier: viewModel.reuseIdentifier, for: indexPath)

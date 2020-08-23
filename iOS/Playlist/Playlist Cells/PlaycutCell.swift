@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import Combine
 
 @objc(PlaycutCell)
 final class PlaycutCell: UITableViewCell {
@@ -17,6 +18,8 @@ final class PlaycutCell: UITableViewCell {
     @IBOutlet var containerView: UIVisualEffectView!
     
     var activity: UIActivity?
+    
+    var artworkRequest: Cancellable?
     
     // MARK: Configuration
     

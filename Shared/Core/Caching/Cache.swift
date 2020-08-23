@@ -19,10 +19,10 @@ extension UserDefaults {
 extension UserDefaults: Cache {
     subscript(key: String) -> Data? {
         get {
-            return self.object(forKey: String(key.hashValue)) as? Data
+            return self.object(forKey: key) as? Data
         }
         set {
-            self.set(newValue, forKey: String(key.hashValue))
+            self.set(newValue, forKey: key)
         }
     }
 }
