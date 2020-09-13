@@ -32,30 +32,27 @@ public final class CacheCoordinator {
     }
     
     public func value<Value: Codable>(for key: String) -> AnyPublisher<Value, Error> {
-        // TODO: Switch to use ThreadSafe
-        return self.accessQueue.async {
-            do {
-                guard let encodedCachedRecord = self.cache[key] else {
-                    throw ServiceErrors.noCachedResult
-                }
-                
-                let cachedRecord = try Self.decoder.decode(CachedRecord<Value>.self, from: encodedCachedRecord)
-                
-                
-                // nil out record, if expired
-                guard !cachedRecord.isExpired else {
-                    self.set(value: nil as Value?, for: key, lifespan: .distantFuture) // Nil-out expired record
-                    
-                    throw ServiceErrors.noCachedResult
-                }
-                
-                print(">>> cache hit!", key, cachedRecord.value)
-                
-                return cachedRecord.value
-            } catch {
-                print(error)
+        do {
+            guard let encodedCachedRecord = self.cache[key] else {
                 throw ServiceErrors.noCachedResult
             }
+            
+            let cachedRecord = try Self.decoder.decode(CachedRecord<Value>.self, from: encodedCachedRecord)
+            
+            
+            // nil out record, if expired
+            guard !cachedRecord.isExpired else {
+                self.set(value: nil as Value?, for: key, lifespan: .distantFuture) // Nil-out expired record
+                
+                throw ServiceErrors.noCachedResult
+            }
+            
+            print(">>> cache hit!", key, cachedRecord.value)
+            
+            return CurrentValueSubject(cachedRecord.value).eraseToAnyPublisher()
+        } catch {
+            print(error)
+            return Fail(error: error).eraseToAnyPublisher()
         }
     }
     
