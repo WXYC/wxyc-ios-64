@@ -45,6 +45,7 @@ public final class NowPlayingService {
         
         self.artworkObservation = playcutRequest
             .map(self.artworkService.getArtwork(for:))
+            .receive(on: RunLoop.main)
             .assign(to: \.artwork, on: self)
         
     }
