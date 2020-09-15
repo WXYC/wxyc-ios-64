@@ -43,7 +43,10 @@ public class PlaylistService {
     }
     
     private var cacheCoordinator: CacheCoordinator
-    private var cacheSink: Cancellable? = nil
+    private var cachedFetcher: PlaylistFetcher
+    private var remoteFetcher: PlaylistFetcher
+    private var cacheSink: AnyCancellable? = nil
+    private var fetchTimer: Timer? = nil
     
     private init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -51,7 +54,15 @@ public class PlaylistService {
         remoteFetcher: PlaylistFetcher = URLSession.shared
     ) {
         self.cacheCoordinator = cacheCoordinator
-        self.cacheSink = (cachedFetcher.getPlaylist() || remoteFetcher.getPlaylist())
+        self.cachedFetcher = cachedFetcher
+        self.remoteFetcher = remoteFetcher
+        
+        self.fetchTimer = Timer(fire: Date(), interval: 30, repeats: true, block: self.fetch)
+        self.fetchTimer?.fire()
+    }
+    
+    func fetch(_ timer: Timer?) {
+        self.cacheSink = (self.cachedFetcher.getPlaylist() || self.remoteFetcher.getPlaylist())
             .onSuccess({ [weak self] playlist in
                 self?.playlist = playlist
             })

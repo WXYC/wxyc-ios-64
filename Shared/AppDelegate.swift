@@ -11,46 +11,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var nowPlayingObservation: Cancellable?
     var shouldDonateSiriIntentObservation: Cancellable?
 
-//    enum UserSettingsKeys: String {
-//        case intentDonated
-//    }
-    
-//    func donateSiriIntentIfNeeded() {
-//        self.shouldDonateSiriIntentObservation  = self.shouldDonateSiriIntent().sink { shouldDonateSiriIntent in
-//            guard shouldDonateSiriIntent else {
-//                return
-//            }
-//
-//            let mediaItem = INMediaItem(
-//                identifier: "com.wxyc.ios.intent.play",
-//                title: "Play",
-//                type: .musicStation,
-//                artwork: nil
-//            )
-//
-//            let intent = INPlayMediaIntent(
-//                mediaItems: [mediaItem],
-//                mediaContainer: nil,
-//                playShuffled: nil,
-//                playbackRepeatMode: .none,
-//                resumePlayback: false
-//            )
-//
-//            intent.suggestedInvocationPhrase = "Play WXYC"
-//            let interaction = INInteraction(intent: intent, response: nil)
-//
-//            interaction.donate()
-//
-//            self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
-//        }
-//    }
-    
-//    func shouldDonateSiriIntent() -> AnyPublisher<Bool, Never> {
-//        return self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
-//            .replaceError(with: true)
-//            .eraseToAnyPublisher()
-//    }
-    
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
