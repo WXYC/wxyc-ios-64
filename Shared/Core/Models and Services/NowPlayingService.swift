@@ -64,4 +64,17 @@ public final class NowPlayingService {
             self.$artwork.sink(receiveValue: observer.update(artwork:))
         )
     }
+    
+    public func fetchNowPlaying() async -> (Playcut?, UIImage?) {
+        guard let playcut = await self.playlistService.fetchPlaylist().playcuts.first else {
+            return (nil, nil)
+        }
+        
+        do {
+            let artwork = try await self.artworkService.getArtwork(for: playcut)
+            return (playcut, artwork)
+        } catch {
+            return (playcut, nil)
+        }
+    }
 }

@@ -11,6 +11,17 @@ public protocol PlaylistEntry: Codable {
     var chronOrderID: Int { get }
 }
 
+public extension PlaylistEntry {
+    var debugDescription: String {
+        let encoder = JSONEncoder()
+        let data = try! encoder.encode(self)
+        
+        let decoder = JSONDecoder()
+        let dictionary = try! decoder.decode(String.self, from: data)
+        return dictionary.debugDescription
+    }
+}
+
 public struct Breakpoint: PlaylistEntry {
     public let id: Int
     public let hour: Int
