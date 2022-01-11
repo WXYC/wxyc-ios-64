@@ -21,12 +21,12 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
     @IBOutlet weak var labelsStackView: UIStackView!
 
     var nowPlayingService = NowPlayingService.shared
-    var nowPlayingObservation: Cancellable?
+    var nowPlayingObservation: Any?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.nowPlayingObservation = self.nowPlayingService.subscribe(self)
+        self.nowPlayingObservation = self.nowPlayingService.observe(with: self)
 
         if let context = self.extensionContext {
             // TODO: 🐛🔨. I'm commenting this out for now because there's a sizing issue in the expanded mode.

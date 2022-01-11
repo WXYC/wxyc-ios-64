@@ -41,7 +41,6 @@
 		3435D4A32225BE1A00EA9226 /* PlaylistCacheKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */; };
 		343C15ED2453A1A600F18640 /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */; };
 		343C15EE2453A1C500F18640 /* MPNowPlayingInfoCenter+NowPlayingServiceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* MPNowPlayingInfoCenter+NowPlayingServiceObserver.swift */; };
-		343C15F02453A6D300F18640 /* Combine+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 343C15EF2453A6D300F18640 /* Combine+WXYC.swift */; };
 		3441BFE321D145F40087D6AB /* PlayerHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3441BFE221D145F40087D6AB /* PlayerHeader.swift */; };
 		3441BFE521D171300087D6AB /* SpinningAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3441BFE421D171300087D6AB /* SpinningAnimation.swift */; };
 		34425DA421B8A16E00C8DD5F /* ArtworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34425DA321B8A16E00C8DD5F /* ArtworkService.swift */; };
@@ -174,7 +173,6 @@
 		3435D4992225BAFE00EA9226 /* CachedRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedRecord.swift; sourceTree = "<group>"; };
 		3435D49B2225BB2000EA9226 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
 		3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistCacheKeys.swift; sourceTree = "<group>"; };
-		343C15EF2453A6D300F18640 /* Combine+WXYC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Combine+WXYC.swift"; sourceTree = "<group>"; };
 		3441BFE221D145F40087D6AB /* PlayerHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHeader.swift; sourceTree = "<group>"; };
 		3441BFE421D171300087D6AB /* SpinningAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinningAnimation.swift; sourceTree = "<group>"; };
 		34425DA321B8A16E00C8DD5F /* ArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkService.swift; sourceTree = "<group>"; };
@@ -373,7 +371,6 @@
 				3435D4942225B9D100EA9226 /* Caching */,
 				34D908542113EE4800AB8C79 /* RadioPlayerController.swift */,
 				3435D4912224A2F900EA9226 /* ThreadSafe.swift */,
-				343C15EF2453A6D300F18640 /* Combine+WXYC.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -775,7 +772,6 @@
 				34D908562113EE5600AB8C79 /* RadioPlayerController.swift in Sources */,
 				343400892030A2AC00FC778F /* NowPlayingService.swift in Sources */,
 				3434008A2030A2AC00FC778F /* LastFM.swift in Sources */,
-				343C15F02453A6D300F18640 /* Combine+WXYC.swift in Sources */,
 				34B1882A21BB2B98005ADD84 /* Discogs.swift in Sources */,
 				3434008B2030A2AC00FC778F /* RadioPlayer.swift in Sources */,
 				34A2CA0321B9E4B100A31F48 /* ServiceTypes.swift in Sources */,
@@ -1076,7 +1072,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MODULE_NAME = WXYC;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1134,7 +1130,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MODULE_NAME = WXYC;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
