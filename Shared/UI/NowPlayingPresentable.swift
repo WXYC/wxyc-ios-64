@@ -10,7 +10,7 @@ import UIKit
 import Core
 import Combine
 
-public protocol NowPlayingPresentable: class {
+public protocol NowPlayingPresentable: AnyObject {
     var songLabel: UILabel! { get }
     var artistLabel: UILabel! { get }
     var albumImageView: UIImageView! { get }

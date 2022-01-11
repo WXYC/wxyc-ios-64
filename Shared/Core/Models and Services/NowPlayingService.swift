@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 import Combine
 
-public protocol NowPlayingServiceObserver: class {
+public protocol NowPlayingServiceObserver: AnyObject {
     func update(playcut: Playcut?)
     func update(artwork: UIImage?)
 }
