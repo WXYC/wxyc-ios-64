@@ -56,11 +56,29 @@ public class PlaylistService {
         self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
-        self.fetchTimer = Timer(fire: Date(), interval: 30, repeats: true, block: self.fetch)
+        self.fetchTimer = Timer(fire: Date(), interval: 30, repeats: true) { _ in
+            Task { self.playlist = await self.fetchPlaylist() }
+        }
         self.fetchTimer?.fire()
     }
     
-    func fetch(_ timer: Timer?) {
+    public func fetchPlaylist() async -> Playlist {
+        do {
+            return try await self.cachedFetcher.getPlaylist()
+        } catch {
+            print("No cached playlist")
+        }
+        
+        do {
+            return try await self.remoteFetcher.getPlaylist()
+        } catch {
+            print("Remote playlist fetch failed: \(error)")
+        }
+        
+        return Playlist.empty
+    }
+    
+    private func fetch(_ timer: Timer?) {
         Task {
             do {
                 self.playlist = try await self.cachedFetcher.getPlaylist()
