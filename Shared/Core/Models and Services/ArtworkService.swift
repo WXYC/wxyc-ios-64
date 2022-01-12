@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 import Combine
 
-public final class ArtworkService {
+public final actor ArtworkService {
     public static let shared = ArtworkService(fetchers: [
         CacheCoordinator.AlbumArt,
         RemoteArtworkFetcher(configuration: .discogs),
@@ -24,24 +24,31 @@ public final class ArtworkService {
         self.fetchers = fetchers
     }
 
-    public func getArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error> {
-        let (first, rest) = (self.fetchers.first!, self.fetchers.dropFirst())
-        return rest
-            .reduce(first.fetchArtwork(for: playcut), { $0 || $1.fetchArtwork(for: playcut) })
-            .eraseToAnyPublisher()
+    public func getArtwork(for playcut: Playcut) async throws -> UIImage {
+        for fetcher in self.fetchers {
+            do {
+                return try await fetcher.fetchArtwork(for: playcut)
+            } catch {
+                print("No artwork found for \(playcut) using fetcher \(fetcher)")
+            }
+        }
+        
+        throw ServiceErrors.noResults
     }
 }
 
 protocol ArtworkFetcher {
-    func fetchArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error>
+    func fetchArtwork(for playcut: Playcut) async throws -> UIImage
 }
 
 extension CacheCoordinator: ArtworkFetcher {
-    func fetchArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error> {
-        return self.value(for: playcut)
-            .print()
-            .compactMap(UIImage.init(data:))
-            .eraseToAnyPublisher()
+    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+        let cachedData: Data = try await self.value(for: playcut)
+        guard let artwork = UIImage(data: cachedData) else {
+            throw ServiceErrors.noCachedResult
+        }
+        
+        return artwork
     }
 }
 
@@ -67,39 +74,30 @@ internal final class RemoteArtworkFetcher: ArtworkFetcher {
         self.session = session
     }
     
-    internal func fetchArtwork(for playcut: Playcut) -> AnyPublisher<UIImage, Error> {
-        let downloadArtworkRequest = self
-            .findArtworkURL(for: playcut)
-            .flatMap(self.downloadArtwork)
-            .eraseToAnyPublisher()
+    internal func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+        let artworkURL = try await self.findArtworkURL(for: playcut)
+        let artwork = try await self.downloadArtwork(at: artworkURL)
         
-        self.cacheOperation = downloadArtworkRequest.onSuccess { image in
-            self.cacheCoordinator.set(value: image.pngData(), for: playcut, lifespan: .distantFuture)
+        Task {
+            await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .distantFuture)
         }
         
-        return downloadArtworkRequest
+        return artwork
     }
     
-    private func findArtworkURL(for playcut: Playcut) -> AnyPublisher<URL, Error> {
+    private func findArtworkURL(for playcut: Playcut) async throws -> URL {
         let searchURLRequest = self.configuration.makeSearchURL(playcut)
-        return self.session
-            .dataTaskPublisher(for: searchURLRequest)
-            .map(\.data)
-            .tryMap(self.configuration.extractURL)
-            .eraseToAnyPublisher()
+        let (data, _) = try await URLSession.shared.data(from: searchURLRequest)
+        return try self.configuration.extractURL(data)
     }
     
-    private func downloadArtwork(at url: URL) -> AnyPublisher<UIImage, Error> {
-        return self.session
-            .dataTaskPublisher(for: url)
-            .print()
-            .tryMap { (data: Data, response: URLResponse) -> UIImage in
-                guard let image = UIImage(data: data) else {
-                    throw ServiceErrors.noResults
-                }
+    private func downloadArtwork(at url: URL) async throws -> UIImage {
+        let (data, _) = try await URLSession.shared.data(from: url)
 
-                return image
-            }
-            .eraseToAnyPublisher()
+        guard let image = UIImage(data: data) else {
+            throw ServiceErrors.noResults
+        }
+        
+        return image
     }
 }

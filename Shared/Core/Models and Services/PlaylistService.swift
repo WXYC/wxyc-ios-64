@@ -10,22 +10,20 @@ import Foundation
 import Combine
 
 protocol PlaylistFetcher {
-    func getPlaylist() -> AnyPublisher<Playlist, Error>
+    func getPlaylist() async throws -> Playlist
 }
 
 extension CacheCoordinator: PlaylistFetcher {
-    func getPlaylist() -> AnyPublisher<Playlist, Error> {
-        return self.value(for: PlaylistCacheKeys.playlist)
+    func getPlaylist() async throws -> Playlist {
+        try await self.value(for: PlaylistCacheKeys.playlist)
     }
 }
 
 extension URLSession: PlaylistFetcher {
-    func getPlaylist() -> AnyPublisher<Playlist, Error> {
+    func getPlaylist() async throws -> Playlist {
+        let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
         let decoder = JSONDecoder()
-        return self.dataTaskPublisher(for: URL.WXYCPlaylist)
-            .map { (data, _) in data }
-            .decode(type: Playlist.self, decoder: decoder)
-            .eraseToAnyPublisher()
+        return try decoder.decode(Playlist.self, from: playlistData)
     }
 }
 
@@ -34,18 +32,19 @@ public class PlaylistService {
     
     @Published public private(set) var playlist: Playlist = .empty {
         didSet {
-            cacheCoordinator.set(
-                value: playlist,
-                for: PlaylistCacheKeys.playlist,
-                lifespan: DefaultLifespan
-            )
+            Task {
+                await cacheCoordinator.set(
+                    value: playlist,
+                    for: PlaylistCacheKeys.playlist,
+                    lifespan: DefaultLifespan
+                )
+            }
         }
     }
     
     private var cacheCoordinator: CacheCoordinator
     private var cachedFetcher: PlaylistFetcher
     private var remoteFetcher: PlaylistFetcher
-    private var cacheSink: AnyCancellable? = nil
     private var fetchTimer: Timer? = nil
     
     private init(
@@ -62,9 +61,19 @@ public class PlaylistService {
     }
     
     func fetch(_ timer: Timer?) {
-        self.cacheSink = (self.cachedFetcher.getPlaylist() || self.remoteFetcher.getPlaylist())
-            .onSuccess({ [weak self] playlist in
-                self?.playlist = playlist
-            })
+        Task {
+            do {
+                self.playlist = try await self.cachedFetcher.getPlaylist()
+                return
+            } catch {
+                print("No cached playlist")
+            }
+            
+            do {
+                self.playlist = try await self.remoteFetcher.getPlaylist()
+            } catch {
+                print("Remote playlist fetch failed: \(error)")
+            }
+        }
     }
 }

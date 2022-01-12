@@ -22,10 +22,10 @@ extension Playcut: PlaylistCellViewModelProducer {
             
             let playcutActivityItem = PlaycutActivityItem(playcut: self)
             
-            cell.artworkRequest = ArtworkService.shared.getArtwork(for: self).onSuccess { image in
-                playcutActivityItem.image = image
-                
-                cell.configure(with: image, token: self.id)
+            Task {
+                let artwork = try await ArtworkService.shared.getArtwork(for: self)
+                playcutActivityItem.image = artwork
+                await cell.configure(with: artwork, token: self.id)
             }
             
             cell.activity = playcutActivityItem
