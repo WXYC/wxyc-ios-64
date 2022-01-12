@@ -24,13 +24,8 @@ extension Playcut: PlaylistCellViewModelProducer {
             let playcutActivityItem = PlaycutActivityItem(playcut: self)
             
             Task {
-                let artwork: UIImage = await {
-                    do {
-                        return try await ArtworkService.shared.getArtwork(for: self)
-                    } catch {
-                        return #imageLiteral(resourceName: "logo.pdf")
-                    }
-                }()
+                let artwork: UIImage =
+                    await ArtworkService.shared.getArtwork(for: self) ??  #imageLiteral(resourceName: "logo.pdf")
                 
                 playcutActivityItem.image = artwork
                 await cell.configure(with: artwork, token: self.id)
