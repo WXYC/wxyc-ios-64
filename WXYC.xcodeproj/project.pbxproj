@@ -21,8 +21,6 @@
 		343400EF2030E15000FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		343400F12030E45A00FC778F /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		343D5B35278E4EC600580BA4 /* UI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12F3278E4BD000257589 /* UI.framework */; };
-		343D5B36278E4ED500580BA4 /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
-		343D5B37278E4ED500580BA4 /* UI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12F3278E4BD000257589 /* UI.framework */; };
 		3441BFE321D145F40087D6AB /* PlayerHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3441BFE221D145F40087D6AB /* PlayerHeader.swift */; };
 		3441BFE521D171300087D6AB /* SpinningAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3441BFE421D171300087D6AB /* SpinningAnimation.swift */; };
 		34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
@@ -37,11 +35,6 @@
 		3489DB40278E174400264142 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34A067CE20393E42003D2919 /* PlaylistEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistEntry.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
-		34A8A5DC278E4DEF0081BA8F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34A8A5DB278E4DEF0081BA8F /* WidgetKit.framework */; };
-		34A8A5DE278E4DEF0081BA8F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34A8A5DD278E4DEF0081BA8F /* SwiftUI.framework */; };
-		34A8A5E1278E4DEF0081BA8F /* NowPlayingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A8A5E0278E4DEF0081BA8F /* NowPlayingWidget.swift */; };
-		34A8A5E3278E4DF00081BA8F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 34A8A5E2278E4DF00081BA8F /* Assets.xcassets */; };
-		34A8A5E7278E4DF00081BA8F /* NowPlayingWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34A8A5DA278E4DEF0081BA8F /* NowPlayingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34A8A5EB278E4E4F0081BA8F /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
 		34B1890821C1C8BA005ADD84 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1890721C1C8BA005ADD84 /* IntentHandler.swift */; };
 		34B1890C21C1C8BA005ADD84 /* iOS Intents Extension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -76,6 +69,12 @@
 		34EB12FE278E4BDC00257589 /* MPNowPlayingInfoCenter+NowPlayingServiceObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEF2030A1CC00FC778F /* MPNowPlayingInfoCenter+NowPlayingServiceObserver.swift */; };
 		34EB12FF278E4BDD00257589 /* UIView+WXYC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */; };
 		34EB1300278E4BDF00257589 /* NowPlayingPresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF52030A1CC00FC778F /* NowPlayingPresentable.swift */; };
+		34F667612790C2030095A547 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34A8A5DB278E4DEF0081BA8F /* WidgetKit.framework */; };
+		34F667622790C2030095A547 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34A8A5DD278E4DEF0081BA8F /* SwiftUI.framework */; };
+		34F667652790C2030095A547 /* NowPlayingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F667642790C2030095A547 /* NowPlayingWidget.swift */; };
+		34F667672790C2040095A547 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 34F667662790C2040095A547 /* Assets.xcassets */; };
+		34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		34F667712790C7BD0095A547 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FA49A82231BD9C001D6040 /* InkingButton.swift */; };
 		34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49AA2236ED93001D6040 /* PlaycutCell.xib */; };
 		34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49AE2238766A001D6040 /* BreakpointCell.xib */; };
@@ -89,13 +88,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 343400622030A1E700FC778F;
 			remoteInfo = "Today Widget";
-		};
-		34A8A5E5278E4DF00081BA8F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 34A8A5D9278E4DEF0081BA8F;
-			remoteInfo = NowPlayingWidgetExtension;
 		};
 		34B1890A21C1C8BA005ADD84 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -118,6 +110,20 @@
 			remoteGlobalIDString = 34EB12F2278E4BD000257589;
 			remoteInfo = UI;
 		};
+		34F667692790C2040095A547 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 34F6675F2790C2030095A547;
+			remoteInfo = NowPlayingWidgetExtension;
+		};
+		34F6676F2790C26F0095A547 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 34EB12CE278E4A1800257589;
+			remoteInfo = Core;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -128,7 +134,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				34B1890C21C1C8BA005ADD84 /* iOS Intents Extension.appex in Embed App Extensions */,
-				34A8A5E7278E4DF00081BA8F /* NowPlayingWidgetExtension.appex in Embed App Extensions */,
+				34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed App Extensions */,
 				341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
@@ -200,12 +206,8 @@
 		348534A7222F4E6D002AA181 /* BreakpointCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakpointCell.swift; sourceTree = "<group>"; };
 		3489DB3C278E137400264142 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTypes.swift; sourceTree = "<group>"; };
-		34A8A5DA278E4DEF0081BA8F /* NowPlayingWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NowPlayingWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		34A8A5DB278E4DEF0081BA8F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		34A8A5DD278E4DEF0081BA8F /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		34A8A5E0278E4DEF0081BA8F /* NowPlayingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingWidget.swift; sourceTree = "<group>"; };
-		34A8A5E2278E4DF00081BA8F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		34A8A5E4278E4DF00081BA8F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		34B1882821BB29E0005ADD84 /* Discogs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discogs.swift; sourceTree = "<group>"; };
 		34B188BA21C1A099005ADD84 /* IntentsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IntentsUI.framework; path = System/Library/Frameworks/IntentsUI.framework; sourceTree = SDKROOT; };
 		34B188CF21C1C5B0005ADD84 /* WXYC.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WXYC.entitlements; sourceTree = "<group>"; };
@@ -222,6 +224,10 @@
 		34EB12D1278E4A1800257589 /* Core.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Core.h; sourceTree = "<group>"; };
 		34EB12F3278E4BD000257589 /* UI.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = UI.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		34EB12F5278E4BD000257589 /* UI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UI.h; sourceTree = "<group>"; };
+		34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NowPlayingWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		34F667642790C2030095A547 /* NowPlayingWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingWidget.swift; sourceTree = "<group>"; };
+		34F667662790C2040095A547 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		34F667682790C2040095A547 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		34FA49A82231BD9C001D6040 /* InkingButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InkingButton.swift; sourceTree = "<group>"; };
 		34FA49AA2236ED93001D6040 /* PlaycutCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PlaycutCell.xib; sourceTree = "<group>"; };
 		34FA49AE2238766A001D6040 /* BreakpointCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = BreakpointCell.xib; sourceTree = "<group>"; };
@@ -262,17 +268,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		34A8A5D7278E4DEF0081BA8F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				343D5B36278E4ED500580BA4 /* Core.framework in Frameworks */,
-				343D5B37278E4ED500580BA4 /* UI.framework in Frameworks */,
-				34A8A5DE278E4DEF0081BA8F /* SwiftUI.framework in Frameworks */,
-				34A8A5DC278E4DEF0081BA8F /* WidgetKit.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		34B1890221C1C8BA005ADD84 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -292,6 +287,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				34A8A5EB278E4E4F0081BA8F /* Core.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		34F6675D2790C2030095A547 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34F667622790C2030095A547 /* SwiftUI.framework in Frameworks */,
+				34F667612790C2030095A547 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,7 +328,7 @@
 				34B1890621C1C8BA005ADD84 /* iOS Intents Extension */,
 				34EB12D0278E4A1800257589 /* Core */,
 				34EB12F4278E4BD000257589 /* UI */,
-				34A8A5DF278E4DEF0081BA8F /* NowPlayingWidget */,
+				34F667632790C2030095A547 /* NowPlayingWidget */,
 				343400642030A1E700FC778F /* Frameworks */,
 				3434F4C52030A1A700FC778F /* Products */,
 			);
@@ -342,7 +346,7 @@
 				34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */,
 				34EB12CF278E4A1800257589 /* Core.framework */,
 				34EB12F3278E4BD000257589 /* UI.framework */,
-				34A8A5DA278E4DEF0081BA8F /* NowPlayingWidgetExtension.appex */,
+				34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -478,16 +482,6 @@
 			path = Playlist;
 			sourceTree = "<group>";
 		};
-		34A8A5DF278E4DEF0081BA8F /* NowPlayingWidget */ = {
-			isa = PBXGroup;
-			children = (
-				34A8A5E0278E4DEF0081BA8F /* NowPlayingWidget.swift */,
-				34A8A5E2278E4DF00081BA8F /* Assets.xcassets */,
-				34A8A5E4278E4DF00081BA8F /* Info.plist */,
-			);
-			path = NowPlayingWidget;
-			sourceTree = "<group>";
-		};
 		34B1890621C1C8BA005ADD84 /* iOS Intents Extension */ = {
 			isa = PBXGroup;
 			children = (
@@ -526,6 +520,16 @@
 				34EB12F5278E4BD000257589 /* UI.h */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		34F667632790C2030095A547 /* NowPlayingWidget */ = {
+			isa = PBXGroup;
+			children = (
+				34F667642790C2030095A547 /* NowPlayingWidget.swift */,
+				34F667662790C2040095A547 /* Assets.xcassets */,
+				34F667682790C2040095A547 /* Info.plist */,
+			);
+			path = NowPlayingWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -567,7 +571,7 @@
 				34B1890B21C1C8BA005ADD84 /* PBXTargetDependency */,
 				34EB12D4278E4A1800257589 /* PBXTargetDependency */,
 				34EB12F8278E4BD000257589 /* PBXTargetDependency */,
-				34A8A5E6278E4DF00081BA8F /* PBXTargetDependency */,
+				34F6676A2790C2040095A547 /* PBXTargetDependency */,
 			);
 			name = WXYC;
 			productName = WXYC;
@@ -625,23 +629,6 @@
 			productReference = 34425DB921B8BAE100C8DD5F /* Core Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		34A8A5D9278E4DEF0081BA8F /* NowPlayingWidgetExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 34A8A5EA278E4DF00081BA8F /* Build configuration list for PBXNativeTarget "NowPlayingWidgetExtension" */;
-			buildPhases = (
-				34A8A5D6278E4DEF0081BA8F /* Sources */,
-				34A8A5D7278E4DEF0081BA8F /* Frameworks */,
-				34A8A5D8278E4DEF0081BA8F /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = NowPlayingWidgetExtension;
-			productName = NowPlayingWidgetExtension;
-			productReference = 34A8A5DA278E4DEF0081BA8F /* NowPlayingWidgetExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		34B1890421C1C8BA005ADD84 /* iOS Intents Extension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 34B1890F21C1C8BA005ADD84 /* Build configuration list for PBXNativeTarget "iOS Intents Extension" */;
@@ -695,13 +682,31 @@
 			productReference = 34EB12F3278E4BD000257589 /* UI.framework */;
 			productType = "com.apple.product-type.framework";
 		};
+		34F6675F2790C2030095A547 /* NowPlayingWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 34F6676C2790C2040095A547 /* Build configuration list for PBXNativeTarget "NowPlayingWidgetExtension" */;
+			buildPhases = (
+				34F6675C2790C2030095A547 /* Sources */,
+				34F6675D2790C2030095A547 /* Frameworks */,
+				34F6675E2790C2030095A547 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				34F667702790C26F0095A547 /* PBXTargetDependency */,
+			);
+			name = NowPlayingWidgetExtension;
+			productName = NowPlayingWidgetExtension;
+			productReference = 34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		3434F4BC2030A1A700FC778F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 1310;
+				LastSwiftUpdateCheck = 1320;
 				LastUpgradeCheck = 1310;
 				ORGANIZATIONNAME = WXYC;
 				TargetAttributes = {
@@ -735,10 +740,6 @@
 						CreatedOnToolsVersion = 10.1;
 						ProvisioningStyle = Automatic;
 					};
-					34A8A5D9278E4DEF0081BA8F = {
-						CreatedOnToolsVersion = 13.1;
-						ProvisioningStyle = Automatic;
-					};
 					34B1890421C1C8BA005ADD84 = {
 						CreatedOnToolsVersion = 10.1;
 						LastSwiftMigration = 1100;
@@ -750,6 +751,10 @@
 					};
 					34EB12F2278E4BD000257589 = {
 						CreatedOnToolsVersion = 13.2;
+						ProvisioningStyle = Automatic;
+					};
+					34F6675F2790C2030095A547 = {
+						CreatedOnToolsVersion = 13.2.1;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -774,7 +779,7 @@
 				34B1890421C1C8BA005ADD84 /* iOS Intents Extension */,
 				34EB12CE278E4A1800257589 /* Core */,
 				34EB12F2278E4BD000257589 /* UI */,
-				34A8A5D9278E4DEF0081BA8F /* NowPlayingWidgetExtension */,
+				34F6675F2790C2030095A547 /* NowPlayingWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -821,14 +826,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		34A8A5D8278E4DEF0081BA8F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				34A8A5E3278E4DF00081BA8F /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		34B1890321C1C8BA005ADD84 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -847,6 +844,15 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		34F6675E2790C2030095A547 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34F667672790C2040095A547 /* Assets.xcassets in Resources */,
+				34F667712790C7BD0095A547 /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -901,14 +907,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		34A8A5D6278E4DEF0081BA8F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				34A8A5E1278E4DEF0081BA8F /* NowPlayingWidget.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		34B1890121C1C8BA005ADD84 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -952,6 +950,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		34F6675C2790C2030095A547 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34F667652790C2030095A547 /* NowPlayingWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -959,11 +965,6 @@
 			isa = PBXTargetDependency;
 			target = 343400622030A1E700FC778F /* Today Widget */;
 			targetProxy = 341FBAB22041E7AB00CD2F36 /* PBXContainerItemProxy */;
-		};
-		34A8A5E6278E4DF00081BA8F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 34A8A5D9278E4DEF0081BA8F /* NowPlayingWidgetExtension */;
-			targetProxy = 34A8A5E5278E4DF00081BA8F /* PBXContainerItemProxy */;
 		};
 		34B1890B21C1C8BA005ADD84 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -979,6 +980,16 @@
 			isa = PBXTargetDependency;
 			target = 34EB12F2278E4BD000257589 /* UI */;
 			targetProxy = 34EB12F7278E4BD000257589 /* PBXContainerItemProxy */;
+		};
+		34F6676A2790C2040095A547 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 34F6675F2790C2030095A547 /* NowPlayingWidgetExtension */;
+			targetProxy = 34F667692790C2040095A547 /* PBXContainerItemProxy */;
+		};
+		34F667702790C26F0095A547 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 34EB12CE278E4A1800257589 /* Core */;
+			targetProxy = 34F6676F2790C26F0095A547 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1007,6 +1018,7 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
@@ -1014,6 +1026,7 @@
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -1023,6 +1036,8 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
@@ -1030,6 +1045,7 @@
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -1246,57 +1262,6 @@
 			};
 			name = Release;
 		};
-		34A8A5E8278E4DF00081BA8F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Now Playing";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.NowPlayingWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		34A8A5E9278E4DF00081BA8F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 92V374HC38;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Now Playing";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
-				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.NowPlayingWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		34B1890D21C1C8BA005ADD84 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1446,6 +1411,57 @@
 			};
 			name = Release;
 		};
+		34F6676D2790C2040095A547 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.NowPlayingWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		34F6676E2790C2040095A547 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.NowPlayingWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1494,15 +1510,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		34A8A5EA278E4DF00081BA8F /* Build configuration list for PBXNativeTarget "NowPlayingWidgetExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				34A8A5E8278E4DF00081BA8F /* Debug */,
-				34A8A5E9278E4DF00081BA8F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		34B1890F21C1C8BA005ADD84 /* Build configuration list for PBXNativeTarget "iOS Intents Extension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1526,6 +1533,15 @@
 			buildConfigurations = (
 				34EB12FC278E4BD000257589 /* Debug */,
 				34EB12FD278E4BD000257589 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		34F6676C2790C2040095A547 /* Build configuration list for PBXNativeTarget "NowPlayingWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				34F6676D2790C2040095A547 /* Debug */,
+				34F6676E2790C2040095A547 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

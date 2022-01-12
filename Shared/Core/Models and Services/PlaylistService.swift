@@ -30,22 +30,12 @@ extension URLSession: PlaylistFetcher {
 public class PlaylistService {
     public static let shared = PlaylistService()
     
-    @Published public private(set) var playlist: Playlist = .empty {
-        didSet {
-            Task {
-                await cacheCoordinator.set(
-                    value: playlist,
-                    for: PlaylistCacheKeys.playlist,
-                    lifespan: DefaultLifespan
-                )
-            }
-        }
-    }
+    @Published public private(set) var playlist: Playlist = .empty
     
     private var cacheCoordinator: CacheCoordinator
     private var cachedFetcher: PlaylistFetcher
     private var remoteFetcher: PlaylistFetcher
-    private var fetchTimer: Timer? = nil
+    private var fetchTimer: DispatchSourceTimer? = nil
     
     private init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -56,42 +46,48 @@ public class PlaylistService {
         self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
-        self.fetchTimer = Timer(fire: Date(), interval: 30, repeats: true) { _ in
-            Task { self.playlist = await self.fetchPlaylist() }
+        self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default))
+        self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
+        self.fetchTimer?.setEventHandler {
+            Task {
+                let playlist = await self.fetchPlaylist()
+                
+                guard playlist != self.playlist else {
+                    return
+                }
+                
+                self.playlist = playlist
+                await self.cacheCoordinator.set(
+                    value: self.playlist,
+                    for: PlaylistCacheKeys.playlist,
+                    lifespan: DefaultLifespan
+                )
+            }
         }
-        self.fetchTimer?.fire()
+        self.fetchTimer?.resume()
     }
     
-    public func fetchPlaylist() async -> Playlist {
-        do {
-            return try await self.cachedFetcher.getPlaylist()
-        } catch {
-            print("No cached playlist")
+    deinit {
+        self.fetchTimer?.cancel()
+    }
+    
+    public func fetchPlaylist(forceSync: Bool = false) async -> Playlist {
+        print(">>> fetching playlist async")
+
+        if !forceSync {
+            do {
+                return try await self.cachedFetcher.getPlaylist()
+            } catch {
+                print(">>> No cached playlist")
+            }
         }
         
         do {
             return try await self.remoteFetcher.getPlaylist()
         } catch {
-            print("Remote playlist fetch failed: \(error)")
+            print(">>> Remote playlist fetch failed: \(error)")
         }
         
         return Playlist.empty
-    }
-    
-    private func fetch(_ timer: Timer?) {
-        Task {
-            do {
-                self.playlist = try await self.cachedFetcher.getPlaylist()
-                return
-            } catch {
-                print("No cached playlist")
-            }
-            
-            do {
-                self.playlist = try await self.remoteFetcher.getPlaylist()
-            } catch {
-                print("Remote playlist fetch failed: \(error)")
-            }
-        }
     }
 }
