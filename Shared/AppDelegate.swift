@@ -8,7 +8,7 @@ import MediaPlayer
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
   
-    var nowPlayingObservation: Cancellable?
+    var nowPlayingObservation: Any?
     var shouldDonateSiriIntentObservation: Cancellable?
 
     // MARK: UIApplicationDelegate
@@ -24,7 +24,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             self.donateSiriIntentIfNeeded()
         #endif
         
-        self.nowPlayingObservation = NowPlayingService.shared.subscribe(MPNowPlayingInfoCenter.default())
+        self.nowPlayingObservation = NowPlayingService.shared.observe(with: MPNowPlayingInfoCenter.default())
         
         return true
     }
@@ -43,8 +43,8 @@ extension AppDelegate {
     }
     
     func donateSiriIntentIfNeeded() {
-        self.shouldDonateSiriIntentObservation  = self.shouldDonateSiriIntent().sink { shouldDonateSiriIntent in
-            guard shouldDonateSiriIntent else {
+        Task {
+            guard await self.shouldDonateSiriIntent() else {
                 return
             }
             
@@ -66,16 +66,17 @@ extension AppDelegate {
             intent.suggestedInvocationPhrase = "Play WXYC"
             let interaction = INInteraction(intent: intent, response: nil)
             
-            interaction.donate()
-            
-            self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
+            try await interaction.donate()
+            await self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
         }
     }
 
-    func shouldDonateSiriIntent() -> AnyPublisher<Bool, Never> {
-        return self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
-            .replaceError(with: true)
-            .eraseToAnyPublisher()
+    func shouldDonateSiriIntent() async -> Bool {
+        do {
+            return try await self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
+        } catch {
+            return false
+        }
     }
 
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
@@ -85,4 +86,5 @@ extension AppDelegate {
         completionHandler(response)
     }
 }
+
 #endif

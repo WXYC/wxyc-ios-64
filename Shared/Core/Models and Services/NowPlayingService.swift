@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 import Combine
 
-public protocol NowPlayingServiceObserver: class {
+public protocol NowPlayingServiceObserver: AnyObject {
     func update(playcut: Playcut?)
     func update(artwork: UIImage?)
 }
@@ -18,14 +18,28 @@ public protocol NowPlayingServiceObserver: class {
 public final class NowPlayingService {
     public static let shared = NowPlayingService()
     
-    @Published private var playcut: Playcut? = nil
-    @Published private var artwork: UIImage? = nil
+    @Published public var playcut: Playcut? = nil {
+        didSet {
+            guard let playcut = playcut else {
+                self.artwork = nil
+                return
+            }
+            
+            Task {
+                do {
+                    self.artwork = try await self.artworkService.getArtwork(for: playcut)
+                } catch {
+                    self.artwork = nil
+                }
+            }
+        }
+    }
+    @Published public var artwork: UIImage? = nil
 
     private let playlistService: PlaylistService
     private let artworkService: ArtworkService
     
     private var playcutObservation: Cancellable? = nil
-    private var artworkObservation: Cancellable? = nil
 
     init(
         playlistService: PlaylistService = .shared,
@@ -39,45 +53,15 @@ public final class NowPlayingService {
             .map(\.playcuts.first)
             .receive(on: RunLoop.main)
             .eraseToAnyPublisher()
-
+        
         self.playcutObservation = playcutRequest
             .assign(to: \.playcut, on: self)
-        
-        self.artworkObservation = playcutRequest
-            .map(self.artworkService.getArtwork(for:))
-            .receive(on: RunLoop.main)
-            .assign(to: \.artwork, on: self)
-        
     }
     
-    public func subscribe(_ observer: NowPlayingServiceObserver) -> Cancellable {
-        return AnyCancellable.Combine(
-            self.$artwork.sink(receiveValue: observer.update(artwork:)),
-            self.$playcut.sink(receiveValue: observer.update(playcut:))
+    public func observe(with observer: NowPlayingServiceObserver) -> Any {
+        return (
+            self.$playcut.sink(receiveValue: observer.update(playcut:)),
+            self.$artwork.sink(receiveValue: observer.update(artwork:))
         )
-    }
-}
-
-extension Publisher {
-    func map<Wrapped, Mapped>(_ transform: @escaping (Wrapped) -> AnyPublisher<Mapped, Error>)
-        -> AnyPublisher<Mapped?, Never>
-        where Self.Output == Optional<Wrapped>
-    {
-        return self
-            .tryMap(Self.Output.unwrap)
-            .flatMap(transform)
-            .map(Optional.init)
-            .catch { _ in Just<Mapped?>(nil) }
-            .eraseToAnyPublisher()
-    }
-}
-
-extension Optional {
-    static func unwrap(optional: Optional) throws -> Wrapped {
-        guard case .some(let wrapped) = optional else {
-            throw NSError()
-        }
-        
-        return wrapped
     }
 }

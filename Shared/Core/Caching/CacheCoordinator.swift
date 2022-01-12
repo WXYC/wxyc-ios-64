@@ -3,14 +3,13 @@ import Combine
 
 let DefaultLifespan: TimeInterval = 30
 
-public final class CacheCoordinator {
+public final actor CacheCoordinator {
     public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaults.WXYC)
     public static let AlbumArt = CacheCoordinator(cache: ImageCache())
     
     // MARK: Private vars
     
     private var cache: Cache
-    private let accessQueue = DispatchQueue(label: "org.wxyc.cacheCoordinator.access")
     
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
@@ -21,17 +20,17 @@ public final class CacheCoordinator {
     
     // MARK: Public methods
     
-    public func value<Value, Key>(for key: Key) -> AnyPublisher<Value, Error>
+    public func value<Value, Key>(for key: Key) async throws -> Value
         where Value: Codable, Key: RawRepresentable, Key.RawValue == String {
-            return self.value(for: key.rawValue)
+            try await self.value(for: key.rawValue)
     }
     
-    public func value<Value, Key>(for key: Key) -> AnyPublisher<Value, Error>
+    public func value<Value, Key>(for key: Key) async throws -> Value
         where Value: Codable, Key: Identifiable, Key.ID == Int {
-            return self.value(for: String(key.id))
+            try await self.value(for: String(key.id))
     }
     
-    public func value<Value: Codable>(for key: String) -> AnyPublisher<Value, Error> {
+    public func value<Value: Codable>(for key: String) async throws -> Value {
         do {
             guard let encodedCachedRecord = self.cache[key] else {
                 throw ServiceErrors.noCachedResult
@@ -49,10 +48,10 @@ public final class CacheCoordinator {
             
             print(">>> cache hit!", key, cachedRecord.value)
             
-            return CurrentValueSubject(cachedRecord.value).eraseToAnyPublisher()
+            return cachedRecord.value
         } catch {
             print(error)
-            return Fail(error: error).eraseToAnyPublisher()
+            throw error
         }
     }
     
@@ -67,15 +66,13 @@ public final class CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        self.accessQueue.async {
-            if let value = value {
-                let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
-                let encodedCachedRecord = try? Self.encoder.encode(cachedRecord)
-                
-                self.cache[key] = encodedCachedRecord
-            } else {
-                self.cache[key] = nil as Data?
-            }
+        if let value = value {
+            let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
+            let encodedCachedRecord = try? Self.encoder.encode(cachedRecord)
+            
+            self.cache[key] = encodedCachedRecord
+        } else {
+            self.cache[key] = nil as Data?
         }
     }
 }
