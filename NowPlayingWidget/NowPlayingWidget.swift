@@ -101,7 +101,6 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .foregroundStyle(.foreground)
                     .padding(EdgeInsets(top: 5, leading: 0, bottom: 0, trailing: 0))
                     .frame(maxWidth: .infinity)
-                    .lineLimit(1)
 
                 Text(entry.songTitle)
                     .font(.subheadline)
@@ -163,6 +162,21 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .lineLimit(1)
             }
             .background(.ultraThinMaterial)
+        }
+    }
+    
+    internal var artwork: AnyView {
+        if let artwork = entry.artwork {
+            return AnyView(Image(uiImage: artwork).resizable())
+        } else {
+            return AnyView(Self.defaultArtwork)
+        }
+    }
+    
+    private static var defaultArtwork: some View {
+        ZStack {
+            Image(uiImage: #imageLiteral(resourceName: "background.pdf"))
+            Image(uiImage: #imageLiteral(resourceName: "logo.pdf"))
         }
     }
 }
