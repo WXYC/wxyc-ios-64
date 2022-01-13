@@ -8,6 +8,7 @@
 
 import Foundation
 import Core
+import UIKit
 
 protocol PlaylistCellViewModelProducer {
     var cellViewModel: PlaylistCellViewModel { get }
@@ -23,7 +24,14 @@ extension Playcut: PlaylistCellViewModelProducer {
             let playcutActivityItem = PlaycutActivityItem(playcut: self)
             
             Task {
-                let artwork = try await ArtworkService.shared.getArtwork(for: self)
+                let artwork: UIImage = await {
+                    do {
+                        return try await ArtworkService.shared.getArtwork(for: self)
+                    } catch {
+                        return #imageLiteral(resourceName: "logo.pdf")
+                    }
+                }()
+                
                 playcutActivityItem.image = artwork
                 await cell.configure(with: artwork, token: self.id)
             }
