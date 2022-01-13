@@ -9,6 +9,10 @@
 import UIKit
 import Combine
 
+protocol PlaycutShareDelegate: AnyObject {
+    func presentShareSheet(for activity: PlaycutActivityItem, from view: UIView)
+}
+
 @objc(PlaycutCell)
 final class PlaycutCell: UITableViewCell {
     @IBOutlet var artworkImageView: UIImageView!
@@ -17,7 +21,8 @@ final class PlaycutCell: UITableViewCell {
     @IBOutlet var actionButton: UIButton!
     @IBOutlet var containerView: UIVisualEffectView!
     
-    var activity: UIActivity?
+    var activity: PlaycutActivityItem?
+    weak var delegate: PlaycutShareDelegate? = nil
     
     var artworkRequest: Cancellable?
     
@@ -63,8 +68,6 @@ final class PlaycutCell: UITableViewCell {
             return
         }
         
-        let viewController = UIActivityViewController(activityItems: [self.artworkImageView.image ?? #imageLiteral(resourceName: "logo"), activity.activityTitle!, URL(string: "http://wxyc.org")!], applicationActivities: [])
-        
-        self.window?.rootViewController?.present(viewController, animated: true, completion: nil)
+        self.delegate?.presentShareSheet(for: activity, from: self.actionButton)
     }
 }
