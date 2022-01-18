@@ -38,6 +38,7 @@
 		34B0BF2E279730B200882035 /* IntentsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34B188BA21C1A099005ADD84 /* IntentsUI.framework */; };
 		34B1890821C1C8BA005ADD84 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1890721C1C8BA005ADD84 /* IntentHandler.swift */; };
 		34B1890C21C1C8BA005ADD84 /* iOS Intents Extension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		34B9AA95279637E500B9D088 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B9AA94279637E500B9D088 /* CarPlaySceneDelegate.swift */; };
 		34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */; };
 		34CEF92022417B1C00D120F7 /* PlaylistCellViewModelProducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91F22417B1C00D120F7 /* PlaylistCellViewModelProducer.swift */; };
 		34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF92122417C0000D120F7 /* PlaycutActivityItem.swift */; };
@@ -213,6 +214,7 @@
 		34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "iOS Intents Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		34B1890721C1C8BA005ADD84 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
 		34B1890921C1C8BA005ADD84 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		34B9AA94279637E500B9D088 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistDataSource.swift; sourceTree = "<group>"; };
 		34CEF91F22417B1C00D120F7 /* PlaylistCellViewModelProducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistCellViewModelProducer.swift; sourceTree = "<group>"; };
@@ -373,6 +375,7 @@
 				34FA49A82231BD9C001D6040 /* InkingButton.swift */,
 				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
+				34B9AA94279637E500B9D088 /* CarPlaySceneDelegate.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -711,7 +714,7 @@
 				TargetAttributes = {
 					341FBAB02041E7AB00CD2F36 = {
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
+						ProvisioningStyle = Manual;
 						SystemCapabilities = {
 							com.apple.Siri = {
 								enabled = 0;
@@ -870,6 +873,7 @@
 				34CEFA8E22419F5900D120F7 /* PlaylistCellViewModel.swift in Sources */,
 				34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */,
 				34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */,
+				34B9AA95279637E500B9D088 /* CarPlaySceneDelegate.swift in Sources */,
 				34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */,
 				3441BFE521D171300087D6AB /* SpinningAnimation.swift in Sources */,
 				341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */,
@@ -1045,7 +1049,7 @@
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
+				PROVISIONING_PROFILE_SPECIFIER = "WXYC Development";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

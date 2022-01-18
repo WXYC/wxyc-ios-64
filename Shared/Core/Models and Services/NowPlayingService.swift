@@ -31,10 +31,12 @@ public final class NowPlayingService {
                 return
             }
 
-            Task {
-                let artwork = await self.artworkService.getArtwork(for: playcut)
-                self.nowPlayingItem = NowPlayingItem(playcut: playcut, artwork: artwork)
-                self.nowPlayingObservable.send(NowPlayingItem(playcut: playcut, artwork: artwork))
+            DispatchQueue.main.async {
+                Task {
+                    let artwork = await self.artworkService.getArtwork(for: playcut)
+                    self.nowPlayingItem = NowPlayingItem(playcut: playcut, artwork: artwork)
+                    self.nowPlayingObservable.send(NowPlayingItem(playcut: playcut, artwork: artwork))
+                }
             }
         }
     }
