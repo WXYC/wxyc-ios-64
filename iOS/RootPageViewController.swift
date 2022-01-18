@@ -2,13 +2,28 @@ import UIKit
 import Core
 
 final class RootPageViewController: UIPageViewController {
-    let nowPlayingViewController = PlaylistViewController(style: .grouped)
-    let infoDetailViewController = InfoDetailViewController()
+    let nowPlayingViewController: PlaylistViewController
+    let infoDetailViewController: InfoDetailViewController
+    
+    required init() {
+        self.nowPlayingViewController = PlaylistViewController(style: .grouped)
+        self.infoDetailViewController = InfoDetailViewController(nibName: nil, bundle: nil)
+
+        super.init(
+            transitionStyle: .scroll,
+            navigationOrientation: .horizontal,
+            options: nil
+        )
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     var pages: [UIViewController] {
         return [
-            nowPlayingViewController,
-            infoDetailViewController
+            self.nowPlayingViewController,
+            self.infoDetailViewController
         ]
     }
     
@@ -36,11 +51,13 @@ final class RootPageViewController: UIPageViewController {
         self.dataSource = self
         
         self.setViewControllers(
-            [nowPlayingViewController],
+            [self.nowPlayingViewController],
             direction: .forward,
             animated: false,
             completion: nil
         )
+        
+        let _ = self.infoDetailViewController.view
     }
     
     // MARK - Customization
@@ -52,23 +69,23 @@ final class RootPageViewController: UIPageViewController {
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         
-        viewControllers?.forEach({ $0.viewWillLayoutSubviews() })
+        self.viewControllers?.forEach({ $0.viewWillLayoutSubviews() })
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        viewControllers?.forEach({ $0.viewDidLayoutSubviews() })
+        self.viewControllers?.forEach({ $0.viewDidLayoutSubviews() })
     }
 }
 
 extension RootPageViewController: UIPageViewControllerDataSource {
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
         switch viewController {
-        case nowPlayingViewController:
+        case self.nowPlayingViewController:
             return nil
-        case infoDetailViewController:
-            return nowPlayingViewController
+        case self.infoDetailViewController:
+            return self.nowPlayingViewController
         default:
             fatalError()
         }
@@ -76,9 +93,9 @@ extension RootPageViewController: UIPageViewControllerDataSource {
     
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
         switch viewController {
-        case nowPlayingViewController:
-            return infoDetailViewController
-        case infoDetailViewController:
+        case self.nowPlayingViewController:
+            return self.infoDetailViewController
+        case self.infoDetailViewController:
             return nil
         default:
             fatalError()
@@ -90,7 +107,15 @@ extension RootPageViewController: UIPageViewControllerDataSource {
     }
     
     func presentationIndex(for pageViewController: UIPageViewController) -> Int {
-        return 0
+        switch pageViewController.presentedViewController {
+        case self.nowPlayingViewController:
+            return 0
+        case self.infoDetailViewController:
+            return 1
+        default:
+            return 0
+        }
+//        return 0
     }
 }
 

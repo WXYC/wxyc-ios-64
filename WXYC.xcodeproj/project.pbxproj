@@ -10,7 +10,6 @@
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
-		341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */; };
 		341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 343400632030A1E700FC778F /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
 		343400752030A20D00FC778F /* TodayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434F4E82030A1C600FC778F /* TodayViewController.swift */; };
@@ -26,7 +25,6 @@
 		34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
 		34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */; };
 		345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345CF90B2307193A00865B56 /* RootPageViewController.swift */; };
-		345CF90E2307250A00865B56 /* iOSMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 345CF90D2307250A00865B56 /* iOSMain.storyboard */; };
 		348534A122287A65002AA181 /* PlayerHeader.xib in Resources */ = {isa = PBXBuildFile; fileRef = 348534A022287A65002AA181 /* PlayerHeader.xib */; };
 		348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A3222F4E0D002AA181 /* PlaycutCell.swift */; };
 		348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A5222F4E51002AA181 /* TalksetCell.swift */; };
@@ -36,6 +34,7 @@
 		34A067CE20393E42003D2919 /* PlaylistEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistEntry.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34A8A5EB278E4E4F0081BA8F /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
+		34B0BF2E279730B200882035 /* IntentsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34B188BA21C1A099005ADD84 /* IntentsUI.framework */; };
 		34B1890821C1C8BA005ADD84 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1890721C1C8BA005ADD84 /* IntentHandler.swift */; };
 		34B1890C21C1C8BA005ADD84 /* iOS Intents Extension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */; };
@@ -163,7 +162,6 @@
 		3434F4E82030A1C600FC778F /* TodayViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
 		3434F4EA2030A1C600FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TodayMain.storyboard; sourceTree = "<group>"; };
 		3434F4EB2030A1C600FC778F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+WXYC.swift"; sourceTree = "<group>"; };
 		3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InfoDetailViewController.swift; sourceTree = "<group>"; };
 		3434FBED2030A1CC00FC778F /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
@@ -197,7 +195,6 @@
 		34585ADF21C5AE9C009662FA /* PlaylistService.swift */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
 		34585AE221C71401009662FA /* URLSession+WebSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URLSession+WebSession.swift"; sourceTree = "<group>"; };
 		345CF90B2307193A00865B56 /* RootPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
-		345CF90D2307250A00865B56 /* iOSMain.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = iOSMain.storyboard; sourceTree = "<group>"; };
 		34765F622030F33E005C8321 /* CacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CacheTests.swift; path = "../WXYC Tests/CacheTests.swift"; sourceTree = "<group>"; };
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
 		348534A022287A65002AA181 /* PlayerHeader.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PlayerHeader.xib; sourceTree = "<group>"; };
@@ -240,6 +237,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				34B0BF2E279730B200882035 /* IntentsUI.framework in Frameworks */,
 				34EB12F9278E4BD000257589 /* UI.framework in Frameworks */,
 				34EB12ED278E4AE600257589 /* Core.framework in Frameworks */,
 			);
@@ -367,13 +365,11 @@
 				3434FBED2030A1CC00FC778F /* Images.xcassets */,
 				341FBACD2041E7AC00CD2F36 /* iOS Info.plist */,
 				3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */,
-				3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */,
 				3434FBF12030A1CC00FC778F /* PlaybackButton.swift */,
 				348534A2222F4DF4002AA181 /* Playlist */,
 				3441BFE421D171300087D6AB /* SpinningAnimation.swift */,
 				34FA49A82231BD9C001D6040 /* InkingButton.swift */,
 				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
-				345CF90D2307250A00865B56 /* iOSMain.storyboard */,
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
 			);
 			path = iOS;
@@ -791,8 +787,6 @@
 			files = (
 				3489DB40278E174400264142 /* Images.xcassets in Resources */,
 				34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */,
-				341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */,
-				345CF90E2307250A00865B56 /* iOSMain.storyboard in Resources */,
 				3489DB3D278E137400264142 /* LaunchScreen.storyboard in Resources */,
 				348534A122287A65002AA181 /* PlayerHeader.xib in Resources */,
 				34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */,

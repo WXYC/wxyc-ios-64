@@ -48,6 +48,7 @@
 	<array>
 		<string>NSUserActivityTypeBrowsingWeb</string>
 		<string>INPlayMediaIntent</string>
+		<string>INSearchForMediaIntent</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
@@ -56,8 +57,6 @@
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>iOSMain</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
