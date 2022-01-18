@@ -337,6 +337,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		3434F4E72030A1C600FC778F /* Today Widget */ = {
+			isa = PBXGroup;
+			children = (
+				3434F4E82030A1C600FC778F /* TodayViewController.swift */,
+				3434F4E92030A1C600FC778F /* TodayMain.storyboard */,
+				3434F4EB2030A1C600FC778F /* Info.plist */,
+			);
+			path = "Today Widget";
+			sourceTree = "<group>";
+		};
 		3434FBE22030A1CC00FC778F /* iOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -350,6 +360,7 @@
 				34FA49A82231BD9C001D6040 /* InkingButton.swift */,
 				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
+				23A7C7EF296A1CFF00135E7F /* CarPlay.swift */,
 				34B9AA94279637E500B9D088 /* CarPlaySceneDelegate.swift */,
 				348A6610285679C400DC428E /* CarPlayView.swift */,
 				23A7C7EF296A1CFF00135E7F /* CarPlay.swift */,
@@ -643,7 +654,7 @@
 				TargetAttributes = {
 					341FBAB02041E7AB00CD2F36 = {
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
+						ProvisioningStyle = Manual;
 						SystemCapabilities = {
 							com.apple.Siri = {
 								enabled = 0;
