@@ -5,6 +5,7 @@ import Intents
 import UI
 import MediaPlayer
 import WidgetKit
+import CarPlay
 
 @UIApplicationMain
 @MainActor
@@ -47,4 +48,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return await SiriService.shared.handle(intent: intent)
     }
 #endif
+
+extension AppDelegate: CPTemplateApplicationSceneDelegate {
+    static var interfaceController: CPInterfaceController?
+    
+    // CarPlay connected
+    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didConnect interfaceController: CPInterfaceController) {
+        Self.interfaceController = interfaceController
+//        let listTemplate = CPNowPlayingTemplate.shared
+        Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
+            print("success: \(success), error: \(error)")
+        }
+        
+    }
+    // CarPlay disconnected
+    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+        Self.interfaceController = nil
+    }
+    
+    
+    
+//    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didDisconnect interfaceController: CPInterfaceController, from window: CPWindow)
+
 }
