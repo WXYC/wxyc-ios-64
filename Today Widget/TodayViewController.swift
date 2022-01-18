@@ -12,7 +12,7 @@ import Combine
 import UI
 import Core
 
-class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingServiceObserver {
+class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingObserver {
     @IBOutlet weak var songLabel: UILabel!
     @IBOutlet weak var artistLabel: UILabel!
     @IBOutlet weak var albumImageView: UIImageView!
@@ -26,7 +26,7 @@ class TodayViewController: UIViewController, NowPlayingPresentable, NowPlayingSe
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.nowPlayingObservation = self.nowPlayingService.observe(with: self)
+//        self.nowPlayingObservation = self.nowPlayingService.observe(with: self)
 
         if let context = self.extensionContext {
             // TODO: 🐛🔨. I'm commenting this out for now because there's a sizing issue in the expanded mode.

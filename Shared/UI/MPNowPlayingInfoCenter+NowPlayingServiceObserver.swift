@@ -10,21 +10,28 @@ import UIKit
 import MediaPlayer
 import Core
 
-extension MPNowPlayingInfoCenter: NowPlayingServiceObserver {
-    public func update(playcut: Playcut?) {
+extension MPNowPlayingInfoCenter: NowPlayingObserver {
+    public func update(nowPlayingItem: NowPlayingItem?) {
+        Task {
+            await self.update(playcut: nowPlayingItem?.playcut)
+            await self.update(artwork: nowPlayingItem?.artwork)
+        }
+    }
+
+    @MainActor func update(playcut: Playcut?) {
         if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
         
         self.nowPlayingInfo?.update(with: playcut.playcutMediaItems)
     }
     
-    public func update(artwork: UIImage?) {
+    @MainActor func update(artwork: UIImage?) {
         if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
         
         self.nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork.mediaItemArtwork
     }
 }
 
-extension Optional where Wrapped == UIImage {
+@MainActor extension Optional where Wrapped == UIImage {
     var mediaItemArtwork: MPMediaItemArtwork {
         let screenWidth = UIScreen.main.bounds.size.width
         let boundsSize = CGSize(width: screenWidth, height: screenWidth)
@@ -58,26 +65,18 @@ extension Optional where Wrapped == Playcut {
 }
 
 extension UIImage {
-    static var defaultNowPlayingInfoCenterImage: UIImage {
-        let makeImage: () -> UIImage = {
-            let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
-            let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
-            logoView.contentMode = .scaleAspectFit
-            
-            let width = UIScreen.main.bounds.width
-            backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: width)
-            logoView.frame = backgroundView.frame
-            
-            backgroundView.addSubview(logoView)
-            
-            return backgroundView.snapshot()!
-        }
+    @MainActor static var defaultNowPlayingInfoCenterImage: UIImage {
+        let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
+        let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
+        logoView.contentMode = .scaleAspectFit
         
-        if DispatchQueue.main == OperationQueue.current?.underlyingQueue {
-            return makeImage()
-        } else {
-            return DispatchQueue.main.sync(execute: makeImage)
-        }
+        let width = UIScreen.main.bounds.width
+        backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: width)
+        logoView.frame = backgroundView.frame
+        
+        backgroundView.addSubview(logoView)
+        
+        return backgroundView.snapshot()!
     }
 }
 

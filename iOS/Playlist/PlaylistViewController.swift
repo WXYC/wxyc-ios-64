@@ -10,7 +10,7 @@ import UIKit
 import Combine
 import Core
 
-class PlaylistViewController: UITableViewController {
+class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared
     var reuseIdentifiers: Set<String> = []
@@ -38,6 +38,14 @@ class PlaylistViewController: UITableViewController {
     func update(viewModels: [PlaylistCellViewModel]) {
         self.viewModels = viewModels
         self.tableView.reloadData()
+    }
+    
+    // MARK: PlaycutShareDelegate
+    
+    func presentShareSheet(for activity: PlaycutActivityItem, from view: UIView) {
+        let activityViewController = UIActivityViewController(activityItems: [activity.image ?? #imageLiteral(resourceName: "logo"), activity.activityTitle!, URL(string: "http://wxyc.org")!], applicationActivities: [])
+        activityViewController.popoverPresentationController?.sourceView = view
+        self.present(activityViewController, animated: true)
     }
     
     // MARK: UITableViewController
@@ -69,6 +77,10 @@ class PlaylistViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: viewModel.reuseIdentifier, for: indexPath)
         viewModel.configure(cell)
         cell.backgroundColor = .clear
+        
+        if let playcutCell = cell as? PlaycutCell {
+            playcutCell.delegate = self
+        }
         
         return cell
     }
