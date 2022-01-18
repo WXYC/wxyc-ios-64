@@ -17,8 +17,19 @@ public protocol NowPlayingPresentable: AnyObject {
     var userActivity: NSUserActivity? { get set }
 }
 
-public extension NowPlayingPresentable where Self: NowPlayingServiceObserver {
-    func update(playcut: Playcut?) {
+public protocol NowPlayingObserver {
+    func update(nowPlayingItem: NowPlayingItem?)
+}
+
+public extension NowPlayingPresentable where Self: NowPlayingObserver {
+    func update(nowPlayingItem: NowPlayingItem?) {
+        Task {
+            await self.update(playcut: nowPlayingItem?.playcut)
+            await self.update(artwork: nowPlayingItem?.artwork)
+        }
+    }
+    
+    @MainActor func update(playcut: Playcut?) {
         self.songLabel.text = playcut.songTitle
         self.artistLabel.text = playcut.artistName
         
@@ -26,7 +37,7 @@ public extension NowPlayingPresentable where Self: NowPlayingServiceObserver {
         self.userActivity?.becomeCurrent()
     }
     
-    func update(artwork: UIImage?) {
+    @MainActor func update(artwork: UIImage?) {
         UIView.transition(
             with: self.albumImageView,
             duration: 0.25,

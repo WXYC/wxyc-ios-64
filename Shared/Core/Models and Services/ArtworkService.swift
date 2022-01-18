@@ -24,16 +24,16 @@ public final actor ArtworkService {
         self.fetchers = fetchers
     }
 
-    public func getArtwork(for playcut: Playcut) async throws -> UIImage {
+    public func getArtwork(for playcut: Playcut) async -> UIImage? {
         for fetcher in self.fetchers {
             do {
                 return try await fetcher.fetchArtwork(for: playcut)
             } catch {
-                print("No artwork found for \(playcut) using fetcher \(fetcher)")
+                print(">>> No artwork found for \(playcut) using fetcher \(fetcher)")
             }
         }
         
-        throw ServiceErrors.noResults
+        return nil
     }
 }
 

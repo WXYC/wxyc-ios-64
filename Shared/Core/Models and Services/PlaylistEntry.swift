@@ -11,6 +11,25 @@ public protocol PlaylistEntry: Codable {
     var chronOrderID: Int { get }
 }
 
+public extension PlaylistEntry {
+    var debugDescription: String {
+        let encoder = JSONEncoder()
+        let data = try! encoder.encode(self)
+        
+        let decoder = JSONDecoder()
+        let dictionary = try! decoder.decode(String.self, from: data)
+        return dictionary.debugDescription
+    }
+    
+    static func ==(lhs: PlaylistEntry, rhs: PlaylistEntry) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    static func !=(lhs: PlaylistEntry, rhs: PlaylistEntry) -> Bool {
+        !(lhs.id == rhs.id)
+    }
+}
+
 public struct Breakpoint: PlaylistEntry {
     public let id: Int
     public let hour: Int
@@ -63,6 +82,17 @@ public struct Playlist: Codable {
     let talksets: [Talkset]
     
     static var empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
+    
+    static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
+        guard lhs.entries.count == rhs.entries.count else {
+            return false
+        }
+        return zip(lhs.entries.map(\.id), rhs.entries.map(\.id)).allSatisfy(==)
+    }
+
+    static func !=(lhs: Playlist, rhs: Playlist) -> Bool {
+        !(lhs == rhs)
+    }
 }
 
 public extension Playlist {

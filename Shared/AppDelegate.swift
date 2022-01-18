@@ -3,6 +3,7 @@ import Combine
 import Core
 import UI
 import MediaPlayer
+import WidgetKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -24,7 +25,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             self.donateSiriIntentIfNeeded()
         #endif
         
-        self.nowPlayingObservation = NowPlayingService.shared.observe(with: MPNowPlayingInfoCenter.default())
+        self.nowPlayingObservation = NowPlayingService.shared.observe { nowPlayingItem in
+            MPNowPlayingInfoCenter.default().update(nowPlayingItem: nowPlayingItem)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        
+        WidgetCenter.shared.getCurrentConfigurations { result in
+            guard case let .success(configurations) = result else {
+                return
+            }
+            
+            for configuration in configurations {
+                print(configuration)
+            }
+            
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         
         return true
     }

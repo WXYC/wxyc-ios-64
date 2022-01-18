@@ -19,6 +19,7 @@ final class PlaycutActivityItem: UIActivity {
   
   init(playcut: Playcut) {
     self.playcut = playcut
+      self.image = #imageLiteral(resourceName: "logo.pdf")
   }
   
   override class var activityCategory: UIActivity.Category {
