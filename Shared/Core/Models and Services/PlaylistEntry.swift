@@ -2,7 +2,8 @@ import Foundation
 
 extension URL {
     static let WXYCPlaylist = URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=50")!
-    static let WXYCStream = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc.mp3")!
+    static let WXYCStream128kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc.mp3")!
+    static let WXYCStream320kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 }
 
 public protocol PlaylistEntry: Codable {
