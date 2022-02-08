@@ -12,7 +12,7 @@ import AVFoundation
 internal final class RadioPlayer {
     let streamURL: URL
     
-    init(streamURL: URL = URL.WXYCStream) {
+    init(streamURL: URL = .WXYCStream320kMP3) {
         self.streamURL = streamURL
     }
     
