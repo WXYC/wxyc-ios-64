@@ -43,7 +43,7 @@ extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     private func stationFeedbackMailController() -> MFMailComposeViewController {
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = self
-        mailComposerVC.setToRecipients(["dvd@wxyc.org"])
+        mailComposerVC.setToRecipients(["feedback@wxyc.org"])
         mailComposerVC.setSubject("Feedback on the WXYC app")
         return mailComposerVC
     }
