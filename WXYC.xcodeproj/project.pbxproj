@@ -25,6 +25,7 @@
 		34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
 		34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585ADD21C5A3FD009662FA /* PlaylistViewController.swift */; };
 		345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345CF90B2307193A00865B56 /* RootPageViewController.swift */; };
+		34617E4E28562A5600FD418C /* SiriSerevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34617E4D28562A5600FD418C /* SiriSerevice.swift */; };
 		348534A122287A65002AA181 /* PlayerHeader.xib in Resources */ = {isa = PBXBuildFile; fileRef = 348534A022287A65002AA181 /* PlayerHeader.xib */; };
 		348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A3222F4E0D002AA181 /* PlaycutCell.swift */; };
 		348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A5222F4E51002AA181 /* TalksetCell.swift */; };
@@ -195,6 +196,7 @@
 		34585ADF21C5AE9C009662FA /* PlaylistService.swift */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = sourcecode.swift; path = PlaylistService.swift; sourceTree = "<group>"; };
 		34585AE221C71401009662FA /* URLSession+WebSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URLSession+WebSession.swift"; sourceTree = "<group>"; };
 		345CF90B2307193A00865B56 /* RootPageViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPageViewController.swift; sourceTree = "<group>"; };
+		34617E4D28562A5600FD418C /* SiriSerevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriSerevice.swift; sourceTree = "<group>"; };
 		34765F622030F33E005C8321 /* CacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CacheTests.swift; path = "../WXYC Tests/CacheTests.swift"; sourceTree = "<group>"; };
 		348369202030F88A0029E28E /* NowPlayingServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingServiceTests.swift; sourceTree = "<group>"; };
 		348534A022287A65002AA181 /* PlayerHeader.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PlayerHeader.xib; sourceTree = "<group>"; };
@@ -443,6 +445,7 @@
 				34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */,
 				34585AE221C71401009662FA /* URLSession+WebSession.swift */,
 				3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */,
+				34617E4D28562A5600FD418C /* SiriSerevice.swift */,
 			);
 			path = "Models and Services";
 			sourceTree = "<group>";
@@ -917,6 +920,7 @@
 				34EB12DC278E4A4000257589 /* Discogs.swift in Sources */,
 				34EB12DD278E4A4000257589 /* iTunes.swift in Sources */,
 				34EB12DE278E4A4000257589 /* LastFM.swift in Sources */,
+				34617E4E28562A5600FD418C /* SiriSerevice.swift in Sources */,
 				34EB12DF278E4A4000257589 /* NowPlayingService.swift in Sources */,
 				34EB12E0278E4A4000257589 /* PlaylistEntry.swift in Sources */,
 				34EB12E1278E4A4000257589 /* PlaylistService.swift in Sources */,
