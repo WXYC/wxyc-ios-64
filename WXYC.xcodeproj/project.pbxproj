@@ -10,16 +10,11 @@
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
-		341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 343400632030A1E700FC778F /* Today Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		343400662030A1E700FC778F /* NotificationCenter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 343400652030A1E700FC778F /* NotificationCenter.framework */; };
-		343400752030A20D00FC778F /* TodayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434F4E82030A1C600FC778F /* TodayViewController.swift */; };
-		343400762030A21200FC778F /* TodayMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434F4E92030A1C600FC778F /* TodayMain.storyboard */; };
 		343400D82030D6C800FC778F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FC072030A1CC00FC778F /* Assets.xcassets */; };
 		343400D92030D6D200FC778F /* TVMain.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3434FC082030A1CC00FC778F /* TVMain.storyboard */; };
 		343400DA2030D6D600FC778F /* TVViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC0A2030A1CC00FC778F /* TVViewController.swift */; };
 		343400EF2030E15000FC778F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
 		343400F12030E45A00FC778F /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
-		343D5B35278E4EC600580BA4 /* UI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12F3278E4BD000257589 /* UI.framework */; };
 		3441BFE321D145F40087D6AB /* PlayerHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3441BFE221D145F40087D6AB /* PlayerHeader.swift */; };
 		3441BFE521D171300087D6AB /* SpinningAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3441BFE421D171300087D6AB /* SpinningAnimation.swift */; };
 		34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34765F622030F33E005C8321 /* CacheTests.swift */; };
@@ -81,23 +76,10 @@
 		34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49AA2236ED93001D6040 /* PlaycutCell.xib */; };
 		34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49AE2238766A001D6040 /* BreakpointCell.xib */; };
 		34FA49B1223876F0001D6040 /* TalksetCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49B0223876F0001D6040 /* TalksetCell.xib */; };
+		34FAC40D296E466B00AC3166 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FAC40C296E466B00AC3166 /* Intents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		341FBAB22041E7AB00CD2F36 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 343400622030A1E700FC778F;
-			remoteInfo = "Today Widget";
-		};
-		34B1890A21C1C8BA005ADD84 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 34B1890421C1C8BA005ADD84;
-			remoteInfo = "iOS Intents Extension";
-		};
 		34EB12D3278E4A1800257589 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
@@ -135,9 +117,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				34B1890C21C1C8BA005ADD84 /* iOS Intents Extension.appex in Embed App Extensions */,
 				34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed App Extensions */,
-				341FBAC82041E7AB00CD2F36 /* Today Widget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -162,9 +142,6 @@
 		343400632030A1E700FC778F /* Today Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Today Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		3434F4E82030A1C600FC778F /* TodayViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TodayViewController.swift; sourceTree = "<group>"; };
-		3434F4EA2030A1C600FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TodayMain.storyboard; sourceTree = "<group>"; };
-		3434F4EB2030A1C600FC778F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3434FBE72030A1CC00FC778F /* UIView+WXYC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "UIView+WXYC.swift"; sourceTree = "<group>"; };
 		3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InfoDetailViewController.swift; sourceTree = "<group>"; };
 		3434FBED2030A1CC00FC778F /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
@@ -235,6 +212,7 @@
 		34FA49AA2236ED93001D6040 /* PlaycutCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PlaycutCell.xib; sourceTree = "<group>"; };
 		34FA49AE2238766A001D6040 /* BreakpointCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = BreakpointCell.xib; sourceTree = "<group>"; };
 		34FA49B0223876F0001D6040 /* TalksetCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = TalksetCell.xib; sourceTree = "<group>"; };
+		34FAC40C296E466B00AC3166 /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
 		AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WXYC TV.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -246,6 +224,7 @@
 				34B0BF2E279730B200882035 /* IntentsUI.framework in Frameworks */,
 				34EB12F9278E4BD000257589 /* UI.framework in Frameworks */,
 				34EB12ED278E4AE600257589 /* Core.framework in Frameworks */,
+				23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -266,13 +245,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		34425DB621B8BAE100C8DD5F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		34B1890221C1C8BA005ADD84 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -325,11 +297,9 @@
 				AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */,
 				3434FBF32030A1CC00FC778F /* Shared */,
 				3434FBE22030A1CC00FC778F /* iOS */,
-				3434F4E72030A1C600FC778F /* Today Widget */,
 				3434FC062030A1CC00FC778F /* tvOS */,
 				344C0D88204B5A1C008FCB05 /* WXYC Tests */,
 				34425DBA21B8BAE100C8DD5F /* Core Tests */,
-				34B1890621C1C8BA005ADD84 /* iOS Intents Extension */,
 				34EB12D0278E4A1800257589 /* Core */,
 				34EB12F4278E4BD000257589 /* UI */,
 				34F667632790C2030095A547 /* NowPlayingWidget */,
@@ -343,26 +313,14 @@
 		3434F4C52030A1A700FC778F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				343400632030A1E700FC778F /* Today Widget.appex */,
 				343400BB2030D62300FC778F /* WXYC TV.app */,
 				341FBACC2041E7AB00CD2F36 /* WXYC.app */,
 				34425DB921B8BAE100C8DD5F /* Core Tests.xctest */,
-				34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */,
 				34EB12CF278E4A1800257589 /* Core.framework */,
 				34EB12F3278E4BD000257589 /* UI.framework */,
 				34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		3434F4E72030A1C600FC778F /* Today Widget */ = {
-			isa = PBXGroup;
-			children = (
-				3434F4E82030A1C600FC778F /* TodayViewController.swift */,
-				3434F4E92030A1C600FC778F /* TodayMain.storyboard */,
-				3434F4EB2030A1C600FC778F /* Info.plist */,
-			);
-			path = "Today Widget";
 			sourceTree = "<group>";
 		};
 		3434FBE22030A1CC00FC778F /* iOS */ = {
@@ -379,6 +337,8 @@
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
 				34B9AA94279637E500B9D088 /* CarPlaySceneDelegate.swift */,
 				348A6610285679C400DC428E /* CarPlayView.swift */,
+				23A7C7EF296A1CFF00135E7F /* CarPlay.swift */,
+				34FAC40C296E466B00AC3166 /* Intents.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -487,15 +447,6 @@
 			path = Playlist;
 			sourceTree = "<group>";
 		};
-		34B1890621C1C8BA005ADD84 /* iOS Intents Extension */ = {
-			isa = PBXGroup;
-			children = (
-				34B1890721C1C8BA005ADD84 /* IntentHandler.swift */,
-				34B1890921C1C8BA005ADD84 /* Info.plist */,
-			);
-			path = "iOS Intents Extension";
-			sourceTree = "<group>";
-		};
 		34CEF91E22417AB900D120F7 /* Playlist Cells */ = {
 			isa = PBXGroup;
 			children = (
@@ -572,8 +523,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				341FBAB12041E7AB00CD2F36 /* PBXTargetDependency */,
-				34B1890B21C1C8BA005ADD84 /* PBXTargetDependency */,
 				34EB12D4278E4A1800257589 /* PBXTargetDependency */,
 				34EB12F8278E4BD000257589 /* PBXTargetDependency */,
 				34F6676A2790C2040095A547 /* PBXTargetDependency */,
@@ -582,23 +531,6 @@
 			productName = WXYC;
 			productReference = 341FBACC2041E7AB00CD2F36 /* WXYC.app */;
 			productType = "com.apple.product-type.application";
-		};
-		343400622030A1E700FC778F /* Today Widget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 343400712030A1E700FC778F /* Build configuration list for PBXNativeTarget "Today Widget" */;
-			buildPhases = (
-				3434005F2030A1E700FC778F /* Sources */,
-				343400602030A1E700FC778F /* Frameworks */,
-				343400612030A1E700FC778F /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "Today Widget";
-			productName = "Today Widget";
-			productReference = 343400632030A1E700FC778F /* Today Widget.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 		343400BA2030D62300FC778F /* WXYC TV */ = {
 			isa = PBXNativeTarget;
@@ -633,23 +565,6 @@
 			productName = "Core Tests";
 			productReference = 34425DB921B8BAE100C8DD5F /* Core Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		34B1890421C1C8BA005ADD84 /* iOS Intents Extension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 34B1890F21C1C8BA005ADD84 /* Build configuration list for PBXNativeTarget "iOS Intents Extension" */;
-			buildPhases = (
-				34B1890121C1C8BA005ADD84 /* Sources */,
-				34B1890221C1C8BA005ADD84 /* Frameworks */,
-				34B1890321C1C8BA005ADD84 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "iOS Intents Extension";
-			productName = "iOS Intents Extension";
-			productReference = 34B1890521C1C8BA005ADD84 /* iOS Intents Extension.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 		34EB12CE278E4A1800257589 /* Core */ = {
 			isa = PBXNativeTarget;
@@ -778,10 +693,8 @@
 			projectRoot = "";
 			targets = (
 				341FBAB02041E7AB00CD2F36 /* WXYC */,
-				343400622030A1E700FC778F /* Today Widget */,
 				343400BA2030D62300FC778F /* WXYC TV */,
 				34425DB821B8BAE100C8DD5F /* Core Tests */,
-				34B1890421C1C8BA005ADD84 /* iOS Intents Extension */,
 				34EB12CE278E4A1800257589 /* Core */,
 				34EB12F2278E4BD000257589 /* UI */,
 				34F6675F2790C2030095A547 /* NowPlayingWidgetExtension */,
@@ -803,15 +716,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		343400612030A1E700FC778F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				343400762030A21200FC778F /* TodayMain.storyboard in Resources */,
-				34A067D120394267003D2919 /* Images.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		343400B92030D62300FC778F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -823,13 +727,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		34425DB721B8BAE100C8DD5F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		34B1890321C1C8BA005ADD84 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -878,20 +775,12 @@
 				34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */,
 				34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */,
 				34B9AA95279637E500B9D088 /* CarPlaySceneDelegate.swift in Sources */,
+				34FAC40D296E466B00AC3166 /* Intents.swift in Sources */,
 				34585ADE21C5A3FD009662FA /* PlaylistViewController.swift in Sources */,
 				3441BFE521D171300087D6AB /* SpinningAnimation.swift in Sources */,
 				341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */,
 				341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */,
 				3441BFE321D145F40087D6AB /* PlayerHeader.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		3434005F2030A1E700FC778F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				343400752030A20D00FC778F /* TodayViewController.swift in Sources */,
-				34A067CE20393E42003D2919 /* PlaylistEntry.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -909,14 +798,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				34425DC521B8BB3900C8DD5F /* CacheTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		34B1890121C1C8BA005ADD84 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				34B1890821C1C8BA005ADD84 /* IntentHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -967,16 +848,6 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		341FBAB12041E7AB00CD2F36 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 343400622030A1E700FC778F /* Today Widget */;
-			targetProxy = 341FBAB22041E7AB00CD2F36 /* PBXContainerItemProxy */;
-		};
-		34B1890B21C1C8BA005ADD84 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 34B1890421C1C8BA005ADD84 /* iOS Intents Extension */;
-			targetProxy = 34B1890A21C1C8BA005ADD84 /* PBXContainerItemProxy */;
-		};
 		34EB12D4278E4A1800257589 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 34EB12CE278E4A1800257589 /* Core */;
@@ -1000,14 +871,6 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
-		3434F4E92030A1C600FC778F /* TodayMain.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				3434F4EA2030A1C600FC778F /* Base */,
-			);
-			name = TodayMain.storyboard;
-			sourceTree = "<group>";
-		};
 		3434FC082030A1CC00FC778F /* TVMain.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -1066,6 +929,7 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/Today Widget/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1488,15 +1352,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		343400712030A1E700FC778F /* Build configuration list for PBXNativeTarget "Today Widget" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				343400722030A1E700FC778F /* Debug */,
-				343400732030A1E700FC778F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		343400D22030D62600FC778F /* Build configuration list for PBXNativeTarget "WXYC TV" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1520,15 +1375,6 @@
 			buildConfigurations = (
 				34425DC221B8BAE100C8DD5F /* Debug */,
 				34425DC321B8BAE100C8DD5F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		34B1890F21C1C8BA005ADD84 /* Build configuration list for PBXNativeTarget "iOS Intents Extension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				34B1890D21C1C8BA005ADD84 /* Debug */,
-				34B1890E21C1C8BA005ADD84 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
