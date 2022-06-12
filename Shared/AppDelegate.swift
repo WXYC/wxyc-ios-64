@@ -5,6 +5,7 @@ import UI
 import MediaPlayer
 import WidgetKit
 
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
