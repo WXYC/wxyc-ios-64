@@ -32,6 +32,7 @@
 		348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A7222F4E6D002AA181 /* BreakpointCell.swift */; };
 		3489DB3D278E137400264142 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3489DB3C278E137400264142 /* LaunchScreen.storyboard */; };
 		3489DB40278E174400264142 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
+		348A6611285679C400DC428E /* CarPlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348A6610285679C400DC428E /* CarPlayView.swift */; };
 		34A067CE20393E42003D2919 /* PlaylistEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistEntry.swift */; };
 		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34A8A5EB278E4E4F0081BA8F /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
@@ -205,6 +206,7 @@
 		348534A5222F4E51002AA181 /* TalksetCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalksetCell.swift; sourceTree = "<group>"; };
 		348534A7222F4E6D002AA181 /* BreakpointCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakpointCell.swift; sourceTree = "<group>"; };
 		3489DB3C278E137400264142 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		348A6610285679C400DC428E /* CarPlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayView.swift; sourceTree = "<group>"; };
 		34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTypes.swift; sourceTree = "<group>"; };
 		34A8A5DB278E4DEF0081BA8F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		34A8A5DD278E4DEF0081BA8F /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -376,6 +378,7 @@
 				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
 				34B9AA94279637E500B9D088 /* CarPlaySceneDelegate.swift */,
+				348A6610285679C400DC428E /* CarPlayView.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -867,6 +870,7 @@
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
 				345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */,
 				34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */,
+				348A6611285679C400DC428E /* CarPlayView.swift in Sources */,
 				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
 				348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */,
 				348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */,

@@ -64,6 +64,17 @@ extension Optional where Wrapped == Playcut {
     }
 }
 
+extension NowPlayingItem {
+    public func toUserInfo() -> [String:Any?] {
+        return [
+            MPMediaItemPropertyArtist : playcut.artistName,
+            MPMediaItemPropertyTitle: playcut.songTitle,
+            MPMediaItemPropertyAlbumTitle: playcut.releaseTitle,
+            MPMediaItemPropertyArtwork: artwork,
+        ]
+    }
+}
+
 extension UIImage {
     @MainActor static var defaultNowPlayingInfoCenterImage: UIImage {
         let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))

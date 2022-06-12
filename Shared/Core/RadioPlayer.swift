@@ -43,6 +43,7 @@ internal final class RadioPlayer {
         let asset = AVAsset(url: self.streamURL)
         let playerItem = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: playerItem)
+        
     }
 }
 
