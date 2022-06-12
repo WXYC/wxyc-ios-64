@@ -21,11 +21,13 @@ final class RootPageViewController: UIPageViewController {
     }
     
     var pages: [UIViewController] {
-        return [
-            self.nowPlayingViewController,
-            self.infoDetailViewController
+        [
+            nowPlayingViewController,
+            infoDetailViewController
         ]
     }
+    
+    override var transitionStyle: TransitionStyle { .scroll }
     
     // MARK: Life cycle
     
@@ -40,6 +42,7 @@ final class RootPageViewController: UIPageViewController {
         let backgroundImageView = UIImageView(image: #imageLiteral(resourceName: "background"))
         backgroundImageView.translatesAutoresizingMaskIntoConstraints = false
         view.insertSubview(backgroundImageView, at: 0)
+        view.sendSubviewToBack(backgroundImageView)
         
         view.leadingAnchor.constraint(equalTo: backgroundImageView.leadingAnchor).isActive = true
         view.trailingAnchor.constraint(equalTo: backgroundImageView.trailingAnchor).isActive = true
@@ -69,13 +72,13 @@ final class RootPageViewController: UIPageViewController {
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         
-        self.viewControllers?.forEach({ $0.viewWillLayoutSubviews() })
+        viewControllers?.forEach { $0.viewWillLayoutSubviews() }
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
-        self.viewControllers?.forEach({ $0.viewDidLayoutSubviews() })
+        viewControllers?.forEach { $0.viewDidLayoutSubviews() }
     }
 }
 

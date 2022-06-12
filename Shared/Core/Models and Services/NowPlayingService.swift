@@ -15,16 +15,17 @@ public struct NowPlayingItem {
     public var artwork: UIImage?
 }
 
-public final class NowPlayingService {
+public final class NowPlayingService: ObservableObject {
     public static let shared = NowPlayingService()
     
+    // TODO: remove this observe stuff
     public let nowPlayingObservable = PassthroughSubject<NowPlayingItem, Never>()
     
     public func observe(_ sink: @escaping (NowPlayingItem) -> Void)  -> AnyCancellable {
         return self.nowPlayingObservable.sink(receiveValue: sink)
     }
     
-    private var nowPlayingItem: NowPlayingItem? = nil
+    @Published public var nowPlayingItem: NowPlayingItem? = nil
     private var playcut: Playcut? = nil {
         didSet {
             guard oldValue?.id != self.playcut?.id, let playcut = self.playcut else {
@@ -43,6 +44,7 @@ public final class NowPlayingService {
     
     private let playlistService: PlaylistService
     private let artworkService: ArtworkService
+    private var timer: Timer?
     
     private var playcutObservation: Cancellable? = nil
 
