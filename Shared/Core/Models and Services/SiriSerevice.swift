@@ -10,16 +10,6 @@ import Foundation
 import Intents
 import MediaPlayer
 
-
-//struct StartMeditationIntent: AppIntent {
-//    static let title: LocalizedStringResource = "Start Meditation Session"
-//
-//    func perform() async throws -> some IntentResult & ProvidesDialog {
-////        await MeditationService.startDefaultSession()
-//        return .result(dialog: "Okay, starting a meditation session.")
-//    }
-//}
-
 public actor SiriService {
     enum Error: Swift.Error {
         case unknownIntentIdentifier
