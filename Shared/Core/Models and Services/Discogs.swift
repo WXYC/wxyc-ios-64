@@ -32,18 +32,19 @@ extension RemoteArtworkFetcher.Configuration {
             URLQueryItem(name: "secret", value: secret),
         ]
         
-        print(components.url!)
-        
         return components.url!
     }, extractURL: { data in
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: data)
+        let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
         
-        guard let albumURL = searchResponse.results.first?.coverImage else {
-            throw ServiceErrors.noResults
+        for url in imageURLs {
+            if !url.lastPathComponent.hasSuffix("spacer.gif") {
+                return url
+            }
         }
         
-        return albumURL
+        throw ServiceErrors.noResults
     })
 }
