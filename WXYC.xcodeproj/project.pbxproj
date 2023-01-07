@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
+		23A7C7EE296A14FC00135E7F /* iOS Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 23A7C7ED296A14FC00135E7F /* iOS Info.plist */; };
+		23A7C7F0296A1CFF00135E7F /* CarPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A7C7EF296A1CFF00135E7F /* CarPlay.swift */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
@@ -155,8 +158,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		23A7C7EB296A07BE00135E7F /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
+		23A7C7ED296A14FC00135E7F /* iOS Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "iOS Info.plist"; sourceTree = "<group>"; };
+		23A7C7EF296A1CFF00135E7F /* CarPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlay.swift; sourceTree = "<group>"; };
 		341FBACC2041E7AB00CD2F36 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		341FBACD2041E7AC00CD2F36 /* iOS Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "iOS Info.plist"; path = "/Users/jakebromberg/source/personal/wxyc-ios-64/iOS/iOS Info.plist"; sourceTree = "<absolute>"; };
 		343400632030A1E700FC778F /* Today Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Today Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -242,6 +247,7 @@
 			files = (
 				34EB12F9278E4BD000257589 /* UI.framework in Frameworks */,
 				34EB12ED278E4AE600257589 /* Core.framework in Frameworks */,
+				23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -305,6 +311,7 @@
 		343400642030A1E700FC778F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				23A7C7EB296A07BE00135E7F /* CarPlay.framework */,
 				34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */,
 				343400652030A1E700FC778F /* NotificationCenter.framework */,
 				34B188BA21C1A099005ADD84 /* IntentsUI.framework */,
@@ -365,7 +372,7 @@
 			isa = PBXGroup;
 			children = (
 				3434FBED2030A1CC00FC778F /* Images.xcassets */,
-				341FBACD2041E7AC00CD2F36 /* iOS Info.plist */,
+				23A7C7ED296A14FC00135E7F /* iOS Info.plist */,
 				3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */,
 				3434FBE42030A1CC00FC778F /* InfoDetailViewController.xib */,
 				3434FBF12030A1CC00FC778F /* PlaybackButton.swift */,
@@ -375,6 +382,7 @@
 				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
 				345CF90D2307250A00865B56 /* iOSMain.storyboard */,
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
+				23A7C7EF296A1CFF00135E7F /* CarPlay.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -722,7 +730,7 @@
 					343400622030A1E700FC778F = {
 						CreatedOnToolsVersion = 9.3;
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
+						ProvisioningStyle = Manual;
 					};
 					343400BA2030D62300FC778F = {
 						CreatedOnToolsVersion = 9.3;
@@ -743,7 +751,7 @@
 					34B1890421C1C8BA005ADD84 = {
 						CreatedOnToolsVersion = 10.1;
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
+						ProvisioningStyle = Manual;
 					};
 					34EB12CE278E4A1800257589 = {
 						CreatedOnToolsVersion = 13.2;
@@ -755,7 +763,7 @@
 					};
 					34F6675F2790C2030095A547 = {
 						CreatedOnToolsVersion = 13.2.1;
-						ProvisioningStyle = Automatic;
+						ProvisioningStyle = Manual;
 					};
 				};
 			};
@@ -789,6 +797,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23A7C7EE296A14FC00135E7F /* iOS Info.plist in Resources */,
 				3489DB40278E174400264142 /* Images.xcassets in Resources */,
 				34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */,
 				341FBAC12041E7AB00CD2F36 /* InfoDetailViewController.xib in Resources */,
@@ -867,6 +876,7 @@
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
 				345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */,
 				34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */,
+				23A7C7F0296A1CFF00135E7F /* CarPlay.swift in Sources */,
 				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
 				348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */,
 				348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */,
@@ -1018,16 +1028,22 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Distribution";
+				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "wxyc-prod-carplay";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -1037,16 +1053,22 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Distribution";
+				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "wxyc-prod-carplay";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -1054,14 +1076,17 @@
 		343400722030A1E700FC778F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/Today Widget/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Today Widget Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1070,14 +1095,17 @@
 		343400732030A1E700FC778F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/Today Widget/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.today-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Today Widget Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1270,16 +1298,19 @@
 		34B1890D21C1C8BA005ADD84 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				INFOPLIST_FILE = "iOS Intents Extension/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 2.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.iOS-Intents-Extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.intents-extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1289,15 +1320,18 @@
 		34B1890E21C1C8BA005ADD84 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				INFOPLIST_FILE = "iOS Intents Extension/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 2.3;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.iOS-Intents-Extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.intents-extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1424,9 +1458,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
@@ -1435,8 +1470,10 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.NowPlayingWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1450,9 +1487,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 92V374HC38;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
@@ -1460,8 +1498,10 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 1.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.NowPlayingWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
