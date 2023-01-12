@@ -41,9 +41,9 @@ public struct WhatsPlayingOnWXYC: AppIntent {
             )
         }
         let value = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
-        return IntentResultContainer.result(
+        return .result(
             value: value,
-            dialog: "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC.",
+            dialog: IntentDialog(stringLiteral: value),
             view: NowPlayingView(item: nowPlayingItem)
         )
     }
