@@ -17,16 +17,6 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                                   didConnect interfaceController: CPInterfaceController) {
         self.interfaceController = interfaceController
         let template = CPNowPlayingTemplate.shared
-//        let playButton = CPNowPlayingImageButton(image: UIImage.checkmark, handler: { button in
-//            RadioPlayerController.shared.toggle()
-//        })
-//
-//        template.updateNowPlayingButtons([playButton])
-//        NowPlayingService.shared.observe { nowPlayingItem in
-//            template.up
-//        }
-        
         interfaceController.setRootTemplate(template, animated: true)
-//        interfaceController.pushTemplate(template, animated: false)
     }
 }
