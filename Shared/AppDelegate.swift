@@ -5,6 +5,7 @@ import UI
 import MediaPlayer
 import WidgetKit
 
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
@@ -22,7 +23,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         #if os(iOS)
             // Make status bar white
             UINavigationBar.appearance().barStyle = .black
-            self.donateSiriIntentIfNeeded()
+            // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
+            self.removeDonatedSiriIntentIfNeeded()
         #endif
         
         self.nowPlayingObservation = NowPlayingService.shared.observe { nowPlayingItem in
@@ -58,41 +60,23 @@ extension AppDelegate {
         case intentDonated
     }
     
-    func donateSiriIntentIfNeeded() {
+    func removeDonatedSiriIntentIfNeeded() {
         Task {
-            guard await self.shouldDonateSiriIntent() else {
+            guard try await self.shouldRemoveSiriIntent() else {
                 return
             }
             
-            let mediaItem = INMediaItem(
-                identifier: "com.wxyc.ios.intent.play",
-                title: "Play",
-                type: .musicStation,
-                artwork: nil
+            try await INInteraction.deleteAll()
+            await self.cacheCoordinator.set(
+                value: nil as Bool?,
+                for: UserSettingsKeys.intentDonated,
+                lifespan: .distantFuture
             )
-            
-            let intent = INPlayMediaIntent(
-                mediaItems: [mediaItem],
-                mediaContainer: nil,
-                playShuffled: nil,
-                playbackRepeatMode: .none,
-                resumePlayback: false
-            )
-            
-            intent.suggestedInvocationPhrase = "Play WXYC"
-            let interaction = INInteraction(intent: intent, response: nil)
-            
-            try await interaction.donate()
-            await self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
         }
     }
-
-    func shouldDonateSiriIntent() async -> Bool {
-        do {
-            return try await self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
-        } catch {
-            return false
-        }
+    
+    func shouldRemoveSiriIntent() async throws -> Bool {
+        try await !self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
     }
 
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
