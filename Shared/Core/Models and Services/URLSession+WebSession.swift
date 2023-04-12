@@ -8,4 +8,9 @@
 
 import Foundation
 
-extension URLSession: WebSession { }
+extension URLSession: WebSession {
+    func data(from url: URL) async throws -> Data {
+        let (data, _) = try await data(from: url)
+        return data
+    }
+}

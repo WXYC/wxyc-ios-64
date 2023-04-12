@@ -1,4 +1,4 @@
-import Foundation
+import UIKit
 
 struct LastFM {
     private init() { }
@@ -48,8 +48,30 @@ struct LastFM {
     }
 }
 
-extension RemoteArtworkFetcher.Configuration {
-    static var lastFM = Self(makeSearchURL: { playcut in
+final class LastFMArtworkFetcher: ArtworkFetcher {
+    private let session: WebSession
+    private let decoder = JSONDecoder()
+    
+    init(session: WebSession = URLSession.shared) {
+        self.session = session
+    }
+    
+    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+        let searchURL = makeSearchURL(for: playcut)
+        let searchData = try await session.data(from: searchURL)
+        let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: searchData)
+        
+        let imageData = try await session.data(from: searchResponse.album.largestAlbumArt.url)
+        let image = UIImage(data: imageData)
+        
+        guard let image = image else {
+            throw ServiceErrors.noResults
+        }
+        
+        return image
+    }
+    
+    private func makeSearchURL(for playcut: Playcut) -> URL {
         let key = "45f85235ffc46cbb8769d545c8059399"
         
         var components = URLComponents(string: "https://ws.audioscrobbler.com")!
@@ -63,10 +85,5 @@ extension RemoteArtworkFetcher.Configuration {
         ]
         
         return components.url!
-    }, extractURL: { data in
-        let decoder = JSONDecoder()
-        let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: data)
-        
-        return searchResponse.album.largestAlbumArt.url
-    })
+    }
 }
