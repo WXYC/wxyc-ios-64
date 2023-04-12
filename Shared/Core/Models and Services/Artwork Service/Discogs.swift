@@ -14,13 +14,14 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let searchURL = makeSearchURL(for: playcut)
         let searchData = try await session.data(from: searchURL)
-        let results = try decoder.decode(Discogs.SearchResults.self, from: searchData)
+        let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: searchData)
+        let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
         
-        guard let result = results.results.first else {
+        guard let url = imageURLs.first(where: { !$0.lastPathComponent.hasPrefix("spacer.gif") }) else {
             throw ServiceErrors.noResults
         }
         
-        let imageData = try await session.data(from: result.coverImage)
+        let imageData = try await session.data(from: url)
         let image = UIImage(data: imageData)
         
         guard let image = image else {
