@@ -14,8 +14,10 @@ protocol PlaylistFetcher {
 }
 
 extension CacheCoordinator: PlaylistFetcher {
+    static let playlistKey = "playlist"
+    
     func getPlaylist() async throws -> Playlist {
-        try await self.value(for: PlaylistCacheKeys.playlist)
+        try await self.value(for: CacheCoordinator.playlistKey)
     }
 }
 
@@ -59,7 +61,7 @@ public class PlaylistService {
                 self.playlist = playlist
                 await self.cacheCoordinator.set(
                     value: self.playlist,
-                    for: PlaylistCacheKeys.playlist,
+                    for: CacheCoordinator.playlistKey,
                     lifespan: DefaultLifespan
                 )
             }
