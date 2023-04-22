@@ -46,7 +46,6 @@
 		34EB12E2278E4A4000257589 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFF2030A1CC00FC778F /* RadioStation.swift */; };
 		34EB12E3278E4A4000257589 /* ServiceTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */; };
 		34EB12E4278E4A4000257589 /* URLSession+WebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585AE221C71401009662FA /* URLSession+WebSession.swift */; };
-		34EB12E5278E4A4000257589 /* PlaylistCacheKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */; };
 		34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */; };
 		34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFE2030A1CC00FC778F /* CacheCoordinator.swift */; };
 		34EB12E8278E4A4000257589 /* CachedRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4992225BAFE00EA9226 /* CachedRecord.swift */; };
@@ -158,7 +157,6 @@
 		3435D4952225B9E400EA9226 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
 		3435D4992225BAFE00EA9226 /* CachedRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedRecord.swift; sourceTree = "<group>"; };
 		3435D49B2225BB2000EA9226 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
-		3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistCacheKeys.swift; sourceTree = "<group>"; };
 		3441BFE221D145F40087D6AB /* PlayerHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHeader.swift; sourceTree = "<group>"; };
 		3441BFE421D171300087D6AB /* SpinningAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinningAnimation.swift; sourceTree = "<group>"; };
 		34425DA321B8A16E00C8DD5F /* ArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkService.swift; sourceTree = "<group>"; };
@@ -396,7 +394,6 @@
 				3434FBFF2030A1CC00FC778F /* RadioStation.swift */,
 				34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */,
 				34585AE221C71401009662FA /* URLSession+WebSession.swift */,
-				3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */,
 			);
 			path = "Models and Services";
 			sourceTree = "<group>";
@@ -617,7 +614,7 @@
 				TargetAttributes = {
 					341FBAB02041E7AB00CD2F36 = {
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 						SystemCapabilities = {
 							com.apple.Siri = {
 								enabled = 0;
@@ -650,7 +647,7 @@
 					};
 					34F6675F2790C2030095A547 = {
 						CreatedOnToolsVersion = 13.2.1;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -790,7 +787,6 @@
 				34EB12E2278E4A4000257589 /* RadioStation.swift in Sources */,
 				34EB12E3278E4A4000257589 /* ServiceTypes.swift in Sources */,
 				34EB12E4278E4A4000257589 /* URLSession+WebSession.swift in Sources */,
-				34EB12E5278E4A4000257589 /* PlaylistCacheKeys.swift in Sources */,
 				34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */,
 				34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */,
 				34EB12E8278E4A4000257589 /* CachedRecord.swift in Sources */,
@@ -862,20 +858,17 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 2.3;
+				MARKETING_VERSION = 2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -887,20 +880,17 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 2.3;
+				MARKETING_VERSION = 2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -1209,22 +1199,21 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1238,21 +1227,20 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.4;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
