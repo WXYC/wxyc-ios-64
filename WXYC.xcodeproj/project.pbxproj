@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
-		23A7C7EE296A14FC00135E7F /* iOS Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 23A7C7ED296A14FC00135E7F /* iOS Info.plist */; };
 		23A7C7F0296A1CFF00135E7F /* CarPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A7C7EF296A1CFF00135E7F /* CarPlay.swift */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
@@ -47,14 +46,12 @@
 		34EB12E2278E4A4000257589 /* RadioStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFF2030A1CC00FC778F /* RadioStation.swift */; };
 		34EB12E3278E4A4000257589 /* ServiceTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */; };
 		34EB12E4278E4A4000257589 /* URLSession+WebSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34585AE221C71401009662FA /* URLSession+WebSession.swift */; };
-		34EB12E5278E4A4000257589 /* PlaylistCacheKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */; };
 		34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */; };
 		34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBFE2030A1CC00FC778F /* CacheCoordinator.swift */; };
 		34EB12E8278E4A4000257589 /* CachedRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4992225BAFE00EA9226 /* CachedRecord.swift */; };
 		34EB12E9278E4A4000257589 /* Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D49B2225BB2000EA9226 /* Cache.swift */; };
 		34EB12EA278E4A4000257589 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4952225B9E400EA9226 /* ImageCache.swift */; };
 		34EB12EB278E4A4000257589 /* RadioPlayerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34D908542113EE4800AB8C79 /* RadioPlayerController.swift */; };
-		34EB12EC278E4A4000257589 /* ThreadSafe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435D4912224A2F900EA9226 /* ThreadSafe.swift */; };
 		34EB12ED278E4AE600257589 /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
 		34EB12F6278E4BD000257589 /* UI.h in Headers */ = {isa = PBXBuildFile; fileRef = 34EB12F5278E4BD000257589 /* UI.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		34EB12F9278E4BD000257589 /* UI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12F3278E4BD000257589 /* UI.framework */; };
@@ -66,7 +63,7 @@
 		34F667622790C2030095A547 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34A8A5DD278E4DEF0081BA8F /* SwiftUI.framework */; };
 		34F667652790C2030095A547 /* NowPlayingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34F667642790C2030095A547 /* NowPlayingWidget.swift */; };
 		34F667672790C2040095A547 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 34F667662790C2040095A547 /* Assets.xcassets */; };
-		34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34F667712790C7BD0095A547 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34FA49A92231BD9C001D6040 /* InkingButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FA49A82231BD9C001D6040 /* InkingButton.swift */; };
 		34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = 34FA49AA2236ED93001D6040 /* PlaycutCell.xib */; };
@@ -107,15 +104,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		341FBAC72041E7AB00CD2F36 /* Embed App Extensions */ = {
+		341FBAC72041E7AB00CD2F36 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed App Extensions */,
+				34F6676B2790C2040095A547 /* NowPlayingWidgetExtension.appex in Embed Foundation Extensions */,
 			);
-			name = "Embed App Extensions";
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		34EB12DA278E4A1800257589 /* Embed Frameworks */ = {
@@ -157,11 +154,9 @@
 		3434FC092030A1CC00FC778F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/TVMain.storyboard; sourceTree = "<group>"; };
 		3434FC0A2030A1CC00FC778F /* TVViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TVViewController.swift; sourceTree = "<group>"; };
 		3434FC0B2030A1CC00FC778F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		3435D4912224A2F900EA9226 /* ThreadSafe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadSafe.swift; sourceTree = "<group>"; };
 		3435D4952225B9E400EA9226 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
 		3435D4992225BAFE00EA9226 /* CachedRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedRecord.swift; sourceTree = "<group>"; };
 		3435D49B2225BB2000EA9226 /* Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cache.swift; sourceTree = "<group>"; };
-		3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaylistCacheKeys.swift; sourceTree = "<group>"; };
 		3441BFE221D145F40087D6AB /* PlayerHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerHeader.swift; sourceTree = "<group>"; };
 		3441BFE421D171300087D6AB /* SpinningAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpinningAnimation.swift; sourceTree = "<group>"; };
 		34425DA321B8A16E00C8DD5F /* ArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkService.swift; sourceTree = "<group>"; };
@@ -260,6 +255,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		231AD07F29DA784B006F0980 /* Artwork Service */ = {
+			isa = PBXGroup;
+			children = (
+				34425DA321B8A16E00C8DD5F /* ArtworkService.swift */,
+				34B1882821BB29E0005ADD84 /* Discogs.swift */,
+				3434FBFD2030A1CC00FC778F /* iTunes.swift */,
+				3434FBFB2030A1CC00FC778F /* LastFM.swift */,
+			);
+			path = "Artwork Service";
+			sourceTree = "<group>";
+		};
 		343400642030A1E700FC778F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -352,7 +358,6 @@
 				3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */,
 				3435D4942225B9D100EA9226 /* Caching */,
 				34D908542113EE4800AB8C79 /* RadioPlayerController.swift */,
-				3435D4912224A2F900EA9226 /* ThreadSafe.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -382,17 +387,13 @@
 		3435D4A02225BD5B00EA9226 /* Models and Services */ = {
 			isa = PBXGroup;
 			children = (
-				34425DA321B8A16E00C8DD5F /* ArtworkService.swift */,
-				34B1882821BB29E0005ADD84 /* Discogs.swift */,
-				3434FBFD2030A1CC00FC778F /* iTunes.swift */,
-				3434FBFB2030A1CC00FC778F /* LastFM.swift */,
+				231AD07F29DA784B006F0980 /* Artwork Service */,
 				3434FBFA2030A1CC00FC778F /* NowPlayingService.swift */,
 				3434FBF72030A1CC00FC778F /* PlaylistEntry.swift */,
 				34585ADF21C5AE9C009662FA /* PlaylistService.swift */,
 				3434FBFF2030A1CC00FC778F /* RadioStation.swift */,
 				34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */,
 				34585AE221C71401009662FA /* URLSession+WebSession.swift */,
-				3435D4A12225BE1300EA9226 /* PlaylistCacheKeys.swift */,
 			);
 			path = "Models and Services";
 			sourceTree = "<group>";
@@ -498,7 +499,7 @@
 				341FBAB32041E7AB00CD2F36 /* Sources */,
 				341FBABC2041E7AB00CD2F36 /* Frameworks */,
 				341FBAC02041E7AB00CD2F36 /* Resources */,
-				341FBAC72041E7AB00CD2F36 /* Embed App Extensions */,
+				341FBAC72041E7AB00CD2F36 /* Embed Foundation Extensions */,
 				34EB12DA278E4A1800257589 /* Embed Frameworks */,
 			);
 			buildRules = (
@@ -608,12 +609,12 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 1320;
-				LastUpgradeCheck = 1310;
+				LastUpgradeCheck = 1420;
 				ORGANIZATIONNAME = WXYC;
 				TargetAttributes = {
 					341FBAB02041E7AB00CD2F36 = {
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 						SystemCapabilities = {
 							com.apple.Siri = {
 								enabled = 0;
@@ -646,7 +647,7 @@
 					};
 					34F6675F2790C2030095A547 = {
 						CreatedOnToolsVersion = 13.2.1;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -678,7 +679,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				23A7C7EE296A14FC00135E7F /* iOS Info.plist in Resources */,
 				3489DB40278E174400264142 /* Images.xcassets in Resources */,
 				34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */,
 				345CF90E2307250A00865B56 /* iOSMain.storyboard in Resources */,
@@ -787,14 +787,12 @@
 				34EB12E2278E4A4000257589 /* RadioStation.swift in Sources */,
 				34EB12E3278E4A4000257589 /* ServiceTypes.swift in Sources */,
 				34EB12E4278E4A4000257589 /* URLSession+WebSession.swift in Sources */,
-				34EB12E5278E4A4000257589 /* PlaylistCacheKeys.swift in Sources */,
 				34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */,
 				34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */,
 				34EB12E8278E4A4000257589 /* CachedRecord.swift in Sources */,
 				34EB12E9278E4A4000257589 /* Cache.swift in Sources */,
 				34EB12EA278E4A4000257589 /* ImageCache.swift in Sources */,
 				34EB12EB278E4A4000257589 /* RadioPlayerController.swift in Sources */,
-				34EB12EC278E4A4000257589 /* ThreadSafe.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -860,20 +858,17 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 2.3;
+				MARKETING_VERSION = 2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -885,20 +880,17 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 001;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 2.3;
+				MARKETING_VERSION = 2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "WXYC Development CarPlay Provisioning Profile";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -1207,22 +1199,21 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1236,21 +1227,20 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 92V374HC38;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2022 WXYC. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.4;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Wildcard Development Provisioning Profile";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

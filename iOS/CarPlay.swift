@@ -17,6 +17,6 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                                   didConnect interfaceController: CPInterfaceController) {
         self.interfaceController = interfaceController
         let template = CPNowPlayingTemplate.shared
-        interfaceController.setRootTemplate(template, animated: true)
+        interfaceController.setRootTemplate(template, animated: true, completion: nil)
     }
 }
