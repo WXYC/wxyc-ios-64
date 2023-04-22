@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
 		23A7C7F0296A1CFF00135E7F /* CarPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A7C7EF296A1CFF00135E7F /* CarPlay.swift */; };
+		23AA9A5029F4A84500CB4C69 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
@@ -133,6 +134,7 @@
 		23A7C7EB296A07BE00135E7F /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		23A7C7ED296A14FC00135E7F /* iOS Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "iOS Info.plist"; sourceTree = "<group>"; };
 		23A7C7EF296A1CFF00135E7F /* CarPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlay.swift; sourceTree = "<group>"; };
+		23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		341FBACC2041E7AB00CD2F36 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -315,6 +317,7 @@
 		3434FBE22030A1CC00FC778F /* iOS */ = {
 			isa = PBXGroup;
 			children = (
+				23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */,
 				3434FBED2030A1CC00FC778F /* Images.xcassets */,
 				23A7C7ED296A14FC00135E7F /* iOS Info.plist */,
 				3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */,
@@ -682,6 +685,7 @@
 				3489DB40278E174400264142 /* Images.xcassets in Resources */,
 				34FA49AF2238766A001D6040 /* BreakpointCell.xib in Resources */,
 				345CF90E2307250A00865B56 /* iOSMain.storyboard in Resources */,
+				23AA9A5029F4A84500CB4C69 /* InfoDetailViewController.xib in Resources */,
 				3489DB3D278E137400264142 /* LaunchScreen.storyboard in Resources */,
 				348534A122287A65002AA181 /* PlayerHeader.xib in Resources */,
 				34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */,
