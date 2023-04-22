@@ -6,7 +6,7 @@
 //  Copyright © 2019 WXYC. All rights reserved.
 //
 
-import Foundation
+import UIKit
 
 final class ImageCache: Cache {
     subscript(key: String) -> Data? {
