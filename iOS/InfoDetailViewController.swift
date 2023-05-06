@@ -1,90 +1,92 @@
 import MessageUI
 import Core
+import UIKit
 
 class InfoDetailViewController: UIViewController {
-    // MARK: Overrides
+    @IBOutlet weak var stationDescriptionTextView: UITextView!
+    @IBOutlet weak var feedbackButton: UIButton!
+    @IBOutlet weak var dialADJButton: UIButton!
     
-    override func loadView() {
-        super.loadView()
-        self.view.backgroundColor = .blue
-//        self.view.translatesAutoresizingMaskIntoConstraints = false
-        
-
-    }
+    // MARK: Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        let stationDescriptionTextView = UITextView()
-        stationDescriptionTextView.translatesAutoresizingMaskIntoConstraints = false
+        
         stationDescriptionTextView.text = RadioStation.WXYC.description
-//        stationDescriptionTextView.setContentCompressionResistancePriority(.defaultHigh, for: .vertical)
-
-        self.view.addSubview(stationDescriptionTextView)
-        NSLayoutConstraint.activate([
-            stationDescriptionTextView.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            stationDescriptionTextView.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
-            stationDescriptionTextView.centerYAnchor.constraint(equalTo: self.view.centerYAnchor),
-            stationDescriptionTextView.heightAnchor.constraint(equalToConstant: 200)
-        ])
-
-//        let feedbackButton = UIButton(configuration: .plain(), primaryAction: UIAction(handler: self.feedbackButtonPressed))
-//        feedbackButton.setTitle("Send us feedback on the app", for: .normal)
-//        feedbackButton.backgroundColor = UIColor(red: 1, green: 0, blue: 0, alpha: 0.5)
-//
-//        self.view.addSubview(feedbackButton)
-//        self.view.addConstraints([
-//            feedbackButton.heightAnchor.constraint(equalToConstant: 50),
-//            self.view.safeAreaLayoutGuide.leadingAnchor.constraint(equalTo: feedbackButton.leadingAnchor),
-//            self.view.safeAreaLayoutGuide.trailingAnchor.constraint(equalTo: feedbackButton.trailingAnchor),
-//            stationDescriptionTextView.bottomAnchor.constraint(equalTo: feedbackButton.topAnchor, constant: 16),
-//        ])
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
+        feedbackButton.setAttributedTitle(feedbackString, for: .normal)
+        
+        if UIApplication.shared.canOpenURL(RadioStation.WXYC.requestLine) {
+            dialADJButton.setAttributedTitle(requestString, for: .normal)
+        } else {
+            dialADJButton.isHidden = true
+        }
     }
     
     // MARK: IBActions
 
-    func feedbackButtonPressed(_ sender: UIAction) {
+    @IBAction func feedbackButtonPressed(_ sender: UIButton) {
         if MFMailComposeViewController.canSendMail() {
             let mailComposeViewController = stationFeedbackMailController()
             self.present(mailComposeViewController, animated: true, completion: nil)
         } else {
-            let alert = UIAlertController(
-                title: "Can't send mail",
-                message: "Looks like you need to add an email address. Go to Settings.",
-                preferredStyle: .alert
-            )
-
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
-                alert.dismiss(animated: true, completion: nil)
-            }))
-
-            alert.addAction(UIAlertAction(title: "Settings", style: .default, handler: { _ in
-                let settingsURL = URL(string: UIApplication.openSettingsURLString)!
-                UIApplication.shared.open(settingsURL)
-            }))
-
-            present(alert, animated: true, completion: nil)
+            UIApplication.shared.open(feedbackURL())
         }
     }
     
-    func popBack(_ sender: UIBarButtonItem) {
-        self.navigationController?.popViewController(animated: true)
+    @IBAction func dialADJ(_ sender: UIButton) {
+        UIApplication.shared.open(RadioStation.WXYC.requestLine)
+    }
+    
+    // MARK: Private
+    
+    private var requestString: NSAttributedString {
+        let attachment = NSTextAttachment()
+        attachment.image = UIImage(systemName: "phone.fill")?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
+
+        let requestString = NSMutableAttributedString(attachment: attachment)
+        let textString = NSAttributedString(string: " Make a request")
+        requestString.append(textString)
+        
+        return requestString
+    }
+    
+    private var feedbackString: NSAttributedString {
+        let attachment = NSTextAttachment()
+        attachment.image = UIImage(systemName: "envelope.fill")?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
+
+        let requestString = NSMutableAttributedString(attachment: attachment)
+        let textString = NSAttributedString(string: " Send us feedback on the app")
+        requestString.append(textString)
+        
+        return requestString
     }
 }
 
 extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
+    private static let feedbackAddress = "feedback@wxyc.org"
+    private static let subject = "Feedback on the WXYC app"
+    
     private func stationFeedbackMailController() -> MFMailComposeViewController {
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = self
-        mailComposerVC.setToRecipients(["feedback@wxyc.org"])
-        mailComposerVC.setSubject("Feedback on the WXYC app")
+        mailComposerVC.setToRecipients([Self.feedbackAddress])
+        mailComposerVC.setSubject(Self.subject)
         return mailComposerVC
     }
-
+    
+    private func feedbackURL() -> URL {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = Self.feedbackAddress
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: Self.subject)
+        ]
+        
+        return components.url!
+    }
+    
     func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
         controller.dismiss(animated: true, completion: nil)
     }
