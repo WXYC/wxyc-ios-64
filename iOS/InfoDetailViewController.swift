@@ -1,8 +1,11 @@
 import MessageUI
 import Core
+import UIKit
 
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!
+    @IBOutlet weak var feedbackButton: UIButton!
+    @IBOutlet weak var dialADJButton: UIButton!
     
     // MARK: Lifecycle
     
@@ -10,6 +13,13 @@ class InfoDetailViewController: UIViewController {
         super.viewDidLoad()
         
         stationDescriptionTextView.text = RadioStation.WXYC.description
+        feedbackButton.setAttributedTitle(feedbackString, for: .normal)
+        
+        if UIApplication.shared.canOpenURL(RadioStation.WXYC.requestLine) {
+            dialADJButton.setAttributedTitle(requestString, for: .normal)
+        } else {
+            dialADJButton.isHidden = true
+        }
     }
     
     // MARK: IBActions
@@ -34,8 +44,34 @@ class InfoDetailViewController: UIViewController {
         }
     }
     
-    @IBAction func popBack(_ sender: UIBarButtonItem) {
-        self.navigationController?.popViewController(animated: true)
+    @IBAction func dialADJ(_ sender: UIButton) {
+        UIApplication.shared.open(RadioStation.WXYC.requestLine)
+    }
+    
+    // MARK: Private
+    
+    private var requestString: NSAttributedString {
+        let attachment = NSTextAttachment()
+        attachment.image = UIImage(systemName: "phone.fill")?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
+
+        let requestString = NSMutableAttributedString(attachment: attachment)
+        let textString = NSAttributedString(string: " Make a request")
+        requestString.append(textString)
+        
+        return requestString
+    }
+    
+    private var feedbackString: NSAttributedString {
+        let attachment = NSTextAttachment()
+        attachment.image = UIImage(systemName: "envelope.fill")?
+            .withTintColor(.white, renderingMode: .alwaysOriginal)
+
+        let requestString = NSMutableAttributedString(attachment: attachment)
+        let textString = NSAttributedString(string: " Send us feedback on the app")
+        requestString.append(textString)
+        
+        return requestString
     }
 }
 
