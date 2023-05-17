@@ -29,18 +29,7 @@ class InfoDetailViewController: UIViewController {
             let mailComposeViewController = stationFeedbackMailController()
             self.present(mailComposeViewController, animated: true, completion: nil)
         } else {
-            let alert = UIAlertController(title: "Can't send mail", message: "Looks like you need to add an email address. Go to Settings.", preferredStyle: .alert)
-
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: { _ in
-                alert.dismiss(animated: true, completion: nil)
-            }))
-
-            alert.addAction(UIAlertAction(title: "Settings", style: .default, handler: { _ in
-                let settingsURL = URL(string: UIApplication.openSettingsURLString)!
-                UIApplication.shared.open(settingsURL)
-            }))
-
-            present(alert, animated: true, completion: nil)
+            UIApplication.shared.open(feedbackURL())
         }
     }
     
@@ -76,14 +65,28 @@ class InfoDetailViewController: UIViewController {
 }
 
 extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
+    private static let feedbackAddress = "feedback@wxyc.org"
+    private static let subject = "Feedback on the WXYC app"
+    
     private func stationFeedbackMailController() -> MFMailComposeViewController {
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = self
-        mailComposerVC.setToRecipients(["feedback@wxyc.org"])
-        mailComposerVC.setSubject("Feedback on the WXYC app")
+        mailComposerVC.setToRecipients([Self.feedbackAddress])
+        mailComposerVC.setSubject(Self.subject)
         return mailComposerVC
     }
-
+    
+    private func feedbackURL() -> URL {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = Self.feedbackAddress
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: Self.subject)
+        ]
+        
+        return components.url!
+    }
+    
     func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
         controller.dismiss(animated: true, completion: nil)
     }
