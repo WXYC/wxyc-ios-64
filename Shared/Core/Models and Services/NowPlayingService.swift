@@ -55,12 +55,12 @@ public final class NowPlayingService: ObservableObject {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
-        self.playcutObservation = self.playlistService
-            .$playlist
-            .compactMap(\.playcuts.first)
-            .map(Optional.init)
-            .receive(on: RunLoop.main)
-            .assign(to: \.playcut, on: self)
+//        self.playcutObservation = self.playlistService
+//            .$playlist
+//            .compactMap(\.playcuts.first)
+//            .map(Optional.init)
+//            .receive(on: RunLoop.main)
+//            .assign(to: \.playcut, on: self)
     }
     
     public func fetch() async -> NowPlayingItem? {

@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import Combine
+import Observation
 
 protocol PlaylistFetcher {
     func getPlaylist() async throws -> Playlist
@@ -29,15 +29,16 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
+@Observable
 public class PlaylistService {
     public static let shared = PlaylistService()
     
-    @Published public private(set) var playlist: Playlist = .empty
+    public private(set) var playlist: Playlist = .empty
     
-    private var cacheCoordinator: CacheCoordinator
-    private var cachedFetcher: PlaylistFetcher
-    private var remoteFetcher: PlaylistFetcher
-    private var fetchTimer: DispatchSourceTimer? = nil
+    @ObservationIgnored private var cacheCoordinator: CacheCoordinator
+    @ObservationIgnored private var cachedFetcher: PlaylistFetcher
+    @ObservationIgnored private var remoteFetcher: PlaylistFetcher
+    @ObservationIgnored private var fetchTimer: DispatchSourceTimer? = nil
     
     private init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
