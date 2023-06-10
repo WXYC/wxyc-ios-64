@@ -31,8 +31,6 @@
 		3489DB3D278E137400264142 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3489DB3C278E137400264142 /* LaunchScreen.storyboard */; };
 		3489DB40278E174400264142 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		348A6611285679C400DC428E /* CarPlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348A6610285679C400DC428E /* CarPlayView.swift */; };
-		34A067CE20393E42003D2919 /* PlaylistEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF72030A1CC00FC778F /* PlaylistEntry.swift */; };
-		34A067D120394267003D2919 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
 		34A8A5EB278E4E4F0081BA8F /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
 		34B0BF2E279730B200882035 /* IntentsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34B188BA21C1A099005ADD84 /* IntentsUI.framework */; };
 		34B1890821C1C8BA005ADD84 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34B1890721C1C8BA005ADD84 /* IntentHandler.swift */; };
@@ -335,16 +333,6 @@
 				34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		3434F4E72030A1C600FC778F /* Today Widget */ = {
-			isa = PBXGroup;
-			children = (
-				3434F4E82030A1C600FC778F /* TodayViewController.swift */,
-				3434F4E92030A1C600FC778F /* TodayMain.storyboard */,
-				3434F4EB2030A1C600FC778F /* Info.plist */,
-			);
-			path = "Today Widget";
 			sourceTree = "<group>";
 		};
 		3434FBE22030A1CC00FC778F /* iOS */ = {
@@ -654,7 +642,7 @@
 				TargetAttributes = {
 					341FBAB02041E7AB00CD2F36 = {
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Manual;
+						ProvisioningStyle = Automatic;
 						SystemCapabilities = {
 							com.apple.Siri = {
 								enabled = 0;
