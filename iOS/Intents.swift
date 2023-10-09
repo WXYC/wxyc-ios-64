@@ -17,7 +17,7 @@ public struct PlayWXYC: AudioStartingIntent {
     public init() { }
     
     @MainActor
-    public func perform() async throws -> some IntentResult {
+    public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         RadioPlayerController.shared.play()
         return .result(value: "Now playing WXYC.")
     }
@@ -32,7 +32,7 @@ public struct WhatsPlayingOnWXYC: AppIntent {
     public init() { }
 
     @MainActor
-    public func perform() async throws -> some IntentResult {
+    public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
             return .result(
                 value: "Something went wrong. Please try again.",
