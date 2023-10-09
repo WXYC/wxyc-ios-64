@@ -198,5 +198,6 @@ struct NowPlayingWidget: Widget {
         }
         .configurationDisplayName("Now Playing")
         .description("Now playing on WXYC…")
+        .contentMarginsDisabled()
     }
 }
