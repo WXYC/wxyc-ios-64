@@ -904,7 +904,7 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 2.4;
+				MARKETING_VERSION = 2.4.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -924,7 +924,7 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 2.4;
+				MARKETING_VERSION = 2.4.1;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "WXYC Development";
