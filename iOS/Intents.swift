@@ -12,7 +12,7 @@ import SwiftUI
 import Core
 
 public struct PlayWXYC: AudioStartingIntent {
-    public static var title: LocalizedStringResource = "Play WXYC"
+    public static var title: LocalizedStringResource = "WXYC"
     
     public init() { }
     
@@ -85,11 +85,15 @@ public struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: WhatsPlayingOnWXYC(),
-            phrases: ["What’s playing on WXYC?"]
+            phrases: ["What’s playing on WXYC?"],
+            shortTitle: "What’s playing on WXYC?",
+            systemImageName: "speaker.wave.3.fill"
         )
         AppShortcut(
             intent: PlayWXYC(),
-            phrases: ["Play WXYC."]
+            phrases: ["Play WXYC."],
+            shortTitle: "Play WXYC",
+            systemImageName: "play.fill"
         )
     }
 }
