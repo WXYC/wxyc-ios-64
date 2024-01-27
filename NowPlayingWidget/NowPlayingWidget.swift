@@ -111,6 +111,9 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             }
             .background(.ultraThinMaterial)
             .multilineTextAlignment(.leading)
+            .containerBackground(for: .widget) {
+                EmptyView()
+            }
         }
     }
 }
@@ -136,6 +139,9 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             .padding()
         }
         .background(.ultraThickMaterial)
+        .containerBackground(for: .widget) {
+            EmptyView()
+        }
     }
 }
 
@@ -162,6 +168,9 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .lineLimit(1)
             }
             .background(.ultraThinMaterial)
+            .containerBackground(for: .widget) {
+                EmptyView()
+            }
         }
     }
     
