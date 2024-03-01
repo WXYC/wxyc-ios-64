@@ -92,7 +92,7 @@
 					<key>UISceneConfigurationName</key>
 					<string>TemplateSceneConfiguration</string>
 					<key>UISceneDelegateClassName</key>
-					<string>WXYC.AppDelegate</string>
+					<string>WXYC.CarPlaySceneDelegate</string>
 				</dict>
 			</array>
 			<key>UIWindowSceneSessionRoleApplication</key>
