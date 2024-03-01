@@ -8,8 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
-		23A7C7F0296A1CFF00135E7F /* CarPlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A7C7EF296A1CFF00135E7F /* CarPlay.swift */; };
-		23AA9A5029F4A84500CB4C69 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */; };
+		23BBC4322B90E18B00EF99F1 /* iOS Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 23BBC4312B90E18B00EF99F1 /* iOS Info.plist */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
@@ -132,9 +131,9 @@
 
 /* Begin PBXFileReference section */
 		23A7C7EB296A07BE00135E7F /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
-		23A7C7ED296A14FC00135E7F /* iOS Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "iOS Info.plist"; sourceTree = "<group>"; };
-		23A7C7EF296A1CFF00135E7F /* CarPlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlay.swift; sourceTree = "<group>"; };
 		23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
+		23BBC4312B90E18B00EF99F1 /* iOS Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "iOS Info.plist"; sourceTree = "<group>"; };
+		23BBC4332B9179B600EF99F1 /* WXYCDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WXYCDebug.entitlements; sourceTree = "<group>"; };
 		341FBACC2041E7AB00CD2F36 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -268,6 +267,14 @@
 			path = "Artwork Service";
 			sourceTree = "<group>";
 		};
+		23BBC4302B8C3C1000EF99F1 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				23A7C7EB296A07BE00135E7F /* CarPlay.framework */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		343400642030A1E700FC778F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -284,6 +291,7 @@
 		3434F4BB2030A1A700FC778F = {
 			isa = PBXGroup;
 			children = (
+				23BBC4332B9179B600EF99F1 /* WXYCDebug.entitlements */,
 				34B188CF21C1C5B0005ADD84 /* WXYC.entitlements */,
 				AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */,
 				3434FBF32030A1CC00FC778F /* Shared */,
@@ -296,6 +304,7 @@
 				34F667632790C2030095A547 /* NowPlayingWidget */,
 				343400642030A1E700FC778F /* Frameworks */,
 				3434F4C52030A1A700FC778F /* Products */,
+				23BBC4302B8C3C1000EF99F1 /* Recovered References */,
 			);
 			indentWidth = 4;
 			sourceTree = "<group>";
@@ -319,7 +328,7 @@
 			children = (
 				23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */,
 				3434FBED2030A1CC00FC778F /* Images.xcassets */,
-				23A7C7ED296A14FC00135E7F /* iOS Info.plist */,
+				23BBC4312B90E18B00EF99F1 /* iOS Info.plist */,
 				3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */,
 				3434FBF12030A1CC00FC778F /* PlaybackButton.swift */,
 				348534A2222F4DF4002AA181 /* Playlist */,
@@ -328,7 +337,6 @@
 				345CF90B2307193A00865B56 /* RootPageViewController.swift */,
 				345CF90D2307250A00865B56 /* iOSMain.storyboard */,
 				3489DB3C278E137400264142 /* LaunchScreen.storyboard */,
-				23A7C7EF296A1CFF00135E7F /* CarPlay.swift */,
 				34FAC40C296E466B00AC3166 /* Intents.swift */,
 			);
 			path = iOS;
@@ -690,6 +698,7 @@
 				348534A122287A65002AA181 /* PlayerHeader.xib in Resources */,
 				34FA49AB2236ED93001D6040 /* PlaycutCell.xib in Resources */,
 				34FA49B1223876F0001D6040 /* TalksetCell.xib in Resources */,
+				23BBC4322B90E18B00EF99F1 /* iOS Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -744,7 +753,6 @@
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
 				345CF90C2307193A00865B56 /* RootPageViewController.swift in Sources */,
 				34CEF92222417C0000D120F7 /* PlaycutActivityItem.swift in Sources */,
-				23A7C7F0296A1CFF00135E7F /* CarPlay.swift in Sources */,
 				341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */,
 				348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */,
 				348534A4222F4E0D002AA181 /* PlaycutCell.swift in Sources */,
@@ -860,7 +868,7 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = WXYC.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WXYCDebug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 001;
