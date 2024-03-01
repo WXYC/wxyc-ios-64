@@ -1,3 +1,4 @@
+import CarPlay
 import UIKit
 import Combine
 import Core
@@ -89,9 +90,37 @@ extension AppDelegate {
 
 #endif
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    var window: UIWindow?
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver {
+    static var interfaceController: CPInterfaceController?
+    
+    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didConnect interfaceController: CPInterfaceController) {
+        Self.interfaceController = interfaceController
         
+        Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
+            print("success: \(success), error: \(error)")
+        }
+    }
+
+    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+        Self.interfaceController = nil
+    }
+}
+
+class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
+    
+    internal var window: UIWindow?
+    
+    // MARK: UISceneDelegate
+    
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene, session.configuration.name == "LoggerSceneConfiguration" else { return }
+        
+        window = UIWindow(frame: windowScene.coordinateSpace.bounds)
+        
+        window?.rootViewController = RootPageViewController()
+        window?.windowScene = windowScene
+        window?.makeKeyAndVisible()
     }
 }
