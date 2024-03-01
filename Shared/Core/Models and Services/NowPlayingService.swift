@@ -8,46 +8,22 @@
 
 import Foundation
 import UIKit
-import Combine
 
 public struct NowPlayingItem {
     public let playcut: Playcut
     public var artwork: UIImage?
 }
 
-public final class NowPlayingService: ObservableObject {
+@Observable
+public final class NowPlayingService {
     public static let shared = NowPlayingService()
     
-    // TODO: remove this observe stuff
-    public let nowPlayingObservable = PassthroughSubject<NowPlayingItem, Never>()
+    public private(set) var nowPlayingItem: NowPlayingItem? = nil
     
-    public func observe(_ sink: @escaping (NowPlayingItem) -> Void)  -> AnyCancellable {
-        return self.nowPlayingObservable.sink(receiveValue: sink)
-    }
+    @ObservationIgnored private let playlistService: PlaylistService
+    @ObservationIgnored private let artworkService: ArtworkService
+    @ObservationIgnored private var playlistObservation: Any? = nil
     
-    @Published public var nowPlayingItem: NowPlayingItem? = nil
-    private var playcut: Playcut? = nil {
-        didSet {
-            guard oldValue?.id != self.playcut?.id, let playcut = self.playcut else {
-                return
-            }
-
-            DispatchQueue.main.async {
-                Task {
-                    let artwork = await self.artworkService.getArtwork(for: playcut)
-                    self.nowPlayingItem = NowPlayingItem(playcut: playcut, artwork: artwork)
-                    self.nowPlayingObservable.send(NowPlayingItem(playcut: playcut, artwork: artwork))
-                }
-            }
-        }
-    }
-    
-    private let playlistService: PlaylistService
-    private let artworkService: ArtworkService
-    private var timer: Timer?
-    
-    private var playcutObservation: Cancellable? = nil
-
     internal init(
         playlistService: PlaylistService = .shared,
         artworkService: ArtworkService = .shared
@@ -55,12 +31,18 @@ public final class NowPlayingService: ObservableObject {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
-//        self.playcutObservation = self.playlistService
-//            .$playlist
-//            .compactMap(\.playcuts.first)
-//            .map(Optional.init)
-//            .receive(on: RunLoop.main)
-//            .assign(to: \.playcut, on: self)
+        self.playlistObservation = withObservationTracking { @MainActor in
+            self.playlistService.playlist
+        } onChange: {
+            Task { @MainActor in
+                guard let playcut = self.playlistService.playlist.playcuts.first else {
+                    return
+                }
+
+                let artwork = await self.artworkService.getArtwork(for: playcut)
+                self.nowPlayingItem = NowPlayingItem(playcut: playcut, artwork: artwork)
+            }
+        }
     }
     
     public func fetch() async -> NowPlayingItem? {

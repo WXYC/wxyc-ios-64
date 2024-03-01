@@ -21,8 +21,8 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
         self.playlistDataSourceObservation = withObservationTracking {
             self.playlistDataSource.viewModels
         } onChange: {
-            Task {
-                await self.update(viewModels: self.playlistDataSource.viewModels)
+            Task { @MainActor in
+                self.update(viewModels: self.playlistDataSource.viewModels)
             }
         }
         self.setUpTableView()
