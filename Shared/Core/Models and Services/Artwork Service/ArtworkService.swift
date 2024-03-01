@@ -8,7 +8,6 @@
 
 import Foundation
 import UIKit
-import Combine
 
 public final actor ArtworkService {
     public static let shared = ArtworkService(fetchers: [

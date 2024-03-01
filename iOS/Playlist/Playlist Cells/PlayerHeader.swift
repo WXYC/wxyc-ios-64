@@ -8,7 +8,6 @@
 
 import UIKit
 import Core
-import Combine
 
 @objc(PlayerHeader)
 class PlayerHeader: UITableViewHeaderFooterView {
@@ -41,7 +40,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
     
     // MARK: Private
     
-    private var playbackStateObservation: Cancellable?
+    private var playbackStateObservation: Any?
     
     private func setUpPlayback() {
         self.playbackStateObservation =

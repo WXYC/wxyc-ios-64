@@ -36,11 +36,13 @@ extension MPNowPlayingInfoCenter: NowPlayingObserver {
         let screenWidth = UIScreen.main.bounds.size.width
         let boundsSize = CGSize(width: screenWidth, height: screenWidth)
         
-        return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
-            if case .some(let artwork) = self {
-                return artwork
-            } else {
-                return UIImage.defaultNowPlayingInfoCenterImage
+        return MPMediaItemArtwork(boundsSize: boundsSize) { @MainActor _ in
+            DispatchQueue.main.sync {
+                if case .some(let artwork) = self {
+                    return artwork
+                } else {
+                    return UIImage.defaultNowPlayingInfoCenterImage
+                }
             }
         }
     }

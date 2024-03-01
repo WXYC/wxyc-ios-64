@@ -1,6 +1,6 @@
+import Observation
 import CarPlay
 import UIKit
-import Combine
 import Core
 import UI
 import MediaPlayer
@@ -12,7 +12,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
   
     var nowPlayingObservation: Any?
-    var shouldDonateSiriIntentObservation: Cancellable?
+    var shouldDonateSiriIntentObservation: Any?
 
     // MARK: UIApplicationDelegate
     
@@ -21,17 +21,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
         
-        #if os(iOS)
-            // Make status bar white
-            UINavigationBar.appearance().barStyle = .black
-            // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
-            self.removeDonatedSiriIntentIfNeeded()
-        #endif
-        
-        self.nowPlayingObservation = NowPlayingService.shared.observe { nowPlayingItem in
-            MPNowPlayingInfoCenter.default().update(nowPlayingItem: nowPlayingItem)
-            WidgetCenter.shared.reloadAllTimelines()
-        }
+#if os(iOS)
+        // Make status bar white
+        UINavigationBar.appearance().barStyle = .black
+        // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
+        self.removeDonatedSiriIntentIfNeeded()
+#endif
+        self.nowPlayingObservation =
+            withObservationTracking {
+                NowPlayingService.shared.nowPlayingItem
+            } onChange: {
+                Task { @MainActor in
+                    MPNowPlayingInfoCenter.default().update(nowPlayingItem: NowPlayingService.shared.nowPlayingItem)
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
+            }
         
         WidgetCenter.shared.getCurrentConfigurations { result in
             guard case let .success(configurations) = result else {

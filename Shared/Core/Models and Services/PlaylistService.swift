@@ -33,6 +33,7 @@ extension URLSession: PlaylistFetcher {
 public class PlaylistService {
     public static let shared = PlaylistService()
     
+    @MainActor
     public private(set) var playlist: Playlist = .empty
     
     @ObservationIgnored private var cacheCoordinator: CacheCoordinator
@@ -52,7 +53,7 @@ public class PlaylistService {
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default))
         self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
         self.fetchTimer?.setEventHandler {
-            Task {
+            Task { @MainActor in
                 let playlist = await self.fetchPlaylist()
                 
                 guard playlist != self.playlist else {
@@ -86,7 +87,12 @@ public class PlaylistService {
         }
         
         do {
-            return try await self.remoteFetcher.getPlaylist()
+            print(">>> Fetching remote playlist")
+            let startTime = Date.timeIntervalSinceReferenceDate
+            let playlist = try await self.remoteFetcher.getPlaylist()
+            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            print(">>> Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
+            return playlist
         } catch {
             print(">>> Remote playlist fetch failed: \(error)")
         }
