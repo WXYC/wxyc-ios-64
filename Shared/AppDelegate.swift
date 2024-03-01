@@ -28,14 +28,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
 #endif
         self.nowPlayingObservation =
-            withObservationTracking {
-                NowPlayingService.shared.nowPlayingItem
-            } onChange: {
-                Task { @MainActor in
-                    MPNowPlayingInfoCenter.default().update(nowPlayingItem: NowPlayingService.shared.nowPlayingItem)
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
-            }
+        NowPlayingService.shared.nowPlayingItem.publisher.sink { nowPlayingItem in
+            MPNowPlayingInfoCenter.default().update(nowPlayingItem: nowPlayingItem)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        
+        
+//            withObservationTracking {
+//                NowPlayingService.shared.nowPlayingItem
+//            } onChange: {
+//                MPNowPlayingInfoCenter.default().update(nowPlayingItem: NowPlayingService.shared.nowPlayingItem)
+//                WidgetCenter.shared.reloadAllTimelines()
+//            }
         
         WidgetCenter.shared.getCurrentConfigurations { result in
             guard case let .success(configurations) = result else {

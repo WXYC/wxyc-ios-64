@@ -24,6 +24,8 @@ extension CacheCoordinator: PlaylistFetcher {
 extension URLSession: PlaylistFetcher {
     func getPlaylist() async throws -> Playlist {
         let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+        let string = String(data: playlistData, encoding: .utf8)
+        print(string)
         let decoder = JSONDecoder()
         return try decoder.decode(Playlist.self, from: playlistData)
     }
@@ -51,7 +53,7 @@ public class PlaylistService {
         self.remoteFetcher = remoteFetcher
         
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default))
-        self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
+        self.fetchTimer?.schedule(deadline: .now(), repeating: 2)
         self.fetchTimer?.setEventHandler {
             Task { @MainActor in
                 let playlist = await self.fetchPlaylist()
@@ -61,11 +63,11 @@ public class PlaylistService {
                 }
                 
                 self.playlist = playlist
-                await self.cacheCoordinator.set(
-                    value: self.playlist,
-                    for: CacheCoordinator.playlistKey,
-                    lifespan: DefaultLifespan
-                )
+//                await self.cacheCoordinator.set(
+//                    value: self.playlist,
+//                    for: CacheCoordinator.playlistKey,
+//                    lifespan: DefaultLifespan
+//                )
             }
         }
         self.fetchTimer?.resume()

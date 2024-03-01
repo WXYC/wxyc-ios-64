@@ -23,6 +23,7 @@ public final class NowPlayingService {
     @ObservationIgnored private let playlistService: PlaylistService
     @ObservationIgnored private let artworkService: ArtworkService
     @ObservationIgnored private var playlistObservation: Any? = nil
+    @ObservationIgnored private var updateTask: Any? = nil
     
     internal init(
         playlistService: PlaylistService = .shared,
@@ -32,7 +33,9 @@ public final class NowPlayingService {
         self.artworkService = artworkService
         
         self.playlistObservation = withObservationTracking { @MainActor in
-            self.playlistService.playlist
+            Task { @MainActor in
+                self.playlistService.playlist.playcuts
+            }
         } onChange: {
             Task { @MainActor in
                 guard let playcut = self.playlistService.playlist.playcuts.first else {
