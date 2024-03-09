@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 import Combine
 
-public struct NowPlayingItem {
+public struct NowPlayingItem: Sendable {
     public let playcut: Playcut
     public var artwork: UIImage?
 }
