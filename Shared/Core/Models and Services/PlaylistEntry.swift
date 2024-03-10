@@ -6,7 +6,7 @@ extension URL {
     static let WXYCStream320kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 }
 
-public protocol PlaylistEntry: Codable {
+public protocol PlaylistEntry: Codable, Sendable {
     var id: Int { get }
     var hour: Int { get }
     var chronOrderID: Int { get }
@@ -43,7 +43,7 @@ public struct Talkset: PlaylistEntry {
     public let chronOrderID: Int
 }
 
-public struct Playcut: PlaylistEntry, Identifiable, Codable {
+public struct Playcut: PlaylistEntry, Identifiable, Codable, Sendable {
     public let id: Int
     public let hour: Int
     public let chronOrderID: Int
@@ -77,12 +77,12 @@ public struct Playcut: PlaylistEntry, Identifiable, Codable {
     }
 }
 
-public struct Playlist: Codable {
+public struct Playlist: Codable, Sendable {
     let playcuts: [Playcut]
     let breakpoints: [Breakpoint]
     let talksets: [Talkset]
     
-    static var empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
+    static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
     
     static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
         guard lhs.entries.count == rhs.entries.count else {

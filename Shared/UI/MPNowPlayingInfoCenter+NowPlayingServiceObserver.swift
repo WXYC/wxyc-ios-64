@@ -12,7 +12,7 @@ import Core
 
 extension MPNowPlayingInfoCenter: NowPlayingObserver {
     public func update(nowPlayingItem: NowPlayingItem?) {
-        Task {
+        Task.detached(priority: .userInitiated) {
             await self.update(playcut: nowPlayingItem?.playcut)
             await self.update(artwork: nowPlayingItem?.artwork)
         }
