@@ -9,7 +9,7 @@
 import Foundation
 import Combine
 
-protocol PlaylistFetcher {
+protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
@@ -29,7 +29,7 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-public class PlaylistService {
+public actor PlaylistService {
     public static let shared = PlaylistService()
     
     @Published public private(set) var playlist: Playlist = .empty
@@ -54,11 +54,11 @@ public class PlaylistService {
             Task {
                 let playlist = await self.fetchPlaylist()
                 
-                guard playlist != self.playlist else {
+                guard await playlist != self.playlist else {
                     return
                 }
                 
-                self.playlist = playlist
+                await self.set(playlist: playlist)
                 await self.cacheCoordinator.set(
                     value: self.playlist,
                     for: CacheCoordinator.playlistKey,
@@ -67,6 +67,10 @@ public class PlaylistService {
             }
         }
         self.fetchTimer?.resume()
+    }
+    
+    private func set(playlist: Playlist) async {
+        self.playlist = playlist
     }
     
     deinit {

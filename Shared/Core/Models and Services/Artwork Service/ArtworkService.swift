@@ -45,7 +45,7 @@ public final actor ArtworkService {
     }
 }
 
-protocol ArtworkFetcher {
+protocol ArtworkFetcher: Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage
 }
 

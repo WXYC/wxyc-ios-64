@@ -8,7 +8,7 @@
 
 import Foundation
 
-protocol Cache {
+protocol Cache: Sendable {
     subscript(key: String) -> Data? { get set }
 }
 
@@ -16,7 +16,7 @@ extension UserDefaults {
     static let WXYC = UserDefaults(suiteName: "org.wxyc.apps")!
 }
 
-extension UserDefaults: Cache {
+extension UserDefaults: Cache, @unchecked Sendable {
     subscript(key: String) -> Data? {
         get {
             return self.object(forKey: key) as? Data
