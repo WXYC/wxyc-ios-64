@@ -8,7 +8,7 @@
 
 import UIKit
 
-final class ImageCache: Cache {
+final class WXYCCache: Cache {
     subscript(key: String) -> Data? {
         get {
             let path = self.tempDirectory + key
