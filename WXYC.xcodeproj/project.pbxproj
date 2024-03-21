@@ -30,6 +30,8 @@
 		348534A8222F4E6D002AA181 /* BreakpointCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348534A7222F4E6D002AA181 /* BreakpointCell.swift */; };
 		3489DB3D278E137400264142 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3489DB3C278E137400264142 /* LaunchScreen.storyboard */; };
 		3489DB40278E174400264142 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3434FBED2030A1CC00FC778F /* Images.xcassets */; };
+		348CAF582BAD11860043022F /* NSFWDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 348CAF562BAD11850043022F /* NSFWDetector.swift */; };
+		348CAF592BAD11860043022F /* OpenNSFW.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 348CAF572BAD11850043022F /* OpenNSFW.mlmodel */; };
 		34A8A5EB278E4E4F0081BA8F /* Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34EB12CF278E4A1800257589 /* Core.framework */; };
 		34CEF91D22417AA400D120F7 /* PlaylistDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91C22417AA400D120F7 /* PlaylistDataSource.swift */; };
 		34CEF92022417B1C00D120F7 /* PlaylistCellViewModelProducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CEF91F22417B1C00D120F7 /* PlaylistCellViewModelProducer.swift */; };
@@ -177,6 +179,8 @@
 		348534A5222F4E51002AA181 /* TalksetCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TalksetCell.swift; sourceTree = "<group>"; };
 		348534A7222F4E6D002AA181 /* BreakpointCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakpointCell.swift; sourceTree = "<group>"; };
 		3489DB3C278E137400264142 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		348CAF562BAD11850043022F /* NSFWDetector.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSFWDetector.swift; sourceTree = "<group>"; };
+		348CAF572BAD11850043022F /* OpenNSFW.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = OpenNSFW.mlmodel; sourceTree = "<group>"; };
 		34A2CA0121B9E46A00A31F48 /* ServiceTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTypes.swift; sourceTree = "<group>"; };
 		34A8A5DB278E4DEF0081BA8F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		34A8A5DD278E4DEF0081BA8F /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -260,6 +264,7 @@
 		231AD07F29DA784B006F0980 /* Artwork Service */ = {
 			isa = PBXGroup;
 			children = (
+				348CAF552BAD11750043022F /* NSFW Detection */,
 				34425DA321B8A16E00C8DD5F /* ArtworkService.swift */,
 				34B1882821BB29E0005ADD84 /* Discogs.swift */,
 				3434FBFD2030A1CC00FC778F /* iTunes.swift */,
@@ -430,6 +435,15 @@
 				34CEFA8D22419F5900D120F7 /* PlaylistCellViewModel.swift */,
 			);
 			path = Playlist;
+			sourceTree = "<group>";
+		};
+		348CAF552BAD11750043022F /* NSFW Detection */ = {
+			isa = PBXGroup;
+			children = (
+				348CAF562BAD11850043022F /* NSFWDetector.swift */,
+				348CAF572BAD11850043022F /* OpenNSFW.mlmodel */,
+			);
+			path = "NSFW Detection";
 			sourceTree = "<group>";
 		};
 		34CEF91E22417AB900D120F7 /* Playlist Cells */ = {
@@ -787,6 +801,7 @@
 				34EB12DE278E4A4000257589 /* LastFM.swift in Sources */,
 				34EB12DF278E4A4000257589 /* NowPlayingService.swift in Sources */,
 				34EB12E0278E4A4000257589 /* PlaylistEntry.swift in Sources */,
+				348CAF592BAD11860043022F /* OpenNSFW.mlmodel in Sources */,
 				34EB12E1278E4A4000257589 /* PlaylistService.swift in Sources */,
 				34EB12E2278E4A4000257589 /* RadioStation.swift in Sources */,
 				34EB12E3278E4A4000257589 /* ServiceTypes.swift in Sources */,
@@ -794,6 +809,7 @@
 				34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */,
 				34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */,
 				34EB12E8278E4A4000257589 /* CachedRecord.swift in Sources */,
+				348CAF582BAD11860043022F /* NSFWDetector.swift in Sources */,
 				34EB12E9278E4A4000257589 /* Cache.swift in Sources */,
 				34EB12EA278E4A4000257589 /* ImageCache.swift in Sources */,
 				34EB12EB278E4A4000257589 /* RadioPlayerController.swift in Sources */,
