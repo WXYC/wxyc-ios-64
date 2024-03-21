@@ -19,7 +19,7 @@ public final actor ArtworkService {
 
     private let fetchers: [ArtworkFetcher]
     private let cacheCoordinator: CacheCoordinator
-
+    
     private init(fetchers: [ArtworkFetcher], cacheCoordinator: CacheCoordinator = .AlbumArt) {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
@@ -33,10 +33,13 @@ public final actor ArtworkService {
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
+                guard try await artwork.checkNSFW() == .sfw else {
+                    return nil
+                }
                 await self.cacheCoordinator.set(artwork: artwork, for: playcut)
                 return artwork
             } catch {
-                print(">>> No artwork found for \(playcut) using fetcher \(fetcher)")
+                print(">>> No artwork found for \(playcut) using fetcher \(fetcher): \(error)")
             }
         }
         
