@@ -8,6 +8,7 @@
 
 import UIKit
 
+@MainActor
 protocol PlaycutShareDelegate: AnyObject {
     func presentShareSheet(for activity: PlaycutActivityItem, from view: UIView)
 }

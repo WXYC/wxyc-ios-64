@@ -8,21 +8,37 @@
 
 import Foundation
 
-protocol Cache {
-    subscript(key: String) -> Data? { get set }
+protocol Cache: Sendable {
+    func object(for key: String) -> Data?
+    
+    func set(object: Data?, for key: String)
 }
 
-extension UserDefaults {
-    static let WXYC = UserDefaults(suiteName: "org.wxyc.apps")!
+struct UserDefaultsCache: Cache {
+    private func userDefaults() -> UserDefaults { .standard }
+    
+    func object(for key: String) -> Data? {
+        self.userDefaults().object(forKey: key) as? Data
+    }
+    
+    func set(object: Data?, for key: String) {
+        self.userDefaults().set(object, forKey: key)
+    }
 }
 
-extension UserDefaults: Cache {
-    subscript(key: String) -> Data? {
-        get {
-            return self.object(forKey: key) as? Data
-        }
-        set {
-            self.set(newValue, forKey: key)
+struct StandardCache: Cache, @unchecked Sendable {
+    private let cache = NSCache<NSString, NSData>()
+    
+    func object(for key: String) -> Data? {
+        let data: NSData? = self.cache.object(forKey: key as NSString)
+        return data as? Data
+    }
+    
+    func set(object: Data?, for key: String) {
+        if let object = object as? NSData {
+            self.cache.setObject(object, forKey: key as NSString)
+        } else {
+            self.cache.removeObject(forKey: key as NSString)
         }
     }
 }

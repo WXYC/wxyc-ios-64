@@ -9,7 +9,7 @@
 import Foundation
 import Observation
 
-protocol PlaylistFetcher {
+protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
@@ -32,18 +32,24 @@ extension URLSession: PlaylistFetcher {
 }
 
 @Observable
-public class PlaylistService {
+public final class PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
-    @MainActor
-    public private(set) var playlist: Playlist = .empty
+    @ObservationTracked public private(set) var playlist: Playlist 
+    @ObservationIgnored private var _playlist: Playlist = .empty {
+        didSet {
+            let registrar = self._$observationRegistrar
+            registrar.didSet(self, keyPath: \.playlist)
+        }
+    }
+    @ObservationIgnored private let accessorQueue = DispatchQueue(label: "PlaylistService")
     
-    @ObservationIgnored private var cacheCoordinator: CacheCoordinator
-    @ObservationIgnored private var cachedFetcher: PlaylistFetcher
-    @ObservationIgnored private var remoteFetcher: PlaylistFetcher
-    @ObservationIgnored private var fetchTimer: DispatchSourceTimer? = nil
+    @ObservationIgnored private let cacheCoordinator: CacheCoordinator
+    @ObservationIgnored private let cachedFetcher: PlaylistFetcher
+    @ObservationIgnored private let remoteFetcher: PlaylistFetcher
+    @ObservationIgnored private let fetchTimer: DispatchSource?
     
-    private init(
+    init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
         cachedFetcher: PlaylistFetcher = CacheCoordinator.WXYCPlaylist,
         remoteFetcher: PlaylistFetcher = URLSession.shared
@@ -52,22 +58,24 @@ public class PlaylistService {
         self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
-        self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default))
-        self.fetchTimer?.schedule(deadline: .now(), repeating: 2)
+        self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
+        self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
         self.fetchTimer?.setEventHandler {
-            Task { @MainActor in
+            Task {
                 let playlist = await self.fetchPlaylist()
+                
+                assert(playlist != .empty)
                 
                 guard playlist != self.playlist else {
                     return
                 }
                 
                 self.playlist = playlist
-//                await self.cacheCoordinator.set(
-//                    value: self.playlist,
-//                    for: CacheCoordinator.playlistKey,
-//                    lifespan: DefaultLifespan
-//                )
+                await self.cacheCoordinator.set(
+                    value: self.playlist,
+                    for: CacheCoordinator.playlistKey,
+                    lifespan: DefaultLifespan
+                )
             }
         }
         self.fetchTimer?.resume()

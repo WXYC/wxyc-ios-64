@@ -29,9 +29,9 @@ final class PlaylistDataSource {
     
     private var observation: Any? = nil
     
-    private func updateViewModels(with entries: [PlaylistEntry]) {
+    private func updateViewModels(with entries: [any PlaylistEntry]) {
         self.viewModels = entries
-            .compactMap { $0 as? PlaylistCellViewModelProducer }
+            .compactMap { $0 as? any PlaylistCellViewModelProducer }
             .map { $0.cellViewModel }
     }
 }

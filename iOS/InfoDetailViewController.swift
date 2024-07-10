@@ -64,7 +64,7 @@ class InfoDetailViewController: UIViewController {
     }
 }
 
-extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
+extension InfoDetailViewController: @preconcurrency MFMailComposeViewControllerDelegate {
     private static let feedbackAddress = "feedback@wxyc.org"
     private static let subject = "Feedback on the WXYC app"
     

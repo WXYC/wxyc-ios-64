@@ -6,18 +6,16 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
-import WidgetKit
+@preconcurrency import WidgetKit
 import SwiftUI
 import Core
 
-class Provider: TimelineProvider {
-    var nowPlayingObservations: [Any] = []
-    
+final class Provider: TimelineProvider, Sendable {
     func placeholder(in context: Context) -> NowPlayingEntry {
         NowPlayingEntry.placeholder(family: context.family)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (NowPlayingEntry) -> ()) {
+    func getSnapshot(in context: Context, completion: @escaping @Sendable (NowPlayingEntry) -> ()) {
         Task {
             if let nowPlayingItem = await NowPlayingService.shared.fetch() {
                 completion(NowPlayingEntry(nowPlayingItem, family: context.family))
@@ -26,8 +24,12 @@ class Provider: TimelineProvider {
             }
         }
     }
+    
+    func foo(asdf: Any) {
+        
+    }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
         Task {
             if let nowPlayingItem = await NowPlayingService.shared.fetch() {
                 let timeline = Timeline(entries: [NowPlayingEntry(nowPlayingItem, family: context.family)], policy: .atEnd)
