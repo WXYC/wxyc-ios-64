@@ -11,9 +11,10 @@ import AppIntents
 import SwiftUI
 import Core
 
-public struct PlayWXYC: AudioStartingIntent {
-    public static var title: LocalizedStringResource = "WXYC"
-    
+public struct PlayWXYC: AudioPlaybackIntent {
+    public static let title: LocalizedStringResource = "WXYC"
+    public static let description = "Plays WXYC."
+
     public init() { }
     
     @MainActor
@@ -28,7 +29,9 @@ public struct PlayWXYC: AudioStartingIntent {
 public struct WhatsPlayingOnWXYC: AppIntent {
     public static let title: LocalizedStringResource = "What’s Playing on WXYC?"
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    
+    public static let openAppWhenRun = false
+    public static let description = "Find out what's currently playing."
+
     public init() { }
 
     @MainActor

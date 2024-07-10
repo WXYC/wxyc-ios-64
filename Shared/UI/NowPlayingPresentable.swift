@@ -8,7 +8,7 @@
 
 import UIKit
 import Core
-import Combine
+
 
 public protocol NowPlayingPresentable: AnyObject, Sendable {
     var songLabel: UILabel! { get }
@@ -21,7 +21,7 @@ public protocol NowPlayingObserver {
     func update(nowPlayingItem: NowPlayingItem?)
 }
 
-public extension NowPlayingPresentable where Self: NowPlayingObserver {
+public extension NowPlayingPresentable where Self: NowPlayingObserver & Sendable {
     func update(nowPlayingItem: NowPlayingItem?) {
         Task {
             await self.update(playcut: nowPlayingItem?.playcut)

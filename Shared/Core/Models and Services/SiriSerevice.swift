@@ -35,7 +35,7 @@ public actor SiriService {
     public func handle(intent: INIntent) async -> INIntentResponse {
         switch intent.identifier {
         case IntentIdentifiers.PlayWXYC:
-            RadioPlayerController.shared.play()
+            await RadioPlayerController.shared.play()
             let nowPlayingItem = await NowPlayingService.shared.fetch()
             return INPlayMediaIntentResponse(nowPlayingItem: nowPlayingItem)
         default:

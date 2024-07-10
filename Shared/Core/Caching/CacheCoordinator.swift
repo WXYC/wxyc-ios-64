@@ -1,11 +1,10 @@
 import Foundation
-import Combine
 
 let DefaultLifespan: TimeInterval = 30
 
 public final actor CacheCoordinator {
-    public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaults.WXYC)
-    public static let AlbumArt = CacheCoordinator(cache: ImageCache())
+    public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
+    public static let AlbumArt = CacheCoordinator(cache: StandardCache())
     
     // MARK: Private vars
     
@@ -32,7 +31,7 @@ public final actor CacheCoordinator {
     
     public func value<Value: Codable>(for key: String) async throws -> Value {
         do {
-            guard let encodedCachedRecord = self.cache[key] else {
+            guard let encodedCachedRecord = self.cache.object(for: key) else {
                 throw ServiceErrors.noCachedResult
             }
             
@@ -70,9 +69,9 @@ public final actor CacheCoordinator {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
             let encodedCachedRecord = try? Self.encoder.encode(cachedRecord)
             
-            self.cache[key] = encodedCachedRecord
+            self.cache.set(object: encodedCachedRecord, for: key)
         } else {
-            self.cache[key] = nil as Data?
+            self.cache.set(object: nil, for: key)
         }
     }
 }
