@@ -15,6 +15,7 @@ public enum PlaybackState {
     case paused
 }
 
+@MainActor
 public final class RadioPlayerController {
     public static let shared = RadioPlayerController()
     

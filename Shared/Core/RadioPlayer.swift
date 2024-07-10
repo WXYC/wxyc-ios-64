@@ -9,6 +9,7 @@
 import Foundation
 import AVFoundation
 
+@MainActor
 internal final class RadioPlayer {
     let streamURL: URL
     
@@ -40,10 +41,11 @@ internal final class RadioPlayer {
     private lazy var player: AVPlayer = AVPlayer(url: self.streamURL)
     
     private func resetStream() {
-        let asset = AVAsset(url: self.streamURL)
-        let playerItem = AVPlayerItem(asset: asset)
-        player.replaceCurrentItem(with: playerItem)
-        
+        Task { @MainActor in
+            let asset = AVURLAsset(url: self.streamURL)
+            let playerItem = AVPlayerItem(asset: asset)
+            player.replaceCurrentItem(with: playerItem)
+        }
     }
 }
 

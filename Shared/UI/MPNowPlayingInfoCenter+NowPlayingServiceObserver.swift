@@ -7,44 +7,61 @@
 //
 
 import UIKit
-import MediaPlayer
+@preconcurrency import MediaPlayer
 import Core
 
 extension MPNowPlayingInfoCenter: NowPlayingObserver {
     public func update(nowPlayingItem: NowPlayingItem?) {
-        print(nowPlayingItem)
-        Task {
-            await self.update(playcut: nowPlayingItem?.playcut)
-            await self.update(artwork: nowPlayingItem?.artwork)
-        }
+        self.update(playcut: nowPlayingItem?.playcut)
+        self.update(artwork: nowPlayingItem?.artwork)
     }
 
-    @MainActor func update(playcut: Playcut?) {
-        if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
-        
-        self.nowPlayingInfo?.update(with: playcut.playcutMediaItems)
+    func update(playcut: Playcut?) {
+        let playcutMediaItems = playcut.playcutMediaItems
+        Task { @MainActor in
+            if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
+            
+            self.nowPlayingInfo?.update(with: playcutMediaItems)
+        }
     }
     
-    @MainActor func update(artwork: UIImage?) {
-        if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
+    func update(artwork: UIImage?) {
+        Task { @MainActor in
+            if self.nowPlayingInfo == nil { self.nowPlayingInfo = [:] }
+            
+            self.nowPlayingInfo?[MPMediaItemPropertyArtwork] = await mediaItemArtwork(from: artwork)
+        }
+    }
+    
+    func mediaItemArtwork(from image: UIImage?) async -> MPMediaItemArtwork {
+        let screenWidth = await UIScreen.main.bounds.size.width
+        let boundsSize = CGSize(width: screenWidth, height: screenWidth)
         
-        self.nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork.mediaItemArtwork
+        if let image {
+            return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
+                return image
+            }
+        } else {
+            return await MPMediaItemArtwork.defaultArt()
+        }
     }
 }
 
-@MainActor extension Optional where Wrapped == UIImage {
-    var mediaItemArtwork: MPMediaItemArtwork {
-        let screenWidth = UIScreen.main.bounds.size.width
-        let boundsSize = CGSize(width: screenWidth, height: screenWidth)
+extension MPMediaItemArtwork {
+    @MainActor
+    static func defaultArt() -> MPMediaItemArtwork {
+        let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
+        let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
+        logoView.contentMode = .scaleAspectFit
         
-        return MPMediaItemArtwork(boundsSize: boundsSize) { @MainActor _ in
-            DispatchQueue.main.sync {
-                if case .some(let artwork) = self {
-                    return artwork
-                } else {
-                    return UIImage.defaultNowPlayingInfoCenterImage
-                }
-            }
+        let width = UIScreen.main.bounds.width
+        backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: width)
+        logoView.frame = backgroundView.frame
+        
+        backgroundView.addSubview(logoView)
+        
+        return MPMediaItemArtwork(boundsSize: backgroundView.frame.size) { _ in
+            backgroundView.snapshot()!
         }
     }
 }
@@ -64,33 +81,6 @@ extension Optional where Wrapped == Playcut {
                 MPMediaItemPropertyAlbumTitle: ""
             ]
         }
-    }
-}
-
-extension NowPlayingItem {
-    public func toUserInfo() -> [String:Any?] {
-        return [
-            MPMediaItemPropertyArtist : playcut.artistName,
-            MPMediaItemPropertyTitle: playcut.songTitle,
-            MPMediaItemPropertyAlbumTitle: playcut.releaseTitle,
-            MPMediaItemPropertyArtwork: artwork,
-        ]
-    }
-}
-
-extension UIImage {
-    @MainActor static var defaultNowPlayingInfoCenterImage: UIImage {
-        let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
-        let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
-        logoView.contentMode = .scaleAspectFit
-        
-        let width = UIScreen.main.bounds.width
-        backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: width)
-        logoView.frame = backgroundView.frame
-        
-        backgroundView.addSubview(logoView)
-        
-        return backgroundView.snapshot()!
     }
 }
 

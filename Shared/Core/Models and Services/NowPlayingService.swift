@@ -9,39 +9,45 @@
 import Foundation
 import UIKit
 
-public struct NowPlayingItem {
+public struct NowPlayingItem: Sendable {
     public let playcut: Playcut
     public var artwork: UIImage?
 }
 
 @Observable
-public final class NowPlayingService {
+public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
-    public private(set) var nowPlayingItem: NowPlayingItem? = nil
+    @ObservationTracked public private(set) var nowPlayingItem: NowPlayingItem? {
+        get {
+            return self.accessorQueue.sync { self._nowPlayingItem }
+        }
+        set {
+            self.accessorQueue.sync { self._nowPlayingItem = newValue }
+        }
+    }
+    @ObservationIgnored private(set) var _nowPlayingItem: NowPlayingItem? = nil
+    @ObservationIgnored private let accessorQueue = DispatchQueue(label: "NowPlayingService")
     
     @ObservationIgnored private let playlistService: PlaylistService
     @ObservationIgnored private let artworkService: ArtworkService
-    @ObservationIgnored private var playlistObservation: Any? = nil
-    @ObservationIgnored private var updateTask: Any? = nil
+    @ObservationIgnored private var playlistObservation: Sendable? = nil
     
-    internal init(
-        playlistService: PlaylistService = .shared,
+    init(
+        playlistService: PlaylistService = PlaylistService(),
         artworkService: ArtworkService = .shared
     ) {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
-        self.playlistObservation = withObservationTracking { @MainActor in
-            Task { @MainActor in
-                self.playlistService.playlist.playcuts
-            }
+        self.playlistObservation = withObservationTracking {
+            self.playlistService.playlist.playcuts
         } onChange: {
-            Task { @MainActor in
+            Task {
                 guard let playcut = self.playlistService.playlist.playcuts.first else {
                     return
                 }
-
+                
                 let artwork = await self.artworkService.getArtwork(for: playcut)
                 self.nowPlayingItem = NowPlayingItem(playcut: playcut, artwork: artwork)
             }

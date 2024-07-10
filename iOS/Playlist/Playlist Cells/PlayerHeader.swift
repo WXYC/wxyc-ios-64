@@ -47,9 +47,11 @@ class PlayerHeader: UITableViewHeaderFooterView {
             RadioPlayerController.shared.$playbackState.sink(receiveValue: self.playbackStateChanged)
         self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: nil) { _ in
-            self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
-            self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
-            self.playbackStateChanged(playbackState: RadioPlayerController.shared.playbackState)
+            Task { @MainActor in
+                self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
+                self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
+                self.playbackStateChanged(playbackState: RadioPlayerController.shared.playbackState)
+            }
         }
     }
     
