@@ -9,13 +9,13 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-import Combine
 
 public enum PlaybackState {
     case playing
     case paused
 }
 
+@MainActor
 public final class RadioPlayerController {
     public static let shared = RadioPlayerController()
     
@@ -26,7 +26,7 @@ public final class RadioPlayerController {
     ) {
         self.radioPlayer = radioPlayer
         
-        func notificationObserver(for name: Notification.Name, sink: @escaping (Notification) -> ()) -> AnyCancellable {
+        func notificationObserver(for name: Notification.Name, sink: @escaping (Notification) -> ()) -> Any {
             return notificationCenter.publisher(for: name)
                 .sink(receiveValue: sink)
         }

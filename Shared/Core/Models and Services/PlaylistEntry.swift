@@ -6,7 +6,7 @@ extension URL {
     static let WXYCStream320kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 }
 
-public protocol PlaylistEntry: Codable, Sendable {
+public protocol PlaylistEntry: Codable, Identifiable, Sendable {
     var id: Int { get }
     var hour: Int { get }
     var chronOrderID: Int { get }
@@ -22,11 +22,11 @@ public extension PlaylistEntry {
         return dictionary.debugDescription
     }
     
-    static func ==(lhs: PlaylistEntry, rhs: PlaylistEntry) -> Bool {
+    static func ==(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
 
-    static func !=(lhs: PlaylistEntry, rhs: PlaylistEntry) -> Bool {
+    static func !=(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
         !(lhs.id == rhs.id)
     }
 }
@@ -43,7 +43,7 @@ public struct Talkset: PlaylistEntry {
     public let chronOrderID: Int
 }
 
-public struct Playcut: PlaylistEntry, Identifiable, Codable, Sendable {
+public struct Playcut: PlaylistEntry {
     public let id: Int
     public let hour: Int
     public let chronOrderID: Int
@@ -97,8 +97,8 @@ public struct Playlist: Codable, Sendable {
 }
 
 public extension Playlist {
-    var entries: [PlaylistEntry] {
-        let playlist: [PlaylistEntry] = (playcuts + breakpoints + talksets)
+    var entries: [any PlaylistEntry] {
+        let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
     }
 }

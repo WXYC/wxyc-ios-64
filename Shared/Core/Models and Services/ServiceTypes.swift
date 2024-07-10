@@ -11,6 +11,6 @@ enum ServiceErrors: String, LocalizedError {
     case noCachedResult
 }
 
-protocol WebSession {
+protocol WebSession: Sendable {
     func data(from url: URL) async throws -> Data
 }

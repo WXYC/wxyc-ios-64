@@ -6,18 +6,16 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
-import WidgetKit
+@preconcurrency import WidgetKit
 import SwiftUI
 import Core
 
-class Provider: TimelineProvider {
-    var nowPlayingObservations: [Any] = []
-    
+final class Provider: TimelineProvider, Sendable {
     func placeholder(in context: Context) -> NowPlayingEntry {
         NowPlayingEntry.placeholder(family: context.family)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (NowPlayingEntry) -> ()) {
+    func getSnapshot(in context: Context, completion: @escaping @Sendable (NowPlayingEntry) -> ()) {
         Task {
             if let nowPlayingItem = await NowPlayingService.shared.fetch() {
                 completion(NowPlayingEntry(nowPlayingItem, family: context.family))
@@ -27,7 +25,7 @@ class Provider: TimelineProvider {
         }
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
         Task {
             if let nowPlayingItem = await NowPlayingService.shared.fetch() {
                 let timeline = Timeline(entries: [NowPlayingEntry(nowPlayingItem, family: context.family)], policy: .atEnd)
@@ -101,7 +99,6 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .foregroundStyle(.foreground)
                     .padding(EdgeInsets(top: 5, leading: 0, bottom: 0, trailing: 0))
                     .frame(maxWidth: .infinity)
-                    .lineLimit(1)
 
                 Text(entry.songTitle)
                     .font(.subheadline)
@@ -172,6 +169,21 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             .containerBackground(for: .widget) {
                 EmptyView()
             }
+        }
+    }
+    
+    internal var artwork: AnyView {
+        if let artwork = entry.artwork {
+            return AnyView(Image(uiImage: artwork).resizable())
+        } else {
+            return AnyView(Self.defaultArtwork)
+        }
+    }
+    
+    private static var defaultArtwork: some View {
+        ZStack {
+            Image(uiImage: #imageLiteral(resourceName: "background.pdf"))
+            Image(uiImage: #imageLiteral(resourceName: "logo.pdf"))
         }
     }
 }

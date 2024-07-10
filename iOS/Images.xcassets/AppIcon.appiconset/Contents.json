@@ -109,13 +109,13 @@
       "size" : "1024x1024"
     },
     {
-      "filename" : "AppIcon-60@2x-1.png",
+      "filename" : "app-icon-120x120.png",
       "idiom" : "car",
       "scale" : "2x",
       "size" : "60x60"
     },
     {
-      "filename" : "AppIcon-60@3x-1.png",
+      "filename" : "app-icon-180x180.png",
       "idiom" : "car",
       "scale" : "3x",
       "size" : "60x60"
