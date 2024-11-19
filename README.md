@@ -1,5 +1,7 @@
 # 64-bit iOS app
 
+Just looking to download the app? Find it over on the [iOS app store](https://apps.apple.com/us/app/wxyc-radio/id353182815).
+
 ## History
 
 So.... back in the heady days of 2010, [Jake B.](https://github.com/jakebromberg) made the very first open-source [WXYC iPhone app](https://github.com/jakebromberg/wxyc-iphone-app). At the time this was kind of a big deal as there weren't too many radio stations (let alone college stations) that had an app available for the iPhone. Fast-forward a couple years and that old app is still [choogling](https://www.youtube.com/watch?v=mUzl7_OpVLA) along (with a couple updates here and there over the years). 
