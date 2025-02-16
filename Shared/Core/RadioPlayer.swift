@@ -10,16 +10,30 @@ import Foundation
 import AVFoundation
 
 @MainActor
-internal final class RadioPlayer {
-    let streamURL: URL
+internal final class RadioPlayer: Sendable {
+    private let streamURL: URL
+    private var playerObservation: (any NSObjectProtocol)?
     
-    init(streamURL: URL = .WXYCStream320kMP3) {
+    init(streamURL: URL = .WXYCStream128kMP3) {
         self.streamURL = streamURL
+        self.player = AVPlayer(url: streamURL)
+        self.playerObservation =
+            NotificationCenter.default.addObserver(
+                forName: AVPlayer.rateDidChangeNotification,
+                object: self.player,
+                queue: nil
+            ) { notification in
+                print(notification)
+                Task { @MainActor in
+                    self.isPlaying = self.player.rate > 0
+                    self.playbackState = self.isPlaying ? .playing : .paused
+                }
+            }
     }
     
-    var isPlaying: Bool {
-        return player.isPlaying
-    }
+    @Publishable var isPlaying: Bool = false
+    
+    var playbackState: PlaybackState = .initialized
     
     func play() {
         if self.isPlaying {
@@ -38,14 +52,12 @@ internal final class RadioPlayer {
     
     // MARK: Private
     
-    private lazy var player: AVPlayer = AVPlayer(url: self.streamURL)
+    private let player: AVPlayer
     
     private func resetStream() {
-        Task { @MainActor in
-            let asset = AVURLAsset(url: self.streamURL)
-            let playerItem = AVPlayerItem(asset: asset)
-            player.replaceCurrentItem(with: playerItem)
-        }
+        let asset = AVURLAsset(url: self.streamURL)
+        let playerItem = AVPlayerItem(asset: asset)
+        player.replaceCurrentItem(with: playerItem)
     }
 }
 

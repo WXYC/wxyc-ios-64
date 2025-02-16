@@ -16,14 +16,10 @@ public struct PlayWXYC: AudioPlaybackIntent {
     public static let description = "Plays WXYC."
 
     public init() { }
-    
-    @MainActor
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        RadioPlayerController.shared.play()
+        await RadioPlayerController.shared.play()
         return .result(value: "Now playing WXYC.")
     }
-    
-    public static var description = "Plays WXYC."
 }
 
 public struct WhatsPlayingOnWXYC: AppIntent {
@@ -31,10 +27,9 @@ public struct WhatsPlayingOnWXYC: AppIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let openAppWhenRun = false
     public static let description = "Find out what's currently playing."
+    public static let isDiscoverable = true
 
     public init() { }
-
-    @MainActor
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
             return .result(
@@ -51,9 +46,6 @@ public struct WhatsPlayingOnWXYC: AppIntent {
         )
     }
 
-    public static var openAppWhenRun = false
-    public static var description = "Find out what's currently playing."
-    
     struct NowPlayingView: View {
         let item: NowPlayingItem
 

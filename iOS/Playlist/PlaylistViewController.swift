@@ -9,8 +9,6 @@
 import UIKit
 import Observation
 import Core
-
-@MainActor
 class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared
@@ -18,13 +16,7 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var playlistDataSourceObservation: Any? = nil
     
     override func viewDidLoad() {
-        self.playlistDataSourceObservation = withObservationTracking {
-            self.playlistDataSource.viewModels
-        } onChange: {
-            Task { @MainActor in
-                self.update(viewModels: self.playlistDataSource.viewModels)
-            }
-        }
+        self.playlistDataSource.$viewModels.observe(observer: self.update(viewModels:))
         self.setUpTableView()
     }
     
@@ -43,11 +35,11 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     }
     
     // MARK: PlaylistPresentable
-    
-    @MainActor
     func update(viewModels: [PlaylistCellViewModel]) {
-        self.viewModels = viewModels
-        self.tableView.reloadData()
+        Task { @MainActor in
+            self.viewModels = viewModels
+            self.tableView.reloadData()
+        }
     }
     
     // MARK: PlaycutShareDelegate

@@ -1,14 +1,9 @@
 import UIKit
 import Core
-
 final class RootPageViewController: UIPageViewController {
-    let nowPlayingViewController: PlaylistViewController
-    let infoDetailViewController: InfoDetailViewController
-    
-    required init() {
-        self.nowPlayingViewController = PlaylistViewController(style: .grouped)
-        self.infoDetailViewController = InfoDetailViewController(nibName: nil, bundle: nil)
-
+    let nowPlayingViewController = PlaylistViewController(style: .grouped)
+    let infoDetailViewController = InfoDetailViewController(nibName: nil, bundle: nil)
+    init() {
         super.init(
             transitionStyle: .scroll,
             navigationOrientation: .horizontal,
@@ -18,13 +13,6 @@ final class RootPageViewController: UIPageViewController {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-    
-    var pages: [UIViewController] {
-        [
-            nowPlayingViewController,
-            infoDetailViewController
-        ]
     }
     
     override var transitionStyle: TransitionStyle { .scroll }
@@ -106,7 +94,7 @@ extension RootPageViewController: UIPageViewControllerDataSource {
     }
     
     func presentationCount(for pageViewController: UIPageViewController) -> Int {
-        return self.pages.count
+        return 2
     }
     
     func presentationIndex(for pageViewController: UIPageViewController) -> Int {
@@ -118,7 +106,6 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         default:
             return 0
         }
-//        return 0
     }
 }
 

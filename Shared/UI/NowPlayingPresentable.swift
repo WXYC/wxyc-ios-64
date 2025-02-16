@@ -17,34 +17,37 @@ public protocol NowPlayingPresentable: AnyObject, Sendable {
     var userActivity: NSUserActivity? { get set }
 }
 
+@MainActor
 public protocol NowPlayingObserver {
     func update(nowPlayingItem: NowPlayingItem?)
 }
 
 public extension NowPlayingPresentable where Self: NowPlayingObserver & Sendable {
     func update(nowPlayingItem: NowPlayingItem?) {
-        Task {
-            await self.update(playcut: nowPlayingItem?.playcut)
-            await self.update(artwork: nowPlayingItem?.artwork)
+        self.update(playcut: nowPlayingItem?.playcut)
+        self.update(artwork: nowPlayingItem?.artwork)
+    }
+    
+    func update(playcut: Playcut?) {
+        DispatchQueue.main.async {
+            self.songLabel.text = playcut.songTitle
+            self.artistLabel.text = playcut.artistName
+            
+            self.userActivity = playcut.userActivity
+            self.userActivity?.becomeCurrent()
         }
     }
     
-    @MainActor func update(playcut: Playcut?) {
-        self.songLabel.text = playcut.songTitle
-        self.artistLabel.text = playcut.artistName
-        
-        self.userActivity = playcut.userActivity
-        self.userActivity?.becomeCurrent()
-    }
-    
-    @MainActor func update(artwork: UIImage?) {
-        UIView.transition(
-            with: self.albumImageView,
-            duration: 0.25,
-            options: [.transitionCrossDissolve],
-            animations: { self.albumImageView.image = artwork.nowPlayingImage },
-            completion: nil
-        )
+    func update(artwork: UIImage?) {
+        DispatchQueue.main.async {
+            UIView.transition(
+                with: self.albumImageView,
+                duration: 0.25,
+                options: [.transitionCrossDissolve],
+                animations: { self.albumImageView.image = artwork.nowPlayingImage },
+                completion: nil
+            )
+        }
     }
 }
 

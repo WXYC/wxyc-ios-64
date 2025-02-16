@@ -2,6 +2,7 @@ import Foundation
 
 public extension TimeInterval {
     static let distantFuture = Date.distantFuture.timeIntervalSince1970
+    static let oneDay = 60.0 * 60.0 * 24.0
 }
 
 /// `NowPlayingService` will throw one of these errors, depending

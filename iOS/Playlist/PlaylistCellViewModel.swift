@@ -9,15 +9,15 @@
 import UIKit
 import Core
 
-final class PlaylistCellViewModel {
+final class PlaylistCellViewModel: Sendable {
     let cellClass: UITableViewCell.Type
     let reuseIdentifier: String
-    let configure: @MainActor (UITableViewCell) -> ()
+    let configure: (UITableViewCell) -> ()
     let artworkService = ArtworkService.shared
     
     init<Cell: UITableViewCell>(
         reuseIdentifier: String = NSStringFromClass(Cell.self),
-        configure: @escaping @MainActor (Cell) -> ()
+        configure: @escaping (Cell) -> ()
     ) {
         self.cellClass = Cell.self
         self.reuseIdentifier = reuseIdentifier

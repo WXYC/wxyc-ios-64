@@ -1,10 +1,18 @@
 import Foundation
+import UIKit
 
 let DefaultLifespan: TimeInterval = 30
 
 public final actor CacheCoordinator {
     public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
     public static let AlbumArt = CacheCoordinator(cache: StandardCache())
+    
+    public static let PurgeRecords: Notification.Name = .init("org.wxyc.iphone.CacheCoordinator.PurgeRecords")
+    
+    internal init(cache: Cache) {
+        self.cache = cache
+        self.purgeRecords()
+    }
     
     // MARK: Private vars
     
@@ -13,20 +21,17 @@ public final actor CacheCoordinator {
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
     
-    internal init(cache: Cache) {
-        self.cache = cache
-    }
-    
     // MARK: Public methods
     
     public func value<Value, Key>(for key: Key) async throws -> Value
-        where Value: Codable, Key: RawRepresentable, Key.RawValue == String {
-            try await self.value(for: key.rawValue)
+    where Value: Codable, Key: RawRepresentable, Key.RawValue == String {
+        try await self.value(for: key.rawValue)
     }
     
     public func value<Value, Key>(for key: Key) async throws -> Value
-        where Value: Codable, Key: Identifiable, Key.ID == Int {
-            try await self.value(for: String(key.id))
+        where Value: Codable, Key: Identifiable, Key.ID == Int
+    {
+        try await self.value(for: String(key.id))
     }
     
     public func value<Value: Codable>(for key: String) async throws -> Value {
@@ -40,7 +45,7 @@ public final actor CacheCoordinator {
             
             // nil out record, if expired
             guard !cachedRecord.isExpired else {
-                self.set(value: nil as Value?, for: key, lifespan: .distantFuture) // Nil-out expired record
+                self.cache.set(object: nil, for: key) // Nil-out expired record
                 
                 throw ServiceErrors.noCachedResult
             }
@@ -49,22 +54,28 @@ public final actor CacheCoordinator {
             
             return cachedRecord.value
         } catch {
-            print(error)
+            print(">>> No value for '\(key)': ", error)
             throw error
         }
     }
     
     public func set<Value, Key>(value: Value?, for key: Key, lifespan: TimeInterval)
-        where Value: Codable, Key: RawRepresentable, Key.RawValue == String {
-            return self.set(value: value, for: key.rawValue, lifespan: lifespan)
+        where Value: Codable, Key: RawRepresentable, Key.RawValue == String
+    {
+        self.set(value: value, for: key.rawValue, lifespan: lifespan)
     }
     
     public func set<Value, Key>(value: Value?, for key: Key, lifespan: TimeInterval)
-        where Value: Codable, Key: Identifiable, Key.ID == Int {
-            return self.set(value: value, for: String(key.id), lifespan: lifespan)
+        where Value: Codable, Key: Identifiable, Key.ID == Int
+    {
+        self.set(value: value, for: String(key.id), lifespan: lifespan)
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
+        print(">>> Setting value for key '\(key)'")
+        print(">>> Value is nil: \(value == nil)")
+        print(">>> Lifespan: \(lifespan)")
+        
         if let value = value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
             let encodedCachedRecord = try? Self.encoder.encode(cachedRecord)
@@ -72,6 +83,34 @@ public final actor CacheCoordinator {
             self.cache.set(object: encodedCachedRecord, for: key)
         } else {
             self.cache.set(object: nil, for: key)
+        }
+    }
+    
+    // MARK: Private methods
+    
+    private nonisolated func purgeRecords() {
+        Task {
+            await self.purgeExpiredRecords()
+            await self.purgeDistantFutureRecords()
+        }
+    }
+    
+    private func purgeExpiredRecords() {
+        for (key, value) in self.cache.allRecords() {
+            if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
+               record.isExpired {
+                self.cache.set(object: nil, for: key)
+            }
+        }
+    }
+    
+    private func purgeDistantFutureRecords() {
+        for (key, value) in self.cache.allRecords() {
+            if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
+               record.lifespan == .distantFuture {
+                print("Purging distant future record for key '\(key)'")
+                self.cache.set(object: nil, for: key)
+            }
         }
     }
 }

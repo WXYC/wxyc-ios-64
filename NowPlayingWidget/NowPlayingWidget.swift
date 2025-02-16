@@ -29,13 +29,11 @@ final class Provider: TimelineProvider, Sendable {
     func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
         let family = context.family
         Task {
-            if let nowPlayingItem = await NowPlayingService.shared.fetch() {
-                let timeline = Timeline(entries: [NowPlayingEntry(nowPlayingItem, family: family)], policy: .atEnd)
-                completion(timeline)
-            } else {
-                let timeline = Timeline(entries: [NowPlayingEntry.placeholder(family: family)], policy: .atEnd)
-                completion(timeline)
-            }
+            let nowPlayingItem = await NowPlayingService.shared.fetch() ?? .placeholder
+            let timeline = Timeline(
+                entries: [NowPlayingEntry(nowPlayingItem, family: family)],
+                policy: .atEnd)
+            completion(timeline)
         }
     }
 }
@@ -209,4 +207,19 @@ struct NowPlayingWidget: Widget {
         .description("Now playing on WXYC…")
         .contentMarginsDisabled()
     }
+}
+
+extension NowPlayingItem {
+    static let placeholder = NowPlayingItem(
+        playcut: Playcut(
+            id: 0,
+            hour: 0,
+            chronOrderID: 0,
+            songTitle: "Chapel Hill, NC",
+            labelName: nil,
+            artistName: "WXYC 89.3 FM",
+            releaseTitle: nil
+        ),
+        artwork: nil
+    )
 }
