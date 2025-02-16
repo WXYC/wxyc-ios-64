@@ -10,6 +10,7 @@ import Foundation
 import UIKit
 import Combine
 
+// TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
 public final actor ArtworkService {
     public static let shared = ArtworkService(fetchers: [
         DiscogsArtworkFetcher(),
@@ -49,6 +50,7 @@ protocol ArtworkFetcher: Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage
 }
 
+// TODO: Remove this and replace with `CachingArtworkFetcher`.
 extension CacheCoordinator: ArtworkFetcher {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let cachedData: Data = try await self.value(for: playcut)
@@ -61,7 +63,7 @@ extension CacheCoordinator: ArtworkFetcher {
     
     func set(artwork: UIImage, for playcut: Playcut) async {
         let artworkData = artwork.pngData()
-        set(value: artworkData, for: playcut, lifespan: .distantFuture)
+        self.set(value: artworkData, for: playcut, lifespan: .oneDay)
     }
 }
 
@@ -79,7 +81,7 @@ internal final class CachingArtworkFetcher: ArtworkFetcher {
     
     internal func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let artwork = try await self.fetcher.fetchArtwork(for: playcut)
-        await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .distantFuture)
+        await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .oneDay)
         
         return artwork
     }

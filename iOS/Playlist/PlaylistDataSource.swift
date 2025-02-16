@@ -10,27 +10,32 @@ import Foundation
 import Observation
 import Core
 
-@Observable
-@MainActor
-final class PlaylistDataSource {
+final class PlaylistDataSource: Sendable {
+    @Publishable private(set) var viewModels: [PlaylistCellViewModel] = []
+
     static let shared = PlaylistDataSource()
     
-    private(set) var viewModels: [PlaylistCellViewModel] = []
-    
     init(playlistService: PlaylistService = .shared) {
-        self.observation = withObservationTracking {
-            playlistService.playlist
-        } onChange: {
-            Task { @MainActor in
-                self.updateViewModels(with: playlistService.playlist.entries)
-            }
-        }
+        playlistService.$playlist.observe(observer: self.updateViewModels(with: ))
+//        self.playlistServiceObserver = withObservationTracking {
+//            playlistService.playlist
+//        } onChange: {
+//            self.updateViewModels(with: playlistService.playlist.entries)
+////            Task { @MainActor in
+////            }
+//        }
     }
     
-    private var observation: Any? = nil
+    private var playlistServiceObserver: Any? = nil
     
     private func updateViewModels(with entries: [any PlaylistEntry]) {
         self.viewModels = entries
+            .compactMap { $0 as? any PlaylistCellViewModelProducer }
+            .map { $0.cellViewModel }
+    }
+    
+    private func updateViewModels(with playlist: Playlist) {
+        self.viewModels = playlist.entries
             .compactMap { $0 as? any PlaylistCellViewModelProducer }
             .map { $0.cellViewModel }
     }

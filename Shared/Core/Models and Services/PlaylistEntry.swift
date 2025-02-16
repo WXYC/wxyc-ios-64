@@ -63,6 +63,24 @@ public struct Playcut: PlaylistEntry {
         case releaseTitle
     }
     
+    public init(
+        id: Int,
+        hour: Int,
+        chronOrderID: Int,
+        songTitle: String,
+        labelName: String?,
+        artistName: String,
+        releaseTitle: String?
+    ) {
+        self.id = id
+        self.hour = hour
+        self.chronOrderID = chronOrderID
+        self.songTitle = songTitle
+        self.labelName = labelName
+        self.artistName = artistName
+        self.releaseTitle = releaseTitle
+    }
+    
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         

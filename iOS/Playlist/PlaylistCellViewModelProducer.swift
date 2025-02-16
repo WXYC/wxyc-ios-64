@@ -15,6 +15,7 @@ protocol PlaylistCellViewModelProducer {
 }
 
 extension Playcut: PlaylistCellViewModelProducer {
+    @MainActor
     var cellViewModel: PlaylistCellViewModel {
         return PlaylistCellViewModel { (cell: PlaycutCell) in
             cell.token = self.id

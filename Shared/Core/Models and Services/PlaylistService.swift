@@ -31,23 +31,15 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-@Observable
 public final class PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
-    @ObservationTracked public private(set) var playlist: Playlist 
-    @ObservationIgnored private var _playlist: Playlist = .empty {
-        didSet {
-            let registrar = self._$observationRegistrar
-            registrar.didSet(self, keyPath: \.playlist)
-        }
-    }
-    @ObservationIgnored private let accessorQueue = DispatchQueue(label: "PlaylistService")
+    @Publishable public private(set) var playlist: Playlist
     
-    @ObservationIgnored private let cacheCoordinator: CacheCoordinator
-    @ObservationIgnored private let cachedFetcher: PlaylistFetcher
-    @ObservationIgnored private let remoteFetcher: PlaylistFetcher
-    @ObservationIgnored private let fetchTimer: DispatchSource?
+    private let cacheCoordinator: CacheCoordinator
+    private let cachedFetcher: PlaylistFetcher
+    private let remoteFetcher: PlaylistFetcher
+    private let fetchTimer: DispatchSource?
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -58,16 +50,20 @@ public final class PlaylistService: @unchecked Sendable {
         self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
+        self.playlist = .empty
+        
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
         self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
         self.fetchTimer?.setEventHandler {
             Task {
                 let playlist = await self.fetchPlaylist()
                 
-                assert(playlist != .empty)
-                
-                guard await playlist != self.playlist else {
+                guard playlist != self.playlist else {
                     return
+                }
+                
+                if playlist.entries.isEmpty {
+                    print("Empty playlist")
                 }
                 
                 await self.set(playlist: playlist)
@@ -90,27 +86,50 @@ public final class PlaylistService: @unchecked Sendable {
     }
     
     public func fetchPlaylist(forceSync: Bool = false) async -> Playlist {
-        print(">>> fetching playlist async")
-
-        if !forceSync {
-            do {
-                return try await self.cachedFetcher.getPlaylist()
-            } catch {
-                print(">>> No cached playlist")
-            }
-        }
-        
+        print(">>> Fetching remote playlist")
+        let startTime = Date.timeIntervalSinceReferenceDate
         do {
-            print(">>> Fetching remote playlist")
-            let startTime = Date.timeIntervalSinceReferenceDate
             let playlist = try await self.remoteFetcher.getPlaylist()
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             print(">>> Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
             return playlist
         } catch {
-            print(">>> Remote playlist fetch failed: \(error)")
+            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            print(">>> Remote playlist fetch failed after \(duration) seconds: \(error)")
         }
         
         return Playlist.empty
+    }
+}
+
+final class DevPlaylistFetcher: PlaylistFetcher {
+    func getPlaylist() async throws -> Playlist {
+        Playlist(
+            playcuts: [Fixture.playcut1, Fixture.playcut2],
+            breakpoints: [],
+            talksets: []
+        )
+    }
+    
+    enum Fixture {
+        static let playcut1 = Playcut(
+            id: 1768545,
+            hour: 1518408000000,
+            chronOrderID: 146173021,
+            songTitle: "Dancing Queen",
+            labelName: "Atlantic",
+            artistName: "ABBA",
+            releaseTitle: "Dancing queen 7"
+        )
+        
+        static let playcut2 = Playcut(
+            id: 1768705,
+            hour: 1518444000000,
+            chronOrderID: 146179020,
+            songTitle: "Left Fields",
+            labelName: "INTERNATIONAL ANTHEM RECORDING COMPANY",
+            artistName: "Makaya McCraven",
+            releaseTitle: "Highly Rare"
+        )
     }
 }

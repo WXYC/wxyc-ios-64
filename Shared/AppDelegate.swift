@@ -18,7 +18,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     var window: UIWindow?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         
 #if os(iOS)
@@ -27,19 +30,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
         self.removeDonatedSiriIntentIfNeeded()
 #endif
-        self.nowPlayingObservation =
-        NowPlayingService.shared.nowPlayingItem.publisher.sink { nowPlayingItem in
-            MPNowPlayingInfoCenter.default().update(nowPlayingItem: nowPlayingItem)
+
+        NowPlayingService.shared.$nowPlayingItem.observe { nowPlayingItem in
+            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+            
             WidgetCenter.shared.reloadAllTimelines()
         }
-        
-        
-//            withObservationTracking {
-//                NowPlayingService.shared.nowPlayingItem
-//            } onChange: {
-//                MPNowPlayingInfoCenter.default().update(nowPlayingItem: NowPlayingService.shared.nowPlayingItem)
-//                WidgetCenter.shared.reloadAllTimelines()
-//            }
         
         WidgetCenter.shared.getCurrentConfigurations { result in
             guard case let .success(configurations) = result else {
@@ -98,21 +94,26 @@ extension AppDelegate {
 
 #endif
 
+@MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver {
     static var interfaceController: CPInterfaceController?
     
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
                                   didConnect interfaceController: CPInterfaceController) {
-        Self.interfaceController = interfaceController
-        
-        Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
-            print("success: \(success), error: \(error)")
+        Task { @MainActor in
+            Self.interfaceController = interfaceController
+            
+            Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
+                print("success: \(success), error: \(String(describing: error))")
+            }
         }
     }
 
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
                                   didDisconnectInterfaceController interfaceController: CPInterfaceController) {
-        Self.interfaceController = nil
+        Task { @MainActor in
+            Self.interfaceController = nil
+        }
     }
 }
 
@@ -131,4 +132,8 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
         window?.windowScene = windowScene
         window?.makeKeyAndVisible()
     }
+}
+
+extension CPInterfaceController: @unchecked @retroactive Sendable {
+    
 }

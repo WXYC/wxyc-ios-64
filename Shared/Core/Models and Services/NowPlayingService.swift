@@ -12,26 +12,21 @@ import UIKit
 public struct NowPlayingItem: Sendable {
     public let playcut: Playcut
     public var artwork: UIImage?
+    
+    public init(playcut: Playcut, artwork: UIImage? = nil) {
+        self.playcut = playcut
+        self.artwork = artwork
+    }
 }
 
-@Observable
 public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
-    @ObservationTracked public private(set) var nowPlayingItem: NowPlayingItem? {
-        get {
-            return self.accessorQueue.sync { self._nowPlayingItem }
-        }
-        set {
-            self.accessorQueue.sync { self._nowPlayingItem = newValue }
-        }
-    }
-    @ObservationIgnored private(set) var _nowPlayingItem: NowPlayingItem? = nil
-    @ObservationIgnored private let accessorQueue = DispatchQueue(label: "NowPlayingService")
+    @Publishable public private(set) var nowPlayingItem: NowPlayingItem?
     
-    @ObservationIgnored private let playlistService: PlaylistService
-    @ObservationIgnored private let artworkService: ArtworkService
-    @ObservationIgnored private var playlistObservation: Sendable? = nil
+    private let playlistService: PlaylistService
+    private let artworkService: ArtworkService
+    private var playlistServiceObservation: Sendable? = nil
     
     init(
         playlistService: PlaylistService = PlaylistService(),
@@ -40,9 +35,7 @@ public final class NowPlayingService: @unchecked Sendable {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
-        self.playlistObservation = withObservationTracking {
-            self.playlistService.playlist.playcuts
-        } onChange: {
+        self.playlistService.$playlist.observe { playlist in
             Task {
                 guard let playcut = self.playlistService.playlist.playcuts.first else {
                     return
