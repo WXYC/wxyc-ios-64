@@ -13,6 +13,7 @@ import Combine
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
 public final actor ArtworkService {
     public static let shared = ArtworkService(fetchers: [
+        CacheCoordinator.AlbumArt,
         DiscogsArtworkFetcher(),
         LastFMArtworkFetcher(),
         iTunesArtworkFetcher(),
@@ -27,13 +28,16 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
-        if let artwork = try? await self.cacheCoordinator.fetchArtwork(for: playcut) {
-            return artwork
-        }
-        
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
+                print(">>> Artwork found for \(playcut) using fetcher \(fetcher)")
+
+                guard try await artwork.checkNSFW() == .sfw else {
+                    print(">>> Inappropriate artwork found for \(playcut) using fetcher \(fetcher)")
+                    return nil
+                }
+                
                 await self.cacheCoordinator.set(artwork: artwork, for: playcut)
                 return artwork
             } catch {

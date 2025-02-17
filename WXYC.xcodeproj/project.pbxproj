@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		236B0C9F2D605F7A000661F2 /* Publishable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236B0C9E2D605F7A000661F2 /* Publishable.swift */; };
 		236B0CA32D61A787000661F2 /* NowPlayingInfoCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */; };
+		236B0CB82D63C51A000661F2 /* NSFWDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236B0CB62D63C51A000661F2 /* NSFWDetector.swift */; };
+		236B0CB92D63C51A000661F2 /* OpenNSFW.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 236B0CB72D63C51A000661F2 /* OpenNSFW.mlmodel */; };
 		2389E6322B8C2E96003C9934 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */; };
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
@@ -154,6 +156,8 @@
 /* Begin PBXFileReference section */
 		236B0C9E2D605F7A000661F2 /* Publishable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Publishable.swift; sourceTree = "<group>"; };
 		236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInfoCenterManager.swift; sourceTree = "<group>"; };
+		236B0CB62D63C51A000661F2 /* NSFWDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NSFWDetector.swift; sourceTree = "<group>"; };
+		236B0CB72D63C51A000661F2 /* OpenNSFW.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = OpenNSFW.mlmodel; sourceTree = "<group>"; };
 		23841AC82D3052D50028EAF8 /* WXYC Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		23841ADD2D3052D60028EAF8 /* WXYC DevTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "WXYC DevTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		23841AE72D3052D60028EAF8 /* WXYC DevUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "WXYC DevUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -312,6 +316,8 @@
 		231AD07F29DA784B006F0980 /* Artwork Service */ = {
 			isa = PBXGroup;
 			children = (
+				236B0CB62D63C51A000661F2 /* NSFWDetector.swift */,
+				236B0CB72D63C51A000661F2 /* OpenNSFW.mlmodel */,
 				34425DA321B8A16E00C8DD5F /* ArtworkService.swift */,
 				34B1882821BB29E0005ADD84 /* Discogs.swift */,
 				3434FBFD2030A1CC00FC778F /* iTunes.swift */,
@@ -983,6 +989,8 @@
 				34EB12E2278E4A4000257589 /* RadioStation.swift in Sources */,
 				236B0C9F2D605F7A000661F2 /* Publishable.swift in Sources */,
 				34EB12E3278E4A4000257589 /* ServiceTypes.swift in Sources */,
+				236B0CB82D63C51A000661F2 /* NSFWDetector.swift in Sources */,
+				236B0CB92D63C51A000661F2 /* OpenNSFW.mlmodel in Sources */,
 				34EB12E4278E4A4000257589 /* URLSession+WebSession.swift in Sources */,
 				34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */,
 				34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */,
