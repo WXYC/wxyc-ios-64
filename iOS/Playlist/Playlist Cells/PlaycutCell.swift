@@ -7,8 +7,8 @@
 //
 
 import UIKit
-import Combine
 
+@MainActor
 protocol PlaycutShareDelegate: AnyObject {
     func presentShareSheet(for activity: PlaycutActivityItem, from view: UIView)
 }
@@ -23,8 +23,6 @@ final class PlaycutCell: UITableViewCell {
     
     var activity: PlaycutActivityItem?
     weak var delegate: PlaycutShareDelegate? = nil
-    
-    var artworkRequest: Cancellable?
     
     // MARK: Configuration
     

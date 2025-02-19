@@ -7,19 +7,20 @@
 //
 
 import UIKit
-import Combine
+import Observation
 import Core
-
 class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared
     var reuseIdentifiers: Set<String> = []
-    var playlistDataSourceObservation: Cancellable? = nil
+    var playlistDataSourceObservation: Any? = nil
     
     override func viewDidLoad() {
-        self.playlistDataSourceObservation =
-            self.playlistDataSource.$viewModels.sink(receiveValue: self.update(viewModels:))
-        
+        self.playlistDataSource.$viewModels.observe(observer: self.update(viewModels:))
+        self.setUpTableView()
+    }
+    
+    private func setUpTableView() {
         self.tableView.rowHeight = UITableView.automaticDimension
         self.tableView.estimatedRowHeight = 500
         self.tableView.sectionHeaderHeight = UITableView.automaticDimension
@@ -34,10 +35,11 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     }
     
     // MARK: PlaylistPresentable
-    
     func update(viewModels: [PlaylistCellViewModel]) {
-        self.viewModels = viewModels
-        self.tableView.reloadData()
+        Task { @MainActor in
+            self.viewModels = viewModels
+            self.tableView.reloadData()
+        }
     }
     
     // MARK: PlaycutShareDelegate

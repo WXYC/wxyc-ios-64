@@ -10,8 +10,10 @@ import Foundation
 import UIKit
 import Combine
 
+// TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
 public final actor ArtworkService {
     public static let shared = ArtworkService(fetchers: [
+        CacheCoordinator.AlbumArt,
         DiscogsArtworkFetcher(),
         LastFMArtworkFetcher(),
         iTunesArtworkFetcher(),
@@ -26,16 +28,16 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
-        if let artwork = try? await self.cacheCoordinator.fetchArtwork(for: playcut) {
-            return artwork
-        }
-        
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
+                print(">>> Artwork found for \(playcut) using fetcher \(fetcher)")
+
                 guard try await artwork.checkNSFW() == .sfw else {
+                    print(">>> Inappropriate artwork found for \(playcut) using fetcher \(fetcher)")
                     return nil
                 }
+                
                 await self.cacheCoordinator.set(artwork: artwork, for: playcut)
                 return artwork
             } catch {
@@ -48,10 +50,11 @@ public final actor ArtworkService {
     }
 }
 
-protocol ArtworkFetcher {
+protocol ArtworkFetcher: Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage
 }
 
+// TODO: Remove this and replace with `CachingArtworkFetcher`.
 extension CacheCoordinator: ArtworkFetcher {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let cachedData: Data = try await self.value(for: playcut)
@@ -64,7 +67,7 @@ extension CacheCoordinator: ArtworkFetcher {
     
     func set(artwork: UIImage, for playcut: Playcut) async {
         let artworkData = artwork.pngData()
-        set(value: artworkData, for: playcut, lifespan: .distantFuture)
+        self.set(value: artworkData, for: playcut, lifespan: .oneDay)
     }
 }
 
@@ -82,7 +85,7 @@ internal final class CachingArtworkFetcher: ArtworkFetcher {
     
     internal func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let artwork = try await self.fetcher.fetchArtwork(for: playcut)
-        await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .distantFuture)
+        await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .oneDay)
         
         return artwork
     }

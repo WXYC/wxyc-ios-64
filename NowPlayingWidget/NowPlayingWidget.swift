@@ -10,32 +10,30 @@ import WidgetKit
 import SwiftUI
 import Core
 
-class Provider: TimelineProvider {
-    var nowPlayingObservations: [Any] = []
-    
+final class Provider: TimelineProvider, Sendable {
     func placeholder(in context: Context) -> NowPlayingEntry {
         NowPlayingEntry.placeholder(family: context.family)
     }
-
-    func getSnapshot(in context: Context, completion: @escaping (NowPlayingEntry) -> ()) {
+    
+    func getSnapshot(in context: Context, completion: @escaping @Sendable (NowPlayingEntry) -> ()) {
+        let family = context.family
         Task {
             if let nowPlayingItem = await NowPlayingService.shared.fetch() {
-                completion(NowPlayingEntry(nowPlayingItem, family: context.family))
+                completion(NowPlayingEntry(nowPlayingItem, family: family))
             } else {
-                completion(NowPlayingEntry.placeholder(family: context.family))
+                completion(NowPlayingEntry.placeholder(family: family))
             }
         }
     }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
+    
+    func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
+        let family = context.family
         Task {
-            if let nowPlayingItem = await NowPlayingService.shared.fetch() {
-                let timeline = Timeline(entries: [NowPlayingEntry(nowPlayingItem, family: context.family)], policy: .atEnd)
-                completion(timeline)
-            } else {
-                let timeline = Timeline(entries: [NowPlayingEntry.placeholder(family: context.family)], policy: .atEnd)
-                completion(timeline)
-            }
+            let nowPlayingItem = await NowPlayingService.shared.fetch() ?? .placeholder
+            let timeline = Timeline(
+                entries: [NowPlayingEntry(nowPlayingItem, family: family)],
+                policy: .atEnd)
+            completion(timeline)
         }
     }
 }
@@ -101,7 +99,6 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .foregroundStyle(.foreground)
                     .padding(EdgeInsets(top: 5, leading: 0, bottom: 0, trailing: 0))
                     .frame(maxWidth: .infinity)
-                    .lineLimit(1)
 
                 Text(entry.songTitle)
                     .font(.subheadline)
@@ -174,6 +171,21 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             }
         }
     }
+    
+    internal var artwork: AnyView {
+        if let artwork = entry.artwork {
+            return AnyView(Image(uiImage: artwork).resizable())
+        } else {
+            return AnyView(Self.defaultArtwork)
+        }
+    }
+    
+    private static var defaultArtwork: some View {
+        ZStack {
+            Image(uiImage: #imageLiteral(resourceName: "background.pdf"))
+            Image(uiImage: #imageLiteral(resourceName: "logo.pdf"))
+        }
+    }
 }
 
 @main
@@ -195,4 +207,19 @@ struct NowPlayingWidget: Widget {
         .description("Now playing on WXYC…")
         .contentMarginsDisabled()
     }
+}
+
+extension NowPlayingItem {
+    static let placeholder = NowPlayingItem(
+        playcut: Playcut(
+            id: 0,
+            hour: 0,
+            chronOrderID: 0,
+            songTitle: "Chapel Hill, NC",
+            labelName: nil,
+            artistName: "WXYC 89.3 FM",
+            releaseTitle: nil
+        ),
+        artwork: nil
+    )
 }

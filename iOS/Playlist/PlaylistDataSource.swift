@@ -7,30 +7,29 @@
 //
 
 import Foundation
-import Combine
+import Observation
 import Core
 
-final class PlaylistDataSource {
-    typealias CellViewModel = PlaylistEntry & PlaylistCellViewModelProducer
-    
+final class PlaylistDataSource: Sendable {
+    @Publishable private(set) var viewModels: [PlaylistCellViewModel] = []
+
     static let shared = PlaylistDataSource()
     
-    @Published private(set) var viewModels: [PlaylistCellViewModel] = []
-    
     init(playlistService: PlaylistService = .shared) {
-        self.observation = playlistService.$playlist
-            .map(\.entries.cellViewModels)
-            .receive(on: RunLoop.main)
-            .assign(to: \.viewModels, on: self)
+        playlistService.$playlist.observe(observer: self.updateViewModels(with: ))
     }
     
-    private var observation: Cancellable? = nil
-}
-
-extension Sequence where Element == PlaylistEntry {
-    var cellViewModels: [PlaylistCellViewModel] {
-        return self
-            .compactMap { $0 as? PlaylistCellViewModelProducer }
+    private var playlistServiceObserver: Any? = nil
+    
+    private func updateViewModels(with entries: [any PlaylistEntry]) {
+        self.viewModels = entries
+            .compactMap { $0 as? any PlaylistCellViewModelProducer }
+            .map { $0.cellViewModel }
+    }
+    
+    private func updateViewModels(with playlist: Playlist) {
+        self.viewModels = playlist.entries
+            .compactMap { $0 as? any PlaylistCellViewModelProducer }
             .map { $0.cellViewModel }
     }
 }

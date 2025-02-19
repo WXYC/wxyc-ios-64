@@ -6,7 +6,7 @@ extension URL {
     static let WXYCStream320kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 }
 
-public protocol PlaylistEntry: Codable {
+public protocol PlaylistEntry: Codable, Identifiable, Sendable {
     var id: Int { get }
     var hour: Int { get }
     var chronOrderID: Int { get }
@@ -22,11 +22,11 @@ public extension PlaylistEntry {
         return dictionary.debugDescription
     }
     
-    static func ==(lhs: PlaylistEntry, rhs: PlaylistEntry) -> Bool {
+    static func ==(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
 
-    static func !=(lhs: PlaylistEntry, rhs: PlaylistEntry) -> Bool {
+    static func !=(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
         !(lhs.id == rhs.id)
     }
 }
@@ -43,7 +43,7 @@ public struct Talkset: PlaylistEntry {
     public let chronOrderID: Int
 }
 
-public struct Playcut: PlaylistEntry, Identifiable, Codable {
+public struct Playcut: PlaylistEntry {
     public let id: Int
     public let hour: Int
     public let chronOrderID: Int
@@ -63,6 +63,24 @@ public struct Playcut: PlaylistEntry, Identifiable, Codable {
         case releaseTitle
     }
     
+    public init(
+        id: Int,
+        hour: Int,
+        chronOrderID: Int,
+        songTitle: String,
+        labelName: String?,
+        artistName: String,
+        releaseTitle: String?
+    ) {
+        self.id = id
+        self.hour = hour
+        self.chronOrderID = chronOrderID
+        self.songTitle = songTitle
+        self.labelName = labelName
+        self.artistName = artistName
+        self.releaseTitle = releaseTitle
+    }
+    
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
@@ -77,12 +95,12 @@ public struct Playcut: PlaylistEntry, Identifiable, Codable {
     }
 }
 
-public struct Playlist: Codable {
+public struct Playlist: Codable, Sendable {
     let playcuts: [Playcut]
     let breakpoints: [Breakpoint]
     let talksets: [Talkset]
     
-    static var empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
+    static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
     
     static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
         guard lhs.entries.count == rhs.entries.count else {
@@ -97,8 +115,8 @@ public struct Playlist: Codable {
 }
 
 public extension Playlist {
-    var entries: [PlaylistEntry] {
-        let playlist: [PlaylistEntry] = (playcuts + breakpoints + talksets)
+    var entries: [any PlaylistEntry] {
+        let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
     }
 }

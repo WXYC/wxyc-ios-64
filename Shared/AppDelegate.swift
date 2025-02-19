@@ -1,34 +1,39 @@
+import Observation
+import CarPlay
 import UIKit
-import Combine
 import Core
 import UI
 import MediaPlayer
 import WidgetKit
 
 
-@UIApplicationMain
+@main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
   
     var nowPlayingObservation: Any?
-    var shouldDonateSiriIntentObservation: Cancellable?
+    var shouldDonateSiriIntentObservation: Any?
 
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         
-        #if os(iOS)
-            // Make status bar white
-            UINavigationBar.appearance().barStyle = .black
-            // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
-            self.removeDonatedSiriIntentIfNeeded()
-        #endif
-        
-        self.nowPlayingObservation = NowPlayingService.shared.observe { nowPlayingItem in
-            MPNowPlayingInfoCenter.default().update(nowPlayingItem: nowPlayingItem)
+#if os(iOS)
+        // Make status bar white
+        UINavigationBar.appearance().barStyle = .black
+        // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
+        self.removeDonatedSiriIntentIfNeeded()
+#endif
+
+        NowPlayingService.shared.$nowPlayingItem.observe { nowPlayingItem in
+            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+            
             WidgetCenter.shared.reloadAllTimelines()
         }
         
@@ -89,9 +94,46 @@ extension AppDelegate {
 
 #endif
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    var window: UIWindow?
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        
+@MainActor
+class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver {
+    static var interfaceController: CPInterfaceController?
+    
+    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didConnect interfaceController: CPInterfaceController) {
+        Task { @MainActor in
+            Self.interfaceController = interfaceController
+            
+            Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
+                print("success: \(success), error: \(String(describing: error))")
+            }
+        }
     }
+
+    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
+                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+        Task { @MainActor in
+            Self.interfaceController = nil
+        }
+    }
+}
+
+class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
+    
+    internal var window: UIWindow?
+    
+    // MARK: UISceneDelegate
+    
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene, session.configuration.name == "LoggerSceneConfiguration" else { return }
+        
+        window = UIWindow(frame: windowScene.coordinateSpace.bounds)
+        
+        window?.rootViewController = RootPageViewController()
+        window?.windowScene = windowScene
+        window?.makeKeyAndVisible()
+    }
+}
+
+extension CPInterfaceController: @unchecked @retroactive Sendable {
+    
 }

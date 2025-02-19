@@ -9,35 +9,58 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-import Combine
 
-public enum PlaybackState {
+public enum PlaybackState: Sendable {
+    case initialized
     case playing
     case paused
 }
 
-public final class RadioPlayerController {
+public final class RadioPlayerController: @unchecked Sendable {
+    @MainActor
     public static let shared = RadioPlayerController()
     
+    private var radioPlayerObservation: Any! = nil
+
+    @MainActor
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
     ) {
-        self.radioPlayer = radioPlayer
+        try? AVAudioSession.sharedInstance().setActive(true)
         
-        func notificationObserver(for name: Notification.Name, sink: @escaping (Notification) -> ()) -> AnyCancellable {
-            return notificationCenter.publisher(for: name)
-                .sink(receiveValue: sink)
+        func notificationObserver(
+            for name: Notification.Name,
+            sink: @escaping @Sendable @MainActor (Notification) -> ()
+        ) -> any Sendable {
+            let wrappedSink = { (notification: Notification) in
+                let _ = Task { @MainActor in
+                    sink(notification)
+                }
+            }
+            
+            return NonSendableBox<NSObjectProtocol>(
+                value: notificationCenter.addObserver(
+                    forName: name,
+                    object: nil,
+                    queue: nil,
+                    using: wrappedSink
+                )
+            )
         }
         
         func remoteCommandObserver(
             for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
             handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
-        ) -> Any {
-            return remoteCommandCenter[keyPath: command].addTarget(handler: handler)
+        ) -> any Sendable {
+            NonSendableBox<Any>(
+                value: remoteCommandCenter[keyPath: command].addTarget(handler: handler)
+            )
         }
-        
+
+        self.radioPlayer = radioPlayer
+
         self.inputObservations = [
             notificationObserver(for: UIApplication.didEnterBackgroundNotification, sink: self.applicationDidEnterBackground),
             notificationObserver(for: UIApplication.willEnterForegroundNotification, sink: self.applicationWillEnterForeground),
@@ -49,82 +72,88 @@ public final class RadioPlayerController {
             remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
         ]
+        
+        self.radioPlayer.$isPlaying.observe { isPlaying in
+            self.isPlaying = isPlaying
+        }
     }
     
     // MARK: Public methods
     
     public func toggle() {
-        switch self.playbackState {
-        case .paused:
-            self.playbackState = .playing
-        case .playing:
-            self.playbackState = .paused
+        Task { @MainActor in
+            self.radioPlayer.isPlaying
+                ? self.radioPlayer.pause()
+                : self.radioPlayer.play()
         }
     }
     
     public func play() {
-        self.playbackState = .playing
+        Task { @MainActor in
+            self.radioPlayer.play()
+        }
     }
     
     public func pause() {
-        self.playbackState = .paused
+        Task { @MainActor in
+            self.radioPlayer.pause()
+        }
     }
     
     // MARK: Private
     
     private let radioPlayer: RadioPlayer
+    private var inputObservations: [any Sendable]? = nil
     
-    private var inputObservations: [Any]? = nil
-    
-    @Published public var playbackState: PlaybackState = .paused {
-        didSet {
-            guard oldValue != self.playbackState else {
-                return
-            }
-            
-            switch self.playbackState {
-            case .playing:
-                try? AVAudioSession.sharedInstance().setActive(true)
-                self.radioPlayer.play()
-            case .paused:
-                self.radioPlayer.pause()
-            }
-        }
-    }
+    @Publishable var playbackState: PlaybackState! = .initialized
+    @Publishable public var isPlaying = false
 }
 
 private extension RadioPlayerController {
     // MARK: AVPlayer handlers
     
     func playbackStalled(_ notification: Notification) {
-        // Have you tried turning it off and on again?
-        self.radioPlayer.pause()
-        self.radioPlayer.play()
+        Task { @MainActor in
+            // Have you tried turning it off and on again?
+            self.radioPlayer.pause()
+            self.radioPlayer.play()
+        }
     }
     
     func sessionInterrupted(notification: Notification) {
-        if notification.isAudioInterruptionBegan {
-            self.pause()
-        } else {
+        guard let interruptionType = notification.interruptionType else {
+            return
+        }
+        
+        switch interruptionType {
+        case .began:
             self.play()
+        case .shouldResume:
+            self.pause()
+        case .ended:
+            return
         }
     }
     
     // MARK: External playback command handlers
     
     func applicationDidEnterBackground(notification: Notification) {
-        guard !self.radioPlayer.isPlaying else {
-            return
+        Task { @MainActor in
+            guard !self.radioPlayer.isPlaying else {
+                return
+            }
+            
+            try? AVAudioSession.sharedInstance().setActive(false)
         }
-        
-        try? AVAudioSession.sharedInstance().setActive(false)
     }
     
     func applicationWillEnterForeground(notification: Notification) {
-        if self.radioPlayer.isPlaying {
-            self.play()
-        } else {
-            self.pause()
+        Task { @MainActor in
+            if self.radioPlayer.isPlaying {
+                self.play()
+            } else {
+                self.pause()
+            }
         }
     }
     
@@ -140,6 +169,7 @@ private extension RadioPlayerController {
         return .success
     }
     
+    @MainActor
     func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         if self.radioPlayer.isPlaying {
             self.pause()
@@ -152,19 +182,42 @@ private extension RadioPlayerController {
 }
 
 fileprivate extension Notification {
-    var isAudioInterruptionBegan: Bool {
+    var interruptionType: InterruptionType? {
         guard let typeValue = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber else {
-            return false
+            return nil
         }
         
         guard let type = AVAudioSession.InterruptionType(rawValue: typeValue.uintValue) else {
-            return false
+            return nil
         }
         
         guard let _ = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt else {
-            return false
+            return nil
         }
         
-        return type == .began
+        if type == .began {
+            return .began
+        }
+        
+        guard let optionsValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt else {
+          return nil
+        }
+        
+        let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+        if options.contains(.shouldResume) {
+            return .shouldResume
+        }
+
+        return nil
     }
+}
+
+enum InterruptionType {
+    case began
+    case ended
+    case shouldResume
+}
+
+struct NonSendableBox<NonSendableType>: @unchecked Sendable {
+    let value: NonSendableType
 }
