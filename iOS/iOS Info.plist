@@ -46,6 +46,7 @@
 	<array>
 		<string>NSUserActivityTypeBrowsingWeb</string>
 		<string>INPlayMediaIntent</string>
+		<string>INSearchForMediaIntent</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
@@ -54,8 +55,6 @@
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>iOSMain</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
@@ -79,7 +78,35 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>AVInitialRouteSharingPolicy</key>
-	<string>LongFormAudio</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>CPTemplateApplicationSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>CPTemplateApplicationScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>TemplateSceneConfiguration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>WXYC.CarPlaySceneDelegate</string>
+				</dict>
+			</array>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>LoggerSceneConfiguration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>WXYC.LoggerWindowSceneDelegate</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 </dict>
 </plist>

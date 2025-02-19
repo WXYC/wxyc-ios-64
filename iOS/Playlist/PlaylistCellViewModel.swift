@@ -9,18 +9,21 @@
 import UIKit
 import Core
 
-final class PlaylistCellViewModel {
-  let cellClass: UITableViewCell.Type
-  let reuseIdentifier: String
-  let configure: (UITableViewCell) -> ()
-  let artworkService = ArtworkService.shared
-  
-  init<Cell: UITableViewCell>(reuseIdentifier: String = NSStringFromClass(Cell.self), configure: @escaping (Cell) -> ()) {
-    self.cellClass = Cell.self
-    self.reuseIdentifier = reuseIdentifier
+final class PlaylistCellViewModel: Sendable {
+    let cellClass: UITableViewCell.Type
+    let reuseIdentifier: String
+    let configure: (UITableViewCell) -> ()
+    let artworkService = ArtworkService.shared
     
-    self.configure = { cell in
-      configure(cell as! Cell)
+    init<Cell: UITableViewCell>(
+        reuseIdentifier: String = NSStringFromClass(Cell.self),
+        configure: @escaping (Cell) -> ()
+    ) {
+        self.cellClass = Cell.self
+        self.reuseIdentifier = reuseIdentifier
+        
+        self.configure = { cell in
+            configure(cell as! Cell)
+        }
     }
-  }
 }

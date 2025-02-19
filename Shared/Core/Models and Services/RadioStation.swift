@@ -1,4 +1,4 @@
-public struct RadioStation {
+public struct RadioStation: Sendable {
     public let name: String
     public let secondaryName: String
     public let description: String

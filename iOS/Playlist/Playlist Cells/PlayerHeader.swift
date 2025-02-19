@@ -8,7 +8,6 @@
 
 import UIKit
 import Core
-import Combine
 
 @objc(PlayerHeader)
 class PlayerHeader: UITableViewHeaderFooterView {
@@ -29,10 +28,12 @@ class PlayerHeader: UITableViewHeaderFooterView {
     override func awakeFromNib() {
         super.awakeFromNib()
         
-        self.cassetteContainer.layer.cornerRadius = 6.0
-        self.cassetteContainer.layer.masksToBounds = true
-        
-        self.setUpPlayback()
+        DispatchQueue.main.async {
+            self.cassetteContainer.layer.cornerRadius = 6.0
+            self.cassetteContainer.layer.masksToBounds = true
+            
+            self.setUpPlayback()
+        }
     }
     
     override class var requiresConstraintBasedLayout: Bool {
@@ -41,17 +42,20 @@ class PlayerHeader: UITableViewHeaderFooterView {
     
     // MARK: Private
     
-    private var playbackStateObservation: Cancellable?
+    private var playbackStateObservation: Any?
+    private var notificationObservation: Any?
     
     private func setUpPlayback() {
-        self.playbackStateObservation =
-            RadioPlayerController.shared.$playbackState.sink(receiveValue: self.playbackStateChanged)
+        RadioPlayerController.shared.$isPlaying.observe(observer: self.playbackStateChanged(isPlaying:))
         self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
-        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: nil) { _ in
-            self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
-            self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
-            self.playbackStateChanged(playbackState: RadioPlayerController.shared.playbackState)
-        }
+        self.notificationObservation =
+            NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification) { _ in
+                DispatchQueue.main.async {
+                    self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
+                    self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
+                    self.playbackStateChanged(isPlaying: RadioPlayerController.shared.isPlaying)
+                }
+            }
     }
     
     @objc private func playPauseTapped(_ sender: UIButton) {
@@ -68,10 +72,33 @@ class PlayerHeader: UITableViewHeaderFooterView {
             self.cassetteLeftReel.startSpin()
             self.cassetteRightReel.startSpin()
             self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
+        case .initialized:
+            print("initialized")
+            break
+
+        }
+    }
+    
+    private func playbackStateChanged(isPlaying: Bool) {
+        switch isPlaying {
+        case false:
+            self.cassetteLeftReel.stopSpin()
+            self.cassetteRightReel.stopSpin()
+            self.playButton.set(status: .paused, animated: self.shouldAnimateButtonTransition)
+        case true:
+            self.cassetteLeftReel.startSpin()
+            self.cassetteRightReel.startSpin()
+            self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
         }
     }
     
     private var shouldAnimateButtonTransition: Bool {
         return UIApplication.shared.applicationState == .active
+    }
+}
+
+extension NotificationCenter {
+    func addObserver(forName name: NSNotification.Name, using block: @escaping @Sendable (Notification) -> Void) -> any NSObjectProtocol {
+        addObserver(forName: name, object: nil, queue: nil, using: block)
     }
 }
