@@ -73,9 +73,8 @@ class PlayerHeader: UITableViewHeaderFooterView {
             self.cassetteRightReel.startSpin()
             self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
         case .initialized:
-            print("initialized")
+            Log(.info, "initialized")
             break
-
         }
     }
     
