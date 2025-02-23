@@ -1,3 +1,4 @@
+import UniformTypeIdentifiers
 import MessageUI
 import Core
 import UIKit
@@ -23,14 +24,9 @@ class InfoDetailViewController: UIViewController {
     }
     
     // MARK: IBActions
-
+    
     @IBAction func feedbackButtonPressed(_ sender: UIButton) {
-        if MFMailComposeViewController.canSendMail() {
-            let mailComposeViewController = stationFeedbackMailController()
-            self.present(mailComposeViewController, animated: true, completion: nil)
-        } else {
-            UIApplication.shared.open(feedbackURL())
-        }
+        self.promptForLogs()
     }
     
     @IBAction func dialADJ(_ sender: UIButton) {
@@ -39,11 +35,35 @@ class InfoDetailViewController: UIViewController {
     
     // MARK: Private
     
+    private func promptForLogs() {
+        let alert = UIAlertController(
+            title: "Is this a bug?",
+            message: "If you’re sending feedback because you spotted a bug, would you mind if we attached some debug logs? This will help us figure out what’s going wrong and doesn’t include any personal info.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Yes!", style: .default) { action in
+            self.sendFeedback(includeLogs: true)
+        })
+        alert.addAction(UIAlertAction(title: "S'all good", style: .default) { action in
+            self.sendFeedback(includeLogs: false)
+        })
+        self.present(alert, animated: true)
+    }
+    
+    func sendFeedback(includeLogs: Bool) {
+        if MFMailComposeViewController.canSendMail() {
+            let mailComposeViewController = stationFeedbackMailController()
+            self.present(mailComposeViewController, animated: true, completion: nil)
+        } else {
+            UIApplication.shared.open(feedbackURL())
+        }
+    }
+    
     private var requestString: NSAttributedString {
         let attachment = NSTextAttachment()
         attachment.image = UIImage(systemName: "phone.fill")?
             .withTintColor(.white, renderingMode: .alwaysOriginal)
-
+        
         let requestString = NSMutableAttributedString(attachment: attachment)
         let textString = NSAttributedString(string: " Make a request")
         requestString.append(textString)
@@ -55,7 +75,7 @@ class InfoDetailViewController: UIViewController {
         let attachment = NSTextAttachment()
         attachment.image = UIImage(systemName: "envelope.fill")?
             .withTintColor(.white, renderingMode: .alwaysOriginal)
-
+        
         let requestString = NSMutableAttributedString(attachment: attachment)
         let textString = NSAttributedString(string: " Send us feedback on the app")
         requestString.append(textString)
@@ -73,6 +93,10 @@ extension InfoDetailViewController: @preconcurrency MFMailComposeViewControllerD
         mailComposerVC.mailComposeDelegate = self
         mailComposerVC.setToRecipients([Self.feedbackAddress])
         mailComposerVC.setSubject(Self.subject)
+        if let (fileName, data) = Logger.fetchLogs() {
+            let mimeType = UTType.plainText.preferredMIMEType ?? "plain/text"
+            mailComposerVC.addAttachmentData(data, mimeType: mimeType, fileName: fileName)
+        }
         return mailComposerVC
     }
     
@@ -86,6 +110,8 @@ extension InfoDetailViewController: @preconcurrency MFMailComposeViewControllerD
         
         return components.url!
     }
+    
+    // MARK: MFMailComposeViewControllerDelegate
     
     func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
         controller.dismiss(animated: true, completion: nil)
