@@ -19,7 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, policy: .longFormAudio)
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         
 #if os(iOS)
         // Make status bar white
@@ -92,26 +92,91 @@ extension AppDelegate {
 
 #endif
 
-@MainActor
-class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver {
-    static var interfaceController: CPInterfaceController?
+class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
+    var interfaceController: CPInterfaceController?
     
-    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didConnect interfaceController: CPInterfaceController) {
-        Task { @MainActor in
-            Self.interfaceController = interfaceController
+    var observer: Any?
+    
+    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
+        main { @MainActor in
+            self.interfaceController = interfaceController
             
-            Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
-                Log(.info, "success: \(success), error: \(String(describing: error))")
+            interfaceController.delegate = self
+            self.setUpNowPlaying()
+
+            let item = self.makeListItem()
+            let section = CPListSection(items: [item])
+            let listTemplate = CPListTemplate(title: "WXYC 89.3 FM", sections: [section])
+            
+            self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
+                Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
+                
+                Task {
+                    await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+                        NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+                    }
+                }
             }
         }
     }
-
-    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene,
-                                  didDisconnectInterfaceController interfaceController: CPInterfaceController) {
-        Task { @MainActor in
-            Self.interfaceController = nil
+    
+    nonisolated func templateApplicationScene(
+        _ templateApplicationScene: CPTemplateApplicationScene,
+        didDisconnectInterfaceController interfaceController: CPInterfaceController
+    ) {
+        main {
+            self.interfaceController = nil
+            templateApplicationScene.delegate = self
+            
+            CPNowPlayingTemplate.shared.remove(self)
         }
+    }
+    
+    nonisolated func main(_ work: @escaping @Sendable @MainActor () -> ()) {
+        Task {
+            await work()
+        }
+    }
+    
+    // MARK: CPNowPlayingTemplateObserver
+    
+    private func setUpNowPlaying() {
+        CPNowPlayingTemplate.shared.isUpNextButtonEnabled = false
+        CPNowPlayingTemplate.shared.isAlbumArtistButtonEnabled = false
+        CPNowPlayingTemplate.shared.add(self)
+    }
+    
+    nonisolated func nowPlayingTemplateAlbumArtistButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
+        Log(.info, "Hello, World!")
+    }
+    
+    nonisolated func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
+        Log(.info, "Hello, World!")
+    }
+    
+    // MARK: Private
+    
+    private func makeListItem() -> CPListItem {
+        let nowPlayingItem = NowPlayingService.shared.nowPlayingItem
+        
+        let artist = nowPlayingItem?.playcut.artistName
+        let song = nowPlayingItem?.playcut.songTitle
+        let detailedText: String? =
+            artist == nil && song == nil
+                ? nil
+                : "\(artist!) • \(song!)"
+        
+        let defaultArtwork = UIImage(imageLiteralResourceName: "logo.pdf")
+            .withTintColor(.systemPurple, renderingMode: .alwaysTemplate)
+
+        let mediaItemArtwork = nowPlayingItem?.artwork ?? defaultArtwork        
+        let item = CPListItem(text: "Listen Live", detailText: detailedText, image: mediaItemArtwork)
+        item.handler = { selectableItem, completionHandler in
+            RadioPlayerController.shared.play()
+            self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true)
+            completionHandler()
+        }
+        return item
     }
 }
 

@@ -31,6 +31,7 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
             }
             
             MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
+            MPNowPlayingInfoCenter.default().playbackState = RadioPlayerController.shared.isPlaying ? .playing : .paused
         }
     }
 
@@ -46,7 +47,16 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
     
     @MainActor
     private func mediaItemArtwork(from image: UIImage?) -> MPMediaItemArtwork {
-        return Self.defaultArt()
+        if let image {
+            let screenWidth = UIScreen.main.bounds.size.width
+            let boundsSize = CGSize(width: screenWidth, height: screenWidth)
+            
+            return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
+                return image
+            }
+        } else {
+            return Self.defaultArt()
+        }
     }
     
     @MainActor
@@ -62,14 +72,14 @@ extension Optional where Wrapped == Playcut {
         if case .some(let playcut) = self {
             return [
                 MPMediaItemPropertyArtist : playcut.artistName,
-                MPMediaItemPropertyTitle: playcut.songTitle,
-                MPMediaItemPropertyAlbumTitle: playcut.releaseTitle ?? ""
+                MPMediaItemPropertyTitle : playcut.songTitle,
+                MPMediaItemPropertyAlbumTitle : playcut.releaseTitle ?? "",
             ]
         } else {
             return [
                 MPMediaItemPropertyArtist : RadioStation.WXYC.name,
-                MPMediaItemPropertyTitle: RadioStation.WXYC.secondaryName,
-                MPMediaItemPropertyAlbumTitle: ""
+                MPMediaItemPropertyTitle : RadioStation.WXYC.secondaryName,
+                MPMediaItemPropertyAlbumTitle : "",
             ]
         }
     }
