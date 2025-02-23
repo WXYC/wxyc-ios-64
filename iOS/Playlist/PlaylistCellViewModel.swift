@@ -9,21 +9,34 @@
 import UIKit
 import Core
 
-final class PlaylistCellViewModel: Sendable {
-    let cellClass: UITableViewCell.Type
-    let reuseIdentifier: String
-    let configure: (UITableViewCell) -> ()
-    let artworkService = ArtworkService.shared
+protocol Configuration: Sendable {
+    var `class`: AnyClass { get }
     
-    init<Cell: UITableViewCell>(
-        reuseIdentifier: String = NSStringFromClass(Cell.self),
-        configure: @escaping (Cell) -> ()
+    @MainActor
+    func configure(_ cell: UITableViewCell & Sendable & AnyObject)
+}
+
+final class PlaylistCellViewModel: Sendable {
+    let reuseIdentifier: String
+    let `class`: String
+    private let configuration: any Configuration
+    
+    init<C: Configuration>(
+        configuration: C
     ) {
-        self.cellClass = Cell.self
-        self.reuseIdentifier = reuseIdentifier
-        
-        self.configure = { cell in
-            configure(cell as! Cell)
+        self.reuseIdentifier = NSStringFromClass(configuration.class)
+        self.class = NSStringFromClass(configuration.class)
+        self.configuration = configuration
+    }
+    
+    func configure<Cell: UITableViewCell & Sendable>(_ cell: Cell) {
+        Task { @MainActor in
+            print(Mirror(reflecting: configuration).description)
+            configuration.configure(cell)
         }
     }
+}
+
+extension UITableViewCell: @retroactive Sendable {
+    
 }

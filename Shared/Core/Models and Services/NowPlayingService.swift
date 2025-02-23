@@ -19,7 +19,7 @@ public struct NowPlayingItem: Sendable {
     }
 }
 
-public final class NowPlayingService: @unchecked Sendable {
+public actor NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
     @Publishable public private(set) var nowPlayingItem: NowPlayingItem?
@@ -35,16 +35,22 @@ public final class NowPlayingService: @unchecked Sendable {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
+        let _ = self.playlistService.$playlist
+        
         self.playlistService.$playlist.observe { playlist in
+            guard let playcut = self.playlistService.playlist.playcuts.first else {
+                return
+            }
+            
             Task {
-                guard let playcut = self.playlistService.playlist.playcuts.first else {
-                    return
-                }
-                
                 let artwork = await self.artworkService.getArtwork(for: playcut)
-                self.nowPlayingItem = NowPlayingItem(playcut: playcut, artwork: artwork)
+                await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
             }
         }
+    }
+    
+    func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) async {
+        self.nowPlayingItem = nowPlayingItem
     }
     
     public func fetch() async -> NowPlayingItem? {

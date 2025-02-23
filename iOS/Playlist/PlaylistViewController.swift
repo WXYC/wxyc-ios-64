@@ -16,7 +16,9 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var playlistDataSourceObservation: Any? = nil
     
     override func viewDidLoad() {
-        self.playlistDataSource.$viewModels.observe(observer: self.update(viewModels:))
+        self.playlistDataSource.$viewModels.observe { @MainActor viewModels in
+            self.update(viewModels: viewModels)
+        }
         self.setUpTableView()
     }
     
@@ -35,6 +37,7 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     }
     
     // MARK: PlaylistPresentable
+    
     func update(viewModels: [PlaylistCellViewModel]) {
         Task { @MainActor in
             self.viewModels = viewModels
@@ -68,11 +71,8 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
         let viewModel = self.viewModels[indexPath.row]
         
         if !self.reuseIdentifiers.contains(viewModel.reuseIdentifier) {
-            let className = NSStringFromClass(viewModel.cellClass)
-            let nib = UINib(nibName: className, bundle: nil)
-            
-            tableView.register(nib, forCellReuseIdentifier: className)
-
+            let nib = UINib(nibName: viewModel.class, bundle: nil)
+            tableView.register(nib, forCellReuseIdentifier: viewModel.class)
             self.reuseIdentifiers.insert(viewModel.reuseIdentifier)
         }
         

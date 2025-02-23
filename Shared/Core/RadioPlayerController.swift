@@ -20,7 +20,7 @@ public final class RadioPlayerController: @unchecked Sendable {
     @MainActor
     public static let shared = RadioPlayerController()
     
-    private var radioPlayerObservation: Any! = nil
+    @Publishable public var isPlaying = false
 
     @MainActor
     private init(
@@ -28,24 +28,16 @@ public final class RadioPlayerController: @unchecked Sendable {
         notificationCenter: NotificationCenter = .default,
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
     ) {
-        try? AVAudioSession.sharedInstance().setActive(true)
-        
         func notificationObserver(
             for name: Notification.Name,
-            sink: @escaping @Sendable @MainActor (Notification) -> ()
+            sink: @escaping @Sendable (Notification) -> ()
         ) -> any Sendable {
-            let wrappedSink = { (notification: Notification) in
-                let _ = Task { @MainActor in
-                    sink(notification)
-                }
-            }
-            
-            return NonSendableBox<NSObjectProtocol>(
+            NonSendableBox<NSObjectProtocol>(
                 value: notificationCenter.addObserver(
                     forName: name,
                     object: nil,
                     queue: nil,
-                    using: wrappedSink
+                    using: sink
                 )
             )
         }
@@ -89,6 +81,8 @@ public final class RadioPlayerController: @unchecked Sendable {
     }
     
     public func play() {
+        try? AVAudioSession.shared.activate()
+        
         Task { @MainActor in
             self.radioPlayer.play()
         }
@@ -104,9 +98,8 @@ public final class RadioPlayerController: @unchecked Sendable {
     
     private let radioPlayer: RadioPlayer
     private var inputObservations: [any Sendable]? = nil
-    
+
     @Publishable var playbackState: PlaybackState! = .initialized
-    @Publishable public var isPlaying = false
 }
 
 private extension RadioPlayerController {
@@ -143,7 +136,7 @@ private extension RadioPlayerController {
                 return
             }
             
-            try? AVAudioSession.sharedInstance().setActive(false)
+            try? AVAudioSession.shared.deactivate()
         }
     }
     
@@ -220,4 +213,18 @@ enum InterruptionType {
 
 struct NonSendableBox<NonSendableType>: @unchecked Sendable {
     let value: NonSendableType
+}
+
+extension AVAudioSession {
+    static var shared: AVAudioSession {
+        return AVAudioSession.sharedInstance()
+    }
+    
+    func activate() throws {
+        try setActive(true)
+    }
+    
+    func deactivate() throws {
+        try setActive(false)
+    }
 }

@@ -11,9 +11,6 @@ import WidgetKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
   
-    var nowPlayingObservation: Any?
-    var shouldDonateSiriIntentObservation: Any?
-
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
@@ -31,10 +28,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
 #endif
 
-        NowPlayingService.shared.$nowPlayingItem.observe { nowPlayingItem in
-            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-            
-            WidgetCenter.shared.reloadAllTimelines()
+        Task {
+            await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+                NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+                WidgetCenter.shared.reloadAllTimelines()
+            }
         }
         
         WidgetCenter.shared.getCurrentConfigurations { result in

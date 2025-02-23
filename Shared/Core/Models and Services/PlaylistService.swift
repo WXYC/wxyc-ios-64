@@ -24,8 +24,6 @@ extension CacheCoordinator: PlaylistFetcher {
 extension URLSession: PlaylistFetcher {
     func getPlaylist() async throws -> Playlist {
         let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
-        let string = String(data: playlistData, encoding: .utf8)
-        print(string)
         let decoder = JSONDecoder()
         return try decoder.decode(Playlist.self, from: playlistData)
     }
@@ -34,12 +32,7 @@ extension URLSession: PlaylistFetcher {
 public final class PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
-    @Publishable public private(set) var playlist: Playlist
-    
-    private let cacheCoordinator: CacheCoordinator
-    private let cachedFetcher: PlaylistFetcher
-    private let remoteFetcher: PlaylistFetcher
-    private let fetchTimer: DispatchSource?
+    @Publishable public private(set) var playlist: Playlist = .empty
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -50,12 +43,10 @@ public final class PlaylistService: @unchecked Sendable {
         self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
-        self.playlist = .empty
-        
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
         self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
         self.fetchTimer?.setEventHandler {
-            Task {
+            Task { @PlaylistActor in
                 let playlist = await self.fetchPlaylist()
                 
                 guard playlist != self.playlist else {
@@ -63,10 +54,10 @@ public final class PlaylistService: @unchecked Sendable {
                 }
                 
                 if playlist.entries.isEmpty {
-                    print("Empty playlist")
+                    Log(.info, "Empty playlist")
                 }
                 
-                await self.set(playlist: playlist)
+                self.set(playlist: playlist)
                 await self.cacheCoordinator.set(
                     value: self.playlist,
                     for: CacheCoordinator.playlistKey,
@@ -77,7 +68,8 @@ public final class PlaylistService: @unchecked Sendable {
         self.fetchTimer?.resume()
     }
     
-    private func set(playlist: Playlist) async {
+    @PlaylistActor
+    private func set(playlist: Playlist) {
         self.playlist = playlist
     }
     
@@ -100,6 +92,16 @@ public final class PlaylistService: @unchecked Sendable {
         
         return Playlist.empty
     }
+    
+    // MARK: Private
+    
+    private let cacheCoordinator: CacheCoordinator
+    private let cachedFetcher: PlaylistFetcher
+    private let remoteFetcher: PlaylistFetcher
+    private let fetchTimer: DispatchSource?
+    
+    @globalActor
+    private actor PlaylistActor: GlobalActor, Sendable { static let shared = PlaylistActor() }
 }
 
 final class DevPlaylistFetcher: PlaylistFetcher {
