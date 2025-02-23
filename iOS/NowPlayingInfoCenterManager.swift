@@ -31,6 +31,7 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
             }
             
             MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
+            MPNowPlayingInfoCenter.default().playbackState = RadioPlayerController.shared.isPlaying ? .playing : .paused
         }
     }
 
@@ -60,7 +61,7 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
     
     @MainActor
     private static func defaultArt() -> MPMediaItemArtwork {
-        return MPMediaItemArtwork.init(boundsSize: UIImage.placeholder.size) { size in
+        return MPMediaItemArtwork(boundsSize: UIImage.placeholder.size) { size in
             UIImage.placeholder
         }
     }
@@ -71,14 +72,14 @@ extension Optional where Wrapped == Playcut {
         if case .some(let playcut) = self {
             return [
                 MPMediaItemPropertyArtist : playcut.artistName,
-                MPMediaItemPropertyTitle: playcut.songTitle,
-                MPMediaItemPropertyAlbumTitle: playcut.releaseTitle ?? ""
+                MPMediaItemPropertyTitle : playcut.songTitle,
+                MPMediaItemPropertyAlbumTitle : playcut.releaseTitle ?? "",
             ]
         } else {
             return [
                 MPMediaItemPropertyArtist : RadioStation.WXYC.name,
-                MPMediaItemPropertyTitle: RadioStation.WXYC.secondaryName,
-                MPMediaItemPropertyAlbumTitle: ""
+                MPMediaItemPropertyTitle : RadioStation.WXYC.secondaryName,
+                MPMediaItemPropertyAlbumTitle : "",
             ]
         }
     }
@@ -95,75 +96,75 @@ extension Dictionary {
 
 extension UIImage {
     static let placeholder: UIImage = {
-        let backgroundImage = #imageLiteral(resourceName: "background").cgImage!
-        let overlayImage = #imageLiteral(resourceName: "logo").cgImage!.scaled(by: 0.75)!
+        let backgroundImage: CGImage = #imageLiteral(resourceName: "background").cgImage!
+        let overlayImage = logoImage.cgImage!
+            .resize(to: backgroundImage.size)
         return UIImage(cgImage: backgroundImage.overlay(with: overlayImage)!)
     }()
     
-    static let logoImage = UIImage(named: "logo.pdf")!.scaleAndCenter(scale: 0.90)
+    static let logoImage = UIImage(named: "logo.pdf")!
+        .withRenderingMode(.alwaysOriginal)
+        .scaleAndCenter(scale: 0.90)
 }
 
 
 extension CGImage {
     func overlay(with overlay: CGImage) -> CGImage? {
+        Log(.info, "overlaying \(overlay.size) with \(size)")
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
 
-        guard let context = CGContext(data: nil,
-                                      width: width,
-                                      height: height,
-                                      bitsPerComponent: 8,
-                                      bytesPerRow: 0,
-                                      space: colorSpace,
-                                      bitmapInfo: bitmapInfo) else {
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else {
             return nil
         }
 
-        let rect = CGRect(x: 0, y: 0, width: width, height: height)
+        var rect = CGRect(x: 0, y: 0, width: width, height: height)
         // Draw the background image.
         context.draw(self, in: rect)
         // Optionally set a blend mode if needed:
         context.setBlendMode(.normal)
         // Draw the overlay image on top.
+        rect = CGRect(
+            x: (self.width - overlay.width) / 2,
+            y: (self.height - overlay.height) / 2,
+            width: overlay.width,
+            height: overlay.height
+        )
         context.draw(overlay, in: rect)
         
         // Create a new CGImage from the context.
         return context.makeImage()
     }
     
-    var bounds: CGSize {
-        .init(width: self.width, height: self.height)
+    func resize(to newSize: CGSize) -> CGImage {
+        guard let filter = CIFilter(name: "CILanczosScaleTransform") else {
+            return self
+        }
+
+        let ciImage = CIImage(cgImage: self)
+        let scale = (Double)(newSize.width) / (Double)(ciImage.extent.size.width)
+
+        filter.setValue(ciImage, forKey: kCIInputImageKey)
+        filter.setValue(NSNumber(value:scale), forKey: kCIInputScaleKey)
+        filter.setValue(1.0, forKey: kCIInputAspectRatioKey)
+        guard let outputImage = filter.value(forKey: kCIOutputImageKey) as? CIImage else {
+            return self
+        }
+        let context = CIContext(options: [.useSoftwareRenderer: false])
+        return context.createCGImage(outputImage, from: outputImage.extent) ?? self
+        
     }
     
-    func scaled(by factor: CGFloat) -> CGImage? {
-        let width = Int(CGFloat(width) * factor)
-        let height = Int(CGFloat(height) * factor)
-        
-        // Use the same color space and bits per component as the original image.
-        let colorSpace = self.colorSpace ?? CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = self.bitmapInfo.rawValue
-        
-        guard let context = CGContext(data: nil,
-                                      width: self.width,
-                                      height: self.height,
-                                      bitsPerComponent: self.bitsPerComponent,
-                                      bytesPerRow: 0,
-                                      space: colorSpace,
-                                      bitmapInfo: bitmapInfo) else {
-            return nil
-        }
-        
-        // Set interpolation quality for smooth scaling.
-        context.interpolationQuality = .high
-        
-        // Draw the image into the new context, scaling it to the new size.
-        let newSize = CGSize(width: CGFloat(width), height: CGFloat(height))
-        let newOrigin = CGPoint(x: (newSize.width - CGFloat(width)) / 2, y: (newSize.height - CGFloat(height)) / 2)
-        let rect = CGRect(origin: newOrigin, size: newSize)
-        context.draw(self, in: rect)
-        
-        // Extract the scaled image.
-        return context.makeImage()
+    var size: CGSize {
+        .init(width: CGFloat(width), height: CGFloat(height))
     }
 }
 
