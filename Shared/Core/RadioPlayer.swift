@@ -8,6 +8,7 @@
 
 import Foundation
 import AVFoundation
+import MediaPlayer
 
 @MainActor
 internal final class RadioPlayer: Sendable {
@@ -23,7 +24,7 @@ internal final class RadioPlayer: Sendable {
                 object: self.player,
                 queue: nil
             ) { notification in
-                Log(.info, notification)
+                Log(.info, "RadioPlayer did receive notification", notification)
                 Task { @MainActor in
                     self.isPlaying = self.player.rate > 0
                 }
@@ -54,7 +55,9 @@ internal final class RadioPlayer: Sendable {
     private func resetStream() {
         let asset = AVURLAsset(url: self.streamURL)
         let playerItem = AVPlayerItem(asset: asset)
-        player.replaceCurrentItem(with: playerItem)
+        self.player.replaceCurrentItem(with: playerItem)
+        self.player.pause()
+        MPNowPlayingSession(players: [self.player])
     }
 }
 
