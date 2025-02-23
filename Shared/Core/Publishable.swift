@@ -65,6 +65,7 @@ public final class Publishable<Value: Sendable>: Sendable {
         let semaphore = DispatchSemaphore(value: 0)
 
         Task {
+            await task()
             semaphore.signal()
         }
         
