@@ -50,11 +50,11 @@ public final actor CacheCoordinator {
                 throw ServiceErrors.noCachedResult
             }
             
-            print(">>> cache hit!", key, cachedRecord.value)
+            Log(.info, ">>> cache hit!", key, cachedRecord.value)
             
             return cachedRecord.value
         } catch {
-            print(">>> No value for '\(key)': ", error)
+            Log(.error, ">>> No value for '\(key)': ", error)
             throw error
         }
     }
@@ -72,9 +72,9 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        print(">>> Setting value for key '\(key)'")
-        print(">>> Value is nil: \(value == nil)")
-        print(">>> Lifespan: \(lifespan)")
+        Log(.info, ">>> Setting value for key '\(key)'")
+        Log(.info, "Value is nil: \(value == nil)")
+        Log(.info, "Lifespan: \(lifespan)")
         
         if let value = value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
@@ -108,7 +108,7 @@ public final actor CacheCoordinator {
         for (key, value) in self.cache.allRecords() {
             if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
                record.lifespan == .distantFuture {
-                print("Purging distant future record for key '\(key)'")
+                Log(.info, "Purging distant future record for key '\(key)'")
                 self.cache.set(object: nil, for: key)
             }
         }
