@@ -60,23 +60,9 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
     
     @MainActor
     private static func defaultArt() -> MPMediaItemArtwork {
-        var artwork: MPMediaItemArtwork!
-        
-        let backgroundView = UIImageView(image: #imageLiteral(resourceName: "background"))
-        let logoView = UIImageView(image: #imageLiteral(resourceName: "logo"))
-        logoView.contentMode = .scaleAspectFit
-        
-        let width = UIScreen.main.bounds.width
-        backgroundView.frame = CGRect(x: 0, y: 0, width: width, height: width)
-        logoView.frame = backgroundView.frame
-        
-        backgroundView.addSubview(logoView)
-        
-        artwork = MPMediaItemArtwork(boundsSize: backgroundView.frame.size) { _ in
-            backgroundView.snapshot()!
+        return MPMediaItemArtwork.init(boundsSize: UIImage.placeholder.size) { size in
+            UIImage.placeholder
         }
-        
-        return artwork
     }
 }
 
@@ -107,3 +93,120 @@ extension Dictionary {
     }
 }
 
+extension UIImage {
+    static let placeholder: UIImage = {
+        let backgroundImage = #imageLiteral(resourceName: "background").cgImage!
+        let overlayImage = #imageLiteral(resourceName: "logo").cgImage!.scaled(by: 0.75)!
+        return UIImage(cgImage: backgroundImage.overlay(with: overlayImage)!)
+    }()
+    
+    static let logoImage = UIImage(named: "logo.pdf")!.scaleAndCenter(scale: 0.90)
+}
+
+
+extension CGImage {
+    func overlay(with overlay: CGImage) -> CGImage? {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+
+        guard let context = CGContext(data: nil,
+                                      width: width,
+                                      height: height,
+                                      bitsPerComponent: 8,
+                                      bytesPerRow: 0,
+                                      space: colorSpace,
+                                      bitmapInfo: bitmapInfo) else {
+            return nil
+        }
+
+        let rect = CGRect(x: 0, y: 0, width: width, height: height)
+        // Draw the background image.
+        context.draw(self, in: rect)
+        // Optionally set a blend mode if needed:
+        context.setBlendMode(.normal)
+        // Draw the overlay image on top.
+        context.draw(overlay, in: rect)
+        
+        // Create a new CGImage from the context.
+        return context.makeImage()
+    }
+    
+    var bounds: CGSize {
+        .init(width: self.width, height: self.height)
+    }
+    
+    func scaled(by factor: CGFloat) -> CGImage? {
+        let width = Int(CGFloat(width) * factor)
+        let height = Int(CGFloat(height) * factor)
+        
+        // Use the same color space and bits per component as the original image.
+        let colorSpace = self.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = self.bitmapInfo.rawValue
+        
+        guard let context = CGContext(data: nil,
+                                      width: self.width,
+                                      height: self.height,
+                                      bitsPerComponent: self.bitsPerComponent,
+                                      bytesPerRow: 0,
+                                      space: colorSpace,
+                                      bitmapInfo: bitmapInfo) else {
+            return nil
+        }
+        
+        // Set interpolation quality for smooth scaling.
+        context.interpolationQuality = .high
+        
+        // Draw the image into the new context, scaling it to the new size.
+        let newSize = CGSize(width: CGFloat(width), height: CGFloat(height))
+        let newOrigin = CGPoint(x: (newSize.width - CGFloat(width)) / 2, y: (newSize.height - CGFloat(height)) / 2)
+        let rect = CGRect(origin: newOrigin, size: newSize)
+        context.draw(self, in: rect)
+        
+        // Extract the scaled image.
+        return context.makeImage()
+    }
+}
+
+extension UIImage {
+    func overlay(with overlay: UIImage) -> UIImage? {
+        // Use the size of the background image or determine a custom size.
+        let size = overlay.size
+
+        // Begin a new image context with the desired options.
+        UIGraphicsBeginImageContextWithOptions(size, false, overlay.scale)
+        
+        // Draw the background image.
+        overlay.draw(in: CGRect(origin: .zero, size: size))
+        
+        // Draw the overlay image.
+        // You can adjust the frame if you want to position it differently.
+        overlay.draw(in: CGRect(origin: .zero, size: size), blendMode: .normal, alpha: 1.0)
+        
+        // Capture the composed image.
+        let composedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return composedImage
+    }
+    
+    func scaleAndCenter(scale: CGFloat) -> UIImage {
+        // Use the original image size as the canvas size.
+        let canvasSize = self.size
+        // Compute the scaled size by multiplying the original dimensions by the scale.
+        let scaledSize = CGSize(width: self.size.width * scale,
+                                height: self.size.height * scale)
+        
+        // Create an image renderer using the original image's size.
+        let renderer = UIGraphicsImageRenderer(size: canvasSize)
+        
+        let newImage = renderer.image { _ in
+            // Calculate the origin so the scaled image is centered in the canvas.
+            let origin = CGPoint(x: (canvasSize.width - scaledSize.width) / 2,
+                                 y: (canvasSize.height - scaledSize.height) / 2)
+            // Draw the image in the computed rect.
+            self.draw(in: CGRect(origin: origin, size: scaledSize))
+        }
+        
+        return newImage
+    }
+}
