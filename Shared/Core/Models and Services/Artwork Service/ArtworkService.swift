@@ -31,21 +31,21 @@ public final actor ArtworkService {
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
-                print(">>> Artwork found for \(playcut) using fetcher \(fetcher)")
+                Log(.info, ">>> Artwork found for \(playcut) using fetcher \(fetcher)")
 
                 guard try await artwork.checkNSFW() == .sfw else {
-                    print(">>> Inappropriate artwork found for \(playcut) using fetcher \(fetcher)")
+                    Log(.info, ">>> Inappropriate artwork found for \(playcut) using fetcher \(fetcher)")
                     return nil
                 }
                 
                 await self.cacheCoordinator.set(artwork: artwork, for: playcut)
                 return artwork
             } catch {
-                print(">>> No artwork found for \(playcut) using fetcher \(fetcher): \(error)")
+                Log(.error, ">>> No artwork found for \(playcut) using fetcher \(fetcher): \(error)")
             }
         }
         
-        print(">>> No artwork found for \(playcut) using any fetcher")
+        Log(.error, ">>> No artwork found for \(playcut) using any fetcher")
         return nil
     }
 }

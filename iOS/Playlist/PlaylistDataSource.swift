@@ -9,22 +9,20 @@
 import Foundation
 import Observation
 import Core
+import UIKit
+
 
 final class PlaylistDataSource: Sendable {
     @Publishable private(set) var viewModels: [PlaylistCellViewModel] = []
 
+    @globalActor actor PlaylistDataSourceActor { static let shared = PlaylistDataSourceActor() }
+    
     static let shared = PlaylistDataSource()
     
     init(playlistService: PlaylistService = .shared) {
-        playlistService.$playlist.observe(observer: self.updateViewModels(with: ))
-    }
-    
-    private var playlistServiceObserver: Any? = nil
-    
-    private func updateViewModels(with entries: [any PlaylistEntry]) {
-        self.viewModels = entries
-            .compactMap { $0 as? any PlaylistCellViewModelProducer }
-            .map { $0.cellViewModel }
+        playlistService.$playlist.observe { playlist in
+            self.updateViewModels(with: playlist)
+        }
     }
     
     private func updateViewModels(with playlist: Playlist) {

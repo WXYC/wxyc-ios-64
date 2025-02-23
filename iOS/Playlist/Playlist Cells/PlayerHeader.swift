@@ -46,16 +46,21 @@ class PlayerHeader: UITableViewHeaderFooterView {
     private var notificationObservation: Any?
     
     private func setUpPlayback() {
-        RadioPlayerController.shared.$isPlaying.observe(observer: self.playbackStateChanged(isPlaying:))
+        RadioPlayerController.shared.$isPlaying.observe { isPlaying in
+            Task { @MainActor in
+                self.playbackStateChanged(isPlaying: isPlaying)
+            }
+        }
         self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         self.notificationObservation =
-            NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification) { _ in
-                DispatchQueue.main.async {
-                    self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
-                    self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
-                    self.playbackStateChanged(isPlaying: RadioPlayerController.shared.isPlaying)
-                }
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification) {
+            let isPlaying = await RadioPlayerController.shared.isPlaying
+            DispatchQueue.main.async {
+                self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
+                self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
+                self.playbackStateChanged(isPlaying: isPlaying)
             }
+        }
     }
     
     @objc private func playPauseTapped(_ sender: UIButton) {
@@ -73,9 +78,8 @@ class PlayerHeader: UITableViewHeaderFooterView {
             self.cassetteRightReel.startSpin()
             self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
         case .initialized:
-            print("initialized")
+            Log(.info, "initialized")
             break
-
         }
     }
     
@@ -98,7 +102,15 @@ class PlayerHeader: UITableViewHeaderFooterView {
 }
 
 extension NotificationCenter {
-    func addObserver(forName name: NSNotification.Name, using block: @escaping @Sendable (Notification) -> Void) -> any NSObjectProtocol {
-        addObserver(forName: name, object: nil, queue: nil, using: block)
+    func addObserver(
+        forName name: NSNotification.Name,
+        using block: @escaping @Sendable () async -> Void
+    ) -> any NSObjectProtocol {
+        let wrappedBlock: @Sendable (Notification) -> Void = { _ in
+            let _ = Task {
+                await block()
+            }
+        }
+        return addObserver(forName: name, object: nil, queue: nil, using: wrappedBlock)
     }
 }
