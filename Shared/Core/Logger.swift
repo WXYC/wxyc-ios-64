@@ -29,9 +29,32 @@ public final class Logger: Loggable, Sendable {
     func log(_ level: LogLevel, _ message: Any...) {
         let logStatement = "\(Logger.timestamp()) [\(level)] \(message)"
         print(logStatement)
+        
         Task { @Actor in
             Self.writeToLogFile(logStatement)
         }
+    }
+    
+    public static func fetchLogs() -> (logName: String, data: Data)? {
+        guard let logFileURL = logFile else {
+            return nil
+        }
+        
+        do {
+            let fileHandle = try FileHandle(forReadingFrom: logFileURL)
+            guard let data = try fileHandle.readToEnd() else {
+                Log(.error, "Reader handle for log file returned nil data")
+                return nil
+            }
+            return (
+                logName: todayFormatted,
+                data: data
+            )
+        } catch {
+            Log(.error, "Could not read log file: \(error)")
+        }
+        
+        return nil
     }
     
     // MARK: Private
@@ -49,7 +72,6 @@ public final class Logger: Loggable, Sendable {
         dateFormatter.string(from: Date())
     }
     
-    @Actor
     private static let logFile: URL? = {
         let urls = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
         guard let cachesDirectory = urls.first else {
@@ -63,9 +85,17 @@ public final class Logger: Loggable, Sendable {
                 at: logsDirectory,
                 withIntermediateDirectories: true)
             
-            return logsDirectory.appendingPathComponent(todayFormatted)
+            let fileURL = logsDirectory.appendingPathComponent(todayFormatted)
+            
+            if !FileManager.default.fileExists(atPath: fileURL.path()) {
+                if !FileManager.default.createFile(atPath: fileURL.path(), contents: nil) {
+                    Log(.error, "Failed to create log file")
+                }
+            }
+            
+            return fileURL
         } catch {
-            print("Failed to create log file: \(error)")
+            Log(.error, "Failed to create log directory: \(error)")
             return nil
         }
     }()
@@ -83,7 +113,7 @@ public final class Logger: Loggable, Sendable {
         }
         
         guard let fileHandle = FileHandle(forWritingAtPath: logFile!.path) else {
-            print("Failed create file handle")
+            Log(.error, "Failed create file handle")
             return FileHandle.standardOutput
         }
         
@@ -91,7 +121,7 @@ public final class Logger: Loggable, Sendable {
             try fileHandle.seekToEnd()
             return fileHandle
         } catch {
-            print("Failed to seek to end of log file handle: \(error)")
+            Log(.error, "Failed to seek to end of log file handle: \(error)")
         }
         
         return FileHandle.standardOutput
@@ -102,12 +132,12 @@ public final class Logger: Loggable, Sendable {
         do {
             fileHandle.seekToEndOfFile()
             guard let data = (message + "\n").data(using: .utf8) else {
-                print("Failed convert string to data: \(message)")
+                Log(.error, "Failed convert string to data: \(message)")
                 return
             }
             try fileHandle.write(contentsOf: data)
         } catch {
-            print("Failed to write to log file: \(error)")
+            Log(.error, "Failed to write to log file: \(error)")
         }
     }
 }
