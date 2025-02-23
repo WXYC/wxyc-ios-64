@@ -59,7 +59,7 @@ extension SiriService {
             try await INInteraction.playWXYC.donate()
             await self.cacheCoordinator.set(value: true, for: UserSettingsKeys.intentDonated, lifespan: .distantFuture)
         } catch {
-            print("Could not donate Siri intent: \(error)")
+            Log(.error, "Could not donate Siri intent: \(error)")
         }
     }
     
@@ -67,7 +67,7 @@ extension SiriService {
         do {
             try await INInteraction.whatsOnWXYC(with: nowPlayingItem).donate()
         } catch {
-            print(error)
+            Log(.error, error.localizedDescription)
         }
     }
 

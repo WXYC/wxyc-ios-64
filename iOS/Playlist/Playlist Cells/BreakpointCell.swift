@@ -9,6 +9,6 @@
 import UIKit
 
 @objc(BreakpointCell)
-final class BreakpointCell: UITableViewCell {
+final class BreakpointCell: UITableViewCell & Sendable {
     @IBOutlet var timeLabel: UILabel!
 }

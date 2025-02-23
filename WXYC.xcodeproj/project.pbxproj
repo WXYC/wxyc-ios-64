@@ -11,6 +11,7 @@
 		236B0CA32D61A787000661F2 /* NowPlayingInfoCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */; };
 		2389E6322B8C2E96003C9934 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */; };
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
+		23AC37F52D682DDE0018CD19 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23AC37F42D682DDE0018CD19 /* Logger.swift */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
@@ -161,6 +162,7 @@
 		23841AE72D3052D60028EAF8 /* WXYC DevUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "WXYC DevUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		23A7C7EB296A07BE00135E7F /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
+		23AC37F42D682DDE0018CD19 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		23BBC4312B90E18B00EF99F1 /* iOS Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "iOS Info.plist"; sourceTree = "<group>"; };
 		23BBC4332B9179B600EF99F1 /* WXYCDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WXYCDebug.entitlements; sourceTree = "<group>"; };
 		341FBACC2041E7AB00CD2F36 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -426,6 +428,7 @@
 			isa = PBXGroup;
 			children = (
 				236B0C9E2D605F7A000661F2 /* Publishable.swift */,
+				23AC37F42D682DDE0018CD19 /* Logger.swift */,
 				3435D4A02225BD5B00EA9226 /* Models and Services */,
 				3434FBFC2030A1CC00FC778F /* RadioPlayer.swift */,
 				3435D4942225B9D100EA9226 /* Caching */,
@@ -996,6 +999,7 @@
 				34EB12E4278E4A4000257589 /* URLSession+WebSession.swift in Sources */,
 				34EB12E6278E4A4000257589 /* RadioPlayer.swift in Sources */,
 				34EB12E7278E4A4000257589 /* CacheCoordinator.swift in Sources */,
+				23AC37F52D682DDE0018CD19 /* Logger.swift in Sources */,
 				34EB12E8278E4A4000257589 /* CachedRecord.swift in Sources */,
 				348CAF582BAD11860043022F /* NSFWDetector.swift in Sources */,
 				34EB12E9278E4A4000257589 /* Cache.swift in Sources */,
@@ -1255,7 +1259,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4.1;
+				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1279,7 +1283,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.4.1;
+				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

@@ -11,9 +11,6 @@ import WidgetKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
   
-    var nowPlayingObservation: Any?
-    var shouldDonateSiriIntentObservation: Any?
-
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
@@ -22,7 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+        try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, policy: .longFormAudio)
         
 #if os(iOS)
         // Make status bar white
@@ -31,10 +28,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
 #endif
 
-        NowPlayingService.shared.$nowPlayingItem.observe { nowPlayingItem in
-            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-            
-            WidgetCenter.shared.reloadAllTimelines()
+        Task {
+            await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+                NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+                WidgetCenter.shared.reloadAllTimelines()
+            }
         }
         
         WidgetCenter.shared.getCurrentConfigurations { result in
@@ -43,7 +41,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
             
             for configuration in configurations {
-                print(configuration)
+                Log(.info, configuration)
             }
             
             WidgetCenter.shared.reloadAllTimelines()
@@ -104,7 +102,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             Self.interfaceController = interfaceController
             
             Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
-                print("success: \(success), error: \(String(describing: error))")
+                Log(.info, "success: \(success), error: \(String(describing: error))")
             }
         }
     }

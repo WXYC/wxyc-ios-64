@@ -14,7 +14,7 @@ protocol PlaycutShareDelegate: AnyObject {
 }
 
 @objc(PlaycutCell)
-final class PlaycutCell: UITableViewCell {
+final class PlaycutCell: UITableViewCell & Sendable {
     @IBOutlet var artworkImageView: UIImageView!
     @IBOutlet var artistLabel: UILabel!
     @IBOutlet var songLabel: UILabel!

@@ -25,7 +25,7 @@ extension CGImagePropertyOrientation {
         case .rightMirrored: self = .rightMirrored
         @unknown default:
             self = .up
-            print("🧨 Unknown UIImage Orientation. Set as .up by default.")
+            Log(.error, "🧨 Unknown UIImage Orientation. Set as .up by default.")
         }
     }
 }
@@ -41,7 +41,7 @@ extension UIImage {
     
     func checkNSFW() async throws -> NSFW {
         guard let ciImage = CIImage(image: self) else {
-            print("🧨 Could not create CIImage")
+            Log(.error, "🧨 Could not create CIImage")
             throw AnalysisError.InvalidImage
         }
         let orientation = CGImagePropertyOrientation(self.imageOrientation)
@@ -53,16 +53,16 @@ extension UIImage {
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<NSFW, any Error>) in
             let vnRequest = VNCoreMLRequest(model: NSFWmodel, completionHandler: { request, error in
                 if let error = error {
-                    print("🧨 VNCoreMLRequest Error: \(error.localizedDescription)")
+                    Log(.error, "🧨 VNCoreMLRequest Error: \(error.localizedDescription)")
                     continuation.resume(throwing: AnalysisError.CoreMLError(error))
                 }
                 guard let observations = request.results as? [VNClassificationObservation] else {
-                    print("🧨 Unexpected result type from VNCoreMLRequest")
+                    Log(.error, "🧨 Unexpected result type from VNCoreMLRequest")
                     continuation.resume(throwing: AnalysisError.InvalidObservationType)
                     return
                 }
                 guard let best = observations.first else {
-                    print("🧨 Unable to retrieve NSFW observation")
+                    Log(.error, "🧨 Unable to retrieve NSFW observation")
                     continuation.resume(throwing: AnalysisError.NoObservations)
                     return
                 }
