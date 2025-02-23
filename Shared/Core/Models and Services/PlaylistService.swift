@@ -86,16 +86,16 @@ public final class PlaylistService: @unchecked Sendable {
     }
     
     public func fetchPlaylist(forceSync: Bool = false) async -> Playlist {
-        print(">>> Fetching remote playlist")
+        Log(.info, ">>> Fetching remote playlist")
         let startTime = Date.timeIntervalSinceReferenceDate
         do {
             let playlist = try await self.remoteFetcher.getPlaylist()
             let duration = Date.timeIntervalSinceReferenceDate - startTime
-            print(">>> Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
+            Log(.info, ">>> Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
             return playlist
         } catch {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
-            print(">>> Remote playlist fetch failed after \(duration) seconds: \(error)")
+            Log(.error, ">>> Remote playlist fetch failed after \(duration) seconds: \(error)")
         }
         
         return Playlist.empty

@@ -43,7 +43,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
             
             for configuration in configurations {
-                print(configuration)
+                Log(.info, configuration)
             }
             
             WidgetCenter.shared.reloadAllTimelines()
@@ -104,7 +104,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             Self.interfaceController = interfaceController
             
             Self.interfaceController?.setRootTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
-                print("success: \(success), error: \(String(describing: error))")
+                Log(.info, "success: \(success), error: \(String(describing: error))")
             }
         }
     }

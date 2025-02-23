@@ -40,7 +40,7 @@ struct StandardCache: Cache, @unchecked Sendable {
             let fileName = cacheDirectory.appendingPathComponent(key)
             return try? Data(contentsOf: fileName)
         } else {
-            print("Failed to find Cache Directory, trying NSCache.")
+            Log(.error, "Failed to find Cache Directory, trying NSCache.")
             let data: NSData? = self.cache.object(forKey: key as NSString)
             return data as? Data
         }
@@ -55,15 +55,15 @@ struct StandardCache: Cache, @unchecked Sendable {
                 do {
                     try FileManager.default.removeItem(at: fileName)
                 } catch {
-                    print("Failed to remove \(fileName) from disk: \(error)")
+                    Log(.error, "Failed to remove \(fileName) from disk: \(error)")
                 }
             }
         } else {
-            print("Failed to find Cache Directory, trying NSCache.")
+            Log(.error, "Failed to find Cache Directory, trying NSCache.")
             if let object = object as? NSData {
                 self.cache.setObject(object, forKey: key as NSString)
             } else {
-                print("Failed to convert object to NSData, removing old object from cache.")
+                Log(.error, "Failed to convert object to NSData, removing old object from cache.")
                 self.cache.removeObject(forKey: key as NSString)
             }
         }
@@ -72,7 +72,7 @@ struct StandardCache: Cache, @unchecked Sendable {
     func allRecords() -> any Sequence<(String, Data)> {
         guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
               let contents = try? FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil) else {
-            print("Failed to find Cache Directory, trying NSCache.")
+            Log(.error, "Failed to find Cache Directory, trying NSCache.")
             return EmptyCollection()
         }
         var contentsIterator = contents.makeIterator()

@@ -23,18 +23,15 @@ internal final class RadioPlayer: Sendable {
                 object: self.player,
                 queue: nil
             ) { notification in
-                print(notification)
+                Log(.info, notification)
                 Task { @MainActor in
                     self.isPlaying = self.player.rate > 0
-                    self.playbackState = self.isPlaying ? .playing : .paused
                 }
             }
     }
     
     @Publishable var isPlaying: Bool = false
-    
-    var playbackState: PlaybackState = .initialized
-    
+        
     func play() {
         if self.isPlaying {
             return
