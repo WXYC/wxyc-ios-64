@@ -19,7 +19,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+        } catch {
+            Log(.error, "Could not set AVAudioSession category: \(error)")
+        }
         
 #if os(iOS)
         // Make status bar white

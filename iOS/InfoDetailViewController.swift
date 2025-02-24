@@ -114,6 +114,9 @@ extension InfoDetailViewController: @preconcurrency MFMailComposeViewControllerD
     // MARK: MFMailComposeViewControllerDelegate
     
     func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+        if let error {
+            Log(.error, "Failed to send feedback email: \(error)")
+        }
         controller.dismiss(animated: true, completion: nil)
     }
 }

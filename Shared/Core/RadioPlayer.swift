@@ -38,9 +38,7 @@ internal final class RadioPlayer: Sendable {
             return
         }
         
-        try? AVAudioSession.sharedInstance().setActive(true)
-        
-        player.play()
+        self.player.play()
     }
     
     func pause() {
@@ -57,7 +55,6 @@ internal final class RadioPlayer: Sendable {
         let playerItem = AVPlayerItem(asset: asset)
         self.player.replaceCurrentItem(with: playerItem)
         self.player.pause()
-        MPNowPlayingSession(players: [self.player])
     }
 }
 

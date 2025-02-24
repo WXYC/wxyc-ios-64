@@ -89,6 +89,7 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     
     override func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
         guard tableView.numberOfRows(inSection: section) > 0 else {
+            Log(.error, "No rows in section \(section)")
             return nil
         }
         

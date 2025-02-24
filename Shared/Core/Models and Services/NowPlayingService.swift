@@ -55,6 +55,7 @@ public actor NowPlayingService: @unchecked Sendable {
     
     public func fetch() async -> NowPlayingItem? {
         guard let playcut = await self.playlistService.fetchPlaylist(forceSync: true).playcuts.first else {
+            Log(.info, "No playcut found in fetched playlist")
             return nil
         }
         let artwork = await self.artworkService.getArtwork(for: playcut)

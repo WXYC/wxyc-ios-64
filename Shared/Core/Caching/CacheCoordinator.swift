@@ -78,9 +78,12 @@ public final actor CacheCoordinator {
         
         if let value = value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
-            let encodedCachedRecord = try? Self.encoder.encode(cachedRecord)
-            
-            self.cache.set(object: encodedCachedRecord, for: key)
+            do {
+                let encodedCachedRecord = try Self.encoder.encode(cachedRecord)
+                self.cache.set(object: encodedCachedRecord, for: key)
+            } catch {
+                Log(.error, "Failed to encode value for \(key): \(error)")
+            }
         } else {
             self.cache.set(object: nil, for: key)
         }
@@ -97,19 +100,27 @@ public final actor CacheCoordinator {
     
     private func purgeExpiredRecords() {
         for (key, value) in self.cache.allRecords() {
-            if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
-               record.isExpired {
-                self.cache.set(object: nil, for: key)
+            do {
+                let record = try Self.decoder.decode(CachedRecord<Data>.self, from: value)
+                if record.isExpired {
+                    self.cache.set(object: nil, for: key)
+                }
+            } catch {
+                Log(.error, "Failed to decode value for \(key): \(error)")
             }
         }
     }
     
     private func purgeDistantFutureRecords() {
         for (key, value) in self.cache.allRecords() {
-            if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
-               record.lifespan == .distantFuture {
-                Log(.info, "Purging distant future record for key '\(key)'")
-                self.cache.set(object: nil, for: key)
+            do {
+                let record = try Self.decoder.decode(CachedRecord<Data>.self, from: value)
+                if record.lifespan == .distantFuture {
+                    Log(.info, "Purging distant future record for key '\(key)'")
+                    self.cache.set(object: nil, for: key)
+                }
+            } catch {
+                Log(.error, "Failed to decode value for \(key): \(error)")
             }
         }
     }

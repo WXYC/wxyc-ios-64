@@ -12,7 +12,8 @@ final class RootPageViewController: UIPageViewController {
     }
     
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        Log(.error, "init(coder:) has not been implemented")
+        fatalError( "init(coder:) has not been implemented")
     }
     
     override var transitionStyle: TransitionStyle { .scroll }
@@ -78,6 +79,7 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         case self.infoDetailViewController:
             return self.nowPlayingViewController
         default:
+            Log(.error, "Unknown view controller: \(viewController)")
             fatalError()
         }
     }
@@ -89,6 +91,7 @@ extension RootPageViewController: UIPageViewControllerDataSource {
         case self.infoDetailViewController:
             return nil
         default:
+            Log(.error, "Unknown view controller: \(viewController)")
             fatalError()
         }
     }
