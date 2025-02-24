@@ -159,6 +159,7 @@ private extension INImage {
         if let artworkData = image?.pngData() {
             self.init(imageData: artworkData)
         } else {
+            Log(.error, "Could not convert Data to INImage")
             return nil
         }
     }

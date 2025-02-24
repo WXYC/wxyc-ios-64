@@ -7,6 +7,7 @@
 //
 
 import UIKit.UIView
+import Core
 
 extension UIView {
     public func snapshot() -> UIImage? {
@@ -17,6 +18,7 @@ extension UIView {
         }
         
         guard let context = UIGraphicsGetCurrentContext() else {
+            Log(.error, "Could not get current graphics context.")
             return nil
         }
         

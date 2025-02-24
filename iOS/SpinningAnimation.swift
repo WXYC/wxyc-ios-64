@@ -22,7 +22,8 @@ final class SpinningAnimation: CABasicAnimation {
     }
     
     required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        Log(.error, "init(coder:) has not been implemented")
+        fatalError( "init(coder:) has not been implemented")
     }
 }
 

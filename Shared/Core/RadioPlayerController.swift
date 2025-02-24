@@ -81,7 +81,11 @@ public final class RadioPlayerController: @unchecked Sendable {
     }
     
     public func play() {
-        try? AVAudioSession.shared.activate()
+        do {
+            try AVAudioSession.shared.activate()
+        } catch {
+            Log(.error, "RadioPlayerController could not start playback: \(error)")
+        }
         
         Task { @MainActor in
             self.radioPlayer.play()
@@ -136,7 +140,11 @@ private extension RadioPlayerController {
                 return
             }
             
-            try? AVAudioSession.shared.deactivate()
+            do {
+                try AVAudioSession.shared.deactivate()
+            } catch {
+                Log(.error, "RadioPlayerController could not deactivate: \(error)")
+            }
         }
     }
     
@@ -177,14 +185,17 @@ private extension RadioPlayerController {
 fileprivate extension Notification {
     var interruptionType: InterruptionType? {
         guard let typeValue = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber else {
+            Log(.error, "Could not extract interruption type from notification")
             return nil
         }
         
         guard let type = AVAudioSession.InterruptionType(rawValue: typeValue.uintValue) else {
+            Log(.error, "Could not convert interruption type to AVAudioSession.InterruptionType")
             return nil
         }
         
         guard let _ = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt else {
+            Log(.error, "Could not extract interruption options from notification")
             return nil
         }
         
@@ -193,14 +204,16 @@ fileprivate extension Notification {
         }
         
         guard let optionsValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt else {
-          return nil
+            Log(.error, "Could not extract interruption options from notification")
+            return nil
         }
         
         let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
         if options.contains(.shouldResume) {
             return .shouldResume
         }
-
+        
+        Log(.error, "Unsupported interruption type: \(type) with options: \(options)")
         return nil
     }
 }

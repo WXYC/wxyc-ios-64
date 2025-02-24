@@ -123,6 +123,7 @@ extension CGImage {
             space: colorSpace,
             bitmapInfo: bitmapInfo
         ) else {
+            Log(.error, "Couldn't create CGContext")
             return nil
         }
 

@@ -7,16 +7,14 @@
 //
 
 public enum LogLevel: String, CustomStringConvertible, Sendable {
-    public var description: String {
-        self.rawValue
-    }
+    public var description: String { rawValue }
     
     case info = "INFO"
     case error = "ERROR"
 }
 
 protocol Loggable {
-    func log(_ level: LogLevel, _ message: Any...)
+    func log(_ level: LogLevel, functionName: String, _ message: Any...)
 }
 
 public let Log = Logger()
@@ -26,7 +24,7 @@ public final class Logger: Loggable, Sendable {
         log(level, message)
     }
     
-    func log(_ level: LogLevel, _ message: Any...) {
+    func log(_ level: LogLevel, functionName: String = #function, _ message: Any...) {
         let logStatement = "\(Logger.timestamp()) [\(level)] \(message)"
         print(logStatement)
         
