@@ -19,7 +19,8 @@ public struct NowPlayingItem: Sendable {
     }
 }
 
-public actor NowPlayingService: @unchecked Sendable {
+@MainActor
+public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
     @Publishable public private(set) var nowPlayingItem: NowPlayingItem?
@@ -42,19 +43,18 @@ public actor NowPlayingService: @unchecked Sendable {
                 return
             }
             
-            Task {
-                let artwork = await self.artworkService.getArtwork(for: playcut)
-                await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
-            }
+            let artwork = await self.artworkService.getArtwork(for: playcut)
+            await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
         }
     }
     
-    func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) async {
+    private func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) {
         self.nowPlayingItem = nowPlayingItem
     }
     
     public func fetch() async -> NowPlayingItem? {
         guard let playcut = await self.playlistService.fetchPlaylist(forceSync: true).playcuts.first else {
+            Log(.info, "No playcut found in fetched playlist")
             return nil
         }
         let artwork = await self.artworkService.getArtwork(for: playcut)

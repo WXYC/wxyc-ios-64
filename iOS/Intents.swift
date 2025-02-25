@@ -32,6 +32,7 @@ public struct WhatsPlayingOnWXYC: AppIntent {
     public init() { }
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
+            Log(.error, "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
             return .result(
                 value: "Something went wrong. Please try again.",
                 dialog: "Something went wrong. Please try again.",
