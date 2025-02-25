@@ -52,7 +52,7 @@ extension UIImage {
         
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<NSFW, any Error>) in
             let vnRequest = VNCoreMLRequest(model: NSFWmodel, completionHandler: { request, error in
-                if let error = error {
+                if let error {
                     Log(.error, "🧨 VNCoreMLRequest Error: \(error.localizedDescription)")
                     continuation.resume(throwing: AnalysisError.CoreMLError(error))
                 }
