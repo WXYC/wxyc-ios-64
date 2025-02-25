@@ -4,71 +4,62 @@
 
 @propertyWrapper
 public final class Publishable<Value: Sendable>: Sendable {
-    public typealias Observer = @Sendable @isolated(any) (Value) -> ()
-
-    @PublishableActor
-    private var _wrappedValue: Value
-    @PublishableActor
-    private var observers: [Observer] = []
+    public typealias Observer = @Sendable @isolated(any) (Value) async -> ()
 
     public init(wrappedValue: Value) {
         self._wrappedValue = wrappedValue
     }
-
-    public var wrappedValue: Value {
-        get {
-            performTaskSynchronously { @PublishableActor in
-                self._wrappedValue
-            }
-        }
-        set {
-            performTaskSynchronously { @PublishableActor in
-                self._wrappedValue = newValue
-            }
-            self.updateObservers(with: newValue)
-        }
-    }
-
-    public var projectedValue: Publishable<Value> {
-        self
-    }
-
-    private func updateObservers(with value: Value) {
-        Task { @PublishableActor in
-            for observer in observers {
-                await observer(value)
-            }
-        }
-    }
-
+    
     public nonisolated func observe(observer: @escaping Observer) {
         Task { @PublishableActor in
             observers.append(observer)
         }
     }
     
-    typealias Sync = @Sendable @isolated(any) () -> Value
-    func performTaskSynchronously(_ task: @escaping Sync) -> Value {
-        var result: Value?
-        let semaphore = DispatchSemaphore(value: 0)
-
-        Task {
-            result = await task()
-            semaphore.signal()
+    public var wrappedValue: Value {
+        get {
+            sync { self._wrappedValue }
         }
-        
-        semaphore.wait()
-        return result!
+        set {
+            Task { @PublishableActor in
+                self._wrappedValue = newValue
+                await self.updateObservers(with: newValue)
+            }
+        }
+    }
+
+    public var projectedValue: Publishable<Value> {
+        self
     }
     
-    func performTaskSynchronously(_ task: @escaping @Sendable @isolated(any) () -> ()) {
+    // MARK: Private
+
+    @PublishableActor
+    private var _wrappedValue: Value
+    
+    @PublishableActor
+    private var observers: [Observer] = []
+
+    @PublishableActor
+    private func updateObservers(with value: Value) async {
+        for observer in observers {
+            await observer(value)
+        }
+    }
+
+    typealias Sync = @Sendable @PublishableActor () -> Value
+    
+    @inline(__always)
+    private func sync(_ task: @escaping Sync) -> Value {
+        var result: Value!
         let semaphore = DispatchSemaphore(value: 0)
 
-        Task {
-            await task()
+        Task { @PublishableActor in
+            result = task()
             semaphore.signal()
         }
         
         semaphore.wait()
+        return result
     }
 }

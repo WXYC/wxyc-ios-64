@@ -32,7 +32,8 @@ final class Provider: TimelineProvider, Sendable {
             let nowPlayingItem = await NowPlayingService.shared.fetch() ?? .placeholder
             let timeline = Timeline(
                 entries: [NowPlayingEntry(nowPlayingItem, family: family)],
-                policy: .atEnd)
+                policy: .atEnd
+            )
             completion(timeline)
         }
     }
