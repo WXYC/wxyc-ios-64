@@ -32,11 +32,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
 #endif
 
-        Task {
-            await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
-                NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-                WidgetCenter.shared.reloadAllTimelines()
-            }
+        NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+            WidgetCenter.shared.reloadAllTimelines()
         }
         
         WidgetCenter.shared.getCurrentConfigurations { result in
@@ -102,7 +100,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     var observer: Any?
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
-        main { @MainActor in
+        main {
             self.interfaceController = interfaceController
             
             interfaceController.delegate = self
@@ -115,10 +113,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
                 Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
-                Task {
-                    await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
-                        NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-                    }
+                NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+                    NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
                 }
             }
         }

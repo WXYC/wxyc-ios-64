@@ -16,13 +16,12 @@ public enum PlaybackState: Sendable {
     case paused
 }
 
+@MainActor
 public final class RadioPlayerController: @unchecked Sendable {
-    @MainActor
     public static let shared = RadioPlayerController()
     
     @Publishable public var isPlaying = false
 
-    @MainActor
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
@@ -30,7 +29,7 @@ public final class RadioPlayerController: @unchecked Sendable {
     ) {
         func notificationObserver(
             for name: Notification.Name,
-            sink: @escaping @Sendable (Notification) -> ()
+            sink: @escaping @Sendable @isolated(any) (Notification) -> ()
         ) -> any Sendable {
             NonSendableBox<NSObjectProtocol>(
                 value: notificationCenter.addObserver(
@@ -65,7 +64,7 @@ public final class RadioPlayerController: @unchecked Sendable {
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
         ]
         
-        self.radioPlayer.$isPlaying.observe { isPlaying in
+        self.radioPlayer.$isPlaying.observe { @MainActor isPlaying in
             self.isPlaying = isPlaying
         }
     }
@@ -73,11 +72,9 @@ public final class RadioPlayerController: @unchecked Sendable {
     // MARK: Public methods
     
     public func toggle() {
-        Task { @MainActor in
-            self.radioPlayer.isPlaying
-                ? self.radioPlayer.pause()
-                : self.radioPlayer.play()
-        }
+        self.radioPlayer.isPlaying
+            ? self.radioPlayer.pause()
+            : self.radioPlayer.play()
     }
     
     public func play() {
@@ -87,15 +84,11 @@ public final class RadioPlayerController: @unchecked Sendable {
             Log(.error, "RadioPlayerController could not start playback: \(error)")
         }
         
-        Task { @MainActor in
-            self.radioPlayer.play()
-        }
+        self.radioPlayer.play()
     }
     
     public func pause() {
-        Task { @MainActor in
-            self.radioPlayer.pause()
-        }
+        self.radioPlayer.pause()
     }
     
     // MARK: Private
@@ -110,14 +103,14 @@ private extension RadioPlayerController {
     // MARK: AVPlayer handlers
     
     func playbackStalled(_ notification: Notification) {
-        Task { @MainActor in
-            // Have you tried turning it off and on again?
-            self.radioPlayer.pause()
-            self.radioPlayer.play()
-        }
+        Log(.error, "Playback stalled: \(notification)")
+        // Turn it off and on again.
+        self.radioPlayer.pause()
+        self.radioPlayer.play()
     }
     
     func sessionInterrupted(notification: Notification) {
+        Log(.info, "Session interrupted: \(notification)")
         guard let interruptionType = notification.interruptionType else {
             return
         }
@@ -135,26 +128,22 @@ private extension RadioPlayerController {
     // MARK: External playback command handlers
     
     func applicationDidEnterBackground(notification: Notification) {
-        Task { @MainActor in
-            guard !self.radioPlayer.isPlaying else {
-                return
-            }
-            
-            do {
-                try AVAudioSession.shared.deactivate()
-            } catch {
-                Log(.error, "RadioPlayerController could not deactivate: \(error)")
-            }
+        guard !self.radioPlayer.isPlaying else {
+            return
+        }
+        
+        do {
+            try AVAudioSession.shared.deactivate()
+        } catch {
+            Log(.error, "RadioPlayerController could not deactivate: \(error)")
         }
     }
     
     func applicationWillEnterForeground(notification: Notification) {
-        Task { @MainActor in
-            if self.radioPlayer.isPlaying {
-                self.play()
-            } else {
-                self.pause()
-            }
+        if self.radioPlayer.isPlaying {
+            self.play()
+        } else {
+            self.pause()
         }
     }
     
@@ -170,7 +159,6 @@ private extension RadioPlayerController {
         return .success
     }
     
-    @MainActor
     func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         if self.radioPlayer.isPlaying {
             self.pause()
