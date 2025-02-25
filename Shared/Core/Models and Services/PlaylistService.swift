@@ -57,7 +57,7 @@ public final class PlaylistService: @unchecked Sendable {
                     Log(.info, "Empty playlist")
                 }
                 
-                self.set(playlist: playlist)
+                self.playlist = playlist
                 await self.cacheCoordinator.set(
                     value: self.playlist,
                     for: CacheCoordinator.playlistKey,
@@ -68,26 +68,21 @@ public final class PlaylistService: @unchecked Sendable {
         self.fetchTimer?.resume()
     }
     
-    @PlaylistActor
-    private func set(playlist: Playlist) {
-        self.playlist = playlist
-    }
-    
     deinit {
         self.fetchTimer?.cancel()
     }
     
     public func fetchPlaylist(forceSync: Bool = false) async -> Playlist {
-        Log(.info, ">>> Fetching remote playlist")
+        Log(.info, "Fetching remote playlist")
         let startTime = Date.timeIntervalSinceReferenceDate
         do {
             let playlist = try await self.remoteFetcher.getPlaylist()
             let duration = Date.timeIntervalSinceReferenceDate - startTime
-            Log(.info, ">>> Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
+            Log(.info, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
             return playlist
         } catch {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
-            Log(.error, ">>> Remote playlist fetch failed after \(duration) seconds: \(error)")
+            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
         }
         
         return Playlist.empty

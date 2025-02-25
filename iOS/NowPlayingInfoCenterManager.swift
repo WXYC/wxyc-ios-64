@@ -11,32 +11,27 @@ import UI
 import Foundation
 import MediaPlayer
 
+@MainActor
 final class NowPlayingInfoCenterManager: NowPlayingObserver {
     public static let shared = NowPlayingInfoCenterManager()
     
     public func update(nowPlayingItem: NowPlayingItem?) {
-        Task {
-            await self.update(playcut: nowPlayingItem?.playcut)
-            await self.update(artwork: nowPlayingItem?.artwork)
-        }
+        self.update(playcut: nowPlayingItem?.playcut)
+        self.update(artwork: nowPlayingItem?.artwork)
     }
 
-    @MainActor
-    private func update(playcut: Playcut?) async {
-        await MainActor.run { @MainActor in
-            let playcutMediaItems = playcut.playcutMediaItems
-            
-            if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
-                MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
-            }
-            
-            MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
-            MPNowPlayingInfoCenter.default().playbackState = RadioPlayerController.shared.isPlaying ? .playing : .paused
+    private func update(playcut: Playcut?) {
+        let playcutMediaItems = playcut.playcutMediaItems
+        
+        if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
         }
+        
+        MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
+        MPNowPlayingInfoCenter.default().playbackState = RadioPlayerController.shared.isPlaying ? .playing : .paused
     }
 
-    @MainActor
-    private func update(artwork: UIImage?) async {
+    private func update(artwork: UIImage?) {
         if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
         }
@@ -45,7 +40,6 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
             self.mediaItemArtwork(from: artwork)
     }
     
-    @MainActor
     private func mediaItemArtwork(from image: UIImage?) -> MPMediaItemArtwork {
         if let image {
             let screenWidth = UIScreen.main.bounds.size.width
@@ -59,7 +53,6 @@ final class NowPlayingInfoCenterManager: NowPlayingObserver {
         }
     }
     
-    @MainActor
     private static func defaultArt() -> MPMediaItemArtwork {
         return MPMediaItemArtwork(boundsSize: UIImage.placeholder.size) { size in
             UIImage.placeholder
@@ -86,7 +79,6 @@ extension Optional where Wrapped == Playcut {
 }
 
 extension Dictionary {
-    @MainActor
     mutating func update(with dict: Dictionary<Key, Value>) {
         for (key, value) in dict {
             self[key] = value
@@ -123,6 +115,7 @@ extension CGImage {
             space: colorSpace,
             bitmapInfo: bitmapInfo
         ) else {
+            Log(.error, "Couldn't create CGContext")
             return nil
         }
 

@@ -7,8 +7,6 @@ public final actor CacheCoordinator {
     public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
     public static let AlbumArt = CacheCoordinator(cache: StandardCache())
     
-    public static let PurgeRecords: Notification.Name = .init("org.wxyc.iphone.CacheCoordinator.PurgeRecords")
-    
     internal init(cache: Cache) {
         self.cache = cache
         self.purgeRecords()
@@ -24,7 +22,8 @@ public final actor CacheCoordinator {
     // MARK: Public methods
     
     public func value<Value, Key>(for key: Key) async throws -> Value
-    where Value: Codable, Key: RawRepresentable, Key.RawValue == String {
+        where Value: Codable, Key: RawRepresentable, Key.RawValue == String
+    {
         try await self.value(for: key.rawValue)
     }
     
@@ -50,11 +49,11 @@ public final actor CacheCoordinator {
                 throw ServiceErrors.noCachedResult
             }
             
-            Log(.info, ">>> cache hit!", key, cachedRecord.value)
+            Log(.info, "cache hit!", key, cachedRecord.value)
             
             return cachedRecord.value
         } catch {
-            Log(.error, ">>> No value for '\(key)': ", error)
+            Log(.error, "No value for '\(key)': ", error)
             throw error
         }
     }
@@ -72,15 +71,18 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        Log(.info, ">>> Setting value for key '\(key)'")
+        Log(.info, "Setting value for key '\(key)'")
         Log(.info, "Value is nil: \(value == nil)")
         Log(.info, "Lifespan: \(lifespan)")
         
-        if let value = value {
+        if let value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
-            let encodedCachedRecord = try? Self.encoder.encode(cachedRecord)
-            
-            self.cache.set(object: encodedCachedRecord, for: key)
+            do {
+                let encodedCachedRecord = try Self.encoder.encode(cachedRecord)
+                self.cache.set(object: encodedCachedRecord, for: key)
+            } catch {
+                Log(.error, "Failed to encode value for \(key): \(error)")
+            }
         } else {
             self.cache.set(object: nil, for: key)
         }
@@ -90,27 +92,99 @@ public final actor CacheCoordinator {
     
     private nonisolated func purgeRecords() {
         Task {
-            await self.purgeExpiredRecords()
-            await self.purgeDistantFutureRecords()
-        }
-    }
-    
-    private func purgeExpiredRecords() {
-        for (key, value) in self.cache.allRecords() {
-            if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
-               record.isExpired {
-                self.cache.set(object: nil, for: key)
-            }
-        }
-    }
-    
-    private func purgeDistantFutureRecords() {
-        for (key, value) in self.cache.allRecords() {
-            if let record = try? Self.decoder.decode(CachedRecord<Data>.self, from: value),
-               record.lifespan == .distantFuture {
-                Log(.info, "Purging distant future record for key '\(key)'")
-                self.cache.set(object: nil, for: key)
+            Log(.info, "Purging records")
+            let cache = await self.cache
+            for (key, value) in cache.allRecords() {
+                do {
+                    let record = try Self.decoder.decode(CachedRecord<Data>.self, from: value)
+                    if record.isExpired || record.lifespan == .distantFuture {
+                        cache.set(object: nil, for: key)
+                    }
+                } catch {
+                    Log(.error, "Failed to decode value for \(key): \(error)\nDeleting it anyway.")
+                    cache.set(object: nil, for: key)
+                }
             }
         }
     }
 }
+
+#if DEBUG
+extension FileManager {
+    func nukeFileSystem() {
+        if let cachesURL = urls(for: .cachesDirectory, in: .userDomainMask).first {
+            do {
+                let subdirectories = try contentsOfDirectory(at: cachesURL, includingPropertiesForKeys: nil)
+                
+                for subdirectory in subdirectories {
+                    var isDirectory: ObjCBool = false
+                    if fileExists(atPath: subdirectory.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                        try removeItem(at: subdirectory)
+                        Log(.info, "Deleted subdirectory: \(subdirectory.lastPathComponent)")
+                    }
+                }
+            } catch {
+                Log(.error, "Error clearing subdirectories: \(error)")
+            }
+        }
+    }
+    
+
+    func listFilesRecursively(at url: URL) {
+        do {
+            let resourceKeys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey]
+            let directoryContents = try contentsOfDirectory(at: url, includingPropertiesForKeys: resourceKeys, options: [.skipsHiddenFiles])
+
+            for item in directoryContents {
+                let resourceValues = try item.resourceValues(forKeys: Set(resourceKeys))
+
+                if resourceValues.isDirectory == true {
+                    Log(.info, "📂 Directory: \(item.lastPathComponent)")
+                    listFilesRecursively(at: item)  // Recursive call for subdirectories
+                } else {
+                    let fileSize = resourceValues.fileSize ?? 0
+                    Log(.info, "📄 File: \(item.lastPathComponent) - \(fileSize) bytes")
+                }
+            }
+        } catch {
+            Log(.error, "Error listing directory contents: \(error)")
+        }
+        
+        let directories: [SearchPathDirectory] = [
+            .applicationDirectory,
+            .demoApplicationDirectory,
+            .developerApplicationDirectory,
+            .adminApplicationDirectory,
+            .libraryDirectory,
+            .developerDirectory,
+            .userDirectory,
+            .documentationDirectory,
+            .documentDirectory,
+            .coreServiceDirectory,
+            .autosavedInformationDirectory,
+            .desktopDirectory,
+            .cachesDirectory,
+            .applicationSupportDirectory,
+            .downloadsDirectory,
+            .inputMethodsDirectory,
+            .moviesDirectory,
+            .musicDirectory,
+            .picturesDirectory,
+            .printerDescriptionDirectory,
+            .sharedPublicDirectory,
+            .preferencePanesDirectory,
+            .itemReplacementDirectory,
+            .allApplicationsDirectory,
+            .allLibrariesDirectory,
+            .trashDirectory,
+        ]
+        
+        for d in directories {
+            if let documentsURL = FileManager.default.urls(for: d, in: .userDomainMask).first {
+                Log(.info, "Listing contents of: \(documentsURL.path)")
+                listFilesRecursively(at: documentsURL)
+            }
+        }
+    }
+}
+#endif

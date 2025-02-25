@@ -19,7 +19,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+        } catch {
+            Log(.error, "Could not set AVAudioSession category: \(error)")
+        }
         
 #if os(iOS)
         // Make status bar white
@@ -28,11 +32,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
 #endif
 
-        Task {
-            await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
-                NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-                WidgetCenter.shared.reloadAllTimelines()
-            }
+        NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+            WidgetCenter.shared.reloadAllTimelines()
         }
         
         WidgetCenter.shared.getCurrentConfigurations { result in
@@ -98,7 +100,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     var observer: Any?
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
-        main { @MainActor in
+        main {
             self.interfaceController = interfaceController
             
             interfaceController.delegate = self
@@ -111,10 +113,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
                 Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
-                Task {
-                    await NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
-                        NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-                    }
+                NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
+                    NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
                 }
             }
         }

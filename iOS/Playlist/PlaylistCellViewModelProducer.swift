@@ -17,7 +17,7 @@ protocol PlaylistCellViewModelProducer: Sendable {
 typealias Cell = any UITableViewCell & Sendable & AnyObject
 
 extension Playcut: PlaylistCellViewModelProducer {
-    struct PlaycutConfiguration: Configuration {
+    struct PlaycutCellConfigurator: CellConfigurator {
         let `class`: AnyClass = PlaycutCell.self
         
         let playcut: Playcut
@@ -48,16 +48,12 @@ extension Playcut: PlaylistCellViewModelProducer {
     }
     
     var cellViewModel: PlaylistCellViewModel {
-        return PlaylistCellViewModel(
-            configuration: PlaycutConfiguration(playcut: self)
-        )
+        PlaylistCellViewModel(configuration: PlaycutCellConfigurator(playcut: self))
     }
 }
 
 extension Talkset: PlaylistCellViewModelProducer {
-//    typealias Cell = TalksetCell
-    
-    struct TalksetConfiguration: Configuration {
+    struct TalksetCellConfigurator: CellConfigurator {
         let `class`: AnyClass = TalksetCell.self
         
         func configure(_ cell: Cell) {
@@ -67,21 +63,17 @@ extension Talkset: PlaylistCellViewModelProducer {
 
             cell.talksetLabel.text = "Talkset"
         }
-        
-//        func configure(_ cell: Cell) {
-//            
-//        }
     }
     
     var cellViewModel: PlaylistCellViewModel {
         return PlaylistCellViewModel(
-            configuration: TalksetConfiguration()
+            configuration: TalksetCellConfigurator()
         )
     }
 }
 
 extension Breakpoint: PlaylistCellViewModelProducer {
-    struct BreakpointConfiguration: Configuration {
+    struct BreakpointCellConfigurator: CellConfigurator {
         let `class`: AnyClass = BreakpointCell.self
         let breakpoint: Breakpoint
         
@@ -102,7 +94,7 @@ extension Breakpoint: PlaylistCellViewModelProducer {
     
     var cellViewModel: PlaylistCellViewModel {
         return PlaylistCellViewModel(
-            configuration: BreakpointConfiguration(breakpoint: self)
+            configuration: BreakpointCellConfigurator(breakpoint: self)
         )
     }
 }

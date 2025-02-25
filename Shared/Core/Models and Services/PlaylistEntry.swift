@@ -88,10 +88,15 @@ public struct Playcut: PlaylistEntry {
         self.hour = try container.decode(Int.self, forKey: .hour)
         self.chronOrderID = try container.decode(Int.self, forKey: .chronOrderID)
 
-        self.songTitle = try container.decode(String.self, forKey: .songTitle)
-        self.labelName = try container.decode(String?.self, forKey: .labelName)
-        self.artistName = try container.decode(String.self, forKey: .artistName)
-        self.releaseTitle = try? container.decode(String?.self, forKey: .releaseTitle)
+        do {
+            self.songTitle = try container.decode(String.self, forKey: .songTitle)
+            self.labelName = try container.decode(String?.self, forKey: .labelName)
+            self.artistName = try container.decode(String.self, forKey: .artistName)
+            self.releaseTitle = try container.decode(String?.self, forKey: .releaseTitle)
+        } catch {
+            Log(.error, "Could not decode Playcut: \(error)")
+            throw error
+        }
     }
 }
 

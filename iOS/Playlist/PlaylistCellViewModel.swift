@@ -9,7 +9,7 @@
 import UIKit
 import Core
 
-protocol Configuration: Sendable {
+protocol CellConfigurator: Sendable {
     var `class`: AnyClass { get }
     
     @MainActor
@@ -19,21 +19,19 @@ protocol Configuration: Sendable {
 final class PlaylistCellViewModel: Sendable {
     let reuseIdentifier: String
     let `class`: String
-    private let configuration: any Configuration
+    private let configuration: any CellConfigurator
     
-    init<C: Configuration>(
+    init<C: CellConfigurator>(
         configuration: C
     ) {
         self.reuseIdentifier = NSStringFromClass(configuration.class)
         self.class = NSStringFromClass(configuration.class)
         self.configuration = configuration
     }
-    
+
+    @MainActor
     func configure<Cell: UITableViewCell & Sendable>(_ cell: Cell) {
-        Task { @MainActor in
-            print(Mirror(reflecting: configuration).description)
-            configuration.configure(cell)
-        }
+        configuration.configure(cell)
     }
 }
 

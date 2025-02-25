@@ -47,20 +47,16 @@ class PlayerHeader: UITableViewHeaderFooterView {
     
     private func setUpPlayback() {
         RadioPlayerController.shared.$isPlaying.observe { isPlaying in
-            Task { @MainActor in
-                self.playbackStateChanged(isPlaying: isPlaying)
-            }
+            await self.playbackStateChanged(isPlaying: isPlaying)
         }
         self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         self.notificationObservation =
-        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification) {
-            let isPlaying = await RadioPlayerController.shared.isPlaying
-            DispatchQueue.main.async {
+            NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification) { @MainActor in
+                let isPlaying = RadioPlayerController.shared.isPlaying
                 self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
                 self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
                 self.playbackStateChanged(isPlaying: isPlaying)
             }
-        }
     }
     
     @objc private func playPauseTapped(_ sender: UIButton) {
@@ -104,7 +100,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
 extension NotificationCenter {
     func addObserver(
         forName name: NSNotification.Name,
-        using block: @escaping @Sendable () async -> Void
+        using block: @escaping @Sendable @isolated(any) () async -> Void
     ) -> any NSObjectProtocol {
         let wrappedBlock: @Sendable (Notification) -> Void = { _ in
             let _ = Task {
