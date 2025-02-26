@@ -2,6 +2,7 @@ import UniformTypeIdentifiers
 import MessageUI
 import Core
 import UIKit
+import Logger
 
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!

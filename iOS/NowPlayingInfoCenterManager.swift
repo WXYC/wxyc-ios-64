@@ -10,6 +10,7 @@ import Core
 import UI
 import Foundation
 import MediaPlayer
+import Logger
 
 @MainActor
 final class NowPlayingInfoCenterManager: NowPlayingObserver {

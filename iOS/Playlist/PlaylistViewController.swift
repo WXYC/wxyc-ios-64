@@ -9,6 +9,8 @@
 import UIKit
 import Observation
 import Core
+import Logger
+
 class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared

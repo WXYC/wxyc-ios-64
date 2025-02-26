@@ -5,7 +5,7 @@ import Core
 import UI
 import MediaPlayer
 import WidgetKit
-
+import Logger
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
