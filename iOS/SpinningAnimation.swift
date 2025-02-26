@@ -8,6 +8,7 @@
 
 import UIKit
 import Core
+import Logger
 
 final class SpinningAnimation: CABasicAnimation {
     override init() {

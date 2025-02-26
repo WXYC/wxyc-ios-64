@@ -1,5 +1,7 @@
 import UIKit
 import Core
+import Logger
+
 final class RootPageViewController: UIPageViewController {
     let nowPlayingViewController = PlaylistViewController(style: .grouped)
     let infoDetailViewController = InfoDetailViewController(nibName: nil, bundle: nil)

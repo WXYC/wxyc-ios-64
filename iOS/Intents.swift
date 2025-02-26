@@ -10,6 +10,7 @@ import Foundation
 import AppIntents
 import SwiftUI
 import Core
+import Logger
 
 public struct PlayWXYC: AudioPlaybackIntent {
     public static let title: LocalizedStringResource = "WXYC"
