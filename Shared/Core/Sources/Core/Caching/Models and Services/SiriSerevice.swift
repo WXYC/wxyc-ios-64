@@ -10,6 +10,7 @@ import Foundation
 import Intents
 import MediaPlayer
 import Logger
+import UIKit
 
 public actor SiriService {
     enum Error: Swift.Error {

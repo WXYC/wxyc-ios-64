@@ -9,6 +9,7 @@
 import Foundation
 import UIKit
 import Logger
+import Observation
 
 public struct NowPlayingItem: Sendable {
     public let playcut: Playcut
@@ -21,10 +22,16 @@ public struct NowPlayingItem: Sendable {
 }
 
 @MainActor
+#if !os(iOS)
+@Observable
+#endif
 public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
-    @Publishable public private(set) var nowPlayingItem: NowPlayingItem?
+    #if os(iOS)
+    @Publishable
+    #endif
+    public private(set) var nowPlayingItem: NowPlayingItem?
     
     private let playlistService: PlaylistService
     private let artworkService: ArtworkService

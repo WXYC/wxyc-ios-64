@@ -3,17 +3,26 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		235524A52D6EBEB600583200 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 235524A42D6EBEB600583200 /* Core */; };
-		235524B02D6EDB4000583200 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 235524AF2D6EDB4000583200 /* Core */; };
-		235525112D6F77C300583200 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 235525102D6F77C300583200 /* UI */; };
 		235525182D6F785C00583200 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 235525172D6F785C00583200 /* Logger */; };
+		2355252E2D6F7A4500583200 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2355252D2D6F7A4500583200 /* Core */; };
+		235525302D6F7A7000583200 /* VisionKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2355252F2D6F7A7000583200 /* VisionKit.framework */; };
+		235525322D6F7AB200583200 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 235525312D6F7AB200583200 /* UIKit.framework */; };
+		235525332D6F82BE00583200 /* WatchXYC App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 2355251D2D6F79D200583200 /* WatchXYC App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2355253C2D6F9A8D00583200 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2355253B2D6F9A8D00583200 /* OpenNSFW */; };
+		235525422D6F9AE800583200 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 235525412D6F9AE800583200 /* OpenNSFW */; };
 		236B0CA32D61A787000661F2 /* NowPlayingInfoCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */; };
 		2389E6322B8C2E96003C9934 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */; };
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
+		23D533302D6FA37A00696737 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */; };
+		23D533322D6FA3FB00696737 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 23D533312D6FA3FB00696737 /* UI */; };
+		23D533342D6FA41900696737 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 23D533332D6FA41900696737 /* Core */; };
+		23D533352D6FA42D00696737 /* libSystem.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 23D5332D2D6FA0B600696737 /* libSystem.tbd */; };
+		23D533382D6FD7B300696737 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2355253F2D6F9AE800583200 /* Logger */; };
 		341FBAB42041E7AB00CD2F36 /* PlaybackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBF12030A1CC00FC778F /* PlaybackButton.swift */; };
 		341FBABA2041E7AB00CD2F36 /* InfoDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FBEC2030A1CC00FC778F /* InfoDetailViewController.swift */; };
 		341FBABB2041E7AB00CD2F36 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3434FC012030A1CC00FC778F /* AppDelegate.swift */; };
@@ -52,6 +61,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		235525342D6F82BE00583200 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2355251C2D6F79D200583200;
+			remoteInfo = "WatchXYC Watch App";
+		};
 		34F667692790C2040095A547 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3434F4BC2030A1A700FC778F /* Project object */;
@@ -62,6 +78,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		235525362D6F82BE00583200 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				235525332D6F82BE00583200 /* WatchXYC App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		341FBAC72041E7AB00CD2F36 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -88,11 +115,19 @@
 /* Begin PBXFileReference section */
 		235524C02D6F676100583200 /* ExtensionFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ExtensionFoundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/ExtensionFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		235524C22D6F676900583200 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		2355251D2D6F79D200583200 /* WatchXYC App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WatchXYC App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2355252F2D6F7A7000583200 /* VisionKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VisionKit.framework; path = System/Library/Frameworks/VisionKit.framework; sourceTree = SDKROOT; };
+		235525312D6F7AB200583200 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
 		236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInfoCenterManager.swift; sourceTree = "<group>"; };
 		23A7C7EB296A07BE00135E7F /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
 		23BBC4312B90E18B00EF99F1 /* iOS Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "iOS Info.plist"; sourceTree = "<group>"; };
 		23BBC4332B9179B600EF99F1 /* WXYCDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WXYCDebug.entitlements; sourceTree = "<group>"; };
+		23D5331F2D6F9E5400696737 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		23D533252D6F9ED700696737 /* libswiftDispatch.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libswiftDispatch.tbd; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/usr/lib/swift/libswiftDispatch.tbd; sourceTree = DEVELOPER_DIR; };
+		23D5332D2D6FA0B600696737 /* libSystem.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.tbd; path = usr/lib/libSystem.tbd; sourceTree = SDKROOT; };
+		23D5332E2D6FA24300696737 /* libSystem.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.tbd; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/usr/lib/libSystem.tbd; sourceTree = DEVELOPER_DIR; };
+		23D5332F2D6FA24300696737 /* libSystem.B.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.B.tbd; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/usr/lib/libSystem.B.tbd; sourceTree = DEVELOPER_DIR; };
 		341FBACC2041E7AB00CD2F36 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		343400652030A1E700FC778F /* NotificationCenter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NotificationCenter.framework; path = System/Library/Frameworks/NotificationCenter.framework; sourceTree = SDKROOT; };
 		343400BB2030D62300FC778F /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -139,16 +174,45 @@
 		AD4FAC2821B61AF5006C9995 /* WXYC TV.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WXYC TV.entitlements"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		235525392D6F914C00583200 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2355251C2D6F79D200583200 /* WatchXYC App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		2355251E2D6F79D200583200 /* WatchXYC Watch App */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (235525392D6F914C00583200 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = "WatchXYC Watch App"; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
+		2355251A2D6F79D200583200 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				23D533382D6FD7B300696737 /* Logger in Frameworks */,
+				235525422D6F9AE800583200 /* OpenNSFW in Frameworks */,
+				235525322D6F7AB200583200 /* UIKit.framework in Frameworks */,
+				2355252E2D6F7A4500583200 /* Core in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		341FBABC2041E7AB00CD2F36 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23D533322D6FA3FB00696737 /* UI in Frameworks */,
+				235525302D6F7A7000583200 /* VisionKit.framework in Frameworks */,
 				235525182D6F785C00583200 /* Logger in Frameworks */,
-				235525112D6F77C300583200 /* UI in Frameworks */,
+				2355253C2D6F9A8D00583200 /* OpenNSFW in Frameworks */,
 				34B0BF2E279730B200882035 /* IntentsUI.framework in Frameworks */,
-				235524B02D6EDB4000583200 /* Core in Frameworks */,
+				23D533342D6FA41900696737 /* Core in Frameworks */,
 				23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */,
+				23D533352D6FA42D00696737 /* libSystem.tbd in Frameworks */,
+				23D533302D6FA37A00696737 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -190,6 +254,13 @@
 		343400642030A1E700FC778F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				23D5332D2D6FA0B600696737 /* libSystem.tbd */,
+				23D5332E2D6FA24300696737 /* libSystem.tbd */,
+				23D5332F2D6FA24300696737 /* libSystem.B.tbd */,
+				23D533252D6F9ED700696737 /* libswiftDispatch.tbd */,
+				23D5331F2D6F9E5400696737 /* Foundation.framework */,
+				235525312D6F7AB200583200 /* UIKit.framework */,
+				2355252F2D6F7A7000583200 /* VisionKit.framework */,
 				235524C22D6F676900583200 /* Foundation.framework */,
 				235524C02D6F676100583200 /* ExtensionFoundation.framework */,
 				34BB8E5B204B5B9C0089F6C7 /* Foundation.framework */,
@@ -213,6 +284,7 @@
 				344C0D88204B5A1C008FCB05 /* WXYC Tests */,
 				34425DBA21B8BAE100C8DD5F /* Core Tests */,
 				34F667632790C2030095A547 /* NowPlayingWidget */,
+				2355251E2D6F79D200583200 /* WatchXYC Watch App */,
 				343400642030A1E700FC778F /* Frameworks */,
 				3434F4C52030A1A700FC778F /* Products */,
 				23BBC4302B8C3C1000EF99F1 /* Recovered References */,
@@ -228,6 +300,7 @@
 				341FBACC2041E7AB00CD2F36 /* WXYC.app */,
 				34425DB921B8BAE100C8DD5F /* Core Tests.xctest */,
 				34F667602790C2030095A547 /* NowPlayingWidgetExtension.appex */,
+				2355251D2D6F79D200583200 /* WatchXYC App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -329,6 +402,34 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		2355251C2D6F79D200583200 /* WatchXYC App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 235525282D6F79D300583200 /* Build configuration list for PBXNativeTarget "WatchXYC App" */;
+			buildPhases = (
+				235525192D6F79D200583200 /* Sources */,
+				2355251A2D6F79D200583200 /* Frameworks */,
+				2355251B2D6F79D200583200 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				23D533292D6F9EE300696737 /* PBXTargetDependency */,
+				23D5332B2D6F9EE300696737 /* PBXTargetDependency */,
+				23D533242D6F9E7600696737 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				2355251E2D6F79D200583200 /* WatchXYC Watch App */,
+			);
+			name = "WatchXYC App";
+			packageProductDependencies = (
+				2355252D2D6F7A4500583200 /* Core */,
+				2355253F2D6F9AE800583200 /* Logger */,
+				235525412D6F9AE800583200 /* OpenNSFW */,
+			);
+			productName = "WatchXYC Watch App";
+			productReference = 2355251D2D6F79D200583200 /* WatchXYC App.app */;
+			productType = "com.apple.product-type.application";
+		};
 		341FBAB02041E7AB00CD2F36 /* WXYC */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 341FBAC92041E7AB00CD2F36 /* Build configuration list for PBXNativeTarget "WXYC" */;
@@ -338,11 +439,13 @@
 				341FBAC02041E7AB00CD2F36 /* Resources */,
 				341FBAC72041E7AB00CD2F36 /* Embed Foundation Extensions */,
 				34EB12DA278E4A1800257589 /* Embed Frameworks */,
+				235525362D6F82BE00583200 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				34F6676A2790C2040095A547 /* PBXTargetDependency */,
+				235525352D6F82BE00583200 /* PBXTargetDependency */,
 			);
 			name = WXYC;
 			productName = WXYC;
@@ -394,7 +497,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				235525152D6F77E500583200 /* PBXTargetDependency */,
 				235525132D6F77CB00583200 /* PBXTargetDependency */,
 			);
 			name = NowPlayingWidgetExtension;
@@ -413,6 +515,9 @@
 				LastUpgradeCheck = 1620;
 				ORGANIZATIONNAME = WXYC;
 				TargetAttributes = {
+					2355251C2D6F79D200583200 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					341FBAB02041E7AB00CD2F36 = {
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
@@ -457,6 +562,7 @@
 				2355250C2D6F762100583200 /* XCLocalSwiftPackageReference "Shared/Core" */,
 				2355250F2D6F77C300583200 /* XCLocalSwiftPackageReference "Shared/UI" */,
 				235525162D6F785C00583200 /* XCLocalSwiftPackageReference "Shared/Logger" */,
+				2355253A2D6F9A8D00583200 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */,
 			);
 			productRefGroup = 3434F4C52030A1A700FC778F /* Products */;
 			projectDirPath = "";
@@ -466,11 +572,19 @@
 				343400BA2030D62300FC778F /* WXYC TV */,
 				34425DB821B8BAE100C8DD5F /* Core Tests */,
 				34F6675F2790C2030095A547 /* NowPlayingWidgetExtension */,
+				2355251C2D6F79D200583200 /* WatchXYC App */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		2355251B2D6F79D200583200 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		341FBAC02041E7AB00CD2F36 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -514,6 +628,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		235525192D6F79D200583200 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		341FBAB32041E7AB00CD2F36 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -570,9 +691,22 @@
 			isa = PBXTargetDependency;
 			productRef = 235525122D6F77CB00583200 /* UI */;
 		};
-		235525152D6F77E500583200 /* PBXTargetDependency */ = {
+		235525352D6F82BE00583200 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			productRef = 235525142D6F77E500583200 /* Core */;
+			target = 2355251C2D6F79D200583200 /* WatchXYC App */;
+			targetProxy = 235525342D6F82BE00583200 /* PBXContainerItemProxy */;
+		};
+		23D533242D6F9E7600696737 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 23D533232D6F9E7600696737 /* Core */;
+		};
+		23D533292D6F9EE300696737 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 23D533282D6F9EE300696737 /* Logger */;
+		};
+		23D5332B2D6F9EE300696737 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 23D5332A2D6F9EE300696737 /* OpenNSFW */;
 		};
 		34F6676A2790C2040095A547 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -593,6 +727,86 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		235525292D6F79D300583200 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"WatchXYC Watch App/Preview Content\"";
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_PREVIEWS = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/WatchXYC Watch App/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = WatchXYC;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = org.wxyc.iphoneapp;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/usr/lib/swift",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.2;
+			};
+			name = Debug;
+		};
+		2355252A2D6F79D300583200 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"WatchXYC Watch App/Preview Content\"";
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_PREVIEWS = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "$(SRCROOT)/WatchXYC Watch App/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = WatchXYC;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = org.wxyc.iphoneapp;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/usr/lib/swift",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.2;
+			};
+			name = Release;
+		};
 		341FBACA2041E7AB00CD2F36 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -605,6 +819,7 @@
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = org.wxyc.iphoneapp.watchkitapp;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -633,6 +848,7 @@
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/iOS Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = org.wxyc.iphoneapp.watchkitapp;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -868,6 +1084,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				EXCLUDED_ARCHS = x86_64;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
@@ -904,6 +1121,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				EXCLUDED_ARCHS = x86_64;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NowPlayingWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
@@ -932,6 +1150,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		235525282D6F79D300583200 /* Build configuration list for PBXNativeTarget "WatchXYC App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				235525292D6F79D300583200 /* Debug */,
+				2355252A2D6F79D300583200 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		341FBAC92041E7AB00CD2F36 /* Build configuration list for PBXNativeTarget "WXYC" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -992,6 +1219,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Logger;
 		};
+		2355253A2D6F9A8D00583200 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/OpenNSFW;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -999,27 +1230,58 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
 		};
-		235524AF2D6EDB4000583200 /* Core */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Core;
-		};
-		235525102D6F77C300583200 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		235525122D6F77CB00583200 /* UI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 2355250F2D6F77C300583200 /* XCLocalSwiftPackageReference "Shared/UI" */;
 			productName = UI;
 		};
-		235525142D6F77E500583200 /* Core */ = {
+		235525172D6F785C00583200 /* Logger */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Logger;
+		};
+		2355252D2D6F7A4500583200 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 2355250C2D6F762100583200 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
-		235525172D6F785C00583200 /* Logger */ = {
+		2355253B2D6F9A8D00583200 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
+			productName = OpenNSFW;
+		};
+		2355253F2D6F9AE800583200 /* Logger */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 235525162D6F785C00583200 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
+		};
+		235525412D6F9AE800583200 /* OpenNSFW */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2355253A2D6F9A8D00583200 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
+			productName = OpenNSFW;
+		};
+		23D533232D6F9E7600696737 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2355250C2D6F762100583200 /* XCLocalSwiftPackageReference "Shared/Core" */;
+			productName = Core;
+		};
+		23D533282D6F9EE300696737 /* Logger */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 235525162D6F785C00583200 /* XCLocalSwiftPackageReference "Shared/Logger" */;
+			productName = Logger;
+		};
+		23D5332A2D6F9EE300696737 /* OpenNSFW */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2355253A2D6F9A8D00583200 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
+			productName = OpenNSFW;
+		};
+		23D533312D6FA3FB00696737 /* UI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2355250F2D6F77C300583200 /* XCLocalSwiftPackageReference "Shared/UI" */;
+			productName = UI;
+		};
+		23D533332D6FA41900696737 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2355250C2D6F762100583200 /* XCLocalSwiftPackageReference "Shared/Core" */;
+			productName = Core;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -6,8 +6,8 @@
 //  Copyright © 2017 wxyc.org. All rights reserved.
 //
 
-import UIKit.UIView
-import Core
+#if os(iOS)
+import UIKit
 import Logger
 
 extension UIView {
@@ -29,3 +29,4 @@ extension UIView {
         return image
     }
 }
+#endif

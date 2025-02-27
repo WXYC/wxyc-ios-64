@@ -9,7 +9,7 @@
 import UIKit
 import Core
 
-
+#if os(iOS)
 public protocol NowPlayingPresentable: AnyObject, Sendable {
     var songLabel: UILabel! { get }
     var artistLabel: UILabel! { get }
@@ -98,3 +98,4 @@ extension Optional where Wrapped == UIImage {
         }
     }
 }
+#endif

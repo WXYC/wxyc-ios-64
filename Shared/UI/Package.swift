@@ -12,13 +12,19 @@ let package = Package(
         .library(name: "UI", targets: ["UI"])
     ],
     dependencies: [
-        .package(path: "../Logger")
+        .package(path: "../Logger"),
+        .package(path: "../Core")
     ],
     targets: [
         .target(
             name: "UI",
             dependencies: [
-                "Logger"
+                "Logger",
+                "Core"
+            ],
+            linkerSettings: [
+                .linkedFramework("UIKit"),
+                .linkedFramework("Foundation"),
             ]
         )
     ]
