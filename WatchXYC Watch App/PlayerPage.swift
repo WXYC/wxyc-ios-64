@@ -11,6 +11,11 @@ import Core
 
 struct PlayerPage: View {    
     @State private var nowPlayingItem = NowPlayingService.shared.nowPlayingItem
+    @State private var isPlaying = RadioPlayerController.shared.isPlaying {
+        didSet {
+            print("HI")
+        }
+    }
     
     var content: NowPlayingEntry {
         if let item = NowPlayingService.shared.nowPlayingItem {
@@ -25,7 +30,7 @@ struct PlayerPage: View {
     }
     
     var body: some View {
-        VStack(spacing: 10) {
+        VStack {
             // Show the image if available; otherwise a progress indicator.
             if let image = content.artwork {
                 image
@@ -40,6 +45,18 @@ struct PlayerPage: View {
                 .font(.headline)
             Text(content.artist)
                 .font(.body)
+            Button(action: {
+                RadioPlayerController.shared.toggle()
+            }) {
+                Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.white)
+                    .padding(20)
+            }
+            .background(Color.accentColor)
+            .clipShape(Circle())
+            .shadow(radius: 5)
+
         }
         .padding()
     }

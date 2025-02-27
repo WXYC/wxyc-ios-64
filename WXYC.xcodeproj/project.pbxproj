@@ -80,14 +80,14 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		235525362D6F82BE00583200 /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
+			buildActionMask = 8;
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
 				235525332D6F82BE00583200 /* WatchXYC App.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
-			runOnlyForDeploymentPostprocessing = 0;
+			runOnlyForDeploymentPostprocessing = 1;
 		};
 		341FBAC72041E7AB00CD2F36 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
