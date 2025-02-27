@@ -177,7 +177,6 @@ extension FileManager {
             .itemReplacementDirectory,
             .allApplicationsDirectory,
             .allLibrariesDirectory,
-            .trashDirectory,
         ]
         
         for d in directories {

@@ -1,4 +1,5 @@
 import Foundation
+import Dispatch
 
 @globalActor public actor PublishableActor: GlobalActor {
     public static let shared = PublishableActor()

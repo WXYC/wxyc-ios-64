@@ -35,10 +35,12 @@ public final actor ArtworkService {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
                 Log(.info, "Artwork found for \(playcut.id) using fetcher \(fetcher)")
 
+#if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
                     Log(.info, "Inappropriate artwork found for \(playcut.id) using fetcher \(fetcher)")
                     return nil
                 }
+#endif
                 
                 await self.cacheCoordinator.set(artwork: artwork, for: playcut)
                 return artwork

@@ -1,6 +1,5 @@
 // swift-tools-version:6.0
 
-//import Foundation
 import PackageDescription
 
 @available(iOS 18.0, tvOS 11.0, watchOS 11.0, visionOS 1.0, *)
@@ -15,6 +14,7 @@ let package = Package(
     dependencies: [
         .package(path: "../Logger")
     ],
+    
     targets: [
         .target(
             name: "OpenNSFW",

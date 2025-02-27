@@ -10,6 +10,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Logger
+import UIKit
 
 public enum PlaybackState: Sendable {
     case initialized
@@ -52,10 +53,14 @@ public final class RadioPlayerController: @unchecked Sendable {
         }
 
         self.radioPlayer = radioPlayer
-
+#if os(iOS)
         self.inputObservations = [
             notificationObserver(for: UIApplication.didEnterBackgroundNotification, sink: self.applicationDidEnterBackground),
             notificationObserver(for: UIApplication.willEnterForegroundNotification, sink: self.applicationWillEnterForeground),
+        ]
+#endif
+
+        self.inputObservations += [
             notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
             notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
             
@@ -95,7 +100,7 @@ public final class RadioPlayerController: @unchecked Sendable {
     // MARK: Private
     
     private let radioPlayer: RadioPlayer
-    private var inputObservations: [any Sendable]? = nil
+    private var inputObservations: [any Sendable] = []
 
     @Publishable var playbackState: PlaybackState! = .initialized
 }

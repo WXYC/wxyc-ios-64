@@ -2,7 +2,7 @@
 // https://github.com/OurBigAdventure/Swift_NSFW_Detector
 //
 
-#if canImport(UIKit)
+#if canImport(UIKit) && canImport(Vision)
 import CoreML
 import Vision
 import ImageIO

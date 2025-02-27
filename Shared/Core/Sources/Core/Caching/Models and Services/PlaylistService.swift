@@ -99,35 +99,3 @@ public final class PlaylistService: @unchecked Sendable {
     @globalActor
     private actor PlaylistActor: GlobalActor, Sendable { static let shared = PlaylistActor() }
 }
-
-final class DevPlaylistFetcher: PlaylistFetcher {
-    func getPlaylist() async throws -> Playlist {
-        Playlist(
-            playcuts: [Fixture.playcut1, Fixture.playcut2],
-            breakpoints: [],
-            talksets: []
-        )
-    }
-    
-    enum Fixture {
-        static let playcut1 = Playcut(
-            id: 1768545,
-            hour: 1518408000000,
-            chronOrderID: 146173021,
-            songTitle: "Dancing Queen",
-            labelName: "Atlantic",
-            artistName: "ABBA",
-            releaseTitle: "Dancing queen 7"
-        )
-        
-        static let playcut2 = Playcut(
-            id: 1768705,
-            hour: 1518444000000,
-            chronOrderID: 146179020,
-            songTitle: "Left Fields",
-            labelName: "INTERNATIONAL ANTHEM RECORDING COMPANY",
-            artistName: "Makaya McCraven",
-            releaseTitle: "Highly Rare"
-        )
-    }
-}
