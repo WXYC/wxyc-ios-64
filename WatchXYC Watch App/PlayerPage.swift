@@ -9,13 +9,10 @@
 import SwiftUI
 import Core
 
-struct PlayerPage: View {    
-    @State private var nowPlayingItem = NowPlayingService.shared.nowPlayingItem
-    @State private var isPlaying = RadioPlayerController.shared.isPlaying {
-        didSet {
-            print("HI")
-        }
-    }
+struct PlayerPage: View {
+    @State var playlist = PlaylistService.shared.playlist
+    let placeholder: Image = Image(ImageResource(name: "logo", bundle: .main))
+    @State var artwork: UIImage?
     
     var content: NowPlayingEntry {
         if let item = NowPlayingService.shared.nowPlayingItem {
@@ -32,14 +29,8 @@ struct PlayerPage: View {
     var body: some View {
         VStack {
             // Show the image if available; otherwise a progress indicator.
-            if let image = content.artwork {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 80, height: 80)
-            } else {
-                ProgressView()
-                    .frame(width: 80, height: 80)
+            if let playcut = PlaylistService.shared.playlist.playcuts.first {
+                RemoteImage(playcut: playcut)
             }
             Text(content.songTitle)
                 .font(.headline)
@@ -56,7 +47,7 @@ struct PlayerPage: View {
             .background(Color.accentColor)
             .clipShape(Circle())
             .shadow(radius: 5)
-
+            
         }
         .padding()
     }

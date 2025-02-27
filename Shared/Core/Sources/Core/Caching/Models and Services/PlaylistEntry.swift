@@ -8,9 +8,9 @@ extension URL {
 }
 
 public protocol PlaylistEntry: Codable, Identifiable, Sendable {
-    var id: Int { get }
-    var hour: Int { get }
-    var chronOrderID: Int { get }
+    var id: UInt64 { get }
+    var hour: UInt64 { get }
+    var chronOrderID: UInt64 { get }
 }
 
 public extension PlaylistEntry {
@@ -33,21 +33,21 @@ public extension PlaylistEntry {
 }
 
 public struct Breakpoint: PlaylistEntry {
-    public let id: Int
-    public let hour: Int
-    public let chronOrderID: Int
+    public let id: UInt64
+    public let hour: UInt64
+    public let chronOrderID: UInt64
 }
 
 public struct Talkset: PlaylistEntry {
-    public let id: Int
-    public let hour: Int
-    public let chronOrderID: Int
+    public let id: UInt64
+    public let hour: UInt64
+    public let chronOrderID: UInt64
 }
 
 public struct Playcut: PlaylistEntry {
-    public let id: Int
-    public let hour: Int
-    public let chronOrderID: Int
+    public let id: UInt64
+    public let hour: UInt64
+    public let chronOrderID: UInt64
 
     public let songTitle: String
     public let labelName: String?
@@ -65,9 +65,9 @@ public struct Playcut: PlaylistEntry {
     }
     
     public init(
-        id: Int,
-        hour: Int,
-        chronOrderID: Int,
+        id: UInt64,
+        hour: UInt64,
+        chronOrderID: UInt64,
         songTitle: String,
         labelName: String?,
         artistName: String,
@@ -85,9 +85,9 @@ public struct Playcut: PlaylistEntry {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        self.id = try container.decode(Int.self, forKey: .id)
-        self.hour = try container.decode(Int.self, forKey: .hour)
-        self.chronOrderID = try container.decode(Int.self, forKey: .chronOrderID)
+        self.id = try container.decode(UInt64.self, forKey: .id)
+        self.hour = try container.decode(UInt64.self, forKey: .hour)
+        self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
 
         do {
             self.songTitle = try container.decode(String.self, forKey: .songTitle)
@@ -102,7 +102,7 @@ public struct Playcut: PlaylistEntry {
 }
 
 public struct Playlist: Codable, Sendable {
-    let playcuts: [Playcut]
+    public let playcuts: [Playcut]
     let breakpoints: [Breakpoint]
     let talksets: [Talkset]
     
@@ -121,8 +121,42 @@ public struct Playlist: Codable, Sendable {
 }
 
 public extension Playlist {
+    enum WrappedEntry: Identifiable {
+        public var id: UInt64 {
+            switch self {
+            case .playcut(let playcut):
+                return playcut.id
+            case .breakpoint(let breakpoint):
+                return breakpoint.id
+            case .talkset(let talkset):
+                return talkset.id
+            default:
+                fatalError("Unsupported entry type")
+            }
+        }
+        
+        case playcut(Playcut)
+        case breakpoint(Breakpoint)
+        case talkset(Talkset)
+    }
+    
     var entries: [any PlaylistEntry] {
         let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
+    }
+    
+    var wrappedEntries: [WrappedEntry] {
+        entries.map { entry in
+            switch entry {
+            case let playcut as Playcut:
+                return .playcut(playcut)
+            case let breakpoint as Breakpoint:
+                return .breakpoint(breakpoint)
+            case let talkset as Talkset:
+                return .talkset(talkset)
+            default:
+                fatalError("Unsupported entry type")
+            }
+        }
     }
 }

@@ -16,7 +16,7 @@ public enum LogLevel: String, CustomStringConvertible, Sendable {
 }
 
 protocol Loggable {
-    func log(_ functionName: String, _ level: LogLevel, _ message: Any...)
+    func log(_ fileName: StaticString, _ line: Int, _ functionName: StaticString, _ level: LogLevel, _ message: Any...)
 }
 
 @available(macOS 15, iOS 18.0, tvOS 11.0, watchOS 11.0, visionOS 1.0, *)
@@ -24,11 +24,24 @@ public let Log = Logger()
 
 @available(macOS 15, iOS 18.0, tvOS 11.0, watchOS 11.0, visionOS 1.0, *)
 public final class Logger: Loggable, Sendable {
-    public func callAsFunction(functionName: String = #function, _ level: LogLevel, _ message: Any...) {
-        log(functionName, level, message)
+    public func callAsFunction(
+        fileName: StaticString = #file,
+        line: Int = #line,
+        functionName: StaticString = #function,
+        _ level: LogLevel,
+        _ message: Any...
+    ) {
+        log(fileName, line, functionName, level, message)
     }
     
-    public func log(_ functionName: String, _ level: LogLevel, _ message: Any...) {
+    public func log(
+        _ fileName: StaticString,
+        _ line: Int,
+        _ functionName: StaticString,
+        _ level:
+        LogLevel, _
+        message: Any...
+    ) {
         let logStatement = "\(Logger.timestamp()) \(functionName) [\(level)] \(message)"
         print(logStatement)
         
