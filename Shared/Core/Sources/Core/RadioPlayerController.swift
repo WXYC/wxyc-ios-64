@@ -19,10 +19,16 @@ public enum PlaybackState: Sendable {
 }
 
 @MainActor
+#if !os(iOS)
+@Observable
+#endif
 public final class RadioPlayerController: @unchecked Sendable {
     public static let shared = RadioPlayerController()
     
-    @Publishable public var isPlaying = false
+    #if os(iOS)
+    @Publishable
+    #endif
+    public var isPlaying = false
 
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
@@ -101,8 +107,6 @@ public final class RadioPlayerController: @unchecked Sendable {
     
     private let radioPlayer: RadioPlayer
     private var inputObservations: [any Sendable] = []
-
-    @Publishable var playbackState: PlaybackState! = .initialized
 }
 
 private extension RadioPlayerController {
