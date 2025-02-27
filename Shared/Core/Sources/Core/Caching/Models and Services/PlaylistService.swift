@@ -30,10 +30,16 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
+#if !os(iOS)
+@Observable
+#endif
 public final class PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
-    @Publishable public private(set) var playlist: Playlist = .empty
+    #if os(iOS)
+    @Publishable
+    #endif
+    public private(set) var playlist: Playlist = .empty
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,

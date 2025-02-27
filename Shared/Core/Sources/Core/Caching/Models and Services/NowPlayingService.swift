@@ -43,16 +43,22 @@ public final class NowPlayingService: @unchecked Sendable {
     ) {
         self.playlistService = playlistService
         self.artworkService = artworkService
-        
-        let _ = self.playlistService.$playlist
-        
-        self.playlistService.$playlist.observe { playlist in
-            guard let playcut = self.playlistService.playlist.playcuts.first else {
-                return
+        self.observe()
+    }
+    
+    private func observe() {
+        withObservationTracking {
+            self.playlistService.playlist
+        } onChange: {
+            Task {
+                guard let playcut = self.playlistService.playlist.playcuts.first else {
+                    return
+                }
+                
+                let artwork = await self.artworkService.getArtwork(for: playcut)
+                await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
+                await self.observe()
             }
-            
-            let artwork = await self.artworkService.getArtwork(for: playcut)
-            await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
         }
     }
     

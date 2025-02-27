@@ -23,16 +23,6 @@ struct ContentView: View {
     }
 }
 
-struct PlaylistPage: View {
-    var body: some View {
-        VStack {
-            Text("Playlist Page")
-                .font(.headline)
-        }
-        .padding()
-    }
-}
-
 struct DialADJPage: View {
     var body: some View {
         VStack {

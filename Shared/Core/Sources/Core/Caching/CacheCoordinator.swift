@@ -29,7 +29,7 @@ public final actor CacheCoordinator {
     }
     
     public func value<Value, Key>(for key: Key) async throws -> Value
-        where Value: Codable, Key: Identifiable, Key.ID == Int
+        where Value: Codable, Key: Identifiable, Key.ID: LosslessStringConvertible
     {
         try await self.value(for: String(key.id))
     }
@@ -66,7 +66,7 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value, Key>(value: Value?, for key: Key, lifespan: TimeInterval)
-        where Value: Codable, Key: Identifiable, Key.ID == Int
+        where Value: Codable, Key: Identifiable, Key.ID: LosslessStringConvertible
     {
         self.set(value: value, for: String(key.id), lifespan: lifespan)
     }

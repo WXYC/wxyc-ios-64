@@ -26,7 +26,7 @@ final class PlaycutCell: UITableViewCell & Sendable {
     
     // MARK: Configuration
     
-    func configure(with image: UIImage, token: Int) {
+    func configure(with image: UIImage, token: UInt64) {
         guard token == self.token else {
             return
         }
@@ -42,7 +42,7 @@ final class PlaycutCell: UITableViewCell & Sendable {
         }
     }
     
-    var token: Int?
+    var token: UInt64?
     
     // MARK: Overrides
     
