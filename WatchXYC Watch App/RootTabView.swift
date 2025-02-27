@@ -1,5 +1,5 @@
 //
-//  ContentView.swift
+//  RootTabView.swift
 //  WatchXYC Watch App
 //
 //  Created by Jake Bromberg on 2/25/25.
@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-struct ContentView: View {
+struct RootTabView: View {
     var body: some View {
         TabView {
             PlayerPage()
@@ -18,21 +18,10 @@ struct ContentView: View {
             DialADJPage()
                 .tag(2)
         }
-        // Use PageTabViewStyle to create a page-based interface
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
     }
 }
 
-struct DialADJPage: View {
-    var body: some View {
-        VStack {
-            Text("Dial A DJ Page")
-                .font(.headline)
-        }
-        .padding()
-    }
-}
-
 #Preview {
-    ContentView()
+    RootTabView()
 }

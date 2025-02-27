@@ -8,11 +8,15 @@
 
 import SwiftUI
 import Core
+import UIKit
+import AVKit
+import AVFAudio
 
 struct PlayerPage: View {
     @State var playlist = PlaylistService.shared.playlist
     let placeholder: Image = Image(ImageResource(name: "logo", bundle: .main))
     @State var artwork: UIImage?
+    @State private var elementHeights: CGFloat = 0
     
     var content: NowPlayingEntry {
         if let item = NowPlayingService.shared.nowPlayingItem {
@@ -27,29 +31,60 @@ struct PlayerPage: View {
     }
     
     var body: some View {
-        VStack {
-            // Show the image if available; otherwise a progress indicator.
-            if let playcut = PlaylistService.shared.playlist.playcuts.first {
-                RemoteImage(playcut: playcut)
+        GeometryReader { geometry in
+            VStack {
+                if let playcut = PlaylistService.shared.playlist.playcuts.first {
+                    RemoteImage(playcut: playcut)
+                        .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
+                }
+                
+                VStack {
+                    Text(content.songTitle)
+                        .font(.headline)
+                        .background(HeightReader())
+
+                    Text(content.artist)
+                        .font(.body)
+                        .background(HeightReader())
+
+                    Button(action: {
+                        AVAudioSession.sharedInstance().activate { @MainActor activated, error in
+                            RadioPlayerController.shared.toggle()
+                        }
+                    }) {
+                        Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                            .padding(20)
+                            .frame(width: 15, height: 15)
+                            .cornerRadius(5)
+                    }
+                    .background(Color.accentColor)
+                    .clipShape(Circle())
+                    .frame(width: 25, height: 25)
+                    .background(HeightReader())
+                }
             }
-            Text(content.songTitle)
-                .font(.headline)
-            Text(content.artist)
-                .font(.body)
-            Button(action: {
-                RadioPlayerController.shared.toggle()
-            }) {
-                Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.white)
-                    .padding(20)
-            }
-            .background(Color.accentColor)
-            .clipShape(Circle())
-            .shadow(radius: 5)
-            
         }
-        .padding()
+    }
+}
+
+// Define a PreferenceKey to collect text heights.
+struct TextHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        // Add up heights from multiple text views.
+        value += nextValue()
+    }
+}
+
+// A helper view to measure height.
+struct HeightReader: View {
+    var body: some View {
+        GeometryReader { geo in
+            Color.clear
+                .preference(key: TextHeightPreferenceKey.self, value: geo.size.height)
+        }
     }
 }
 
@@ -77,4 +112,8 @@ struct NowPlayingEntry {
             self.artwork = nil
         }
     }
+}
+
+#Preview {
+    PlayerPage()
 }

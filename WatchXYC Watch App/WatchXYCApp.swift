@@ -7,12 +7,22 @@
 //
 
 import SwiftUI
+import AVFoundation
+import Logger
 
 @main
-struct WatchXYC_Watch_AppApp: App {
+struct WatchXYC: App {
+    init() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+        } catch {
+            Log(.error, "Could not set AVAudioSession category: \(error)")
+        }
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView()
         }
     }
 }
