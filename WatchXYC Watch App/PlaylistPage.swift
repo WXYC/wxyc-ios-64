@@ -33,7 +33,7 @@ struct PlaylistPage: View {
                 }
             }
         }
-
+        
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -53,41 +53,19 @@ struct PlaycutView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 2.5) {
+        VStack(alignment: .leading) {
             RemoteImage(playcut: playcut)
                 .cornerRadius(10)
+                .frame(
+                    width: 50,
+                    height: 50
+                )
+            
             Text(playcut.songTitle)
                 .font(.body)
+                .fontWeight(.bold)
             Text(playcut.artistName)
                 .font(.caption)
-        }
-    }
-}
-
-struct RemoteImage: View {
-    let playcut: Playcut
-    let placeholder: Image = Image(systemName: "photo")
-    @State var artFetcher: AlbumArtworkFetcher
-    @State var artwork: UIImage?
-    
-    init(playcut: Playcut) {
-        self.playcut = playcut
-        self.artFetcher = AlbumArtworkFetcher(playcut: playcut)
-    }
-
-    var body: some View {
-        Group {
-            if let artwork {
-                Image(uiImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 75, height: 75)
-            } else {
-                placeholder.renderingMode(.original)
-            }
-        }
-        .task {
-            artwork = await artFetcher.fetchArtwork()
         }
     }
 }
@@ -125,4 +103,8 @@ struct TalksetView: View {
             .font(.footnote)
             .frame(maxWidth: .infinity, alignment: .center)
     }
+}
+
+#Preview {
+    PlaylistPage()
 }
