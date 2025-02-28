@@ -127,10 +127,11 @@ private extension RadioPlayerController {
         
         switch interruptionType {
         case .began:
-            self.play()
-        case .shouldResume:
             self.pause()
+        case .shouldResume:
+            fallthrough
         case .ended:
+            self.play()
             return
         }
     }
