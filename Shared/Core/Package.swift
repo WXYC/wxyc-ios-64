@@ -21,9 +21,6 @@ let package = Package(
             dependencies: [
                 "OpenNSFW",
                 "Logger"
-            ],
-            linkerSettings: [
-//                .linkedFramework("Dispatch"),
             ]
         )
     ]
