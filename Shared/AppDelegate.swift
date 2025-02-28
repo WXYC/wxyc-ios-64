@@ -1,5 +1,5 @@
 import Observation
-import CarPlay
+@preconcurrency import CarPlay
 import UIKit
 import Core
 import UI
@@ -32,10 +32,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
 #endif
 
-        NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
-            NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-            WidgetCenter.shared.reloadAllTimelines()
-        }
+        observeNowPlayingItem()
         
         WidgetCenter.shared.getCurrentConfigurations { result in
             guard case let .success(configurations) = result else {
@@ -54,6 +51,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillTerminate(_ application: UIApplication) {
         UIApplication.shared.endReceivingRemoteControlEvents()
+    }
+    
+    private var nowPlayingItem: Any?
+    
+    // TODO: Make a macro to encapsulate this.
+    private func observeNowPlayingItem() {
+        nowPlayingItem = withObservationTracking {
+            NowPlayingService.shared.nowPlayingItem
+        } onChange: {
+            Task { @MainActor in
+                self.updateNowPlayingInfo(NowPlayingService.shared.nowPlayingItem)
+                self.observeNowPlayingItem()
+            }
+        }
+    }
+    
+    func updateNowPlayingInfo(_ nowPlayingItem: NowPlayingItem?) {
+        NowPlayingInfoCenterManager.shared.update(
+            nowPlayingItem: NowPlayingService.shared.nowPlayingItem
+        )
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
@@ -94,10 +112,13 @@ extension AppDelegate {
 
 #endif
 
+// TODO: Move all this into a separate file.
+
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
-    
-    var observer: Any?
+    var listTemplate: CPListTemplate?
+        
+    // MARK: CPTemplateApplicationSceneDelegate
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
         main {
@@ -106,16 +127,17 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             interfaceController.delegate = self
             self.setUpNowPlaying()
 
-            let item = self.makeListItem()
-            let section = CPListSection(items: [item])
-            let listTemplate = CPListTemplate(title: "WXYC 89.3 FM", sections: [section])
+            let playItem = self.makePlayItem()
+            let playSection = CPListSection(items: [playItem])
+            let listTemplate = CPListTemplate(title: "WXYC 89.3 FM", sections: [playSection])
+            self.listTemplate = listTemplate
             
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
                 Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
-                NowPlayingService.shared.$nowPlayingItem.observe { @MainActor nowPlayingItem in
-                    NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
-                }
+                self.observeIsPlaying()
+                self.observeNowPlaying()
+                self.observePlaylist()
             }
         }
     }
@@ -129,12 +151,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             templateApplicationScene.delegate = self
             
             CPNowPlayingTemplate.shared.remove(self)
-        }
-    }
-    
-    nonisolated func main(_ work: @escaping @Sendable @MainActor () -> ()) {
-        Task {
-            await work()
         }
     }
     
@@ -156,21 +172,16 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     // MARK: Private
     
-    private func makeListItem() -> CPListItem {
-        let nowPlayingItem = NowPlayingService.shared.nowPlayingItem
-        
-        let artist = nowPlayingItem?.playcut.artistName
-        let song = nowPlayingItem?.playcut.songTitle
-        let detailedText: String? =
-            artist == nil && song == nil
-                ? nil
-                : "\(artist!) • \(song!)"
-        
-        let defaultArtwork = UIImage(imageLiteralResourceName: "logo.pdf")
-            .withTintColor(.systemPurple, renderingMode: .alwaysTemplate)
+    private func makePlayItem() -> CPListItem {
+        let item = CPListItem(text: "Listen Live", detailText: nil)
+        if RadioPlayerController.shared.isPlaying {
+            item.setImage(nil)
+            item.isPlaying = true
+        } else {
+            item.setImage(UIImage(systemName: "play.fill.circle"))
+            item.isPlaying = false
+        }
 
-        let mediaItemArtwork = nowPlayingItem?.artwork ?? defaultArtwork        
-        let item = CPListItem(text: "Listen Live", detailText: detailedText, image: mediaItemArtwork)
         item.handler = { selectableItem, completionHandler in
             RadioPlayerController.shared.play()
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true)
@@ -178,6 +189,86 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         }
         return item
     }
+    
+    private var playlist: Playlist = .empty
+    
+    nonisolated func main(_ work: @escaping @Sendable @MainActor () -> ()) {
+        Task {
+            await work()
+        }
+    }
+    
+    private func updateListTemplate() {
+        guard let listTemplate else {
+            return
+        }
+        
+        let playItem = self.makePlayItem()
+        let playSection = CPListSection(items: [playItem])
+        
+        let playlistItems = playlist.entries.compactMap { entry in
+            switch entry {
+            case let entry as Playcut:
+                CPListItem(playcut: entry)
+            case _ as Talkset:
+                CPListItem(text: "Talkset", detailText: nil, image: nil)
+            case let entry as Breakpoint:
+                CPListItem(text: entry.formattedDate, detailText: nil, image: nil)
+            default:
+                fatalError()
+            }
+        }
+        let playlistSection = CPListSection(
+            items: playlistItems,
+            header: "Recently Played",
+            sectionIndexTitle: nil
+        )
+        
+        listTemplate.updateSections([playSection, playlistSection])
+    }
+    
+    func observeIsPlaying() {
+        let _ = withObservationTracking {
+            RadioPlayerController.shared.isPlaying
+        } onChange: {
+            Task { @MainActor in
+                self.updateListTemplate()
+                self.observeIsPlaying()
+            }
+        }
+        
+        self.updateListTemplate()
+    }
+    
+    private func observeNowPlaying() {
+        let nowPlayingItem = withObservationTracking {
+            NowPlayingService.shared.nowPlayingItem
+        } onChange: {
+            Task { @MainActor in
+                NowPlayingInfoCenterManager.shared.update(
+                    nowPlayingItem: NowPlayingService.shared.nowPlayingItem
+                )
+                self.observeNowPlaying()
+            }
+        }
+        
+        NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
+    }
+    
+    private func observePlaylist() {
+        self.playlist = withObservationTracking {
+            PlaylistService.shared.playlist
+        } onChange: {
+            Task { @MainActor in
+                self.playlist = PlaylistService.shared.playlist
+                self.updateListTemplate()
+                self.observePlaylist()
+            }
+        }
+        
+        self.updateListTemplate()
+    }
+
 }
 
 class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
@@ -197,6 +288,15 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     }
 }
 
-extension CPInterfaceController: @unchecked @retroactive Sendable {
-    
+extension CPListItem: @unchecked @retroactive Sendable {
+    convenience init(playcut: Playcut) {
+        self.init(text: playcut.artistName, detailText: playcut.songTitle)
+        Task {
+            let artwork = await ArtworkService.shared.getArtwork(for: playcut)
+            
+            Task { @MainActor in
+                self.setImage(artwork)
+            }
+        }
+    }
 }
