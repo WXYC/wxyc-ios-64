@@ -19,6 +19,7 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     
     override func viewDidLoad() {
         self.playlistDataSource.$viewModels.observe { @MainActor viewModels in
+            validateCollection(viewModels, label: "\(Self.self) [PlaylistCellViewModel]")
             self.update(viewModels: viewModels)
         }
         self.setUpTableView()
