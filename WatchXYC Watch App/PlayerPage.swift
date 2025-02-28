@@ -11,12 +11,17 @@ import Core
 import UIKit
 import AVKit
 import AVFAudio
+import Logger
 
 struct PlayerPage: View {
-    @State var playlist = PlaylistService.shared.playlist
-    let placeholder: Image = Image(ImageResource(name: "logo", bundle: .main))
+    @State var playlist = PlaylistService.shared {
+        willSet {
+            Log(.info, "Playlist updated, count: \(newValue.playlist.playcuts.count)")
+        }
+    }
     @State var artwork: UIImage?
     @State private var elementHeights: CGFloat = 0
+    let placeholder: Image = Image(ImageResource(name: "logo", bundle: .main))
     
     var content: NowPlayingEntry {
         if let item = NowPlayingService.shared.nowPlayingItem {
@@ -35,6 +40,11 @@ struct PlayerPage: View {
             VStack {
                 if let playcut = PlaylistService.shared.playlist.playcuts.first {
                     RemoteImage(playcut: playcut)
+                        .cornerRadius(10)
+                        .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
+                        .clipped(antialiased: true)
+                } else {
+                    ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
                 }
                 
@@ -45,6 +55,7 @@ struct PlayerPage: View {
 
                     Text(content.artist)
                         .font(.body)
+                        .foregroundStyle(Color.gray)
                         .background(HeightReader())
 
                     Button(action: {
@@ -56,8 +67,7 @@ struct PlayerPage: View {
                             .font(.system(size: 12))
                             .foregroundColor(.white)
                             .padding(20)
-                            .frame(width: 15, height: 15)
-                            .cornerRadius(5)
+                            .frame(width: 20, height: 20)
                     }
                     .background(Color.accentColor)
                     .clipShape(Circle())
