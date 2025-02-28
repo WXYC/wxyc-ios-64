@@ -21,6 +21,7 @@ final class PlaylistDataSource: Sendable {
     
     init(playlistService: PlaylistService = .shared) {
         playlistService.$playlist.observe { playlist in
+            validateCollection(playlist.entries, label: "PlaylistDataSource Playlist")
             self.updateViewModels(with: playlist)
         }
     }

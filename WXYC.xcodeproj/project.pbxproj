@@ -15,6 +15,9 @@
 		235525332D6F82BE00583200 /* WatchXYC App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 2355251D2D6F79D200583200 /* WatchXYC App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2355253C2D6F9A8D00583200 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2355253B2D6F9A8D00583200 /* OpenNSFW */; };
 		235525422D6F9AE800583200 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 235525412D6F9AE800583200 /* OpenNSFW */; };
+		2366F94B2D720D5E0057E268 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2366F94A2D720D5E0057E268 /* AppSession.swift */; };
+		2366F94C2D720D5E0057E268 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2366F94A2D720D5E0057E268 /* AppSession.swift */; };
+		2366F94D2D720D5E0057E268 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2366F94A2D720D5E0057E268 /* AppSession.swift */; };
 		236B0CA32D61A787000661F2 /* NowPlayingInfoCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */; };
 		2389E6322B8C2E96003C9934 /* InfoDetailViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */; };
 		23A7C7EC296A07BE00135E7F /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23A7C7EB296A07BE00135E7F /* CarPlay.framework */; };
@@ -118,6 +121,7 @@
 		2355251D2D6F79D200583200 /* WatchXYC App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WatchXYC App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2355252F2D6F7A7000583200 /* VisionKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VisionKit.framework; path = System/Library/Frameworks/VisionKit.framework; sourceTree = SDKROOT; };
 		235525312D6F7AB200583200 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
+		2366F94A2D720D5E0057E268 /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
 		236B0CA22D61A787000661F2 /* NowPlayingInfoCenterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInfoCenterManager.swift; sourceTree = "<group>"; };
 		23A7C7EB296A07BE00135E7F /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		23AA9A4F29F4A84500CB4C69 /* InfoDetailViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = InfoDetailViewController.xib; sourceTree = "<group>"; };
@@ -328,6 +332,7 @@
 			isa = PBXGroup;
 			children = (
 				3434FC012030A1CC00FC778F /* AppDelegate.swift */,
+				2366F94A2D720D5E0057E268 /* AppSession.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -632,6 +637,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2366F94D2D720D5E0057E268 /* AppSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -639,6 +645,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2366F94B2D720D5E0057E268 /* AppSession.swift in Sources */,
 				34CEF92022417B1C00D120F7 /* PlaylistCellViewModelProducer.swift in Sources */,
 				236B0CA32D61A787000661F2 /* NowPlayingInfoCenterManager.swift in Sources */,
 				348534A6222F4E51002AA181 /* TalksetCell.swift in Sources */,
@@ -663,6 +670,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2366F94C2D720D5E0057E268 /* AppSession.swift in Sources */,
 				343400EF2030E15000FC778F /* AppDelegate.swift in Sources */,
 				343400DA2030D6D600FC778F /* TVViewController.swift in Sources */,
 			);
