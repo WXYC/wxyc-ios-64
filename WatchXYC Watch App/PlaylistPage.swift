@@ -9,9 +9,14 @@
 import Foundation
 import SwiftUI
 import Core
+import Logger
 
 struct PlaylistPage: View {
-    @State var playlist: Playlist = PlaylistService.shared.playlist
+    @State var playlist: Playlist = PlaylistService.shared.playlist {
+        didSet {
+            validateCollection(playlist.entries, label: "PlaylistPage Playlist")
+        }
+    }
     
     var body: some View {
         List {

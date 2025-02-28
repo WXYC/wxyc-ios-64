@@ -60,7 +60,13 @@ struct PlayerPage: View {
 
                     Button(action: {
                         AVAudioSession.sharedInstance().activate { @MainActor activated, error in
-                            RadioPlayerController.shared.toggle()
+                            if activated {
+                                Task { @MainActor in
+                                    RadioPlayerController.shared.toggle()
+                                }
+                            } else {
+                                Log(.error, "Failed to activate audio session: \(String(describing: error))")
+                            }
                         }
                     }) {
                         Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
