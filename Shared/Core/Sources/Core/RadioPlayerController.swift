@@ -18,16 +18,9 @@ public enum PlaybackState: Sendable {
     case paused
 }
 
-@MainActor
-#if !os(iOS)
-@Observable
-#endif
+@MainActor @Observable
 public final class RadioPlayerController: @unchecked Sendable {
     public static let shared = RadioPlayerController()
-    
-    #if os(iOS)
-    @Publishable
-    #endif
     public var isPlaying = false
 
     private init(

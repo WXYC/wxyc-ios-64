@@ -14,6 +14,7 @@ import AVFAudio
 import Logger
 
 struct PlayerPage: View {
+    // TODO: Convert to binding
     @State var playlist = PlaylistService.shared {
         willSet {
             Log(.info, "Playlist updated, count: \(newValue.playlist.playcuts.count)")
@@ -58,6 +59,7 @@ struct PlayerPage: View {
                         .foregroundStyle(Color.gray)
                         .background(HeightReader())
 
+                    // TODO: Maximize tappable target.
                     Button(action: {
                         AVAudioSession.sharedInstance().activate { @MainActor activated, error in
                             if activated {

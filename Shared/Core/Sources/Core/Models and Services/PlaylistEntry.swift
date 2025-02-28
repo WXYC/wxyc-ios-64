@@ -23,6 +23,17 @@ public extension PlaylistEntry {
         return dictionary.debugDescription
     }
     
+    var formattedDate: String {
+        let timeSince1970 = Double(hour) / 1000.0
+        let date = Date(timeIntervalSince1970: timeSince1970)
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "h a"
+        
+        return dateFormatter.string(from: date)
+
+    }
+    
     static func ==(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
@@ -106,7 +117,7 @@ public struct Playlist: Codable, Sendable {
     let breakpoints: [Breakpoint]
     let talksets: [Talkset]
     
-    static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
+    public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
     
     static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
         guard lhs.entries.count == rhs.entries.count else {

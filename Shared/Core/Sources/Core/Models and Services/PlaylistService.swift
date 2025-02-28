@@ -30,16 +30,15 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-#if !os(iOS)
 @Observable
-#endif
 public final class PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
-    #if os(iOS)
-    @Publishable
-    #endif
-    public private(set) var playlist: Playlist = .empty
+    public private(set) var playlist: Playlist = .empty {
+        didSet {
+            Log(.info, "Playlist updated with count: \(self.playlist.entries.count)")
+        }
+    }
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -57,6 +56,7 @@ public final class PlaylistService: @unchecked Sendable {
                 let playlist = await self.fetchPlaylist()
                 
                 guard playlist != self.playlist else {
+                    Log(.info, "No change in playlist")
                     return
                 }
                 
