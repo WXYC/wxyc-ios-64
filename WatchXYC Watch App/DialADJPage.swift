@@ -12,6 +12,12 @@ import Core
 import UIKit
 
 struct DialADJPage: View {
+    let gradient = LinearGradient(
+        colors: [.brightGreen, .blue],
+        startPoint: .init(x: 0.25, y: 0.25),
+        endPoint: .init(x: 0.75, y: 0.75)
+    )
+    
     var body: some View {
         VStack {
             Button(action: {
@@ -22,14 +28,27 @@ struct DialADJPage: View {
                     .foregroundColor(.white)
                     .padding(20)
             }
-            .background(.green)
+            .background(self.gradient)
             .clipShape(Circle())
             .padding(20)
+            
             Text("Dial a DJ")
                 .font(.headline)
+            
             Text("make a request")
                 .font(.caption)
+                .foregroundStyle(Color.gray)
         }
         .padding()
     }
+}
+
+extension Color {
+    static var brightGreen: Color {
+        .init(red: 0, green: 1, blue: 0)
+    }
+}
+
+#Preview {
+    DialADJPage()
 }
