@@ -27,7 +27,6 @@ struct RemoteImage: View {
                 Image(uiImage: artwork)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-//                    .frame(maxWidth: .infinity)
             } else {
                 placeholder.renderingMode(.original)
             }
