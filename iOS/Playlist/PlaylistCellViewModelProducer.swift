@@ -82,13 +82,7 @@ extension Breakpoint: PlaylistCellViewModelProducer {
                 return
             }
 
-            let timeSince1970 = Double(breakpoint.hour) / 1000.0
-            let date = Date(timeIntervalSince1970: timeSince1970)
-            
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "h a"
-            
-            cell.timeLabel.text = dateFormatter.string(from: date)
+            cell.timeLabel.text = breakpoint.formattedDate
         }
     }
     

@@ -87,12 +87,7 @@ struct BreakpointView: View {
     let date: String
     
     init(breakpoint: Breakpoint) {
-        let timeSince1970 = Double(breakpoint.hour) / 1000.0
-        let date = Date(timeIntervalSince1970: timeSince1970)
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "h a"
-        self.date = dateFormatter.string(from: date)
+        self.date = breakpoint.formattedDate
     }
     
     var body: some View {

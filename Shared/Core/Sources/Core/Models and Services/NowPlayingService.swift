@@ -23,16 +23,10 @@ public struct NowPlayingItem: Sendable {
 
 let SessionStartTime = Date.now.timeIntervalSince1970
 
-@MainActor
-#if !os(iOS)
-@Observable
-#endif
+@MainActor @Observable
 public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
-    #if os(iOS)
-    @Publishable
-    #endif
     public private(set) var nowPlayingItem: NowPlayingItem?
     
     private let playlistService: PlaylistService
@@ -49,16 +43,6 @@ public final class NowPlayingService: @unchecked Sendable {
     }
     
     private func observe() {
-#if os(iOS)
-        self.playlistService.$playlist.observe { playlist in
-            guard let playcut = self.playlistService.playlist.playcuts.first else {
-                return
-            }
-            
-            let artwork = await self.artworkService.getArtwork(for: playcut)
-            await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
-        }
-#else
         self.playlistServiceObservation =
             withObservationTracking {
                 self.playlistService.playlist
@@ -78,10 +62,10 @@ public final class NowPlayingService: @unchecked Sendable {
                     await self.observe()
                 }
             }
-#endif
     }
     
     private func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) {
+        Log(.info, "Setting nowPlayingItem \(nowPlayingItem)")
         self.nowPlayingItem = nowPlayingItem
     }
     
