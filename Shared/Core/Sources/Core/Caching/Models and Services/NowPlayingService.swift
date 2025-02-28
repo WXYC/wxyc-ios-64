@@ -21,6 +21,8 @@ public struct NowPlayingItem: Sendable {
     }
 }
 
+let SessionStartTime = Date.now.timeIntervalSince1970
+
 @MainActor
 #if !os(iOS)
 @Observable
@@ -47,19 +49,36 @@ public final class NowPlayingService: @unchecked Sendable {
     }
     
     private func observe() {
-        withObservationTracking {
-            self.playlistService.playlist
-        } onChange: {
-            Task {
-                guard let playcut = self.playlistService.playlist.playcuts.first else {
-                    return
-                }
-                
-                let artwork = await self.artworkService.getArtwork(for: playcut)
-                await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
-                await self.observe()
+#if os(iOS)
+        self.playlistService.$playlist.observe { playlist in
+            guard let playcut = self.playlistService.playlist.playcuts.first else {
+                return
             }
+            
+            let artwork = await self.artworkService.getArtwork(for: playcut)
+            await self.updateNowPlayingItem(nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork))
         }
+#else
+        self.playlistServiceObservation =
+            withObservationTracking {
+                self.playlistService.playlist
+            } onChange: {
+                Task {
+                    Log(.info, "playlist updated")
+                    guard let playcut = self.playlistService.playlist.playcuts.first else {
+                        Log(.info, "Playlist is empty. Session duration: \(Date.now.timeIntervalSince1970 - SessionStartTime)")
+
+                        return
+                    }
+                    
+                    let artwork = await self.artworkService.getArtwork(for: playcut)
+                    await self.updateNowPlayingItem(
+                        nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork)
+                    )
+                    await self.observe()
+                }
+            }
+#endif
     }
     
     private func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) {
