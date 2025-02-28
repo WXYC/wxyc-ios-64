@@ -121,15 +121,16 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     // MARK: CPTemplateApplicationSceneDelegate
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
-        main {
+        Task { @MainActor in
             self.interfaceController = interfaceController
             
             interfaceController.delegate = self
             self.setUpNowPlaying()
 
-            let playItem = self.makePlayItem()
-            let playSection = CPListSection(items: [playItem])
-            let listTemplate = CPListTemplate(title: "WXYC 89.3 FM", sections: [playSection])
+            let listTemplate = CPListTemplate(
+                title: "WXYC 89.3 FM",
+                sections: [self.makePlayerSection()]
+            )
             self.listTemplate = listTemplate
             
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
@@ -172,24 +173,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     // MARK: Private
     
-    private func makePlayItem() -> CPListItem {
-        let item = CPListItem(text: "Listen Live", detailText: nil)
-        if RadioPlayerController.shared.isPlaying {
-            item.setImage(nil)
-            item.isPlaying = true
-        } else {
-            item.setImage(UIImage(systemName: "play.fill.circle"))
-            item.isPlaying = false
-        }
-
-        item.handler = { selectableItem, completionHandler in
-            RadioPlayerController.shared.play()
-            self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true)
-            completionHandler()
-        }
-        return item
-    }
-    
     private var playlist: Playlist = .empty
     
     nonisolated func main(_ work: @escaping @Sendable @MainActor () -> ()) {
@@ -203,28 +186,53 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             return
         }
         
-        let playItem = self.makePlayItem()
-        let playSection = CPListSection(items: [playItem])
+        listTemplate.updateSections([
+            self.makePlayerSection(),
+            self.makePlaylistSection()]
+        )
+    }
+    
+    
+    private func makePlayerSection() -> CPListSection {
+        let isPlaying = RadioPlayerController.shared.isPlaying
+        var image = isPlaying
+            ? UIImage(systemName: "pause.fill.circle")
+            : UIImage(systemName: "play.fill.circle")
+        image = image?
+            .withRenderingMode(.alwaysTemplate)
+            .withTintColor(.gray)
+                
+        let item = CPListItem(text: "Listen Live", detailText: nil, image: image)
+        item.isPlaying = isPlaying
         
+        item.handler = { selectableItem, completionHandler in
+            RadioPlayerController.shared.play()
+            self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true)
+            completionHandler()
+        }
+        
+        return CPListSection(items: [item])
+    }
+    
+    private func makePlaylistSection() -> CPListSection {
         let playlistItems = playlist.entries.compactMap { entry in
             switch entry {
             case let entry as Playcut:
                 CPListItem(playcut: entry)
             case _ as Talkset:
-                CPListItem(text: "Talkset", detailText: nil, image: nil)
+                CPListItem(text: nil, detailText: "Talkset", image: nil)
             case let entry as Breakpoint:
-                CPListItem(text: entry.formattedDate, detailText: nil, image: nil)
+                CPListItem(text: nil, detailText: entry.formattedDate, image: nil)
             default:
                 fatalError()
             }
         }
-        let playlistSection = CPListSection(
+        
+        return CPListSection(
             items: playlistItems,
             header: "Recently Played",
             sectionIndexTitle: nil
         )
-        
-        listTemplate.updateSections([playSection, playlistSection])
     }
     
     func observeIsPlaying() {
