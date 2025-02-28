@@ -42,7 +42,7 @@ public final class Logger: Loggable, Sendable {
         LogLevel, _
         message: Any...
     ) {
-        let logStatement = "\(Logger.timestamp()) \(functionName) [\(level)] \(message)"
+        let logStatement = "\(Logger.timestamp()) \(fileName):\(line) \(functionName) [\(level)] \(message)"
         print(logStatement)
         
         Task { @LoggerActor in
