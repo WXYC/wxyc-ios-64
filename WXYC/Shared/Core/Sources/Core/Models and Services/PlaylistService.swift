@@ -34,11 +34,7 @@ extension URLSession: PlaylistFetcher {
 public final class PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
-    public private(set) var playlist: Playlist = .empty {
-        didSet {
-            Log(.info, "Playlist updated with count: \(self.playlist.entries.count)")
-        }
-    }
+    public private(set) var playlist: Playlist = .empty
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -54,11 +50,6 @@ public final class PlaylistService: @unchecked Sendable {
         self.fetchTimer?.setEventHandler {
             Task { @PlaylistActor in
                 let playlist = await self.fetchPlaylist()
-                
-                guard playlist != self.playlist else {
-                    Log(.info, "No change in playlist")
-                    return
-                }
                 
                 if playlist.entries.isEmpty {
                     Log(.info, "Empty playlist")
@@ -90,9 +81,8 @@ public final class PlaylistService: @unchecked Sendable {
         } catch {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            return Playlist.empty
         }
-        
-        return Playlist.empty
     }
     
     // MARK: Private

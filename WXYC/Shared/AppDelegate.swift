@@ -264,6 +264,10 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             PlaylistService.shared.playlist
         } onChange: {
             Task { @MainActor in
+                guard self.playlist != PlaylistService.shared.playlist else {
+                    return
+                }
+                
                 self.playlist = PlaylistService.shared.playlist
                 self.updateListTemplate()
                 self.observePlaylist()
