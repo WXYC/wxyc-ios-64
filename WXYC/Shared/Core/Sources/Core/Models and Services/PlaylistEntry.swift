@@ -119,14 +119,14 @@ public struct Playlist: Codable, Sendable {
     
     public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
     
-    static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
+    public static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
         guard lhs.entries.count == rhs.entries.count else {
             return false
         }
         return zip(lhs.entries.map(\.id), rhs.entries.map(\.id)).allSatisfy(==)
     }
 
-    static func !=(lhs: Playlist, rhs: Playlist) -> Bool {
+    public static func !=(lhs: Playlist, rhs: Playlist) -> Bool {
         !(lhs == rhs)
     }
 }
