@@ -10,11 +10,11 @@ import Logger
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     let cacheCoordinator = CacheCoordinator.WXYCPlaylist
-  
+    
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
-
+    
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -31,7 +31,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
         self.removeDonatedSiriIntentIfNeeded()
 #endif
-
+        
         observeNowPlayingItem()
         
         WidgetCenter.shared.getCurrentConfigurations { result in
@@ -48,7 +48,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         return true
     }
-
+    
     func applicationWillTerminate(_ application: UIApplication) {
         UIApplication.shared.endReceivingRemoteControlEvents()
     }
@@ -101,7 +101,7 @@ extension AppDelegate {
     func shouldRemoveSiriIntent() async throws -> Bool {
         try await !self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
     }
-
+    
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
         RadioPlayerController.shared.play()
         
@@ -117,7 +117,7 @@ extension AppDelegate {
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
-        
+    
     // MARK: CPTemplateApplicationSceneDelegate
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
@@ -126,7 +126,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             
             interfaceController.delegate = self
             self.setUpNowPlaying()
-
+            
             let listTemplate = CPListTemplate(
                 title: "WXYC 89.3 FM",
                 sections: [self.makePlayerSection()]
@@ -195,13 +195,9 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     private func makePlayerSection() -> CPListSection {
         let isPlaying = RadioPlayerController.shared.isPlaying
-        var image = isPlaying
-            ? UIImage(systemName: "pause.fill.circle")
-            : UIImage(systemName: "play.fill.circle")
-        image = image?
-            .withRenderingMode(.alwaysTemplate)
-            .withTintColor(.gray)
-                
+        let image = isPlaying
+        ? UIImage(systemName: "pause.fill")
+        : UIImage(systemName: "play.fill")
         let item = CPListItem(text: "Listen Live", detailText: nil, image: image)
         item.isPlaying = isPlaying
         
@@ -276,7 +272,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         
         self.updateListTemplate()
     }
-
 }
 
 class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
