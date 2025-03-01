@@ -100,6 +100,8 @@ public final class RadioPlayerController: @unchecked Sendable {
     
     private let radioPlayer: RadioPlayer
     private var inputObservations: [any Sendable] = []
+    
+    private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
 }
 
 private extension RadioPlayerController {
@@ -107,9 +109,8 @@ private extension RadioPlayerController {
     
     func playbackStalled(_ notification: Notification) {
         Log(.error, "Playback stalled: \(notification)")
-        // Turn it off and on again.
         self.radioPlayer.pause()
-        self.radioPlayer.play()
+        self.attemptReconnectWithExponentialBackoff()
     }
     
     func sessionInterrupted(notification: Notification) {
@@ -118,14 +119,47 @@ private extension RadioPlayerController {
             return
         }
         
+        guard let interruptionReason = notification.interruptionReason else {
+            return
+        }
+        
         switch interruptionType {
         case .began:
-            self.pause()
+            // `.routeDisconnected` types are not balanced by a `.ended` notification.
+            if interruptionReason == .routeDisconnected {
+                return
+            } else {
+                self.pause()
+            }
         case .shouldResume:
             fallthrough
         case .ended:
             self.play()
             return
+        }
+    }
+    
+    private func attemptReconnectWithExponentialBackoff() {
+        Task {
+            if radioPlayer.isPlaying {
+                backoffTimer.reset()
+                return
+            }
+            
+            do {
+                radioPlayer.play()
+                try await Task.sleep(nanoseconds: backoffTimer.nextWaitTime().nanoseconds)
+                
+                if !radioPlayer.isPlaying {
+                    attemptReconnectWithExponentialBackoff()
+                } else {
+                    backoffTimer.reset()
+                }
+            } catch {
+                backoffTimer.reset()
+                
+                return
+            }
         }
     }
     
@@ -177,17 +211,12 @@ private extension RadioPlayerController {
 fileprivate extension Notification {
     var interruptionType: InterruptionType? {
         guard let typeValue = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber else {
-            Log(.error, "Could not extract interruption type from notification")
+            Log(.error, "Could not extract interruption type from notification \(self)")
             return nil
         }
         
         guard let type = AVAudioSession.InterruptionType(rawValue: typeValue.uintValue) else {
-            Log(.error, "Could not convert interruption type to AVAudioSession.InterruptionType")
-            return nil
-        }
-        
-        guard let _ = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt else {
-            Log(.error, "Could not extract interruption options from notification")
+            Log(.error, "Could not convert interruption type to AVAudioSession.InterruptionType \(typeValue)")
             return nil
         }
         
@@ -196,7 +225,7 @@ fileprivate extension Notification {
         }
         
         guard let optionsValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt else {
-            Log(.error, "Could not extract interruption options from notification")
+            Log(.error, "Could not extract interruption options from notification \(self)")
             return nil
         }
         
@@ -207,6 +236,20 @@ fileprivate extension Notification {
         
         Log(.error, "Unsupported interruption type: \(type) with options: \(options)")
         return nil
+    }
+    
+    var interruptionReason: AVAudioSession.InterruptionReason? {
+        guard let typeValue = self.userInfo?[AVAudioSessionInterruptionReasonKey] as? NSNumber else {
+            Log(.error, "Could not extract interruption reason from notification: \(self)")
+            return nil
+        }
+        
+        guard let type = AVAudioSession.InterruptionReason(rawValue: typeValue.uintValue) else {
+            Log(.error, "Could not convert interruption reason value to AVAudioSession.InterruptionReason: \(typeValue)")
+            return nil
+        }
+        
+        return type
     }
 }
 
@@ -231,5 +274,11 @@ extension AVAudioSession {
     
     func deactivate() throws {
         try setActive(false)
+    }
+}
+
+extension TimeInterval {
+    var nanoseconds: UInt64 {
+        UInt64(self * 1_000_000_000)
     }
 }
