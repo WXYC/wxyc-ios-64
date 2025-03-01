@@ -12,7 +12,6 @@ import Core
 
 struct RemoteImage: View {
     let playcut: Playcut
-    let placeholder: Image = Image(systemName: "photo")
     @State var artFetcher: AlbumArtworkFetcher
     @State var artwork: UIImage?
     
@@ -28,11 +27,19 @@ struct RemoteImage: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
-                placeholder.renderingMode(.original)
+                Rectangle()
+                    .aspectRatio(contentMode: .fit)
+                    .background(.gray)
+                    .task {
+                        artwork = await artFetcher.fetchArtwork()
+                    }
             }
         }
         .task {
-            artwork = await artFetcher.fetchArtwork()
+            let fetchedArtwork = await artFetcher.fetchArtwork()
+            withAnimation(.easeInOut(duration: 0.5)) {
+                artwork = fetchedArtwork
+            }
         }
     }
 }
