@@ -12,9 +12,16 @@ import SwiftUI
 import Core
 import Logger
 
+struct IntentError: Error {
+    let description: String
+}
+
 public struct PlayWXYC: AudioPlaybackIntent {
-    public static let title: LocalizedStringResource = "WXYC"
+    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Plays WXYC."
+    public static let isDiscoverable = true
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "WXYC"
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
@@ -24,22 +31,20 @@ public struct PlayWXYC: AudioPlaybackIntent {
 }
 
 public struct WhatsPlayingOnWXYC: AppIntent {
-    public static let title: LocalizedStringResource = "What’s Playing on WXYC?"
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    public static let openAppWhenRun = false
     public static let description = "Find out what's currently playing."
     public static let isDiscoverable = true
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "What’s Playing on WXYC?"
 
     public init() { }
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
-            Log(.error, "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
-            return .result(
-                value: "Something went wrong. Please try again.",
-                dialog: "Something went wrong. Please try again.",
-                view: EmptyView()
-            )
+            let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
+            Log(.error, error.description)
+            throw error
         }
+        
         let value = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
         return .result(
             value: value,
