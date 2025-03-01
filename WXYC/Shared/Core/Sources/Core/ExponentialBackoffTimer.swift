@@ -1,0 +1,45 @@
+//
+//  ExponentialBackoffTimer.swift
+//  Core
+//
+//  Created by Jake Bromberg on 3/1/25.
+//
+
+import Foundation
+
+struct ExponentialBackoff {
+    // Tracks the number of connection attempts.
+    private(set) var numberOfAttempts: UInt = 0
+    
+    let initialWaitTime: TimeInterval
+    let maximumWaitTime: TimeInterval
+    
+    /// Returns the wait time for the next attempt.
+    /// - Note: The first attempt returns 0.0 (i.e. immediate attempt).
+    mutating func nextWaitTime() -> TimeInterval {
+        // For the first attempt, immediately return 0.0.
+        if numberOfAttempts == 0 {
+            numberOfAttempts += 1
+            return 0.0
+        }
+        
+        // Calculate the multiplier as 2^(numberOfAttempts - 1)
+        let multiplier = pow(2.0, Double(numberOfAttempts - 1))
+        let exponentialWaitTime = initialWaitTime * multiplier
+        
+        // Add a small random addition (between 0 and 1) to avoid synchronization issues.
+        let randomWaitAddition = Double.random(in: 0..<1)
+        let randomExponentialWaitTime = exponentialWaitTime + randomWaitAddition
+        
+        // Ensure the wait time is within the specified bounds.
+        let finalWaitTime = min(max(0.0, randomExponentialWaitTime), maximumWaitTime)
+        
+        numberOfAttempts += 1
+        return finalWaitTime
+    }
+    
+    /// Resets the attempt counter.
+    mutating func reset() {
+        numberOfAttempts = 0
+    }
+}
