@@ -15,6 +15,20 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "236609B92D72D0420057E268"
+               BuildableName = "WatchXYC.app"
+               BlueprintName = "WatchXYC"
+               ReferencedContainer = "container:WXYC.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "2366FA1C2D72CE880057E268"
                BuildableName = "WXYC.app"
                BlueprintName = "WXYC"
@@ -44,9 +58,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2366FA1C2D72CE880057E268"
-            BuildableName = "WXYC.app"
-            BlueprintName = "WXYC"
+            BlueprintIdentifier = "236609B92D72D0420057E268"
+            BuildableName = "WatchXYC.app"
+            BlueprintName = "WatchXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -61,9 +75,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "2366FA1C2D72CE880057E268"
-            BuildableName = "WXYC.app"
-            BlueprintName = "WXYC"
+            BlueprintIdentifier = "236609B92D72D0420057E268"
+            BuildableName = "WatchXYC.app"
+            BlueprintName = "WatchXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
