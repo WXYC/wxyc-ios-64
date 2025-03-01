@@ -12,6 +12,10 @@ import Combine
 import OpenNSFW
 import Logger
 
+protocol ArtworkFetcher: Sendable {
+    func fetchArtwork(for playcut: Playcut) async throws -> UIImage
+}
+
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
 public final actor ArtworkService {
     public static let shared = ArtworkService(fetchers: [
@@ -51,46 +55,5 @@ public final actor ArtworkService {
         
         Log(.error, "No artwork found for \(playcut.id) using any fetcher")
         return nil
-    }
-}
-
-protocol ArtworkFetcher: Sendable {
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage
-}
-
-// TODO: Remove this and replace with `CachingArtworkFetcher`.
-extension CacheCoordinator: ArtworkFetcher {
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
-        let cachedData: Data = try await self.value(for: playcut)
-        guard let artwork = UIImage(data: cachedData) else {
-            throw ServiceErrors.noCachedResult
-        }
-        
-        return artwork
-    }
-    
-    func set(artwork: UIImage, for playcut: Playcut) async {
-        let artworkData = artwork.pngData()
-        self.set(value: artworkData, for: playcut, lifespan: .oneDay)
-    }
-}
-
-internal final class CachingArtworkFetcher: ArtworkFetcher {
-    private let cacheCoordinator: CacheCoordinator
-    private let fetcher: ArtworkFetcher
-    
-    internal init(
-        fetcher: ArtworkFetcher,
-        cacheCoordinator: CacheCoordinator = .AlbumArt
-    ) {
-        self.fetcher = fetcher
-        self.cacheCoordinator = cacheCoordinator
-    }
-    
-    internal func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
-        let artwork = try await self.fetcher.fetchArtwork(for: playcut)
-        await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .oneDay)
-        
-        return artwork
     }
 }
