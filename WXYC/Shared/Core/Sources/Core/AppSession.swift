@@ -18,5 +18,6 @@ public func validateCollection(_ collection: any Collection, label: String) -> B
         return false
     }
     
+    Log(.info, "\(label) is valid. Session duration: \(SessionStartTimer.duration())")
     return true
 }
