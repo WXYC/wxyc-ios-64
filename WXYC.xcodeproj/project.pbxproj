@@ -90,7 +90,6 @@
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/PlayerPage.swift,
 				WatchXYC/PlaylistPage.swift,
-				"WatchXYC/Preview Content/Preview Assets.xcassets",
 				WatchXYC/RemoteImage.swift,
 				WatchXYC/RootTabView.swift,
 				WatchXYC/WatchXYCApp.swift,

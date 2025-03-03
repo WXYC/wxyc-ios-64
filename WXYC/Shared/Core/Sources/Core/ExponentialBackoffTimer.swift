@@ -7,16 +7,21 @@
 
 import Foundation
 
-struct ExponentialBackoff {
+public struct ExponentialBackoff {
     // Tracks the number of connection attempts.
     private(set) var numberOfAttempts: UInt = 0
     
     let initialWaitTime: TimeInterval
     let maximumWaitTime: TimeInterval
     
+    public init(initialWaitTime: TimeInterval = 0.25, maximumWaitTime: TimeInterval = 10.0) {
+        self.initialWaitTime = initialWaitTime
+        self.maximumWaitTime = maximumWaitTime
+    }
+    
     /// Returns the wait time for the next attempt.
     /// - Note: The first attempt returns 0.0 (i.e. immediate attempt).
-    mutating func nextWaitTime() -> TimeInterval {
+    public mutating func nextWaitTime() -> TimeInterval {
         // For the first attempt, immediately return 0.0.
         if numberOfAttempts == 0 {
             numberOfAttempts += 1
@@ -39,7 +44,13 @@ struct ExponentialBackoff {
     }
     
     /// Resets the attempt counter.
-    mutating func reset() {
+    public mutating func reset() {
         numberOfAttempts = 0
+    }
+}
+
+public extension TimeInterval {
+    var nanoseconds: UInt64 {
+        UInt64(self * 1_000_000_000)
     }
 }

@@ -73,6 +73,7 @@ struct PlayerPage: View {
 
                     Text(content.songTitle)
                         .font(.headline)
+                        .foregroundStyle(headlineColor)
                         .background(HeightReader())
 
                     Text(content.artist)
@@ -83,7 +84,15 @@ struct PlayerPage: View {
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        RadioPlayerController.shared.toggle()
+                        AVAudioSession.sharedInstance().activate { @MainActor activated, error in
+                            if activated {
+                                Task { @MainActor in
+                                    RadioPlayerController.shared.toggle()
+                                }
+                            } else {
+                                Log(.error, "Failed to activate audio session: \(String(describing: error))")
+                            }
+                        }
                     }) {
                         Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))
@@ -107,12 +116,20 @@ struct PlayerPage: View {
         }
     }
     
-    var subheadlineColor: Color {
-        #if os(tvOS)
-        Color.init(white: 0.75)
-        #else
+    var headlineColor: Color {
+#if os(tvOS)
         .gray
-        #endif
+#else
+        Color.init(white: 1)
+#endif
+    }
+    
+    var subheadlineColor: Color {
+#if os(tvOS)
+        Color.init(white: 0.75)
+#else
+            .gray
+#endif
     }
 
     var cornerRadius: CGFloat {

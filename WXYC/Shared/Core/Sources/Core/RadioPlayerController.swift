@@ -154,6 +154,7 @@ private extension RadioPlayerController {
     }
     
     private func attemptReconnectWithExponentialBackoff() {
+        Log(.info, "Attempting to reconnect with exponential backoff.")
         Task {
             if radioPlayer.isPlaying {
                 backoffTimer.reset()
@@ -292,11 +293,5 @@ extension AVAudioSession {
     
     func deactivate() throws {
         try setActive(false)
-    }
-}
-
-extension TimeInterval {
-    var nanoseconds: UInt64 {
-        UInt64(self * 1_000_000_000)
     }
 }

@@ -11,13 +11,18 @@ import UIKit
 import Logger
 import Observation
 
-public struct NowPlayingItem: Sendable {
+public struct NowPlayingItem: Sendable, Equatable {
     public let playcut: Playcut
     public var artwork: UIImage?
     
     public init(playcut: Playcut, artwork: UIImage? = nil) {
         self.playcut = playcut
         self.artwork = artwork
+    }
+    
+    public static func ==(lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
+        lhs.playcut == rhs.playcut
+        && lhs.artwork == rhs.artwork
     }
 }
 
@@ -41,28 +46,42 @@ public final class NowPlayingService: @unchecked Sendable {
     }
     
     private func observe() {
-        self.playlistServiceObservation =
+        let playlist =
             withObservationTracking {
-                self.playlistService.playlist
+                PlaylistService.shared.playlist
             } onChange: {
-                Task {
-                    Log(.info, "playlist updated")
-                    guard let playcut = self.playlistService.playlist.playcuts.first else {
-                        Log(.info, "Playlist is empty. Session duration: \(SessionStartTimer.duration())")
-
-                        return
-                    }
-                    
-                    let artwork = await self.artworkService.getArtwork(for: playcut)
-                    await self.updateNowPlayingItem(
-                        nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork)
-                    )
-                    await self.observe()
+                Task { @MainActor in
+                    self.observe()
                 }
             }
+        
+        if validateCollection(playlist.entries, label: "NowPlayingService entries"),
+           let playcut = playlist.playcuts.first {
+            Task {
+                let artwork = await self.artworkService.getArtwork(for: playcut)
+                self.updateNowPlayingItem(
+                    nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork)
+                )
+            }
+        } else {
+            Log(.info, "Playlist is empty. Now trying exponential backoff. Session duration: \(SessionStartTimer.duration())")
+            Task { @MainActor in
+                let nanoseconds = self.backoffTimer.nextWaitTime().nanoseconds
+                Task {
+                    try await Task.sleep(nanoseconds: nanoseconds)
+                    self.observe()
+                }
+            }
+        }
     }
     
+    var backoffTimer = ExponentialBackoff()
+    
     private func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) {
+        guard self.nowPlayingItem != nowPlayingItem else {
+            Log(.info, "No change in nowPlayingItem")
+            return
+        }
         Log(.info, "Setting nowPlayingItem \(nowPlayingItem)")
         self.nowPlayingItem = nowPlayingItem
     }
