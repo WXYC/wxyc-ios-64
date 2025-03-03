@@ -72,9 +72,7 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        Log(.info, "Setting value for key '\(key)'")
-        Log(.info, "Value is nil: \(value == nil)")
-        Log(.info, "Lifespan: \(lifespan)")
+        Log(.info, "Setting value for key '\(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan)")
         
         if let value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)

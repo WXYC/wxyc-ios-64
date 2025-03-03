@@ -55,6 +55,8 @@ public final class PlaylistService: @unchecked Sendable {
                     Log(.info, "Empty playlist")
                 }
                 
+                Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
+                
                 self.playlist = playlist
                 await self.cacheCoordinator.set(
                     value: self.playlist,

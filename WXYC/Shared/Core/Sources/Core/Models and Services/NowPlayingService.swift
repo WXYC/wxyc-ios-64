@@ -48,7 +48,7 @@ public final class NowPlayingService: @unchecked Sendable {
                 Task {
                     Log(.info, "playlist updated")
                     guard let playcut = self.playlistService.playlist.playcuts.first else {
-                        Log(.info, "Playlist is empty. Session duration: \(Date.now.timeIntervalSince1970 - SessionStartTime)")
+                        Log(.info, "Playlist is empty. Session duration: \(SessionStartTimer.duration())")
 
                         return
                     }

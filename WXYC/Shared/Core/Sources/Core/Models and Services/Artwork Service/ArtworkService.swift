@@ -34,10 +34,11 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
+        let timer = Timer.start()
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
-                Log(.info, "Artwork found for \(playcut.id) using fetcher \(fetcher)")
+                Log(.info, "Artwork \(artwork) found for \(playcut.id) using fetcher \(fetcher) after \(timer.duration()) seconds")
 
 #if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
@@ -49,7 +50,7 @@ public final actor ArtworkService {
                 await self.cacheCoordinator.set(artwork: artwork, for: playcut)
                 return artwork
             } catch {
-                Log(.error, "No artwork found for \(playcut.id) using fetcher \(fetcher): \(error)")
+                Log(.info, "No artwork found for \(playcut.id) using fetcher \(fetcher): \(error)")
             }
         }
         
