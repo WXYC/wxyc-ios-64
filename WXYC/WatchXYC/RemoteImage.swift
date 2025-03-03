@@ -11,13 +11,10 @@ import SwiftUI
 import Core
 
 struct RemoteImage: View {
-    let playcut: Playcut
-    @State var artFetcher: AlbumArtworkFetcher
     @State var artwork: UIImage?
     
-    init(playcut: Playcut, contentMode: ContentMode = .fit) {
+    init(playcut: Playcut) {
         self.playcut = playcut
-        self.artFetcher = AlbumArtworkFetcher(playcut: playcut)
     }
 
     var body: some View {
@@ -27,19 +24,17 @@ struct RemoteImage: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
-                Rectangle()
+                Image("logo", bundle: .main)
+                    .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .background(.gray)
                     .task {
-                        artwork = await artFetcher.fetchArtwork()
+                        self.artwork = await ArtworkService.shared.getArtwork(for: playcut)
                     }
             }
         }
-        .task {
-            let fetchedArtwork = await artFetcher.fetchArtwork()
-            withAnimation(.easeInOut(duration: 0.5)) {
-                artwork = fetchedArtwork
-            }
-        }
     }
+    
+    // MARK: Private
+    
+    let playcut: Playcut
 }

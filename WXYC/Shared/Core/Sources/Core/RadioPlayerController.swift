@@ -82,9 +82,23 @@ public final class RadioPlayerController: @unchecked Sendable {
             : self.radioPlayer.play()
     }
     
+    private var audioActivationTask: Task<Bool, any Error>?
+    
     public func play() {
         do {
+            #if os(watchOS)
+            AVAudioSession.sharedInstance().activate { @MainActor activated, error in
+                if activated {
+                    Task { @MainActor in
+                        RadioPlayerController.shared.play()
+                    }
+                } else {
+                    Log(.error, "Failed to activate audio session: \(String(describing: error))")
+                }
+            }
+            #else
             try AVAudioSession.shared.activate()
+            #endif
         } catch {
             Log(.error, "RadioPlayerController could not start playback: \(error)")
         }
@@ -239,6 +253,9 @@ fileprivate extension Notification {
     }
     
     var interruptionReason: AVAudioSession.InterruptionReason? {
+#if os(tvOS)
+        return nil
+#else
         guard let typeValue = self.userInfo?[AVAudioSessionInterruptionReasonKey] as? NSNumber else {
             Log(.error, "Could not extract interruption reason from notification: \(self)")
             return nil
@@ -250,6 +267,7 @@ fileprivate extension Notification {
         }
         
         return type
+#endif
     }
 }
 
