@@ -55,6 +55,20 @@ public final class PlaylistService: @unchecked Sendable {
                     Log(.info, "Empty playlist")
                 }
                 
+                guard playlist != self.playlist else {
+                    Log(.info,
+                        """
+                        No change in playlist: 
+                        old count \(self.playlist.entries.count)
+                        new count \(playlist.entries.count)
+                        """
+                    )
+                    
+                    return
+                }
+                
+                Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
+                
                 self.playlist = playlist
                 await self.cacheCoordinator.set(
                     value: self.playlist,
@@ -93,5 +107,7 @@ public final class PlaylistService: @unchecked Sendable {
     private let fetchTimer: DispatchSource?
     
     @globalActor
-    private actor PlaylistActor: GlobalActor, Sendable { static let shared = PlaylistActor() }
+    public actor PlaylistActor: GlobalActor, Sendable {
+        public static let shared = PlaylistActor()
+    }
 }

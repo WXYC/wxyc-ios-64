@@ -24,11 +24,6 @@ final class PlaylistDataSource: Sendable {
     
     private(set) var viewModels: [PlaylistCellViewModel] = []
     
-    // I really didn't want to keep a local copy of the playlist here. However, I ran into problems with Swift's
-    // `withObservationTracking` method where the playlist would fetch and update, but would consistently propagate
-    // an empty playlist.
-    private var playlist: Playlist = .empty
-
     private func observePlaylist() {
         let playlist = withObservationTracking {
             PlaylistService.shared.playlist
@@ -36,25 +31,25 @@ final class PlaylistDataSource: Sendable {
             self.observePlaylist()
         }
         
-        self.updateViewModels(with: playlist)
-    }
-    
-    private func updateViewModels(with playlist: Playlist) {
-        guard playlist != self.playlist else {
-            Log(.info,
-                """
-                No change in playlist: 
-                old count \(self.playlist.entries.count)
-                new count \(playlist.entries.count)
-                """
-            )
-            
-            return
+        assert(PlaylistService.shared.playlist == playlist)
+        
+        if validateCollection(PlaylistService.shared.playlist.entries, label: "PlaylistDataSource Playlist") {
+            self.viewModels = playlist.entries
+                .compactMap { $0 as? any PlaylistCellViewModelProducer }
+                .map { $0.cellViewModel }
+        } else {
+            playlistTask?.cancel()
+            playlistTask = Task {
+                if let isCancelled = playlistTask?.isCancelled,
+                   isCancelled {
+                    return
+                }
+                Log(.info, "Received empty playlist, trying exponential backoff.")
+                try await Task.sleep(nanoseconds: backoffTimer.nextWaitTime().nanoseconds)
+                self.observePlaylist()
+            }
         }
-        self.playlist = playlist
-        validateCollection(playlist.entries, label: "PlaylistDataSource Playlist")
-        self.viewModels = playlist.entries
-            .compactMap { $0 as? any PlaylistCellViewModelProducer }
-            .map { $0.cellViewModel }
     }
+    var playlistTask: Task<Void, any Error>?
+    var backoffTimer = ExponentialBackoff(initialWaitTime: 0.3)
 }
