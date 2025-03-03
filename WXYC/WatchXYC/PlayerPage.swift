@@ -75,11 +75,13 @@ struct PlayerPage: View {
                         .font(.headline)
                         .foregroundStyle(headlineColor)
                         .background(HeightReader())
+                        .multilineTextAlignment(.center)
 
                     Text(content.artist)
                         .font(.body)
                         .foregroundStyle(subheadlineColor)
                         .background(HeightReader())
+                        .multilineTextAlignment(.center)
 
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
@@ -111,6 +113,9 @@ struct PlayerPage: View {
             .focusable(true)
             .onPlayPauseCommand {
                 RadioPlayerController.shared.toggle()
+            }
+            .task {
+                RadioPlayerController.shared.play()
             }
             #endif
         }

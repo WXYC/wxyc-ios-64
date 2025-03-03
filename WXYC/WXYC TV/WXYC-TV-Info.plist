@@ -20,14 +20,12 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>wxyc.org</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
 		</dict>
+	</dict>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIImageName</key>
+		<string>LaunchImage</string>
 	</dict>
 </dict>
 </plist>
