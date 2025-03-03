@@ -27,14 +27,22 @@ public extension PlaylistEntry {
         let timeSince1970 = Double(hour) / 1000.0
         let date = Date(timeIntervalSince1970: timeSince1970)
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "h a"
-        
         return dateFormatter.string(from: date)
-
     }
-    
+}
+
+private let dateFormatter: DateFormatter = {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "h a"
+    return dateFormatter
+}()
+
+public extension PlaylistEntry {
     static func ==(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    static func ==(lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
     }
 

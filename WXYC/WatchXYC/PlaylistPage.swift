@@ -75,14 +75,6 @@ struct PlaycutView: View {
     }
 }
 
-struct AlbumArtworkFetcher {
-    let playcut: Playcut
-    
-    func fetchArtwork() async -> UIImage? {
-        await ArtworkService.shared.getArtwork(for: playcut)
-    }
-}
-
 struct BreakpointView: View {
     let date: String
     

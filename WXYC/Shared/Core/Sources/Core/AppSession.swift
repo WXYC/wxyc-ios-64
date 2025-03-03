@@ -9,14 +9,15 @@
 import Foundation
 import Logger
 
-public let SessionStartTime = Date.now.timeIntervalSince1970
+public let SessionStartTimer = Timer.start()
 
 @discardableResult
 public func validateCollection(_ collection: any Collection, label: String) -> Bool {
     if collection.isEmpty {
-        Log(.info, "\(label) is empty. Session duration: \(Date.now.timeIntervalSince1970 - SessionStartTime)")
+        Log(.info, "\(label) is empty. Session duration: \(SessionStartTimer.duration())")
         return false
     }
     
+    Log(.info, "\(label) is valid. Session duration: \(SessionStartTimer.duration())")
     return true
 }

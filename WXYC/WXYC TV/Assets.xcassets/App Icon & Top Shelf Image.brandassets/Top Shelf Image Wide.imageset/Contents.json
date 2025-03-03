@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "app icon top shelf wide.pdf",
+      "idiom" : "tv"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
