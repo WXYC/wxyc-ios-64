@@ -1,6 +1,7 @@
 import UIKit
 
 final class DiscogsArtworkFetcher: ArtworkFetcher {
+    // Steal me
     private static let key    = "tYvsaskeJxOQbWoZSSkh"
     private static let secret = "vZuPZFFDerXIPrBfSNnNyDhXjpIUiyXi"
     

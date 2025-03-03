@@ -78,7 +78,6 @@
 		236629792D72D94A0057E268 /* WatchXYC-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WatchXYC-Info.plist"; sourceTree = "<group>"; };
 		236629952D73905A0057E268 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		236629B32D7390930057E268 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.2.sdk/System/Library/Frameworks/AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
-		236629C12D7391680057E268 /* WXYC-TV-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WXYC-TV-Info.plist"; sourceTree = "<group>"; };
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -103,7 +102,6 @@
 				WatchXYC/RemoteImage.swift,
 				"WXYC TV/Assets.xcassets",
 				"WXYC TV/ContentView.swift",
-				"WXYC TV/Preview Content/Preview Assets.xcassets",
 				"WXYC TV/WXYCTVApp.swift",
 			);
 			target = 236629942D73905A0057E268 /* WXYC TV */;
@@ -1625,7 +1623,7 @@
 				WatchXYC/WatchXYCApp.swift,
 				"WXYC TV/Assets.xcassets",
 				"WXYC TV/ContentView.swift",
-				"WXYC TV/Preview Content/Preview Assets.xcassets",
+				"WXYC TV/WXYC-TV-Info.plist",
 				"WXYC TV/WXYCTVApp.swift",
 			);
 			target = 2366FA1C2D72CE880057E268 /* WXYC */;
@@ -1727,7 +1725,6 @@
 		2366FA142D72CE880057E268 = {
 			isa = PBXGroup;
 			children = (
-				236629C12D7391680057E268 /* WXYC-TV-Info.plist */,
 				236629792D72D94A0057E268 /* WatchXYC-Info.plist */,
 				2366FA1F2D72CE880057E268 /* WXYC */,
 				236609AB2D72D0270057E268 /* Frameworks */,
@@ -2169,12 +2166,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"WXYC/WXYC TV/Preview Content\"";
 				DEVELOPMENT_TEAM = 92V374HC38;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "WXYC-TV-Info.plist";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = "WXYC/WXYC TV/WXYC-TV-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -2198,12 +2193,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"WXYC/WXYC TV/Preview Content\"";
 				DEVELOPMENT_TEAM = 92V374HC38;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "WXYC-TV-Info.plist";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = "WXYC/WXYC TV/WXYC-TV-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
