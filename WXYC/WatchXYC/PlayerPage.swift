@@ -22,54 +22,68 @@ struct PlayerPage: View {
     }
     @State var artwork: UIImage?
     @State private var elementHeights: CGFloat = 0
-    let placeholder: Image = Image(ImageResource(name: "logo", bundle: .main))
+    let placeholder: UIImage? = UIImage(named: "logo")
     
     var content: NowPlayingEntry {
         if let item = NowPlayingService.shared.nowPlayingItem {
             return NowPlayingEntry(item)
         } else {
             return NowPlayingEntry(
-                artist: "WXYC 89.3 FM",
-                songTitle: "Chapel Hill, NC",
-                artwork: nil
+                artist: " ",
+                songTitle: " ",
+                artwork: placeholder
             )
         }
+    }
+    
+    // TODO: Wonky. Tidy up.
+    func image(for geometry: GeometryProxy) -> some View {
+        Group {
+            if let artwork = artwork {
+                format(image: Image(uiImage: artwork), geometry: geometry)
+            } else if let playcut = PlaylistService.shared.playlist.playcuts.first {
+                format(image: Image("logo", bundle: .main), geometry: geometry)
+                    .task {
+                        let artwork = await ArtworkService.shared.getArtwork(for: playcut)
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            self.artwork = artwork
+                        }
+                    }
+            } else {
+                format(image: Image("logo", bundle: .main), geometry: geometry)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
+    }
+    
+    func format(image: Image, geometry: GeometryProxy) -> some View {
+        image
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .cornerRadius(cornerRadius)
+            .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
+            .clipped(antialiased: true)
     }
     
     var body: some View {
         GeometryReader { geometry in
             VStack {
-                if let playcut = PlaylistService.shared.playlist.playcuts.first {
-                    RemoteImage(playcut: playcut)
-                        .cornerRadius(10)
-                        .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
-                        .clipped(antialiased: true)
-                } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
-                }
-                
                 VStack {
+                    image(for: geometry)
+
                     Text(content.songTitle)
                         .font(.headline)
                         .background(HeightReader())
 
                     Text(content.artist)
                         .font(.body)
-                        .foregroundStyle(Color.gray)
+                        .foregroundStyle(subheadlineColor)
                         .background(HeightReader())
 
+                    #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        AVAudioSession.sharedInstance().activate { @MainActor activated, error in
-                            if activated {
-                                Task { @MainActor in
-                                    RadioPlayerController.shared.toggle()
-                                }
-                            } else {
-                                Log(.error, "Failed to activate audio session: \(String(describing: error))")
-                            }
-                        }
+                        RadioPlayerController.shared.toggle()
                     }) {
                         Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))
@@ -81,9 +95,38 @@ struct PlayerPage: View {
                     .clipShape(Circle())
                     .frame(width: 25, height: 25)
                     .background(HeightReader())
+                    #endif
                 }
             }
+            #if os(tvOS)
+            .focusable(true)
+            .onPlayPauseCommand {
+                RadioPlayerController.shared.toggle()
+            }
+            #endif
         }
+    }
+    
+    var subheadlineColor: Color {
+        #if os(tvOS)
+        Color.init(white: 0.75)
+        #else
+        .gray
+        #endif
+    }
+
+    var cornerRadius: CGFloat {
+        #if os(tvOS)
+        30
+        #else
+        10
+        #endif
+    }
+}
+
+extension View where Body: View {
+    var group: Group<Body> {
+        Group<Body> { self.body }
     }
 }
 

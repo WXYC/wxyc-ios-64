@@ -136,7 +136,9 @@ private extension INInteraction {
         
         let activity = NSUserActivity(nowPlayingItem)
         activity.isEligibleForSearch = true
+        #if !os(tvOS)
         activity.isEligibleForPrediction = true
+        #endif
         
         let response = INSearchForMediaIntentResponse(code: .success, userActivity: activity)
         return Self(intent: intent, response: response)

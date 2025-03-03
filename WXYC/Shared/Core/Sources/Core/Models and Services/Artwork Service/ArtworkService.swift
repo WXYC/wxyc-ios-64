@@ -57,3 +57,16 @@ public final actor ArtworkService {
         return nil
     }
 }
+
+public struct FetchArtworkTask: Sendable {
+    let playcut: Playcut
+    
+    public init(playcut: Playcut) {
+        self.playcut = playcut
+    }
+    
+    public func fetchArtwork() async -> UIImage? {
+        // TODO: Inject this
+        await ArtworkService.shared.getArtwork(for: playcut)
+    }
+}
