@@ -27,6 +27,7 @@
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
 		239566A12D7524CE0094A215 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 239566A02D7524CE0094A215 /* UI */; };
+		23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23E9C16A2D776CB1000DC6A3 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1705,6 +1706,7 @@
 				236609B52D72D02D0057E268 /* AVFoundation.framework in Frameworks */,
 				236609B32D72D0270057E268 /* UI in Frameworks */,
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
+				23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
 			);
@@ -1856,6 +1858,7 @@
 				236609AE2D72D0270057E268 /* Logger */,
 				236609B02D72D0270057E268 /* OpenNSFW */,
 				236609B22D72D0270057E268 /* UI */,
+				23E9C16A2D776CB1000DC6A3 /* PostHog */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -1894,6 +1897,9 @@
 			);
 			mainGroup = 2366FA142D72CE880057E268;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				23E9C1692D776CB1000DC6A3 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
 			projectDirPath = "";
@@ -2451,6 +2457,17 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		23E9C1692D776CB1000DC6A3 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.20.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		2366099F2D72CF5A0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2579,6 +2596,11 @@
 		239566A82D7524D50094A215 /* UI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = UI;
+		};
+		23E9C16A2D776CB1000DC6A3 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23E9C1692D776CB1000DC6A3 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

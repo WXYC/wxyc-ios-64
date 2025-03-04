@@ -11,6 +11,7 @@ import AppIntents
 import SwiftUI
 import Core
 import Logger
+import PostHog
 
 struct IntentError: Error {
     let description: String
@@ -25,6 +26,7 @@ public struct PlayWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        PostHogSDK.shared.capture("PlayWXYC intent")
         await RadioPlayerController.shared.play()
         return .result(value: "Now playing WXYC.")
     }
@@ -41,10 +43,15 @@ public struct WhatsPlayingOnWXYC: AppIntent {
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
+            PostHogSDK.shared.capture(
+                "WhatsPlayingOnWXYC error",
+                properties: ["message": error.description]
+            )
             Log(.error, error.description)
             throw error
         }
         
+        PostHogSDK.shared.capture("WhatsPlayingOnWXYC intent")
         let value = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
         return .result(
             value: value,
