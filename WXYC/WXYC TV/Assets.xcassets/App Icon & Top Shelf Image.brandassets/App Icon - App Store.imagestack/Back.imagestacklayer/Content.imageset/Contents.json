@@ -1,8 +1,14 @@
 {
   "images" : [
     {
-      "filename" : "background.pdf",
-      "idiom" : "tv"
+      "filename" : "app store icon tvos background 1280x768.png",
+      "idiom" : "tv",
+      "scale" : "1x"
+    },
+    {
+      "filename" : "app store icon tvos background 2560x1536.png",
+      "idiom" : "tv",
+      "scale" : "2x"
     }
   ],
   "info" : {

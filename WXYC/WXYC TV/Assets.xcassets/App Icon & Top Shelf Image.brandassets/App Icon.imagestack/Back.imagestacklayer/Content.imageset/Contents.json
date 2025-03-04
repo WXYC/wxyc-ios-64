@@ -1,12 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "tv icon logo cropped 960x366.png",
+      "filename" : "app icon tvos background 400x240.png",
       "idiom" : "tv",
       "scale" : "1x"
     },
     {
-      "filename" : "tv icon logo cropped 1960x748.png",
+      "filename" : "app icon tvos background 800x480.png",
       "idiom" : "tv",
       "scale" : "2x"
     }
