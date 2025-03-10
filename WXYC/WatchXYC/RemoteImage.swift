@@ -23,6 +23,7 @@ struct RemoteImage: View {
                 Image(uiImage: artwork)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .transition(.opacity)
             } else {
                 Rectangle()
                     .fill(Color.gray)

@@ -8,7 +8,7 @@ extension URL {
     static let WXYCStream320kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 }
 
-public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable {
+public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hashable {
     var id: UInt64 { get }
     var hour: UInt64 { get }
     var chronOrderID: UInt64 { get }
@@ -50,6 +50,14 @@ public extension PlaylistEntry {
     static func !=(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
         !(lhs.id == rhs.id)
     }
+    
+    static func <(lhs: Self, rhs: any PlaylistEntry) -> Bool {
+        lhs.chronOrderID < rhs.chronOrderID
+    }
+    
+    static func >(lhs: Self, rhs: any PlaylistEntry) -> Bool {
+        rhs.chronOrderID < lhs.chronOrderID
+    }
 }
 
 public struct Breakpoint: PlaylistEntry {
@@ -64,7 +72,7 @@ public struct Talkset: PlaylistEntry {
     public let chronOrderID: UInt64
 }
 
-public struct Playcut: PlaylistEntry {
+public struct Playcut: PlaylistEntry, Hashable {
     public let id: UInt64
     public let hour: UInt64
     public let chronOrderID: UInt64
