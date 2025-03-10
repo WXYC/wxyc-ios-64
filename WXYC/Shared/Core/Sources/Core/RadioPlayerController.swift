@@ -134,24 +134,23 @@ private extension RadioPlayerController {
             return
         }
         
-        guard let interruptionReason = notification.interruptionReason else {
-            return
-        }
+        let interruptionReason = notification.interruptionReason
+        let iterruptionOptions = notification.interruptionOptions
         
         switch interruptionType {
         case .began:
             // `.routeDisconnected` types are not balanced by a `.ended` notification.
             if interruptionReason == .routeDisconnected {
-                PostHogSDK.shared.capture("route disconnected")
+                PostHogSDK.shared.capture("Session Interrupted: route disconnected")
                 return
+            } else if let options = iterruptionOptions,
+                      options.contains(.shouldResume) {
+                PostHogSDK.shared.capture("Session interrupted: should resume")
             } else {
                 self.pause()
             }
-        case .shouldResume:
-            fallthrough
-        case .ended:
+        case .shouldResume, .ended:
             self.play()
-            return
         }
     }
     
@@ -270,6 +269,19 @@ fileprivate extension Notification {
         }
         
         return type
+#endif
+    }
+    
+    var interruptionOptions: AVAudioSession.InterruptionOptions? {
+#if os(tvOS)
+        return nil
+#else
+        guard let typeValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? NSNumber else {
+            Log(.error, "Could not extract interruption reason from notification: \(self)")
+            return nil
+        }
+        
+        return AVAudioSession.InterruptionOptions(rawValue: typeValue.uintValue)
 #endif
     }
 }
