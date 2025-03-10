@@ -123,6 +123,14 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             }
         }
         
+        playlistItems.forEach {
+            $0.handler = { item, completion in
+                completion()
+                item.isEnabled = false
+                item.isEnabled = true
+            }
+        }
+        
         return CPListSection(
             items: playlistItems,
             header: "Recently Played",
