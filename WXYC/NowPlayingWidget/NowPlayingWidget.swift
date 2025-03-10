@@ -9,6 +9,7 @@
 import WidgetKit
 import SwiftUI
 import Core
+import PostHog
 
 final class Provider: TimelineProvider, Sendable {
     func placeholder(in context: Context) -> NowPlayingEntry {
@@ -17,6 +18,11 @@ final class Provider: TimelineProvider, Sendable {
     
     func getSnapshot(in context: Context, completion: @escaping @Sendable (NowPlayingEntry) -> ()) {
         let family = context.family
+        PostHogSDK.shared.capture(
+            "nowplayingwidget getsnapshot",
+            properties: ["family" : String(describing: family)]
+        )
+        
         Task {
             if let nowPlayingItem = await NowPlayingService.shared.fetch() {
                 completion(NowPlayingEntry(nowPlayingItem, family: family))
@@ -28,6 +34,10 @@ final class Provider: TimelineProvider, Sendable {
     
     func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
         let family = context.family
+        PostHogSDK.shared.capture(
+            "nowplayingwidget gettimeline",
+            properties: ["family" : String(describing: family)]
+        )
         Task {
             let nowPlayingItem = await NowPlayingService.shared.fetch() ?? .placeholder
             let timeline = Timeline(

@@ -1,10 +1,11 @@
-import Observation
-import UIKit
 import Core
-import UI
-import MediaPlayer
-import WidgetKit
 import Logger
+import MediaPlayer
+import Observation
+import PostHog
+import UI
+import UIKit
+import WidgetKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -18,6 +19,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        self.setUpAnalytics()
+        PostHogSDK.shared.capture("app launch")
+        
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         } catch {
@@ -52,6 +56,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         UIApplication.shared.endReceivingRemoteControlEvents()
     }
     
+    // MARK: - Private
+    
+    // MARK: Now Playing Observation
+    
     private var nowPlayingItem: Any?
     
     // TODO: Make a macro to encapsulate this.
@@ -67,10 +75,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     func updateNowPlayingInfo(_ nowPlayingItem: NowPlayingItem?) {
+        PostHogSDK.shared.capture("now playing updated")
+        
         NowPlayingInfoCenterManager.shared.update(
             nowPlayingItem: NowPlayingService.shared.nowPlayingItem
         )
         WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    // MARK: PostHog Analytics
+    
+    func setUpAnalytics() {
+        let POSTHOG_API_KEY = "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD"
+        let POSTHOG_HOST = "https://us.i.posthog.com"
+
+        let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
+        
+        PostHogSDK.shared.setup(config)
     }
 }
 

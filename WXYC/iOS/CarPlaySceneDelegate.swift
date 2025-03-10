@@ -9,6 +9,7 @@ import Foundation
 @preconcurrency import CarPlay
 import Logger
 import Core
+import PostHog
 
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
@@ -17,6 +18,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     // MARK: CPTemplateApplicationSceneDelegate
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
+        PostHogSDK.shared.capture("carplay connected")
+        
         Task { @MainActor in
             self.interfaceController = interfaceController
             
@@ -92,8 +95,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     private func makePlayerSection() -> CPListSection {
         let isPlaying = RadioPlayerController.shared.isPlaying
         let image = isPlaying
-        ? UIImage(systemName: "pause.fill")
-        : UIImage(systemName: "play.fill")
+            ? UIImage(systemName: "pause.fill")
+            : UIImage(systemName: "play.fill")
         let item = CPListItem(text: "Listen Live", detailText: nil, image: image)
         item.isPlaying = isPlaying
         
@@ -117,6 +120,14 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 CPListItem(text: nil, detailText: entry.formattedDate, image: nil)
             default:
                 fatalError()
+            }
+        }
+        
+        playlistItems.forEach {
+            $0.handler = { item, completion in
+                completion()
+                item.isEnabled = false
+                item.isEnabled = true
             }
         }
         

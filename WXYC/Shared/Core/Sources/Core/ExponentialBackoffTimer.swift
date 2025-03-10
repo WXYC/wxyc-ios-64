@@ -9,7 +9,7 @@ import Foundation
 
 public struct ExponentialBackoff {
     // Tracks the number of connection attempts.
-    private(set) var numberOfAttempts: UInt = 0
+    public private(set) var numberOfAttempts: UInt = 0
     
     let initialWaitTime: TimeInterval
     let maximumWaitTime: TimeInterval

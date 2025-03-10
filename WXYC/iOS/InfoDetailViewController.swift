@@ -3,6 +3,7 @@ import MessageUI
 import Core
 import UIKit
 import Logger
+import PostHog
 
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!
@@ -90,6 +91,8 @@ extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     private static let subject = "Feedback on the WXYC app"
     
     private func stationFeedbackMailController() -> MFMailComposeViewController {
+        PostHogSDK.shared.capture("feedback email presented")
+        
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = self
         mailComposerVC.setToRecipients([Self.feedbackAddress])
@@ -116,7 +119,13 @@ extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     
     func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
         if let error {
+            PostHogSDK.shared.capture(
+                "feedback email error",
+                properties: ["message": error.localizedDescription]
+            )
             Log(.error, "Failed to send feedback email: \(error)")
+        } else {
+            PostHogSDK.shared.capture("feedback email sent")
         }
         controller.dismiss(animated: true, completion: nil)
     }

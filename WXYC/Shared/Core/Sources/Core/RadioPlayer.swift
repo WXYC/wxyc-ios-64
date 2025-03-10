@@ -10,11 +10,13 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Logger
+import PostHog
 
 @MainActor
 internal final class RadioPlayer: Sendable {
     private let streamURL: URL
     private var playerObservation: (any NSObjectProtocol)?
+    private var timer: Timer = Timer.start()
     
     init(streamURL: URL = .WXYCStream128kMP3) {
         self.streamURL = streamURL
@@ -36,13 +38,20 @@ internal final class RadioPlayer: Sendable {
         
     func play() {
         if self.isPlaying {
+            PostHogSDK.shared.capture("already playing")
             return
         }
         
+        PostHogSDK.shared.capture("play")
+        timer = Timer.start()
         self.player.play()
     }
     
     func pause() {
+        PostHogSDK.shared.capture(
+            "pause",
+            properties: ["duration": timer.duration]
+        )
         player.pause()
         self.resetStream()
     }
