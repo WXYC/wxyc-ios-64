@@ -19,7 +19,8 @@ public enum PlaybackState: Sendable {
     case paused
 }
 
-@MainActor @Observable
+@MainActor
+@Observable
 public final class RadioPlayerController: @unchecked Sendable {
     public static let shared = RadioPlayerController()
     public var isPlaying = false
@@ -70,9 +71,7 @@ public final class RadioPlayerController: @unchecked Sendable {
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
         ]
         
-        self.radioPlayer.$isPlaying.observe { @MainActor isPlaying in
-            self.isPlaying = isPlaying
-        }
+        self.observePlayer()
     }
     
     // MARK: Public methods
@@ -118,6 +117,17 @@ public final class RadioPlayerController: @unchecked Sendable {
     private var inputObservations: [any Sendable] = []
     
     private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
+    
+    func observePlayer() {
+        isPlaying = withObservationTracking {
+            self.radioPlayer.isPlaying
+        } onChange: {
+            Task { @MainActor in
+                self.isPlaying = self.radioPlayer.isPlaying
+                self.observePlayer()
+            }
+        }
+    }
 }
 
 private extension RadioPlayerController {

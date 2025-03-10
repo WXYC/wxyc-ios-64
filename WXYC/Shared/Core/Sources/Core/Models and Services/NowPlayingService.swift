@@ -11,7 +11,7 @@ import UIKit
 import Logger
 import Observation
 
-public struct NowPlayingItem: Sendable, Equatable {
+public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
     public var artwork: UIImage?
     
@@ -23,6 +23,10 @@ public struct NowPlayingItem: Sendable, Equatable {
     public static func ==(lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
         lhs.playcut == rhs.playcut
         && lhs.artwork == rhs.artwork
+    }
+    
+    public static func < (lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
+        lhs.playcut.chronOrderID < rhs.playcut.chronOrderID
     }
 }
 

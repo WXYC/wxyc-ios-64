@@ -12,12 +12,13 @@ import SwiftUI
 import Core
 import Logger
 import PostHog
+import UIKit
 
 struct IntentError: Error {
     let description: String
 }
 
-public struct PlayWXYC: AudioPlaybackIntent {
+public struct PlayWXYC: AudioPlaybackIntent, WidgetConfigurationIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Plays WXYC."
     public static let isDiscoverable = true
@@ -30,6 +31,40 @@ public struct PlayWXYC: AudioPlaybackIntent {
         await RadioPlayerController.shared.play()
         return .result(value: "Now playing WXYC.")
     }
+}
+
+public struct PauseWXYC: AudioPlaybackIntent {
+    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    public static let description = "Pauses WXYC"
+    public static let isDiscoverable = false
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "Pause WXYC"
+
+    public init() { }
+    public func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        PostHogSDK.shared.capture("PauseWXYC intent")
+        await RadioPlayerController.shared.pause()
+        return .result(value: "Now pausing WXYC.")
+    }
+}
+
+public struct ToggleWXYC: AudioPlaybackIntent {
+    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    public static let description = "Toggles WXYC Playback"
+    public static let isDiscoverable = false
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "Toggle WXYC"
+
+    public init() { }
+    public func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        PostHogSDK.shared.capture("ToggleWXYC intent")
+        await RadioPlayerController.shared.toggle()
+        return .result(value: "Now toggling WXYC.")
+    }
+}
+
+extension PlayWXYC: ControlConfigurationIntent {
+    
 }
 
 public struct WhatsPlayingOnWXYC: AppIntent {
