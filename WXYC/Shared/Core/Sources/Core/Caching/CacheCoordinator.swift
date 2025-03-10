@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Logger
+import PostHog
 
 let DefaultLifespan: TimeInterval = 30
 
@@ -40,8 +41,7 @@ public final actor CacheCoordinator {
                 throw ServiceErrors.noCachedResult
             }
             
-            let cachedRecord = try Self.decoder.decode(CachedRecord<Value>.self, from: encodedCachedRecord)
-            
+            let cachedRecord = try self.decode(CachedRecord<Value>.self, encodedCachedRecord)
             
             // nil out record, if expired
             guard !cachedRecord.isExpired else {
@@ -81,6 +81,9 @@ public final actor CacheCoordinator {
                 self.cache.set(object: encodedCachedRecord, for: key)
             } catch {
                 Log(.error, "Failed to encode value for \(key): \(error)")
+                PostHogSDK.shared.capture("CacheCoordinator: Failed to encode value", properties: [
+                    "error" : String(describing: error),
+                ])
             }
         } else {
             self.cache.set(object: nil, for: key)
@@ -89,13 +92,24 @@ public final actor CacheCoordinator {
     
     // MARK: Private methods
     
+    private nonisolated func decode<T>(_ type: T.Type, _ value: Data) throws -> T where T: Decodable {
+        do {
+            return try Self.decoder.decode(T.self, from: value)
+        } catch {
+            PostHogSDK.shared.capture("CacheCoordinator: Failed to decode value", properties: [
+                "error" : String(describing: error),
+            ])
+            throw error
+        }
+    }
+    
     private nonisolated func purgeRecords() {
         Task {
             Log(.info, "Purging records")
             let cache = await self.cache
             for (key, value) in cache.allRecords() {
                 do {
-                    let record = try Self.decoder.decode(CachedRecord<Data>.self, from: value)
+                    let record = try self.decode(CachedRecord<Data>.self, value)
                     if record.isExpired || record.lifespan == .distantFuture {
                         cache.set(object: nil, for: key)
                     }
