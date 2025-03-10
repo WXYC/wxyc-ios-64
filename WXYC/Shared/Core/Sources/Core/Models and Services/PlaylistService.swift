@@ -9,6 +9,7 @@
 import Foundation
 import Observation
 import Logger
+import PostHog
 
 protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
@@ -95,6 +96,10 @@ public final class PlaylistService: @unchecked Sendable {
         } catch {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            PostHogSDK.shared.capture(
+                "Playlist fetch error",
+                properties: ["error": "\(error)"]
+            )
             return Playlist.empty
         }
     }
