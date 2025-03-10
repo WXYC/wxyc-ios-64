@@ -11,6 +11,7 @@ import AVFoundation
 import MediaPlayer
 import Logger
 import UIKit
+import PostHog
 
 public enum PlaybackState: Sendable {
     case initialized
@@ -141,6 +142,7 @@ private extension RadioPlayerController {
         case .began:
             // `.routeDisconnected` types are not balanced by a `.ended` notification.
             if interruptionReason == .routeDisconnected {
+                PostHogSDK.shared.capture("route disconnected")
                 return
             } else {
                 self.pause()

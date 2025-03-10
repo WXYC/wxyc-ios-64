@@ -1,12 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "tv icon logo cropped 960x366.png",
+      "filename" : "tv icon logo cropped 300x114.png",
       "idiom" : "tv",
       "scale" : "1x"
     },
     {
-      "filename" : "tv icon logo cropped 1960x748.png",
+      "filename" : "tv icon logo cropped 600x229.png",
       "idiom" : "tv",
       "scale" : "2x"
     }
