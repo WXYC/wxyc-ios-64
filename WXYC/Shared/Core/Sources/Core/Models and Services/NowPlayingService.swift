@@ -26,7 +26,7 @@ public struct NowPlayingItem: Sendable, Equatable {
     }
 }
 
-@MainActor @Observable
+@Observable
 public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
@@ -45,15 +45,21 @@ public final class NowPlayingService: @unchecked Sendable {
         self.observe()
     }
     
+    var playcuts: [Playcut] = []
+    
     private func observe() {
         let playlist =
             withObservationTracking {
                 PlaylistService.shared.playlist
             } onChange: {
-                Task { @MainActor in
-                    self.observe()
-                }
+                self.observe()
             }
+        
+        guard playlist.playcuts != playcuts else {
+            return
+        }
+        
+        playcuts = playlist.playcuts
         
         if validateCollection(playlist.entries, label: "NowPlayingService entries"),
            let playcut = playlist.playcuts.first {
