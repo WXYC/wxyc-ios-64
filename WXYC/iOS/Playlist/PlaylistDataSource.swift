@@ -35,8 +35,9 @@ final class PlaylistDataSource: Sendable {
         assert(PlaylistService.shared.playlist == playlist)
         
         if validateCollection(PlaylistService.shared.playlist.entries, label: "PlaylistDataSource Playlist") {
-            PostHogSDK.shared.capture("viewModels loaded",
-                                      properties: ["attempts": backoffTimer.numberOfAttempts]
+            PostHogSDK.shared.capture(
+                "viewModels loaded",
+                properties: ["attempts": backoffTimer.numberOfAttempts]
             )
             self.viewModels = playlist.entries
                 .compactMap { $0 as? any PlaylistCellViewModelProducer }

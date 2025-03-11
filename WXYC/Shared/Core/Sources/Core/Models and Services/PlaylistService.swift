@@ -97,8 +97,11 @@ public final class PlaylistService: @unchecked Sendable {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
             PostHogSDK.shared.capture(
-                "Playlist fetch error",
-                properties: ["error": "\(error)"]
+                "error",
+                properties: [
+                    "error": "\(error)",
+                    "context": "fetchPlaylist"
+                ]
             )
             return Playlist.empty
         }
