@@ -44,8 +44,11 @@ public struct WhatsPlayingOnWXYC: AppIntent {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
             PostHogSDK.shared.capture(
-                "WhatsPlayingOnWXYC error",
-                properties: ["message": error.description]
+                "error",
+                properties: [
+                    "error": "\(error)",
+                    "context": "fetchPlaylist"
+                ]
             )
             Log(.error, error.description)
             throw error

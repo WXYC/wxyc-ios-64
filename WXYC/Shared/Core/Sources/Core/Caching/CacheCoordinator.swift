@@ -81,9 +81,12 @@ public final actor CacheCoordinator {
                 self.cache.set(object: encodedCachedRecord, for: key)
             } catch {
                 Log(.error, "Failed to encode value for \(key): \(error)")
-                PostHogSDK.shared.capture("CacheCoordinator: Failed to encode value", properties: [
-                    "error" : String(describing: error),
-                ])
+                PostHogSDK.shared.capture(
+                    "error",
+                    properties: [
+                        "error": "\(error)",
+                        "context": "CacheCoordinator encode value"
+                    ])
             }
         } else {
             self.cache.set(object: nil, for: key)
@@ -96,9 +99,12 @@ public final actor CacheCoordinator {
         do {
             return try Self.decoder.decode(T.self, from: value)
         } catch {
-            PostHogSDK.shared.capture("CacheCoordinator: Failed to decode value", properties: [
-                "error" : String(describing: error),
-            ])
+            PostHogSDK.shared.capture(
+                "error",
+                properties: [
+                    "error": "\(error)",
+                    "context": "CacheCoordinator decode value"
+                ])
             throw error
         }
     }

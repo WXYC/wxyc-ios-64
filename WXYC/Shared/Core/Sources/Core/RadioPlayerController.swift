@@ -147,6 +147,7 @@ private extension RadioPlayerController {
                       options.contains(.shouldResume) {
                 PostHogSDK.shared.capture("Session interrupted: should resume")
             } else {
+                PostHogSDK.shared.capture("Session interrupted: no reason")
                 self.pause()
             }
         case .shouldResume, .ended:
