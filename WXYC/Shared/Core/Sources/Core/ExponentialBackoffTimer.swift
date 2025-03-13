@@ -7,9 +7,10 @@
 
 import Foundation
 
-public struct ExponentialBackoff {
+public struct ExponentialBackoff: CustomStringConvertible {
     // Tracks the number of connection attempts.
     public private(set) var numberOfAttempts: UInt = 0
+    public private(set) var totalWaitTime: TimeInterval = 0.0
     
     let initialWaitTime: TimeInterval
     let maximumWaitTime: TimeInterval
@@ -40,12 +41,19 @@ public struct ExponentialBackoff {
         let finalWaitTime = min(max(0.0, randomExponentialWaitTime), maximumWaitTime)
         
         numberOfAttempts += 1
+        totalWaitTime += finalWaitTime
+        
         return finalWaitTime
     }
     
     /// Resets the attempt counter.
     public mutating func reset() {
         numberOfAttempts = 0
+        totalWaitTime = 0
+    }
+    
+    public var description: String {
+        "(attempts: \(numberOfAttempts), totalWaitTime \(totalWaitTime))"
     }
 }
 

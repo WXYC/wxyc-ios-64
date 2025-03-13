@@ -147,6 +147,7 @@ private extension RadioPlayerController {
                       options.contains(.shouldResume) {
                 PostHogSDK.shared.capture("Session interrupted: should resume")
             } else {
+                PostHogSDK.shared.capture("Session interrupted: no reason")
                 self.pause()
             }
         case .shouldResume, .ended:
@@ -155,24 +156,25 @@ private extension RadioPlayerController {
     }
     
     private func attemptReconnectWithExponentialBackoff() {
-        Log(.info, "Attempting to reconnect with exponential backoff.")
+        let waitTime = self.backoffTimer.nextWaitTime()
+        Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
         Task {
             if radioPlayer.isPlaying {
-                backoffTimer.reset()
+                self.backoffTimer.reset()
                 return
             }
             
             do {
                 radioPlayer.play()
-                try await Task.sleep(nanoseconds: backoffTimer.nextWaitTime().nanoseconds)
+                try await Task.sleep(nanoseconds: waitTime.nanoseconds)
                 
                 if !radioPlayer.isPlaying {
                     attemptReconnectWithExponentialBackoff()
                 } else {
-                    backoffTimer.reset()
+                    self.backoffTimer.reset()
                 }
             } catch {
-                backoffTimer.reset()
+                self.backoffTimer.reset()
                 
                 return
             }

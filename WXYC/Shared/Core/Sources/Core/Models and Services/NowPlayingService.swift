@@ -26,7 +26,7 @@ public struct NowPlayingItem: Sendable, Equatable {
     }
 }
 
-@MainActor @Observable
+@Observable
 public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
@@ -42,21 +42,28 @@ public final class NowPlayingService: @unchecked Sendable {
     ) {
         self.playlistService = playlistService
         self.artworkService = artworkService
-        self.observe()
+        Task { await self.observe() }
     }
     
-    private func observe() {
-        let playlist =
+    var playcuts: [Playcut] = []
+    
+    private func observe() async {
+        let playlistTask =
             withObservationTracking {
-                PlaylistService.shared.playlist
-            } onChange: {
-                Task { @MainActor in
-                    self.observe()
+                Task {
+                    await PlaylistService.shared.playlist
                 }
+            } onChange: {
+                Task { await self.observe() }
             }
+        
+        let playlist = await playlistTask.value
+        
+        playcuts = playlist.playcuts
         
         if validateCollection(playlist.entries, label: "NowPlayingService entries"),
            let playcut = playlist.playcuts.first {
+            Log(.info, "Playlist contains entries. Updating NowPlayingItem.")
             Task {
                 let artwork = await self.artworkService.getArtwork(for: playcut)
                 self.updateNowPlayingItem(
@@ -64,12 +71,12 @@ public final class NowPlayingService: @unchecked Sendable {
                 )
             }
         } else {
-            Log(.info, "Playlist is empty. Now trying exponential backoff. Session duration: \(SessionStartTimer.duration())")
+            let waitTime = self.backoffTimer.nextWaitTime()
+            Log(.info, "Playlist is empty. Now trying exponential backoff \(self.backoffTimer). Session duration: \(SessionStartTimer.duration())")
             Task { @MainActor in
-                let nanoseconds = self.backoffTimer.nextWaitTime().nanoseconds
                 Task {
-                    try await Task.sleep(nanoseconds: nanoseconds)
-                    self.observe()
+                    try await Task.sleep(nanoseconds: waitTime.nanoseconds)
+                    await self.observe()
                 }
             }
         }

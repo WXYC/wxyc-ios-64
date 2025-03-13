@@ -85,13 +85,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     // MARK: PostHog Analytics
     
-    func setUpAnalytics() {
+    private func setUpAnalytics() {
         let POSTHOG_API_KEY = "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD"
         let POSTHOG_HOST = "https://us.i.posthog.com"
 
         let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
         
         PostHogSDK.shared.setup(config)
+        PostHogSDK.shared.register(["Build Configuration" : self.buildConfiguration()])
+    }
+    
+    private func buildConfiguration() -> String {
+#if DEBUG
+        return "Debug"
+#elseif TEST_FLIGHT
+        return "TestFlight"
+#else
+        return "Release"
+#endif
     }
 }
 
