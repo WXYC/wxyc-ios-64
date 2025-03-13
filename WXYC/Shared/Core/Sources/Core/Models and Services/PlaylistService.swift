@@ -31,8 +31,7 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-@Observable
-public final class PlaylistService: @unchecked Sendable {
+public actor PlaylistService: @unchecked Sendable {
     public static let shared = PlaylistService()
     
     public private(set) var playlist: Playlist = .empty
@@ -56,11 +55,11 @@ public final class PlaylistService: @unchecked Sendable {
                     Log(.info, "Empty playlist")
                 }
                 
-                guard playlist != self.playlist else {
+                guard await playlist != self.playlist else {
                     Log(.info,
                         """
                         No change in playlist: 
-                        old count \(self.playlist.entries.count)
+                        old count \(await self.playlist.entries.count)
                         new count \(playlist.entries.count)
                         """
                     )
@@ -70,7 +69,7 @@ public final class PlaylistService: @unchecked Sendable {
                 
                 Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
                 
-                self.playlist = playlist
+                await self.set(playlist: playlist)
                 await self.cacheCoordinator.set(
                     value: self.playlist,
                     for: CacheCoordinator.playlistKey,
@@ -96,10 +95,8 @@ public final class PlaylistService: @unchecked Sendable {
         } catch {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            PostHogSDK.shared.capture(
-                "Playlist fetch error",
-                properties: ["error": "\(error)"]
-            )
+            PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
+            
             return Playlist.empty
         }
     }
@@ -110,6 +107,10 @@ public final class PlaylistService: @unchecked Sendable {
     private let cachedFetcher: PlaylistFetcher
     private let remoteFetcher: PlaylistFetcher
     private let fetchTimer: DispatchSource?
+    
+    private func set(playlist: Playlist) {
+        self.playlist = playlist
+    }
     
     @globalActor
     public actor PlaylistActor: GlobalActor, Sendable {

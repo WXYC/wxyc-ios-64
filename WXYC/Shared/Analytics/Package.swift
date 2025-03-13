@@ -1,30 +1,31 @@
-// swift-tools-version:6.0
+// swift-tools-version: 6.0
 
 import PackageDescription
 
 let package = Package(
-    name: "Core",
+    name: "Analytics",
     platforms: [
         .iOS(.v18), .watchOS(.v11), .macOS(.v10_14)
     ],
     products: [
-        .library(name: "Core", targets: ["Core"])
+        .library(name: "Analytics", targets: ["Analytics"]),
     ],
     dependencies: [
-        .package(name: "OpenNSFW", path: "../OpenNSFW"),
-        .package(name: "Logger", path: "../Logger"),
-        .package(name: "Analytics", path: "../Analytics"),
         .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.20.0")),
     ],
     targets: [
         .target(
-            name: "Core",
+            name: "Analytics",
             dependencies: [
-                "Analytics",
-                "Logger",
-                "OpenNSFW",
                 .product(name: "PostHog", package: "posthog-ios")
             ]
-        )
+        ),
+//        .testTarget(
+//            name: "AnalyticsTests",
+//            dependencies: [
+//                "Analytics",
+//                .product(name: "PostHog", package: "posthog-ios")
+//            ]
+//        ),
     ]
 )

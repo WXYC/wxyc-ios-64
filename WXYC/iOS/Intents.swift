@@ -43,10 +43,7 @@ public struct WhatsPlayingOnWXYC: AppIntent {
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
-            PostHogSDK.shared.capture(
-                "WhatsPlayingOnWXYC error",
-                properties: ["message": error.description]
-            )
+            PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
             Log(.error, error.description)
             throw error
         }
