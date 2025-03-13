@@ -1,9 +1,9 @@
 import UIKit
+import Secrets
 
 final class DiscogsArtworkFetcher: ArtworkFetcher {
-    // Steal me
-    private static let key    = "tYvsaskeJxOQbWoZSSkh"
-    private static let secret = "vZuPZFFDerXIPrBfSNnNyDhXjpIUiyXi"
+    private static let key    = Secrets.discogsApiKey
+    private static let secret = Secrets.discogsApiSecret
     
     private let session: WebSession
     private let decoder = JSONDecoder()
@@ -37,7 +37,7 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
         components.path = "/database/search"
         components.queryItems = [
             URLQueryItem(name: "artist",  value: playcut.artistName),
-            URLQueryItem(name: "album",   value: playcut.releaseTitle),
+            URLQueryItem(name: "release_title",   value: playcut.releaseTitle),
             URLQueryItem(name: "key", value: Self.key),
             URLQueryItem(name: "secret", value: Self.secret),
         ]

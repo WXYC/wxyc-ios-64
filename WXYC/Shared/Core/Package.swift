@@ -11,9 +11,11 @@ let package = Package(
         .library(name: "Core", targets: ["Core"])
     ],
     dependencies: [
-        .package(name: "OpenNSFW", path: "../OpenNSFW"),
-        .package(name: "Logger", path: "../Logger"),
         .package(name: "Analytics", path: "../Analytics"),
+        .package(name: "Logger", path: "../Logger"),
+        .package(name: "OpenNSFW", path: "../OpenNSFW"),
+        .package(name: "Secrets", path: "../Secrets"),
+        
         .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.20.0")),
     ],
     targets: [
@@ -23,6 +25,8 @@ let package = Package(
                 "Analytics",
                 "Logger",
                 "OpenNSFW",
+                "Secrets",
+                
                 .product(name: "PostHog", package: "posthog-ios")
             ]
         )
