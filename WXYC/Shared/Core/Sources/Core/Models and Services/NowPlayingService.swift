@@ -42,18 +42,22 @@ public final class NowPlayingService: @unchecked Sendable {
     ) {
         self.playlistService = playlistService
         self.artworkService = artworkService
-        self.observe()
+        Task { await self.observe() }
     }
     
     var playcuts: [Playcut] = []
     
-    private func observe() {
-        let playlist =
+    private func observe() async {
+        let playlistTask =
             withObservationTracking {
-                PlaylistService.shared.playlist
+                Task {
+                    await PlaylistService.shared.playlist
+                }
             } onChange: {
-                self.observe()
+                Task { await self.observe() }
             }
+        
+        let playlist = await playlistTask.value
         
         guard playlist.playcuts != playcuts else {
             return
@@ -75,7 +79,7 @@ public final class NowPlayingService: @unchecked Sendable {
                 let nanoseconds = self.backoffTimer.nextWaitTime().nanoseconds
                 Task {
                     try await Task.sleep(nanoseconds: nanoseconds)
-                    self.observe()
+                    await self.observe()
                 }
             }
         }
