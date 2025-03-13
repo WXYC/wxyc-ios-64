@@ -51,7 +51,7 @@ final class PlaylistDataSource: Sendable {
                 .map { $0.cellViewModel }
         } else {
             let waitTime = self.backoffTimer.nextWaitTime()
-            Log(.info, "Received empty playlist, trying exponential backoff: \(waitTime) seconds, \(self.backoffTimer.numberOfAttempts) attempts.")
+            Log(.info, "Received empty playlist, trying exponential backoff: \(self.backoffTimer).")
             try? await Task.sleep(nanoseconds: waitTime.nanoseconds)
             await self.observePlaylist()
         }

@@ -59,14 +59,11 @@ public final class NowPlayingService: @unchecked Sendable {
         
         let playlist = await playlistTask.value
         
-        guard playlist.playcuts != playcuts else {
-            return
-        }
-        
         playcuts = playlist.playcuts
         
         if validateCollection(playlist.entries, label: "NowPlayingService entries"),
            let playcut = playlist.playcuts.first {
+            Log(.info, "Playlist contains entries. Updating NowPlayingItem.")
             Task {
                 let artwork = await self.artworkService.getArtwork(for: playcut)
                 self.updateNowPlayingItem(
@@ -74,11 +71,11 @@ public final class NowPlayingService: @unchecked Sendable {
                 )
             }
         } else {
-            Log(.info, "Playlist is empty. Now trying exponential backoff. Session duration: \(SessionStartTimer.duration())")
+            let waitTime = self.backoffTimer.nextWaitTime()
+            Log(.info, "Playlist is empty. Now trying exponential backoff \(self.backoffTimer). Session duration: \(SessionStartTimer.duration())")
             Task { @MainActor in
-                let nanoseconds = self.backoffTimer.nextWaitTime().nanoseconds
                 Task {
-                    try await Task.sleep(nanoseconds: nanoseconds)
+                    try await Task.sleep(nanoseconds: waitTime.nanoseconds)
                     await self.observe()
                 }
             }
