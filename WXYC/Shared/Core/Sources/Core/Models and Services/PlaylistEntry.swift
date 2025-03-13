@@ -1,5 +1,6 @@
 import Foundation
 import Logger
+import PostHog
 
 extension URL {
     static let WXYCPlaylist = URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=50")!
@@ -115,6 +116,7 @@ public struct Playcut: PlaylistEntry {
             self.releaseTitle = try container.decode(String?.self, forKey: .releaseTitle)
         } catch {
             Log(.error, "Could not decode Playcut: \(error)")
+            PostHogSDK.shared.capture(error: error, context: "Playcut init")
             throw error
         }
     }

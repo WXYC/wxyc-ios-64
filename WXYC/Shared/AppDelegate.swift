@@ -6,6 +6,7 @@ import PostHog
 import UI
 import UIKit
 import WidgetKit
+import Secrets
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -26,6 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         } catch {
             Log(.error, "Could not set AVAudioSession category: \(error)")
+            PostHogSDK.shared.capture(error: error, context: "AppDelegate: Could not set AVAudioSession category")
         }
         
 #if os(iOS)
@@ -86,7 +88,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // MARK: PostHog Analytics
     
     private func setUpAnalytics() {
-        let POSTHOG_API_KEY = "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD"
+        let POSTHOG_API_KEY = Secrets.posthogApiKey
         let POSTHOG_HOST = "https://us.i.posthog.com"
 
         let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)

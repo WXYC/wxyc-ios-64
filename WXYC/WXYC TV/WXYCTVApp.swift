@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PostHog
 
 @main
 struct WXYCTVApp: App {
@@ -13,6 +14,10 @@ struct WXYCTVApp: App {
         WindowGroup {
             ContentView()
         }
+    }
+    
+    init() {
+        PostHogSDK.shared.capture("app launch")
     }
 }
 
