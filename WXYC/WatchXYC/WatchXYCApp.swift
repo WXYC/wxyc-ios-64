@@ -20,6 +20,7 @@ struct WatchXYC: App {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         } catch {
             Log(.error, "Could not set AVAudioSession category: \(error)")
+            PostHogSDK.shared.capture(error: error, context: "AppDelegate: Could not set AVAudioSession category")
         }
     }
     
