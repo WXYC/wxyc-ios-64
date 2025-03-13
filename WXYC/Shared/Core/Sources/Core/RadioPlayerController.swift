@@ -101,6 +101,7 @@ public final class RadioPlayerController: @unchecked Sendable {
             try AVAudioSession.shared.activate()
             #endif
         } catch {
+            PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not start playback")
             Log(.error, "RadioPlayerController could not start playback: \(error)")
         }
         
@@ -191,6 +192,7 @@ private extension RadioPlayerController {
         do {
             try AVAudioSession.shared.deactivate()
         } catch {
+            PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not deactivate")
             Log(.error, "RadioPlayerController could not deactivate: \(error)")
         }
     }

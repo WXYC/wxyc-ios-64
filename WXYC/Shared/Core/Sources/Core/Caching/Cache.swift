@@ -8,6 +8,8 @@
 
 import Foundation
 import Logger
+import PostHog
+import Analytics
 
 protocol Cache: Sendable {
     func object(for key: String) -> Data?
@@ -34,6 +36,16 @@ struct UserDefaultsCache: Cache {
 }
 
 struct StandardCache: Cache, @unchecked Sendable {
+    struct StandardCacheError: Error, ExpressibleByStringLiteral, CustomStringConvertible {
+        let message: String
+        
+        var description: String { message }
+        
+        init(stringLiteral value: String) {
+            self.message = value
+        }
+    }
+    
     private let cache = NSCache<NSString, NSData>()
     
     func object(for key: String) -> Data? {
@@ -43,10 +55,13 @@ struct StandardCache: Cache, @unchecked Sendable {
                 return try Data(contentsOf: fileName)
             } catch {
                 Log(.error, "Failed to read file \(fileName): \(error)")
+                PostHogSDK.shared.capture(error: error, context: "StandardCache object(forKey:): failed to read file")
                 return nil
             }
         } else {
-            Log(.error, "Failed to find Cache Directory, trying NSCache.")
+            let error: StandardCacheError = "Failed to find Cache Directory, trying NSCache."
+            Log(.error, error.description)
+            PostHogSDK.shared.capture(error: error, context: "StandardCache object(forKey:): failed to find Cache Directory")
             let data: NSData? = self.cache.object(forKey: key as NSString)
             return data as? Data
         }
@@ -65,11 +80,15 @@ struct StandardCache: Cache, @unchecked Sendable {
                 }
             }
         } else {
-            Log(.error, "Failed to find Cache Directory, trying NSCache.")
+            let error: StandardCacheError = "Failed to find Cache Directory, trying NSCache."
+            Log(.error, error.description)
+            PostHogSDK.shared.capture(error: error, context: "StandardCache set(object:for:)")
             if let object = object as? NSData {
                 self.cache.setObject(object, forKey: key as NSString)
             } else {
-                Log(.error, "Failed to convert object to NSData, removing old object from cache.")
+                let error: StandardCacheError = "Failed to convert object to NSData, removing old object from cache."
+                Log(.error, error.description)
+                PostHogSDK.shared.capture(error: error, context: "StandardCache set(object:for:)")
                 self.cache.removeObject(forKey: key as NSString)
             }
         }
@@ -79,16 +98,22 @@ struct StandardCache: Cache, @unchecked Sendable {
         let contents: [URL]
         do {
             guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-                Log(.error, "Failed to find Cache Directory.")
+                let error: StandardCacheError = "Failed to find Cache Directory."
+                Log(.error, error.description)
+                PostHogSDK.shared.capture(error: error, context: "StandardCache set(object:for:)")
                 return EmptyCollection()
             }
             contents = try FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
         } catch {
             Log(.error, "Failed to read Cache Directory: \(error.localizedDescription)")
+            PostHogSDK.shared.capture(error: error, context: "StandardCache allRecords")
+            
             return EmptyCollection()
         }
         
-        var contentsIterator = contents.makeIterator()
+        var contentsIterator = contents
+            .filter { FileManager.default.isReadableFile(atPath: $0.absoluteString) }
+            .makeIterator()
         let iterator = AnyIterator<(String, Data)> {
             guard let fileURL = contentsIterator.next() else { return nil }
             do {
@@ -97,6 +122,8 @@ struct StandardCache: Cache, @unchecked Sendable {
                 return (fileName, data)
             } catch {
                 Log(.error, "Failed to read data at \(fileURL): \(error.localizedDescription)")
+                PostHogSDK.shared.capture(error: error, context: "StandardCache allRecords")
+                
                 return nil
             }
         }
