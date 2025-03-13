@@ -11,17 +11,28 @@ import SwiftUI
 import Core
 import Logger
 
-struct PlaylistPage: View {
-    @State var playlist: Playlist = PlaylistService.shared.playlist {
-        didSet {
-            validateCollection(playlist.entries, label: "PlaylistPage Playlist")
+@MainActor
+@Observable
+final class Playlister {
+    var playlist: Playlist = .empty
+    
+    init() {
+        PlaylistService.shared.observe { playlist in
+            print(">>>>> playlist updated")
+            self.playlist = playlist
         }
     }
+    
+    var backoffTimer = ExponentialBackoff()
+}
+
+struct PlaylistPage: View {
+    @State var playlister = Playlister()
     
     var body: some View {
         List {
             Section("Recently Played") {
-                ForEach(PlaylistService.shared.playlist.wrappedEntries) { wrappedEntry in
+                ForEach(playlister.playlist.wrappedEntries) { wrappedEntry in
                     switch wrappedEntry {
                     case .playcut(let playcut):
                         PlaycutView(playcut: playcut)
@@ -38,7 +49,6 @@ struct PlaylistPage: View {
                 }
             }
         }
-        
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
