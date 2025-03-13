@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import Logger
 import PostHog
+import Analytics
 
 let DefaultLifespan: TimeInterval = 30
 
@@ -81,12 +82,7 @@ public final actor CacheCoordinator {
                 self.cache.set(object: encodedCachedRecord, for: key)
             } catch {
                 Log(.error, "Failed to encode value for \(key): \(error)")
-                PostHogSDK.shared.capture(
-                    "error",
-                    properties: [
-                        "error": "\(error)",
-                        "context": "CacheCoordinator encode value"
-                    ])
+                PostHogSDK.shared.capture(error: error, context: "CacheCoordinator encode value")
             }
         } else {
             self.cache.set(object: nil, for: key)
@@ -99,12 +95,7 @@ public final actor CacheCoordinator {
         do {
             return try Self.decoder.decode(T.self, from: value)
         } catch {
-            PostHogSDK.shared.capture(
-                "error",
-                properties: [
-                    "error": "\(error)",
-                    "context": "CacheCoordinator decode value"
-                ])
+            PostHogSDK.shared.capture(error: error, context: "CacheCoordinator decode value")
             throw error
         }
     }

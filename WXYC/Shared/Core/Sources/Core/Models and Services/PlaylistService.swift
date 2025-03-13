@@ -95,13 +95,8 @@ public actor PlaylistService: @unchecked Sendable {
         } catch {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            PostHogSDK.shared.capture(
-                "error",
-                properties: [
-                    "error": "\(error)",
-                    "context": "fetchPlaylist"
-                ]
-            )
+            PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
+            
             return Playlist.empty
         }
     }

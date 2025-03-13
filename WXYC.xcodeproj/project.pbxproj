@@ -27,6 +27,7 @@
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
 		239566A12D7524CE0094A215 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 239566A02D7524CE0094A215 /* UI */; };
+		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
 		23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23E9C16A2D776CB1000DC6A3 /* PostHog */; };
 /* End PBXBuildFile section */
 
@@ -214,6 +215,7 @@
 				236609B52D72D02D0057E268 /* AVFoundation.framework in Frameworks */,
 				236609B32D72D0270057E268 /* UI in Frameworks */,
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
+				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
 				23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
@@ -350,6 +352,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				23DB84792D828090000EB53A /* PBXTargetDependency */,
 				236609A02D72CF5A0057E268 /* PBXTargetDependency */,
 				236609A22D72CF5A0057E268 /* PBXTargetDependency */,
 				236609A42D72CF5A0057E268 /* PBXTargetDependency */,
@@ -367,6 +370,7 @@
 				236609B02D72D0270057E268 /* OpenNSFW */,
 				236609B22D72D0270057E268 /* UI */,
 				23E9C16A2D776CB1000DC6A3 /* PostHog */,
+				23DB847A2D828093000EB53A /* Analytics */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -557,6 +561,10 @@
 		239566A92D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A82D7524D50094A215 /* UI */;
+		};
+		23DB84792D828090000EB53A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 23DB84782D828090000EB53A /* Analytics */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1283,6 +1291,14 @@
 		239566A82D7524D50094A215 /* UI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = UI;
+		};
+		23DB84782D828090000EB53A /* Analytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Analytics;
+		};
+		23DB847A2D828093000EB53A /* Analytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Analytics;
 		};
 		23E9C16A2D776CB1000DC6A3 /* PostHog */ = {
 			isa = XCSwiftPackageProductDependency;

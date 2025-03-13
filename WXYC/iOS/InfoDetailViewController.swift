@@ -4,6 +4,7 @@ import Core
 import UIKit
 import Logger
 import PostHog
+import Analytics
 
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!
@@ -119,12 +120,7 @@ extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     
     func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
         if let error {
-            PostHogSDK.shared.capture(
-                "error",
-                properties: [
-                    "error": "\(error)",
-                    "context": "feedbackEmail"
-                ])
+            PostHogSDK.shared.capture(error: error, context: "feedbackEmail")
             Log(.error, "Failed to send feedback email: \(error)")
         } else {
             PostHogSDK.shared.capture("feedback email sent")
