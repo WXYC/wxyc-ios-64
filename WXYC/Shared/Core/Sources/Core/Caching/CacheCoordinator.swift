@@ -95,6 +95,7 @@ public final actor CacheCoordinator {
         do {
             return try Self.decoder.decode(T.self, from: value)
         } catch {
+            Log(.error, "CacheCoordinator failed to decode value: \(error)")
             PostHogSDK.shared.capture(error: error, context: "CacheCoordinator decode value")
             throw error
         }
@@ -111,6 +112,11 @@ public final actor CacheCoordinator {
                         cache.set(object: nil, for: key)
                     }
                 } catch {
+                    PostHogSDK.shared.capture(
+                        error: error,
+                        context: "CacheCoordinator decode value",
+                        additionalData: ["key" : key]
+                    )
                     Log(.error, "Failed to decode value for \(key): \(error)\nDeleting it anyway.")
                     cache.set(object: nil, for: key)
                 }
