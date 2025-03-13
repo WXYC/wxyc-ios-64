@@ -11,34 +11,33 @@ import Logger
 import Core
 import PostHog
 
+@MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
     
     // MARK: CPTemplateApplicationSceneDelegate
     
-    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
+    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
         PostHogSDK.shared.capture("carplay connected")
         
-        Task { @MainActor in
-            self.interfaceController = interfaceController
+        self.interfaceController = interfaceController
+        
+        interfaceController.delegate = self
+        self.setUpNowPlaying()
+        
+        let listTemplate = CPListTemplate(
+            title: "WXYC 89.3 FM",
+            sections: [self.makePlayerSection()]
+        )
+        self.listTemplate = listTemplate
+        
+        self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
+            Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
             
-            interfaceController.delegate = self
-            self.setUpNowPlaying()
-            
-            let listTemplate = CPListTemplate(
-                title: "WXYC 89.3 FM",
-                sections: [self.makePlayerSection()]
-            )
-            self.listTemplate = listTemplate
-            
-            self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
-                Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
-                
-                self.observeIsPlaying()
-                self.observeNowPlaying()
-                self.observePlaylist()
-            }
+            self.observeIsPlaying()
+            self.observeNowPlaying()
+            self.observePlaylist()
         }
     }
     
@@ -46,7 +45,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         _ templateApplicationScene: CPTemplateApplicationScene,
         didDisconnectInterfaceController interfaceController: CPInterfaceController
     ) {
-        main {
+        Task { @MainActor in
             self.interfaceController = nil
             templateApplicationScene.delegate = self
             
@@ -73,12 +72,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     // MARK: Private
     
     private var playlist: Playlist = .empty
-    
-    nonisolated func main(_ work: @escaping @Sendable @MainActor () -> ()) {
-        Task {
-            await work()
-        }
-    }
     
     private func updateListTemplate() {
         guard let listTemplate else {
