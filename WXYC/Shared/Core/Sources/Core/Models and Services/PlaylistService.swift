@@ -10,6 +10,7 @@ import Foundation
 import Observation
 import Logger
 import PostHog
+import SwiftUI
 
 protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
@@ -31,10 +32,10 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-public actor PlaylistService: @unchecked Sendable {
+public actor PlaylistService {
     public static let shared = PlaylistService()
     
-    public private(set) var playlist: Playlist = .empty
+    @Publishable public private(set) var playlist: Playlist = .empty
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -46,7 +47,7 @@ public actor PlaylistService: @unchecked Sendable {
         self.remoteFetcher = remoteFetcher
         
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
-        self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
+        self.fetchTimer?.schedule(deadline: .now(), repeating: Self.defaultFetchInterval)
         self.fetchTimer?.setEventHandler {
             Task { @PlaylistActor in
                 let playlist = await self.fetchPlaylist()
@@ -102,6 +103,8 @@ public actor PlaylistService: @unchecked Sendable {
     }
     
     // MARK: Private
+    
+    private static let defaultFetchInterval: TimeInterval = 30
     
     private let cacheCoordinator: CacheCoordinator
     private let cachedFetcher: PlaylistFetcher
