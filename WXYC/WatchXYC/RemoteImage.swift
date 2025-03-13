@@ -24,11 +24,14 @@ struct RemoteImage: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             } else {
-                Image("logo", bundle: .main)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                Rectangle()
+                    .fill(Color.gray)
                     .task {
-                        self.artwork = await ArtworkService.shared.getArtwork(for: playcut)
+                        if let artwork = await ArtworkService.shared.getArtwork(for: playcut) {
+                            self.artwork = artwork
+                        } else {
+                            self.artwork = UIImage(named: "logo")
+                        }
                     }
             }
         }
@@ -36,5 +39,5 @@ struct RemoteImage: View {
     
     // MARK: Private
     
-    let playcut: Playcut
+    private let playcut: Playcut
 }

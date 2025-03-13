@@ -1610,7 +1610,6 @@
 				NowPlayingWidget/Assets.xcassets,
 				NowPlayingWidget/Info.plist,
 				NowPlayingWidget/NowPlayingWidget.swift,
-				README.md,
 				Shared/Analytics,
 				Shared/Core,
 				Shared/Logger,

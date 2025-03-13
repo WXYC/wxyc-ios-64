@@ -10,6 +10,7 @@ import Foundation
 import Observation
 import Logger
 import PostHog
+import SwiftUI
 
 protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
@@ -31,10 +32,28 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-public actor PlaylistService: @unchecked Sendable {
+public final class PlaylistService: Sendable {
     public static let shared = PlaylistService()
     
-    public private(set) var playlist: Playlist = .empty
+    @MainActor
+    public private(set) var playlist: Playlist = .empty {
+        didSet {
+            for o in observers {
+                o(self.playlist)
+            }
+        }
+    }
+        
+    public typealias Observer = @MainActor @Sendable (Playlist) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.playlist)
+            self.observers.append(observer)
+        }
+    }
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -46,7 +65,7 @@ public actor PlaylistService: @unchecked Sendable {
         self.remoteFetcher = remoteFetcher
         
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
-        self.fetchTimer?.schedule(deadline: .now(), repeating: 30)
+        self.fetchTimer?.schedule(deadline: .now(), repeating: Self.defaultFetchInterval)
         self.fetchTimer?.setEventHandler {
             Task { @PlaylistActor in
                 let playlist = await self.fetchPlaylist()
@@ -69,7 +88,7 @@ public actor PlaylistService: @unchecked Sendable {
                 
                 Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
                 
-                await self.set(playlist: playlist)
+                self.set(playlist: playlist)
                 await self.cacheCoordinator.set(
                     value: self.playlist,
                     for: CacheCoordinator.playlistKey,
@@ -103,13 +122,15 @@ public actor PlaylistService: @unchecked Sendable {
     
     // MARK: Private
     
+    private static let defaultFetchInterval: TimeInterval = 30
+    
     private let cacheCoordinator: CacheCoordinator
     private let cachedFetcher: PlaylistFetcher
     private let remoteFetcher: PlaylistFetcher
     private let fetchTimer: DispatchSource?
     
     private func set(playlist: Playlist) {
-        self.playlist = playlist
+        Task { @MainActor in self.playlist = playlist }
     }
     
     @globalActor
