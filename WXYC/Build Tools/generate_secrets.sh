@@ -21,6 +21,10 @@ toCamelCase() {
 # Begin generating the Swift file.
 cat <<EOF > "$OUTPUT_FILE"
 // This file is auto-generated. Do not edit.
+
+import ObfuscateMacro
+import Foundation
+
 public struct Secrets {
 EOF
 
@@ -46,7 +50,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     camelKey=$(toCamelCase "$key")
 
     # Append the static property to the Swift file.
-    echo "    public static let ${camelKey} = \"${value}\"" >> "$OUTPUT_FILE"
+    echo "    public static let ${camelKey} = #ObfuscatedString(\"${value}\")" >> "$OUTPUT_FILE"
 done < "$SECRETS_FILE"
 
 # Close the struct declaration.
