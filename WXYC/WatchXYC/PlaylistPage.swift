@@ -11,31 +11,15 @@ import SwiftUI
 import Core
 import Logger
 
+@MainActor
 @Observable
 final class Playlister {
     var playlist: Playlist = .empty
     
     init() {
-        Task { await self.observe() }
-    }
-    
-    func observe() async {
-        let playlistTask =
-            withObservationTracking {
-                Task { await PlaylistService.shared.playlist }
-            } onChange: {
-                Task { await self.observe() }
-            }
-        
-        let playlist = await playlistTask.value
-        
-        if validateCollection(playlist.entries, label: "PlaylistPage entries") {
-            self.playlist = await PlaylistService.shared.playlist
-        } else {
-            let waitTime = self.backoffTimer.nextWaitTime()
-            Log(.info, "Playlist is empty. Now trying exponential backoff \(self.backoffTimer). Session duration: \(SessionStartTimer.duration())")
-            try? await Task.sleep(nanoseconds: waitTime.nanoseconds)
-            Task { await self.observe() }
+        PlaylistService.shared.observe { playlist in
+            print(">>>>> playlist updated")
+            self.playlist = playlist
         }
     }
     
