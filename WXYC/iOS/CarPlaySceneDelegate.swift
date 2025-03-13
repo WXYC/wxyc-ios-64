@@ -88,7 +88,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     private func makePlayerSection() -> CPListSection {
         let isPlaying = RadioPlayerController.shared.isPlaying
         let image = isPlaying
-            ? UIImage(systemName: "pause.fill")
+            ? nil
             : UIImage(systemName: "play.fill")
         let item = CPListItem(text: "Listen Live", detailText: nil, image: image)
         item.isPlaying = isPlaying
