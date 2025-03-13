@@ -9,10 +9,13 @@
 import SwiftUI
 import AVFoundation
 import Logger
+import PostHog
 
 @main
 struct WatchXYC: App {
     init() {
+        PostHogSDK.shared.capture("app launch")
+        
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         } catch {
