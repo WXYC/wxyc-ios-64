@@ -32,10 +32,28 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
-public actor PlaylistService {
+public final class PlaylistService: Sendable {
     public static let shared = PlaylistService()
     
-    @Publishable public private(set) var playlist: Playlist = .empty
+    @MainActor
+    public private(set) var playlist: Playlist = .empty {
+        didSet {
+            for o in observers {
+                o(self.playlist)
+            }
+        }
+    }
+        
+    public typealias Observer = @MainActor @Sendable (Playlist) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.playlist)
+            self.observers.append(observer)
+        }
+    }
     
     init(
         cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
@@ -70,7 +88,7 @@ public actor PlaylistService {
                 
                 Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
                 
-                await self.set(playlist: playlist)
+                self.set(playlist: playlist)
                 await self.cacheCoordinator.set(
                     value: self.playlist,
                     for: CacheCoordinator.playlistKey,
@@ -112,7 +130,7 @@ public actor PlaylistService {
     private let fetchTimer: DispatchSource?
     
     private func set(playlist: Playlist) {
-        self.playlist = playlist
+        Task { @MainActor in self.playlist = playlist }
     }
     
     @globalActor

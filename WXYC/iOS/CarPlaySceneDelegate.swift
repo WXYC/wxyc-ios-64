@@ -167,21 +167,10 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     }
     
     private func observePlaylist() {
-        self.playlist = withObservationTracking {
-            PlaylistService.shared.playlist
-        } onChange: {
-            Task { @MainActor in
-                guard await self.playlist != PlaylistService.shared.playlist else {
-                    return
-                }
-                
-                self.playlist = await PlaylistService.shared.playlist
-                self.updateListTemplate()
-                self.observePlaylist()
-            }
+        PlaylistService.shared.observe { playlist in
+            self.playlist = playlist
+            self.updateListTemplate()
         }
-        
-        self.updateListTemplate()
     }
 }
 
