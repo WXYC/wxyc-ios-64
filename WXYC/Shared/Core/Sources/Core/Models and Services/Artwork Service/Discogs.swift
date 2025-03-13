@@ -33,18 +33,32 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
     }
     
     private func makeSearchURL(for playcut: Playcut) -> URL {
+        var releaseTitle: String? = playcut.releaseTitle
+        if let title = playcut.releaseTitle,
+           title.lowercased() == "s/t" {
+            releaseTitle = playcut.artistName
+        }
+        
         var components = URLComponents(string: "https://api.discogs.com")!
         components.path = "/database/search"
-        components.queryItems = [
-            URLQueryItem(name: "artist",  value: playcut.artistName),
-            URLQueryItem(name: "release_title",   value: playcut.releaseTitle),
-            URLQueryItem(name: "key", value: Self.key),
-            URLQueryItem(name: "secret", value: Self.secret),
-        ]
+        components.queryItems = .init([
+            "artist" : playcut.artistName,
+            "release_title" : releaseTitle,
+            "type" :  "master",
+            "key" : Self.key,
+            "secret" : Self.secret,
+        ])
         
         return components.url!
     }
 }
+
+extension [URLQueryItem] {
+    init(_ parameters: [String: String?]) {
+        self = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
+    }
+}
+
 
 private struct Discogs {
     struct SearchResults: Codable {
