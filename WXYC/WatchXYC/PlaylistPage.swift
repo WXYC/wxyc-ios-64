@@ -11,17 +11,44 @@ import SwiftUI
 import Core
 import Logger
 
-struct PlaylistPage: View {
-    @State var playlist: Playlist = PlaylistService.shared.playlist {
-        didSet {
-            validateCollection(playlist.entries, label: "PlaylistPage Playlist")
+@Observable
+final class Playlister {
+    var playlist: Playlist = .empty
+    
+    init() {
+        Task { await self.observe() }
+    }
+    
+    func observe() async {
+        let playlistTask =
+            withObservationTracking {
+                Task { await PlaylistService.shared.playlist }
+            } onChange: {
+                Task { await self.observe() }
+            }
+        
+        let playlist = await playlistTask.value
+        
+        if validateCollection(playlist.entries, label: "PlaylistPage entries") {
+            self.playlist = await PlaylistService.shared.playlist
+        } else {
+            let waitTime = self.backoffTimer.nextWaitTime()
+            Log(.info, "Playlist is empty. Now trying exponential backoff \(self.backoffTimer). Session duration: \(SessionStartTimer.duration())")
+            try? await Task.sleep(nanoseconds: waitTime.nanoseconds)
+            Task { await self.observe() }
         }
     }
+    
+    var backoffTimer = ExponentialBackoff()
+}
+
+struct PlaylistPage: View {
+    @State var playlister = Playlister()
     
     var body: some View {
         List {
             Section("Recently Played") {
-                ForEach(PlaylistService.shared.playlist.wrappedEntries) { wrappedEntry in
+                ForEach(playlister.playlist.wrappedEntries) { wrappedEntry in
                     switch wrappedEntry {
                     case .playcut(let playcut):
                         PlaycutView(playcut: playcut)
@@ -38,7 +65,6 @@ struct PlaylistPage: View {
                 }
             }
         }
-        
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
