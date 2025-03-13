@@ -2,8 +2,8 @@ import UIKit
 import Secrets
 
 final class DiscogsArtworkFetcher: ArtworkFetcher {
-    private static let key    = Secrets.discogsApiKey
-    private static let secret = Secrets.discogsApiSecret
+    private static let key    = Secrets.discogsApiKeyV2_5
+    private static let secret = Secrets.discogsApiSecretV2_5
     
     private let session: WebSession
     private let decoder = JSONDecoder()
