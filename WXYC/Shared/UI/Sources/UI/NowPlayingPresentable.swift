@@ -33,6 +33,7 @@ public extension NowPlayingPresentable where Self: NowPlayingObserver & Sendable
             self.songLabel.text = playcut.songTitle
             self.artistLabel.text = playcut.artistName
             
+            self.userActivity?.resignCurrent()
             self.userActivity = playcut.userActivity
             self.userActivity?.becomeCurrent()
         }
@@ -77,6 +78,7 @@ extension Optional where Wrapped == Playcut {
             let url: String! = "https://www.google.com/search?q=\(playcut.artistName)+\(playcut.songTitle)"
                 .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
             activity.webpageURL = URL(string: url)
+            activity.title = "\(playcut.songTitle) by \(playcut.artistName)"
             
             return activity
         case .none:
