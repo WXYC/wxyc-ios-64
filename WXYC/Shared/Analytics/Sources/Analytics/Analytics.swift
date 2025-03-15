@@ -4,7 +4,7 @@ public extension PostHogSDK {
     func capture(error: Error, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = [
             "error": "\(error)",
-            "context": "feedbackEmail"
+            "context": context
         ]
         defaultProperties.update(with: additionalData)
         
