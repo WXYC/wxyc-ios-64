@@ -6,7 +6,7 @@ public extension TimeInterval {
 }
 
 /// `NowPlayingService` will throw one of these errors, depending
-enum ServiceErrors: String, LocalizedError {
+enum ServiceError: String, LocalizedError, Codable {
     case noResults
     case noNewData
     case noCachedResult

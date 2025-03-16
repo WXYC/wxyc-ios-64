@@ -19,14 +19,14 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
         let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
         
         guard let url = imageURLs.first(where: { !$0.lastPathComponent.hasPrefix("spacer.gif") }) else {
-            throw ServiceErrors.noResults
+            throw ServiceError.noResults
         }
         
         let imageData = try await session.data(from: url)
         let image = UIImage(data: imageData)
         
         guard let image = image else {
-            throw ServiceErrors.noResults
+            throw ServiceError.noResults
         }
         
         return image

@@ -14,14 +14,14 @@ final class iTunesArtworkFetcher: ArtworkFetcher {
         let results = try decoder.decode(iTunes.SearchResults.self, from: searchData)
         
         guard let result = results.results.first else {
-            throw ServiceErrors.noResults
+            throw ServiceError.noResults
         }
         
         let imageData = try await session.data(from: result.artworkUrl100)
         let image = UIImage(data: imageData)
         
         guard let image = image else {
-            throw ServiceErrors.noResults
+            throw ServiceError.noResults
         }
         
         return image
