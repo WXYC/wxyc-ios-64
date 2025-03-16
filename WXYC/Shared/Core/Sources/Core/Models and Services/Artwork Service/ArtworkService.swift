@@ -18,6 +18,10 @@ protocol ArtworkFetcher: Sendable {
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
 public final actor ArtworkService {
+    enum Error: Codable {
+        case noArtworkAvailable
+    }
+    
     public static let shared = ArtworkService(fetchers: [
         CacheCoordinator.AlbumArt,
         DiscogsArtworkFetcher(),
@@ -34,9 +38,15 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
+        if let error: Error = try? await self.cacheCoordinator.value(for: playcut),
+           error == .noArtworkAvailable {
+            Log(.info, "Previous attempt to find artwork yielded no result for \(playcut.id), skipping")
+        }
+        
         let timer = Timer.start()
         for fetcher in self.fetchers {
             do {
+                
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
                 Log(.info, "Artwork \(artwork) found for \(playcut.id) using fetcher \(fetcher) after \(timer.duration()) seconds")
 
@@ -55,6 +65,8 @@ public final actor ArtworkService {
         }
         
         Log(.error, "No artwork found for \(playcut.id) using any fetcher")
+        await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: playcut, lifespan: .oneDay)
+        
         return nil
     }
 }
