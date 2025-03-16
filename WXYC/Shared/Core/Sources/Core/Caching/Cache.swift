@@ -35,6 +35,10 @@ struct UserDefaultsCache: Cache {
     }
 }
 
+public extension UserDefaults {
+    nonisolated(unsafe) static let wxyc = UserDefaults(suiteName: "group.wxyc.iphone")!
+}
+
 struct StandardCache: Cache, @unchecked Sendable {
     struct StandardCacheError: Error, ExpressibleByStringLiteral, CustomStringConvertible {
         let message: String

@@ -18,26 +18,28 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     // MARK: CPTemplateApplicationSceneDelegate
     
-    func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
+    nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
         PostHogSDK.shared.capture("carplay connected")
         
-        self.interfaceController = interfaceController
-        
-        interfaceController.delegate = self
-        self.setUpNowPlaying()
-        
-        let listTemplate = CPListTemplate(
-            title: "WXYC 89.3 FM",
-            sections: [self.makePlayerSection()]
-        )
-        self.listTemplate = listTemplate
-        
-        self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
-            Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
+        Task { @MainActor in
+            self.interfaceController = interfaceController
             
-            self.observeIsPlaying()
-            self.observeNowPlaying()
-            self.observePlaylist()
+            interfaceController.delegate = self
+            self.setUpNowPlaying()
+            
+            let listTemplate = CPListTemplate(
+                title: "WXYC 89.3 FM",
+                sections: [self.makePlayerSection()]
+            )
+            self.listTemplate = listTemplate
+            
+            self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
+                Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
+                
+                self.observeIsPlaying()
+                self.observeNowPlaying()
+                self.observePlaylist()
+            }
         }
     }
     
@@ -95,7 +97,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         
         item.handler = { selectableItem, completionHandler in
             RadioPlayerController.shared.play()
-            self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true)
+            self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
+                if let error {
+                    Log(.error, "Could not push now playing template: \(error)")
+                    PostHogSDK.shared.capture(error: error, context: "CarPlay: Could not push now playing template")
+                                              }
+            }
             completionHandler()
         }
         

@@ -1,12 +1,14 @@
 import Core
+import Foundation
+import Intents
 import Logger
 import MediaPlayer
 import Observation
 import PostHog
+import Secrets
 import UI
 import UIKit
 import WidgetKit
-import Secrets
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -33,8 +35,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 #if os(iOS)
         // Make status bar white
         UINavigationBar.appearance().barStyle = .black
+        self.donateSiriIntent()
+        #if false
         // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
         self.removeDonatedSiriIntentIfNeeded()
+        #endif
 #endif
         
         observeNowPlayingItem()
@@ -116,6 +121,25 @@ extension AppDelegate {
         case intentDonated
     }
     
+    private func donateSiriIntent() {
+        let placeholder = UIImage.placeholder
+        let mediaItem = INMediaItem(
+            identifier: "Play WXYC",
+            title: "Play WXYC",
+            type: .radioStation,
+            artwork: INImage(imageData: placeholder.pngData()!)
+        )
+        let intent = INPlayMediaIntent.init(mediaContainer: mediaItem)
+        let interaction = INInteraction(intent: intent, response: nil)
+        interaction.donate { error in
+            if let error = error {
+                Log(.error, "Failed to donate Siri intent: \(error)")
+                PostHogSDK.shared.capture(error: error, context: "AppDelegate: Failed to donate Siri intent")
+            }
+        }
+    }
+    
+    #if false
     func removeDonatedSiriIntentIfNeeded() {
         Task {
             guard try await self.shouldRemoveSiriIntent() else {
@@ -130,6 +154,7 @@ extension AppDelegate {
             )
         }
     }
+    #endif
     
     func shouldRemoveSiriIntent() async throws -> Bool {
         try await !self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)

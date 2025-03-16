@@ -7,6 +7,7 @@ import Analytics
 let DefaultLifespan: TimeInterval = 30
 
 public final actor CacheCoordinator {
+    public static let Widgets = CacheCoordinator(cache: UserDefaultsCache())
     public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
     public static let AlbumArt = CacheCoordinator(cache: StandardCache())
     

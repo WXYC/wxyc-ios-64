@@ -12,6 +12,7 @@ import MediaPlayer
 import Logger
 import PostHog
 
+@Observable
 @MainActor
 internal final class RadioPlayer: Sendable {
     private let streamURL: URL
@@ -34,13 +35,14 @@ internal final class RadioPlayer: Sendable {
             }
     }
     
-    @Publishable var isPlaying: Bool = false
+    var isPlaying: Bool = false
         
     func play() {
         if self.isPlaying {
             PostHogSDK.shared.capture("already playing")
             return
         }
+        UserDefaults.wxyc.set(true, forKey: "isPlaying")
         
         PostHogSDK.shared.capture("play")
         timer = Timer.start()
@@ -48,6 +50,7 @@ internal final class RadioPlayer: Sendable {
     }
     
     func pause() {
+        UserDefaults.wxyc.set(false, forKey: "isPlaying")
         PostHogSDK.shared.capture(
             "pause",
             properties: ["duration": timer.duration]
