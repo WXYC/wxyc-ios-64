@@ -65,7 +65,7 @@ final class LastFMArtworkFetcher: ArtworkFetcher {
         let image = UIImage(data: imageData)
         
         guard let image = image else {
-            throw ServiceErrors.noResults
+            throw ServiceError.noResults
         }
         
         return image

@@ -40,7 +40,7 @@ public final actor CacheCoordinator {
     public func value<Value: Codable>(for key: String) async throws -> Value {
         do {
             guard let encodedCachedRecord = self.cache.object(for: key) else {
-                throw ServiceErrors.noCachedResult
+                throw ServiceError.noCachedResult
             }
             
             let cachedRecord = try self.decode(CachedRecord<Value>.self, encodedCachedRecord)
@@ -49,7 +49,7 @@ public final actor CacheCoordinator {
             guard !cachedRecord.isExpired else {
                 self.cache.set(object: nil, for: key) // Nil-out expired record
                 
-                throw ServiceErrors.noCachedResult
+                throw ServiceError.noCachedResult
             }
             
             Log(.info, "cache hit!", key, cachedRecord.value)
