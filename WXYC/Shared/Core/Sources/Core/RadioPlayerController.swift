@@ -77,19 +77,26 @@ public final class RadioPlayerController: @unchecked Sendable {
     // MARK: Public methods
     
     public func toggle() {
-        self.radioPlayer.isPlaying
-            ? self.radioPlayer.pause()
-            : self.radioPlayer.play()
+        if self.isPlaying {
+            PostHogSDK.shared.pause(duration: playbackTimer.duration())
+            self.pause()
+        } else {
+            self.play()
+        }
     }
     
     private var audioActivationTask: Task<Bool, any Error>?
     
     public func play() {
         do {
+            self.playbackTimer = Timer.start()
+            PostHogSDK.shared.play()
+
             #if os(watchOS)
             AVAudioSession.sharedInstance().activate { @MainActor activated, error in
                 if activated {
                     Task { @MainActor in
+                        PostHogSDK.shared.play()
                         RadioPlayerController.shared.play()
                     }
                 } else {
@@ -116,6 +123,7 @@ public final class RadioPlayerController: @unchecked Sendable {
     private let radioPlayer: RadioPlayer
     private var inputObservations: [any Sendable] = []
     
+    private var playbackTimer = Timer.start()
     private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
     
     func observePlayer() {
@@ -135,6 +143,7 @@ private extension RadioPlayerController {
     
     func playbackStalled(_ notification: Notification) {
         Log(.error, "Playback stalled: \(notification)")
+        PostHogSDK.shared.pause(duration: playbackTimer.duration())
         self.radioPlayer.pause()
         self.attemptReconnectWithExponentialBackoff()
     }
@@ -152,16 +161,16 @@ private extension RadioPlayerController {
         case .began:
             // `.routeDisconnected` types are not balanced by a `.ended` notification.
             if interruptionReason == .routeDisconnected {
-                PostHogSDK.shared.capture("Session Interrupted: route disconnected")
-                return
+                PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "route disconnected")
             } else if let options = iterruptionOptions,
                       options.contains(.shouldResume) {
-                PostHogSDK.shared.capture("Session interrupted: should resume")
+                PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "should resume")
             } else {
-                PostHogSDK.shared.capture("Session interrupted: no reason")
+                PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "no reason")
                 self.pause()
             }
         case .shouldResume, .ended:
+            PostHogSDK.shared.play()
             self.play()
         }
     }
@@ -170,13 +179,13 @@ private extension RadioPlayerController {
         let waitTime = self.backoffTimer.nextWaitTime()
         Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
         Task {
-            if radioPlayer.isPlaying {
+            if self.radioPlayer.isPlaying {
                 self.backoffTimer.reset()
                 return
             }
             
             do {
-                radioPlayer.play()
+                self.radioPlayer.play()
                 try await Task.sleep(nanoseconds: waitTime.nanoseconds)
                 
                 if !radioPlayer.isPlaying {
@@ -209,19 +218,23 @@ private extension RadioPlayerController {
     
     func applicationWillEnterForeground(notification: Notification) {
         if self.radioPlayer.isPlaying {
+            PostHogSDK.shared.play()
             self.play()
         } else {
+            PostHogSDK.shared.pause(duration: playbackTimer.duration())
             self.pause()
         }
     }
     
     func remotePlayCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+        PostHogSDK.shared.play()
         self.play()
 
         return .success
     }
     
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+        PostHogSDK.shared.pause(duration: playbackTimer.duration())
         self.pause()
 
         return .success
@@ -229,8 +242,10 @@ private extension RadioPlayerController {
     
     func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         if self.radioPlayer.isPlaying {
+            PostHogSDK.shared.pause(duration: playbackTimer.duration())
             self.pause()
         } else {
+            PostHogSDK.shared.play()
             self.play()
         }
         
