@@ -18,8 +18,9 @@ protocol ArtworkFetcher: Sendable {
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
 public final actor ArtworkService {
-    enum Error: Codable {
+    enum Error: Codable, CaseIterable {
         case noArtworkAvailable
+        case nsfw
     }
     
     public static let shared = ArtworkService(fetchers: [
@@ -38,9 +39,9 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
-        if let error: Error = try? await self.cacheCoordinator.value(for: playcut),
-           error == .noArtworkAvailable {
-            Log(.info, "Previous attempt to find artwork yielded no result for \(playcut.id), skipping")
+        if let error: Error = try? await self.cacheCoordinator.fetchError(for: playcut),
+           Error.allCases.contains(error) {
+            Log(.info, "Previous attempt to find artwork errored \(error) for \(playcut.id), skipping")
         }
         
         let timer = Timer.start()
@@ -53,6 +54,8 @@ public final actor ArtworkService {
 #if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
                     Log(.info, "Inappropriate artwork found for \(playcut.id) using fetcher \(fetcher)")
+                    await self.cacheCoordinator.set(value: Error.nsfw, for: playcut, lifespan: .oneDay)
+                    
                     return nil
                 }
 #endif

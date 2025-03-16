@@ -10,6 +10,12 @@ import UIKit
 
 // TODO: Remove this and replace with `CachingArtworkFetcher`.
 extension CacheCoordinator: ArtworkFetcher {
+    // This is necessary because calling `value(for:)` on CacheCoordinator was somehow dispatching to
+    // the `fetchArtwork(...)` method below.
+    func fetchError(for playcut: Playcut) async throws -> ArtworkService.Error {
+        try await self.value(for: playcut)
+    }
+    
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let cachedData: Data = try await self.value(for: playcut)
         guard let artwork = UIImage(data: cachedData) else {
