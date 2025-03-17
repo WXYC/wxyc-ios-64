@@ -55,6 +55,11 @@ struct StandardCache: Cache, @unchecked Sendable {
     func object(for key: String) -> Data? {
         if let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
             let fileName = cacheDirectory.appendingPathComponent(key)
+            
+            guard FileManager.default.fileExists(atPath: fileName.absoluteString) else {
+                return nil
+            }
+            
             do {
                 return try Data(contentsOf: fileName)
             } catch {

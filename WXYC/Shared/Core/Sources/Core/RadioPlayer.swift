@@ -51,10 +51,6 @@ internal final class RadioPlayer: Sendable {
     
     func pause() {
         UserDefaults.wxyc.set(false, forKey: "isPlaying")
-        PostHogSDK.shared.capture(
-            "pause",
-            properties: ["duration": timer.duration]
-        )
         player.pause()
         self.resetStream()
     }

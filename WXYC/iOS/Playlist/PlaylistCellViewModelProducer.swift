@@ -9,6 +9,7 @@
 import Foundation
 import Core
 import UIKit
+import Logger
 
 protocol PlaylistCellViewModelProducer: Sendable {
     var cellViewModel: PlaylistCellViewModel { get }
@@ -35,9 +36,11 @@ extension Playcut: PlaylistCellViewModelProducer {
             let playcutActivityItem = PlaycutActivityItem(playcut: playcut)
             
             Task {
+                let timer = Timer.start()
                 let artwork: UIImage =
                     await ArtworkService.shared.getArtwork(for: playcut)
                     ??  UIImage.logoImage
+                Log(.info, "Artwork fetched for playcut \(playcut.id) after \(timer.duration()) seconds")
                 
                 playcutActivityItem.image = artwork
                 cell.configure(with: artwork, token: playcut.id)

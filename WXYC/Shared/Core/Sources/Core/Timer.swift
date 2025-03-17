@@ -8,11 +8,11 @@
 import Foundation
 
 public struct Timer: Sendable {
-    static func start() -> Timer {
+    public static func start() -> Timer {
         return Timer()
     }
     
-    func duration() -> TimeInterval {
+    public func duration() -> TimeInterval {
         let end = Date.now.timeIntervalSince1970
         return end - start
     }
