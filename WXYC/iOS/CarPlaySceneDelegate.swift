@@ -100,7 +100,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 if let error {
                     Log(.error, "Could not push now playing template: \(error)")
                     PostHogSDK.shared.capture(error: error, context: "CarPlay: Could not push now playing template")
-                                              }
+                }
             }
             completionHandler()
         }
