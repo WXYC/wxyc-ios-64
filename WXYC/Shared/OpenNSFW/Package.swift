@@ -21,10 +21,6 @@ let package = Package(
             ],
             resources: [
                 .copy("OpenNSFW.mlmodelc")
-            ],
-            linkerSettings: [
-                .linkedFramework("UIKit"),
-                .linkedFramework("Foundation"),
             ]
         )
     ]

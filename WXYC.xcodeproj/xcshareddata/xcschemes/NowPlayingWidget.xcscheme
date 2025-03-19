@@ -75,8 +75,18 @@
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES"
       launchAutomaticallySubstyle = "2">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <RemoteRunnable
+         runnableDebuggingMode = "2"
+         BundleIdentifier = "com.apple.springboard">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "236629602D72D5BB0057E268"
+            BuildableName = "NowPlayingWidget.appex"
+            BlueprintName = "NowPlayingWidget"
+            ReferencedContainer = "container:WXYC.xcodeproj">
+         </BuildableReference>
+      </RemoteRunnable>
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2366FA1C2D72CE880057E268"
@@ -84,7 +94,7 @@
             BlueprintName = "WXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
