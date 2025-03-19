@@ -37,7 +37,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
                 self.observeIsPlaying()
-                self.observeNowPlaying()
                 self.observePlaylist()
             }
         }
@@ -149,21 +148,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         }
         
         self.updateListTemplate()
-    }
-    
-    private func observeNowPlaying() {
-        let nowPlayingItem = withObservationTracking {
-            NowPlayingService.shared.nowPlayingItem
-        } onChange: {
-            Task { @MainActor in
-                NowPlayingInfoCenterManager.shared.update(
-                    nowPlayingItem: NowPlayingService.shared.nowPlayingItem
-                )
-                self.observeNowPlaying()
-            }
-        }
-        
-        NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
     }
     
     private func observePlaylist() {

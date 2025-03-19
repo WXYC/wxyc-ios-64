@@ -31,6 +31,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             PostHogSDK.shared.capture(error: error, context: "AppDelegate: Could not set AVAudioSession category")
         }
         
+        let _ = NowPlayingInfoCenterManager.shared
+        
 #if os(iOS)
         // Make status bar white
         UINavigationBar.appearance().barStyle = .black
@@ -40,8 +42,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
         #endif
 #endif
-        
-        observeNowPlayingItem()
         
         WidgetCenter.shared.getCurrentConfigurations { result in
             guard case let .success(configurations) = result else {
@@ -55,7 +55,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             WidgetCenter.shared.reloadAllTimelines()
         }
         
+        let playShortcut = UIApplicationShortcutItem(
+            type: "org.wxyc.iphoneapp.play",
+            localizedTitle: "Play WXYC",
+            localizedSubtitle: nil,
+            icon: UIApplicationShortcutIcon(type: .play),
+            userInfo: nil
+        )
+        
+        application.shortcutItems = [playShortcut]
+        
         return true
+    }
+    
+    nonisolated func application(_ application: UIApplication,
+                     performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
+        if shortcutItem.type == "org.wxyc.iphoneapp.play" {
+            await RadioPlayerController.shared.play()
+            PostHogSDK.shared.capture("Play quick action")
+            return true
+        } else {
+            return false
+        }
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
@@ -63,31 +84,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     // MARK: - Private
-    
-    // MARK: Now Playing Observation
-    
-    private var nowPlayingItem: Any?
-    
-    // TODO: Make a macro to encapsulate this.
-    private func observeNowPlayingItem() {
-        nowPlayingItem = withObservationTracking {
-            NowPlayingService.shared.nowPlayingItem
-        } onChange: {
-            Task { @MainActor in
-                self.updateNowPlayingInfo(NowPlayingService.shared.nowPlayingItem)
-                self.observeNowPlayingItem()
-            }
-        }
-    }
-    
-    func updateNowPlayingInfo(_ nowPlayingItem: NowPlayingItem?) {
-        PostHogSDK.shared.capture("now playing updated")
-        
-        NowPlayingInfoCenterManager.shared.update(
-            nowPlayingItem: NowPlayingService.shared.nowPlayingItem
-        )
-        WidgetCenter.shared.reloadAllTimelines()
-    }
     
     // MARK: PostHog Analytics
     

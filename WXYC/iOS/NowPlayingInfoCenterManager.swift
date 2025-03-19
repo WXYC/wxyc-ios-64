@@ -12,14 +12,16 @@ import MediaPlayer
 import Logger
 
 @MainActor
-final class NowPlayingInfoCenterManager: NowPlayingObserver {
+final class NowPlayingInfoCenterManager {
     public static let shared = NowPlayingInfoCenterManager()
     
-    public func update(nowPlayingItem: NowPlayingItem?) {
-        self.update(playcut: nowPlayingItem?.playcut)
-        self.update(artwork: nowPlayingItem?.artwork)
+    init() {
+        NowPlayingService.shared.observe { nowPlayingItem in
+            self.update(playcut: nowPlayingItem?.playcut)
+            self.update(artwork: nowPlayingItem?.artwork)
+        }
     }
-
+    
     private func update(playcut: Playcut?) {
         let playcutMediaItems = playcut.playcutMediaItems
         
