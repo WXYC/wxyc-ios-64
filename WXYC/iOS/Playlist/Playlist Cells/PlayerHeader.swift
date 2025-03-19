@@ -115,7 +115,7 @@ extension NotificationCenter {
         using block: @escaping @Sendable @isolated(any) () async -> Void
     ) -> any NSObjectProtocol {
         let wrappedBlock: @Sendable (Notification) -> Void = { _ in
-            let _ = Task {
+            Task {
                 await block()
             }
         }
