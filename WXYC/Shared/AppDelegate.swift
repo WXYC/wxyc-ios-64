@@ -137,6 +137,13 @@ extension AppDelegate {
                 PostHogSDK.shared.capture(error: error, context: "AppDelegate: Failed to donate Siri intent")
             }
         }
+        
+        let activity = NSUserActivity(activityType: "org.wxyc.iphoneapp.play")
+        activity.title = "Play WXYC"
+        activity.isEligibleForPrediction = true
+        activity.isEligibleForSearch = true
+        activity.suggestedInvocationPhrase = "Play WXYC"
+        activity.becomeCurrent()
     }
     
     #if false
