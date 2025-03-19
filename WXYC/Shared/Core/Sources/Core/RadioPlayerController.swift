@@ -63,6 +63,7 @@ public final class RadioPlayerController: @unchecked Sendable {
 
         self.inputObservations += [
             notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
+            notificationObserver(for: AVAudioSession.routeChangeNotification, sink: self.routeChanged),
             notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
             
             remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
@@ -93,7 +94,7 @@ public final class RadioPlayerController: @unchecked Sendable {
             PostHogSDK.shared.play()
 
             #if os(watchOS)
-            AVAudioSession.sharedInstance().activate { @MainActor activated, error in
+            AVAudioSession.shared.activate { @MainActor activated, error in
                 if activated {
                     Task { @MainActor in
                         PostHogSDK.shared.play()
@@ -173,6 +174,15 @@ private extension RadioPlayerController {
             PostHogSDK.shared.play()
             self.play()
         }
+    }
+    
+    func routeChanged(notification: Notification) {
+        // Use AVAudioSession.shared.currentRoute since the notification only provides the previous
+        // audio output.
+        Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
+        PostHogSDK.shared.capture("Audio session route changed", properties: [
+            "current route" : String(describing: AVAudioSession.shared.currentRoute)
+        ])
     }
     
     private func attemptReconnectWithExponentialBackoff() {
@@ -332,6 +342,10 @@ extension AVAudioSession {
     
     func activate() throws {
         try setActive(true)
+        Log(.info, "Session activated, current route: \(AVAudioSession.shared.currentRoute)")
+        PostHogSDK.shared.capture("Audio session activated", properties: [
+            "current route" : String(describing: AVAudioSession.shared.currentRoute)
+        ])
     }
     
     func deactivate() throws {
