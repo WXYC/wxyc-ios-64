@@ -10,23 +10,17 @@
 		236609AD2D72D0270057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236609AC2D72D0270057E268 /* Core */; };
 		236609AF2D72D0270057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236609AE2D72D0270057E268 /* Logger */; };
 		236609B12D72D0270057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236609B02D72D0270057E268 /* OpenNSFW */; };
-		236609B32D72D0270057E268 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 236609B22D72D0270057E268 /* UI */; };
-		236609B52D72D02D0057E268 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236609B42D72D02D0057E268 /* AVFoundation.framework */; };
 		236609C82D72D0430057E268 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 236609BA2D72D0420057E268 /* WatchXYC.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		236609E12D72D08C0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E02D72D08C0057E268 /* Core */; };
 		236609E32D72D08C0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E22D72D08C0057E268 /* Logger */; };
 		236609E52D72D08C0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E42D72D08C0057E268 /* OpenNSFW */; };
-		236609E72D72D08C0057E268 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E62D72D08C0057E268 /* UI */; };
 		2366296A2D72D5BB0057E268 /* NowPlayingWidget.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 236629612D72D5BB0057E268 /* NowPlayingWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		236629AC2D73908D0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AB2D73908D0057E268 /* Core */; };
 		236629AE2D73908D0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AD2D73908D0057E268 /* Logger */; };
 		236629B02D73908D0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AF2D73908D0057E268 /* OpenNSFW */; };
-		236629B22D73908D0057E268 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 236629B12D73908D0057E268 /* UI */; };
-		236629B42D7390930057E268 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236629B32D7390930057E268 /* AVFoundation.framework */; };
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
-		239566A12D7524CE0094A215 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 239566A02D7524CE0094A215 /* UI */; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
 		23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23E9C16A2D776CB1000DC6A3 /* PostHog */; };
 /* End PBXBuildFile section */
@@ -123,7 +117,6 @@
 				Shared/Logger,
 				Shared/OpenNSFW,
 				Shared/Secrets,
-				Shared/UI,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/Info.plist,
@@ -190,7 +183,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236609E72D72D08C0057E268 /* UI in Frameworks */,
 				236609E32D72D08C0057E268 /* Logger in Frameworks */,
 				236609E52D72D08C0057E268 /* OpenNSFW in Frameworks */,
 				236609E12D72D08C0057E268 /* Core in Frameworks */,
@@ -201,7 +193,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				239566A12D7524CE0094A215 /* UI in Frameworks */,
 				2395669D2D7524CE0094A215 /* Logger in Frameworks */,
 				2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */,
 				2395669B2D7524CE0094A215 /* Core in Frameworks */,
@@ -212,8 +203,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236629B42D7390930057E268 /* AVFoundation.framework in Frameworks */,
-				236629B22D73908D0057E268 /* UI in Frameworks */,
 				236629AE2D73908D0057E268 /* Logger in Frameworks */,
 				236629B02D73908D0057E268 /* OpenNSFW in Frameworks */,
 				236629AC2D73908D0057E268 /* Core in Frameworks */,
@@ -224,8 +213,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236609B52D72D02D0057E268 /* AVFoundation.framework in Frameworks */,
-				236609B32D72D0270057E268 /* UI in Frameworks */,
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
 				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
 				23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */,
@@ -284,7 +271,6 @@
 				236609D92D72D0840057E268 /* PBXTargetDependency */,
 				236609DB2D72D0840057E268 /* PBXTargetDependency */,
 				236609DD2D72D0840057E268 /* PBXTargetDependency */,
-				236609DF2D72D0840057E268 /* PBXTargetDependency */,
 			);
 			name = WatchXYC;
 			packageProductDependencies = (
@@ -311,7 +297,6 @@
 				239566A32D7524D50094A215 /* PBXTargetDependency */,
 				239566A52D7524D50094A215 /* PBXTargetDependency */,
 				239566A72D7524D50094A215 /* PBXTargetDependency */,
-				239566A92D7524D50094A215 /* PBXTargetDependency */,
 			);
 			name = NowPlayingWidget;
 			packageProductDependencies = (
@@ -338,7 +323,6 @@
 				236629A42D7390650057E268 /* PBXTargetDependency */,
 				236629A62D7390650057E268 /* PBXTargetDependency */,
 				236629A82D7390650057E268 /* PBXTargetDependency */,
-				236629AA2D7390650057E268 /* PBXTargetDependency */,
 			);
 			name = "WXYC TV";
 			packageProductDependencies = (
@@ -368,7 +352,6 @@
 				236609A02D72CF5A0057E268 /* PBXTargetDependency */,
 				236609A22D72CF5A0057E268 /* PBXTargetDependency */,
 				236609A42D72CF5A0057E268 /* PBXTargetDependency */,
-				236609A62D72CF5A0057E268 /* PBXTargetDependency */,
 				236609C62D72D0430057E268 /* PBXTargetDependency */,
 				236629692D72D5BB0057E268 /* PBXTargetDependency */,
 			);
@@ -512,10 +495,6 @@
 			isa = PBXTargetDependency;
 			productRef = 236609A32D72CF5A0057E268 /* OpenNSFW */;
 		};
-		236609A62D72CF5A0057E268 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236609A52D72CF5A0057E268 /* UI */;
-		};
 		236609C62D72D0430057E268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 236609B92D72D0420057E268 /* WatchXYC */;
@@ -532,10 +511,6 @@
 		236609DD2D72D0840057E268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 236609DC2D72D0840057E268 /* OpenNSFW */;
-		};
-		236609DF2D72D0840057E268 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236609DE2D72D0840057E268 /* UI */;
 		};
 		236629692D72D5BB0057E268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -554,10 +529,6 @@
 			isa = PBXTargetDependency;
 			productRef = 236629A72D7390650057E268 /* OpenNSFW */;
 		};
-		236629AA2D7390650057E268 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236629A92D7390650057E268 /* UI */;
-		};
 		239566A32D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A22D7524D50094A215 /* Core */;
@@ -569,10 +540,6 @@
 		239566A72D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A62D7524D50094A215 /* OpenNSFW */;
-		};
-		239566A92D7524D50094A215 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 239566A82D7524D50094A215 /* UI */;
 		};
 		23DB84792D828090000EB53A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1199,10 +1166,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
-		236609A52D72CF5A0057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		236609AC2D72D0270057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1231,10 +1194,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
-		236609DE2D72D0840057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		236609E02D72D08C0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1262,10 +1221,6 @@
 		236629A72D7390650057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
-		};
-		236629A92D7390650057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
 		};
 		236629AB2D73908D0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1310,10 +1265,6 @@
 		239566A62D7524D50094A215 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
-		};
-		239566A82D7524D50094A215 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
 		};
 		23DB84782D828090000EB53A /* Analytics */ = {
 			isa = XCSwiftPackageProductDependency;

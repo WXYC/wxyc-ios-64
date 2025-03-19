@@ -7,7 +7,6 @@
 //
 
 import Core
-import UI
 import Foundation
 import MediaPlayer
 import Logger
