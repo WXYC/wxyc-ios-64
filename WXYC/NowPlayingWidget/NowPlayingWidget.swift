@@ -14,17 +14,18 @@ import AppIntents
 
 final class Provider: TimelineProvider, Sendable {
     func placeholder(in context: Context) -> NowPlayingTimelineEntry {
-        let nowPlayingItem = NowPlayingItem.placeholder
-        
-        let recentItemsWithArtwork = [
+        var nowPlayingItemsWithArtwork: [NowPlayingItem] = [
+            NowPlayingItem.placeholder,
             NowPlayingItem.placeholder,
             NowPlayingItem.placeholder,
             NowPlayingItem.placeholder,
         ]
         
+        let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
+
         return NowPlayingTimelineEntry(
             nowPlayingItem: nowPlayingItem,
-            recentItems: recentItemsWithArtwork,
+            recentItems: recentItems,
             family: context.family
         )
     }
@@ -38,27 +39,15 @@ final class Provider: TimelineProvider, Sendable {
         
         Task {
             let playlist = await PlaylistService.shared.fetchPlaylist()
-            var playcuts = playlist.playcuts
+            let recentPlaycuts = playlist.playcuts
                 .sorted(by: >)
-            playcuts = Array(playcuts.prefix(4))
+                .prefix(4)
             
-            var nowPlayingItemsWithArtwork = await withTaskGroup(of: NowPlayingItem.self) { group -> [NowPlayingItem] in
-                var results = [NowPlayingItem]()
-                for playcut in playcuts {
-                    group.addTask {
-                        if let artwork = await ArtworkService.shared.getArtwork(for: playcut) {
-                            return NowPlayingItem(playcut: playcut, artwork: artwork)
-                        }
-                        
-                        return NowPlayingItem(playcut: playcut)
-                    }
-                }
-                
-                for await updated in group {
-                    results.append(updated)
-                }
-                
-                return results
+            var nowPlayingItemsWithArtwork = await recentPlaycuts.asyncMap { playcut in
+                NowPlayingItem(
+                    playcut: playcut,
+                    artwork: await ArtworkService.shared.getArtwork(for: playcut)
+                )
             }
             
             let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
@@ -80,11 +69,6 @@ final class Provider: TimelineProvider, Sendable {
         )
         
         Task {
-            let playlist = await PlaylistService.shared.fetchPlaylist()
-            var playcuts = playlist.playcuts
-                .sorted(by: >)
-            playcuts = Array(playcuts.prefix(4))
-            
             var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
             
             if context.isPreview {
@@ -95,23 +79,16 @@ final class Provider: TimelineProvider, Sendable {
                     NowPlayingItem.placeholder,
                 ]
             } else {
-                nowPlayingItemsWithArtwork = await withTaskGroup(of: NowPlayingItem.self) { group -> [NowPlayingItem] in
-                    var results = [NowPlayingItem]()
-                    for playcut in playcuts {
-                        group.addTask {
-                            if let artwork = await ArtworkService.shared.getArtwork(for: playcut) {
-                                return NowPlayingItem(playcut: playcut, artwork: artwork)
-                            }
-                            
-                            return NowPlayingItem(playcut: playcut)
-                        }
-                    }
-                    
-                    for await updated in group {
-                        results.append(updated)
-                    }
-                    
-                    return results
+                let playlist = await PlaylistService.shared.fetchPlaylist()
+                var playcuts = playlist.playcuts
+                    .sorted(by: >)
+                playcuts = Array(playcuts.prefix(4))
+                
+                nowPlayingItemsWithArtwork = await playcuts.asyncMap { playcut in
+                    NowPlayingItem(
+                        playcut: playcut,
+                        artwork: await ArtworkService.shared.getArtwork(for: playcut)
+                    )
                 }
             }
             
@@ -120,13 +97,13 @@ final class Provider: TimelineProvider, Sendable {
             
             let entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
-                recentItems: Array(recentItems),
+                recentItems: recentItems,
                 family: context.family
             )
             
             // Schedule the next update
-            let nextUpdateDate = Calendar.current.date(byAdding: .minute, value: 5, to: Date())!
-            let timeline = Timeline(entries: [entry], policy: .after(nextUpdateDate))
+            let fiveMinutes = Date.now.addingTimeInterval(5 * 60)
+            let timeline = Timeline(entries: [entry], policy: .after(fiveMinutes))
             completion(timeline)
         }
     }
@@ -140,7 +117,7 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     let recentItems: [NowPlayingItem]
     let family: WidgetFamily
 
-    init(nowPlayingItem: NowPlayingItem, recentItems: [NowPlayingItem] = [], family: WidgetFamily) {
+    init(nowPlayingItem: NowPlayingItem, recentItems: [NowPlayingItem], family: WidgetFamily) {
         self.artist = nowPlayingItem.playcut.artistName
         self.songTitle = nowPlayingItem.playcut.songTitle
         
@@ -426,9 +403,6 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                 
                 ForEach(entry.recentItems, id: \.playcut.chronOrderID) { nowPlayingItem in
                     RecentlyPlayedRow(nowPlayingItem: nowPlayingItem)
-                        .task {
-                            print("foreach npi: \(nowPlayingItem.playcut.chronOrderID)")
-                        }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 
@@ -482,21 +456,77 @@ struct NowPlayingControl: ControlWidget {
 }
 
 extension NowPlayingItem {
-    static var i: UInt64 = 0
-    
     static var placeholder: NowPlayingItem {
-        defer { i += 1 }
+        // Make NowPlayingItem circular iterator instead of Playcut
         return NowPlayingItem(
-            playcut: Playcut(
-                id: i,
-                hour: i,
-                chronOrderID: i,
-                songTitle: "Chapel Hill, NC",
-                labelName: nil,
-                artistName: "WXYC 89.3 FM",
-                releaseTitle: nil
-            )
+            playcut: playcutsIterator.next()!
         )
+    }
+    
+    static var playcutsIterator = CircularIterator(playcuts)
+    
+    private static var _i: UInt64 = 0
+    private static var i: UInt64 {
+        defer { _i += 1 }
+        return _i
+    }
+    
+    static var playcuts = [
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "VI Scose Poise",
+            labelName: nil,
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Belleville",
+            labelName: nil,
+            artistName: "Laurel Halo",
+            releaseTitle: "Atlas"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
+            labelName: nil,
+            artistName: "Harold Budd",
+            releaseTitle: "Pavilion of Dreams"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Guinnevere",
+            labelName: nil,
+            artistName: "Miles Davis",
+            releaseTitle: "Bitches Brew"
+        )
+    ]
+    
+    struct CircularIterator<Element>: IteratorProtocol {
+        let sequence: any Sequence<Element>
+        private var iterator: any IteratorProtocol<Element>
+        
+        init(_ sequence: any Sequence<Element>) {
+            self.sequence = sequence
+            self.iterator = sequence.makeIterator()
+        }
+        
+        mutating func next() -> Element? {
+            if let next = iterator.next() {
+                return next
+            } else {
+                iterator = sequence.makeIterator()
+                return iterator.next()
+            }
+        }
     }
 }
 
@@ -505,7 +535,9 @@ extension RangeReplaceableCollection {
         let first = removeFirst()
         return (first, self)
     }
-    
+}
+
+extension Sequence {
     func sorted<T: Comparable>(by keyPath: KeyPath<Element, T>, comparator: (T, T) -> Bool = (<)) -> [Element] {
         sorted { e1, e2 in
             comparator(e1[keyPath: keyPath], e2[keyPath: keyPath])
@@ -515,7 +547,7 @@ extension RangeReplaceableCollection {
 
 extension Image {
     static var logo: some View {
-        Group {
+        ZStack {
             Rectangle()
                 .background(.ultraThinMaterial)
             Image(ImageResource(name: "logo_small", bundle: .main))
@@ -532,6 +564,25 @@ extension Image {
             .resizable()
             .background(.ultraThinMaterial)
             .ignoresSafeArea()
+    }
+}
+
+extension Collection {
+    public func asyncMap<T>(_ transform: sending @escaping @isolated(any) (Element) async -> T) async -> [T] {
+        await withTaskGroup(of: T.self) { group in
+            for element in self {
+                group.addTask {
+                    await transform(element)
+                }
+            }
+            
+            var results: [T] = []
+            for await result in group {
+                results.append(result)
+            }
+            
+            return results
+        }
     }
 }
 
