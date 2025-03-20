@@ -14,15 +14,9 @@ import AVFAudio
 import Logger
 
 struct PlayerPage: View {
-    // TODO: Convert to binding
-    @State var playlist = PlaylistService.shared {
-        willSet {
-            Log(.info, "Playlist updated, count: \(newValue.playlist.playcuts.count)")
-        }
-    }
-    @State var artwork: UIImage?
+    @State var playlister = Playlister()
     @State private var elementHeights: CGFloat = 0
-    let placeholder: UIImage? = UIImage(named: "logo")
+    let placeholder: UIImage = UIImage(named: "logo")!
     
     var content: NowPlayingEntry {
         if let item = NowPlayingService.shared.nowPlayingItem {
@@ -36,44 +30,28 @@ struct PlayerPage: View {
         }
     }
     
-    // TODO: Wonky. Tidy up.
-    func image(for geometry: GeometryProxy) -> some View {
-        Group {
-            if let artwork = artwork {
-                format(image: Image(uiImage: artwork), geometry: geometry)
-            } else if let playcut = PlaylistService.shared.playlist.playcuts.first {
-                format(image: Image("logo", bundle: .main), geometry: geometry)
-                    .task {
-                        let artwork = await ArtworkService.shared.getArtwork(for: playcut)
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            self.artwork = artwork
-                        }
-                    }
-            } else {
-                format(image: Image("logo", bundle: .main), geometry: geometry)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
-    }
-    
-    func format(image: Image, geometry: GeometryProxy) -> some View {
-        image
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .cornerRadius(cornerRadius)
-            .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
-            .clipped(antialiased: true)
-    }
+    static var id: Int = 0
     
     var body: some View {
         GeometryReader { geometry in
             VStack {
                 VStack {
-                    image(for: geometry)
+                    Group {
+                        if let playcut = playlister.playlist.playcuts.first {
+                            RemoteImage(playcut: playcut)
+                        } else {
+                            Image.logo
+                        }
+                    }
+                    .aspectRatio(contentMode: .fit)
+                    .cornerRadius(cornerRadius)
+                    .frame(maxWidth: .infinity, maxHeight: geometry.size.height - elementHeights)
+                    .clipped(antialiased: true)
 
                     Text(content.songTitle)
                         .font(.headline)
                         .foregroundStyle(headlineColor)
+                        .fontWeight(.bold)
                         .background(HeightReader())
                         .multilineTextAlignment(.center)
 
@@ -123,7 +101,7 @@ struct PlayerPage: View {
     
     var headlineColor: Color {
 #if os(tvOS)
-        .gray
+        Color.init(white: 0.90)
 #else
         Color.init(white: 1)
 #endif
@@ -194,6 +172,43 @@ struct NowPlayingEntry {
         } else {
             self.artwork = nil
         }
+    }
+}
+
+extension Image {
+    static var logo: some View {
+        ZStack {
+            Rectangle()
+                .background(.white)
+                .background(.ultraThinMaterial)
+                .opacity(0.2)
+            Image(ImageResource(name: "logo", bundle: .main))
+                .renderingMode(.template)
+                .resizable()
+                .foregroundStyle(.white)
+                .opacity(0.75)
+                .blendMode(.colorDodge)
+                .scaleEffect(0.85)
+        }
+        .aspectRatio(contentMode: .fit)
+        .cornerRadius(10)
+        .clipped()
+    }
+    
+    static var background: some View {
+        ZStack {
+            Image(ImageResource(name: "background", bundle: .main))
+                .resizable()
+                .opacity(0.95)
+            Rectangle()
+                .foregroundStyle(.gray)
+                .background(.gray)
+                .background(.ultraThickMaterial)
+                .opacity(0.18)
+                .blendMode(.colorBurn)
+                .saturation(0)
+        }
+        .ignoresSafeArea()
     }
 }
 

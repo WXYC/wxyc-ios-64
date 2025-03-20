@@ -12,7 +12,6 @@ import MediaPlayer
 import Logger
 import PostHog
 
-@Observable
 @MainActor
 internal final class RadioPlayer: Sendable {
     private let streamURL: URL

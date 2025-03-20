@@ -11,34 +11,28 @@ import SwiftUI
 import Core
 
 struct RemoteImage: View {
-    @State var artwork: UIImage?
-    
+    @State var artwork: UIImage = UIImage(named: "logo")!
+    private let playcut: Playcut
+
     init(playcut: Playcut) {
         self.playcut = playcut
     }
 
     var body: some View {
-        Group {
-            if let artwork {
-                Image(uiImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .transition(.opacity)
-            } else {
-                Rectangle()
-                    .fill(Color.gray)
-                    .task {
-                        if let artwork = await ArtworkService.shared.getArtwork(for: playcut) {
-                            self.artwork = artwork
-                        } else {
-                            self.artwork = UIImage(named: "logo")
-                        }
-                    }
+        Image(uiImage: artwork)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .transition(.opacity)
+            .onChange(of: playcut, initial: true) {
+                Task {
+                    await loadArtwork()
+                }
             }
+    }
+
+    private func loadArtwork() async {
+        if let newArtwork = await ArtworkService.shared.getArtwork(for: playcut) {
+            self.artwork = newArtwork
         }
     }
-    
-    // MARK: Private
-    
-    private let playcut: Playcut
 }
