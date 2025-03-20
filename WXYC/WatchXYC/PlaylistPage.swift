@@ -11,21 +11,6 @@ import SwiftUI
 import Core
 import Logger
 
-@MainActor
-@Observable
-final class Playlister {
-    var playlist: Playlist = .empty
-    
-    init() {
-        PlaylistService.shared.observe { playlist in
-            print(">>>>> playlist updated")
-            self.playlist = playlist
-        }
-    }
-    
-    var backoffTimer = ExponentialBackoff()
-}
-
 struct PlaylistPage: View {
     @State var playlister = Playlister()
     

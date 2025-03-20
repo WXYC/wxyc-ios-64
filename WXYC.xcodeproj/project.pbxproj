@@ -83,6 +83,7 @@
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/PlayerPage.swift,
+				WatchXYC/Playlister.swift,
 				WatchXYC/PlaylistPage.swift,
 				WatchXYC/RemoteImage.swift,
 				WatchXYC/RootTabView.swift,
@@ -94,6 +95,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				WatchXYC/PlayerPage.swift,
+				WatchXYC/Playlister.swift,
 				WatchXYC/RemoteImage.swift,
 				"WXYC TV/Assets.xcassets",
 				"WXYC TV/ContentView.swift",
@@ -120,6 +122,7 @@
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/Info.plist,
 				WatchXYC/PlayerPage.swift,
+				WatchXYC/Playlister.swift,
 				WatchXYC/PlaylistPage.swift,
 				"WatchXYC/Preview Content/Preview Assets.xcassets",
 				WatchXYC/RemoteImage.swift,
