@@ -211,11 +211,7 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
 
 struct PlayButton: View {
     @AppStorage("isPlaying", store: .wxyc)
-    var isPlaying: Bool = UserDefaults.wxyc.bool(forKey: "isPlaying") {
-        didSet {
-            print(">>>>>>> isPlaying \(isPlaying)")
-        }
-    }
+    var isPlaying: Bool = UserDefaults.wxyc.bool(forKey: "isPlaying")
     
     var body: some View {
         Button(intent: intent) {
