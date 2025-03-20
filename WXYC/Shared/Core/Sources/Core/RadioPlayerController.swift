@@ -20,10 +20,26 @@ public enum PlaybackState: Sendable {
 }
 
 @MainActor
-@Observable
 public final class RadioPlayerController: @unchecked Sendable {
     public static let shared = RadioPlayerController()
-    public var isPlaying = false
+    public var isPlaying = false {
+        didSet {
+            for o in observers {
+                o(self.isPlaying)
+            }
+        }
+    }
+    
+    public typealias Observer = @MainActor @Sendable (Bool) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.isPlaying)
+            self.observers.append(observer)
+        }
+    }
 
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
@@ -72,7 +88,9 @@ public final class RadioPlayerController: @unchecked Sendable {
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
         ]
         
-        self.observePlayer()
+        self.radioPlayer.observe { isPlaying in
+            self.isPlaying = isPlaying
+        }
     }
     
     // MARK: Public methods
@@ -126,17 +144,6 @@ public final class RadioPlayerController: @unchecked Sendable {
     
     private var playbackTimer = Timer.start()
     private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
-    
-    func observePlayer() {
-        isPlaying = withObservationTracking {
-            self.radioPlayer.isPlaying
-        } onChange: {
-            Task { @MainActor in
-                self.isPlaying = self.radioPlayer.isPlaying
-                self.observePlayer()
-            }
-        }
-    }
 }
 
 private extension RadioPlayerController {

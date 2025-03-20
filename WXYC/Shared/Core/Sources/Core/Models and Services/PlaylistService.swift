@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import Observation
 import Logger
 import PostHog
 import SwiftUI

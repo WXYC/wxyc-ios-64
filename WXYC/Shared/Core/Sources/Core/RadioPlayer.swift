@@ -34,7 +34,24 @@ internal final class RadioPlayer: Sendable {
             }
     }
     
-    var isPlaying: Bool = false
+    public var isPlaying = false {
+        didSet {
+            for o in observers {
+                o(self.isPlaying)
+            }
+        }
+    }
+    
+    public typealias Observer = @MainActor @Sendable (Bool) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.isPlaying)
+            self.observers.append(observer)
+        }
+    }
         
     func play() {
         if self.isPlaying {
@@ -42,6 +59,7 @@ internal final class RadioPlayer: Sendable {
             return
         }
         UserDefaults.wxyc.set(true, forKey: "isPlaying")
+        print(">>>> \(UserDefaults.wxyc.bool(forKey: "isPlaying"))")
         
         PostHogSDK.shared.capture("play")
         timer = Timer.start()
@@ -50,6 +68,7 @@ internal final class RadioPlayer: Sendable {
     
     func pause() {
         UserDefaults.wxyc.set(false, forKey: "isPlaying")
+        print(">>>> \(UserDefaults.wxyc.bool(forKey: "isPlaying"))")
         player.pause()
         self.resetStream()
     }

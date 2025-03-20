@@ -138,16 +138,9 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     }
     
     func observeIsPlaying() {
-        let _ = withObservationTracking {
-            RadioPlayerController.shared.isPlaying
-        } onChange: {
-            Task { @MainActor in
-                self.updateListTemplate()
-                self.observeIsPlaying()
-            }
+        RadioPlayerController.shared.observe { isPlaying in
+            self.updateListTemplate()
         }
-        
-        self.updateListTemplate()
     }
     
     private func observePlaylist() {

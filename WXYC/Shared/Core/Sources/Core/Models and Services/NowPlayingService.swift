@@ -74,7 +74,6 @@ public final class NowPlayingService: @unchecked Sendable {
     @MainActor
     private func observePlaylistService() {
         PlaylistService.shared.observe { playlist in
-            print(">>>>> nowplayingservice \(playlist.playcuts.map { $0.artistName })")
             self.handle(playlist: playlist)
         }
     }

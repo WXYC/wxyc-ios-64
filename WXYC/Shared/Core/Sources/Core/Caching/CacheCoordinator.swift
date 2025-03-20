@@ -99,7 +99,6 @@ public final actor CacheCoordinator {
             Log(.error, "CacheCoordinator failed to decode value: \(error)")
             
             if T.self != CachedRecord<ArtworkService.Error>.self {
-                print(">>>> \(T.self)")
                 PostHogSDK.shared.capture(error: error, context: "CacheCoordinator decode value")
             }
             

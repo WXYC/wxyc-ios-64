@@ -15,7 +15,6 @@ final class Playlister {
     
     init() {
         PlaylistService.shared.observe { playlist in
-            print(">>>>> playlister \(playlist.playcuts.map { $0.artistName })")
             self.playlist = playlist
         }
     }
