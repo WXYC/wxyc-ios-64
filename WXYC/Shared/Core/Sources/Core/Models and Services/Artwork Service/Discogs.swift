@@ -44,7 +44,6 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
         components.queryItems = .init([
             "artist" : playcut.artistName,
             "release_title" : releaseTitle,
-            "type" :  "master",
             "key" : Self.key,
             "secret" : Self.secret,
         ])
