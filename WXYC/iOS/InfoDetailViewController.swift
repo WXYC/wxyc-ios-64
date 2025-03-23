@@ -5,6 +5,7 @@ import UIKit
 import Logger
 import PostHog
 import Analytics
+import Secrets
 
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!
@@ -17,13 +18,12 @@ class InfoDetailViewController: UIViewController {
         super.viewDidLoad()
         
         stationDescriptionTextView.text = RadioStation.WXYC.description
-        feedbackButton.setAttributedTitle(feedbackString, for: .normal)
         
-        if UIApplication.shared.canOpenURL(RadioStation.WXYC.requestLine) {
-            dialADJButton.setAttributedTitle(requestString, for: .normal)
-        } else {
-            dialADJButton.isHidden = true
-        }
+        feedbackButton.setAttributedTitle(feedbackString, for: .normal)
+        feedbackButton.layer.cornerRadius = 8
+        
+        dialADJButton.setAttributedTitle(requestString, for: .normal)
+        dialADJButton.layer.cornerRadius = 8
     }
     
     // MARK: IBActions
@@ -32,11 +32,58 @@ class InfoDetailViewController: UIViewController {
         self.promptForLogs()
     }
     
+    var request: String = ""
+    
     @IBAction func dialADJ(_ sender: UIButton) {
-        UIApplication.shared.open(RadioStation.WXYC.requestLine)
+        let alert = UIAlertController(
+            title: "What would you like to request?",
+            message: "Please include song title and artist.",
+            preferredStyle: .alert
+        )
+        alert.addTextField { textField in
+            self.request = textField.text ?? ""
+        }
+        let requestAction = UIAlertAction(title: "Request", style: .default) { action in
+
+            Task {
+                if let text = alert.textFields?.first?.text {
+                    // Use the text here
+                    print("User entered: \(text)")
+                    try await self.sendMessageToServer(message: text)
+                }
+            }
+        }
+        alert.addAction(requestAction)
+        alert.preferredAction = requestAction
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        alert.addAction(cancelAction)
+        
+        self.present(alert, animated: true)
     }
     
     // MARK: Private
+    
+    func sendMessageToServer(message: String) async throws {
+        guard let url = URL(string: Secrets.slackWxycRequestsWebhook) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-type")
+        
+        let json: [String: Any] = ["text": message]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
+        request.httpBody = jsonData
+        
+        print(request)
+        
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let response = response as? HTTPURLResponse {
+                print("Response status code: \(response.statusCode)")
+            }
+        } catch {
+            print("Error: \(error)")
+        }
+    }
     
     private func promptForLogs() {
         let alert = UIAlertController(
@@ -63,24 +110,20 @@ class InfoDetailViewController: UIViewController {
     }
     
     private var requestString: NSAttributedString {
-        let attachment = NSTextAttachment()
-        attachment.image = UIImage(systemName: "phone.fill")?
-            .withTintColor(.white, renderingMode: .alwaysOriginal)
-        
-        let requestString = NSMutableAttributedString(attachment: attachment)
-        let textString = NSAttributedString(string: " Make a request")
-        requestString.append(textString)
-        
-        return requestString
+        makeButtonString(withTitle: "Make a request", icon: "arrow.up.circle.fill")
     }
     
     private var feedbackString: NSAttributedString {
+        makeButtonString(withTitle: "Send us feedback on the app", icon: "envelope.fill")
+    }
+    
+    func makeButtonString(withTitle title: String, icon: String) -> NSAttributedString {
         let attachment = NSTextAttachment()
-        attachment.image = UIImage(systemName: "envelope.fill")?
+        attachment.image = UIImage(systemName: icon)?
             .withTintColor(.white, renderingMode: .alwaysOriginal)
         
         let requestString = NSMutableAttributedString(attachment: attachment)
-        let textString = NSAttributedString(string: " Send us feedback on the app")
+        let textString = NSAttributedString(string: " " + title)
         requestString.append(textString)
         
         return requestString
