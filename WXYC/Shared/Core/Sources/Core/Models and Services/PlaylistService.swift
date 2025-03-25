@@ -68,7 +68,7 @@ public final class PlaylistService: Sendable {
         self.fetchTimer?.schedule(deadline: .now(), repeating: Self.defaultFetchInterval)
         self.fetchTimer?.setEventHandler {
             Task { @PlaylistActor in
-#if false
+#if DEBUG_PLAYLIST
                 let playlist = await Playlist.debugPlaylist
 #else
                 let playlist = await self.fetchPlaylist()
