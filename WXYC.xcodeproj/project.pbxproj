@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		231260472D938C1600762428 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = 231260462D938C1600762428 /* Secrets */; };
 		236609AD2D72D0270057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236609AC2D72D0270057E268 /* Core */; };
 		236609AF2D72D0270057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236609AE2D72D0270057E268 /* Logger */; };
 		236609B12D72D0270057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236609B02D72D0270057E268 /* OpenNSFW */; };
@@ -122,10 +123,8 @@
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/Info.plist,
 				WatchXYC/PlayerPage.swift,
-				WatchXYC/Playlister.swift,
 				WatchXYC/PlaylistPage.swift,
 				"WatchXYC/Preview Content/Preview Assets.xcassets",
-				WatchXYC/RemoteImage.swift,
 				WatchXYC/RootTabView.swift,
 				WatchXYC/WatchXYCApp.swift,
 				"WXYC TV/Assets.xcassets",
@@ -219,6 +218,7 @@
 				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
+				231260472D938C1600762428 /* Secrets in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -362,6 +362,7 @@
 				236609AE2D72D0270057E268 /* Logger */,
 				236609B02D72D0270057E268 /* OpenNSFW */,
 				23DB847A2D828093000EB53A /* Analytics */,
+				231260462D938C1600762428 /* Secrets */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -614,13 +615,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WXYC/iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
-				INFOPLIST_KEY_UIMainStoryboardFile = iOSMain;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -894,13 +898,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WXYC/iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
-				INFOPLIST_KEY_UIMainStoryboardFile = iOSMain;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -931,13 +938,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WXYC/iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
-				INFOPLIST_KEY_UIMainStoryboardFile = iOSMain;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -1138,6 +1148,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		231260462D938C1600762428 /* Secrets */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Secrets;
+		};
 		2366099F2D72CF5A0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;

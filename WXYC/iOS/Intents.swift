@@ -13,6 +13,7 @@ import Core
 import Logger
 import PostHog
 import UIKit
+import Secrets
 
 struct IntentError: Error {
     let description: String
@@ -69,7 +70,7 @@ extension PlayWXYC: ControlConfigurationIntent {
 
 public struct WhatsPlayingOnWXYC: AppIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    public static let description = "Find out what's currently playing."
+    public static let description = "Find out what's currently playing on WXYC."
     public static let isDiscoverable = true
     public static let openAppWhenRun = false
     public static let title: LocalizedStringResource = "What’s Playing on WXYC?"
@@ -121,6 +122,52 @@ public struct WhatsPlayingOnWXYC: AppIntent {
     }
 }
 
+public struct MakeARequest: AppIntent {
+    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    public static let description = "Request a song on WXYC."
+    public static let isDiscoverable = true
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "Request a song on WXYC"
+    
+    @Parameter(title: "Request", description: "What song would you like to request?")
+    var request: String
+
+    public init() {
+        
+    }
+    
+    public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog {
+        let message = "A listener has sent in a request: \(request)"
+        try await sendMessageToServer(message: String(message))
+        return .result(
+            value: "Done.",
+            dialog: "Sent."
+        )
+    }
+    
+    func sendMessageToServer(message: String) async throws {
+        guard let url = URL(string: Secrets.slackWxycRequestsWebhook) else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-type")
+        
+        let json: [String: Any] = ["text": message]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
+        request.httpBody = jsonData
+        
+        print(request)
+        
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let response = response as? HTTPURLResponse {
+                print("Response status code: \(response.statusCode)")
+            }
+        } catch {
+            print("Error: \(error)")
+        }
+    }
+}
+
 public struct WXYCAppShortcuts: AppShortcutsProvider {
     @AppShortcutsBuilder
     public static var appShortcuts: [AppShortcut] {
@@ -135,6 +182,16 @@ public struct WXYCAppShortcuts: AppShortcutsProvider {
             phrases: ["Play WXYC."],
             shortTitle: "Play WXYC",
             systemImageName: "play.fill"
+        )
+        AppShortcut(
+            intent: MakeARequest(),
+            phrases: [
+                "Make a request to WXYC.",
+                "Send a request to WXYC.",
+                "Request a song on WXYC.",
+            ],
+            shortTitle: "Send a request to WXYC",
+            systemImageName: "message.fill"
         )
     }
 }
