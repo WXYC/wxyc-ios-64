@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
     <device id="retina5_9" orientation="portrait" appearance="light"/>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21678"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
@@ -12,6 +12,7 @@
             <connections>
                 <outlet property="dialADJButton" destination="C61-5R-H7m" id="qm5-4C-iLr"/>
                 <outlet property="feedbackButton" destination="zUR-QX-pZi" id="zCL-03-LBb"/>
+                <outlet property="makeARequestButton" destination="1Vv-EZ-9zG" id="TKe-JB-ZAg"/>
                 <outlet property="stationDescriptionTextView" destination="aat-2h-nxb" id="g6g-CM-Qe9"/>
                 <outlet property="view" destination="jpM-s2-5PS" id="pmz-e8-Wy1"/>
             </connections>
@@ -25,7 +26,7 @@
                     <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
                 </imageView>
                 <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="urA-bl-wtz">
-                    <rect key="frame" x="16" y="198.33333333333334" width="343" height="415.66666666666663"/>
+                    <rect key="frame" x="16" y="165.33333333333334" width="343" height="481.66666666666663"/>
                     <subviews>
                         <label opaque="NO" userInteractionEnabled="NO" alpha="0.84999999999999998" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="You're tuned in." textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="jO4-7g-5Ec">
                             <rect key="frame" x="0.0" y="0.0" width="343" height="54.666666666666664"/>
@@ -54,14 +55,28 @@
                                 <action selector="feedbackButtonPressed:" destination="-1" eventType="touchUpInside" id="nld-tF-tf9"/>
                             </connections>
                         </button>
-                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" reversesTitleShadowWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="C61-5R-H7m">
+                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" reversesTitleShadowWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="1Vv-EZ-9zG">
                             <rect key="frame" x="0.0" y="365.66666666666663" width="343" height="50"/>
+                            <color key="backgroundColor" systemColor="systemBlueColor"/>
+                            <constraints>
+                                <constraint firstAttribute="height" constant="50" id="IY1-uz-kcc"/>
+                            </constraints>
+                            <fontDescription key="fontDescription" name="AvenirNext-Medium" family="Avenir Next" pointSize="16"/>
+                            <state key="normal" title="Make a request">
+                                <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                            </state>
+                            <connections>
+                                <action selector="sendARequest:" destination="-1" eventType="touchUpInside" id="Hoh-VM-um8"/>
+                            </connections>
+                        </button>
+                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" reversesTitleShadowWhenHighlighted="YES" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="C61-5R-H7m">
+                            <rect key="frame" x="0.0" y="431.66666666666663" width="343" height="50"/>
                             <color key="backgroundColor" systemColor="systemGreenColor"/>
                             <constraints>
                                 <constraint firstAttribute="height" constant="50" id="Dio-ZJ-sow"/>
                             </constraints>
                             <fontDescription key="fontDescription" name="AvenirNext-Medium" family="Avenir Next" pointSize="16"/>
-                            <state key="normal" title="📞 Make a request">
+                            <state key="normal" title="Dial a DJ">
                                 <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                             </state>
                             <connections>
@@ -86,9 +101,12 @@
         </view>
     </objects>
     <resources>
-        <image name="background" width="57" height="57"/>
+        <image name="background" width="94" height="29"/>
+        <systemColor name="systemBlueColor">
+            <color red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </systemColor>
         <systemColor name="systemGreenColor">
-            <color red="0.20392156862745098" green="0.7803921568627451" blue="0.34901960784313724" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="0.20392156859999999" green="0.78039215689999997" blue="0.34901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

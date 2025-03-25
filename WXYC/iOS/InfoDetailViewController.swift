@@ -10,6 +10,7 @@ import Secrets
 class InfoDetailViewController: UIViewController {
     @IBOutlet weak var stationDescriptionTextView: UITextView!
     @IBOutlet weak var feedbackButton: UIButton!
+    @IBOutlet weak var makeARequestButton: UIButton!
     @IBOutlet weak var dialADJButton: UIButton!
     
     // MARK: Lifecycle
@@ -22,7 +23,10 @@ class InfoDetailViewController: UIViewController {
         feedbackButton.setAttributedTitle(feedbackString, for: .normal)
         feedbackButton.layer.cornerRadius = 8
         
-        dialADJButton.setAttributedTitle(requestString, for: .normal)
+        makeARequestButton.setAttributedTitle(requestString, for: .normal)
+        makeARequestButton.layer.cornerRadius = 8
+        
+        dialADJButton.setAttributedTitle(dialADJString, for: .normal)
         dialADJButton.layer.cornerRadius = 8
     }
     
@@ -35,6 +39,10 @@ class InfoDetailViewController: UIViewController {
     var request: String = ""
     
     @IBAction func dialADJ(_ sender: UIButton) {
+        UIApplication.shared.open(RadioStation.WXYC.requestLine)
+    }
+    
+    @IBAction func sendARequest(_ sender: UIButton) {
         let alert = UIAlertController(
             title: "What would you like to request?",
             message: "Please include song title and artist.",
@@ -110,11 +118,15 @@ class InfoDetailViewController: UIViewController {
     }
     
     private var requestString: NSAttributedString {
-        makeButtonString(withTitle: "Make a request", icon: "arrow.up.circle.fill")
+        makeButtonString(withTitle: "Make a request", icon: "message.fill")
     }
     
     private var feedbackString: NSAttributedString {
         makeButtonString(withTitle: "Send us feedback on the app", icon: "envelope.fill")
+    }
+    
+    private var dialADJString: NSAttributedString {
+        makeButtonString(withTitle: "Dial a DJ", icon: "phone.fill")
     }
     
     func makeButtonString(withTitle title: String, icon: String) -> NSAttributedString {
