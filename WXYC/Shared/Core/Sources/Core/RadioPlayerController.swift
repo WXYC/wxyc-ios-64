@@ -20,7 +20,7 @@ public enum PlaybackState: Sendable {
 }
 
 @MainActor
-public final class RadioPlayerController: @unchecked Sendable {
+public final class RadioPlayerController {
     public static let shared = RadioPlayerController()
     public var isPlaying = false {
         didSet {
@@ -107,30 +107,27 @@ public final class RadioPlayerController: @unchecked Sendable {
     private var audioActivationTask: Task<Bool, any Error>?
     
     public func play() {
-        do {
-            self.playbackTimer = Timer.start()
-            PostHogSDK.shared.play()
-
-            #if os(watchOS)
-            AVAudioSession.shared.activate { @MainActor activated, error in
+        Task {
+            do {
+                self.playbackTimer = Timer.start()
+                PostHogSDK.shared.play()
+                
+#if os(watchOS)
+                let activated = try await AVAudioSession.sharedInstance().activate()
                 if activated {
-                    Task { @MainActor in
-                        PostHogSDK.shared.play()
-                        RadioPlayerController.shared.play()
-                    }
-                } else {
-                    Log(.error, "Failed to activate audio session: \(String(describing: error))")
-                }
+                    PostHogSDK.shared.play()
+                    self.radioPlayer.play()
+                } 
+                
+#else
+                try AVAudioSession.shared.activate()
+                self.radioPlayer.play()
+#endif
+            } catch {
+                PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not start playback")
+                Log(.error, "RadioPlayerController could not start playback: \(error)")
             }
-            #else
-            try AVAudioSession.shared.activate()
-            #endif
-        } catch {
-            PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not start playback")
-            Log(.error, "RadioPlayerController could not start playback: \(error)")
         }
-        
-        self.radioPlayer.play()
     }
     
     public func pause() {

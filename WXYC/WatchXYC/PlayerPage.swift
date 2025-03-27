@@ -64,15 +64,7 @@ struct PlayerPage: View {
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        AVAudioSession.sharedInstance().activate { @MainActor activated, error in
-                            if activated {
-                                Task { @MainActor in
-                                    RadioPlayerController.shared.toggle()
-                                }
-                            } else {
-                                Log(.error, "Failed to activate audio session: \(String(describing: error))")
-                            }
-                        }
+                        RadioPlayerController.shared.toggle()
                     }) {
                         Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))

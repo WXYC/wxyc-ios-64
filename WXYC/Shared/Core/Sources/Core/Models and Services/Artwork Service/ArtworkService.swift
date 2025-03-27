@@ -39,36 +39,38 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
+        let cacheId = playcut.releaseTitle ?? playcut.songTitle
         if let error: Error = try? await self.cacheCoordinator.fetchError(for: playcut),
            Error.allCases.contains(error) {
-            Log(.info, "Previous attempt to find artwork errored \(error) for \(playcut.id), skipping")
+            Log(.info, "Previous attempt to find artwork errored \(error) for \(cacheId), skipping")
         }
         
         let timer = Timer.start()
+        
         for fetcher in self.fetchers {
             do {
                 
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
-                Log(.info, "Artwork \(artwork) found for \(playcut.id) using fetcher \(fetcher) after \(timer.duration()) seconds")
+                Log(.info, "Artwork \(artwork) found for \(cacheId) using fetcher \(fetcher) after \(timer.duration()) seconds")
 
 #if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
-                    Log(.info, "Inappropriate artwork found for \(playcut.id) using fetcher \(fetcher)")
-                    await self.cacheCoordinator.set(value: Error.nsfw, for: playcut, lifespan: .oneDay)
+                    Log(.info, "Inappropriate artwork found for \(cacheId) using fetcher \(fetcher)")
+                    await self.cacheCoordinator.set(value: Error.nsfw, for: cacheId, lifespan: .thirtyDays)
                     
                     return nil
                 }
 #endif
                 
-                await self.cacheCoordinator.set(artwork: artwork, for: playcut)
+                await self.cacheCoordinator.set(artwork: artwork, for: cacheId)
                 return artwork
             } catch {
-                Log(.info, "No artwork found for \(playcut.id) using fetcher \(fetcher): \(error)")
+                Log(.info, "No artwork found for \(cacheId) using fetcher \(fetcher): \(error)")
             }
         }
         
-        Log(.error, "No artwork found for \(playcut.id) using any fetcher")
-        await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: playcut, lifespan: .oneDay)
+        Log(.error, "No artwork found for \(cacheId) using any fetcher")
+        await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: cacheId, lifespan: .thirtyDays)
         
         return nil
     }
