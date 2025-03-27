@@ -9,7 +9,7 @@ let DefaultLifespan: TimeInterval = 30
 public final actor CacheCoordinator {
     public static let Widgets = CacheCoordinator(cache: UserDefaultsCache())
     public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
-    public static let AlbumArt = CacheCoordinator(cache: StandardCache())
+    public static let AlbumArt = CacheCoordinator(cache: DiskCache())
     
     internal init(cache: Cache) {
         self.cache = cache
@@ -74,7 +74,7 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        Log(.info, "Setting value for key '\(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan)")
+        Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan)")
         
         if let value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)

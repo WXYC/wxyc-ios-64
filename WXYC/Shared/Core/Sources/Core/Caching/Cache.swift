@@ -39,8 +39,8 @@ public extension UserDefaults {
     nonisolated(unsafe) static let wxyc = UserDefaults(suiteName: "group.wxyc.iphone")!
 }
 
-struct StandardCache: Cache, @unchecked Sendable {
-    struct StandardCacheError: Error, ExpressibleByStringLiteral, CustomStringConvertible {
+struct DiskCache: Cache, @unchecked Sendable {
+    struct DiskCacheError: Error, ExpressibleByStringLiteral, CustomStringConvertible {
         let message: String
         
         var description: String { message }
@@ -51,12 +51,13 @@ struct StandardCache: Cache, @unchecked Sendable {
     }
     
     private let cache = NSCache<NSString, NSData>()
+    private let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
     
     func object(for key: String) -> Data? {
-        if let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+        if let cacheDirectory = cacheDirectory {
             let fileName = cacheDirectory.appendingPathComponent(key)
             
-            guard FileManager.default.fileExists(atPath: fileName.absoluteString) else {
+            guard FileManager.default.fileExists(atPath: fileName.path()) else {
                 return nil
             }
             
@@ -64,20 +65,20 @@ struct StandardCache: Cache, @unchecked Sendable {
                 return try Data(contentsOf: fileName)
             } catch {
                 Log(.error, "Failed to read file \(fileName): \(error)")
-                PostHogSDK.shared.capture(error: error, context: "StandardCache object(forKey:): failed to read file")
+                PostHogSDK.shared.capture(error: error, context: "DiskCache object(forKey:): failed to read file")
                 return nil
             }
         } else {
-            let error: StandardCacheError = "Failed to find Cache Directory, trying NSCache."
+            let error: DiskCacheError = "Failed to find Cache Directory, trying NSCache."
             Log(.error, error.description)
-            PostHogSDK.shared.capture(error: error, context: "StandardCache object(forKey:): failed to find Cache Directory")
+            PostHogSDK.shared.capture(error: error, context: "DiskCache object(forKey:): failed to find Cache Directory")
             let data: NSData? = self.cache.object(forKey: key as NSString)
             return data as? Data
         }
     }
     
     func set(object: Data?, for key: String) {
-        if let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+        if let cacheDirectory = cacheDirectory {
             let fileName = cacheDirectory.appendingPathComponent(key)
             if let object {
                 FileManager.default.createFile(atPath: fileName.path(), contents: object)
@@ -89,15 +90,15 @@ struct StandardCache: Cache, @unchecked Sendable {
                 }
             }
         } else {
-            let error: StandardCacheError = "Failed to find Cache Directory, trying NSCache."
+            let error: DiskCacheError = "Failed to find Cache Directory, trying NSCache."
             Log(.error, error.description)
-            PostHogSDK.shared.capture(error: error, context: "StandardCache set(object:for:)")
+            PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
             if let object = object as? NSData {
                 self.cache.setObject(object, forKey: key as NSString)
             } else {
-                let error: StandardCacheError = "Failed to convert object to NSData, removing old object from cache."
+                let error: DiskCacheError = "Failed to convert object to NSData, removing old object from cache."
                 Log(.error, error.description)
-                PostHogSDK.shared.capture(error: error, context: "StandardCache set(object:for:)")
+                PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
                 self.cache.removeObject(forKey: key as NSString)
             }
         }
@@ -107,15 +108,15 @@ struct StandardCache: Cache, @unchecked Sendable {
         let contents: [URL]
         do {
             guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-                let error: StandardCacheError = "Failed to find Cache Directory."
+                let error: DiskCacheError = "Failed to find Cache Directory."
                 Log(.error, error.description)
-                PostHogSDK.shared.capture(error: error, context: "StandardCache set(object:for:)")
+                PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
                 return EmptyCollection()
             }
             contents = try FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
         } catch {
             Log(.error, "Failed to read Cache Directory: \(error.localizedDescription)")
-            PostHogSDK.shared.capture(error: error, context: "StandardCache allRecords")
+            PostHogSDK.shared.capture(error: error, context: "DiskCache allRecords")
             
             return EmptyCollection()
         }
@@ -131,7 +132,7 @@ struct StandardCache: Cache, @unchecked Sendable {
                 return (fileName, data)
             } catch {
                 Log(.error, "Failed to read data at \(fileURL): \(error.localizedDescription)")
-                PostHogSDK.shared.capture(error: error, context: "StandardCache allRecords")
+                PostHogSDK.shared.capture(error: error, context: "DiskCache allRecords")
                 
                 return nil
             }

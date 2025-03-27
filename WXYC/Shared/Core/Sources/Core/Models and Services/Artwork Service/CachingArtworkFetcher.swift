@@ -13,11 +13,11 @@ extension CacheCoordinator: ArtworkFetcher {
     // This is necessary because calling `value(for:)` on CacheCoordinator was somehow dispatching to
     // the `fetchArtwork(...)` method below.
     func fetchError(for playcut: Playcut) async throws -> ArtworkService.Error {
-        try await self.value(for: playcut)
+        try await self.value(for: playcut.releaseTitle ?? playcut.songTitle)
     }
     
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
-        let cachedData: Data = try await self.value(for: playcut)
+        let cachedData: Data = try await self.value(for: playcut.releaseTitle ?? playcut.songTitle)
         guard let artwork = UIImage(data: cachedData) else {
             throw ServiceError.noCachedResult
         }
@@ -27,7 +27,12 @@ extension CacheCoordinator: ArtworkFetcher {
     
     func set(artwork: UIImage, for playcut: Playcut) async {
         let artworkData = artwork.pngData()
-        self.set(value: artworkData, for: playcut, lifespan: .oneDay)
+        self.set(value: artworkData, for: playcut.releaseTitle ?? playcut.songTitle, lifespan: .thirtyDays)
+    }
+    
+    func set(artwork: UIImage, for id: String) async {
+        let artworkData = artwork.pngData()
+        self.set(value: artworkData, for: id, lifespan: .thirtyDays)
     }
 }
 
