@@ -126,13 +126,17 @@ class InfoDetailViewController: UIViewController {
     }
     
     private var dialADJString: NSAttributedString {
-        makeButtonString(withTitle: "Dial a DJ", icon: "custom.radio.fill.badge.questionmark")
+        makeButtonString(withTitle: "Dial a DJ", icon: "phone.fill")
     }
     
     func makeButtonString(withTitle title: String, icon: String) -> NSAttributedString {
         let attachment = NSTextAttachment()
-        attachment.image = UIImage(systemName: icon)?
-            .withTintColor(.white, renderingMode: .alwaysOriginal)
+        
+        if let image = UIImage(systemName: icon)?.withRenderingMode(.alwaysTemplate) {
+            attachment.image = image
+        } else if let image = UIImage(named: icon)?.withRenderingMode(.alwaysTemplate) {
+            attachment.image = image
+        }
         
         let requestString = NSMutableAttributedString(attachment: attachment)
         let textString = NSAttributedString(string: " " + title)
