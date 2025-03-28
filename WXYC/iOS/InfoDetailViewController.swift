@@ -126,7 +126,7 @@ class InfoDetailViewController: UIViewController {
     }
     
     private var dialADJString: NSAttributedString {
-        makeButtonString(withTitle: "Dial a DJ", icon: "phone.fill")
+        makeButtonString(withTitle: "Dial a DJ", icon: "custom.radio.fill.badge.questionmark")
     }
     
     func makeButtonString(withTitle title: String, icon: String) -> NSAttributedString {
