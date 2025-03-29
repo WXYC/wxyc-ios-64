@@ -57,7 +57,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         if let cacheDirectory = cacheDirectory {
             let fileName = cacheDirectory.appendingPathComponent(key)
             
-            guard FileManager.default.fileExists(atPath: fileName.path()) else {
+            guard FileManager.default.fileExists(atPath: fileName.path(percentEncoded: false)) else {
                 return nil
             }
             
@@ -81,7 +81,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         if let cacheDirectory = cacheDirectory {
             let fileName = cacheDirectory.appendingPathComponent(key)
             if let object {
-                FileManager.default.createFile(atPath: fileName.path(), contents: object)
+                FileManager.default.createFile(atPath: fileName.path(percentEncoded: false), contents: object)
             } else {
                 do {
                     try FileManager.default.removeItem(at: fileName)
