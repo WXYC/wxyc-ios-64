@@ -54,8 +54,6 @@ struct iTunes {
         let results: [Item]
         
         struct Item: Codable {
-            let artistName: String
-            let trackName: String?
             let artworkUrl100: URL
         }
     }

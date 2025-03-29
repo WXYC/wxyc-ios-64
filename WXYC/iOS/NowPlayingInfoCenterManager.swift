@@ -7,20 +7,21 @@
 //
 
 import Core
-import UI
 import Foundation
 import MediaPlayer
 import Logger
 
 @MainActor
-final class NowPlayingInfoCenterManager: NowPlayingObserver {
-    public static let shared = NowPlayingInfoCenterManager()
+final class NowPlayingInfoCenterManager {
+    static let shared = NowPlayingInfoCenterManager()
     
-    public func update(nowPlayingItem: NowPlayingItem?) {
-        self.update(playcut: nowPlayingItem?.playcut)
-        self.update(artwork: nowPlayingItem?.artwork)
+    init() {
+        NowPlayingService.shared.observe { nowPlayingItem in
+            self.update(playcut: nowPlayingItem?.playcut)
+            self.update(artwork: nowPlayingItem?.artwork)
+        }
     }
-
+    
     private func update(playcut: Playcut?) {
         let playcutMediaItems = playcut.playcutMediaItems
         
@@ -163,27 +164,6 @@ extension CGImage {
 }
 
 extension UIImage {
-    func overlay(with overlay: UIImage) -> UIImage? {
-        // Use the size of the background image or determine a custom size.
-        let size = overlay.size
-
-        // Begin a new image context with the desired options.
-        UIGraphicsBeginImageContextWithOptions(size, false, overlay.scale)
-        
-        // Draw the background image.
-        overlay.draw(in: CGRect(origin: .zero, size: size))
-        
-        // Draw the overlay image.
-        // You can adjust the frame if you want to position it differently.
-        overlay.draw(in: CGRect(origin: .zero, size: size), blendMode: .normal, alpha: 1.0)
-        
-        // Capture the composed image.
-        let composedImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        
-        return composedImage
-    }
-    
     func scaleAndCenter(scale: CGFloat) -> UIImage {
         // Use the original image size as the canvas size.
         let canvasSize = self.size

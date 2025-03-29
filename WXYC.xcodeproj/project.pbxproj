@@ -7,28 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		231260472D938C1600762428 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = 231260462D938C1600762428 /* Secrets */; };
 		236609AD2D72D0270057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236609AC2D72D0270057E268 /* Core */; };
 		236609AF2D72D0270057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236609AE2D72D0270057E268 /* Logger */; };
 		236609B12D72D0270057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236609B02D72D0270057E268 /* OpenNSFW */; };
-		236609B32D72D0270057E268 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 236609B22D72D0270057E268 /* UI */; };
-		236609B52D72D02D0057E268 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236609B42D72D02D0057E268 /* AVFoundation.framework */; };
 		236609C82D72D0430057E268 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 236609BA2D72D0420057E268 /* WatchXYC.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		236609E12D72D08C0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E02D72D08C0057E268 /* Core */; };
 		236609E32D72D08C0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E22D72D08C0057E268 /* Logger */; };
 		236609E52D72D08C0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E42D72D08C0057E268 /* OpenNSFW */; };
-		236609E72D72D08C0057E268 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 236609E62D72D08C0057E268 /* UI */; };
 		2366296A2D72D5BB0057E268 /* NowPlayingWidget.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 236629612D72D5BB0057E268 /* NowPlayingWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		236629AC2D73908D0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AB2D73908D0057E268 /* Core */; };
 		236629AE2D73908D0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AD2D73908D0057E268 /* Logger */; };
 		236629B02D73908D0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AF2D73908D0057E268 /* OpenNSFW */; };
-		236629B22D73908D0057E268 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 236629B12D73908D0057E268 /* UI */; };
-		236629B42D7390930057E268 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236629B32D7390930057E268 /* AVFoundation.framework */; };
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
-		239566A12D7524CE0094A215 /* UI in Frameworks */ = {isa = PBXBuildFile; productRef = 239566A02D7524CE0094A215 /* UI */; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
-		23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23E9C16A2D776CB1000DC6A3 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,7 +75,6 @@
 		236629952D73905A0057E268 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		236629B32D7390930057E268 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.2.sdk/System/Library/Frameworks/AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		23DBF3032D84645D000EB53A /* NowPlayingWidgetDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NowPlayingWidgetDebug.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -91,6 +84,7 @@
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/PlayerPage.swift,
+				WatchXYC/Playlister.swift,
 				WatchXYC/PlaylistPage.swift,
 				WatchXYC/RemoteImage.swift,
 				WatchXYC/RootTabView.swift,
@@ -102,6 +96,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				WatchXYC/PlayerPage.swift,
+				WatchXYC/Playlister.swift,
 				WatchXYC/RemoteImage.swift,
 				"WXYC TV/Assets.xcassets",
 				"WXYC TV/ContentView.swift",
@@ -124,14 +119,12 @@
 				Shared/Logger,
 				Shared/OpenNSFW,
 				Shared/Secrets,
-				Shared/UI,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/Info.plist,
 				WatchXYC/PlayerPage.swift,
 				WatchXYC/PlaylistPage.swift,
 				"WatchXYC/Preview Content/Preview Assets.xcassets",
-				WatchXYC/RemoteImage.swift,
 				WatchXYC/RootTabView.swift,
 				WatchXYC/WatchXYCApp.swift,
 				"WXYC TV/Assets.xcassets",
@@ -191,7 +184,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236609E72D72D08C0057E268 /* UI in Frameworks */,
 				236609E32D72D08C0057E268 /* Logger in Frameworks */,
 				236609E52D72D08C0057E268 /* OpenNSFW in Frameworks */,
 				236609E12D72D08C0057E268 /* Core in Frameworks */,
@@ -202,7 +194,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				239566A12D7524CE0094A215 /* UI in Frameworks */,
 				2395669D2D7524CE0094A215 /* Logger in Frameworks */,
 				2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */,
 				2395669B2D7524CE0094A215 /* Core in Frameworks */,
@@ -213,8 +204,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236629B42D7390930057E268 /* AVFoundation.framework in Frameworks */,
-				236629B22D73908D0057E268 /* UI in Frameworks */,
 				236629AE2D73908D0057E268 /* Logger in Frameworks */,
 				236629B02D73908D0057E268 /* OpenNSFW in Frameworks */,
 				236629AC2D73908D0057E268 /* Core in Frameworks */,
@@ -225,13 +214,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236609B52D72D02D0057E268 /* AVFoundation.framework in Frameworks */,
-				236609B32D72D0270057E268 /* UI in Frameworks */,
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
 				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
-				23E9C16B2D776CB1000DC6A3 /* PostHog in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
+				231260472D938C1600762428 /* Secrets in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -250,7 +237,6 @@
 		2366FA142D72CE880057E268 = {
 			isa = PBXGroup;
 			children = (
-				23DBF3032D84645D000EB53A /* NowPlayingWidgetDebug.entitlements */,
 				236629792D72D94A0057E268 /* WatchXYC-Info.plist */,
 				2366FA1F2D72CE880057E268 /* WXYC */,
 				236609AB2D72D0270057E268 /* Frameworks */,
@@ -286,14 +272,12 @@
 				236609D92D72D0840057E268 /* PBXTargetDependency */,
 				236609DB2D72D0840057E268 /* PBXTargetDependency */,
 				236609DD2D72D0840057E268 /* PBXTargetDependency */,
-				236609DF2D72D0840057E268 /* PBXTargetDependency */,
 			);
 			name = WatchXYC;
 			packageProductDependencies = (
 				236609E02D72D08C0057E268 /* Core */,
 				236609E22D72D08C0057E268 /* Logger */,
 				236609E42D72D08C0057E268 /* OpenNSFW */,
-				236609E62D72D08C0057E268 /* UI */,
 			);
 			productName = "WatchXYC Watch App";
 			productReference = 236609BA2D72D0420057E268 /* WatchXYC.app */;
@@ -313,14 +297,12 @@
 				239566A32D7524D50094A215 /* PBXTargetDependency */,
 				239566A52D7524D50094A215 /* PBXTargetDependency */,
 				239566A72D7524D50094A215 /* PBXTargetDependency */,
-				239566A92D7524D50094A215 /* PBXTargetDependency */,
 			);
 			name = NowPlayingWidget;
 			packageProductDependencies = (
 				2395669A2D7524CE0094A215 /* Core */,
 				2395669C2D7524CE0094A215 /* Logger */,
 				2395669E2D7524CE0094A215 /* OpenNSFW */,
-				239566A02D7524CE0094A215 /* UI */,
 			);
 			productName = NowPlayingWidget;
 			productReference = 236629612D72D5BB0057E268 /* NowPlayingWidget.appex */;
@@ -340,14 +322,12 @@
 				236629A42D7390650057E268 /* PBXTargetDependency */,
 				236629A62D7390650057E268 /* PBXTargetDependency */,
 				236629A82D7390650057E268 /* PBXTargetDependency */,
-				236629AA2D7390650057E268 /* PBXTargetDependency */,
 			);
 			name = "WXYC TV";
 			packageProductDependencies = (
 				236629AB2D73908D0057E268 /* Core */,
 				236629AD2D73908D0057E268 /* Logger */,
 				236629AF2D73908D0057E268 /* OpenNSFW */,
-				236629B12D73908D0057E268 /* UI */,
 			);
 			productName = "WXYC TV";
 			productReference = 236629952D73905A0057E268 /* WXYC TV.app */;
@@ -370,7 +350,6 @@
 				236609A02D72CF5A0057E268 /* PBXTargetDependency */,
 				236609A22D72CF5A0057E268 /* PBXTargetDependency */,
 				236609A42D72CF5A0057E268 /* PBXTargetDependency */,
-				236609A62D72CF5A0057E268 /* PBXTargetDependency */,
 				236609C62D72D0430057E268 /* PBXTargetDependency */,
 				236629692D72D5BB0057E268 /* PBXTargetDependency */,
 			);
@@ -382,9 +361,8 @@
 				236609AC2D72D0270057E268 /* Core */,
 				236609AE2D72D0270057E268 /* Logger */,
 				236609B02D72D0270057E268 /* OpenNSFW */,
-				236609B22D72D0270057E268 /* UI */,
-				23E9C16A2D776CB1000DC6A3 /* PostHog */,
 				23DB847A2D828093000EB53A /* Analytics */,
+				231260462D938C1600762428 /* Secrets */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -424,7 +402,6 @@
 			mainGroup = 2366FA142D72CE880057E268;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				23E9C1692D776CB1000DC6A3 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
@@ -514,10 +491,6 @@
 			isa = PBXTargetDependency;
 			productRef = 236609A32D72CF5A0057E268 /* OpenNSFW */;
 		};
-		236609A62D72CF5A0057E268 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236609A52D72CF5A0057E268 /* UI */;
-		};
 		236609C62D72D0430057E268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 236609B92D72D0420057E268 /* WatchXYC */;
@@ -534,10 +507,6 @@
 		236609DD2D72D0840057E268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 236609DC2D72D0840057E268 /* OpenNSFW */;
-		};
-		236609DF2D72D0840057E268 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236609DE2D72D0840057E268 /* UI */;
 		};
 		236629692D72D5BB0057E268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -556,10 +525,6 @@
 			isa = PBXTargetDependency;
 			productRef = 236629A72D7390650057E268 /* OpenNSFW */;
 		};
-		236629AA2D7390650057E268 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236629A92D7390650057E268 /* UI */;
-		};
 		239566A32D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A22D7524D50094A215 /* Core */;
@@ -571,10 +536,6 @@
 		239566A72D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A62D7524D50094A215 /* OpenNSFW */;
-		};
-		239566A92D7524D50094A215 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 239566A82D7524D50094A215 /* UI */;
 		};
 		23DB84792D828090000EB53A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -629,12 +590,15 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.5.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = TestFlight;
@@ -646,17 +610,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WXYC/WXYC.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WXYC/iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
-				INFOPLIST_KEY_UIMainStoryboardFile = iOSMain;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -667,7 +635,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = TEST_FLIGHT;
@@ -696,7 +663,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -723,7 +689,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -756,7 +721,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 18.2;
 			};
 			name = TestFlight;
 		};
@@ -779,7 +743,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -810,7 +773,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -825,7 +787,7 @@
 		2366296C2D72D5BB0057E268 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = NowPlayingWidgetDebug.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/NowPlayingWidgetDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -838,7 +800,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -851,6 +812,7 @@
 		2366296D2D72D5BB0057E268 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/NowPlayingWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -863,7 +825,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -896,7 +857,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 18.2;
 			};
 			name = Debug;
 		};
@@ -923,7 +883,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 18.2;
 			};
 			name = Release;
 		};
@@ -934,18 +893,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = WXYC/WXYCDebug.entitlements;
+				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYCDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WXYC/iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
-				INFOPLIST_KEY_UIMainStoryboardFile = iOSMain;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -956,7 +918,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -972,17 +933,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WXYC/WXYC.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WXYC/iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
-				INFOPLIST_KEY_UIMainStoryboardFile = iOSMain;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = NO;
@@ -993,7 +958,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.5;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1054,14 +1018,18 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.5.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_SWIFT_FLAGS = "-D DEBUG_PLAYLIST";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 			};
 			name = Debug;
 		};
@@ -1111,12 +1079,15 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.5.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -1176,18 +1147,11 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		23E9C1692D776CB1000DC6A3 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.20.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
+		231260462D938C1600762428 /* Secrets */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Secrets;
+		};
 		2366099F2D72CF5A0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1199,10 +1163,6 @@
 		236609A32D72CF5A0057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
-		};
-		236609A52D72CF5A0057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
 		};
 		236609AC2D72D0270057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1216,10 +1176,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
-		236609B22D72D0270057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		236609D82D72D0840057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1231,10 +1187,6 @@
 		236609DC2D72D0840057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
-		};
-		236609DE2D72D0840057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
 		};
 		236609E02D72D08C0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1248,10 +1200,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
-		236609E62D72D08C0057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		236629A32D7390650057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1263,10 +1211,6 @@
 		236629A72D7390650057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
-		};
-		236629A92D7390650057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
 		};
 		236629AB2D73908D0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1280,10 +1224,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
-		236629B12D73908D0057E268 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		2395669A2D7524CE0094A215 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1295,10 +1235,6 @@
 		2395669E2D7524CE0094A215 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
-		};
-		239566A02D7524CE0094A215 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
 		};
 		239566A22D7524D50094A215 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1312,10 +1248,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
-		239566A82D7524D50094A215 /* UI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = UI;
-		};
 		23DB84782D828090000EB53A /* Analytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Analytics;
@@ -1323,11 +1255,6 @@
 		23DB847A2D828093000EB53A /* Analytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Analytics;
-		};
-		23E9C16A2D776CB1000DC6A3 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 23E9C1692D776CB1000DC6A3 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

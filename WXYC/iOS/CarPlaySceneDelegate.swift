@@ -37,7 +37,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
                 self.observeIsPlaying()
-                self.observeNowPlaying()
                 self.observePlaylist()
             }
         }
@@ -101,7 +100,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 if let error {
                     Log(.error, "Could not push now playing template: \(error)")
                     PostHogSDK.shared.capture(error: error, context: "CarPlay: Could not push now playing template")
-                                              }
+                }
             }
             completionHandler()
         }
@@ -139,31 +138,9 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     }
     
     func observeIsPlaying() {
-        let _ = withObservationTracking {
-            RadioPlayerController.shared.isPlaying
-        } onChange: {
-            Task { @MainActor in
-                self.updateListTemplate()
-                self.observeIsPlaying()
-            }
+        RadioPlayerController.shared.observe { isPlaying in
+            self.updateListTemplate()
         }
-        
-        self.updateListTemplate()
-    }
-    
-    private func observeNowPlaying() {
-        let nowPlayingItem = withObservationTracking {
-            NowPlayingService.shared.nowPlayingItem
-        } onChange: {
-            Task { @MainActor in
-                NowPlayingInfoCenterManager.shared.update(
-                    nowPlayingItem: NowPlayingService.shared.nowPlayingItem
-                )
-                self.observeNowPlaying()
-            }
-        }
-        
-        NowPlayingInfoCenterManager.shared.update(nowPlayingItem: nowPlayingItem)
     }
     
     private func observePlaylist() {

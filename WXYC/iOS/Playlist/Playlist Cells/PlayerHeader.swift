@@ -55,20 +55,10 @@ class PlayerHeader: UITableViewHeaderFooterView {
                 self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
                 self.playbackStateChanged(isPlaying: isPlaying)
             }
-        self.observeIsPlaying()
-    }
-    
-    private func observeIsPlaying() {
-        let isPlaying = withObservationTracking {
-            RadioPlayerController.shared.isPlaying
-        } onChange: {
-            Task { @MainActor in
-                self.playbackStateChanged(isPlaying: RadioPlayerController.shared.isPlaying)
-                self.observeIsPlaying()
-            }
+        
+        RadioPlayerController.shared.observe { isPlaying in
+            self.playbackStateChanged(isPlaying: RadioPlayerController.shared.isPlaying)
         }
-
-        self.playbackStateChanged(isPlaying: isPlaying)
     }
     
     @objc private func playPauseTapped(_ sender: UIButton) {
@@ -115,7 +105,7 @@ extension NotificationCenter {
         using block: @escaping @Sendable @isolated(any) () async -> Void
     ) -> any NSObjectProtocol {
         let wrappedBlock: @Sendable (Notification) -> Void = { _ in
-            let _ = Task {
+            Task {
                 await block()
             }
         }

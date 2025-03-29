@@ -35,28 +35,45 @@ public struct NowPlayingItem: Sendable, Equatable, Comparable {
 public final class NowPlayingService: @unchecked Sendable {
     public static let shared = NowPlayingService()
     
-    public private(set) var nowPlayingItem: NowPlayingItem?
+    @MainActor
+    public private(set) var nowPlayingItem: NowPlayingItem? {
+        didSet {
+            for o in observers {
+                o(self.nowPlayingItem)
+            }
+        }
+    }
+    
+    public typealias Observer = @MainActor @Sendable (NowPlayingItem?) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.nowPlayingItem)
+            self.observers.append(observer)
+        }
+    }
     
     private let playlistService: PlaylistService
     private let artworkService: ArtworkService
     private var playlistServiceObservation: Sendable? = nil
     
     init(
-        playlistService: PlaylistService = PlaylistService(),
+        playlistService: PlaylistService = PlaylistService.shared,
         artworkService: ArtworkService = .shared
     ) {
         self.playlistService = playlistService
         self.artworkService = artworkService
         
-        self.observe()
+        self.observePlaylistService()
     }
     
     var playcuts: [Playcut] = []
     
     @MainActor
-    private func observe() {
+    private func observePlaylistService() {
         PlaylistService.shared.observe { playlist in
-            print(">>>>> playlist updated")
             self.handle(playlist: playlist)
         }
     }

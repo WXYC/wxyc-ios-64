@@ -20,10 +20,26 @@ public enum PlaybackState: Sendable {
 }
 
 @MainActor
-@Observable
-public final class RadioPlayerController: @unchecked Sendable {
+public final class RadioPlayerController {
     public static let shared = RadioPlayerController()
-    public var isPlaying = false
+    public var isPlaying = false {
+        didSet {
+            for o in observers {
+                o(self.isPlaying)
+            }
+        }
+    }
+    
+    public typealias Observer = @MainActor @Sendable (Bool) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.isPlaying)
+            self.observers.append(observer)
+        }
+    }
 
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
@@ -63,15 +79,18 @@ public final class RadioPlayerController: @unchecked Sendable {
 
         self.inputObservations += [
             notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
+            notificationObserver(for: AVAudioSession.routeChangeNotification, sink: self.routeChanged),
             notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
             
             remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
             remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
-            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
+            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(command:)),
         ]
         
-        self.observePlayer()
+        self.radioPlayer.observe { isPlaying in
+            self.isPlaying = isPlaying
+        }
     }
     
     // MARK: Public methods
@@ -85,33 +104,28 @@ public final class RadioPlayerController: @unchecked Sendable {
         }
     }
     
-    private var audioActivationTask: Task<Bool, any Error>?
-    
     public func play() {
-        do {
-            self.playbackTimer = Timer.start()
-            PostHogSDK.shared.play()
-
-            #if os(watchOS)
-            AVAudioSession.sharedInstance().activate { @MainActor activated, error in
+        Task {
+            do {
+                self.playbackTimer = Timer.start()
+                PostHogSDK.shared.play()
+                
+#if os(watchOS)
+                let activated = try await AVAudioSession.sharedInstance().activate()
                 if activated {
-                    Task { @MainActor in
-                        PostHogSDK.shared.play()
-                        RadioPlayerController.shared.play()
-                    }
-                } else {
-                    Log(.error, "Failed to activate audio session: \(String(describing: error))")
-                }
+                    PostHogSDK.shared.play()
+                    self.radioPlayer.play()
+                } 
+                
+#else
+                try AVAudioSession.shared.activate()
+                self.radioPlayer.play()
+#endif
+            } catch {
+                PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not start playback")
+                Log(.error, "RadioPlayerController could not start playback: \(error)")
             }
-            #else
-            try AVAudioSession.shared.activate()
-            #endif
-        } catch {
-            PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not start playback")
-            Log(.error, "RadioPlayerController could not start playback: \(error)")
         }
-        
-        self.radioPlayer.play()
     }
     
     public func pause() {
@@ -125,17 +139,6 @@ public final class RadioPlayerController: @unchecked Sendable {
     
     private var playbackTimer = Timer.start()
     private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
-    
-    func observePlayer() {
-        isPlaying = withObservationTracking {
-            self.radioPlayer.isPlaying
-        } onChange: {
-            Task { @MainActor in
-                self.isPlaying = self.radioPlayer.isPlaying
-                self.observePlayer()
-            }
-        }
-    }
 }
 
 private extension RadioPlayerController {
@@ -175,6 +178,15 @@ private extension RadioPlayerController {
         }
     }
     
+    func routeChanged(_: Notification) {
+        // Use AVAudioSession.shared.currentRoute since the notification only provides the previous
+        // audio output.
+        Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
+        PostHogSDK.shared.capture("Audio session route changed", properties: [
+            "current route" : String(describing: AVAudioSession.shared.currentRoute)
+        ])
+    }
+    
     private func attemptReconnectWithExponentialBackoff() {
         let waitTime = self.backoffTimer.nextWaitTime()
         Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
@@ -203,7 +215,7 @@ private extension RadioPlayerController {
     
     // MARK: External playback command handlers
     
-    func applicationDidEnterBackground(notification: Notification) {
+    func applicationDidEnterBackground(_: Notification) {
         guard !self.radioPlayer.isPlaying else {
             return
         }
@@ -216,7 +228,7 @@ private extension RadioPlayerController {
         }
     }
     
-    func applicationWillEnterForeground(notification: Notification) {
+    func applicationWillEnterForeground(_: Notification) {
         if self.radioPlayer.isPlaying {
             PostHogSDK.shared.play()
             self.play()
@@ -332,6 +344,10 @@ extension AVAudioSession {
     
     func activate() throws {
         try setActive(true)
+        Log(.info, "Session activated, current route: \(AVAudioSession.shared.currentRoute)")
+        PostHogSDK.shared.capture("Audio session activated", properties: [
+            "current route" : String(describing: AVAudioSession.shared.currentRoute)
+        ])
     }
     
     func deactivate() throws {

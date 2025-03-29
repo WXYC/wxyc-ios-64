@@ -9,7 +9,11 @@ let DefaultLifespan: TimeInterval = 30
 public final actor CacheCoordinator {
     public static let Widgets = CacheCoordinator(cache: UserDefaultsCache())
     public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
-    public static let AlbumArt = CacheCoordinator(cache: StandardCache())
+    public static let AlbumArt = CacheCoordinator(cache: DiskCache())
+    
+    enum Error: String, LocalizedError, Codable {
+        case noCachedResult
+    }
     
     internal init(cache: Cache) {
         self.cache = cache
@@ -40,16 +44,16 @@ public final actor CacheCoordinator {
     public func value<Value: Codable>(for key: String) async throws -> Value {
         do {
             guard let encodedCachedRecord = self.cache.object(for: key) else {
-                throw ServiceError.noCachedResult
+                throw Error.noCachedResult
             }
             
-            let cachedRecord = try self.decode(CachedRecord<Value>.self, encodedCachedRecord)
+            let cachedRecord: CachedRecord<Value> = try self.decode(value: encodedCachedRecord, forKey: key)
             
             // nil out record, if expired
             guard !cachedRecord.isExpired else {
                 self.cache.set(object: nil, for: key) // Nil-out expired record
                 
-                throw ServiceError.noCachedResult
+                throw Error.noCachedResult
             }
             
             Log(.info, "cache hit!", key, cachedRecord.value)
@@ -74,7 +78,7 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        Log(.info, "Setting value for key '\(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan)")
+        Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan)")
         
         if let value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
@@ -83,7 +87,14 @@ public final actor CacheCoordinator {
                 self.cache.set(object: encodedCachedRecord, for: key)
             } catch {
                 Log(.error, "Failed to encode value for \(key): \(error)")
-                PostHogSDK.shared.capture(error: error, context: "CacheCoordinator encode value")
+                PostHogSDK.shared.capture(
+                    error: error,
+                    context: "CacheCoordinator encode value",
+                    additionalData: [
+                        "value type": String(describing: Value.self),
+                        "key": key
+                    ]
+                )
             }
         } else {
             self.cache.set(object: nil, for: key)
@@ -92,15 +103,23 @@ public final actor CacheCoordinator {
     
     // MARK: Private methods
     
-    private nonisolated func decode<T>(_ type: T.Type, _ value: Data) throws -> T where T: Decodable {
+    private nonisolated func decode<T>(value: Data, forKey key: String) throws -> CachedRecord<T>
+        where T: Decodable
+    {
         do {
-            return try Self.decoder.decode(T.self, from: value)
+            return try Self.decoder.decode(CachedRecord<T>.self, from: value)
         } catch {
             Log(.error, "CacheCoordinator failed to decode value: \(error)")
             
             if T.self != CachedRecord<ArtworkService.Error>.self {
-                print(">>>> \(T.self)")
-                PostHogSDK.shared.capture(error: error, context: "CacheCoordinator decode value")
+                PostHogSDK.shared.capture(
+                    error: error,
+                    context: "CacheCoordinator decode value",
+                    additionalData: [
+                        
+                        "key" : key
+                    ]
+                )
             }
             
             throw error
@@ -113,7 +132,7 @@ public final actor CacheCoordinator {
             let cache = await self.cache
             for (key, value) in cache.allRecords() {
                 do {
-                    let record = try self.decode(CachedRecord<Data>.self, value)
+                    let record: CachedRecord<Data> = try self.decode(value: value, forKey: key)
                     if record.isExpired || record.lifespan == .distantFuture {
                         cache.set(object: nil, for: key)
                     }
@@ -131,7 +150,7 @@ public final actor CacheCoordinator {
     }
 }
 
-#if DEBUG
+#if false
 extension FileManager {
     func nukeFileSystem() {
         if let cachesURL = urls(for: .cachesDirectory, in: .userDomainMask).first {

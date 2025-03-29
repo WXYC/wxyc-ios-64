@@ -7,21 +7,12 @@
 //
 
 import Foundation
-import Observation
 import Logger
 import PostHog
 import SwiftUI
 
 protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
-}
-
-extension CacheCoordinator: PlaylistFetcher {
-    static let playlistKey = "playlist"
-    
-    func getPlaylist() async throws -> Playlist {
-        try await self.value(for: CacheCoordinator.playlistKey)
-    }
 }
 
 extension URLSession: PlaylistFetcher {
@@ -32,6 +23,7 @@ extension URLSession: PlaylistFetcher {
     }
 }
 
+@Observable
 public final class PlaylistService: Sendable {
     public static let shared = PlaylistService()
     
@@ -56,19 +48,19 @@ public final class PlaylistService: Sendable {
     }
     
     init(
-        cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
-        cachedFetcher: PlaylistFetcher = CacheCoordinator.WXYCPlaylist,
         remoteFetcher: PlaylistFetcher = URLSession.shared
     ) {
-        self.cacheCoordinator = cacheCoordinator
-        self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
         self.fetchTimer?.schedule(deadline: .now(), repeating: Self.defaultFetchInterval)
         self.fetchTimer?.setEventHandler {
             Task { @PlaylistActor in
+#if DEBUG_PLAYLIST
+                let playlist = await Playlist.debugPlaylist
+#else
                 let playlist = await self.fetchPlaylist()
+#endif
                 
                 if playlist.entries.isEmpty {
                     Log(.info, "Empty playlist")
@@ -89,11 +81,6 @@ public final class PlaylistService: Sendable {
                 Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
                 
                 self.set(playlist: playlist)
-                await self.cacheCoordinator.set(
-                    value: self.playlist,
-                    for: CacheCoordinator.playlistKey,
-                    lifespan: DefaultLifespan
-                )
             }
         }
         self.fetchTimer?.resume()
@@ -124,8 +111,6 @@ public final class PlaylistService: Sendable {
     
     private static let defaultFetchInterval: TimeInterval = 30
     
-    private let cacheCoordinator: CacheCoordinator
-    private let cachedFetcher: PlaylistFetcher
     private let remoteFetcher: PlaylistFetcher
     private let fetchTimer: DispatchSource?
     
@@ -138,3 +123,140 @@ public final class PlaylistService: Sendable {
         public static let shared = PlaylistActor()
     }
 }
+
+#if false
+@MainActor
+extension Playlist {
+    static let debugPlaylist = Playlist(
+        playcuts: playcuts,
+        breakpoints: [],
+        talksets: []
+    )
+    
+    private static var _i: UInt64 = 0
+    private static var i: UInt64 {
+        defer { _i += 1 }
+        return _i
+    }
+    
+    static var playcuts = [
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "VI Scose Poise",
+            labelName: nil,
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Belleville",
+            labelName: nil,
+            artistName: "Laurel Halo",
+            releaseTitle: "Atlas"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
+            labelName: nil,
+            artistName: "Harold Budd",
+            releaseTitle: "Pavilion of Dreams"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Bine",
+            labelName: nil,
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Guinnevere",
+            labelName: nil,
+            artistName: "Miles Davis",
+            releaseTitle: "Bitches Brew"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "VI Scose Poise",
+            labelName: nil,
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Belleville",
+            labelName: nil,
+            artistName: "Laurel Halo",
+            releaseTitle: "Atlas"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
+            labelName: nil,
+            artistName: "Harold Budd",
+            releaseTitle: "Pavilion of Dreams"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Bine",
+            labelName: nil,
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        ),
+        Playcut(
+            id: i,
+            hour: i,
+            chronOrderID: i,
+            songTitle: "Guinnevere",
+            labelName: nil,
+            artistName: "Miles Davis",
+            releaseTitle: "Bitches Brew"
+        ),
+    ]
+    
+    struct CircularSequence<S: Sequence & Sendable>: Sequence {
+        let sequence: S
+        
+        func makeIterator() -> CircularIterator<S.Element> {
+            CircularIterator(sequence)
+        }
+    }
+    
+    struct CircularIterator<Element>: IteratorProtocol {
+        let sequence: any Sequence<Element>
+        private var iterator: any IteratorProtocol<Element>
+        
+        init(_ sequence: any Sequence<Element>) {
+            self.sequence = sequence
+            self.iterator = sequence.makeIterator()
+        }
+        
+        mutating func next() -> Element? {
+            if let next = iterator.next() {
+                return next
+            } else {
+                iterator = sequence.makeIterator()
+                return iterator.next()
+            }
+        }
+    }
+}
+#endif

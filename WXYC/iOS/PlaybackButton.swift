@@ -11,11 +11,11 @@ import UIKit
 
 let DefaultsPlaybackDuration: CFTimeInterval = 0.24
 
-@objc public enum PlaybackButtonState : Int {
+@objc enum PlaybackButtonState : Int {
     case paused
     case playing
     
-    public var value: CGFloat {
+    var value: CGFloat {
         switch self {
         case .paused:
             return 1.0
@@ -29,7 +29,6 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
     private static let AnimationKey = "playbackValue"
     private static let AnimationIdentifier = "playbackLayerAnimation"
     
-    private var contentEdgeInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
     var status: PlaybackButtonState = .paused
     
     @objc var playbackValue: CGFloat = 1.0 {

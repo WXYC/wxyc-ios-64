@@ -6,14 +6,11 @@ import MediaPlayer
 import Observation
 import PostHog
 import Secrets
-import UI
 import UIKit
 import WidgetKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    let cacheCoordinator = CacheCoordinator.WXYCPlaylist
-    
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
@@ -32,6 +29,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             PostHogSDK.shared.capture(error: error, context: "AppDelegate: Could not set AVAudioSession category")
         }
         
+        let _ = NowPlayingInfoCenterManager.shared
+        
 #if os(iOS)
         // Make status bar white
         UINavigationBar.appearance().barStyle = .black
@@ -41,8 +40,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         self.removeDonatedSiriIntentIfNeeded()
         #endif
 #endif
-        
-        observeNowPlayingItem()
         
         WidgetCenter.shared.getCurrentConfigurations { result in
             guard case let .success(configurations) = result else {
@@ -56,7 +53,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             WidgetCenter.shared.reloadAllTimelines()
         }
         
+        // TODO: Figure out why this isn't working.
+        #if false
+        let playShortcut = UIApplicationShortcutItem(
+            type: "org.wxyc.iphoneapp.play",
+            localizedTitle: "Play WXYC",
+            localizedSubtitle: nil,
+            icon: UIApplicationShortcutIcon(type: .play),
+            userInfo: nil
+        )
+        
+        application.shortcutItems = [playShortcut]
+        #endif
+        
         return true
+    }
+    
+    func application(_ application: UIApplication,
+                     performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
+        if shortcutItem.type == "org.wxyc.iphoneapp.play" {
+            RadioPlayerController.shared.play()
+            PostHogSDK.shared.capture("Play quick action")
+            completionHandler(true)
+        } else {
+            completionHandler(false)
+        }
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
@@ -64,31 +85,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     // MARK: - Private
-    
-    // MARK: Now Playing Observation
-    
-    private var nowPlayingItem: Any?
-    
-    // TODO: Make a macro to encapsulate this.
-    private func observeNowPlayingItem() {
-        nowPlayingItem = withObservationTracking {
-            NowPlayingService.shared.nowPlayingItem
-        } onChange: {
-            Task { @MainActor in
-                self.updateNowPlayingInfo(NowPlayingService.shared.nowPlayingItem)
-                self.observeNowPlayingItem()
-            }
-        }
-    }
-    
-    func updateNowPlayingInfo(_ nowPlayingItem: NowPlayingItem?) {
-        PostHogSDK.shared.capture("now playing updated")
-        
-        NowPlayingInfoCenterManager.shared.update(
-            nowPlayingItem: NowPlayingService.shared.nowPlayingItem
-        )
-        WidgetCenter.shared.reloadAllTimelines()
-    }
     
     // MARK: PostHog Analytics
     
@@ -113,14 +109,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 
+extension UIApplicationShortcutItem: @unchecked @retroactive Sendable { }
+
 #if os(iOS)
 import Intents
 
 extension AppDelegate {
-    enum UserSettingsKeys: String {
-        case intentDonated
-    }
-    
     private func donateSiriIntent() {
         let placeholder = UIImage.placeholder
         let mediaItem = INMediaItem(
@@ -137,27 +131,13 @@ extension AppDelegate {
                 PostHogSDK.shared.capture(error: error, context: "AppDelegate: Failed to donate Siri intent")
             }
         }
-    }
-    
-    #if false
-    func removeDonatedSiriIntentIfNeeded() {
-        Task {
-            guard try await self.shouldRemoveSiriIntent() else {
-                return
-            }
-            
-            try await INInteraction.deleteAll()
-            await self.cacheCoordinator.set(
-                value: nil as Bool?,
-                for: UserSettingsKeys.intentDonated,
-                lifespan: .distantFuture
-            )
-        }
-    }
-    #endif
-    
-    func shouldRemoveSiriIntent() async throws -> Bool {
-        try await !self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
+        
+        let activity = NSUserActivity(activityType: "org.wxyc.iphoneapp.play")
+        activity.title = "Play WXYC"
+        activity.isEligibleForPrediction = true
+        activity.isEligibleForSearch = true
+        activity.suggestedInvocationPhrase = "Play WXYC"
+        activity.becomeCurrent()
     }
     
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {

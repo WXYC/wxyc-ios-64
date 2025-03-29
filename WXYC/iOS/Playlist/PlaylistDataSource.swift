@@ -14,19 +14,35 @@ import Logger
 import PostHog
 
 @MainActor
-@Observable
 final class PlaylistDataSource: Sendable {
     static let shared = PlaylistDataSource()
 
     init(playlistService: PlaylistService = .shared) {
-        PlaylistService.shared.observe { playlist in
+        playlistService.observe { playlist in
             self.viewModels = playlist.entries
                 .compactMap { $0 as? any PlaylistCellViewModelProducer }
                 .map { $0.cellViewModel }
         }
     }
+        
+    public typealias Observer = @MainActor @Sendable ([PlaylistCellViewModel]) -> ()
+    @MainActor private var observers: [Observer] = []
+    
+    @MainActor
+    public func observe(_ observer: @escaping Observer) {
+        Task { @MainActor in
+            observer(self.viewModels)
+            self.observers.append(observer)
+        }
+    }
     
     // MARK: Private
     
-    private(set) var viewModels: [PlaylistCellViewModel] = []
+    private(set) var viewModels: [PlaylistCellViewModel] = [] {
+        didSet {
+            for o in observers {
+                o(self.viewModels)
+            }
+        }
+    }
 }

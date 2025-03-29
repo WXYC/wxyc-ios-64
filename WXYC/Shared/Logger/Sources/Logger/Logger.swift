@@ -15,15 +15,11 @@ public enum LogLevel: String, CustomStringConvertible, Sendable {
     case error = "ERROR"
 }
 
-protocol Loggable {
-    func log(_ fileName: StaticString, _ line: Int, _ functionName: StaticString, _ level: LogLevel, _ message: Any...)
-}
-
 @available(macOS 10.4, iOS 18.0, tvOS 11.0, watchOS 8.0, visionOS 1.0, *)
 public let Log = Logger()
 
 @available(macOS 10.4, iOS 18.0, tvOS 11.0, watchOS 8.0, visionOS 1.0, *)
-public final class Logger: Loggable, Sendable {
+public final class Logger: Sendable {
     public func callAsFunction(
         fileName: StaticString = #file,
         line: Int = #line,

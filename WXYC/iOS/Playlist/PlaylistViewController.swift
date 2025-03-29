@@ -15,7 +15,6 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared
     var reuseIdentifiers: Set<String> = []
-    var playlistDataSourceObservation: Any? = nil
     
     override func viewDidLoad() {
         self.observePlaylistDataSource()
@@ -23,16 +22,10 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     }
     
     func observePlaylistDataSource() {
-        let viewModels = withObservationTracking {
-            self.playlistDataSource.viewModels
-        } onChange: {
-            Task { @MainActor in
-                self.observePlaylistDataSource()
-            }
+        self.playlistDataSource.observe { viewModels in
+            validateCollection(viewModels, label: "\(Self.self) [PlaylistCellViewModel]")
+            self.update(viewModels: viewModels)
         }
-
-        validateCollection(self.playlistDataSource.viewModels, label: "\(Self.self) [PlaylistCellViewModel]")
-        self.update(viewModels: viewModels)
     }
     
     private func setUpTableView() {

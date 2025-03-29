@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import Core
 
 protocol CellConfigurator: Sendable {
     var `class`: AnyClass { get }
