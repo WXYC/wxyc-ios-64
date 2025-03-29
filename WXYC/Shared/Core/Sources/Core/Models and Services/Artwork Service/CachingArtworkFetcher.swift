@@ -19,7 +19,7 @@ extension CacheCoordinator: ArtworkFetcher {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let cachedData: Data = try await self.value(for: playcut.releaseTitle ?? playcut.songTitle)
         guard let artwork = UIImage(data: cachedData) else {
-            throw ServiceError.noCachedResult
+            throw Error.noCachedResult
         }
         
         return artwork
