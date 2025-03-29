@@ -21,7 +21,7 @@ Run it in Xcode.
 
 ## Need help?
 
-Send an email to [dvd](dvd@wxyc.org).
+Send an email to [Jake](mailto:jake@wxyc.org).
 
 ## Credits
 
