@@ -32,6 +32,7 @@ public final actor ArtworkService {
 
     private let fetchers: [ArtworkFetcher]
     private let cacheCoordinator: CacheCoordinator
+    private var inflightTasks: [String: Task<UIImage?, Never>] = [:]
     
     private init(fetchers: [ArtworkFetcher], cacheCoordinator: CacheCoordinator = .AlbumArt) {
         self.fetchers = fetchers
@@ -39,7 +40,25 @@ public final actor ArtworkService {
     }
 
     public func getArtwork(for playcut: Playcut) async -> UIImage? {
+        let id = playcut.releaseTitle ?? playcut.songTitle
+        
+        if let existingTask = inflightTasks[id] {
+            return await existingTask.value
+        }
+        
+        let task = Task<UIImage?, Never> {
+            defer { Task { removeTask(for: id) } }
+            return await scanFetchers(for: playcut)
+        }
+        
+        inflightTasks[id] = task
+        
+        return await task.value
+    }
+    
+    private func scanFetchers(for playcut: Playcut) async -> UIImage? {
         let cacheId = playcut.releaseTitle ?? playcut.songTitle
+
         if let error: Error = try? await self.cacheCoordinator.fetchError(for: playcut),
            Error.allCases.contains(error) {
             Log(.info, "Previous attempt to find artwork errored \(error) for \(cacheId), skipping")
@@ -73,5 +92,9 @@ public final actor ArtworkService {
         await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: cacheId, lifespan: .thirtyDays)
         
         return nil
+    }
+    
+    private func removeTask(for id: String) {
+        inflightTasks[id] = nil
     }
 }
