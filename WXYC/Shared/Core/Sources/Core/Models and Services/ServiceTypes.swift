@@ -10,7 +10,6 @@ public extension TimeInterval {
 enum ServiceError: String, LocalizedError, Codable {
     case noResults
     case noNewData
-    case noCachedResult
 }
 
 protocol WebSession: Sendable {
