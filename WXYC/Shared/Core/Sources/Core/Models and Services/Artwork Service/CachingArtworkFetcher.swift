@@ -25,33 +25,8 @@ extension CacheCoordinator: ArtworkFetcher {
         return artwork
     }
     
-    func set(artwork: UIImage, for playcut: Playcut) async {
-        let artworkData = artwork.pngData()
-        self.set(value: artworkData, for: playcut.releaseTitle ?? playcut.songTitle, lifespan: .thirtyDays)
-    }
-    
     func set(artwork: UIImage, for id: String) async {
         let artworkData = artwork.pngData()
         self.set(value: artworkData, for: id, lifespan: .thirtyDays)
-    }
-}
-
-internal final class CachingArtworkFetcher: ArtworkFetcher {
-    private let cacheCoordinator: CacheCoordinator
-    private let fetcher: ArtworkFetcher
-    
-    internal init(
-        fetcher: ArtworkFetcher,
-        cacheCoordinator: CacheCoordinator = .AlbumArt
-    ) {
-        self.fetcher = fetcher
-        self.cacheCoordinator = cacheCoordinator
-    }
-    
-    internal func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
-        let artwork = try await self.fetcher.fetchArtwork(for: playcut)
-        await self.cacheCoordinator.set(value: artwork.pngData(), for: playcut, lifespan: .oneDay)
-        
-        return artwork
     }
 }

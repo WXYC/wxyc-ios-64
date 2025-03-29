@@ -15,14 +15,6 @@ protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
-extension CacheCoordinator: PlaylistFetcher {
-    static let playlistKey = "playlist"
-    
-    func getPlaylist() async throws -> Playlist {
-        try await self.value(for: CacheCoordinator.playlistKey)
-    }
-}
-
 extension URLSession: PlaylistFetcher {
     func getPlaylist() async throws -> Playlist {
         let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
@@ -56,12 +48,8 @@ public final class PlaylistService: Sendable {
     }
     
     init(
-        cacheCoordinator: CacheCoordinator = .WXYCPlaylist,
-        cachedFetcher: PlaylistFetcher = CacheCoordinator.WXYCPlaylist,
         remoteFetcher: PlaylistFetcher = URLSession.shared
     ) {
-        self.cacheCoordinator = cacheCoordinator
-        self.cachedFetcher = cachedFetcher
         self.remoteFetcher = remoteFetcher
         
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
@@ -93,11 +81,6 @@ public final class PlaylistService: Sendable {
                 Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
                 
                 self.set(playlist: playlist)
-                await self.cacheCoordinator.set(
-                    value: self.playlist,
-                    for: CacheCoordinator.playlistKey,
-                    lifespan: DefaultLifespan
-                )
             }
         }
         self.fetchTimer?.resume()
@@ -128,8 +111,6 @@ public final class PlaylistService: Sendable {
     
     private static let defaultFetchInterval: TimeInterval = 30
     
-    private let cacheCoordinator: CacheCoordinator
-    private let cachedFetcher: PlaylistFetcher
     private let remoteFetcher: PlaylistFetcher
     private let fetchTimer: DispatchSource?
     

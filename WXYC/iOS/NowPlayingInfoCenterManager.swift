@@ -13,7 +13,7 @@ import Logger
 
 @MainActor
 final class NowPlayingInfoCenterManager {
-    public static let shared = NowPlayingInfoCenterManager()
+    static let shared = NowPlayingInfoCenterManager()
     
     init() {
         NowPlayingService.shared.observe { nowPlayingItem in

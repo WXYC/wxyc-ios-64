@@ -85,7 +85,7 @@ public final class RadioPlayerController {
             remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
             remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
-            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remotePauseOrStopCommand),
+            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(command:)),
         ]
         
         self.radioPlayer.observe { isPlaying in
@@ -103,8 +103,6 @@ public final class RadioPlayerController {
             self.play()
         }
     }
-    
-    private var audioActivationTask: Task<Bool, any Error>?
     
     public func play() {
         Task {
@@ -180,7 +178,7 @@ private extension RadioPlayerController {
         }
     }
     
-    func routeChanged(notification: Notification) {
+    func routeChanged(_: Notification) {
         // Use AVAudioSession.shared.currentRoute since the notification only provides the previous
         // audio output.
         Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
@@ -217,7 +215,7 @@ private extension RadioPlayerController {
     
     // MARK: External playback command handlers
     
-    func applicationDidEnterBackground(notification: Notification) {
+    func applicationDidEnterBackground(_: Notification) {
         guard !self.radioPlayer.isPlaying else {
             return
         }
@@ -230,7 +228,7 @@ private extension RadioPlayerController {
         }
     }
     
-    func applicationWillEnterForeground(notification: Notification) {
+    func applicationWillEnterForeground(_: Notification) {
         if self.radioPlayer.isPlaying {
             PostHogSDK.shared.play()
             self.play()

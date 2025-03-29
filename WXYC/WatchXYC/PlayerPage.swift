@@ -11,7 +11,6 @@ import Core
 import UIKit
 import AVKit
 import AVFAudio
-import Logger
 
 struct PlayerPage: View {
     @State var playlister = Playlister()
@@ -113,12 +112,6 @@ struct PlayerPage: View {
         #else
         10
         #endif
-    }
-}
-
-extension View where Body: View {
-    var group: Group<Body> {
-        Group<Body> { self.body }
     }
 }
 

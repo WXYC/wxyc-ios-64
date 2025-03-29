@@ -15,7 +15,6 @@ class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
     let playlistDataSource = PlaylistDataSource.shared
     var reuseIdentifiers: Set<String> = []
-    var playlistDataSourceObservation: Any? = nil
     
     override func viewDidLoad() {
         self.observePlaylistDataSource()

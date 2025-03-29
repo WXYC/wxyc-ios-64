@@ -34,8 +34,6 @@ struct LastFM {
             }
         }
         
-        let name: String
-        let artist: String
         let image: [AlbumArt]
         
         var largestAlbumArt: AlbumArt {

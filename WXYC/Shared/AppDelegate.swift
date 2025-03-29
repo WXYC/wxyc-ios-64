@@ -11,8 +11,6 @@ import WidgetKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    let cacheCoordinator = CacheCoordinator.WXYCPlaylist
-    
     // MARK: UIApplicationDelegate
     
     var window: UIWindow?
@@ -117,10 +115,6 @@ extension UIApplicationShortcutItem: @unchecked @retroactive Sendable { }
 import Intents
 
 extension AppDelegate {
-    enum UserSettingsKeys: String {
-        case intentDonated
-    }
-    
     private func donateSiriIntent() {
         let placeholder = UIImage.placeholder
         let mediaItem = INMediaItem(
@@ -144,27 +138,6 @@ extension AppDelegate {
         activity.isEligibleForSearch = true
         activity.suggestedInvocationPhrase = "Play WXYC"
         activity.becomeCurrent()
-    }
-    
-    #if false
-    func removeDonatedSiriIntentIfNeeded() {
-        Task {
-            guard try await self.shouldRemoveSiriIntent() else {
-                return
-            }
-            
-            try await INInteraction.deleteAll()
-            await self.cacheCoordinator.set(
-                value: nil as Bool?,
-                for: UserSettingsKeys.intentDonated,
-                lifespan: .distantFuture
-            )
-        }
-    }
-    #endif
-    
-    func shouldRemoveSiriIntent() async throws -> Bool {
-        try await !self.cacheCoordinator.value(for: UserSettingsKeys.intentDonated)
     }
     
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {

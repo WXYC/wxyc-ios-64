@@ -131,7 +131,7 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.family = family
     }
     
-    public static func placeholder(family: WidgetFamily) -> Self {
+    static func placeholder(family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
             nowPlayingItem: NowPlayingItem.placeholder,
             recentItems: [.placeholder, .placeholder, .placeholder],
@@ -168,12 +168,6 @@ extension NowPlayingWidgetEntryView {
         
         Color.darken
             .ignoresSafeArea()
-    }
-}
-
-extension Color {
-    init(white: CGFloat, opacity: CGFloat = 1) {
-        self.init(red: white, green: white, blue: white, opacity: opacity)
     }
 }
 
@@ -416,7 +410,6 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
 
 struct NowPlayingWidget: Widget {
     let kind: String = "NowPlayingWidget"
-    @Environment(\.widgetFamily) var family: WidgetFamily
     
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry -> AnyView in
@@ -534,14 +527,6 @@ extension RangeReplaceableCollection {
     mutating func popFirst() -> (Element, Self) {
         let first = removeFirst()
         return (first, self)
-    }
-}
-
-extension Sequence {
-    func sorted<T: Comparable>(by keyPath: KeyPath<Element, T>, comparator: (T, T) -> Bool = (<)) -> [Element] {
-        sorted { e1, e2 in
-            comparator(e1[keyPath: keyPath], e2[keyPath: keyPath])
-        }
     }
 }
 

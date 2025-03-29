@@ -49,8 +49,8 @@ public final actor ArtworkService {
         
         for fetcher in self.fetchers {
             do {
-                
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
+                
                 Log(.info, "Artwork \(artwork) found for \(cacheId) using fetcher \(fetcher) after \(timer.duration()) seconds")
 
 #if canImport(UIKit) && canImport(Vision)
@@ -73,18 +73,5 @@ public final actor ArtworkService {
         await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: cacheId, lifespan: .thirtyDays)
         
         return nil
-    }
-}
-
-public struct FetchArtworkTask: Sendable {
-    let playcut: Playcut
-    
-    public init(playcut: Playcut) {
-        self.playcut = playcut
-    }
-    
-    public func fetchArtwork() async -> UIImage? {
-        // TODO: Inject this
-        await ArtworkService.shared.getArtwork(for: playcut)
     }
 }
