@@ -18,7 +18,7 @@ final class PlaylistDataSource: Sendable {
     static let shared = PlaylistDataSource()
 
     init(playlistService: PlaylistService = .shared) {
-        PlaylistService.shared.observe { playlist in
+        playlistService.observe { playlist in
             self.viewModels = playlist.entries
                 .compactMap { $0 as? any PlaylistCellViewModelProducer }
                 .map { $0.cellViewModel }

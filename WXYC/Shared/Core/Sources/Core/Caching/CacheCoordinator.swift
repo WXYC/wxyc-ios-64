@@ -130,7 +130,7 @@ public final actor CacheCoordinator {
     }
 }
 
-#if DEBUG
+#if false
 extension FileManager {
     func nukeFileSystem() {
         if let cachesURL = urls(for: .cachesDirectory, in: .userDomainMask).first {

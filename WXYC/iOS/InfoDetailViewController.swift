@@ -51,8 +51,8 @@ class InfoDetailViewController: UIViewController {
         alert.addTextField { textField in
             self.request = textField.text ?? ""
         }
-        let requestAction = UIAlertAction(title: "Request", style: .default) { action in
 
+        let requestAction = UIAlertAction(title: "Request", style: .default) { action in
             Task {
                 if let text = alert.textFields?.first?.text {
                     // Use the text here

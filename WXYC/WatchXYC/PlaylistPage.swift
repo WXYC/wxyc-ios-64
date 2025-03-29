@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 import Core
-import Logger
 
 struct PlaylistPage: View {
     @State var playlister = Playlister()
