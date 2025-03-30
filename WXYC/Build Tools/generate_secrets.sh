@@ -28,30 +28,37 @@ import Foundation
 public struct Secrets {
 EOF
 
-# Process each line from the secrets file.
-while IFS= read -r line || [ -n "$line" ]; do
-    # Skip empty lines or lines without "=".
-    if [ -z "$line" ] || [[ "$line" != *"="* ]]; then
-        continue
-    fi
+if [[ "$CI_XCODE_CLOUD" != "true" ]]; then
+    # Process each line from the secrets file.
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip empty lines or lines without "=".
+        if [ -z "$line" ] || [[ "$line" != *"="* ]]; then
+            continue
+        fi
 
-    # Split the line into key and value.
-    key=$(echo "$line" | cut -d '=' -f 1)
-    value=$(echo "$line" | cut -d '=' -f 2-)
+        # Split the line into key and value.
+        key=$(echo "$line" | cut -d '=' -f 1)
+        value=$(echo "$line" | cut -d '=' -f 2-)
 
-    # Trim whitespace.
-    key=$(trim "$key")
-    value=$(trim "$value")
+        # Trim whitespace.
+        key=$(trim "$key")
+        value=$(trim "$value")
 
-    # Remove any surrounding quotes from the value.
-    value=$(echo "$value" | sed 's/^"//;s/"$//')
+        # Remove any surrounding quotes from the value.
+        value=$(echo "$value" | sed 's/^"//;s/"$//')
 
-    # Convert the key from SNAKE_CASE to camelCase.
-    camelKey=$(toCamelCase "$key")
+        # Convert the key from SNAKE_CASE to camelCase.
+        camelKey=$(toCamelCase "$key")
 
-    # Append the static property to the Swift file.
-    echo "    public static let ${camelKey} = #ObfuscatedString(\"${value}\")" >> "$OUTPUT_FILE"
-done < "$SECRETS_FILE"
+        # Append the static property to the Swift file.
+        echo "    public static let ${camelKey} = #ObfuscatedString(\"${value}\")" >> "$OUTPUT_FILE"
+    done < "$SECRETS_FILE"
+else
+    echo "    public static let posthogApiKey = \"posthogApiKey\"" >> "$OUTPUT_FILE"
+    echo "    public static let discogsApiKeyV2_5 = \"discogsApiKeyV2_5\"" >> "$OUTPUT_FILE"
+    echo "    public static let discogsApiSecretV2_5 = \"discogsApiSecretV2_5\"" >> "$OUTPUT_FILE"
+    echo "    public static let slackWxycRequestsWebhook = \"slackWxycRequestsWebhook\"" >> "$OUTPUT_FILE"
+fi
 
 # Close the struct declaration.
 echo "}" >> "$OUTPUT_FILE"
