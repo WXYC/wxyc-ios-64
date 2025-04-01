@@ -166,6 +166,16 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
         window?.windowScene = windowScene
         window?.makeKeyAndVisible()
     }
+    
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
+        if shortcutItem.type == "org.wxyc.iphoneapp.play" {
+            RadioPlayerController.shared.play()
+            PostHogSDK.shared.capture("Play quick action")
+            return true
+        } else {
+            return false
+        }
+    }
 }
 
 extension CPListItem: @unchecked @retroactive Sendable {

@@ -53,8 +53,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             WidgetCenter.shared.reloadAllTimelines()
         }
         
-        // TODO: Figure out why this isn't working.
-        #if false
         let playShortcut = UIApplicationShortcutItem(
             type: "org.wxyc.iphoneapp.play",
             localizedTitle: "Play WXYC",
@@ -64,20 +62,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         )
         
         application.shortcutItems = [playShortcut]
-        #endif
         
         return true
-    }
-    
-    func application(_ application: UIApplication,
-                     performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
-        if shortcutItem.type == "org.wxyc.iphoneapp.play" {
-            RadioPlayerController.shared.play()
-            PostHogSDK.shared.capture("Play quick action")
-            completionHandler(true)
-        } else {
-            completionHandler(false)
-        }
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
