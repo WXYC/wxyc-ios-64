@@ -78,7 +78,7 @@ public final actor CacheCoordinator {
     }
     
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan)")
+        Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan). Value type is \(String(describing: Value.self))")
         
         if let value {
             let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
@@ -103,21 +103,21 @@ public final actor CacheCoordinator {
     
     // MARK: Private methods
     
-    private nonisolated func decode<T>(value: Data, forKey key: String) throws -> CachedRecord<T>
-        where T: Decodable
+    private nonisolated func decode<Value>(value: Data, forKey key: String) throws -> CachedRecord<Value>
+        where Value: Decodable
     {
         do {
-            return try Self.decoder.decode(CachedRecord<T>.self, from: value)
+            return try Self.decoder.decode(CachedRecord<Value>.self, from: value)
         } catch {
-            Log(.error, "CacheCoordinator failed to decode value: \(error)")
+            Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
             
-            if T.self != CachedRecord<ArtworkService.Error>.self {
+            if Value.self != CachedRecord<ArtworkService.Error>.self {
                 PostHogSDK.shared.capture(
                     error: error,
                     context: "CacheCoordinator decode value",
                     additionalData: [
-                        
-                        "key" : key
+                        "value type": String(describing: Value.self),
+                        "key": key
                     ]
                 )
             }
@@ -139,7 +139,7 @@ public final actor CacheCoordinator {
                 } catch {
                     PostHogSDK.shared.capture(
                         error: error,
-                        context: "CacheCoordinator decode value",
+                        context: "CacheCoordinator purgeRecords",
                         additionalData: ["key" : key]
                     )
                     Log(.error, "Failed to decode value for \(key): \(error)\nDeleting it anyway.")
