@@ -100,17 +100,17 @@ class InfoDetailViewController: UIViewController {
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "Yes!", style: .default) { action in
-            self.sendFeedback(includeLogs: true)
+            self.sendFeedback(attachLogs: true)
         })
         alert.addAction(UIAlertAction(title: "S'all good", style: .default) { action in
-            self.sendFeedback(includeLogs: false)
+            self.sendFeedback(attachLogs: false)
         })
         self.present(alert, animated: true)
     }
     
-    func sendFeedback(includeLogs: Bool) {
+    func sendFeedback(attachLogs: Bool) {
         if MFMailComposeViewController.canSendMail() {
-            let mailComposeViewController = stationFeedbackMailController()
+            let mailComposeViewController = stationFeedbackMailController(attachLogs: attachLogs)
             self.present(mailComposeViewController, animated: true, completion: nil)
         } else {
             UIApplication.shared.open(feedbackURL())
@@ -150,14 +150,15 @@ extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     private static let feedbackAddress = "feedback@wxyc.org"
     private static let subject = "Feedback on the WXYC app"
     
-    private func stationFeedbackMailController() -> MFMailComposeViewController {
+    private func stationFeedbackMailController(attachLogs: Bool) -> MFMailComposeViewController {
         PostHogSDK.shared.capture("feedback email presented")
         
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = self
         mailComposerVC.setToRecipients([Self.feedbackAddress])
         mailComposerVC.setSubject(Self.subject)
-        if let (fileName, data) = Logger.fetchLogs() {
+        if attachLogs,
+           let (fileName, data) = Logger.fetchLogs() {
             let mimeType = UTType.plainText.preferredMIMEType ?? "plain/text"
             mailComposerVC.addAttachmentData(data, mimeType: mimeType, fileName: fileName)
         }
