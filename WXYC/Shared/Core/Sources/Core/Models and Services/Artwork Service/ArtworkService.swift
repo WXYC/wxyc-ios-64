@@ -88,7 +88,7 @@ public final actor ArtworkService {
             }
         }
         
-        Log(.error, "No artwork found for \(cacheId) using any fetcher")
+        Log(.error, "No artwork found for \(cacheId) using any fetcher after \(timer.duration()) seconds")
         await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: cacheId, lifespan: .thirtyDays)
         
         return nil
