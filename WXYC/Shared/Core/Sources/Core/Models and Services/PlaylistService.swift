@@ -10,6 +10,7 @@ import Foundation
 import Logger
 import PostHog
 import SwiftUI
+import Analytics
 
 protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
@@ -18,6 +19,12 @@ protocol PlaylistFetcher: Sendable {
 extension URLSession: PlaylistFetcher {
     func getPlaylist() async throws -> Playlist {
         let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+        
+        PostHogSDK.shared.capture(
+            "Playlist Fetched",
+            context: "PlaylistService",
+            additionalData: ["payload size" : String(describing: playlistData.count)])
+        
         let decoder = JSONDecoder()
         return try decoder.decode(Playlist.self, from: playlistData)
     }
