@@ -14,6 +14,16 @@ public extension PostHogSDK {
             properties: defaultProperties)
     }
     
+    func capture(_ event: String, context: String, additionalData: [String: String] = [:]) {
+        var defaultProperties = ["context": context]
+        defaultProperties.update(with: additionalData)
+
+        PostHogSDK.shared.capture(
+            event,
+            properties: defaultProperties
+        )
+    }
+    
     func play(_ source: Any = #function) {
         PostHogSDK.shared.capture(
             "play",
