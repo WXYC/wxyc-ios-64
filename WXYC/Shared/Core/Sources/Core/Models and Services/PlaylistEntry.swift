@@ -41,12 +41,12 @@ private let dateFormatter: DateFormatter = {
 }()
 
 public extension PlaylistEntry {
-    static func ==(lhs: Self, rhs: Self) -> Bool {
+    static func ==(lhs: Self, rhs: any PlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
 
-    static func !=(lhs: any PlaylistEntry, rhs: any PlaylistEntry) -> Bool {
-        !(lhs.id == rhs.id)
+    static func !=(lhs: Self, rhs: any PlaylistEntry) -> Bool {
+        lhs.id != rhs.id
     }
     
     static func <(lhs: Self, rhs: any PlaylistEntry) -> Bool {

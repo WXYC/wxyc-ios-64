@@ -57,11 +57,12 @@ public final actor ArtworkService {
     }
     
     private func scanFetchers(for playcut: Playcut) async -> UIImage? {
-        let cacheId = playcut.releaseTitle ?? playcut.songTitle
+        let cacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
+        let errorCacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
 
-        if let error: Error = try? await self.cacheCoordinator.fetchError(for: playcut),
+        if let error: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKeyId),
            Error.allCases.contains(error) {
-            Log(.info, "Previous attempt to find artwork errored \(error) for \(cacheId), skipping")
+            Log(.info, "Previous attempt to find artwork errored \(error) for \(errorCacheKeyId), skipping")
         }
         
         let timer = Timer.start()
@@ -70,26 +71,26 @@ public final actor ArtworkService {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
                 
-                Log(.info, "Artwork \(artwork) found for \(cacheId) using fetcher \(fetcher) after \(timer.duration()) seconds")
+                Log(.info, "Artwork \(artwork) found for \(cacheKeyId) using fetcher \(fetcher) after \(timer.duration()) seconds")
 
 #if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
-                    Log(.info, "Inappropriate artwork found for \(cacheId) using fetcher \(fetcher)")
-                    await self.cacheCoordinator.set(value: Error.nsfw, for: cacheId, lifespan: .thirtyDays)
+                    Log(.info, "Inappropriate artwork found for \(cacheKeyId) using fetcher \(fetcher)")
+                    await self.cacheCoordinator.set(value: Error.nsfw, for: errorCacheKeyId, lifespan: .thirtyDays)
                     
                     return nil
                 }
 #endif
                 
-                await self.cacheCoordinator.set(artwork: artwork, for: cacheId)
+                await self.cacheCoordinator.set(artwork: artwork, for: cacheKeyId)
                 return artwork
             } catch {
-                Log(.info, "No artwork found for \(cacheId) using fetcher \(fetcher): \(error)")
+                Log(.info, "No artwork found for \(cacheKeyId) using fetcher \(fetcher): \(error)")
             }
         }
         
-        Log(.error, "No artwork found for \(cacheId) using any fetcher after \(timer.duration()) seconds")
-        await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: cacheId, lifespan: .thirtyDays)
+        Log(.error, "No artwork found for \(cacheKeyId) using any fetcher after \(timer.duration()) seconds")
+        await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: errorCacheKeyId, lifespan: .thirtyDays)
         
         return nil
     }
