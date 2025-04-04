@@ -10,10 +10,16 @@ import SwiftUI
 import AVFoundation
 import Logger
 import PostHog
+import Secrets
 
 @main
 struct WatchXYC: App {
     init() {
+        let POSTHOG_API_KEY = Secrets.posthogApiKey
+        let POSTHOG_HOST = "https://us.i.posthog.com"
+        let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
+        PostHogSDK.shared.setup(config)
+
         PostHogSDK.shared.capture("app launch")
         
         do {
