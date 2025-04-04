@@ -57,7 +57,7 @@ public final actor ArtworkService {
     }
     
     private func scanFetchers(for playcut: Playcut) async -> UIImage? {
-        let cacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
+        let cacheKeyId = "\(playcut.releaseTitle ?? playcut.songTitle)"
         let errorCacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
 
         if let error: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKeyId),
