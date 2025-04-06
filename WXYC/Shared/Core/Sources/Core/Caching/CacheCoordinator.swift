@@ -65,52 +65,43 @@ public final actor CacheCoordinator {
         }
     }
     
-    public func set<Value, Key>(value: Value?, for key: Key, lifespan: TimeInterval)
-        where Value: Codable, Key: RawRepresentable, Key.RawValue == String
-    {
-        self.set(value: value, for: key.rawValue, lifespan: lifespan)
-    }
-    
-    public func set<Value, Key>(value: Value?, for key: Key, lifespan: TimeInterval)
-        where Value: Codable, Key: Identifiable, Key.ID: LosslessStringConvertible
-    {
-        self.set(value: value, for: String(key.id), lifespan: lifespan)
-    }
-    
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
         Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan). Value type is \(String(describing: Value.self))")
         
-        if let value {
-            let cachedRecord = CachedRecord(value: value, lifespan: lifespan)
-            do {
-                let encodedCachedRecord = try Self.encoder.encode(cachedRecord)
-                self.cache.set(object: encodedCachedRecord, for: key)
-            } catch {
-                Log(.error, "Failed to encode value for \(key): \(error)")
-                PostHogSDK.shared.capture(
-                    error: error,
-                    context: "CacheCoordinator encode value",
-                    additionalData: [
-                        "value type": String(describing: Value.self),
-                        "key": key
-                    ]
-                )
-            }
-        } else {
+        guard let value else {
             self.cache.set(object: nil, for: key)
+            return
+        }
+        
+        do {
+            let record = CachedRecord(value: value, lifespan: lifespan)
+            let encodedRecord = try Self.encoder.encode(record)
+            self.cache.set(object: encodedRecord, for: key)
+        } catch {
+            Log(.error, "Failed to encode value for \(key): \(error)")
+            PostHogSDK.shared.capture(
+                error: error,
+                context: "CacheCoordinator encode value",
+                additionalData: [
+                    "value type": String(describing: Value.self),
+                    "key": key
+                ]
+            )
+        }
+        
+        Task {
+            let _: Value = await try! self.value(for: key)
         }
     }
     
     // MARK: Private methods
     
-    private nonisolated func decode<Value>(value: Data, forKey key: String) throws -> CachedRecord<Value>
-        where Value: Decodable
-    {
+    private nonisolated func decode<Value: Decodable>(value: Data, forKey key: String) throws -> CachedRecord<Value> {
         do {
             return try Self.decoder.decode(CachedRecord<Value>.self, from: value)
         } catch {
             Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
-            
+            Log(.error, "\(try Self.decoder.decode(CachedRecord<String>.self, from: value))")
             if Value.self != CachedRecord<ArtworkService.Error>.self {
                 PostHogSDK.shared.capture(
                     error: error,
@@ -132,7 +123,7 @@ public final actor CacheCoordinator {
             let cache = await self.cache
             for (key, value) in cache.allRecords() {
                 do {
-                    let record: CachedRecord<Data> = try self.decode(value: value, forKey: key)
+                    let record: CachedRecord<String> = try self.decode(value: value, forKey: key)
                     if record.isExpired || record.lifespan == .distantFuture {
                         cache.set(object: nil, for: key)
                     }
