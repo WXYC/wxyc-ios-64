@@ -88,10 +88,6 @@ public final actor CacheCoordinator {
                 ]
             )
         }
-        
-        Task {
-            let _: Value = await try! self.value(for: key)
-        }
     }
     
     // MARK: Private methods

@@ -81,15 +81,22 @@ class InfoDetailViewController: UIViewController {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
         request.httpBody = jsonData
         
-        print(request)
+        PostHogSDK.shared.capture(
+            "Request sent",
+            context: "Info ViewController",
+            additionalData: [
+                "message": message
+            ]
+        )
         
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
             if let response = response as? HTTPURLResponse {
-                print("Response status code: \(response.statusCode)")
+                Log(.info, "Response status code: \(response.statusCode)")
             }
         } catch {
-            print("Error: \(error)")
+            Log(.error, "Error sending message to Slack: \(error)")
+            PostHogSDK.shared.capture(error: error, context: "Info ViewController")
         }
     }
     
