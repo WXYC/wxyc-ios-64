@@ -30,6 +30,12 @@ internal final class RadioPlayer: Sendable {
                 Log(.info, "RadioPlayer did receive notification", notification)
                 Task { @MainActor in
                     self.isPlaying = self.player.rate > 0
+                    if self.isPlaying {
+                        let timeToAudio = self.timer.duration()
+                        PostHogSDK.shared.capture("Time to first Audio", properties: [
+                            "timeToAudio": timeToAudio
+                        ])
+                    }
                 }
             }
     }
