@@ -173,7 +173,13 @@ public struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
         request.httpBody = jsonData
         
-        print(request)
+        PostHogSDK.shared.capture(
+            "Request sent",
+            context: "MakeARequest Intent",
+            additionalData: [
+                "message": message
+            ]
+        )
         
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
@@ -182,6 +188,7 @@ public struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
             }
         } catch {
             print("Error: \(error)")
+            PostHogSDK.shared.capture(error: error, context: "MakeARequest Intent")
         }
     }
 }
