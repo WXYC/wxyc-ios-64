@@ -11,8 +11,17 @@ import SwiftUI
 import Core
 import PostHog
 import AppIntents
+import Secrets
+import Analytics
 
 final class Provider: TimelineProvider, Sendable {
+    init() {
+        let POSTHOG_API_KEY = Secrets.posthogApiKey
+        let POSTHOG_HOST = "https://us.i.posthog.com"
+        let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
+        PostHogSDK.shared.setup(config)
+    }
+    
     func placeholder(in context: Context) -> NowPlayingTimelineEntry {
         var nowPlayingItemsWithArtwork: [NowPlayingItem] = [
             NowPlayingItem.placeholder,
@@ -33,8 +42,9 @@ final class Provider: TimelineProvider, Sendable {
     func getSnapshot(in context: Context, completion: @escaping @Sendable (NowPlayingTimelineEntry) -> ()) {
         let family = context.family
         PostHogSDK.shared.capture(
-            "nowplayingwidget getsnapshot",
-            properties: ["family" : String(describing: family)]
+            "getSnapshot",
+            context: "NowPlayingWidget",
+            additionalData: ["family" : String(describing: family)]
         )
         
         Task {
@@ -64,8 +74,9 @@ final class Provider: TimelineProvider, Sendable {
     func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
         let family = context.family
         PostHogSDK.shared.capture(
-            "nowplayingwidget gettimeline",
-            properties: ["family" : String(describing: family)]
+            "getTimeline",
+            context: "NowPlayingWidget",
+            additionalData: ["family" : String(describing: family)]
         )
         
         Task {
@@ -195,7 +206,6 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                 PlayButton()
                     .background(Capsule().fill(Color.red))
                     .clipped()
-                
             }
         }
         .containerBackground(Color.clear, for: .widget)
@@ -219,6 +229,12 @@ struct PlayButton: View {
                 .fontWeight(.bold)
                 .foregroundColor(.white)
                 .invalidatableContent()
+        }
+        .onTapGesture {
+            PostHogSDK.shared.capture(
+                "play button tapped",
+                context: "NowPlayingWidget"
+            )
         }
     }
     
