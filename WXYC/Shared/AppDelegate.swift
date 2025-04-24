@@ -70,6 +70,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         PostHogSDK.shared.capture("Application Will Terminate", properties: [
             "Is Playing?" : RadioPlayerController.shared.isPlaying,
         ])
+        UserDefaults.wxyc.set(false, forKey: "isPlaying")
         RadioPlayerController.shared.pause()
         UIApplication.shared.endReceivingRemoteControlEvents()
     }
