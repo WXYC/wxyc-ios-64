@@ -19,6 +19,7 @@
 		236629AC2D73908D0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AB2D73908D0057E268 /* Core */; };
 		236629AE2D73908D0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AD2D73908D0057E268 /* Logger */; };
 		236629B02D73908D0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AF2D73908D0057E268 /* OpenNSFW */; };
+		23906F462DD4FC950033EB69 /* ListenTogether.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23906F452DD4FC950033EB69 /* ListenTogether.swift */; };
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
@@ -75,6 +76,7 @@
 		236629952D73905A0057E268 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		236629B32D7390930057E268 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.2.sdk/System/Library/Frameworks/AVFoundation.framework; sourceTree = DEVELOPER_DIR; };
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		23906F452DD4FC950033EB69 /* ListenTogether.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ListenTogether.swift; path = WXYC/iOS/ListenTogether.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -110,6 +112,7 @@
 				"Build Tools/generate_secrets.sh",
 				"iOS Intents Extension/Info.plist",
 				iOS/Info.plist,
+				iOS/ListenTogether.swift,
 				LICENSE,
 				NowPlayingWidget/Assets.xcassets,
 				NowPlayingWidget/Info.plist,
@@ -237,6 +240,7 @@
 		2366FA142D72CE880057E268 = {
 			isa = PBXGroup;
 			children = (
+				23906F452DD4FC950033EB69 /* ListenTogether.swift */,
 				236629792D72D94A0057E268 /* WatchXYC-Info.plist */,
 				2366FA1F2D72CE880057E268 /* WXYC */,
 				236609AB2D72D0270057E268 /* Frameworks */,
@@ -473,6 +477,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23906F462DD4FC950033EB69 /* ListenTogether.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
