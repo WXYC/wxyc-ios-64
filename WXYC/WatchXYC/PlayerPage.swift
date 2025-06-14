@@ -63,7 +63,7 @@ struct PlayerPage: View {
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        RadioPlayerController.shared.toggle()
+                        Task { try RadioPlayerController.shared.toggle(reason: "Watch play/pause tapped") }
                     }) {
                         Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))

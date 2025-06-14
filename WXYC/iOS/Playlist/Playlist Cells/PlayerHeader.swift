@@ -62,7 +62,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
     }
     
     @objc private func playPauseTapped(_ sender: UIButton) {
-        RadioPlayerController.shared.toggle()
+        try? RadioPlayerController.shared.toggle(reason: "player play/pause button tapped")
     }
     
     private func playbackStateChanged(playbackState: PlaybackState) {

@@ -132,9 +132,16 @@ extension AppDelegate {
     }
     
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
-        RadioPlayerController.shared.play()
+        let response: INPlayMediaIntentResponse
         
-        let response = INPlayMediaIntentResponse(code: .success, userActivity: nil)
+        do {
+            try RadioPlayerController.shared.play(reason: "INIntent")
+            response = INPlayMediaIntentResponse(code: .success, userActivity: nil)
+            completionHandler(response)
+        } catch {
+            response = INPlayMediaIntentResponse(code: .failure, userActivity: nil)
+        }
+
         completionHandler(response)
     }
 }
