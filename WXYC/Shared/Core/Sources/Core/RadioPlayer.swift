@@ -18,7 +18,7 @@ internal final class RadioPlayer: Sendable {
     private var playerObservation: (any NSObjectProtocol)?
     private var timer: Timer = Timer.start()
     
-    init(streamURL: URL = .WXYCStream128kMP3) {
+    init(streamURL: URL = RadioStation.WXYC.streamURL) {
         self.streamURL = streamURL
         self.player = AVPlayer(url: streamURL)
         self.playerObservation =

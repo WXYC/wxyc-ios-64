@@ -4,7 +4,6 @@ import PostHog
 
 extension URL {
     static let WXYCPlaylist = URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=50")!
-    static let WXYCStream128kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc.mp3")!
 #if WXYC_320_STREAM_ENABLED
     static let WXYCStream320kMP3 = URL(string: "http://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 #endif
