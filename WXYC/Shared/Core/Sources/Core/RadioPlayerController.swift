@@ -40,7 +40,7 @@ public final class RadioPlayerController {
             self.observers.append(observer)
         }
     }
-
+    
     private init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
@@ -48,27 +48,18 @@ public final class RadioPlayerController {
     ) {
         func notificationObserver(
             for name: Notification.Name,
-            sink: @escaping @Sendable @isolated(any) (Notification) -> ()
-        ) -> any Sendable {
-            NonSendableBox<NSObjectProtocol>(
-                value: notificationCenter.addObserver(
-                    forName: name,
-                    object: nil,
-                    queue: nil,
-                    using: sink
-                )
-            )
+            sink: @escaping @Sendable (Notification) -> ()
+        ) -> Any {
+            notificationCenter.addObserver(forName: name, object: nil, queue: nil, using: sink)
         }
         
         func remoteCommandObserver(
             for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
             handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
-        ) -> any Sendable {
-            NonSendableBox<Any>(
-                value: remoteCommandCenter[keyPath: command].addTarget(handler: handler)
-            )
+        ) -> Any {
+            remoteCommandCenter[keyPath: command].addTarget(handler: handler)
         }
-
+        
         self.radioPlayer = radioPlayer
 #if os(iOS)
         self.inputObservations = [
@@ -76,7 +67,6 @@ public final class RadioPlayerController {
             notificationObserver(for: UIApplication.willEnterForegroundNotification, sink: self.applicationWillEnterForeground),
         ]
 #endif
-
         self.inputObservations += [
             notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
             notificationObserver(for: AVAudioSession.routeChangeNotification, sink: self.routeChanged),
@@ -95,34 +85,33 @@ public final class RadioPlayerController {
     
     // MARK: Public methods
     
-    public func toggle() {
+    public func toggle(reason: String) throws {
         if self.isPlaying {
             PostHogSDK.shared.pause(duration: playbackTimer.duration())
             self.pause()
         } else {
-            self.play()
+            try self.play(reason: reason)
         }
     }
     
-    public func play() {
+    public func play(reason: String) throws {
         Task {
             do {
                 self.playbackTimer = Timer.start()
-                PostHogSDK.shared.play()
                 
-#if os(watchOS)
                 let activated = try await AVAudioSession.sharedInstance().activate()
-                if activated {
-                    PostHogSDK.shared.play()
-                    self.radioPlayer.play()
-                } 
                 
-#else
-                try AVAudioSession.shared.activate()
-                self.radioPlayer.play()
-#endif
+                if activated {
+                    PostHogSDK.shared.play(reason: reason)
+                    self.radioPlayer.play()
+                }
             } catch {
-                PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not start playback")
+                PostHogSDK.shared.capture(
+                    error: error,
+                    context: "RadioPlayerController could not start playback",
+                    additionalData: ["playbackReason" : reason]
+                )
+                
                 Log(.error, "RadioPlayerController could not start playback: \(error)")
             }
         }
@@ -135,7 +124,7 @@ public final class RadioPlayerController {
     // MARK: Private
     
     private let radioPlayer: RadioPlayer
-    private var inputObservations: [any Sendable] = []
+    private var inputObservations: [Any] = []
     
     private var playbackTimer = Timer.start()
     private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
@@ -144,14 +133,17 @@ public final class RadioPlayerController {
 private extension RadioPlayerController {
     // MARK: AVPlayer handlers
     
-    func playbackStalled(_ notification: Notification) {
+    nonisolated func playbackStalled(_ notification: Notification) {
         Log(.error, "Playback stalled: \(notification)")
-        PostHogSDK.shared.pause(duration: playbackTimer.duration())
-        self.radioPlayer.pause()
-        self.attemptReconnectWithExponentialBackoff()
+        
+        Task { @MainActor in
+            PostHogSDK.shared.pause(duration: playbackTimer.duration())
+            self.radioPlayer.pause()
+            self.attemptReconnectWithExponentialBackoff()
+        }
     }
     
-    func sessionInterrupted(notification: Notification) {
+    nonisolated func sessionInterrupted(notification: Notification) {
         Log(.info, "Session interrupted: \(notification)")
         guard let interruptionType = notification.interruptionType else {
             return
@@ -160,31 +152,30 @@ private extension RadioPlayerController {
         let interruptionReason = notification.interruptionReason
         let iterruptionOptions = notification.interruptionOptions
         
-        switch interruptionType {
-        case .began:
-            // `.routeDisconnected` types are not balanced by a `.ended` notification.
-            if interruptionReason == .routeDisconnected {
-                PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "route disconnected")
-            } else if let options = iterruptionOptions,
-                      options.contains(.shouldResume) {
-                PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "should resume")
-            } else {
-                PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "no reason")
-                self.pause()
+        Task { @MainActor in
+            
+            switch interruptionType {
+            case .began:
+                // `.routeDisconnected` types are not balanced by a `.ended` notification.
+                if interruptionReason == .routeDisconnected {
+                    PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "route disconnected")
+                } else if let options = iterruptionOptions,
+                          options.contains(.shouldResume) {
+                    PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "should resume")
+                } else {
+                    PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "no reason")
+                    self.pause()
+                }
+            case .shouldResume, .ended:
+                try self.play(reason: "Resume AVAudioSession playback")
             }
-        case .shouldResume, .ended:
-            PostHogSDK.shared.play()
-            self.play()
         }
     }
     
-    func routeChanged(_: Notification) {
+    nonisolated func routeChanged(_: Notification) {
         // Use AVAudioSession.shared.currentRoute since the notification only provides the previous
         // audio output.
         Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
-        PostHogSDK.shared.capture("Audio session route changed", properties: [
-            "current route" : String(describing: AVAudioSession.shared.currentRoute)
-        ])
     }
     
     private func attemptReconnectWithExponentialBackoff() {
@@ -215,57 +206,70 @@ private extension RadioPlayerController {
     
     // MARK: External playback command handlers
     
-    func applicationDidEnterBackground(_: Notification) {
-        guard !self.radioPlayer.isPlaying else {
-            return
-        }
-        
-        do {
-            try AVAudioSession.shared.deactivate()
-        } catch {
-            PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not deactivate")
-            Log(.error, "RadioPlayerController could not deactivate: \(error)")
+    nonisolated func applicationDidEnterBackground(_: Notification) {
+        Task { @MainActor in
+            guard !self.radioPlayer.isPlaying else {
+                return
+            }
+            
+            do {
+                try AVAudioSession.shared.deactivate()
+            } catch {
+                PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not deactivate")
+                Log(.error, "RadioPlayerController could not deactivate: \(error)")
+            }
         }
     }
     
-    func applicationWillEnterForeground(_: Notification) {
-        if self.radioPlayer.isPlaying {
-            PostHogSDK.shared.play()
-            self.play()
-        } else {
-            PostHogSDK.shared.pause(duration: playbackTimer.duration())
-            self.pause()
+    nonisolated func applicationWillEnterForeground(_: Notification) {
+        Task { @MainActor in
+            if self.radioPlayer.isPlaying {
+                try self.play(reason: "toggle")
+            } else {
+                PostHogSDK.shared.pause(duration: playbackTimer.duration())
+                self.pause()
+            }
         }
     }
     
     func remotePlayCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        PostHogSDK.shared.play()
-        self.play()
-
-        return .success
+        do {
+            try self.play(reason: "remotePlayCommand")
+            return .success
+        } catch {
+            return .commandFailed
+        }
     }
     
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         PostHogSDK.shared.pause(duration: playbackTimer.duration())
         self.pause()
-
+        
         return .success
     }
     
     func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        if self.radioPlayer.isPlaying {
-            PostHogSDK.shared.pause(duration: playbackTimer.duration())
-            self.pause()
-        } else {
-            PostHogSDK.shared.play()
-            self.play()
+        do {
+            if self.radioPlayer.isPlaying {
+                self.pause()
+            } else {
+                try self.play(reason: "remote toggle play/pause")
+            }
+            
+            return .success
+        } catch {
+            return .commandFailed
         }
-        
-        return .success
     }
 }
 
 fileprivate extension Notification {
+    enum InterruptionType {
+        case began
+        case ended
+        case shouldResume
+    }
+    
     var interruptionType: InterruptionType? {
         guard let typeValue = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber else {
             Log(.error, "Could not extract interruption type from notification \(self)")
@@ -327,12 +331,6 @@ fileprivate extension Notification {
     }
 }
 
-enum InterruptionType {
-    case began
-    case ended
-    case shouldResume
-}
-
 struct NonSendableBox<NonSendableType>: @unchecked Sendable {
     let value: NonSendableType
 }
@@ -342,12 +340,20 @@ extension AVAudioSession {
         return AVAudioSession.sharedInstance()
     }
     
-    func activate() throws {
+    func activate() async throws -> Bool {
+#if os(watchOS)
+        let activated = try await AVAudioSession.sharedInstance().activate(options: [])
+#else
+        let activated = true
         try setActive(true)
+#endif
+        
         Log(.info, "Session activated, current route: \(AVAudioSession.shared.currentRoute)")
         PostHogSDK.shared.capture("Audio session activated", properties: [
             "current route" : String(describing: AVAudioSession.shared.currentRoute)
         ])
+        
+        return activated
     }
     
     func deactivate() throws {

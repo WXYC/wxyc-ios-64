@@ -33,10 +33,13 @@ public struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     )
 
     public init() { }
-    public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        PostHogSDK.shared.capture("PlayWXYC intent")
-        await RadioPlayerController.shared.play()
-        return .result(value: "Now playing WXYC.")
+    public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
+        try await RadioPlayerController.shared.play(reason: "PlayWXYC intent")
+        let value = "Tuning in to WXYC…"
+        return .result(
+            value: value,
+            dialog: IntentDialog(stringLiteral: value)
+        )
     }
 }
 
@@ -64,8 +67,7 @@ public struct ToggleWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        PostHogSDK.shared.capture("ToggleWXYC intent")
-        await RadioPlayerController.shared.toggle()
+        try await RadioPlayerController.shared.toggle(reason: "ToggleWXYC intent")
         return .result(value: "Now toggling WXYC")
     }
 }

@@ -7,7 +7,7 @@ public extension PostHogSDK {
             "error": "\(error)",
             "context": context
         ]
-        defaultProperties.update(with: additionalData)
+        defaultProperties.merge(with: additionalData)
         
         PostHogSDK.shared.capture(
             "error",
@@ -16,7 +16,7 @@ public extension PostHogSDK {
     
     func capture(_ event: String, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = ["context": context]
-        defaultProperties.update(with: additionalData)
+        defaultProperties.merge(with: additionalData)
 
         PostHogSDK.shared.capture(
             event,
@@ -24,12 +24,17 @@ public extension PostHogSDK {
         )
     }
     
-    func play(_ source: Any = #function) {
+    func play(_ source: Any = #function, reason: String? = nil) {
+        var properties: [String: Any] = ["source": source]
+        
+        if let reason = reason {
+            properties["reason"] = reason
+        }
+        
         PostHogSDK.shared.capture(
             "play",
-            properties: [
-                "source": source
-            ])
+            properties: properties
+        )
     }
     
     func play(_ source: Any = #function, reason: String) {
@@ -62,7 +67,7 @@ public extension PostHogSDK {
 }
 
 extension Dictionary {
-    mutating func update(with dict: Dictionary<Key, Value>) {
+    mutating func merge(with dict: Dictionary<Key, Value>) {
         for (key, value) in dict {
             self[key] = value
         }

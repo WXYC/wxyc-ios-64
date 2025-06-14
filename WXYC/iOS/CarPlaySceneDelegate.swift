@@ -91,11 +91,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         let image = isPlaying
             ? nil
             : UIImage(systemName: "play.fill")
-        let item = CPListItem(text: "Listen Live", detailText: nil, image: image)
-        item.isPlaying = isPlaying
+        let listenLiveItem = CPListItem(text: "Listen Live", detailText: nil, image: image)
+        listenLiveItem.isPlaying = isPlaying
         
-        item.handler = { selectableItem, completionHandler in
-            RadioPlayerController.shared.play()
+        listenLiveItem.handler = { selectableItem, completionHandler in
+            try? RadioPlayerController.shared.play(reason: "CarPlay listen live tapped")
+            
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
                     Log(.error, "Could not push now playing template: \(error)")
@@ -105,7 +106,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             completionHandler()
         }
         
-        return CPListSection(items: [item])
+        return CPListSection(items: [listenLiveItem])
     }
     
     private func makePlaylistSection() -> CPListSection {
@@ -168,11 +169,14 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     }
     
     func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
-        if shortcutItem.type == "org.wxyc.iphoneapp.play" {
-            RadioPlayerController.shared.play()
-            PostHogSDK.shared.capture("Play quick action")
+        guard shortcutItem.type == "org.wxyc.iphoneapp.play" else {
+            return false
+        }
+
+        do {
+            try RadioPlayerController.shared.play(reason: "home screen play quick action")
             return true
-        } else {
+        } catch {
             return false
         }
     }
