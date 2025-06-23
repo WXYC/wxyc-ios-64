@@ -583,7 +583,7 @@ extension Image {
     }
 }
 
-extension Collection {
+extension Collection where Self: Sendable {
     public func asyncMap<T>(_ transform: sending @escaping @isolated(any) (Element) async -> T) async -> [T] {
         await withTaskGroup(of: T.self) { group in
             for element in self {
