@@ -19,10 +19,13 @@ class InstagramStoryActivity: UIActivity {
     
     // Check if Instagram is available (via URL scheme)
     override func canPerform(withActivityItems activityItems: [Any]) -> Bool {
-        if let instagramURL = URL(string: "instagram-stories://share") {
-            return UIApplication.shared.canOpenURL(instagramURL)
+        guard let instagramURL = URL(string: "instagram-stories://share") else {
+            return false
         }
-        return false
+
+        return sync { @MainActor in
+            UIApplication.shared.canOpenURL(instagramURL)
+        }
     }
     
     // Here you can extract the required items if needed.
@@ -56,12 +59,25 @@ class InstagramStoryActivity: UIActivity {
         
         // Open the Instagram app via the URL scheme.
         if let instagramURL = URL(string: "instagram-stories://share") {
-            UIApplication.shared.open(instagramURL, options: [:]) { success in
-                // Inform the system of completion.
-                self.activityDidFinish(success)
+            let result = sync {
+                return await UIApplication.shared.open(instagramURL, options: [:])
             }
+            self.activityDidFinish(result)
         } else {
             self.activityDidFinish(false)
         }
+    }
+    
+    // MARK: Private
+    
+    private func sync<T: Sendable>(_ task: @MainActor @Sendable @escaping () async -> T) -> T {
+        var result: T!
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            result = await task()
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return result
     }
 }

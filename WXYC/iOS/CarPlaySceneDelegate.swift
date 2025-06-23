@@ -36,8 +36,10 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
                 Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
-                self.observeIsPlaying()
-                self.observePlaylist()
+                Task { @MainActor in
+                    self.observeIsPlaying()
+                    self.observePlaylist()
+                }
             }
         }
     }
@@ -138,12 +140,14 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         )
     }
     
-    func observeIsPlaying() {
+    @MainActor
+    private func observeIsPlaying() {
         RadioPlayerController.shared.observe { isPlaying in
             self.updateListTemplate()
         }
     }
     
+    @MainActor
     private func observePlaylist() {
         PlaylistService.shared.observe { playlist in
             self.playlist = playlist

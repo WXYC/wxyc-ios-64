@@ -15,8 +15,8 @@ import Logger
 final class NowPlayingInfoCenterManager {
     static let shared = NowPlayingInfoCenterManager()
     
-    init() {
-        NowPlayingService.shared.observe { nowPlayingItem in
+    init(nowPlayingService: NowPlayingService = .shared) {
+        nowPlayingService.observe { nowPlayingItem in
             self.update(playcut: nowPlayingItem?.playcut)
             self.update(artwork: nowPlayingItem?.artwork)
         }
@@ -34,30 +34,29 @@ final class NowPlayingInfoCenterManager {
     }
 
     private func update(artwork: UIImage?) {
+        guard let artwork = artwork else {
+            return
+        }
         if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
         }
         
+        let screenWidth = UIScreen.main.bounds.size.width
+        let boundsSize = CGSize(width: screenWidth, height: screenWidth)
+        
         MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] =
-            self.mediaItemArtwork(from: artwork)
+            self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
+        MPNowPlayingInfoCenter.default().playbackState =
+            RadioPlayerController.shared.isPlaying ? .playing : .paused
     }
     
-    private func mediaItemArtwork(from image: UIImage?) -> MPMediaItemArtwork {
-        if let image {
-            let screenWidth = UIScreen.main.bounds.size.width
-            let boundsSize = CGSize(width: screenWidth, height: screenWidth)
-            
-            return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
+    private nonisolated func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
+        return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
+            if let image {
                 return image
+            } else {
+                return UIImage.placeholder
             }
-        } else {
-            return Self.defaultArt()
-        }
-    }
-    
-    private static func defaultArt() -> MPMediaItemArtwork {
-        return MPMediaItemArtwork(boundsSize: UIImage.placeholder.size) { size in
-            UIImage.placeholder
         }
     }
 }

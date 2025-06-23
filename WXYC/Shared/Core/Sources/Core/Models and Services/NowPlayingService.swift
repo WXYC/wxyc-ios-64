@@ -49,10 +49,8 @@ public final class NowPlayingService: @unchecked Sendable {
     
     @MainActor
     public func observe(_ observer: @escaping Observer) {
-        Task { @MainActor in
-            observer(self.nowPlayingItem)
-            self.observers.append(observer)
-        }
+        observer(self.nowPlayingItem)
+        self.observers.append(observer)
     }
     
     private let playlistService: PlaylistService
