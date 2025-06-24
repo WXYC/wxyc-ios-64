@@ -153,15 +153,7 @@
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 236609B62D72D0420057E268 /* Sources */;
 			membershipExceptions = (
-				WatchXYC/Assets.xcassets,
 				"WatchXYC/Preview Content/Preview Assets.xcassets",
-			);
-		};
-		23D57D0D2D7B6F5F005CAD95 /* Exceptions for "WXYC" folder in "Compile Sources" phase from "NowPlayingWidget" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 2366295D2D72D5BB0057E268 /* Sources */;
-			membershipExceptions = (
-				NowPlayingWidget/Assets.xcassets,
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -174,7 +166,6 @@
 				23660A112D72D2630057E268 /* Exceptions for "WXYC" folder in "WatchXYC" target */,
 				23660A122D72D2630057E268 /* Exceptions for "WXYC" folder in "Compile Sources" phase from "WatchXYC" target */,
 				239566992D751E9A0094A215 /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */,
-				23D57D0D2D7B6F5F005CAD95 /* Exceptions for "WXYC" folder in "Compile Sources" phase from "NowPlayingWidget" target */,
 				236629C02D7390A00057E268 /* Exceptions for "WXYC" folder in "WXYC TV" target */,
 			);
 			path = WXYC;
