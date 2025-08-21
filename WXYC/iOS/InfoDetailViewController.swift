@@ -153,7 +153,7 @@ class InfoDetailViewController: UIViewController {
     }
 }
 
-extension InfoDetailViewController: @MainActor MFMailComposeViewControllerDelegate {
+extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     private static let feedbackAddress = "feedback@wxyc.org"
     private static let subject = "Feedback on the WXYC app"
     
@@ -185,13 +185,16 @@ extension InfoDetailViewController: @MainActor MFMailComposeViewControllerDelega
     
     // MARK: MFMailComposeViewControllerDelegate
     
-    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+    nonisolated func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
         if let error {
             PostHogSDK.shared.capture(error: error, context: "feedbackEmail")
             Log(.error, "Failed to send feedback email: \(error)")
         } else {
             PostHogSDK.shared.capture("feedback email sent")
         }
-        controller.dismiss(animated: true, completion: nil)
+        
+        Task { @MainActor in
+            controller.dismiss(animated: true, completion: nil)
+        }
     }
 }
