@@ -116,19 +116,22 @@ extension AppDelegate {
         )
         let intent = INPlayMediaIntent.init(mediaContainer: mediaItem)
         let interaction = INInteraction(intent: intent, response: nil)
-        interaction.donate { error in
-            if let error = error {
+        
+        Task {
+            do {
+                try await interaction.donate()
+                
+                let activity = NSUserActivity(activityType: "org.wxyc.iphoneapp.play")
+                activity.title = "Hello there WXYC"
+                activity.isEligibleForPrediction = true
+                activity.isEligibleForSearch = true
+                activity.suggestedInvocationPhrase = "Hello there WXYC"
+                activity.becomeCurrent()
+            } catch {
                 Log(.error, "Failed to donate Siri intent: \(error)")
                 PostHogSDK.shared.capture(error: error, context: "AppDelegate: Failed to donate Siri intent")
             }
         }
-        
-        let activity = NSUserActivity(activityType: "org.wxyc.iphoneapp.play")
-        activity.title = "Play WXYC"
-        activity.isEligibleForPrediction = true
-        activity.isEligibleForSearch = true
-        activity.suggestedInvocationPhrase = "Play WXYC"
-        activity.becomeCurrent()
     }
     
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
@@ -138,8 +141,10 @@ extension AppDelegate {
             try RadioPlayerController.shared.play(reason: "INIntent")
             response = INPlayMediaIntentResponse(code: .success, userActivity: nil)
             completionHandler(response)
+            Log(.info, "Successfully handled INIntent: \(intent)")
         } catch {
             response = INPlayMediaIntentResponse(code: .failure, userActivity: nil)
+            Log(.error, "Failed to handle INIntent: \(error)")
         }
 
         completionHandler(response)
