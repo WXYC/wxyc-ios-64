@@ -26,8 +26,7 @@ struct PlaylistPage: View {
                             .listRowBackground(Color.black)
                     case .talkset(_):
                         TalksetView()
-                            .background(
-                            )
+                            .background()
                             .listRowBackground(Color.black)
                     }
                 }
