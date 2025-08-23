@@ -9,7 +9,7 @@ extension URL {
 #endif
 }
 
-public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hashable {
+public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hashable, Comparable {
     var id: UInt64 { get }
     var hour: UInt64 { get }
     var chronOrderID: UInt64 { get }
@@ -24,20 +24,7 @@ public extension PlaylistEntry {
         let dictionary = try! decoder.decode(String.self, from: data)
         return dictionary.debugDescription
     }
-    
-    var formattedDate: String {
-        let timeSince1970 = Double(hour) / 1000.0
-        let date = Date(timeIntervalSince1970: timeSince1970)
-        
-        return dateFormatter.string(from: date)
-    }
 }
-
-private let dateFormatter: DateFormatter = {
-    let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "h a"
-    return dateFormatter
-}()
 
 public extension PlaylistEntry {
     static func ==(lhs: Self, rhs: any PlaylistEntry) -> Bool {
@@ -52,8 +39,12 @@ public extension PlaylistEntry {
         lhs.chronOrderID < rhs.chronOrderID
     }
     
+    static func <(lhs: Self, rhs: Self) -> Bool {
+        lhs.chronOrderID < rhs.chronOrderID
+    }
+    
     static func >(lhs: Self, rhs: any PlaylistEntry) -> Bool {
-        rhs.chronOrderID < lhs.chronOrderID
+        rhs.chronOrderID > lhs.chronOrderID
     }
 }
 
@@ -61,6 +52,20 @@ public struct Breakpoint: PlaylistEntry {
     public let id: UInt64
     public let hour: UInt64
     public let chronOrderID: UInt64
+    
+    
+    public var formattedDate: String {
+        let timeSince1970 = Double(hour) / 1000.0
+        let date = Date(timeIntervalSince1970: timeSince1970)
+        
+        return Self.dateFormatter.string(from: date)
+    }
+    
+    private static let dateFormatter: DateFormatter = {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "h a"
+        return dateFormatter
+    }()
 }
 
 public struct Talkset: PlaylistEntry {
