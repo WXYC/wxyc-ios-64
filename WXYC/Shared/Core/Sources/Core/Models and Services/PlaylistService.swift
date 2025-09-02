@@ -25,8 +25,11 @@ extension URLSession: PlaylistFetcher {
             context: "PlaylistService",
             additionalData: ["payload size" : String(describing: playlistData.count)])
         
+        let playlistLatin1String = String(data: playlistData, encoding: .utf8)!
+        let playlistLatin1Data = playlistLatin1String.data(using: .isoLatin1)!
+        
         let decoder = JSONDecoder()
-        return try decoder.decode(Playlist.self, from: playlistData)
+        return try decoder.decode(Playlist.self, from: playlistLatin1Data)
     }
 }
 
