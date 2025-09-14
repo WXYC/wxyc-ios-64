@@ -72,8 +72,12 @@ class InfoDetailViewController: UIViewController {
     // MARK: Private
     
     func sendMessageToServer(message: String) async throws {
-        guard let url = URL(string: Secrets.slackWxycRequestsWebhook) else { return }
-        var request = URLRequest(url: url)
+        guard let webhookURL = try await fetchWebhookURL() else {
+            Log(.error, "Failed to fetch webhook URL from Railway endpoint")
+            return
+        }
+        
+        var request = URLRequest(url: webhookURL)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-type")
         
@@ -90,13 +94,58 @@ class InfoDetailViewController: UIViewController {
         )
         
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            if let response = response as? HTTPURLResponse {
-                Log(.info, "Response status code: \(response.statusCode)")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let response = response as? HTTPURLResponse else {
+                Log(.error, "No response object from Slack")
+                return
             }
+            
+            if response.statusCode == 200 {
+                Log(.info, "Response status code: \(response.statusCode)")
+            } else {
+                Log(.error, "Response status code: \(response.statusCode)")
+                Log(.error, "Data: \(String(data: data, encoding: .utf8)!)")
+            }
+            
         } catch {
             Log(.error, "Error sending message to Slack: \(error)")
             PostHogSDK.shared.capture(error: error, context: "Info ViewController")
+        }
+    }
+    
+    private func fetchWebhookURL() async throws -> URL? {
+        guard let url = URL(string: "https://wxyc-requests-endpoint-production.up.railway.app") else {
+            Log(.error, "Invalid Railway endpoint URL")
+            return nil
+        }
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            
+            guard let response = response as? HTTPURLResponse else {
+                Log(.error, "No response object from Railway endpoint")
+                return nil
+            }
+            
+            guard response.statusCode == 200 else {
+                Log(.error, "Railway endpoint returned status code: \(response.statusCode)")
+                return nil
+            }
+            
+            // The endpoint returns the webhook URL as plain text
+            guard let webhookURLString = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let webhookURL = URL(string: webhookURLString) else {
+                Log(.error, "Failed to parse webhook URL from Railway endpoint response")
+                return nil
+            }
+            
+            Log(.info, "Successfully fetched webhook URL from Railway endpoint")
+            return webhookURL
+            
+        } catch {
+            Log(.error, "Error fetching webhook URL from Railway endpoint: \(error)")
+            throw error
         }
     }
     
