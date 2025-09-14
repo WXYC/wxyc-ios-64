@@ -125,7 +125,7 @@ extension AppDelegate {
                 activity.title = "Hello there WXYC"
                 activity.isEligibleForPrediction = true
                 activity.isEligibleForSearch = true
-                activity.suggestedInvocationPhrase = "Hello there WXYC"
+                activity.suggestedInvocationPhrase = "Play WXYC"
                 activity.becomeCurrent()
             } catch {
                 Log(.error, "Failed to donate Siri intent: \(error)")
