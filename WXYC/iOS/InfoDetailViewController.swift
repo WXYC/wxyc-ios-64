@@ -115,7 +115,7 @@ class InfoDetailViewController: UIViewController {
     }
     
     private func fetchWebhookURL() async throws -> URL? {
-        guard let url = URL(string: "https://wxyc-requests-endpoint-production.up.railway.app") else {
+        guard let url = URL(string: Secrets.slackWxycRequestsWebhookRetrievalUrl) else {
             Log(.error, "Invalid Railway endpoint URL")
             return nil
         }
@@ -133,16 +133,19 @@ class InfoDetailViewController: UIViewController {
                 return nil
             }
             
+            guard let webhookURLSuffixString = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                Log(.error, "Failed to unwrap webhook URL from Railway endpoint response")
+                return nil
+            }
+            
             // The endpoint returns the webhook URL as plain text
-            guard let webhookURLString = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  let webhookURL = URL(string: webhookURLString) else {
+            guard let webhookURLSuffix = URL(string: Secrets.slackWxycRequestsWebhook + webhookURLSuffixString) else {
                 Log(.error, "Failed to parse webhook URL from Railway endpoint response")
                 return nil
             }
             
-            Log(.info, "Successfully fetched webhook URL from Railway endpoint")
-            return webhookURL
-            
+            Log(.info, "Successfully fetched webhook URL from Railway endpoint: \(webhookURLSuffix)")
+            return webhookURLSuffix
         } catch {
             Log(.error, "Error fetching webhook URL from Railway endpoint: \(error)")
             throw error
