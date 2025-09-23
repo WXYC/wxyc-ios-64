@@ -66,6 +66,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
     
+    func application(_ application: UIApplication, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
+        guard shortcutItem.type == "org.wxyc.iphoneapp.play" else {
+            return false
+        }
+
+        do {
+            try RadioPlayerController.shared.play(reason: "home screen play quick action")
+            return true
+        } catch {
+            return false
+        }
+    }
+    
     func applicationWillTerminate(_ application: UIApplication) {
         PostHogSDK.shared.capture("Application Will Terminate", properties: [
             "Is Playing?" : RadioPlayerController.shared.isPlaying,
@@ -140,7 +153,6 @@ extension AppDelegate {
         do {
             try RadioPlayerController.shared.play(reason: "INIntent")
             response = INPlayMediaIntentResponse(code: .success, userActivity: nil)
-            completionHandler(response)
             Log(.info, "Successfully handled INIntent: \(intent)")
         } catch {
             response = INPlayMediaIntentResponse(code: .failure, userActivity: nil)

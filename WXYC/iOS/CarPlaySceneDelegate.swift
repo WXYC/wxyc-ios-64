@@ -10,6 +10,7 @@ import Foundation
 import Logger
 import Core
 import PostHog
+import Intents
 
 @MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
@@ -163,7 +164,14 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     // MARK: UISceneDelegate
     
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = scene as? UIWindowScene, session.configuration.name == "LoggerSceneConfiguration" else { return }
+        if let ua = connectionOptions.userActivities.first {
+            try? handle(userActivity: ua)
+        }
+
+        guard let windowScene = scene as? UIWindowScene,
+              session.configuration.name == "LoggerSceneConfiguration" else {
+            return
+        }
         
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         
@@ -176,12 +184,20 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
         guard shortcutItem.type == "org.wxyc.iphoneapp.play" else {
             return false
         }
-
+        
         do {
             try RadioPlayerController.shared.play(reason: "home screen play quick action")
             return true
         } catch {
             return false
+        }
+    }
+    
+    private func handle(userActivity: NSUserActivity) throws {
+        if userActivity.activityType == "org.wxyc.iphoneapp.play" {
+            try RadioPlayerController.shared.play(reason: "Siri suggestion (NSUserActivity)")
+        } else if let _ = userActivity.interaction?.intent as? INPlayMediaIntent {
+            try RadioPlayerController.shared.play(reason: "Siri suggestion (INPlayMediaIntent)")
         }
     }
 }
