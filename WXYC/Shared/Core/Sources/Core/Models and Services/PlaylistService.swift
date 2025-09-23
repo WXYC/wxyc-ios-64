@@ -16,19 +16,15 @@ protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
+private let decoder = JSONDecoder()
+
 extension URLSession: PlaylistFetcher {
     func getPlaylist() async throws -> Playlist {
         let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
         
-        PostHogSDK.shared.capture(
-            "Playlist Fetched",
-            context: "PlaylistService",
-            additionalData: ["payload size" : String(describing: playlistData.count)])
+        let playlistLatin1String = String(data: playlistData, encoding: .isoLatin1)!
+        let playlistLatin1Data = playlistLatin1String.data(using: .utf8)!
         
-        let playlistLatin1String = String(data: playlistData, encoding: .utf8)!
-        let playlistLatin1Data = playlistLatin1String.data(using: .isoLatin1)!
-        
-        let decoder = JSONDecoder()
         return try decoder.decode(Playlist.self, from: playlistLatin1Data)
     }
 }
