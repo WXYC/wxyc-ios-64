@@ -122,7 +122,7 @@ extension AppDelegate {
                 try await interaction.donate()
                 
                 let activity = NSUserActivity(activityType: "org.wxyc.iphoneapp.play")
-                activity.title = "Hello there WXYC"
+                activity.title = "Play WXYC"
                 activity.isEligibleForPrediction = true
                 activity.isEligibleForSearch = true
                 activity.suggestedInvocationPhrase = "Play WXYC"
