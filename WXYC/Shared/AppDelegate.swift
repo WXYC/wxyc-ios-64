@@ -58,9 +58,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             localizedTitle: "Play WXYC",
             localizedSubtitle: nil,
             icon: UIApplicationShortcutIcon(type: .play),
-            userInfo: nil
+            userInfo: [ "origin" : "home screen quick action" as NSString ]
         )
-        
         application.shortcutItems = [playShortcut]
         
         return true
@@ -139,7 +138,16 @@ extension AppDelegate {
                 activity.isEligibleForPrediction = true
                 activity.isEligibleForSearch = true
                 activity.suggestedInvocationPhrase = "Play WXYC"
+                activity.userInfo = [ "origin" : "donateSiriIntent" ]
                 activity.becomeCurrent()
+                
+                PostHogSDK.shared.capture(
+                    "Intents",
+                    context: "donateSiriIntent",
+                    additionalData: [
+                        "intent data" : activity.description
+                    ]
+                )
             } catch {
                 Log(.error, "Failed to donate Siri intent: \(error)")
                 PostHogSDK.shared.capture(error: error, context: "AppDelegate: Failed to donate Siri intent")
@@ -148,6 +156,13 @@ extension AppDelegate {
     }
     
     func application(_ application: UIApplication, handle intent: INIntent, completionHandler: @escaping (INIntentResponse) -> Void) {
+        PostHogSDK.shared.capture(
+            "Handle INIntent",
+            context: "Intents",
+            additionalData: [
+                "intent data" : intent.description
+            ])
+        
         let response: INPlayMediaIntentResponse
         
         do {
