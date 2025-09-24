@@ -23,7 +23,7 @@ extension URLSession: PlaylistFetcher {
         let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
         
         let playlistLatin1String = String(data: playlistData, encoding: .isoLatin1)!
-        let playlistLatin1Data = playlistLatin1String.data(using: .isoLatin1)!
+        let playlistLatin1Data = playlistLatin1String.data(using: .utf8)!
         
         return try decoder.decode(Playlist.self, from: playlistLatin1Data)
     }
