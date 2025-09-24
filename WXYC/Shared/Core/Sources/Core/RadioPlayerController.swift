@@ -104,6 +104,9 @@ public final class RadioPlayerController {
                 if activated {
                     PostHogSDK.shared.play(reason: reason)
                     self.radioPlayer.play()
+                } else {
+                    let failedToActivateReason = "AVAudioSession.sharedInstance().activate() returned false, but no error was thrown. Original reason: \(reason)"
+                    PostHogSDK.shared.play(reason: failedToActivateReason)
                 }
             } catch {
                 PostHogSDK.shared.capture(
@@ -224,7 +227,7 @@ private extension RadioPlayerController {
     nonisolated func applicationWillEnterForeground(_: Notification) {
         Task { @MainActor in
             if self.radioPlayer.isPlaying {
-                try self.play(reason: "toggle")
+                try self.play(reason: "foreground toggle")
             } else {
                 PostHogSDK.shared.pause(duration: playbackTimer.duration())
                 self.pause()
