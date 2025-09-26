@@ -20,12 +20,25 @@ private let decoder = JSONDecoder()
 
 extension URLSession: PlaylistFetcher {
     func getPlaylist() async throws -> Playlist {
-        let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+        let playlistData: Data
+        do {
+            (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+        } catch let error as NSError {
+            throw AnalyticsOSError(
+                domain: error.domain,
+                code: error.code,
+                description: error.description
+            )
+        }
         
         let playlistLatin1String = String(data: playlistData, encoding: .isoLatin1)!
         let playlistLatin1Data = playlistLatin1String.data(using: .utf8)!
         
-        return try decoder.decode(Playlist.self, from: playlistLatin1Data)
+        do {
+            return try decoder.decode(Playlist.self, from: playlistLatin1Data)
+        } catch let error as DecodingError {
+            throw AnalyticsDecoderError(description: error.localizedDescription)
+        }
     }
 }
 
@@ -104,10 +117,35 @@ public final class PlaylistService: Sendable {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.info, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
             return playlist
-        } catch {
+        } catch let error as NSError {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
+            PostHogSDK.shared.capture(
+                error: error.description,
+                code: error.code,
+                context: "fetchPlaylist",
+                additionalData: ["duration":"\(duration)"]
+            )
+            
+            return Playlist.empty
+        } catch let error as AnalyticsOSError {
+            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            PostHogSDK.shared.capture(
+                error: error,
+                context: "fetchPlaylist",
+                additionalData: ["duration":"\(duration)"]
+            )
+            
+            return Playlist.empty
+        } catch let error as AnalyticsDecoderError {
+            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            PostHogSDK.shared.capture(
+                error: error,
+                context: "fetchPlaylist",
+                additionalData: ["duration":"\(duration)"]
+            )
             
             return Playlist.empty
         }
