@@ -42,6 +42,9 @@ public final actor CacheCoordinator {
     }
     
     public func value<Value: Codable>(for key: String) async throws -> Value {
+        #if DEBUG
+        assert(key.isEmpty == false, "Cache key cannot be empty")
+        #endif
         do {
             guard let encodedCachedRecord = self.cache.object(for: key) else {
                 throw Error.noCachedResult

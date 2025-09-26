@@ -63,9 +63,10 @@ struct DiskCache: Cache, @unchecked Sendable {
             
             do {
                 return try Data(contentsOf: fileName)
-            } catch {
+            } catch let error as NSError {
                 Log(.error, "Failed to read file \(fileName): \(error)")
-                PostHogSDK.shared.capture(error: error, context: "DiskCache object(forKey:): failed to read file")
+                let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileName): Error Domain=\(error.domain) Code=\(error.code) \(error.description)")
+                PostHogSDK.shared.capture(error: postHogError, context: "DiskCache object(forKey:): failed to read file")
                 return nil
             }
         } else {
