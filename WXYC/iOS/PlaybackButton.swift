@@ -164,15 +164,6 @@ extension PlaybackLayer: CAAnimationDelegate {
             self.layer.playbackAnimationDuration = self.duration
         }
     }
-    
-    var status: PlaybackButtonState {
-        get {
-            return self.layer.status
-        }
-        set {
-            self.layer.set(status: newValue, animated: true)
-        }
-    }
         
     override init(frame: CGRect) {
         super.init(frame: frame)

@@ -29,8 +29,6 @@ struct PlayerPage: View {
         }
     }
     
-    static var id: Int = 0
-    
     var body: some View {
         GeometryReader { geometry in
             VStack {

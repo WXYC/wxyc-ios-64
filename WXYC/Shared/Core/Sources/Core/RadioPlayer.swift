@@ -40,7 +40,7 @@ internal final class RadioPlayer: Sendable {
             }
     }
     
-    public var isPlaying = false {
+    var isPlaying = false {
         didSet {
             for o in observers {
                 o(self.isPlaying)
@@ -48,15 +48,12 @@ internal final class RadioPlayer: Sendable {
         }
     }
     
-    public typealias Observer = @MainActor @Sendable (Bool) -> ()
+    typealias Observer = @MainActor @Sendable (Bool) -> ()
     @MainActor private var observers: [Observer] = []
     
-    @MainActor
-    public func observe(_ observer: @escaping Observer) {
-        Task { @MainActor in
-            observer(self.isPlaying)
-            self.observers.append(observer)
-        }
+    func observe(_ observer: @escaping Observer) {
+        observer(self.isPlaying)
+        self.observers.append(observer)
     }
         
     func play() {
@@ -67,7 +64,7 @@ internal final class RadioPlayer: Sendable {
         UserDefaults.wxyc.set(true, forKey: "isPlaying")
         print(">>>> \(UserDefaults.wxyc.bool(forKey: "isPlaying"))")
         
-        PostHogSDK.shared.capture("play")
+        PostHogSDK.shared.capture("radioPlayer play")
         timer = Timer.start()
         self.player.play()
     }
@@ -88,11 +85,5 @@ internal final class RadioPlayer: Sendable {
         let playerItem = AVPlayerItem(asset: asset)
         self.player.replaceCurrentItem(with: playerItem)
         self.player.pause()
-    }
-}
-
-private extension AVPlayer {
-    var isPlaying: Bool {
-        return rate > 0.0
     }
 }

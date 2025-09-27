@@ -65,22 +65,6 @@ class PlayerHeader: UITableViewHeaderFooterView {
         try? RadioPlayerController.shared.toggle(reason: "player play/pause button tapped")
     }
     
-    private func playbackStateChanged(playbackState: PlaybackState) {
-        switch playbackState {
-        case .paused:
-            self.cassetteLeftReel.stopSpin()
-            self.cassetteRightReel.stopSpin()
-            self.playButton.set(status: .paused, animated: self.shouldAnimateButtonTransition)
-        case .playing:
-            self.cassetteLeftReel.startSpin()
-            self.cassetteRightReel.startSpin()
-            self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
-        case .initialized:
-            Log(.info, "initialized")
-            break
-        }
-    }
-    
     private func playbackStateChanged(isPlaying: Bool) {
         switch isPlaying {
         case false:

@@ -9,7 +9,7 @@
 import Foundation
 import Logger
 
-public let SessionStartTimer = Timer.start()
+private let SessionStartTimer = Timer.start()
 
 @discardableResult
 public func validateCollection(_ collection: any Collection, label: String) -> Bool {

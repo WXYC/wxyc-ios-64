@@ -13,12 +13,6 @@ import Logger
 import UIKit
 import PostHog
 
-public enum PlaybackState: Sendable {
-    case initialized
-    case playing
-    case paused
-}
-
 @MainActor
 public final class RadioPlayerController {
     public static let shared = RadioPlayerController()
@@ -75,7 +69,7 @@ public final class RadioPlayerController {
             remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
             remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
-            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(command:)),
+            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
         ]
         
         self.radioPlayer.observe { isPlaying in
@@ -112,7 +106,7 @@ public final class RadioPlayerController {
                 PostHogSDK.shared.capture(
                     error: error,
                     context: "RadioPlayerController could not start playback",
-                    additionalData: ["playbackReason" : reason]
+                    additionalData: ["reason" : reason]
                 )
                 
                 Log(.error, "RadioPlayerController could not start playback: \(error)")
@@ -251,7 +245,7 @@ private extension RadioPlayerController {
         return .success
     }
     
-    func remoteTogglePlayPauseCommand(command: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
+    func remoteTogglePlayPauseCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
             if self.radioPlayer.isPlaying {
                 self.pause()
@@ -332,10 +326,6 @@ fileprivate extension Notification {
         return AVAudioSession.InterruptionOptions(rawValue: typeValue.uintValue)
 #endif
     }
-}
-
-struct NonSendableBox<NonSendableType>: @unchecked Sendable {
-    let value: NonSendableType
 }
 
 extension AVAudioSession {

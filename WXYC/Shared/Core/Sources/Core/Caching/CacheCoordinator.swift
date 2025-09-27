@@ -4,11 +4,7 @@ import Logger
 import PostHog
 import Analytics
 
-let DefaultLifespan: TimeInterval = 30
-
 public final actor CacheCoordinator {
-    public static let Widgets = CacheCoordinator(cache: UserDefaultsCache())
-    public static let WXYCPlaylist = CacheCoordinator(cache: UserDefaultsCache())
     public static let AlbumArt = CacheCoordinator(cache: DiskCache())
     
     enum Error: String, LocalizedError, Codable {
@@ -28,18 +24,6 @@ public final actor CacheCoordinator {
     private static let decoder = JSONDecoder()
     
     // MARK: Public methods
-    
-    public func value<Value, Key>(for key: Key) async throws -> Value
-        where Value: Codable, Key: RawRepresentable, Key.RawValue == String
-    {
-        try await self.value(for: key.rawValue)
-    }
-    
-    public func value<Value, Key>(for key: Key) async throws -> Value
-        where Value: Codable, Key: Identifiable, Key.ID: LosslessStringConvertible
-    {
-        try await self.value(for: String(key.id))
-    }
     
     public func value<Value: Codable>(for key: String) async throws -> Value {
         #if DEBUG

@@ -1,9 +1,7 @@
 import PostHog
 import Foundation
 
-public protocol AnalyticsError: Error {
-    
-}
+protocol AnalyticsError: Error { }
 
 public struct AnalyticsDecoderError: AnalyticsError {
     let description: String
@@ -56,18 +54,23 @@ public extension PostHogSDK {
         
         PostHogSDK.shared.capture(
             "error",
-            properties: defaultProperties)
+            properties: defaultProperties
+        )
     }
     
-    func capture(error: AnalyticsOSError, context: String) {
+    func capture(error: AnalyticsOSError, context: String, additionalData: [String: String] = [:]) {
+        var defaultProperties: [String : Any] = [
+            "domain": error.domain,
+            "code": "\(error.code)",
+            "description": error.description,
+            "context": context
+        ]
+        defaultProperties.merge(with: additionalData)
+
         PostHogSDK.shared.capture(
             "error",
-            properties: [
-                "domain": error.domain,
-                "code": "\(error.code)",
-                "description": error.description,
-                "context": context
-            ])
+            properties: defaultProperties
+        )
     }
     
     func capture(error: NSError, context: String) {
@@ -88,19 +91,6 @@ public extension PostHogSDK {
         PostHogSDK.shared.capture(
             event,
             properties: defaultProperties
-        )
-    }
-    
-    func play(_ source: Any = #function, reason: String? = nil) {
-        var properties: [String: Any] = ["source": source]
-        
-        if let reason = reason {
-            properties["reason"] = reason
-        }
-        
-        PostHogSDK.shared.capture(
-            "play",
-            properties: properties
         )
     }
     
