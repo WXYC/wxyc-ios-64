@@ -19,7 +19,7 @@ struct IntentError: Error {
     let description: String
 }
 
-public struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
+struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Plays WXYC"
     public static let isDiscoverable = true
@@ -43,7 +43,7 @@ public struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     }
 }
 
-public struct PauseWXYC: AudioPlaybackIntent {
+struct PauseWXYC: AudioPlaybackIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Pauses WXYC"
     public static let isDiscoverable = false
@@ -58,7 +58,7 @@ public struct PauseWXYC: AudioPlaybackIntent {
     }
 }
 
-public struct ToggleWXYC: AudioPlaybackIntent {
+struct ToggleWXYC: AudioPlaybackIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Toggles WXYC Playback"
     public static let isDiscoverable = false
@@ -76,7 +76,7 @@ extension PlayWXYC: ControlConfigurationIntent {
     
 }
 
-public struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
+struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Find out what's playing on WXYC"
     public static let isDiscoverable = true
@@ -136,7 +136,7 @@ public struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     }
 }
 
-public struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
+struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     public var displayRepresentation = DisplayRepresentation(
         title: Self.title,
         subtitle: nil,
@@ -195,7 +195,7 @@ public struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     }
 }
 
-public struct WXYCAppShortcuts: AppShortcutsProvider {
+struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: WhatsPlayingOnWXYC(),

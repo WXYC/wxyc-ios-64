@@ -25,15 +25,13 @@ final class PlaylistDataSource: Sendable {
         }
     }
         
-    public typealias Observer = @MainActor @Sendable ([PlaylistCellViewModel]) -> ()
+    typealias Observer = @MainActor @Sendable ([PlaylistCellViewModel]) -> ()
     @MainActor private var observers: [Observer] = []
     
     @MainActor
-    public func observe(_ observer: @escaping Observer) {
-        Task { @MainActor in
-            observer(self.viewModels)
-            self.observers.append(observer)
-        }
+    func observe(_ observer: @escaping Observer) {
+        observer(self.viewModels)
+        self.observers.append(observer)
     }
     
     // MARK: Private
