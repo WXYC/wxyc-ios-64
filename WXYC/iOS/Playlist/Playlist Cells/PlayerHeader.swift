@@ -75,6 +75,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
             self.cassetteLeftReel.startSpin()
             self.cassetteRightReel.startSpin()
             self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
+            AppDelegate.donateSiriIntent()
         }
     }
     

@@ -34,7 +34,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 #if os(iOS)
         // Make status bar white
         UINavigationBar.appearance().barStyle = .black
-        self.donateSiriIntent()
         #if false
         // Siri intents are deprecated in favor of the App Intents framework. See Intents.swift.
         self.removeDonatedSiriIntentIfNeeded()
@@ -118,7 +117,7 @@ extension UIApplicationShortcutItem: @unchecked @retroactive Sendable { }
 import Intents
 
 extension AppDelegate {
-    private func donateSiriIntent() {
+    static func donateSiriIntent() {
         let placeholder = UIImage.placeholder
         let mediaItem = INMediaItem(
             identifier: "Play WXYC",
@@ -126,7 +125,15 @@ extension AppDelegate {
             type: .radioStation,
             artwork: INImage(imageData: placeholder.pngData()!)
         )
-        let intent = INPlayMediaIntent.init(mediaContainer: mediaItem)
+        let intent = INPlayMediaIntent(
+            mediaItems: [mediaItem],
+            mediaContainer: nil,
+            playShuffled: nil,
+            resumePlayback: false,
+            playbackQueueLocation: .now,
+            playbackSpeed: nil
+        )
+        intent.suggestedInvocationPhrase = "Play \(RadioStation.WXYC.name)"
         let interaction = INInteraction(intent: intent, response: nil)
         
         Task {
