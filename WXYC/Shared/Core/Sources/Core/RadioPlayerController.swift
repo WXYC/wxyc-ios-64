@@ -134,7 +134,7 @@ private extension RadioPlayerController {
         Log(.error, "Playback stalled: \(notification)")
         
         Task { @MainActor in
-            PostHogSDK.shared.pause(duration: playbackTimer.duration())
+            PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "playback stalled")
             self.radioPlayer.pause()
             self.attemptReconnectWithExponentialBackoff()
         }
@@ -211,7 +211,7 @@ private extension RadioPlayerController {
             
             do {
                 try AVAudioSession.shared.deactivate()
-            } catch {
+            } catch let error as NSError {
                 PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not deactivate")
                 Log(.error, "RadioPlayerController could not deactivate: \(error)")
             }
@@ -342,9 +342,6 @@ extension AVAudioSession {
 #endif
         
         Log(.info, "Session activated, current route: \(AVAudioSession.shared.currentRoute)")
-        PostHogSDK.shared.capture("Audio session activated", properties: [
-            "current route" : String(describing: AVAudioSession.shared.currentRoute)
-        ])
         
         return activated
     }

@@ -100,7 +100,6 @@ extension UIImage {
         .scaleAndCenter(scale: 0.90)
 }
 
-
 extension CGImage {
     func overlay(with overlay: CGImage) -> CGImage? {
         Log(.info, "overlaying \(overlay.size) with \(size)")
