@@ -34,12 +34,16 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
-        try await RadioPlayerController.shared.play(reason: "PlayWXYC intent")
-        let value = "Tuning in to WXYC…"
-        return .result(
-            value: value,
-            dialog: IntentDialog(stringLiteral: value)
-        )
+        do {
+            try await RadioPlayerController.shared.play(reason: "PlayWXYC intent")
+            let value = "Tuning in to WXYC…"
+            return .result(
+                value: value,
+                dialog: IntentDialog(stringLiteral: value)
+            )
+        } catch {
+            throw error
+        }
     }
 }
 
@@ -94,7 +98,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
             PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
-            Log(.error, error.description)
+            Log(.error, error.localizedDescription)
             throw error
         }
         
