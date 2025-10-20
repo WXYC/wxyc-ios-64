@@ -12,30 +12,24 @@ import PostHog
 import SwiftUI
 import Analytics
 
-protocol PlaylistFetcher: Sendable {
+public protocol PlaylistFetcher: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
 private let decoder = JSONDecoder()
 
 extension URLSession: PlaylistFetcher {
-    func getPlaylist() async throws -> Playlist {
-        let playlistData: Data
+    public func getPlaylist() async throws -> Playlist {
         do {
-            (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+            let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+            return try decoder.decode(Playlist.self, from: playlistData)
         } catch let error as NSError {
+            print(error.localizedDescription)
             throw AnalyticsOSError(
                 domain: error.domain,
                 code: error.code,
-                description: error.description
+                description: error.localizedDescription
             )
-        }
-        
-        let playlistLatin1String = String(data: playlistData, encoding: .isoLatin1)!
-        let playlistLatin1Data = playlistLatin1String.data(using: .utf8)!
-        
-        do {
-            return try decoder.decode(Playlist.self, from: playlistLatin1Data)
         } catch let error as DecodingError {
             throw AnalyticsDecoderError(description: error.localizedDescription)
         }
@@ -69,17 +63,20 @@ public final class PlaylistService: Sendable {
     init(
         remoteFetcher: PlaylistFetcher = URLSession.shared
     ) {
+        #if false
+        self.remoteFetcher = DebugPlaylistFetcher()
+        #if !DEBUG
+        #error("Nix this")
+        #endif
+        #else
         self.remoteFetcher = remoteFetcher
+        #endif
         
         self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
         self.fetchTimer?.schedule(deadline: .now(), repeating: Self.defaultFetchInterval)
         self.fetchTimer?.setEventHandler {
             Task { @PlaylistActor in
-#if DEBUG_PLAYLIST
-                let playlist = await Playlist.debugPlaylist
-#else
                 let playlist = await self.fetchPlaylist()
-#endif
                 
                 if playlist.entries.isEmpty {
                     Log(.info, "Empty playlist")
@@ -121,7 +118,7 @@ public final class PlaylistService: Sendable {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
             PostHogSDK.shared.capture(
-                error: error.description,
+                error: error.localizedDescription,
                 code: error.code,
                 context: "fetchPlaylist",
                 additionalData: ["duration":"\(duration)"]
@@ -305,3 +302,19 @@ extension Playlist {
 }
 #endif
 
+#if false
+struct DebugPlaylistFetcher: PlaylistFetcher {
+    private static let decoder = JSONDecoder()
+    
+    func getPlaylist() async throws -> Core.Playlist {
+        do {
+            let json = Bundle.main.url(forResource: "debug", withExtension: "json").map(\.path)!
+            let playlistLatin1Data = json.data(using: .isoLatin1)!
+            return try Self.decoder.decode(Playlist.self, from: playlistLatin1Data)
+        } catch let error {
+            Log(.error, "\(error)")
+            throw error
+        }
+    }
+}
+#endif
