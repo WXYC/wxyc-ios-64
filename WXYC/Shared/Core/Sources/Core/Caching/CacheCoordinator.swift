@@ -47,7 +47,7 @@ public final actor CacheCoordinator {
             
             return cachedRecord.value
         } catch {
-            Log(.error, "No value for '\(key)': ", error)
+            Log(.warning, "No value for '\(key)': ", error)
             throw error
         }
     }
