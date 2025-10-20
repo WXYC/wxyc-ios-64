@@ -19,7 +19,6 @@
 		236629AC2D73908D0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AB2D73908D0057E268 /* Core */; };
 		236629AE2D73908D0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AD2D73908D0057E268 /* Logger */; };
 		236629B02D73908D0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AF2D73908D0057E268 /* OpenNSFW */; };
-		23906F462DD4FC950033EB69 /* ListenTogether.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23906F452DD4FC950033EB69 /* ListenTogether.swift */; };
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
@@ -75,7 +74,6 @@
 		236629792D72D94A0057E268 /* WatchXYC-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WatchXYC-Info.plist"; sourceTree = "<group>"; };
 		236629952D73905A0057E268 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		23906F452DD4FC950033EB69 /* ListenTogether.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ListenTogether.swift; path = WXYC/iOS/ListenTogether.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -229,7 +227,6 @@
 		2366FA142D72CE880057E268 = {
 			isa = PBXGroup;
 			children = (
-				23906F452DD4FC950033EB69 /* ListenTogether.swift */,
 				236629792D72D94A0057E268 /* WatchXYC-Info.plist */,
 				2366FA1F2D72CE880057E268 /* WXYC */,
 				236609AB2D72D0270057E268 /* Frameworks */,
@@ -466,7 +463,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				23906F462DD4FC950033EB69 /* ListenTogether.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -607,8 +603,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WXYC/WXYC.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P8QACM85EZ;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -634,6 +632,7 @@
 				MARKETING_VERSION = 2.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = TEST_FLIGHT;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -927,8 +926,10 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WXYC/WXYC.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
