@@ -26,7 +26,7 @@ public struct AnalyticsOSError: AnalyticsError {
 public extension PostHogSDK {
     func capture(error: AnalyticsDecoderError, context: String, additionalData: [String: String] = [:]) {
         PostHogSDK.shared.capture("error", properties: [
-            "error": error.description,
+            "error": error.localizedDescription,
             "context": context,
             "additionalData": "\(additionalData)"
         ])
@@ -34,7 +34,7 @@ public extension PostHogSDK {
     
     func capture(error: Error, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = [
-            "error": "\(error)",
+            "description": "\(error.localizedDescription)",
             "context": context
         ]
         defaultProperties.merge(with: additionalData)
@@ -62,7 +62,7 @@ public extension PostHogSDK {
         var defaultProperties: [String : Any] = [
             "domain": error.domain,
             "code": "\(error.code)",
-            "description": error.description,
+            "description": error.localizedDescription,
             "context": context
         ]
         defaultProperties.merge(with: additionalData)
@@ -79,7 +79,7 @@ public extension PostHogSDK {
             properties: [
                 "domain": error.domain,
                 "code": "\(error.code)",
-                "description": error.description,
+                "description": error.localizedDescription,
                 "context": context
             ])
     }
