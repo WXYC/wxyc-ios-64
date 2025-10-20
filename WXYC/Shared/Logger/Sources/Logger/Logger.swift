@@ -12,6 +12,7 @@ public enum LogLevel: String, CustomStringConvertible, Sendable {
     public var description: String { rawValue }
     
     case info = "INFO"
+    case warning = "WARNING"
     case error = "ERROR"
 }
 
