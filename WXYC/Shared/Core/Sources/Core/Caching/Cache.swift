@@ -65,13 +65,13 @@ struct DiskCache: Cache, @unchecked Sendable {
                 return try Data(contentsOf: fileName)
             } catch let error as NSError {
                 Log(.error, "Failed to read file \(fileName): \(error)")
-                let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileName): Error Domain=\(error.domain) Code=\(error.code) \(error.description)")
+                let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileName): Error Domain=\(error.domain) Code=\(error.code) \(error.localizedDescription)")
                 PostHogSDK.shared.capture(error: postHogError, context: "DiskCache object(forKey:): failed to read file")
                 return nil
             }
         } else {
             let error: DiskCacheError = "Failed to find Cache Directory, trying NSCache."
-            Log(.error, error.description)
+            Log(.error, error.localizedDescription)
             PostHogSDK.shared.capture(error: error, context: "DiskCache object(forKey:): failed to find Cache Directory")
             let data: NSData? = self.cache.object(forKey: key as NSString)
             return data as? Data
@@ -92,13 +92,13 @@ struct DiskCache: Cache, @unchecked Sendable {
             }
         } else {
             let error: DiskCacheError = "Failed to find Cache Directory, trying NSCache."
-            Log(.error, error.description)
+            Log(.error, error.localizedDescription)
             PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
             if let object = object as? NSData {
                 self.cache.setObject(object, forKey: key as NSString)
             } else {
                 let error: DiskCacheError = "Failed to convert object to NSData, removing old object from cache."
-                Log(.error, error.description)
+                Log(.error, error.localizedDescription)
                 PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
                 self.cache.removeObject(forKey: key as NSString)
             }
@@ -110,7 +110,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         do {
             guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
                 let error: DiskCacheError = "Failed to find Cache Directory."
-                Log(.error, error.description)
+                Log(.error, error.localizedDescription)
                 PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
                 return EmptyCollection()
             }
