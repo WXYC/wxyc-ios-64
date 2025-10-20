@@ -207,7 +207,7 @@ class InfoDetailViewController: UIViewController {
 
 extension InfoDetailViewController: MFMailComposeViewControllerDelegate {
     private static let feedbackAddress = "feedback@wxyc.org"
-    private static let subject = "Feedback on the WXYC app"
+    private static let subject = "Feedback on the \(RadioStation.WXYC.name) app"
     
     private func stationFeedbackMailController(attachLogs: Bool) -> MFMailComposeViewController {
         PostHogSDK.shared.capture("feedback email presented")
