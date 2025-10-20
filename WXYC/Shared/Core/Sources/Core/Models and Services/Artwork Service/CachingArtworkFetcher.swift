@@ -23,7 +23,7 @@ extension CacheCoordinator: ArtworkFetcher {
            !releaseTitle.isEmpty {
             cacheKey = releaseTitle
         } else {
-            cacheKey = playcut.songTitle + playcut.artistName
+        cacheKey = playcut.songTitle + playcut.artistName
         }
         
         let cachedData: Data = try await self.value(for: cacheKey)

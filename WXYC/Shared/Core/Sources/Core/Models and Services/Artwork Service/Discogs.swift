@@ -85,6 +85,10 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
     func fetchArtURL(for searchURL: URL) async throws -> URL? {
         let searchData = try await session.data(from: searchURL)
         let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: searchData)
+        
+        let responseString = String(data: searchData, encoding: .utf8)
+        print(responseString!)
+        
         let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
         return imageURLs.first(where: { !$0.lastPathComponent.hasPrefix("spacer.gif") })
     }
