@@ -6,8 +6,11 @@
 //
 
 import SwiftUI
+import Core
 
 struct ContentView: View {
+    let radioPlayerController: RadioPlayerController
+    
     var body: some View {
         ZStack {
             Image(ImageResource(name: "Background", bundle: .main))
@@ -16,11 +19,11 @@ struct ContentView: View {
             Color(white: 0, opacity: 0.5)
                 .ignoresSafeArea()
                 .background(.ultraThinMaterial)
-            PlayerPage()
+            PlayerPage(radioPlayerController: radioPlayerController)
         }
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView(radioPlayerController: RadioPlayerController())
 }

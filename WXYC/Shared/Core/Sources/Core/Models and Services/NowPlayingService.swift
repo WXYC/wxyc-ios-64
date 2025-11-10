@@ -9,105 +9,80 @@
 import Foundation
 import UIKit
 import Logger
-import Observation
 
 public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
     public var artwork: UIImage?
-    
+
     public init(playcut: Playcut, artwork: UIImage? = nil) {
         self.playcut = playcut
         self.artwork = artwork
     }
-    
+
     public static func ==(lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
         lhs.playcut == rhs.playcut
         && lhs.artwork == rhs.artwork
     }
-    
+
     public static func < (lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
         lhs.playcut.chronOrderID < rhs.playcut.chronOrderID
     }
 }
 
-@MainActor
-@Observable
-public final class NowPlayingService: @unchecked Sendable {
-    public static let shared = NowPlayingService()
-    
-    @MainActor
-    public private(set) var nowPlayingItem: NowPlayingItem? {
-        didSet {
-            for o in observers {
-                o(self.nowPlayingItem)
-            }
-        }
-    }
-    
-    public typealias Observer = @MainActor @Sendable (NowPlayingItem?) -> ()
-    @MainActor private var observers: [Observer] = []
-    
-    @MainActor
-    public func observe(_ observer: @escaping Observer) {
-        observer(self.nowPlayingItem)
-        self.observers.append(observer)
-    }
-    
+public final actor NowPlayingService: Sendable, AsyncSequence {
+    public typealias Element = NowPlayingItem
+
     private let playlistService: PlaylistService
-    private let artworkService: ArtworkService
-    private var playlistServiceObservation: Sendable? = nil
-    
-    init(
-        playlistService: PlaylistService = PlaylistService.shared,
-        artworkService: ArtworkService = .shared
+    private let artworkFetcher: ArtworkFetcher
+
+    public init(
+        playlistService: PlaylistService,
+        artworkService: ArtworkFetcher
     ) {
         self.playlistService = playlistService
-        self.artworkService = artworkService
-        
-        self.observePlaylistService()
+        self.artworkFetcher = artworkService
     }
-    
-    var playcuts: [Playcut] = []
-    
-    @MainActor
-    private func observePlaylistService() {
-        PlaylistService.shared.observe { playlist in
-            self.handle(playlist: playlist)
-        }
+
+    public nonisolated func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(service: self)
     }
-    
-    func handle(playlist: Playlist) {
-        playcuts = playlist.playcuts
-        
-        guard let playcut = playlist.playcuts.first else {
-            return
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private let service: NowPlayingService
+        private var playlistIterator: PlaylistService.AsyncIterator
+
+        init(service: NowPlayingService) {
+            self.service = service
+            self.playlistIterator = service.playlistService.makeAsyncIterator()
         }
 
-        Task {
-            let artwork = await self.artworkService.getArtwork(for: playcut)
-            self.updateNowPlayingItem(
-                nowPlayingItem: NowPlayingItem(playcut: playcut, artwork: artwork)
-            )
+        public mutating func next() async throws -> NowPlayingItem? {
+            // Get the next playlist
+            guard let playlist = await playlistIterator.next() else {
+                return nil
+            }
+
+            // Get the first playcut
+            guard let playcut = playlist.playcuts.first else {
+                Log(.info, "No playcut found in playlist")
+                // Continue to next playlist
+                return try await next()
+            }
+
+            // Fetch artwork for the playcut
+            let artwork = try await service.artworkFetcher.fetchArtwork(for: playcut)
+            return NowPlayingItem(playcut: playcut, artwork: artwork)
         }
     }
-    
-    var backoffTimer = ExponentialBackoff()
-    
-    private func updateNowPlayingItem(nowPlayingItem: NowPlayingItem) {
-        guard self.nowPlayingItem != nowPlayingItem else {
-            Log(.info, "No change in nowPlayingItem")
-            return
-        }
-        Log(.info, "Setting nowPlayingItem \(nowPlayingItem)")
-        self.nowPlayingItem = nowPlayingItem
-    }
-    
-    public func fetch() async -> NowPlayingItem? {
-        guard let playcut = await self.playlistService.fetchPlaylist(forceSync: true).playcuts.first else {
+
+    /// Fetch a single now playing item immediately without iterating
+    public func fetchOnce() async throws -> NowPlayingItem? {
+        let playlist = await playlistService.fetchPlaylist()
+        guard let playcut = playlist.playcuts.first else {
             Log(.info, "No playcut found in fetched playlist")
             return nil
         }
-        let artwork = await self.artworkService.getArtwork(for: playcut)
+        let artwork = try await artworkFetcher.fetchArtwork(for: playcut)
         return NowPlayingItem(playcut: playcut, artwork: artwork)
     }
 }

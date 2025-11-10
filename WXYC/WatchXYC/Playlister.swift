@@ -12,10 +12,12 @@ import Core
 @Observable
 final class Playlister {
     var playlist: Playlist = .empty
-    
-    init() {
-        PlaylistService.shared.observe { playlist in
-            self.playlist = playlist
+
+    init(playlistService: PlaylistService) {
+        Task {
+            for await playlist in playlistService {
+                self.playlist = playlist
+            }
         }
     }
 }

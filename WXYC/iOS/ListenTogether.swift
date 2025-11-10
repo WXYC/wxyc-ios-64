@@ -14,7 +14,7 @@ import UIKit
 struct ListenTogether: GroupActivity, Transferable {
     var metadata: GroupActivityMetadata {
         var metadata = GroupActivityMetadata()
-        
+
         metadata.title = RadioStation.WXYC.name
         metadata.subtitle = RadioStation.WXYC.secondaryName
         metadata.previewImage = UIImage(named: "AppIcon-Artwork")?.cgImage
@@ -25,10 +25,17 @@ struct ListenTogether: GroupActivity, Transferable {
 
         return metadata
     }
-    
+
+    private var radioPlayerController: RadioPlayerController {
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("AppDelegate not found")
+        }
+        return appDelegate.radioPlayerController
+    }
+
     func activate() async throws -> Bool {
         do {
-            try await RadioPlayerController.shared.play(reason: "ListenTogether")
+            try await radioPlayerController.play(reason: "ListenTogether")
             return true
         } catch {
             return false

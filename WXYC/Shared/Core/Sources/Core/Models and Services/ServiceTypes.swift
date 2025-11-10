@@ -7,7 +7,7 @@ public extension TimeInterval {
 }
 
 /// `NowPlayingService` will throw one of these errors, depending
-enum ServiceError: String, LocalizedError, Codable {
+enum ServiceError: String, Swift.Error, LocalizedError, Codable {
     case noResults
     case noNewData
 }

@@ -13,13 +13,18 @@ import AVKit
 import AVFAudio
 
 struct PlayerPage: View {
-    @State var playlister = Playlister()
+    @State private var playlist: Playlist = .empty
     @State private var elementHeights: CGFloat = 0
-    let placeholder: UIImage = UIImage(named: "logo")!
+    private let placeholder: UIImage = UIImage(named: "logo")!
+    private let radioPlayerController: RadioPlayerController
+    
+    init(radioPlayerController: RadioPlayerController) {
+        self.radioPlayerController = radioPlayerController
+    }
     
     var content: NowPlayingEntry {
-        if let item = NowPlayingService.shared.nowPlayingItem {
-            return NowPlayingEntry(item)
+        if let playcut = playlist.playcuts.first {
+            return NowPlayingEntry(playcut: playcut)
         } else {
             return NowPlayingEntry(
                 artist: " ",
@@ -34,7 +39,7 @@ struct PlayerPage: View {
             VStack {
                 VStack {
                     Group {
-                        if let playcut = playlister.playlist.playcuts.first {
+                        if let playcut = playlist.playcuts.first {
                             RemoteImage(playcut: playcut)
                         } else {
                             Image.logo
@@ -61,9 +66,9 @@ struct PlayerPage: View {
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        Task { try RadioPlayerController.shared.toggle(reason: "Watch play/pause tapped") }
+                        Task { try radioPlayerController.toggle(reason: "Watch play/pause tapped") }
                     }) {
-                        Image(systemName: RadioPlayerController.shared.isPlaying ? "pause.fill" : "play.fill")
+                        Image(systemName: radioPlayerController.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.white)
                             .padding(20)
@@ -79,10 +84,10 @@ struct PlayerPage: View {
             #if os(tvOS)
             .focusable(true)
             .onPlayPauseCommand {
-                RadioPlayerController.shared.toggle()
+                try? radioPlayerController.toggle(reason: "tvOS play/pause command")
             }
             .task {
-                RadioPlayerController.shared.play()
+                try? radioPlayerController.play(reason: "tvOS task")
             }
             #endif
         }
@@ -156,6 +161,12 @@ struct NowPlayingEntry {
             self.artwork = nil
         }
     }
+
+    init(playcut: Playcut) {
+        self.artist = playcut.artistName
+        self.songTitle = playcut.songTitle
+        self.artwork = nil
+    }
 }
 
 extension Image {
@@ -196,5 +207,5 @@ extension Image {
 }
 
 #Preview {
-    PlayerPage()
+    PlayerPage(radioPlayerController: RadioPlayerController())
 }

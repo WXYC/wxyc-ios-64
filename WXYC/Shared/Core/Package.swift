@@ -1,11 +1,11 @@
-// swift-tools-version:6.0
+// swift-tools-version:6.2
 
 import PackageDescription
 
 let package = Package(
     name: "Core",
     platforms: [
-        .iOS(.v18), .watchOS(.v11), .macOS(.v10_14)
+        .iOS(.v26), .watchOS(.v26)
     ],
     products: [
         .library(name: "Core", targets: ["Core"])
@@ -26,9 +26,13 @@ let package = Package(
                 "Logger",
                 "OpenNSFW",
                 "Secrets",
-                
+
                 .product(name: "PostHog", package: "posthog-ios")
             ]
+        ),
+        .testTarget(
+            name: "CoreTests",
+            dependencies: ["Core"]
         )
     ]
 )

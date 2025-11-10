@@ -16,6 +16,14 @@ import Intents
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
+    let playlistService = PlaylistService()
+
+    private var radioPlayerController: RadioPlayerController {
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("AppDelegate not found")
+        }
+        return appDelegate.radioPlayerController
+    }
     
     // MARK: CPTemplateApplicationSceneDelegate
     
@@ -90,15 +98,15 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     
     private func makePlayerSection() -> CPListSection {
-        let isPlaying = RadioPlayerController.shared.isPlaying
+        let isPlaying = radioPlayerController.isPlaying
         let image = isPlaying
             ? nil
             : UIImage(systemName: "play.fill")
         let listenLiveItem = CPListItem(text: "Listen Live", detailText: nil, image: image)
         listenLiveItem.isPlaying = isPlaying
-        
+
         listenLiveItem.handler = { selectableItem, completionHandler in
-            try? RadioPlayerController.shared.play(reason: "CarPlay listen live tapped")
+            try? self.radioPlayerController.play(reason: "CarPlay listen live tapped")
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
@@ -143,23 +151,32 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     @MainActor
     private func observeIsPlaying() {
-        RadioPlayerController.shared.observe { isPlaying in
+        radioPlayerController.observe { isPlaying in
             self.updateListTemplate()
         }
     }
     
     @MainActor
     private func observePlaylist() {
-        PlaylistService.shared.observe { playlist in
-            self.playlist = playlist
-            self.updateListTemplate()
+        Task {
+            for await playlist in playlistService {
+                self.playlist = playlist
+                self.updateListTemplate()
+            }
         }
     }
 }
 
 class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
-    
+
     internal var window: UIWindow?
+
+    private var radioPlayerController: RadioPlayerController {
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("AppDelegate not found")
+        }
+        return appDelegate.radioPlayerController
+    }
     
     // MARK: UISceneDelegate
     
@@ -184,9 +201,9 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
         guard shortcutItem.type == "org.wxyc.iphoneapp.play" else {
             return false
         }
-        
+
         do {
-            try RadioPlayerController.shared.play(reason: "home screen play quick action")
+            try radioPlayerController.play(reason: "home screen play quick action")
             return true
         } catch {
             return false
@@ -195,9 +212,9 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     
     private func handle(userActivity: NSUserActivity) throws {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            try RadioPlayerController.shared.play(reason: "Siri suggestion (NSUserActivity)")
+            try radioPlayerController.play(reason: "Siri suggestion (NSUserActivity)")
         } else if let _ = userActivity.interaction?.intent as? INPlayMediaIntent {
-            try RadioPlayerController.shared.play(reason: "Siri suggestion (INPlayMediaIntent)")
+            try radioPlayerController.play(reason: "Siri suggestion (INPlayMediaIntent)")
         }
     }
 }
@@ -206,8 +223,9 @@ extension CPListItem: @unchecked @retroactive Sendable {
     convenience init(playcut: Playcut) {
         self.init(text: playcut.artistName, detailText: playcut.songTitle)
         Task {
-            let artwork = await ArtworkService.shared.getArtwork(for: playcut)
-            
+            let artworkService = ArtworkService()
+            let artwork = await artworkService.fetchArtwork(for: playcut)
+
             Task { @MainActor in
                 self.setImage(artwork)
             }

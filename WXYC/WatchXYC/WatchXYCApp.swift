@@ -11,6 +11,7 @@ import AVFoundation
 import Logger
 import PostHog
 import Secrets
+import Core
 
 @main
 struct WatchXYC: App {
@@ -32,7 +33,7 @@ struct WatchXYC: App {
     
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootTabView(radioPlayerController: RadioPlayerController())
         }
     }
 }

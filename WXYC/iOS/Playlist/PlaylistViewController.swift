@@ -13,7 +13,7 @@ import Logger
 
 class PlaylistViewController: UITableViewController, PlaycutShareDelegate {
     var viewModels: [PlaylistCellViewModel] = []
-    let playlistDataSource = PlaylistDataSource.shared
+    let playlistDataSource = PlaylistDataSource(playlistService: PlaylistService())
     var reuseIdentifiers: Set<String> = []
     
     override func viewDidLoad() {

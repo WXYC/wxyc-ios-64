@@ -9,9 +9,9 @@
 
 import UIKit
 
-let DefaultsPlaybackDuration: CFTimeInterval = 0.24
+nonisolated let DefaultsPlaybackDuration: CFTimeInterval = 0.24
 
-@objc enum PlaybackButtonState : Int {
+@objc nonisolated enum PlaybackButtonState : Int {
     case paused
     case playing
     
@@ -25,7 +25,7 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
     }
 }
 
-@objc @IBDesignable class PlaybackLayer: CALayer {
+@objc @IBDesignable nonisolated class PlaybackLayer: CALayer {
     private static let AnimationKey = "playbackValue"
     private static let AnimationIdentifier = "playbackLayerAnimation"
     
@@ -138,8 +138,8 @@ let DefaultsPlaybackDuration: CFTimeInterval = 0.24
     }
 }
 
-extension PlaybackLayer: CAAnimationDelegate {
-    func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
+extension PlaybackLayer: @preconcurrency CAAnimationDelegate {
+    nonisolated func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
         guard flag else {
             return
         }
