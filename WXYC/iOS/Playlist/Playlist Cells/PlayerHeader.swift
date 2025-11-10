@@ -16,6 +16,13 @@ class PlayerHeader: UITableViewHeaderFooterView {
     @IBOutlet private var cassetteContainer: UIView!
     @IBOutlet private var cassetteLeftReel: UIImageView!
     @IBOutlet private var cassetteRightReel: UIImageView!
+
+    private var radioPlayerController: RadioPlayerController {
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("AppDelegate not found")
+        }
+        return appDelegate.radioPlayerController
+    }
     
     // MARK: Public
     
@@ -26,7 +33,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
     
     // MARK: Overrides
     
-    override func awakeFromNib() {
+    override nonisolated func awakeFromNib() {
         super.awakeFromNib()
         
         DispatchQueue.main.async {
@@ -50,19 +57,25 @@ class PlayerHeader: UITableViewHeaderFooterView {
         self.playButton.addTarget(self, action: #selector(playPauseTapped), for: .touchUpInside)
         self.notificationObservation =
             NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification) { @MainActor in
-                let isPlaying = RadioPlayerController.shared.isPlaying
+                let isPlaying = self.radioPlayerController.isPlaying
                 self.cassetteLeftReel.layer.removeAnimation(forKey: UIView.AnimationKey)
                 self.cassetteRightReel.layer.removeAnimation(forKey: UIView.AnimationKey)
                 self.playbackStateChanged(isPlaying: isPlaying)
             }
-        
-        RadioPlayerController.shared.observe { isPlaying in
-            self.playbackStateChanged(isPlaying: RadioPlayerController.shared.isPlaying)
+
+        Task {
+            let observation = Observations {
+                self.radioPlayerController.isPlaying
+            }
+            
+            for await isPlaying in observation {
+                self.playbackStateChanged(isPlaying: isPlaying)
+            }
         }
     }
     
     @objc private func playPauseTapped(_ sender: UIButton) {
-        try? RadioPlayerController.shared.toggle(reason: "player play/pause button tapped")
+        try? radioPlayerController.toggle(reason: "player play/pause button tapped")
     }
     
     private func playbackStateChanged(isPlaying: Bool) {

@@ -20,38 +20,47 @@ typealias Cell = any UITableViewCell & Sendable & AnyObject
 extension Playcut: PlaylistCellViewModelProducer {
     struct PlaycutCellConfigurator: CellConfigurator {
         let `class`: AnyClass = PlaycutCell.self
-        
+
         let playcut: Playcut
-        
+        let artworkService: ArtworkService
+
         @MainActor
         func configure(_ cell: Cell) {
             guard let cell = cell as? PlaycutCell else {
                 return
             }
-            
+
             cell.token = playcut.id
             cell.artistLabel.text = playcut.artistName
             cell.songLabel.text = playcut.songTitle
-            
+
             let playcutActivityItem = PlaycutActivityItem(playcut: playcut)
-            
+
             Task {
                 let timer = Timer.start()
-                let artwork: UIImage =
-                    await ArtworkService.shared.getArtwork(for: playcut)
-                    ??  UIImage.logoImage
-                Log(.info, "Artwork fetched for playcut \(playcut.id) after \(timer.duration()) seconds")
+                let artwork: UIImage
                 
+                do {
+                    artwork =
+                        try await artworkService.fetchArtwork(for: playcut)
+                            ??  UIImage.logoImage
+                    Log(.info, "Artwork fetched for playcut \(playcut.id) after \(timer.duration()) seconds")
+                }
+
                 playcutActivityItem.image = artwork
                 cell.configure(with: artwork, token: playcut.id)
             }
-            
+
             cell.activity = playcutActivityItem
         }
     }
-    
+
     var cellViewModel: PlaylistCellViewModel {
-        PlaylistCellViewModel(configuration: PlaycutCellConfigurator(playcut: self))
+        // Create a fresh service instance - caching is handled internally
+        PlaylistCellViewModel(configuration: PlaycutCellConfigurator(
+            playcut: self,
+            artworkService: ArtworkService()
+        ))
     }
 }
 

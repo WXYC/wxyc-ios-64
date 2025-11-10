@@ -1,11 +1,11 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
 let package = Package(
     name: "Secrets",
     platforms: [
-        .iOS(.v18), .watchOS(.v9), .macOS(.v10_14)
+        .iOS(.v18), .watchOS(.v9)
     ],
     products: [
         .library(

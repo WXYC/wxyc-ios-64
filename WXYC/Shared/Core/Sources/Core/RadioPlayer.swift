@@ -13,6 +13,7 @@ import Logger
 import PostHog
 
 @MainActor
+@Observable
 internal final class RadioPlayer: Sendable {
     private let streamURL: URL
     private var playerObservation: (any NSObjectProtocol)?
@@ -40,21 +41,15 @@ internal final class RadioPlayer: Sendable {
             }
     }
     
-    var isPlaying = false {
-        didSet {
-            for o in observers {
-                o(self.isPlaying)
-            }
-        }
-    }
+    var isPlaying = false
     
-    typealias Observer = @MainActor @Sendable (Bool) -> ()
-    @MainActor private var observers: [Observer] = []
-    
-    func observe(_ observer: @escaping Observer) {
-        observer(self.isPlaying)
-        self.observers.append(observer)
-    }
+//    typealias Observer = @MainActor @Sendable (Bool) -> ()
+//    @MainActor private var observers: [Observer] = []
+//    
+//    func observe(_ observer: @escaping Observer) {
+//        observer(self.isPlaying)
+//        self.observers.append(observer)
+//    }
         
     func play() {
         if self.isPlaying {

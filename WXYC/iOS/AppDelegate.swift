@@ -14,6 +14,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // MARK: UIApplicationDelegate
 
     var window: UIWindow?
+    let radioPlayerController = RadioPlayerController()
+    var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
 
     func application(
         _ application: UIApplication,
@@ -29,7 +31,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             PostHogSDK.shared.capture(error: error, context: "AppDelegate: Could not set AVAudioSession category")
         }
 
-        _ = NowPlayingInfoCenterManager.shared
+        let nowPlayingService = NowPlayingService(
+            playlistService: PlaylistService(),
+            artworkService: ArtworkService()
+        )
+        nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
+            nowPlayingService: nowPlayingService,
+            radioPlayerController: radioPlayerController
+        )
 
 #if os(iOS)
         // Make status bar white
@@ -72,7 +81,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         do {
-            try RadioPlayerController.shared.play(reason: "home screen play quick action")
+            try radioPlayerController.play(reason: "home screen play quick action")
             return true
         } catch {
             return false
@@ -81,10 +90,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillTerminate(_ application: UIApplication) {
         PostHogSDK.shared.capture("Application Will Terminate", properties: [
-            "Is Playing?": RadioPlayerController.shared.isPlaying
+            "Is Playing?": radioPlayerController.isPlaying
         ])
         UserDefaults.wxyc.set(false, forKey: "isPlaying")
-        RadioPlayerController.shared.pause()
+        radioPlayerController.pause()
         UIApplication.shared.endReceivingRemoteControlEvents()
     }
 
@@ -176,7 +185,7 @@ extension AppDelegate {
         let response: INPlayMediaIntentResponse
 
         do {
-            try RadioPlayerController.shared.play(reason: "INIntent")
+            try radioPlayerController.play(reason: "INIntent")
             response = INPlayMediaIntentResponse(code: .success, userActivity: nil)
             Log(.info, "Successfully handled INIntent: \(intent)")
         } catch {

@@ -15,6 +15,9 @@ import Secrets
 import Analytics
 
 final class Provider: TimelineProvider, Sendable {
+    let playlistService = PlaylistService()
+    let artworkService = ArtworkService()
+    
     init() {
         let POSTHOG_API_KEY = Secrets.posthogApiKey
         let POSTHOG_HOST = "https://us.i.posthog.com"
@@ -46,27 +49,27 @@ final class Provider: TimelineProvider, Sendable {
             context: "NowPlayingWidget",
             additionalData: ["family" : String(describing: family)]
         )
-        
+
         Task {
-            let playlist = await PlaylistService.shared.fetchPlaylist()
+            let playlist = await playlistService.fetchPlaylist()
             let recentPlaycuts = playlist.playcuts
                 .sorted(by: >)
                 .prefix(4)
-            
-            var nowPlayingItemsWithArtwork = await recentPlaycuts.asyncMap { playcut in
+
+            var nowPlayingItemsWithArtwork = await recentPlaycuts.asyncFlatMap { playcut in
                 NowPlayingItem(
                     playcut: playcut,
-                    artwork: await ArtworkService.shared.getArtwork(for: playcut)
+                    artwork: try? await self.artworkService.fetchArtwork(for: playcut)
                 )
             }
-            
+
             let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
             let entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
                 recentItems: recentItems,
                 family: context.family
             )
-            
+
             completion(entry)
         }
     }
@@ -78,10 +81,10 @@ final class Provider: TimelineProvider, Sendable {
             context: "NowPlayingWidget",
             additionalData: ["family" : String(describing: family)]
         )
-        
+
         Task {
             var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
-            
+
             if context.isPreview {
                 nowPlayingItemsWithArtwork = [
                     NowPlayingItem.placeholder,
@@ -90,28 +93,31 @@ final class Provider: TimelineProvider, Sendable {
                     NowPlayingItem.placeholder,
                 ]
             } else {
-                let playlist = await PlaylistService.shared.fetchPlaylist()
+                let playlistService = PlaylistService()
+                let artworkService = ArtworkService()
+
+                let playlist = await playlistService.fetchPlaylist()
                 var playcuts = playlist.playcuts
                     .sorted(by: >)
                 playcuts = Array(playcuts.prefix(4))
-                
-                nowPlayingItemsWithArtwork = await playcuts.asyncMap { playcut in
+
+                nowPlayingItemsWithArtwork = await playcuts.asyncFlatMap { playcut in
                     NowPlayingItem(
                         playcut: playcut,
-                        artwork: await ArtworkService.shared.getArtwork(for: playcut)
+                        artwork: try? await artworkService.fetchArtwork(for: playcut)
                     )
                 }
             }
-            
+
             nowPlayingItemsWithArtwork.sort(by: >)
             let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
-            
+
             let entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
                 recentItems: recentItems,
                 family: context.family
             )
-            
+
             // Schedule the next update
             let fiveMinutes = Date.now.addingTimeInterval(5 * 60)
             let timeline = Timeline(entries: [entry], policy: .after(fiveMinutes))
@@ -584,7 +590,7 @@ extension Image {
 }
 
 extension Collection where Self: Sendable {
-    public func asyncMap<T>(_ transform: sending @escaping @isolated(any) (Element) async -> T) async -> [T] {
+    public func asyncFlatMap<T>(_ transform: sending @escaping @isolated(any) (Element) async -> T) async -> [T] {
         await withTaskGroup(of: T.self) { group in
             for element in self {
                 group.addTask {

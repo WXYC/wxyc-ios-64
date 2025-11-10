@@ -25,14 +25,12 @@ struct RemoteImage: View {
             .transition(.opacity)
             .onChange(of: playcut, initial: true) {
                 Task {
-                    await loadArtwork()
+                    try await loadArtwork()
                 }
             }
     }
 
-    private func loadArtwork() async {
-        if let newArtwork = await ArtworkService.shared.getArtwork(for: playcut) {
-            self.artwork = newArtwork
-        }
+    private func loadArtwork() async throws {
+        self.artwork = try await ArtworkService().fetchArtwork(for: playcut)
     }
 }

@@ -14,28 +14,23 @@ import UIKit
 import PostHog
 
 @MainActor
+@Observable
 public final class RadioPlayerController {
-    public static let shared = RadioPlayerController()
-    public var isPlaying = false {
-        didSet {
-            for o in observers {
-                o(self.isPlaying)
-            }
-        }
+    public var isPlaying = false
+    
+    public convenience init(
+        notificationCenter: NotificationCenter = .default,
+        remoteCommandCenter: MPRemoteCommandCenter = .shared()
+    ) {
+        self.init(
+            radioPlayer: RadioPlayer(),
+            notificationCenter: .default,
+            remoteCommandCenter: .shared()
+        )
     }
     
-    public typealias Observer = @MainActor @Sendable (Bool) -> ()
-    @MainActor private var observers: [Observer] = []
-    
-    @MainActor
-    public func observe(_ observer: @escaping Observer) {
-        Task { @MainActor in
-            observer(self.isPlaying)
-            self.observers.append(observer)
-        }
-    }
-    
-    private init(
+
+    init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
@@ -72,8 +67,14 @@ public final class RadioPlayerController {
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
         ]
         
-        self.radioPlayer.observe { isPlaying in
-            self.isPlaying = isPlaying
+        Task {
+            let observations = Observations {
+                self.radioPlayer.isPlaying
+            }
+            
+            for await isPlaying in observations {
+                self.isPlaying = isPlaying
+            }
         }
     }
     

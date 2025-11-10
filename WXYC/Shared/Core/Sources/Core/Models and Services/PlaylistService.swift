@@ -12,101 +12,77 @@ import PostHog
 import SwiftUI
 import Analytics
 
-public protocol PlaylistFetcher: Sendable {
-    func getPlaylist() async throws -> Playlist
-}
+public final actor PlaylistService: Sendable, AsyncSequence {
+    public typealias Element = Playlist
 
-private let decoder = JSONDecoder()
+    private let remoteFetcher: PlaylistFetcher
+    private let interval: TimeInterval
+    private var currentPlaylist: Playlist = .empty
 
-extension URLSession: PlaylistFetcher {
-    public func getPlaylist() async throws -> Playlist {
-        do {
-            let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
-            return try decoder.decode(Playlist.self, from: playlistData)
-        } catch let error as NSError {
-            print(error.localizedDescription)
-            throw AnalyticsOSError(
-                domain: error.domain,
-                code: error.code,
-                description: error.localizedDescription
-            )
-        } catch let error as DecodingError {
-            throw AnalyticsDecoderError(description: error.localizedDescription)
-        }
-    }
-}
-
-@Observable
-public final class PlaylistService: Sendable {
-    public static let shared = PlaylistService()
-    
-    @MainActor
-    public private(set) var playlist: Playlist = .empty {
-        didSet {
-            for o in observers {
-                o(self.playlist)
-            }
-        }
-    }
-        
-    public typealias Observer = @MainActor @Sendable (Playlist) -> ()
-    @MainActor private var observers: [Observer] = []
-    
-    @MainActor
-    public func observe(_ observer: @escaping Observer) {
-        Task { @MainActor in
-            observer(self.playlist)
-            self.observers.append(observer)
-        }
-    }
-    
-    init(
-        remoteFetcher: PlaylistFetcher = URLSession.shared
+    public init(
+        remoteFetcher: PlaylistFetcher = URLSession.shared,
+        interval: TimeInterval = 30
     ) {
-        #if false
-        self.remoteFetcher = DebugPlaylistFetcher()
-        #if !DEBUG
-        #error("Nix this")
-        #endif
-        #else
         self.remoteFetcher = remoteFetcher
-        #endif
-        
-        self.fetchTimer = DispatchSource.makeTimerSource(flags: [], queue: DispatchQueue.global(qos: .default)) as? DispatchSource
-        self.fetchTimer?.schedule(deadline: .now(), repeating: Self.defaultFetchInterval)
-        self.fetchTimer?.setEventHandler {
-            Task { @PlaylistActor in
-                let playlist = await self.fetchPlaylist()
-                
-                if playlist.entries.isEmpty {
-                    Log(.info, "Empty playlist")
+        self.interval = interval
+    }
+
+    public nonisolated func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(service: self)
+    }
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private let service: PlaylistService
+        private var hasYieldedInitial = false
+        private var lastPlaylist: Playlist?
+
+        init(service: PlaylistService) {
+            self.service = service
+        }
+
+        public mutating func next() async -> Playlist? {
+            // Sleep at the start of each iteration (except the first)
+            if hasYieldedInitial {
+                try? await Task.sleep(for: .seconds(service.interval))
+            }
+
+            // On first call, yield the current cached value immediately if available
+            if !hasYieldedInitial {
+                hasYieldedInitial = true
+                let current = await service.currentPlaylist
+                lastPlaylist = current
+
+                // If we have a non-empty playlist, yield it immediately
+                if !current.entries.isEmpty {
+                    return current
                 }
-                
-                guard await playlist != self.playlist else {
-                    Log(.info,
-                        """
-                        No change in playlist: 
-                        old count \(await self.playlist.entries.count)
-                        new count \(playlist.entries.count)
-                        """
-                    )
-                    
-                    return
-                }
-                
-                Log(.info, "fetched playlist with ids \(playlist.entries.map(\.id))")
-                
-                self.set(playlist: playlist)
+                // If empty, fall through to fetch a new one
+            }
+
+            // Fetch a new playlist
+            let playlist = await service.fetchAndUpdatePlaylist()
+
+            // Only yield if the playlist has changed
+            if let last = lastPlaylist, playlist == last {
+                // Playlist hasn't changed, recursively try again (will sleep at top of next iteration)
+                Log(.info, "No change in playlist, waiting \(service.interval) seconds")
+                return await next()
+            } else {
+                // Playlist has changed, update and return immediately
+                lastPlaylist = playlist
+                return playlist
             }
         }
-        self.fetchTimer?.resume()
     }
-    
-    deinit {
-        self.fetchTimer?.cancel()
+
+    /// Fetch a playlist and update the cached current value
+    private func fetchAndUpdatePlaylist() async -> Playlist {
+        let playlist = await fetchPlaylist()
+        currentPlaylist = playlist
+        return playlist
     }
-    
-    public func fetchPlaylist(forceSync: Bool = false) async -> Playlist {
+
+    public func fetchPlaylist() async -> Playlist {
         Log(.info, "Fetching remote playlist")
         let startTime = Date.timeIntervalSinceReferenceDate
         do {
@@ -123,7 +99,7 @@ public final class PlaylistService: Sendable {
                 context: "fetchPlaylist",
                 additionalData: ["duration":"\(duration)"]
             )
-            
+
             return Playlist.empty
         } catch let error as AnalyticsOSError {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
@@ -133,7 +109,7 @@ public final class PlaylistService: Sendable {
                 context: "fetchPlaylist",
                 additionalData: ["duration":"\(duration)"]
             )
-            
+
             return Playlist.empty
         } catch let error as AnalyticsDecoderError {
             let duration = Date.timeIntervalSinceReferenceDate - startTime
@@ -143,178 +119,8 @@ public final class PlaylistService: Sendable {
                 context: "fetchPlaylist",
                 additionalData: ["duration":"\(duration)"]
             )
-            
+
             return Playlist.empty
         }
     }
-    
-    // MARK: Private
-    
-    private static let defaultFetchInterval: TimeInterval = 30
-    
-    private let remoteFetcher: PlaylistFetcher
-    private let fetchTimer: DispatchSource?
-    
-    private func set(playlist: Playlist) {
-        Task { @MainActor in self.playlist = playlist }
-    }
-    
-    @globalActor
-    public actor PlaylistActor: GlobalActor, Sendable {
-        public static let shared = PlaylistActor()
-    }
 }
-
-#if false
-@MainActor
-extension Playlist {
-    static let debugPlaylist = Playlist(
-        playcuts: playcuts,
-        breakpoints: [],
-        talksets: []
-    )
-    
-    private static var _i: UInt64 = 0
-    private static var i: UInt64 {
-        defer { _i += 1 }
-        return _i
-    }
-    
-    static var playcuts = [
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "VI Scose Poise",
-            labelName: nil,
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Belleville",
-            labelName: nil,
-            artistName: "Laurel Halo",
-            releaseTitle: "Atlas"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
-            labelName: nil,
-            artistName: "Harold Budd",
-            releaseTitle: "Pavilion of Dreams"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Bine",
-            labelName: nil,
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Guinnevere",
-            labelName: nil,
-            artistName: "Miles Davis",
-            releaseTitle: "Bitches Brew"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "VI Scose Poise",
-            labelName: nil,
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Belleville",
-            labelName: nil,
-            artistName: "Laurel Halo",
-            releaseTitle: "Atlas"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
-            labelName: nil,
-            artistName: "Harold Budd",
-            releaseTitle: "Pavilion of Dreams"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Bine",
-            labelName: nil,
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        ),
-        Playcut(
-            id: i,
-            hour: i,
-            chronOrderID: i,
-            songTitle: "Guinnevere",
-            labelName: nil,
-            artistName: "Miles Davis",
-            releaseTitle: "Bitches Brew"
-        ),
-    ]
-    
-    struct CircularSequence<S: Sequence & Sendable>: Sequence {
-        let sequence: S
-        
-        func makeIterator() -> CircularIterator<S.Element> {
-            CircularIterator(sequence)
-        }
-    }
-    
-    struct CircularIterator<Element>: IteratorProtocol {
-        let sequence: any Sequence<Element>
-        private var iterator: any IteratorProtocol<Element>
-        
-        init(_ sequence: any Sequence<Element>) {
-            self.sequence = sequence
-            self.iterator = sequence.makeIterator()
-        }
-        
-        mutating func next() -> Element? {
-            if let next = iterator.next() {
-                return next
-            } else {
-                iterator = sequence.makeIterator()
-                return iterator.next()
-            }
-        }
-    }
-}
-#endif
-
-#if false
-struct DebugPlaylistFetcher: PlaylistFetcher {
-    private static let decoder = JSONDecoder()
-    
-    func getPlaylist() async throws -> Core.Playlist {
-        do {
-            let json = Bundle.main.url(forResource: "debug", withExtension: "json").map(\.path)!
-            let playlistLatin1Data = json.data(using: .isoLatin1)!
-            return try Self.decoder.decode(Playlist.self, from: playlistLatin1Data)
-        } catch let error {
-            Log(.error, "\(error)")
-            throw error
-        }
-    }
-}
-#endif

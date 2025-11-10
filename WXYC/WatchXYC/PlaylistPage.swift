@@ -11,12 +11,13 @@ import SwiftUI
 import Core
 
 struct PlaylistPage: View {
-    @State var playlister = Playlister()
-    
+    @State private var playlist: Playlist = .empty
+    private let playlistService = PlaylistService()
+
     var body: some View {
         List {
             Section("Recently Played") {
-                ForEach(playlister.playlist.wrappedEntries) { wrappedEntry in
+                ForEach(playlist.wrappedEntries) { wrappedEntry in
                     switch wrappedEntry {
                     case .playcut(let playcut):
                         PlaycutView(playcut: playcut)
@@ -33,6 +34,12 @@ struct PlaylistPage: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            
+            for await playlist in playlistService {
+                self.playlist = playlist
+            }
+        }
     }
 }
 

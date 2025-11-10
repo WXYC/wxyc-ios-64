@@ -16,7 +16,7 @@ extension CacheCoordinator: ArtworkFetcher {
         try await self.value(for: cacheKeyId)
     }
     
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+    public func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let cacheKey: String
         
         if let releaseTitle = playcut.releaseTitle,

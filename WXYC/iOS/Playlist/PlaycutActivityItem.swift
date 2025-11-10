@@ -9,11 +9,11 @@
 import UIKit
 import Core
 
-extension UIActivity.ActivityType {
+nonisolated extension UIActivity.ActivityType {
   static let wxyc = UIActivity.ActivityType("org.wxyc")
 }
 
-final class PlaycutActivityItem: UIActivity {
+nonisolated final class PlaycutActivityItem: UIActivity {
   let playcut: Playcut
   var image: UIImage?
   

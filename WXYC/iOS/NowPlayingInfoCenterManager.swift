@@ -13,16 +13,23 @@ import Logger
 
 @MainActor
 final class NowPlayingInfoCenterManager {
-    static let shared = NowPlayingInfoCenterManager()
-    
-    init(nowPlayingService: NowPlayingService = .shared) {
-        nowPlayingService.observe { nowPlayingItem in
-            self.update(playcut: nowPlayingItem?.playcut)
-            self.update(artwork: nowPlayingItem?.artwork)
+    private let radioPlayerController: RadioPlayerController
+
+    init(
+        nowPlayingService: NowPlayingService,
+        radioPlayerController: RadioPlayerController
+    ) {
+        self.radioPlayerController = radioPlayerController
+
+        Task {
+            for try await nowPlayingItem in nowPlayingService {
+                self.update(playcut: nowPlayingItem.playcut)
+                self.update(artwork: nowPlayingItem.artwork)
+            }
         }
     }
     
-    private func update(playcut: Playcut?) {
+    private func update(playcut: Playcut) {
         let playcutMediaItems = playcut.playcutMediaItems
         
         if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
@@ -30,7 +37,7 @@ final class NowPlayingInfoCenterManager {
         }
         
         MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
-        MPNowPlayingInfoCenter.default().playbackState = RadioPlayerController.shared.isPlaying ? .playing : .paused
+        MPNowPlayingInfoCenter.default().playbackState = radioPlayerController.isPlaying ? .playing : .paused
     }
 
     private func update(artwork: UIImage?) {
@@ -47,7 +54,7 @@ final class NowPlayingInfoCenterManager {
         MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] =
             self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
         MPNowPlayingInfoCenter.default().playbackState =
-            RadioPlayerController.shared.isPlaying ? .playing : .paused
+            radioPlayerController.isPlaying ? .playing : .paused
     }
     
     private nonisolated func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
@@ -61,14 +68,20 @@ final class NowPlayingInfoCenterManager {
     }
 }
 
+extension Playcut {
+    var playcutMediaItems: [String: Any] {
+        return [
+            MPMediaItemPropertyArtist : self.artistName,
+            MPMediaItemPropertyTitle : self.songTitle,
+            MPMediaItemPropertyAlbumTitle : self.releaseTitle ?? "",
+        ]
+    }
+}
+
 extension Optional where Wrapped == Playcut {
     var playcutMediaItems: [String: Any] {
         if case .some(let playcut) = self {
-            return [
-                MPMediaItemPropertyArtist : playcut.artistName,
-                MPMediaItemPropertyTitle : playcut.songTitle,
-                MPMediaItemPropertyAlbumTitle : playcut.releaseTitle ?? "",
-            ]
+            return playcut.playcutMediaItems
         } else {
             return [
                 MPMediaItemPropertyArtist : RadioStation.WXYC.name,

@@ -7,11 +7,14 @@
 //
 
 import SwiftUI
+import Core
 
 struct RootTabView: View {
+    let radioPlayerController: RadioPlayerController
+    
     var body: some View {
         TabView {
-            PlayerPage()
+            PlayerPage(radioPlayerController: radioPlayerController)
                 .tag(0)
             PlaylistPage()
                 .tag(1)
@@ -23,5 +26,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView()
+    RootTabView(radioPlayerController: RadioPlayerController())
 }

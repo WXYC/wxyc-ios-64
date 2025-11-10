@@ -24,7 +24,7 @@ public final actor ArtworkService {
     }
     
     public static let shared = ArtworkService(fetchers: [
-//        CacheCoordinator.AlbumArt,
+        CacheCoordinator.AlbumArt,
         DiscogsArtworkFetcher(),
         LastFMArtworkFetcher(),
         iTunesArtworkFetcher(),

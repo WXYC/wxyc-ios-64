@@ -19,6 +19,19 @@ struct IntentError: Error {
     let description: String
 }
 
+// App-level service access for intents
+enum AppServices {
+    static let radioPlayerController = RadioPlayerController()
+
+    @MainActor
+    static func nowPlayingService() -> NowPlayingService {
+        NowPlayingService(
+            playlistService: PlaylistService(),
+            artworkService: ArtworkService()
+        )
+    }
+}
+
 struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     public static let description = "Plays WXYC"
@@ -35,7 +48,7 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public init() { }
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         do {
-            try await RadioPlayerController.shared.play(reason: "PlayWXYC intent")
+            try await AppServices.radioPlayerController.play(reason: "PlayWXYC intent")
             let value = "Tuning in to WXYC…"
             return .result(
                 value: value,
@@ -45,6 +58,9 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
             throw error
         }
     }
+    
+    @available(iOS 26.0, *)
+    static var supportedModes: IntentModes { [.background] }
 }
 
 struct PauseWXYC: AudioPlaybackIntent {
@@ -57,7 +73,7 @@ struct PauseWXYC: AudioPlaybackIntent {
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         PostHogSDK.shared.capture("PauseWXYC intent")
-        await RadioPlayerController.shared.pause()
+        await AppServices.radioPlayerController.pause()
         return .result(value: "Now pausing WXYC")
     }
 }
@@ -71,7 +87,7 @@ struct ToggleWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        try await RadioPlayerController.shared.toggle(reason: "ToggleWXYC intent")
+        try await AppServices.radioPlayerController.toggle(reason: "ToggleWXYC intent")
         return .result(value: "Now toggling WXYC")
     }
 }
@@ -95,13 +111,14 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
 
     public init() { }
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
-        guard let nowPlayingItem = await NowPlayingService.shared.fetch() else {
+        let nowPlayingService = await MainActor.run { AppServices.nowPlayingService() }
+        guard let nowPlayingItem = try await nowPlayingService.fetchOnce() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
             PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
             Log(.error, error.localizedDescription)
             throw error
         }
-        
+
         PostHogSDK.shared.capture("WhatsPlayingOnWXYC intent")
         let value = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
         return .result(
