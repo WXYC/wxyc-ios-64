@@ -1,4 +1,9 @@
-// ImageCompat.swift (new file in Core target)
+//
+//  ImageCompatability.swift
+//  Core
+//
+//  Created by Jake Bromberg on 3/1/25.
+//
 
 import Foundation
 
@@ -7,14 +12,18 @@ import UIKit
 public typealias Image = UIImage
 
 public extension Image {
+    // Unified helper to get PNG data in cross‑platform code
     var pngDataCompat: Data? { self.pngData() }
-    convenience init?(data: Data) { self.init(data: data) }
+    // Unified initializer used when reconstructing from Data
+    convenience init?(compatData data: Data) { self.init(data: data) }
 }
+
 #elseif canImport(AppKit)
 import AppKit
 public typealias Image = NSImage
 
 public extension Image {
+    // Convert NSImage to PNG data
     var pngDataCompat: Data? {
         guard
             let tiff = self.tiffRepresentation,
@@ -24,10 +33,12 @@ public extension Image {
         return data
     }
 
-    convenience init?(data: Data) {
+    // NSImage already supports init?(data:)
+    convenience init?(compatData data: Data) {
         self.init(data: data)
     }
 }
+
 #else
-#error("Neither UIKit nor AppKit is available for Image alias.")
+#error("Neither UIKit nor AppKit is available to define Image alias.")
 #endif

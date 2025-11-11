@@ -31,6 +31,6 @@ struct RemoteImage: View {
     }
 
     private func loadArtwork() async throws {
-        self.artwork = try await ArtworkService().fetchArtwork(for: playcut)
+        self.artwork = try await MultisourceArtworkService().fetchArtwork(for: playcut)
     }
 }

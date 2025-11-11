@@ -7,34 +7,33 @@
 //
 
 import Foundation
-import UIKit
 import Combine
 import OpenNSFW
 import Logger
 
-public protocol ArtworkFetcher: Sendable {
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage
+public protocol ArtworkService: Sendable {
+    func fetchArtwork(for playcut: Playcut) async throws -> Image
 }
 
-// TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
-public final actor MultisourceArtworkService: ArtworkFetcher {
+// TODO: Rename to CompositeArtworkService and conform it to `ArtworkService`
+public final actor MultisourceArtworkService: ArtworkService {
     enum Error: Swift.Error, Codable, CaseIterable {
         case noArtworkAvailable
         case nsfw
     }
 
-    private let fetchers: [ArtworkFetcher]
+    private let fetchers: [ArtworkService]
     private let cacheCoordinator: CacheCoordinator
-    private var inflightTasks: [String: Task<UIImage?, Never>] = [:]
+    private var inflightTasks: [String: Task<Image?, Never>] = [:]
 
     // Public convenience initializer with default fetchers
     public init() {
         self.init(
             fetchers: [
                 CacheCoordinator.AlbumArt,
-                DiscogsArtworkFetcher(),
-                LastFMArtworkFetcher(),
-                iTunesArtworkFetcher(),
+                DiscogsArtworkService(),
+                LastFMArtworkService(),
+                iTunesArtworkService(),
             ],
             cacheCoordinator: .AlbumArt
         )
@@ -42,14 +41,14 @@ public final actor MultisourceArtworkService: ArtworkFetcher {
 
     // Internal initializer for dependency injection
     init(
-        fetchers: [any ArtworkFetcher],
+        fetchers: [any ArtworkService],
         cacheCoordinator: CacheCoordinator
     ) {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
     }
 
-    public func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+    public func fetchArtwork(for playcut: Playcut) async throws -> Image {
         let id = playcut.releaseTitle ?? playcut.songTitle
         
         if let existingTask = inflightTasks[id],
@@ -57,7 +56,7 @@ public final actor MultisourceArtworkService: ArtworkFetcher {
             return value
         }
         
-        let task = Task<UIImage?, Never> {
+        let task = Task<Image?, Never> {
             defer { Task { removeTask(for: id) } }
             return await scanFetchers(for: playcut)
         }
@@ -73,7 +72,7 @@ public final actor MultisourceArtworkService: ArtworkFetcher {
     
     // MARK: - Private
     
-    private func scanFetchers(for playcut: Playcut) async -> UIImage? {
+    private func scanFetchers(for playcut: Playcut) async -> Image? {
         let cacheKeyId = "\(playcut.releaseTitle ?? playcut.songTitle)"
         let errorCacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
 

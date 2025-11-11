@@ -33,7 +33,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         let nowPlayingService = NowPlayingService(
             playlistService: PlaylistService(),
-            artworkService: ArtworkService()
+            artworkService: MultisourceArtworkService()
         )
         nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
             nowPlayingService: nowPlayingService,

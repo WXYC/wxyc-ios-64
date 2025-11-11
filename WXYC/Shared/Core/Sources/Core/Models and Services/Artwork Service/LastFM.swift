@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 struct LastFM {
     private init() { }
@@ -46,7 +46,7 @@ struct LastFM {
     }
 }
 
-final class LastFMArtworkFetcher: ArtworkFetcher {
+final class LastFMArtworkService: ArtworkService {
     private let session: WebSession
     private let decoder = JSONDecoder()
     
@@ -54,13 +54,13 @@ final class LastFMArtworkFetcher: ArtworkFetcher {
         self.session = session
     }
     
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+    func fetchArtwork(for playcut: Playcut) async throws -> Image {
         let searchURL = makeSearchURL(for: playcut)
         let searchData = try await session.data(from: searchURL)
         let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: searchData)
         
         let imageData = try await session.data(from: searchResponse.album.largestAlbumArt.url)
-        let image = UIImage(data: imageData)
+        let image = Image(data: imageData)
         
         guard let image = image else {
             throw ServiceError.noResults

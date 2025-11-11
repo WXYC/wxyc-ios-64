@@ -22,7 +22,7 @@ extension Playcut: PlaylistCellViewModelProducer {
         let `class`: AnyClass = PlaycutCell.self
 
         let playcut: Playcut
-        let artworkService: ArtworkService
+        let artworkService: MultisourceArtworkService
 
         @MainActor
         func configure(_ cell: Cell) {
@@ -43,8 +43,9 @@ extension Playcut: PlaylistCellViewModelProducer {
                 do {
                     artwork =
                         try await artworkService.fetchArtwork(for: playcut)
-                            ??  UIImage.logoImage
                     Log(.info, "Artwork fetched for playcut \(playcut.id) after \(timer.duration()) seconds")
+                } catch {
+                    artwork = UIImage.logoImage
                 }
 
                 playcutActivityItem.image = artwork
@@ -59,7 +60,7 @@ extension Playcut: PlaylistCellViewModelProducer {
         // Create a fresh service instance - caching is handled internally
         PlaylistCellViewModel(configuration: PlaycutCellConfigurator(
             playcut: self,
-            artworkService: ArtworkService()
+            artworkService: MultisourceArtworkService()
         ))
     }
 }

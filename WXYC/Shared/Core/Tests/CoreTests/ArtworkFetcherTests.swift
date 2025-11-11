@@ -45,10 +45,10 @@ extension UIImage {
     }
 }
 
-// MARK: - iTunesArtworkFetcher Tests
+// MARK: - iTunesArtworkService Tests
 
-@Suite("iTunesArtworkFetcher Tests")
-struct iTunesArtworkFetcherTests {
+@Suite("iTunesArtworkService Tests")
+struct iTunesArtworkServiceTests {
 
     @Test("Fetches artwork successfully for album")
     func fetchArtworkSuccessWithAlbum() async throws {
@@ -87,7 +87,7 @@ struct iTunesArtworkFetcherTests {
 
         let sequentialSession = SequentialMockSession()
         sequentialSession.responses = [searchData, imageData]
-        let fetcher = iTunesArtworkFetcher(session: sequentialSession)
+        let fetcher = iTunesArtworkService(session: sequentialSession)
 
         // When
         let result = try await fetcher.fetchArtwork(for: playcut)
@@ -115,7 +115,7 @@ struct iTunesArtworkFetcherTests {
         }
 
         let mockSession = SequentialMockSession()
-        let fetcher = iTunesArtworkFetcher(session: mockSession)
+        let fetcher = iTunesArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -150,7 +150,7 @@ struct iTunesArtworkFetcherTests {
     func throwsErrorWhenNoResults() async throws {
         // Given
         let mockSession = MockWebSession()
-        let fetcher = iTunesArtworkFetcher(session: mockSession)
+        let fetcher = iTunesArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -176,7 +176,7 @@ struct iTunesArtworkFetcherTests {
     func constructsCorrectSearchURLForAlbum() async throws {
         // Given
         let mockSession = MockWebSession()
-        let fetcher = iTunesArtworkFetcher(session: mockSession)
+        let fetcher = iTunesArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -202,10 +202,10 @@ struct iTunesArtworkFetcherTests {
     }
 }
 
-// MARK: - LastFMArtworkFetcher Tests
+// MARK: - LastFMArtworkService Tests
 
-@Suite("LastFMArtworkFetcher Tests")
-struct LastFMArtworkFetcherTests {
+@Suite("LastFMArtworkService Tests")
+struct LastFMArtworkServiceTests {
 
     @Test("Fetches artwork successfully")
     func fetchArtworkSuccess() async throws {
@@ -224,7 +224,7 @@ struct LastFMArtworkFetcherTests {
         }
 
         let mockSession = SequentialMockSession()
-        let fetcher = LastFMArtworkFetcher(session: mockSession)
+        let fetcher = LastFMArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -291,7 +291,7 @@ struct LastFMArtworkFetcherTests {
     func constructsCorrectSearchURL() async throws {
         // Given
         let mockSession = MockWebSession()
-        let fetcher = LastFMArtworkFetcher(session: mockSession)
+        let fetcher = LastFMArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -319,10 +319,10 @@ struct LastFMArtworkFetcherTests {
     }
 }
 
-// MARK: - DiscogsArtworkFetcher Tests
+// MARK: - DiscogsArtworkService Tests
 
-@Suite("DiscogsArtworkFetcher Tests")
-struct DiscogsArtworkFetcherTests {
+@Suite("DiscogsArtworkService Tests")
+struct DiscogsArtworkServiceTests {
 
     @Test("Fetches album artwork successfully")
     func fetchAlbumArtworkSuccess() async throws {
@@ -341,7 +341,7 @@ struct DiscogsArtworkFetcherTests {
         }
 
         let mockSession = SequentialMockSession()
-        let fetcher = DiscogsArtworkFetcher(session: mockSession)
+        let fetcher = DiscogsArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -393,7 +393,7 @@ struct DiscogsArtworkFetcherTests {
         }
 
         let mockSession = SequentialMockSession()
-        let fetcher = DiscogsArtworkFetcher(session: mockSession)
+        let fetcher = DiscogsArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -438,7 +438,7 @@ struct DiscogsArtworkFetcherTests {
         // We can't easily test the internal URL construction, but we can verify behavior
 
         let mockSession = MockWebSession()
-        let fetcher = DiscogsArtworkFetcher(session: mockSession)
+        let fetcher = DiscogsArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -498,7 +498,7 @@ struct DiscogsArtworkFetcherTests {
         }
 
         let mockSession = CustomMockSession()
-        let fetcher = DiscogsArtworkFetcher(session: mockSession)
+        let fetcher = DiscogsArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -522,7 +522,7 @@ struct DiscogsArtworkFetcherTests {
     func throwsErrorWhenNoArtwork() async throws {
         // Given
         let mockSession = MockWebSession()
-        let fetcher = DiscogsArtworkFetcher(session: mockSession)
+        let fetcher = DiscogsArtworkService(session: mockSession)
 
         let playcut = Playcut(
             id: 1,
@@ -552,7 +552,7 @@ struct DiscogsArtworkFetcherTests {
 
 // MARK: - CacheCoordinator Extension Tests
 
-@Suite("CacheCoordinator ArtworkFetcher Tests")
+@Suite("CacheCoordinator ArtworkService Tests")
 struct CacheCoordinatorArtworkTests {
 
     @Test("Fetches cached artwork with release title")
