@@ -11,6 +11,7 @@ import AVFoundation
 import MediaPlayer
 import Logger
 import PostHog
+import Analytics
 
 @MainActor
 @Observable
@@ -18,67 +19,83 @@ internal final class RadioPlayer: Sendable {
     private let streamURL: URL
     private var playerObservation: (any NSObjectProtocol)?
     private var timer: Timer = Timer.start()
-    
-    init(streamURL: URL = RadioStation.WXYC.streamURL) {
+    private let userDefaults: UserDefaults
+    private let analytics: AnalyticsService?
+    private let notificationCenter: NotificationCenter
+
+    convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
+        self.init(
+            streamURL: streamURL,
+            player: AVPlayer(url: streamURL),
+            userDefaults: .wxyc,
+            analytics: PostHogAnalytics.shared,
+            notificationCenter: .default
+        )
+    }
+
+    init(
+        streamURL: URL = RadioStation.WXYC.streamURL,
+        player: PlayerProtocol,
+        userDefaults: UserDefaults,
+        analytics: AnalyticsService? = nil,
+        notificationCenter: NotificationCenter = .default
+    ) {
         self.streamURL = streamURL
-        self.player = AVPlayer(url: streamURL)
+        self.player = player
+        self.userDefaults = userDefaults
+        self.analytics = analytics
+        self.notificationCenter = notificationCenter
+
         self.playerObservation =
-            NotificationCenter.default.addObserver(
+            notificationCenter.addObserver(
                 forName: AVPlayer.rateDidChangeNotification,
-                object: self.player,
+                object: player as? AVPlayer,
                 queue: nil
-            ) { notification in
+            ) { [weak self] notification in
+                guard let self else { return }
                 Log(.info, "RadioPlayer did receive notification", notification)
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
                     self.isPlaying = self.player.rate > 0
                     if self.isPlaying {
                         let timeToAudio = self.timer.duration()
-                        PostHogSDK.shared.capture("Time to first Audio", properties: [
+                        self.analytics?.capture("Time to first Audio", properties: [
                             "timeToAudio": timeToAudio
                         ])
                     }
                 }
             }
     }
-    
+
     var isPlaying = false
     
-//    typealias Observer = @MainActor @Sendable (Bool) -> ()
-//    @MainActor private var observers: [Observer] = []
-//    
-//    func observe(_ observer: @escaping Observer) {
-//        observer(self.isPlaying)
-//        self.observers.append(observer)
-//    }
-        
     func play() {
         if self.isPlaying {
-            PostHogSDK.shared.capture("already playing")
+            analytics?.capture("already playing")
             return
         }
-        UserDefaults.wxyc.set(true, forKey: "isPlaying")
-        print(">>>> \(UserDefaults.wxyc.bool(forKey: "isPlaying"))")
-        
-        PostHogSDK.shared.capture("radioPlayer play")
+        userDefaults.set(true, forKey: "isPlaying")
+        print(">>>> \(userDefaults.bool(forKey: "isPlaying"))")
+
+        analytics?.capture("radioPlayer play")
         timer = Timer.start()
         self.player.play()
     }
-    
+
     func pause() {
-        UserDefaults.wxyc.set(false, forKey: "isPlaying")
-        print(">>>> \(UserDefaults.wxyc.bool(forKey: "isPlaying"))")
+        userDefaults.set(false, forKey: "isPlaying")
+        print(">>>> \(userDefaults.bool(forKey: "isPlaying"))")
         player.pause()
         self.resetStream()
     }
-    
+
     // MARK: Private
-    
-    private let player: AVPlayer
+
+    private let player: PlayerProtocol
     
     private func resetStream() {
         let asset = AVURLAsset(url: self.streamURL)
         let playerItem = AVPlayerItem(asset: asset)
         self.player.replaceCurrentItem(with: playerItem)
-        self.player.pause()
     }
 }
