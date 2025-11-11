@@ -3,22 +3,6 @@ import Foundation
 import UIKit
 @testable import Core
 
-// MARK: - Mock ArtworkService
-
-final actor MockArtworkService: ArtworkFetcher {
-    var artworkToReturn: UIImage
-    var callCount: Int = 0
-
-    init(artworkToReturn: UIImage = UIImage.gradientImage()) {
-        self.artworkToReturn = artworkToReturn
-    }
-
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
-        callCount += 1
-        return artworkToReturn
-    }
-}
-
 // MARK: - Tests
 
 @MainActor
@@ -33,7 +17,7 @@ struct NowPlayingServiceTests {
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
         let testImage = UIImage.gradientImage()
-        await mockArtworkService.setArtwork(testImage)
+        mockArtworkService.artworkToReturn = testImage
 
         let playcut = Playcut(
             id: 1,
@@ -66,7 +50,7 @@ struct NowPlayingServiceTests {
         #expect(nowPlayingItem?.playcut.songTitle == "Test Song")
         #expect(nowPlayingItem?.playcut.artistName == "Test Artist")
         #expect(nowPlayingItem?.artwork === testImage)
-        let artworkCallCount = await mockArtworkService.callCount
+        let artworkCallCount = mockArtworkService.fetchCount
         #expect(artworkCallCount == 1)
     }
 
@@ -236,7 +220,7 @@ struct NowPlayingServiceTests {
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
         let testImage = UIImage.gradientImage()
-        await mockArtworkService.setArtwork(testImage)
+        mockArtworkService.artworkToReturn = testImage
 
         let playcut = Playcut(
             id: 1,
@@ -296,7 +280,7 @@ struct NowPlayingServiceTests {
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
         let expectedImage = UIImage.gradientImage()
-        await mockArtworkService.setArtwork(expectedImage)
+        mockArtworkService.artworkToReturn = expectedImage
 
         let playcut = Playcut(
             id: 1,
@@ -324,7 +308,7 @@ struct NowPlayingServiceTests {
 
         // Then
         #expect(nowPlayingItem?.artwork === expectedImage)
-        let callCount = await mockArtworkService.callCount
+        let callCount = mockArtworkService.fetchCount
         #expect(callCount == 1)
     }
 
@@ -394,11 +378,6 @@ struct NowPlayingServiceTests {
 
 // MARK: - Helper Extensions
 
-extension MockArtworkService {
-    func setArtwork(_ image: UIImage) {
-        self.artworkToReturn = image
-    }
-}
 
 extension UIImage {
     /// Creates a gradient image with the specified size and colors
