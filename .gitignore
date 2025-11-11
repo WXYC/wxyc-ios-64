@@ -7,3 +7,14 @@ DerivedData
 WXYC/WXYC.xcodeproj/xcshareddata/*
 *Secrets.swift
 **/.build/*
+
+# Swift Package Manager build artifacts
+build/
+**/build/
+.swiftpm/
+
+# Xcode build logs
+Build*.txt
+
+# Local gitignore files in packages
+WXYC/Shared/*/.gitignore
