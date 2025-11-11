@@ -17,7 +17,7 @@ public protocol ArtworkFetcher: Sendable {
 }
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
-public final actor ArtworkService: ArtworkFetcher {
+public final actor MultisourceArtworkService: ArtworkFetcher {
     enum Error: Swift.Error, Codable, CaseIterable {
         case noArtworkAvailable
         case nsfw

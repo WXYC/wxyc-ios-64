@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "Secrets",
     platforms: [
-        .iOS(.v18), .watchOS(.v9)
+        .iOS(.v18), .watchOS(.v9), .macOS(.v26)
     ],
     products: [
         .library(

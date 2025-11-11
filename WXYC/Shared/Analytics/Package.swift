@@ -1,11 +1,11 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 
 import PackageDescription
 
 let package = Package(
     name: "Analytics",
     platforms: [
-        .iOS(.v18), .watchOS(.v11)
+        .iOS(.v18), .watchOS(.v11), .macOS(.v26)
     ],
     products: [
         .library(name: "Analytics", targets: ["Analytics"]),
