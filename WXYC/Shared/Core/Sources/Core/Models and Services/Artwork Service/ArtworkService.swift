@@ -12,38 +12,49 @@ import Combine
 import OpenNSFW
 import Logger
 
-protocol ArtworkFetcher: Sendable {
+public protocol ArtworkFetcher: Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> UIImage
 }
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkFetcher`
-public final actor ArtworkService {
-    enum Error: Codable, CaseIterable {
+public final actor ArtworkService: ArtworkFetcher {
+    enum Error: Swift.Error, Codable, CaseIterable {
         case noArtworkAvailable
         case nsfw
     }
-    
-    public static let shared = ArtworkService(fetchers: [
-        CacheCoordinator.AlbumArt,
-        DiscogsArtworkFetcher(),
-        LastFMArtworkFetcher(),
-        iTunesArtworkFetcher(),
-    ])
 
     private let fetchers: [ArtworkFetcher]
     private let cacheCoordinator: CacheCoordinator
     private var inflightTasks: [String: Task<UIImage?, Never>] = [:]
-    
-    private init(fetchers: [ArtworkFetcher], cacheCoordinator: CacheCoordinator = .AlbumArt) {
+
+    // Public convenience initializer with default fetchers
+    public init() {
+        self.init(
+            fetchers: [
+                CacheCoordinator.AlbumArt,
+                DiscogsArtworkFetcher(),
+                LastFMArtworkFetcher(),
+                iTunesArtworkFetcher(),
+            ],
+            cacheCoordinator: .AlbumArt
+        )
+    }
+
+    // Internal initializer for dependency injection
+    init(
+        fetchers: [any ArtworkFetcher],
+        cacheCoordinator: CacheCoordinator
+    ) {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
     }
 
-    public func getArtwork(for playcut: Playcut) async -> UIImage? {
+    public func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         let id = playcut.releaseTitle ?? playcut.songTitle
         
-        if let existingTask = inflightTasks[id] {
-            return await existingTask.value
+        if let existingTask = inflightTasks[id],
+           let value = await existingTask.value {
+            return value
         }
         
         let task = Task<UIImage?, Never> {
@@ -53,8 +64,14 @@ public final actor ArtworkService {
         
         inflightTasks[id] = task
         
-        return await task.value
+        if let value = await task.value {
+            return value
+        } else {
+            throw Error.noArtworkAvailable
+        }
     }
+    
+    // MARK: - Private
     
     private func scanFetchers(for playcut: Playcut) async -> UIImage? {
         let cacheKeyId = "\(playcut.releaseTitle ?? playcut.songTitle)"

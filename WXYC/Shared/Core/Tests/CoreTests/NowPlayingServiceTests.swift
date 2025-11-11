@@ -5,11 +5,15 @@ import UIKit
 
 // MARK: - Mock ArtworkService
 
-final actor MockArtworkService: ArtworkService {
-    var artworkToReturn: UIImage?
-    var callCount = 0
+final actor MockArtworkService: ArtworkFetcher {
+    var artworkToReturn: UIImage
+    var callCount: Int = 0
 
-    func getArtwork(for playcut: Playcut) async -> UIImage? {
+    init(artworkToReturn: UIImage = UIImage.gradientImage()) {
+        self.artworkToReturn = artworkToReturn
+    }
+
+    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
         callCount += 1
         return artworkToReturn
     }
@@ -28,7 +32,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let testImage = UIImage()
+        let testImage = UIImage.gradientImage()
         await mockArtworkService.setArtwork(testImage)
 
         let playcut = Playcut(
@@ -55,7 +59,7 @@ struct NowPlayingServiceTests {
 
         // When - Get first item from sequence
         var iterator = nowPlayingService.makeAsyncIterator()
-        let nowPlayingItem = await iterator.next()
+        let nowPlayingItem = try await iterator.next()
 
         // Then
         #expect(nowPlayingItem != nil)
@@ -102,7 +106,7 @@ struct NowPlayingServiceTests {
             )
         }
 
-        let nowPlayingItem = await iterator.next()
+        let nowPlayingItem = try await iterator.next()
 
         // Then - Should skip empty and get the first valid one
         #expect(nowPlayingItem != nil)
@@ -139,7 +143,7 @@ struct NowPlayingServiceTests {
         var iterator = nowPlayingService.makeAsyncIterator()
 
         // When - Get first item
-        let firstItem = await iterator.next()
+        let firstItem = try await iterator.next()
 
         // Then
         #expect(firstItem?.playcut.songTitle == "First Song")
@@ -160,7 +164,7 @@ struct NowPlayingServiceTests {
             talksets: []
         )
 
-        let secondItem = await iterator.next()
+        let secondItem = try await iterator.next()
 
         // Then
         #expect(secondItem?.playcut.songTitle == "Second Song")
@@ -216,7 +220,7 @@ struct NowPlayingServiceTests {
 
         // When
         var iterator = nowPlayingService.makeAsyncIterator()
-        let nowPlayingItem = await iterator.next()
+        let nowPlayingItem = try await iterator.next()
 
         // Then - Should use the first playcut (highest chronOrderID)
         #expect(nowPlayingItem?.playcut.id == 1)
@@ -231,7 +235,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let testImage = UIImage()
+        let testImage = UIImage.gradientImage()
         await mockArtworkService.setArtwork(testImage)
 
         let playcut = Playcut(
@@ -256,7 +260,7 @@ struct NowPlayingServiceTests {
         )
 
         // When
-        let nowPlayingItem = await nowPlayingService.fetchOnce()
+        let nowPlayingItem = try await nowPlayingService.fetchOnce()
 
         // Then
         #expect(nowPlayingItem != nil)
@@ -280,7 +284,7 @@ struct NowPlayingServiceTests {
         )
 
         // When
-        let nowPlayingItem = await nowPlayingService.fetchOnce()
+        let nowPlayingItem = try await nowPlayingService.fetchOnce()
 
         // Then
         #expect(nowPlayingItem == nil)
@@ -291,7 +295,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let expectedImage = UIImage()
+        let expectedImage = UIImage.gradientImage()
         await mockArtworkService.setArtwork(expectedImage)
 
         let playcut = Playcut(
@@ -316,7 +320,7 @@ struct NowPlayingServiceTests {
         )
 
         // When
-        let nowPlayingItem = await nowPlayingService.fetchOnce()
+        let nowPlayingItem = try await nowPlayingService.fetchOnce()
 
         // Then
         #expect(nowPlayingItem?.artwork === expectedImage)
@@ -391,7 +395,34 @@ struct NowPlayingServiceTests {
 // MARK: - Helper Extensions
 
 extension MockArtworkService {
-    func setArtwork(_ image: UIImage?) {
+    func setArtwork(_ image: UIImage) {
         self.artworkToReturn = image
+    }
+}
+
+extension UIImage {
+    /// Creates a gradient image with the specified size and colors
+    static func gradientImage(
+        size: CGSize = CGSize(width: 200, height: 200),
+        colors: [UIColor] = [.systemBlue, .systemPurple],
+        startPoint: CGPoint = CGPoint(x: 0, y: 0),
+        endPoint: CGPoint = CGPoint(x: 1, y: 1)
+    ) -> UIImage {
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { context in
+            let cgContext = context.cgContext
+            
+            // Create gradient
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let cgColors = colors.map { $0.cgColor } as CFArray
+            guard let gradient = CGGradient(colorsSpace: colorSpace, colors: cgColors, locations: nil) else {
+                return
+            }
+            
+            // Draw gradient
+            let start = CGPoint(x: startPoint.x * size.width, y: startPoint.y * size.height)
+            let end = CGPoint(x: endPoint.x * size.width, y: endPoint.y * size.height)
+            cgContext.drawLinearGradient(gradient, start: start, end: end, options: [])
+        }
     }
 }
