@@ -1,8 +1,8 @@
-import UIKit
 import Secrets
 import Logger
+import Foundation
 
-final class DiscogsArtworkFetcher: ArtworkFetcher {
+final class DiscogsArtworkService: ArtworkService {
     private static let key    = Secrets.discogsApiKeyV2_5
     private static let secret = Secrets.discogsApiSecretV2_5
     
@@ -13,7 +13,7 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
         self.session = session
     }
     
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+    func fetchArtwork(for playcut: Playcut) async throws -> Image {
         let url: URL
         if let albumArtURL = try await fetchAlbumArtURL(for: playcut) {
             url = albumArtURL
@@ -24,7 +24,7 @@ final class DiscogsArtworkFetcher: ArtworkFetcher {
         }
         
         let imageData = try await session.data(from: url)
-        let image = UIImage(data: imageData)
+        let image = Image(data: imageData)
         
         guard let image else {
             throw ServiceError.noResults

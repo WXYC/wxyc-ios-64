@@ -1,6 +1,6 @@
-import UIKit
+import Foundation
 
-final class iTunesArtworkFetcher: ArtworkFetcher {
+final class iTunesArtworkService: ArtworkService {
     private let session: WebSession
     private let decoder = JSONDecoder()
     
@@ -8,7 +8,7 @@ final class iTunesArtworkFetcher: ArtworkFetcher {
         self.session = session
     }
     
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+    func fetchArtwork(for playcut: Playcut) async throws -> Image {
         let searchURL = makeSearchURL(for: playcut)
         let searchData = try await session.data(from: searchURL)
         let results = try decoder.decode(iTunes.SearchResults.self, from: searchData)
@@ -18,7 +18,7 @@ final class iTunesArtworkFetcher: ArtworkFetcher {
         }
         
         let imageData = try await session.data(from: result.artworkUrl100)
-        let image = UIImage(data: imageData)
+        let image = Image(data: imageData)
         
         guard let image = image else {
             throw ServiceError.noResults

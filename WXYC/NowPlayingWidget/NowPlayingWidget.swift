@@ -16,7 +16,7 @@ import Analytics
 
 final class Provider: TimelineProvider, Sendable {
     let playlistService = PlaylistService()
-    let artworkService = ArtworkService()
+    let artworkService = MultisourceArtworkService()
     
     init() {
         let POSTHOG_API_KEY = Secrets.posthogApiKey
@@ -94,7 +94,7 @@ final class Provider: TimelineProvider, Sendable {
                 ]
             } else {
                 let playlistService = PlaylistService()
-                let artworkService = ArtworkService()
+                let artworkService = MultisourceArtworkService()
 
                 let playlist = await playlistService.fetchPlaylist()
                 var playcuts = playlist.playcuts
@@ -130,7 +130,7 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     let date: Date = Date(timeIntervalSinceNow: 1)
     let artist: String
     let songTitle: String
-    let artwork: Image?
+    let artwork: SwiftUI.Image?
     let recentItems: [NowPlayingItem]
     let family: WidgetFamily
 
@@ -552,7 +552,7 @@ extension RangeReplaceableCollection {
     }
 }
 
-extension Image {
+extension SwiftUI.Image {
     static var logo: some View {
         ZStack {
             Rectangle()

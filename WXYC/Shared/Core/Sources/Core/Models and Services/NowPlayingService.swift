@@ -33,14 +33,14 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
     public typealias Element = NowPlayingItem
 
     private let playlistService: PlaylistService
-    private let artworkFetcher: ArtworkFetcher
+    private let artworkService: ArtworkService
 
     public init(
         playlistService: PlaylistService,
-        artworkService: ArtworkFetcher
+        artworkService: ArtworkService
     ) {
         self.playlistService = playlistService
-        self.artworkFetcher = artworkService
+        self.artworkService = artworkService
     }
 
     public nonisolated func makeAsyncIterator() -> AsyncIterator {
@@ -70,7 +70,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             }
 
             // Fetch artwork for the playcut
-            let artwork = try await service.artworkFetcher.fetchArtwork(for: playcut)
+            let artwork = try await service.artworkService.fetchArtwork(for: playcut)
             return NowPlayingItem(playcut: playcut, artwork: artwork)
         }
     }
@@ -82,7 +82,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             Log(.info, "No playcut found in fetched playlist")
             return nil
         }
-        let artwork = try await artworkFetcher.fetchArtwork(for: playcut)
+        let artwork = try await artworkService.fetchArtwork(for: playcut)
         return NowPlayingItem(playcut: playcut, artwork: artwork)
     }
 }

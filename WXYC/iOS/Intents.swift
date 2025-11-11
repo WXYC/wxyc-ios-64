@@ -27,7 +27,7 @@ enum AppServices {
     static func nowPlayingService() -> NowPlayingService {
         NowPlayingService(
             playlistService: PlaylistService(),
-            artworkService: ArtworkService()
+            artworkService: MultisourceArtworkService()
         )
     }
 }

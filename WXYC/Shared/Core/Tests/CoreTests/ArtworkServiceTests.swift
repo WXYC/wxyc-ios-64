@@ -3,9 +3,9 @@ import Foundation
 import UIKit
 @testable import Core
 
-// MARK: - Mock ArtworkFetcher
+// MARK: - Mock ArtworkService
 
-final class MockArtworkFetcher: ArtworkFetcher, @unchecked Sendable {
+final class MockArtworkService: ArtworkService, @unchecked Sendable {
     var artworkToReturn: UIImage?
     var errorToThrow: Error?
     var fetchCount = 0
@@ -64,7 +64,7 @@ actor MockCacheCoordinator {
         }
     }
 
-    func fetchError(for key: String) async throws -> ArtworkService.Error {
+    func fetchError(for key: String) async throws -> MultisourceArtworkService.Error {
         try await value(for: key)
     }
 
@@ -100,16 +100,16 @@ struct ArtworkServiceTests {
     @Test("Fetches artwork from first successful fetcher")
     func fetchesFromFirstSuccessfulFetcher() async throws {
         // Given
-        let fetcher1 = MockArtworkFetcher()
-        let fetcher2 = MockArtworkFetcher()
-        let fetcher3 = MockArtworkFetcher()
+        let fetcher1 = MockArtworkService()
+        let fetcher2 = MockArtworkService()
+        let fetcher3 = MockArtworkService()
 
         let expectedArtwork = UIImage.testImageWithColor(.red)
         fetcher1.artworkToReturn = expectedArtwork
         fetcher2.artworkToReturn = UIImage.testImageWithColor(.blue)
         fetcher3.artworkToReturn = UIImage.testImageWithColor(.green)
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2, fetcher3],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -137,16 +137,16 @@ struct ArtworkServiceTests {
     @Test("Falls back to next fetcher when first fails")
     func fallsBackToNextFetcher() async throws {
         // Given
-        let fetcher1 = MockArtworkFetcher()
-        let fetcher2 = MockArtworkFetcher()
-        let fetcher3 = MockArtworkFetcher()
+        let fetcher1 = MockArtworkService()
+        let fetcher2 = MockArtworkService()
+        let fetcher3 = MockArtworkService()
 
         fetcher1.errorToThrow = ServiceError.noResults
         fetcher2.errorToThrow = ServiceError.noResults
         let expectedArtwork = UIImage.testImageWithColor(.green)
         fetcher3.artworkToReturn = expectedArtwork
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2, fetcher3],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -174,13 +174,13 @@ struct ArtworkServiceTests {
     @Test("Throws error when all fetchers fail")
     func throwsErrorWhenAllFetchersFail() async throws {
         // Given
-        let fetcher1 = MockArtworkFetcher()
-        let fetcher2 = MockArtworkFetcher()
+        let fetcher1 = MockArtworkService()
+        let fetcher2 = MockArtworkService()
 
         fetcher1.errorToThrow = ServiceError.noResults
         fetcher2.errorToThrow = ServiceError.noResults
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -196,7 +196,7 @@ struct ArtworkServiceTests {
         )
 
         // When/Then
-        await #expect(throws: ArtworkService.Error.noArtworkAvailable) {
+        await #expect(throws: MultisourceArtworkService.Error.noArtworkAvailable) {
             try await service.fetchArtwork(for: playcut)
         }
 
@@ -209,12 +209,12 @@ struct ArtworkServiceTests {
     @Test("Deduplicates concurrent requests for same artwork")
     func deduplicatesConcurrentRequests() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         let artwork = UIImage.testImageWithColor(.blue)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.1 // Add delay to ensure concurrent execution
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -245,12 +245,12 @@ struct ArtworkServiceTests {
     @Test("Uses release title as deduplication key")
     func usesReleaseTitleAsKey() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         let artwork = UIImage.testImageWithColor(.red)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.05
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -289,12 +289,12 @@ struct ArtworkServiceTests {
     @Test("Uses song title as fallback key when no release title")
     func usesSongTitleAsFallbackKey() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         let artwork = UIImage.testImageWithColor(.yellow)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.05
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -333,10 +333,10 @@ struct ArtworkServiceTests {
     @Test("Does not deduplicate different artworks")
     func doesNotDeduplicateDifferentArtworks() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         fetcher.artworkToReturn = UIImage.testImageWithColor(.purple)
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -376,7 +376,7 @@ struct ArtworkServiceTests {
         // Given
         let mockCache = MockCacheCoordinator()
 
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         let artwork = UIImage.testImageWithColor(.orange)
         fetcher.artworkToReturn = artwork
 
@@ -392,7 +392,7 @@ struct ArtworkServiceTests {
         )
 
         // First service with just the regular fetcher
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -423,14 +423,14 @@ struct ArtworkServiceTests {
     @Test("Continues to next fetcher on error")
     func continuesToNextFetcherOnError() async throws {
         // Given
-        let failingFetcher = MockArtworkFetcher()
+        let failingFetcher = MockArtworkService()
         failingFetcher.errorToThrow = NSError(domain: "test", code: -1)
 
-        let successfulFetcher = MockArtworkFetcher()
+        let successfulFetcher = MockArtworkService()
         let artwork = UIImage.testImageWithColor(.magenta)
         successfulFetcher.artworkToReturn = artwork
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [failingFetcher, successfulFetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -457,7 +457,7 @@ struct ArtworkServiceTests {
     @Test("Handles empty fetcher list gracefully")
     func handlesEmptyFetcherList() async throws {
         // Given
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -473,7 +473,7 @@ struct ArtworkServiceTests {
         )
 
         // When/Then
-        await #expect(throws: ArtworkService.Error.noArtworkAvailable) {
+        await #expect(throws: MultisourceArtworkService.Error.noArtworkAvailable) {
             try await service.fetchArtwork(for: playcut)
         }
     }
@@ -483,10 +483,10 @@ struct ArtworkServiceTests {
     @Test("Passes correct playcut to fetcher")
     func passesCorrectPlaycutToFetcher() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         fetcher.artworkToReturn = UIImage.testImageWithColor(.brown)
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -517,11 +517,11 @@ struct ArtworkServiceTests {
     @Test("Handles multiple different concurrent requests")
     func handlesMultipleDifferentConcurrentRequests() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         fetcher.artworkToReturn = UIImage.testImageWithColor(.systemTeal)
         fetcher.delaySeconds = 0.05
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -562,11 +562,11 @@ struct ArtworkServiceTests {
     @Test("Sequential requests for same artwork use cached task")
     func sequentialRequestsUseCachedTask() async throws {
         // Given
-        let fetcher = MockArtworkFetcher()
+        let fetcher = MockArtworkService()
         let artwork = UIImage.testImageWithColor(.systemIndigo)
         fetcher.artworkToReturn = artwork
 
-        let service = ArtworkService(
+        let service = MultisourceArtworkService(
             fetchers: [fetcher],
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
@@ -596,7 +596,7 @@ struct ArtworkServiceTests {
     @Test("Default initializer works correctly")
     func defaultInitializerWorks() async throws {
         // Given
-        let service = ArtworkService()
+        let service = MultisourceArtworkService()
 
         let playcut = Playcut(
             id: 1,

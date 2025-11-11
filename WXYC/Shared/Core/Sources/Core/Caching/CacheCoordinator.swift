@@ -84,7 +84,7 @@ public final actor CacheCoordinator {
         } catch {
             Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
             Log(.error, "\(try Self.decoder.decode(CachedRecord<String>.self, from: value))")
-            if Value.self != CachedRecord<ArtworkService.Error>.self {
+            if Value.self != CachedRecord<MultisourceArtworkService.Error>.self {
                 PostHogSDK.shared.capture(
                     error: error,
                     context: "CacheCoordinator decode value",
@@ -201,3 +201,4 @@ extension FileManager {
     }
 }
 #endif
+

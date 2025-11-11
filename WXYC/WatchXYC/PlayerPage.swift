@@ -140,7 +140,7 @@ struct HeightReader: View {
 struct NowPlayingEntry {
     let artist: String
     let songTitle: String
-    let artwork: Image?
+    let artwork: SwiftUI.Image?
     
     init(artist: String, songTitle: String, artwork: UIImage?) {
         self.artist = artist
@@ -169,7 +169,7 @@ struct NowPlayingEntry {
     }
 }
 
-extension Image {
+extension SwiftUI.Image {
     static var logo: some View {
         ZStack {
             Rectangle()
