@@ -151,8 +151,14 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     @MainActor
     private func observeIsPlaying() {
-        radioPlayerController.observe { isPlaying in
-            self.updateListTemplate()
+        let observations = Observations {
+            self.radioPlayerController.isPlaying
+        }
+
+        Task {
+            for await _ in observations {
+                self.updateListTemplate()
+            }
         }
     }
     
@@ -223,8 +229,8 @@ extension CPListItem: @unchecked @retroactive Sendable {
     convenience init(playcut: Playcut) {
         self.init(text: playcut.artistName, detailText: playcut.songTitle)
         Task {
-            let artworkService = ArtworkService()
-            let artwork = await artworkService.fetchArtwork(for: playcut)
+            let artworkService = MultisourceArtworkService()
+            let artwork = try await artworkService.fetchArtwork(for: playcut)
 
             Task { @MainActor in
                 self.setImage(artwork)
