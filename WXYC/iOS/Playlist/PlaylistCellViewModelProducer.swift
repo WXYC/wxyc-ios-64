@@ -86,7 +86,7 @@ extension Talkset: PlaylistCellViewModelProducer {
 }
 
 extension Breakpoint: PlaylistCellViewModelProducer {
-    struct BreakpointCellConfigurator: CellConfigurator {
+    struct Configurator: CellConfigurator {
         let `class`: AnyClass = BreakpointCell.self
         let breakpoint: Breakpoint
         
@@ -101,7 +101,7 @@ extension Breakpoint: PlaylistCellViewModelProducer {
     
     var cellViewModel: PlaylistCellViewModel {
         return PlaylistCellViewModel(
-            configuration: BreakpointCellConfigurator(breakpoint: self)
+            configuration: Configurator(breakpoint: self)
         )
     }
 }

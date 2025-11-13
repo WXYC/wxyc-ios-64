@@ -8,7 +8,6 @@
 
 import UIKit
 import Core
-import Logger
 
 @objc(PlayerHeader)
 class PlayerHeader: UITableViewHeaderFooterView {
@@ -18,10 +17,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
     @IBOutlet private var cassetteRightReel: UIImageView!
 
     private var radioPlayerController: RadioPlayerController {
-        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-            fatalError("AppDelegate not found")
-        }
-        return appDelegate.radioPlayerController
+        AppState.shared.radioPlayerController
     }
     
     // MARK: Public
@@ -88,7 +84,7 @@ class PlayerHeader: UITableViewHeaderFooterView {
             self.cassetteLeftReel.startSpin()
             self.cassetteRightReel.startSpin()
             self.playButton.set(status: .playing, animated: self.shouldAnimateButtonTransition)
-            AppDelegate.donateSiriIntent()
+            WXYCApp.donateSiriIntent()
         }
     }
     
