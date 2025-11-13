@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="24412" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
     <device id="retina4_7" orientation="portrait" appearance="light"/>
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24405"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -14,47 +14,47 @@
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
             <subviews>
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="5RG-En-Phc">
-                    <rect key="frame" x="16" y="20" width="1093" height="229"/>
+                    <rect key="frame" x="16" y="20" width="1093" height="243"/>
                     <subviews>
                         <visualEffectView opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="xz7-an-Hp9">
-                            <rect key="frame" x="0.0" y="0.0" width="1030.5" height="229"/>
+                            <rect key="frame" x="0.0" y="0.0" width="1093" height="243"/>
                             <view key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" id="P0N-Zk-g7f">
-                                <rect key="frame" x="0.0" y="0.0" width="1030.5" height="229"/>
+                                <rect key="frame" x="0.0" y="0.0" width="1093" height="243"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <subviews>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="257" verticalHuggingPriority="252" verticalCompressionResistancePriority="748" insetsLayoutMarginsFromSafeArea="NO" image="Cassette Right Arch" translatesAutoresizingMaskIntoConstraints="NO" id="XAc-LJ-KKd">
-                                        <rect key="frame" x="899.5" y="0.0" width="131" height="229"/>
+                                        <rect key="frame" x="954" y="0.0" width="139" height="243"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="XAc-LJ-KKd" secondAttribute="height" multiplier="71:124" id="eO0-dt-MiX"/>
                                         </constraints>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" verticalHuggingPriority="251" horizontalCompressionResistancePriority="749" image="Cassette Background" translatesAutoresizingMaskIntoConstraints="NO" id="MRG-3n-gv2">
-                                        <rect key="frame" x="362" y="0.0" width="537.5" height="229"/>
+                                        <rect key="frame" x="384" y="0.0" width="570" height="243"/>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" verticalHuggingPriority="251" horizontalCompressionResistancePriority="749" image="Cassette Center" translatesAutoresizingMaskIntoConstraints="NO" id="KK7-92-suf">
-                                        <rect key="frame" x="362" y="-3" width="537.5" height="229"/>
+                                        <rect key="frame" x="384" y="-3" width="570" height="243"/>
                                     </imageView>
                                     <button clearsContextBeforeDrawing="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="255" verticalHuggingPriority="251" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="CGx-so-9Ne" customClass="PlaybackButton" customModule="WXYC" customModuleProvider="target">
-                                        <rect key="frame" x="0.0" y="0.0" width="229" height="229"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="243" height="243"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="CGx-so-9Ne" secondAttribute="height" multiplier="1:1" id="FeC-CO-Il5"/>
                                         </constraints>
                                         <color key="tintColor" red="0.2666666667" green="0.3411764706" blue="0.3803921569" alpha="1" colorSpace="calibratedRGB"/>
                                     </button>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="257" verticalHuggingPriority="252" verticalCompressionResistancePriority="748" insetsLayoutMarginsFromSafeArea="NO" image="Cassette Left Arch" translatesAutoresizingMaskIntoConstraints="NO" id="RKz-o2-d6e">
-                                        <rect key="frame" x="229" y="0.0" width="133" height="229"/>
+                                        <rect key="frame" x="243" y="0.0" width="141" height="243"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="RKz-o2-d6e" secondAttribute="height" multiplier="18:31" id="UYw-s8-mxh"/>
                                         </constraints>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Cassette Reel" translatesAutoresizingMaskIntoConstraints="NO" id="GDu-yh-lQA">
-                                        <rect key="frame" x="848.5" y="63.5" width="102" height="102"/>
+                                        <rect key="frame" x="900" y="67.5" width="108" height="108"/>
                                         <constraints>
                                             <constraint firstAttribute="width" secondItem="GDu-yh-lQA" secondAttribute="height" id="z56-cK-egy"/>
                                         </constraints>
                                     </imageView>
                                     <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Cassette Reel" translatesAutoresizingMaskIntoConstraints="NO" id="dFV-Km-x0k">
-                                        <rect key="frame" x="311" y="63.5" width="102" height="102"/>
+                                        <rect key="frame" x="330" y="67.5" width="108" height="108"/>
                                     </imageView>
                                 </subviews>
                                 <constraints>
@@ -104,7 +104,6 @@
                 <constraint firstItem="SvY-n8-eWU" firstAttribute="trailing" secondItem="5RG-En-Phc" secondAttribute="trailing" constant="16" id="3AK-5I-Lzy"/>
                 <constraint firstItem="5RG-En-Phc" firstAttribute="top" secondItem="SvY-n8-eWU" secondAttribute="top" id="OHZ-3e-Uz7"/>
                 <constraint firstItem="5RG-En-Phc" firstAttribute="leading" secondItem="SvY-n8-eWU" secondAttribute="leading" constant="16" id="cNX-TR-b1R"/>
-                <constraint firstItem="SvY-n8-eWU" firstAttribute="bottom" secondItem="5RG-En-Phc" secondAttribute="bottom" constant="8" id="hmx-Vm-42b"/>
             </constraints>
             <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
             <connections>
@@ -116,11 +115,6 @@
             <point key="canvasLocation" x="-112" y="22.488755622188908"/>
         </view>
     </objects>
-    <designables>
-        <designable name="CGx-so-9Ne">
-            <size key="intrinsicContentSize" width="30" height="34"/>
-        </designable>
-    </designables>
     <resources>
         <image name="Cassette Background" width="335" height="124"/>
         <image name="Cassette Center" width="335" height="124"/>
