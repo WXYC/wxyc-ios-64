@@ -11,6 +11,7 @@ import Logger
 import Core
 import PostHog
 import Intents
+import SwiftUI
 
 @MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
@@ -19,10 +20,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     let playlistService = PlaylistService()
 
     private var radioPlayerController: RadioPlayerController {
-        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-            fatalError("AppDelegate not found")
-        }
-        return appDelegate.radioPlayerController
+        AppState.shared.radioPlayerController
     }
     
     // MARK: CPTemplateApplicationSceneDelegate
@@ -178,10 +176,7 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     internal var window: UIWindow?
 
     private var radioPlayerController: RadioPlayerController {
-        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-            fatalError("AppDelegate not found")
-        }
-        return appDelegate.radioPlayerController
+        AppState.shared.radioPlayerController
     }
     
     // MARK: UISceneDelegate
@@ -197,8 +192,8 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
         }
         
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
-        
-        window?.rootViewController = RootPageViewController()
+
+        window?.rootViewController = UIHostingController(rootView: RootTabView())
         window?.windowScene = windowScene
         window?.makeKeyAndVisible()
     }

@@ -27,10 +27,7 @@ struct ListenTogether: GroupActivity, Transferable {
     }
 
     private var radioPlayerController: RadioPlayerController {
-        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
-            fatalError("AppDelegate not found")
-        }
-        return appDelegate.radioPlayerController
+        AppState.shared.radioPlayerController
     }
 
     func activate() async throws -> Bool {
