@@ -11,34 +11,65 @@ import SwiftUI
 import Core
 
 struct PlaylistPage: View {
-    @State private var playlist: Playlist = .empty
+    @State private var playlistEntries: [any PlaylistEntry] = []
     private let playlistService = PlaylistService()
-
+    
     var body: some View {
-        List {
-            Section("Recently Played") {
-                ForEach(playlist.wrappedEntries) { wrappedEntry in
-                    switch wrappedEntry {
-                    case .playcut(let playcut):
-                        PlaycutView(playcut: playcut)
-                            .listRowInsets(EdgeInsets(10))
-                    case .breakpoint(let breakpoint):
-                        BreakpointView(breakpoint: breakpoint)
-                            .listRowBackground(Color.black)
-                    case .talkset(_):
-                        TalksetView()
-                            .background()
-                            .listRowBackground(Color.black)
+        ZStack {
+            Color.clear
+            
+            ScrollView {
+                PlayerHeaderView()
+                
+                // Playlist entries
+                LazyVStack(spacing: 0) {
+                    ForEach(playlistEntries, id: \.id) { entry in
+                        playlistRow(for: entry)
+                            .padding(.vertical, 8)
+                    }
+                    
+                    // Footer button
+                    if !playlistEntries.isEmpty {
+                        Button("what the freq?") {
+                            // Footer action
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.top, 20)
                     }
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 12)
         .task {
+            await observePlaylist()
+        }
+    }
+    
+    @ViewBuilder
+    private func playlistRow(for entry: any PlaylistEntry) -> some View {
+        switch entry {
+        case let playcut as Playcut:
+            PlaycutView(playcut: playcut)
+                .listRowInsets(EdgeInsets(10))
             
-            for await playlist in playlistService {
-                self.playlist = playlist
-            }
+        case let breakpoint as Breakpoint:
+            BreakpointView(breakpoint: breakpoint)
+                .listRowBackground(Color.black)
+            
+        case _ as Talkset:
+            TalksetView()
+                .background()
+                .listRowBackground(Color.black)
+            
+        default:
+            EmptyView()
+        }
+    }
+    
+    @MainActor
+    private func observePlaylist() async {
+        for await playlist in playlistService {
+            self.playlistEntries = playlist.entries
         }
     }
 }
