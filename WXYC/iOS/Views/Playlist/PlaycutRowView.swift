@@ -18,61 +18,53 @@ struct PlaycutRowView: View {
     private let artworkService = MultisourceArtworkService()
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Artwork
-            Group {
-                if let artwork = artwork {
-                    Image(uiImage: artwork)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Image("logo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .opacity(isLoadingArtwork ? 0.5 : 1.0)
+        ZStack {
+            // Background layer
+            BackgroundLayer()
+            
+            // Content that can punch through the background
+            HStack(spacing: 0) {
+                // Artwork
+                Group {
+                    if let artwork = artwork {
+                        Image(uiImage: artwork)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    } else {
+                        RoundedRectangle(cornerRadius: 6.0, style: .circular)
+                            .opacity(0.25)
+                    }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(12.0)
+                .frame(width: 120, height: 120)
+                
+
+                // Song info
+                VStack(alignment: .leading) {
+                    Text(playcut.songTitle)
+                        .fontWeight(.bold)
+                        .foregroundStyle(.white)
+                    Text(playcut.artistName)
+                        .foregroundStyle(.white)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(0)
+                .padding(.trailing, 12.0)
+
+    //            // Share button
+    //            Button(action: {
+    //                showingShareSheet = true
+    //            }) {
+    //                Image(systemName: "ellipsis")
+    //                    .font(.title3)
+    //                    .foregroundStyle(.white)
+    //                    .frame(width: 44, height: 44)
+    //            }
             }
-            .padding(6.0)
-            .frame(width: 120, height: 120)
-//            .background(
-//                RoundedRectangle(cornerRadius: 6)
-//                    .fill(.ultraThinMaterial)
-//            )
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            
-
-            // Song info
-            VStack(alignment: .leading) {
-                Text(playcut.songTitle)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-
-                Text(playcut.artistName)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            
-
-//            // Share button
-//            Button(action: {
-//                showingShareSheet = true
-//            }) {
-//                Image(systemName: "ellipsis")
-//                    .font(.title3)
-//                    .foregroundStyle(.white)
-//                    .frame(width: 44, height: 44)
-//            }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(.ultraThinMaterial)
-        )
-        .padding(.horizontal, 12)
-        .padding(.bottom, 12)
+        .compositingGroup()  // Enable knockout effect
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .task {
@@ -136,11 +128,13 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 #Preview {
     ZStack {
-        Color.purple
+        Image("background")
+            .resizable()
+            .ignoresSafeArea()
         
-        VStack(spacing: 0) {
+        VStack(spacing: 12) {
             PlayerHeaderView()
-                .background(.blue)
+
             PlaycutRowView(
                 playcut: Playcut(
                     id: 0,
@@ -165,5 +159,5 @@ struct ShareSheet: UIViewControllerRepresentable {
             )
         }
     }
-    .environment(\.radioPlayerController, RadioPlayerController())
+    .environment(\.radioPlayerController, RadioPlayerController.shared)
 }

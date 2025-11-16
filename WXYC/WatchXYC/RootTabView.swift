@@ -26,5 +26,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(radioPlayerController: RadioPlayerController())
+    RootTabView(radioPlayerController: RadioPlayerController.shared)
 }

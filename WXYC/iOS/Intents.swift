@@ -21,8 +21,6 @@ struct IntentError: Error {
 
 // App-level service access for intents
 enum AppServices {
-    static let radioPlayerController = RadioPlayerController()
-
     @MainActor
     static func nowPlayingService() -> NowPlayingService {
         NowPlayingService(
@@ -48,7 +46,8 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public init() { }
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         do {
-            try await AppServices.radioPlayerController.play(reason: "PlayWXYC intent")
+            Log(.info, "PlayWXYC intent")
+            try await RadioPlayerController.shared.play(reason: "PlayWXYC intent")
             let value = "Tuning in to WXYC…"
             return .result(
                 value: value,
@@ -73,7 +72,7 @@ struct PauseWXYC: AudioPlaybackIntent {
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         PostHogSDK.shared.capture("PauseWXYC intent")
-        await AppServices.radioPlayerController.pause()
+        await RadioPlayerController.shared.pause()
         return .result(value: "Now pausing WXYC")
     }
 }
@@ -87,7 +86,7 @@ struct ToggleWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        try await AppServices.radioPlayerController.toggle(reason: "ToggleWXYC intent")
+        try await RadioPlayerController.shared.toggle(reason: "ToggleWXYC intent")
         return .result(value: "Now toggling WXYC")
     }
 }

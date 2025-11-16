@@ -46,7 +46,7 @@ final nonisolated class InstagramStoryActivity: UIActivity {
         var pasteboardItems = [String: Any]()
 
         // Assume you have the following images prepared
-        if let backgroundImage = UIImage(named: "backgroundImage"),
+        if let backgroundImage = UIImage(named: "background"),
            let backgroundImageData = backgroundImage.pngData() {
             pasteboardItems["com.instagram.sharedSticker.backgroundImage"] = backgroundImageData
         }

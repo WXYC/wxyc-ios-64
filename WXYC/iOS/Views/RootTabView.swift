@@ -40,5 +40,5 @@ struct RootTabView: View {
 
 #Preview {
     RootTabView()
-        .environment(\.radioPlayerController, RadioPlayerController())
+        .environment(\.radioPlayerController, RadioPlayerController.shared)
 }

@@ -18,10 +18,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
     let playlistService = PlaylistService()
-
-    private var radioPlayerController: RadioPlayerController {
-        AppState.shared.radioPlayerController
-    }
     
     // MARK: CPTemplateApplicationSceneDelegate
     
@@ -96,7 +92,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     
     private func makePlayerSection() -> CPListSection {
-        let isPlaying = radioPlayerController.isPlaying
+        let isPlaying = RadioPlayerController.shared.isPlaying
         let image = isPlaying
             ? nil
             : UIImage(systemName: "play.fill")
@@ -104,7 +100,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         listenLiveItem.isPlaying = isPlaying
 
         listenLiveItem.handler = { selectableItem, completionHandler in
-            try? self.radioPlayerController.play(reason: "CarPlay listen live tapped")
+            try? RadioPlayerController.shared.play(reason: "CarPlay listen live tapped")
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
@@ -150,7 +146,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     @MainActor
     private func observeIsPlaying() {
         let observations = Observations {
-            self.radioPlayerController.isPlaying
+            RadioPlayerController.shared.isPlaying
         }
 
         Task {
@@ -174,10 +170,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
 class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
 
     internal var window: UIWindow?
-
-    private var radioPlayerController: RadioPlayerController {
-        AppState.shared.radioPlayerController
-    }
     
     // MARK: UISceneDelegate
     
@@ -204,7 +196,7 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
         }
 
         do {
-            try radioPlayerController.play(reason: "home screen play quick action")
+            try RadioPlayerController.shared.play(reason: "home screen play quick action")
             return true
         } catch {
             return false
@@ -213,9 +205,9 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     
     private func handle(userActivity: NSUserActivity) throws {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            try radioPlayerController.play(reason: "Siri suggestion (NSUserActivity)")
+            try RadioPlayerController.shared.play(reason: "Siri suggestion (NSUserActivity)")
         } else if let _ = userActivity.interaction?.intent as? INPlayMediaIntent {
-            try radioPlayerController.play(reason: "Siri suggestion (INPlayMediaIntent)")
+            try RadioPlayerController.shared.play(reason: "Siri suggestion (INPlayMediaIntent)")
         }
     }
 }

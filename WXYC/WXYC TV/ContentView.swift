@@ -25,5 +25,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(radioPlayerController: RadioPlayerController())
+    ContentView(radioPlayerController: RadioPlayerController.shared)
 }

@@ -33,7 +33,7 @@ struct WatchXYC: App {
     
     var body: some Scene {
         WindowGroup {
-            RootTabView(radioPlayerController: RadioPlayerController())
+            RootTabView(radioPlayerController: RadioPlayerController.shared)
         }
     }
 }

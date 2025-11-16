@@ -16,7 +16,11 @@ import PostHog
 @MainActor
 @Observable
 public final class RadioPlayerController {
-    public var isPlaying = false
+    public static let shared = RadioPlayerController()
+    
+    public var isPlaying: Bool {
+        self.radioPlayer.isPlaying
+    }
     
     public convenience init(
         notificationCenter: NotificationCenter = .default,
@@ -67,15 +71,15 @@ public final class RadioPlayerController {
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
         ]
         
-        Task {
-            let observations = Observations {
-                self.radioPlayer.isPlaying
-            }
-            
-            for await isPlaying in observations {
-                self.isPlaying = isPlaying
-            }
-        }
+//        Task {
+//            let observations = Observations {
+//                self.radioPlayer.isPlaying
+//            }
+//            
+//            for await isPlaying in observations {
+//                self.isPlaying = isPlaying
+//            }
+//        }
     }
     
     // MARK: Public methods

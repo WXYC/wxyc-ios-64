@@ -45,37 +45,38 @@ internal final class RadioPlayer: Sendable {
         self.userDefaults = userDefaults
         self.analytics = analytics
         self.notificationCenter = notificationCenter
-
+        
         self.playerObservation =
-            notificationCenter.addObserver(
-                forName: AVPlayer.rateDidChangeNotification,
-                object: player as? AVPlayer,
-                queue: nil
-            ) { [weak self] notification in
+        notificationCenter.addObserver(
+            forName: AVPlayer.rateDidChangeNotification,
+            object: player as? AVPlayer,
+            queue: nil
+        ) { [weak self] notification in
+            guard let self else { return }
+            Log(.info, "RadioPlayer did receive notification", notification)
+            Task { @MainActor [weak self] in
                 guard let self else { return }
-                Log(.info, "RadioPlayer did receive notification", notification)
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.isPlaying = self.player.rate > 0
-                    if self.isPlaying {
-                        let timeToAudio = self.timer.duration()
-                        self.analytics?.capture("Time to first Audio", properties: [
-                            "timeToAudio": timeToAudio
-                        ])
-                    }
+                self.isPlaying = self.player.rate > 0
+                if self.isPlaying {
+                    let timeToAudio = self.timer.duration()
+                    self.analytics?.capture("Time to first Audio", properties: [
+                        "timeToAudio": timeToAudio
+                    ])
                 }
             }
+        }
     }
 
-    var isPlaying = false
+    private(set) var isPlaying = false
     
     func play() {
         if self.isPlaying {
-            analytics?.capture("already playing")
+            analytics?.capture("already playing (local)")
             return
         }
+        
+        // Mark as playing in shared UserDefaults
         userDefaults.set(true, forKey: "isPlaying")
-        print(">>>> \(userDefaults.bool(forKey: "isPlaying"))")
 
         analytics?.capture("radioPlayer play")
         timer = Timer.start()
@@ -84,8 +85,9 @@ internal final class RadioPlayer: Sendable {
 
     func pause() {
         userDefaults.set(false, forKey: "isPlaying")
-        print(">>>> \(userDefaults.bool(forKey: "isPlaying"))")
-        player.pause()
+        
+        // Notify other processes that we're stopping playback
+        self.player.pause()
         self.resetStream()
     }
 
