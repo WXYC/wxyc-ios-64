@@ -13,9 +13,9 @@ public typealias Image = UIImage
 
 public extension Image {
     // Unified helper to get PNG data in cross‑platform code
-    var pngDataCompat: Data? { self.pngData() }
+    var pngDataCompatibility: Data? { self.pngData() }
     // Unified initializer used when reconstructing from Data
-    convenience init?(compatData data: Data) { self.init(data: data) }
+    convenience init?(compatibilityData data: Data) { self.init(data: data) }
 }
 
 #elseif canImport(AppKit)
@@ -24,7 +24,7 @@ public typealias Image = NSImage
 
 public extension Image {
     // Convert NSImage to PNG data
-    var pngDataCompat: Data? {
+    var pngDataCompatibility: Data? {
         guard
             let tiff = self.tiffRepresentation,
             let rep = NSBitmapImageRep(data: tiff),
@@ -34,7 +34,7 @@ public extension Image {
     }
 
     // NSImage already supports init?(data:)
-    convenience init?(compatData data: Data) {
+    convenience init?(compatibilityData data: Data) {
         self.init(data: data)
     }
 }

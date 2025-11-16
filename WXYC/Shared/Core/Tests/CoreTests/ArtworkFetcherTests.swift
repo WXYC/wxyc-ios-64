@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import UIKit
 @testable import Core
 
 // MARK: - Mock WebSession
@@ -33,8 +32,11 @@ final class MockWebSession: WebSession, @unchecked Sendable {
 
 // MARK: - Test Helpers
 
-extension UIImage {
-    static var testImage: UIImage {
+#if canImport(UIKit)
+import UIKit
+
+extension Image {
+    static var testImage: Image {
         // Create a simple 1x1 red image for testing
         let size = CGSize(width: 1, height: 1)
         let renderer = UIGraphicsImageRenderer(size: size)
@@ -44,6 +46,22 @@ extension UIImage {
         }
     }
 }
+#elseif canImport(AppKit)
+import AppKit
+
+extension Image {
+    static var testImage: Image {
+        // Create a simple 1x1 red image for testing
+        let size = NSSize(width: 1, height: 1)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.red.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        image.unlockFocus()
+        return image
+    }
+}
+#endif
 
 // MARK: - iTunesArtworkService Tests
 
@@ -83,7 +101,7 @@ struct iTunesArtworkServiceTests {
             ]
         )
         let searchData = try JSONEncoder().encode(searchResults)
-        let imageData = UIImage.testImage.pngData()!
+        let imageData = Image.testImage.pngDataCompatibility!
 
         let sequentialSession = SequentialMockSession()
         sequentialSession.responses = [searchData, imageData]
@@ -93,7 +111,7 @@ struct iTunesArtworkServiceTests {
         let result = try await fetcher.fetchArtwork(for: playcut)
 
         // Then
-        #expect(result.pngData() != nil)
+        #expect(result.pngDataCompatibility != nil)
     }
 
     @Test("Fetches artwork successfully for song without album")
@@ -133,7 +151,7 @@ struct iTunesArtworkServiceTests {
             ]
         )
         let searchData = try JSONEncoder().encode(searchResults)
-        let imageData = UIImage.testImage.pngData()!
+        let imageData = Image.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchData, imageData]
 
@@ -141,7 +159,7 @@ struct iTunesArtworkServiceTests {
         let artwork = try await fetcher.fetchArtwork(for: playcut)
 
         // Then
-        #expect(artwork.pngData() != nil)
+        #expect(artwork.pngDataCompatibility != nil)
         #expect(mockSession.requestedURLs.count == 2)
         #expect(mockSession.requestedURLs[0].absoluteString.contains("entity=song"))
     }
@@ -247,7 +265,7 @@ struct LastFMArtworkServiceTests {
             )
         )
         let searchData = try JSONEncoder().encode(searchResponse)
-        let imageData = UIImage.testImage.pngData()!
+        let imageData = Image.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchData, imageData]
 
@@ -255,7 +273,7 @@ struct LastFMArtworkServiceTests {
         let artwork = try await fetcher.fetchArtwork(for: playcut)
 
         // Then
-        #expect(artwork.pngData() != nil)
+        #expect(artwork.pngDataCompatibility != nil)
     }
 
     @Test("Selects largest album art")
@@ -365,7 +383,7 @@ struct DiscogsArtworkServiceTests {
         }
         """.data(using: .utf8)!
 
-        let imageData = UIImage.testImage.pngData()!
+        let imageData = Image.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchResults, imageData]
 
@@ -373,7 +391,7 @@ struct DiscogsArtworkServiceTests {
         let artwork = try await fetcher.fetchArtwork(for: playcut)
 
         // Then
-        #expect(artwork.pngData() != nil)
+        #expect(artwork.pngDataCompatibility != nil)
     }
 
     @Test("Skips spacer.gif images")
@@ -421,7 +439,7 @@ struct DiscogsArtworkServiceTests {
         }
         """.data(using: .utf8)!
 
-        let imageData = UIImage.testImage.pngData()!
+        let imageData = Image.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchResults, imageData]
 
@@ -429,7 +447,7 @@ struct DiscogsArtworkServiceTests {
         let artwork = try await fetcher.fetchArtwork(for: playcut)
 
         // Then
-        #expect(artwork.pngData() != nil)
+        #expect(artwork.pngDataCompatibility != nil)
     }
 
     @Test("Handles s/t (self-titled) album correctly")
@@ -493,7 +511,7 @@ struct DiscogsArtworkServiceTests {
                 }
 
                 // Third request is for the actual image
-                return UIImage.testImage.pngData()!
+                return Image.testImage.pngDataCompatibility!
             }
         }
 
@@ -514,7 +532,7 @@ struct DiscogsArtworkServiceTests {
         let artwork = try await fetcher.fetchArtwork(for: playcut)
 
         // Then
-        #expect(artwork.pngData() != nil)
+        #expect(artwork.pngDataCompatibility != nil)
         #expect(mockSession.requestCount == 3) // album search, artist search, image fetch
     }
 
@@ -559,7 +577,7 @@ struct CacheCoordinatorArtworkTests {
     func fetchesCachedArtworkWithReleaseTitle() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = UIImage.testImage
+        let testImage = Image.testImage
         let playcut = Playcut(
             id: 1,
             hour: 1000,
@@ -577,14 +595,14 @@ struct CacheCoordinatorArtworkTests {
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
 
         // Then
-        #expect(fetchedArtwork.pngData() != nil)
+        #expect(fetchedArtwork.pngDataCompatibility != nil)
     }
 
     @Test("Fetches cached artwork without release title")
     func fetchesCachedArtworkWithoutReleaseTitle() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = UIImage.testImage
+        let testImage = Image.testImage
         let playcut = Playcut(
             id: 1,
             hour: 1000,
@@ -602,7 +620,7 @@ struct CacheCoordinatorArtworkTests {
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
 
         // Then
-        #expect(fetchedArtwork.pngData() != nil)
+        #expect(fetchedArtwork.pngDataCompatibility != nil)
     }
 
     @Test("Throws error when artwork not cached")
@@ -629,7 +647,7 @@ struct CacheCoordinatorArtworkTests {
     func usesReleaseTitleAsCacheKey() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = UIImage.testImage
+        let testImage = Image.testImage
 
         // Set with release title as key
         await cache.set(artwork: testImage, for: "My Album")
@@ -649,14 +667,14 @@ struct CacheCoordinatorArtworkTests {
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
 
         // Then
-        #expect(fetchedArtwork.pngData() != nil)
+        #expect(fetchedArtwork.pngDataCompatibility != nil)
     }
 
     @Test("Skips empty release title")
     func skipsEmptyReleaseTitle() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = UIImage.testImage
+        let testImage = Image.testImage
 
         // Set with song+artist key
         await cache.set(artwork: testImage, for: "Test SongTest Artist")
@@ -676,6 +694,6 @@ struct CacheCoordinatorArtworkTests {
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
 
         // Then
-        #expect(fetchedArtwork.pngData() != nil)
+        #expect(fetchedArtwork.pngDataCompatibility != nil)
     }
 }

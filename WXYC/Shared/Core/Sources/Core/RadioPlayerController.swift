@@ -10,8 +10,11 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Logger
-import UIKit
 import PostHog
+import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 @Observable
@@ -54,22 +57,33 @@ public final class RadioPlayerController {
         }
         
         self.radioPlayer = radioPlayer
+
+        var observations: [Any] = []
+
 #if os(iOS)
-        self.inputObservations = [
+        observations += [
             notificationObserver(for: UIApplication.didEnterBackgroundNotification, sink: self.applicationDidEnterBackground),
             notificationObserver(for: UIApplication.willEnterForegroundNotification, sink: self.applicationWillEnterForeground),
         ]
 #endif
-        self.inputObservations += [
+
+#if !os(macOS)
+        observations += [
             notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
             notificationObserver(for: AVAudioSession.routeChangeNotification, sink: self.routeChanged),
+        ]
+#endif
+
+        observations += [
             notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
-            
+
             remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
             remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
         ]
+
+        self.inputObservations = observations
         
 //        Task {
 //            let observations = Observations {
@@ -97,9 +111,13 @@ public final class RadioPlayerController {
         Task {
             do {
                 self.playbackTimer = Timer.start()
-                
+
+#if !os(macOS)
                 let activated = try await AVAudioSession.sharedInstance().activate()
-                
+#else
+                let activated = true
+#endif
+
                 if activated {
                     PostHogSDK.shared.play(reason: reason)
                     self.radioPlayer.play()
@@ -113,7 +131,7 @@ public final class RadioPlayerController {
                     context: "RadioPlayerController could not start playback",
                     additionalData: ["reason" : reason]
                 )
-                
+
                 Log(.error, "RadioPlayerController could not start playback: \(error)")
             }
         }
@@ -146,16 +164,17 @@ private extension RadioPlayerController {
     }
     
     nonisolated func sessionInterrupted(notification: Notification) {
+#if !os(macOS)
         Log(.info, "Session interrupted: \(notification)")
         guard let interruptionType = notification.interruptionType else {
             return
         }
-        
+
         let interruptionReason = notification.interruptionReason
         let iterruptionOptions = notification.interruptionOptions
-        
+
         Task { @MainActor in
-            
+
             switch interruptionType {
             case .began:
                 // `.routeDisconnected` types are not balanced by a `.ended` notification.
@@ -172,12 +191,15 @@ private extension RadioPlayerController {
                 try self.play(reason: "Resume AVAudioSession playback")
             }
         }
+#endif
     }
     
     nonisolated func routeChanged(_: Notification) {
+#if !os(macOS)
         // Use AVAudioSession.shared.currentRoute since the notification only provides the previous
         // audio output.
         Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
+#endif
     }
     
     private func attemptReconnectWithExponentialBackoff() {
@@ -209,11 +231,12 @@ private extension RadioPlayerController {
     // MARK: External playback command handlers
     
     nonisolated func applicationDidEnterBackground(_: Notification) {
+#if !os(macOS)
         Task { @MainActor in
             guard !self.radioPlayer.isPlaying else {
                 return
             }
-            
+
             do {
                 try AVAudioSession.shared.deactivate()
             } catch let error as NSError {
@@ -221,6 +244,7 @@ private extension RadioPlayerController {
                 Log(.error, "RadioPlayerController could not deactivate: \(error)")
             }
         }
+#endif
     }
     
     nonisolated func applicationWillEnterForeground(_: Notification) {
@@ -273,34 +297,39 @@ fileprivate extension Notification {
     }
     
     var interruptionType: InterruptionType? {
+#if os(macOS)
+        return nil
+#else
         guard let typeValue = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber else {
             Log(.error, "Could not extract interruption type from notification \(self)")
             return nil
         }
-        
+
         guard let type = AVAudioSession.InterruptionType(rawValue: typeValue.uintValue) else {
             Log(.error, "Could not convert interruption type to AVAudioSession.InterruptionType \(typeValue)")
             return nil
         }
-        
+
         if type == .began {
             return .began
         }
-        
+
         guard let optionsValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt else {
             Log(.error, "Could not extract interruption options from notification \(self)")
             return nil
         }
-        
+
         let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
         if options.contains(.shouldResume) {
             return .shouldResume
         }
-        
+
         Log(.error, "Unsupported interruption type: \(type) with options: \(options)")
         return nil
+#endif
     }
-    
+
+#if !os(macOS)
     var interruptionReason: AVAudioSession.InterruptionReason? {
 #if os(tvOS)
         return nil
@@ -309,16 +338,16 @@ fileprivate extension Notification {
             Log(.error, "Could not extract interruption reason from notification: \(self)")
             return nil
         }
-        
+
         guard let type = AVAudioSession.InterruptionReason(rawValue: typeValue.uintValue) else {
             Log(.error, "Could not convert interruption reason value to AVAudioSession.InterruptionReason: \(typeValue)")
             return nil
         }
-        
+
         return type
 #endif
     }
-    
+
     var interruptionOptions: AVAudioSession.InterruptionOptions? {
 #if os(tvOS)
         return nil
@@ -327,17 +356,19 @@ fileprivate extension Notification {
             Log(.error, "Could not extract interruption reason from notification: \(self)")
             return nil
         }
-        
+
         return AVAudioSession.InterruptionOptions(rawValue: typeValue.uintValue)
 #endif
     }
+#endif
 }
 
+#if !os(macOS)
 extension AVAudioSession {
     static var shared: AVAudioSession {
         return AVAudioSession.sharedInstance()
     }
-    
+
     func activate() async throws -> Bool {
 #if os(watchOS)
         let activated = try await AVAudioSession.sharedInstance().activate(options: [])
@@ -345,13 +376,14 @@ extension AVAudioSession {
         let activated = true
         try setActive(true)
 #endif
-        
+
         Log(.info, "Session activated, current route: \(AVAudioSession.shared.currentRoute)")
-        
+
         return activated
     }
-    
+
     func deactivate() throws {
         try setActive(false)
     }
 }
+#endif

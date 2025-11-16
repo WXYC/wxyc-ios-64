@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import UIKit
 @testable import Core
 
 // MARK: - Tests
@@ -16,7 +15,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let testImage = UIImage.gradientImage()
+        let testImage = Image.gradientImage()
         mockArtworkService.artworkToReturn = testImage
 
         let playcut = Playcut(
@@ -219,7 +218,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let testImage = UIImage.gradientImage()
+        let testImage = Image.gradientImage()
         mockArtworkService.artworkToReturn = testImage
 
         let playcut = Playcut(
@@ -279,7 +278,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockPlaylistFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let expectedImage = UIImage.gradientImage()
+        let expectedImage = Image.gradientImage()
         mockArtworkService.artworkToReturn = expectedImage
 
         let playcut = Playcut(
@@ -379,14 +378,17 @@ struct NowPlayingServiceTests {
 // MARK: - Helper Extensions
 
 
-extension UIImage {
+#if canImport(UIKit)
+import UIKit
+
+extension Image {
     /// Creates a gradient image with the specified size and colors
     static func gradientImage(
         size: CGSize = CGSize(width: 200, height: 200),
         colors: [UIColor] = [.systemBlue, .systemPurple],
         startPoint: CGPoint = CGPoint(x: 0, y: 0),
         endPoint: CGPoint = CGPoint(x: 1, y: 1)
-    ) -> UIImage {
+    ) -> Image {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
             let cgContext = context.cgContext
@@ -405,3 +407,36 @@ extension UIImage {
         }
     }
 }
+#elseif canImport(AppKit)
+import AppKit
+
+extension Image {
+    /// Creates a gradient image with the specified size and colors
+    static func gradientImage(
+        size: CGSize = CGSize(width: 200, height: 200),
+        colors: [NSColor] = [.systemBlue, .systemPurple],
+        startPoint: CGPoint = CGPoint(x: 0, y: 0),
+        endPoint: CGPoint = CGPoint(x: 1, y: 1)
+    ) -> Image {
+        let image = NSImage(size: size)
+        image.lockFocus()
+
+        // Create gradient
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let cgColors = colors.map { $0.cgColor } as CFArray
+        guard let gradient = CGGradient(colorsSpace: colorSpace, colors: cgColors, locations: nil),
+              let context = NSGraphicsContext.current?.cgContext else {
+            image.unlockFocus()
+            return image
+        }
+
+        // Draw gradient
+        let start = CGPoint(x: startPoint.x * size.width, y: startPoint.y * size.height)
+        let end = CGPoint(x: endPoint.x * size.width, y: endPoint.y * size.height)
+        context.drawLinearGradient(gradient, start: start, end: end, options: [])
+
+        image.unlockFocus()
+        return image
+    }
+}
+#endif

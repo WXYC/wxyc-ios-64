@@ -7,13 +7,12 @@
 //
 
 import Foundation
-import UIKit
 import Combine
 import OpenNSFW
 import Logger
 
 public protocol ArtworkService: Sendable {
-    func fetchArtwork(for playcut: Playcut) async throws -> UIImage
+    func fetchArtwork(for playcut: Playcut) async throws -> Image
 }
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkService`
@@ -25,7 +24,7 @@ public final actor MultisourceArtworkService: ArtworkService {
 
     private let fetchers: [ArtworkService]
     private let cacheCoordinator: CacheCoordinator
-    private var inflightTasks: [String: Task<UIImage?, Never>] = [:]
+    private var inflightTasks: [String: Task<Image?, Never>] = [:]
 
     // Public convenience initializer with default fetchers
     public init() {
@@ -49,7 +48,7 @@ public final actor MultisourceArtworkService: ArtworkService {
         self.cacheCoordinator = cacheCoordinator
     }
 
-    public func fetchArtwork(for playcut: Playcut) async throws -> UIImage {
+    public func fetchArtwork(for playcut: Playcut) async throws -> Image {
         let id = playcut.releaseTitle ?? playcut.songTitle
         
         if let existingTask = inflightTasks[id],
@@ -57,7 +56,7 @@ public final actor MultisourceArtworkService: ArtworkService {
             return value
         }
         
-        let task = Task<UIImage?, Never> {
+        let task = Task<Image?, Never> {
             defer { Task { removeTask(for: id) } }
             return await scanFetchers(for: playcut)
         }
@@ -73,7 +72,7 @@ public final actor MultisourceArtworkService: ArtworkService {
     
     // MARK: - Private
     
-    private func scanFetchers(for playcut: Playcut) async -> UIImage? {
+    private func scanFetchers(for playcut: Playcut) async -> Image? {
         let cacheKeyId = "\(playcut.releaseTitle ?? playcut.songTitle)"
         let errorCacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
 

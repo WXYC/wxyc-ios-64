@@ -26,7 +26,7 @@ extension CacheCoordinator: ArtworkService {
         }
         
         let cachedData: Data = try await self.value(for: cacheKey)
-        guard let artwork = Image(data: cachedData) else {
+        guard let artwork = Image(compatibilityData: cachedData) else {
             throw Error.noCachedResult
         }
         
@@ -34,7 +34,7 @@ extension CacheCoordinator: ArtworkService {
     }
     
     func set(artwork: Image, for id: String) async {
-        let artworkData = artwork.pngData()
+        let artworkData = artwork.pngDataCompatibility
         self.set(value: artworkData, for: id, lifespan: .thirtyDays)
     }
 }
