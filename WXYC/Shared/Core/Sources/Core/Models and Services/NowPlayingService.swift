@@ -7,14 +7,13 @@
 //
 
 import Foundation
-import UIKit
 import Logger
 
 public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
-    public var artwork: UIImage?
+    public var artwork: Image?
 
-    public init(playcut: Playcut, artwork: UIImage? = nil) {
+    public init(playcut: Playcut, artwork: Image? = nil) {
         self.playcut = playcut
         self.artwork = artwork
     }

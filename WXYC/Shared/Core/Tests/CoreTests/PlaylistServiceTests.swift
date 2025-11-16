@@ -369,35 +369,19 @@ struct PlaylistServiceTests {
 
         // When
         let entries = playlist.entries
-        let wrappedEntries = playlist.wrappedEntries
 
         // Then
         #expect(entries.count == 3)
-        #expect(wrappedEntries.count == 3)
 
         // Check that entries are sorted correctly (descending by chronOrderID)
         #expect(entries[0].id == 1) // playcut with chronOrderID 3
         #expect(entries[1].id == 2) // breakpoint with chronOrderID 2
         #expect(entries[2].id == 3) // talkset with chronOrderID 1
 
-        // Check wrapped entries match
-        if case .playcut(let p) = wrappedEntries[0] {
-            #expect(p.id == 1)
-        } else {
-            Issue.record("Expected playcut")
-        }
-
-        if case .breakpoint(let b) = wrappedEntries[1] {
-            #expect(b.id == 2)
-        } else {
-            Issue.record("Expected breakpoint")
-        }
-
-        if case .talkset(let t) = wrappedEntries[2] {
-            #expect(t.id == 3)
-        } else {
-            Issue.record("Expected talkset")
-        }
+        // Check entry types
+        #expect(entries[0] is Playcut)
+        #expect(entries[1] is Breakpoint)
+        #expect(entries[2] is Talkset)
     }
 
     // MARK: - Breakpoint Tests
