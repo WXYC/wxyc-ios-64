@@ -151,41 +151,9 @@ public struct Playlist: Codable, Sendable {
     }
 }
 
-public extension Playlist {
-    enum WrappedEntry: Identifiable {
-        public var id: UInt64 {
-            switch self {
-            case .playcut(let playcut):
-                return playcut.id
-            case .breakpoint(let breakpoint):
-                return breakpoint.id
-            case .talkset(let talkset):
-                return talkset.id
-            }
-        }
-        
-        case playcut(Playcut)
-        case breakpoint(Breakpoint)
-        case talkset(Talkset)
-    }
-    
+public extension Playlist {    
     var entries: [any PlaylistEntry] {
         let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
-    }
-    
-    var wrappedEntries: [WrappedEntry] {
-        entries.map { entry in
-            switch entry {
-            case let playcut as Playcut:
-                return .playcut(playcut)
-            case let breakpoint as Breakpoint:
-                return .breakpoint(breakpoint)
-            case let talkset as Talkset:
-                return .talkset(talkset)
-            default:
-                fatalError("Unsupported entry type")
-            }
-        }
     }
 }

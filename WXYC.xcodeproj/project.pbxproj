@@ -80,6 +80,10 @@
 		23660A112D72D2630057E268 /* Exceptions for "WXYC" folder in "WatchXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Views/BackgroundLayer.swift,
+				iOS/Views/Playlist/CassetteView.swift,
+				iOS/Views/Playlist/PlaybackButton.swift,
+				iOS/Views/Playlist/PlayerHeaderView.swift,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/PlayerPage.swift,

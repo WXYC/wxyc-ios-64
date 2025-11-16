@@ -56,7 +56,7 @@ struct PlaybackShape: Shape {
     }
 }
 
-struct PlaybackButtonSwiftUI: View {
+struct PlaybackButton: View {
     @State private var isPlaying: Bool = RadioPlayerController.shared.isPlaying
     
     var color: Color
@@ -116,7 +116,7 @@ struct PlaybackButtonExample: View {
             Image("background")
                 .resizable()
             
-            PlaybackButtonSwiftUI(
+            PlaybackButton(
                 action: {
                     status = status == .paused ? .playing : .paused
                 }

@@ -77,20 +77,3 @@ struct PlaylistView: View {
                 .ignoresSafeArea()
         )
 }
-
-struct BackgroundLayer: View, Animatable {
-    let cornerRadius: CGFloat
-    
-    internal init(cornerRadius: CGFloat = 12) {
-        self.cornerRadius = cornerRadius
-    }
-    
-    init() {
-        self.cornerRadius = 12
-    }
-    
-    var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(.ultraThinMaterial)
-    }
-}
