@@ -6,20 +6,7 @@
 //
 
 import SwiftUI
-
-enum PlaybackButtonSwiftUIState {
-    case paused
-    case playing
-    
-    var value: CGFloat {
-        switch self {
-        case .paused:
-            return 1.0
-        case .playing:
-            return 0.0
-        }
-    }
-}
+import Core
 
 /// A custom shape that morphs between play and pause states
 struct PlaybackShape: Shape {
@@ -70,48 +57,41 @@ struct PlaybackShape: Shape {
 }
 
 struct PlaybackButtonSwiftUI: View {
-    @State private var playbackValue: CGFloat = 1.0 // Start in paused state
-    var status: PlaybackButtonState = .paused
-    var color: Color = .white
-    var animationDuration: Double = 0.24
+    @State private var isPlaying: Bool = RadioPlayerController.shared.isPlaying
+    
+    var color: Color
+    var animationDuration: Double
     var action: (() -> Void)?
     
     init(
-        status: PlaybackButtonState = .paused,
         color: Color = .white,
         animationDuration: Double = 0.24,
         action: (() -> Void)? = nil
     ) {
-        self.status = status
         self.color = color
         self.animationDuration = animationDuration
         self.action = action
-        _playbackValue = State(initialValue: status.value)
     }
     
     var body: some View {
         Button(action: {
             action?()
         }) {
-            PlaybackShape(playbackValue: playbackValue)
-                .fill(color)
-                .aspectRatio(1.0, contentMode: .fit)
+            PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
+                .fill(.ultraThickMaterial)
         }
-        .onChange(of: status) { oldValue, newValue in
-            withAnimation(.easeInOut(duration: animationDuration)) {
-                playbackValue = newValue.value
+        .buttonStyle(NoHighlightButtonStyle())
+        .task {
+            // Observe playback state changes from RadioPlayerController
+            let observation = Observations {
+                RadioPlayerController.shared.isPlaying
             }
-        }
-    }
-    
-    /// Programmatically set the status with optional animation
-    func setStatus(_ newStatus: PlaybackButtonState, animated: Bool = true) {
-        if animated {
-            withAnimation(.easeInOut(duration: animationDuration)) {
-                playbackValue = newStatus.value
+            
+            for await newIsPlaying in observation {
+                withAnimation(.easeInOut(duration: animationDuration)) {
+                    isPlaying = newIsPlaying
+                }
             }
-        } else {
-            playbackValue = newStatus.value
         }
     }
 }
@@ -120,24 +100,44 @@ struct PlaybackButtonSwiftUI: View {
 #Preview {
     PlaybackButtonExample()
         .frame(width: 100, height: 100)
-    .padding()
-    .background(Color.gray.opacity(0.2))
+        .padding()
+}
+
+enum PlaybackButtonState {
+    case playing
+    case paused
 }
 
 struct PlaybackButtonExample: View {
     @State private var status: PlaybackButtonState = .paused
     
     var body: some View {
-        PlaybackButtonSwiftUI(
-            status: status,
-            color: .primary,
-            action: {
-                status = status == .paused ? .playing : .paused
-            }
-        )
+        ZStack {
+            Image("background")
+                .resizable()
+            
+            PlaybackButtonSwiftUI(
+                action: {
+                    status = status == .paused ? .playing : .paused
+                }
+            )
+        }
     }
 }
 
+struct HoleCutout<S: Shape>: Shape, Animatable {
+    var hole: S
 
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRect(rect)
+        path.addPath(hole.path(in: rect))
+        return path
+    }
+}
 
-
+struct NoHighlightButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label   // exactly the same, pressed or not
+    }
+}

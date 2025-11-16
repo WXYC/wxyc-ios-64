@@ -17,15 +17,13 @@ struct PlaylistView: View {
             Color.clear
             
             ScrollView {
+                PlayerHeaderView()
+                
                 // Playlist entries
                 LazyVStack(spacing: 0) {
-                    PlayerHeaderView()
-                        .frame(height: 120)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 12)
-                    
                     ForEach(playlistEntries, id: \.id) { entry in
                         playlistRow(for: entry)
+                            .padding(.vertical, 8)
                     }
                     
                     // Footer button
@@ -39,6 +37,7 @@ struct PlaylistView: View {
                 }
             }
         }
+        .padding(.horizontal, 12)
         .task {
             await observePlaylist()
         }
@@ -51,10 +50,10 @@ struct PlaylistView: View {
             PlaycutRowView(playcut: playcut)
             
         case let breakpoint as Breakpoint:
-            BreakpointRowView(breakpoint: breakpoint)
+            TextRowView(text: breakpoint.formattedDate)
             
-        case let talkset as Talkset:
-            TalksetRowView(talkset: talkset)
+        case _ as Talkset:
+            TextRowView(text: "Talkset")
             
         default:
             EmptyView()
@@ -71,10 +70,27 @@ struct PlaylistView: View {
 
 #Preview {
     PlaylistView()
-        .environment(\.radioPlayerController, RadioPlayerController())
+        .environment(\.radioPlayerController, RadioPlayerController.shared)
         .background(
             Image("background")
                 .resizable()
                 .ignoresSafeArea()
         )
+}
+
+struct BackgroundLayer: View, Animatable {
+    let cornerRadius: CGFloat
+    
+    internal init(cornerRadius: CGFloat = 12) {
+        self.cornerRadius = cornerRadius
+    }
+    
+    init() {
+        self.cornerRadius = 12
+    }
+    
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(.ultraThinMaterial)
+    }
 }

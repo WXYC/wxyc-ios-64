@@ -207,5 +207,5 @@ extension SwiftUI.Image {
 }
 
 #Preview {
-    PlayerPage(radioPlayerController: RadioPlayerController())
+    PlayerPage(radioPlayerController: RadioPlayerController.shared)
 }

@@ -1,0 +1,30 @@
+import SwiftUI
+import Core
+
+struct PlayerHeaderView: View {
+    var body: some View {
+        ZStack(alignment: .leading) {
+            GeometryReader { geometry in
+                HStack(spacing: -1) {
+                    PlaybackButtonSwiftUI(action: {
+                        try? RadioPlayerController.shared.toggle(reason: "player header play/pause button tapped")
+                    })
+                    .frame(width: geometry.size.height, height: geometry.size.height)
+                    
+                    CassetteView(isPlaying: RadioPlayerController.shared.isPlaying)
+                        .frame(height: geometry.size.height)
+                }
+            }
+            .aspectRatio(4.8546511628, contentMode: .fit)
+            .background(BackgroundLayer())
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+#Preview {
+    PlayerHeaderView()
+
+    Rectangle()
+        .background(.pink)
+}

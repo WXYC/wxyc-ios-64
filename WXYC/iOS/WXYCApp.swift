@@ -16,10 +16,9 @@ import AVFoundation
 
 // Shared RadioPlayerController singleton for app-wide access
 @MainActor
-class AppState: ObservableObject {
+public class AppState: ObservableObject {
     static let shared = AppState()
 
-    let radioPlayerController = RadioPlayerController()
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
 
     private init() {}
@@ -31,13 +30,15 @@ struct WXYCApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        UserDefaults.standard.removeObject(forKey: "isPlaying")
         // Analytics setup
         setUpAnalytics()
         PostHogSDK.shared.capture("app launch")
 
         // AVAudioSession setup
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
+            try AVAudioSession.sharedInstance()
+                .setCategory(.playback, mode: .default, policy: .longFormAudio)
         } catch {
             Log(.error, "Could not set AVAudioSession category: \(error)")
             PostHogSDK.shared.capture(error: error, context: "WXYCApp: Could not set AVAudioSession category")
@@ -69,7 +70,7 @@ struct WXYCApp: App {
         WindowGroup {
             RootTabView()
                 .environmentObject(appState)
-                .environment(\.radioPlayerController, appState.radioPlayerController)
+                .environment(\.radioPlayerController, RadioPlayerController.shared)
                 .onAppear {
                     setUpNowPlayingInfoCenter()
                     setUpQuickActions()
@@ -83,6 +84,8 @@ struct WXYCApp: App {
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                     handleUserActivity(userActivity)
                 }
+//                .ignoresSafeArea()
+                .safeAreaPadding([.top, .bottom])
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
@@ -101,7 +104,7 @@ struct WXYCApp: App {
         )
         appState.nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
             nowPlayingService: nowPlayingService,
-            radioPlayerController: appState.radioPlayerController
+            radioPlayerController: RadioPlayerController.shared
         )
     }
 
@@ -119,15 +122,15 @@ struct WXYCApp: App {
     private func handleURL(_ url: URL) {
         // Handle deep links and user activities
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
-            try? appState.radioPlayerController.play(reason: "URL scheme")
+            try? RadioPlayerController.shared.play(reason: "URL scheme")
         }
     }
 
     private func handleUserActivity(_ userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            try? appState.radioPlayerController.play(reason: "Siri suggestion (NSUserActivity)")
+            try? RadioPlayerController.shared.play(reason: "Siri suggestion (NSUserActivity)")
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
-            try? appState.radioPlayerController.play(reason: "Siri suggestion (INPlayMediaIntent)")
+            try? RadioPlayerController.shared.play(reason: "Siri suggestion (INPlayMediaIntent)")
             PostHogSDK.shared.capture(
                 "Handle INIntent",
                 context: "Intents",
@@ -141,9 +144,9 @@ struct WXYCApp: App {
         case .background:
             // Save state when entering background
             PostHogSDK.shared.capture("App entered background", properties: [
-                "Is Playing?": appState.radioPlayerController.isPlaying
+                "Is Playing?": RadioPlayerController.shared.isPlaying
             ])
-            UserDefaults.wxyc.set(appState.radioPlayerController.isPlaying, forKey: "isPlaying")
+            UserDefaults.wxyc.set(RadioPlayerController.shared.isPlaying, forKey: "isPlaying")
 
         case .inactive:
             // Handle becoming inactive (e.g., phone call, control center)
@@ -225,3 +228,6 @@ struct WXYCApp: App {
     }
 }
 
+#Preview {
+    RootTabView()
+}
