@@ -60,7 +60,7 @@ public final actor PlaylistService: Sendable, AsyncSequence {
             }
 
             // Fetch a new playlist
-            let playlist = await service.fetchAndUpdatePlaylist()
+            let playlist = await service.fetchPlaylist()
 
             // Only yield if the playlist has changed
             if let last = lastPlaylist, playlist == last {
@@ -75,24 +75,24 @@ public final actor PlaylistService: Sendable, AsyncSequence {
         }
     }
 
-    /// Fetch a playlist and update the cached current value
-    private func fetchAndUpdatePlaylist() async -> Playlist {
-        let playlist = await fetchPlaylist()
-        currentPlaylist = playlist
-        return playlist
-    }
-
     public func fetchPlaylist() async -> Playlist {
         Log(.info, "Fetching remote playlist")
-        let startTime = Date.timeIntervalSinceReferenceDate
+        let timer = Timer.start()
         do {
             let playlist = try await self.remoteFetcher.getPlaylist()
-            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            let duration = timer.duration()
             Log(.info, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
+            currentPlaylist = playlist
+            
+            if (1...10).randomElement() ?? 1 % 10 == 0 {
+                PostHogSDK.shared.capture("fetchPlaylist", additionalData: ["duration":"\(duration)"])
+            }
+            
             return playlist
         } catch let error as NSError {
-            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            let duration = timer.duration()
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            assert(duration > 0.01)
             PostHogSDK.shared.capture(
                 error: error.localizedDescription,
                 code: error.code,
@@ -102,8 +102,9 @@ public final actor PlaylistService: Sendable, AsyncSequence {
 
             return Playlist.empty
         } catch let error as AnalyticsOSError {
-            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            let duration = timer.duration()
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            assert(duration > 0.01)
             PostHogSDK.shared.capture(
                 error: error,
                 context: "fetchPlaylist",
@@ -112,8 +113,9 @@ public final actor PlaylistService: Sendable, AsyncSequence {
 
             return Playlist.empty
         } catch let error as AnalyticsDecoderError {
-            let duration = Date.timeIntervalSinceReferenceDate - startTime
+            let duration = timer.duration()
             Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            assert(duration > 0.01)
             PostHogSDK.shared.capture(
                 error: error,
                 context: "fetchPlaylist",
