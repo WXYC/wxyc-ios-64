@@ -29,15 +29,15 @@ struct PlaylistView: View {
                     
                     // Footer button
                     if !playlistEntries.isEmpty {
-                        Button("what the freq?") {
-                            // Footer action
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.top, 20)
+                        Text("what the freq?")
+                            .fontWeight(.black)
+                            .foregroundStyle(.white)
+                            .padding(.top, 20)
+                            .safeAreaPadding(.bottom)
                     }
                 }
-
             }
+            .coordinateSpace(name: "scroll")
         }
         .padding(.horizontal, 12)
         .task {
