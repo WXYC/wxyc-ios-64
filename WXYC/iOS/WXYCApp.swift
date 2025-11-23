@@ -2,7 +2,8 @@
 //  WXYCApp.swift
 //  WXYC
 //
-//  SwiftUI App replacing AppDelegate
+//  Created by Jake Bromberg on 11/13/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -14,12 +15,13 @@ import WidgetKit
 import Intents
 import AVFoundation
 
-// Shared RadioPlayerController singleton for app-wide access
+// Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
 public class AppState: ObservableObject {
     static let shared = AppState()
 
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
+    let playlistService = PlaylistService()
 
     private init() {}
 }
@@ -71,6 +73,7 @@ struct WXYCApp: App {
             RootTabView()
                 .environmentObject(appState)
                 .environment(\.radioPlayerController, RadioPlayerController.shared)
+                .environment(\.playlistService, appState.playlistService)
                 .onAppear {
                     setUpNowPlayingInfoCenter()
                     setUpQuickActions()
@@ -84,8 +87,9 @@ struct WXYCApp: App {
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                     handleUserActivity(userActivity)
                 }
-//                .ignoresSafeArea()
                 .safeAreaPadding([.top, .bottom])
+                .preferredColorScheme(.light)
+
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
@@ -93,13 +97,14 @@ struct WXYCApp: App {
         .backgroundTask(.appRefresh("com.wxyc.refresh")) { _ in
             // Handle background refresh if needed
         }
+        
     }
 
     // MARK: - Setup
 
     private func setUpNowPlayingInfoCenter() {
         let nowPlayingService = NowPlayingService(
-            playlistService: PlaylistService(),
+            playlistService: appState.playlistService,
             artworkService: MultisourceArtworkService()
         )
         appState.nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
@@ -230,4 +235,7 @@ struct WXYCApp: App {
 
 #Preview {
     RootTabView()
+        .environment(\.radioPlayerController, RadioPlayerController.shared)
+        .environment(\.playlistService, PlaylistService())
+        .preferredColorScheme(.light)
 }

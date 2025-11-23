@@ -125,8 +125,8 @@ struct PlaylistServiceTests {
 
     // MARK: - AsyncSequence Tests
 
-    @Test("AsyncSequence yields playlists")
-    func asyncSequenceYieldsPlaylists() async throws {
+    @Test("Updates stream yields playlists")
+    func updatesStreamYieldsPlaylists() async throws {
         // Given
         let mockFetcher = MockPlaylistFetcher()
         let playlist1 = Playlist(
@@ -148,8 +148,8 @@ struct PlaylistServiceTests {
 
         let service = PlaylistService(remoteFetcher: mockFetcher, interval: 0.1)
 
-        // When - Get first playlist from sequence
-        var iterator = service.makeAsyncIterator()
+        // When - Get first playlist from stream
+        var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
 
         // Then
@@ -158,8 +158,8 @@ struct PlaylistServiceTests {
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Song 1")
     }
 
-    @Test("AsyncSequence yields cached value immediately")
-    func asyncSequenceYieldsCachedValueImmediately() async throws {
+    @Test("Updates stream yields cached value immediately")
+    func updatesStreamYieldsCachedValueImmediately() async throws {
         // Given - Set up service with initial data
         let mockFetcher = MockPlaylistFetcher()
         let initialPlaylist = Playlist(
@@ -186,7 +186,7 @@ struct PlaylistServiceTests {
 
         // When - New observer starts observing
         let startTime = Date()
-        var iterator = service.makeAsyncIterator()
+        var iterator = service.updates().makeAsyncIterator()
         let cachedPlaylist = await iterator.next()
         let duration = Date().timeIntervalSince(startTime)
 
@@ -195,8 +195,8 @@ struct PlaylistServiceTests {
         #expect(duration < 0.1) // Should be nearly instant
     }
 
-    @Test("AsyncSequence skips unchanged playlists")
-    func asyncSequenceSkipsUnchangedPlaylists() async throws {
+    @Test("Updates stream only broadcasts when playlist changes")
+    func updatesStreamOnlyBroadcastsWhenPlaylistChanges() async throws {
         // Given
         let mockFetcher = MockPlaylistFetcher()
         let playlist = Playlist(
@@ -218,8 +218,8 @@ struct PlaylistServiceTests {
 
         let service = PlaylistService(remoteFetcher: mockFetcher, interval: 0.05)
 
-        // When - Get two playlists from sequence
-        var iterator = service.makeAsyncIterator()
+        // When - Get two playlists from stream
+        var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
 
         // Update mock to return different playlist for second fetch

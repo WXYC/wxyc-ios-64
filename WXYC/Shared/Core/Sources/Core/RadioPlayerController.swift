@@ -84,16 +84,6 @@ public final class RadioPlayerController {
         ]
 
         self.inputObservations = observations
-        
-//        Task {
-//            let observations = Observations {
-//                self.radioPlayer.isPlaying
-//            }
-//            
-//            for await isPlaying in observations {
-//                self.isPlaying = isPlaying
-//            }
-//        }
     }
     
     // MARK: Public methods

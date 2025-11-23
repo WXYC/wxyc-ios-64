@@ -12,7 +12,7 @@ import Core
 
 struct PlaylistPage: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
-    private let playlistService = PlaylistService()
+    @Environment(\.playlistService) private var playlistService
     
     var body: some View {
         ZStack {
@@ -68,7 +68,8 @@ struct PlaylistPage: View {
     
     @MainActor
     private func observePlaylist() async {
-        for await playlist in playlistService {
+        guard let playlistService else { return }
+        for await playlist in playlistService.updates() {
             self.playlistEntries = playlist.entries
         }
     }
@@ -130,4 +131,5 @@ struct TalksetView: View {
 
 #Preview {
     PlaylistPage()
+        .environment(\.playlistService, PlaylistService())
 }

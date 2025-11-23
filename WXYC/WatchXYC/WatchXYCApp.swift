@@ -15,6 +15,8 @@ import Core
 
 @main
 struct WatchXYC: App {
+    private let playlistService = PlaylistService()
+    
     init() {
         let POSTHOG_API_KEY = Secrets.posthogApiKey
         let POSTHOG_HOST = "https://us.i.posthog.com"
@@ -34,6 +36,7 @@ struct WatchXYC: App {
     var body: some Scene {
         WindowGroup {
             RootTabView(radioPlayerController: RadioPlayerController.shared)
+                .environment(\.playlistService, playlistService)
         }
     }
 }

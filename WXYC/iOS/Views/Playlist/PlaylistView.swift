@@ -2,7 +2,8 @@
 //  PlaylistView.swift
 //  WXYC
 //
-//  SwiftUI replacement for PlaylistViewController
+//  Created by Jake Bromberg on 11/13/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -10,7 +11,7 @@ import Core
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
-    private let playlistService = PlaylistService()
+    @Environment(\.playlistService) private var playlistService
     
     var body: some View {
         ZStack {
@@ -35,11 +36,15 @@ struct PlaylistView: View {
                         .padding(.top, 20)
                     }
                 }
+
             }
         }
         .padding(.horizontal, 12)
         .task {
-            await observePlaylist()
+            guard let playlistService else { return }
+            for await playlist in playlistService.updates() {
+                self.playlistEntries = playlist.entries
+            }
         }
     }
     
@@ -59,18 +64,12 @@ struct PlaylistView: View {
             EmptyView()
         }
     }
-    
-    @MainActor
-    private func observePlaylist() async {
-        for await playlist in playlistService {
-            self.playlistEntries = playlist.entries
-        }
-    }
 }
 
 #Preview {
     PlaylistView()
         .environment(\.radioPlayerController, RadioPlayerController.shared)
+        .environment(\.playlistService, PlaylistService())
         .background(
             Image("background")
                 .resizable()
