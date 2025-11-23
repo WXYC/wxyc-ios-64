@@ -107,7 +107,7 @@ struct InfoDetailView: View {
             request.httpMethod = "POST"
             request.addValue("application/json", forHTTPHeaderField: "Content-type")
 
-            let json: [String: Any] = ["message.": message]
+            let json: [String: Any] = ["message": message]
             guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
             request.httpBody = jsonData
 
@@ -128,6 +128,14 @@ struct InfoDetailView: View {
 
             if response.statusCode == 200 {
                 Log(.info, "Response status code: \(response.statusCode)")
+                
+                PostHogSDK.shared.capture(
+                    "Request sent",
+                    context: "Info ViewController",
+                    additionalData: [
+                        "message": message
+                    ]
+                )
             } else {
                 Log(.error, "Response status code: \(response.statusCode)")
                 Log(.error, "Data: \(String(data: data, encoding: .utf8) ?? "nil")")
