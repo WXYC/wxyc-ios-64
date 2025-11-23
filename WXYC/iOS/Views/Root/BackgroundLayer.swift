@@ -28,7 +28,7 @@ struct BackgroundLayer: View, Animatable {
         if let colorScheme {
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(.ultraThinMaterial)
-                .preferredColorScheme(colorScheme)
+                .preferredColorScheme(.light)
         } else {
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(.ultraThinMaterial)

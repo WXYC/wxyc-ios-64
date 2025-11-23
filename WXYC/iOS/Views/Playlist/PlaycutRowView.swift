@@ -2,7 +2,8 @@
 //  PlaycutRowView.swift
 //  WXYC
 //
-//  SwiftUI view for Playcut playlist entries
+//  Created by Jake Bromberg on 11/13/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -14,65 +15,97 @@ struct PlaycutRowView: View {
     @State private var artwork: UIImage?
     @State private var isLoadingArtwork = true
     @State private var showingShareSheet = false
+    
+    private let phi = (1 + sqrt(5)) / 2
+    private let size: CGFloat = 120
 
     private let artworkService = MultisourceArtworkService()
 
     var body: some View {
-        ZStack {
-            // Background layer
-            BackgroundLayer()
-            
-            // Content that can punch through the background
-            HStack(spacing: 0) {
-                // Artwork
-                Group {
-                    if let artwork = artwork {
-                        Image(uiImage: artwork)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    } else {
-                        RoundedRectangle(cornerRadius: 6.0, style: .circular)
-                            .opacity(0.25)
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    // Background layer
+                    BackgroundLayer()
+                    
+                    // Content that can punch through the background
+                    HStack(spacing: 0) {
+                        // Artwork
+                        Group {
+                            if let artwork = artwork {
+                                Image(uiImage: artwork)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                            } else if isLoadingArtwork {
+                                RoundedRectangle(cornerRadius: 6.0, style: .circular)
+                                    .glassEffect(
+                                        .clear.tint(.indigo).interactive(),
+                                        in: RoundedRectangle(
+                                            cornerRadius: 6.0,
+                                            style: .circular
+                                        )
+                                    )
+                                    .preferredColorScheme(.light)
+                                    .opacity(0.1625)
+                            } else {
+                                ZStack(alignment: .center) {
+                                    RoundedRectangle(cornerRadius: 6.0, style: .circular)
+                                        .frame(
+                                            maxWidth: proxy.size.height * 0.8,
+                                            maxHeight: proxy.size.height * 0.8
+                                        )
+                                        .glassEffect(
+                                            .clear.tint(.indigo).interactive(),
+                                            in: RoundedRectangle(
+                                                cornerRadius: 6.0,
+                                                style: .circular
+                                            )
+                                        )
+                                        .preferredColorScheme(.light)
+                                        .opacity(0.1625)
+
+                                    WXYCLogo()
+                                        .glassEffect(.regular, in: WXYCLogo())
+                                        .preferredColorScheme(.light)
+                                }
+                            }
+                        }
+                        .padding(12.0)
+                        .clipShape(.rect(corners: .concentric))
+                        .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
+                        
+                        // Song info
+                        VStack(alignment: .leading) {
+                            Text(playcut.songTitle)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                            Text(playcut.artistName)
+                                .foregroundStyle(.white)
+                        }
+                        .padding(0)
+                        .padding(.trailing, 12.0)
+                        
+                        //            // Share button
+                        //            Button(action: {
+                        //                showingShareSheet = true
+                        //            }) {
+                        //                Image(systemName: "ellipsis")
+                        //                    .font(.title3)
+                        //                    .foregroundStyle(.white)
+                        //                    .frame(width: 44, height: 44)
+                        //            }
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                .padding(12.0)
-                .frame(width: 120, height: 120)
-                
-
-                // Song info
-                VStack(alignment: .leading) {
-                    Text(playcut.songTitle)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
-                    Text(playcut.artistName)
-                        .foregroundStyle(.white)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(0)
-                .padding(.trailing, 12.0)
-
-    //            // Share button
-    //            Button(action: {
-    //                showingShareSheet = true
-    //            }) {
-    //                Image(systemName: "ellipsis")
-    //                    .font(.title3)
-    //                    .foregroundStyle(.white)
-    //                    .frame(width: 44, height: 44)
-    //            }
             }
-        }
-        .compositingGroup()  // Enable knockout effect
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .task {
-            await loadArtwork()
-        }
-        .sheet(isPresented: $showingShareSheet) {
-            ShareSheet(playcut: playcut, artwork: artwork)
-        }
+            .aspectRatio(2.5, contentMode: .fill)
+            .frame(maxWidth: .infinity)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .task {
+                await loadArtwork()
+            }
+            .sheet(isPresented: $showingShareSheet) {
+                ShareSheet(playcut: playcut, artwork: artwork)
+            }
     }
 
     private func loadArtwork() async {
@@ -127,37 +160,12 @@ struct ShareSheet: UIViewControllerRepresentable {
 }
 
 #Preview {
-    ZStack {
-        Image("background")
-            .resizable()
-            .ignoresSafeArea()
-        
-        VStack(spacing: 12) {
-            PlayerHeaderView()
-
-            PlaycutRowView(
-                playcut: Playcut(
-                    id: 0,
-                    hour: 0,
-                    chronOrderID: 0,
-                    songTitle: "VI Scose Poise",
-                    labelName: "Warp",
-                    artistName: "Autechre",
-                    releaseTitle: "Confield"
-                )
-            )
-            PlaycutRowView(
-                playcut: Playcut(
-                    id: 0,
-                    hour: 0,
-                    chronOrderID: 0,
-                    songTitle: "VI Scose Poise",
-                    labelName: "Warp",
-                    artistName: "Autechre",
-                    releaseTitle: "Confield"
-                )
-            )
-        }
-    }
-    .environment(\.radioPlayerController, RadioPlayerController.shared)
+    PlaylistView()
+        .environment(\.radioPlayerController, RadioPlayerController.shared)
+        .environment(\.playlistService, PlaylistService())
+        .background(
+            Image("background")
+                .resizable()
+                .ignoresSafeArea()
+        )
 }
