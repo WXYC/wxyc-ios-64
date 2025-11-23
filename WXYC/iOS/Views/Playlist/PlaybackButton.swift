@@ -8,19 +8,29 @@
 
 import SwiftUI
 import Core
+import CoreGraphics
 
-/// A custom shape that morphs between play and pause states
-struct PlaybackShape: Shape {
-    var playbackValue: CGFloat // 0.0 = playing (pause icon), 1.0 = paused (play icon)
+struct PlaybackShape: InsettableShape {
+    var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)
+    var insetAmount: CGFloat = 0
+    var cornerRadius: CGFloat = 3
     
     var animatableData: CGFloat {
         get { playbackValue }
         set { playbackValue = newValue }
     }
     
+    func inset(by amount: CGFloat) -> some InsettableShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
+    }
+    
     func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        
         return Path { path in
-            let halfWidth = rect.width / 2.0
+            let halfWidth = r.width / 2.0
             let eighthWidth = halfWidth / 2.0
             let sixteenthWidth: CGFloat = eighthWidth / 2.0
             let thirtySecondWidth: CGFloat = sixteenthWidth / 2.0
@@ -28,28 +38,71 @@ struct PlaybackShape: Shape {
             let componentWidth: CGFloat = sixteenthWidth * (1 + playbackValue)
             let insetMargin: CGFloat = thirtySecondWidth * (1 - playbackValue)
             
-            let firstHalfMargin: CGFloat = eighthWidth + insetMargin
-            let secondHalfMargin = halfWidth + insetMargin
+            let firstHalfMargin: CGFloat = r.minX + eighthWidth + insetMargin
+            let secondHalfMargin = r.minX + halfWidth + insetMargin
             
-            let halfHeight = rect.height / 2.0
+            let halfHeight = r.height / 2.0
             let quarterHeight: CGFloat = halfHeight / 2.0
             let sixteenthHeight: CGFloat = halfHeight / 4.0
             
             let h1: CGFloat = sixteenthHeight * playbackValue
             let h2: CGFloat = quarterHeight * playbackValue
             
-            // First bar (left side)
-            path.move(to: CGPoint(x: firstHalfMargin, y: quarterHeight))
-            path.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + h1))
-            path.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + halfHeight - h1))
-            path.addLine(to: CGPoint(x: firstHalfMargin, y: quarterHeight + halfHeight))
+            let maxRadius = min(cornerRadius, componentWidth * 0.3, halfHeight * 0.1)
+            
+            // First bar corners
+            let tl1 = CGPoint(x: firstHalfMargin, y: r.minY + quarterHeight)
+            let tr1 = CGPoint(x: firstHalfMargin + componentWidth, y: r.minY + quarterHeight + h1)
+            let br1 = CGPoint(x: firstHalfMargin + componentWidth, y: r.minY + quarterHeight + halfHeight - h1)
+            let bl1 = CGPoint(x: firstHalfMargin, y: r.minY + quarterHeight + halfHeight)
+            
+            // First bar - round left corners, sharp right when triangle
+            path.move(to: CGPoint(x: tl1.x, y: tl1.y + maxRadius))
+            path.addQuadCurve(to: CGPoint(x: tl1.x + maxRadius, y: tl1.y), control: tl1)
+            
+            if playbackValue < 0.9 {
+                path.addLine(to: CGPoint(x: tr1.x - maxRadius, y: tr1.y))
+                path.addQuadCurve(to: CGPoint(x: tr1.x, y: tr1.y + maxRadius), control: tr1)
+                path.addLine(to: CGPoint(x: br1.x, y: br1.y - maxRadius))
+                path.addQuadCurve(to: CGPoint(x: br1.x - maxRadius, y: br1.y), control: br1)
+            } else {
+                path.addLine(to: tr1)
+                path.addLine(to: br1)
+            }
+            
+            path.addLine(to: CGPoint(x: bl1.x + maxRadius, y: bl1.y))
+            path.addQuadCurve(to: CGPoint(x: bl1.x, y: bl1.y - maxRadius), control: bl1)
+            
             path.closeSubpath()
             
-            // Second bar (right side)
-            path.move(to: CGPoint(x: secondHalfMargin, y: quarterHeight + h1))
-            path.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + h2))
-            path.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + halfHeight - h2))
-            path.addLine(to: CGPoint(x: secondHalfMargin, y: quarterHeight + halfHeight - h1))
+            // Second bar
+            let tl2 = CGPoint(x: secondHalfMargin, y: r.minY + quarterHeight + h1)
+            let tr2 = CGPoint(x: secondHalfMargin + componentWidth, y: r.minY + quarterHeight + h2)
+            let br2 = CGPoint(x: secondHalfMargin + componentWidth, y: r.minY + quarterHeight + halfHeight - h2)
+            let bl2 = CGPoint(x: secondHalfMargin, y: r.minY + quarterHeight + halfHeight - h1)
+            
+            if playbackValue < 0.9 {
+                path.move(to: CGPoint(x: tl2.x, y: tl2.y + maxRadius))
+                path.addQuadCurve(to: CGPoint(x: tl2.x + maxRadius, y: tl2.y), control: tl2)
+                path.addLine(to: CGPoint(x: tr2.x - maxRadius, y: tr2.y))
+                path.addQuadCurve(to: CGPoint(x: tr2.x, y: tr2.y + maxRadius), control: tr2)
+                path.addLine(to: CGPoint(x: br2.x, y: br2.y - maxRadius))
+                path.addQuadCurve(to: CGPoint(x: br2.x - maxRadius, y: br2.y), control: br2)
+                path.addLine(to: CGPoint(x: bl2.x + maxRadius, y: bl2.y))
+                path.addQuadCurve(to: CGPoint(x: bl2.x, y: bl2.y - maxRadius), control: bl2)
+            } else {
+                // Triangle mode
+                path.move(to: tl2)
+                
+                // Small rounded tip - cut into triangle slightly
+                let tipRadius = min(maxRadius * 0.5, 2.0)
+                
+                path.addLine(to: CGPoint(x: tr2.x - tipRadius, y: tr2.y))
+                path.addQuadCurve(to: CGPoint(x: tr2.x - tipRadius, y: br2.y),
+                                  control: CGPoint(x: tr2.x, y: (tr2.y + br2.y) / 2))
+                path.addLine(to: bl2)
+            }
+            
             path.closeSubpath()
         }
     }
@@ -58,16 +111,13 @@ struct PlaybackShape: Shape {
 struct PlaybackButton: View {
     @State private var isPlaying: Bool = RadioPlayerController.shared.isPlaying
     
-    var colorScheme: ColorScheme?
     var animationDuration: Double
     var action: (() -> Void)?
     
     init(
-        colorScheme: ColorScheme? = nil,
         animationDuration: Double = 0.24,
         action: (() -> Void)? = nil
     ) {
-        self.colorScheme = colorScheme
         self.animationDuration = animationDuration
         self.action = action
     }
@@ -76,23 +126,9 @@ struct PlaybackButton: View {
         Button(action: {
             action?()
         }) {
-            if let colorScheme {
-                switch colorScheme {
-                case .light:
-                    PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                        .fill(Color(red: 57 / 255, green: 56 / 255, blue: 57 / 255))
-                        .preferredColorScheme(colorScheme)
-                case .dark:
-                    PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                        .preferredColorScheme(colorScheme)
-                @unknown default:
-                    PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                        .fill(.ultraThickMaterial)
-                }
-            } else {
-                PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                    .fill(.ultraThickMaterial)
-            }
+            PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
+                .fill(Color(red: 57 / 255, green: 56 / 255, blue: 57 / 255))
+                .preferredColorScheme(.dark)
         }
         .buttonStyle(NoHighlightButtonStyle())
         .task {
@@ -132,7 +168,7 @@ struct PlaybackButtonExample: View {
             
             PlaybackButton(
                 action: {
-                    status = status == .paused ? .playing : .paused
+                    status = (status == .paused) ? .playing : .paused
                 }
             )
         }
