@@ -20,6 +20,8 @@ struct IntentError: Error {
 }
 
 // App-level service access for intents
+// App Intents run in a separate process and cannot access the main app's
+// SwiftUI environment, so they must create their own service instances.
 enum AppServices {
     @MainActor
     static func nowPlayingService() -> NowPlayingService {
@@ -186,32 +188,32 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     }
     
     func sendMessageToServer(message: String) async throws {
-        guard let url = URL(string: Secrets.slackWxycRequestsWebhook) else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-type")
-        
-        let json: [String: Any] = ["text": message]
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
-        request.httpBody = jsonData
-        
-        PostHogSDK.shared.capture(
-            "Request sent",
-            context: "MakeARequest Intent",
-            additionalData: [
-                "message": message
-            ]
-        )
-        
-        do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            if let response = response as? HTTPURLResponse {
-                print("Response status code: \(response.statusCode)")
-            }
-        } catch {
-            print("Error: \(error)")
-            PostHogSDK.shared.capture(error: error, context: "MakeARequest Intent")
-        }
+//        guard let url = URL(string: Secrets.slackWxycRequestsWebhook) else { return }
+//        var request = URLRequest(url: url)
+//        request.httpMethod = "POST"
+//        request.addValue("application/json", forHTTPHeaderField: "Content-type")
+//        
+//        let json: [String: Any] = ["text": message]
+//        guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
+//        request.httpBody = jsonData
+//        
+//        PostHogSDK.shared.capture(
+//            "Request sent",
+//            context: "MakeARequest Intent",
+//            additionalData: [
+//                "message": message
+//            ]
+//        )
+//        
+//        do {
+//            let (_, response) = try await URLSession.shared.data(for: request)
+//            if let response = response as? HTTPURLResponse {
+//                print("Response status code: \(response.statusCode)")
+//            }
+//        } catch {
+//            print("Error: \(error)")
+//            PostHogSDK.shared.capture(error: error, context: "MakeARequest Intent")
+//        }
     }
 }
 

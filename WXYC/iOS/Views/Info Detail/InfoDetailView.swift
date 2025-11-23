@@ -14,6 +14,7 @@ import Logger
 import PostHog
 import Analytics
 import Secrets
+import ObfuscateMacro
 
 struct InfoDetailView: View {
     @State private var showingLogPrompt = false
@@ -101,16 +102,12 @@ struct InfoDetailView: View {
         guard !message.isEmpty else { return }
 
         do {
-            guard let webhookURL = try await fetchWebhookURL() else {
-                Log(.error, "Failed to fetch webhook URL from Railway endpoint")
-                return
-            }
-
-            var request = URLRequest(url: webhookURL)
+            let url = URL(string: Secrets.requestOMatic)!
+            var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.addValue("application/json", forHTTPHeaderField: "Content-type")
 
-            let json: [String: Any] = ["text": message]
+            let json: [String: Any] = ["message.": message]
             guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
             request.httpBody = jsonData
 
@@ -141,44 +138,6 @@ struct InfoDetailView: View {
             PostHogSDK.shared.capture(error: error, context: "Info ViewController")
         }
     }
-
-    private func fetchWebhookURL() async throws -> URL? {
-        guard let url = URL(string: Secrets.slackWxycRequestsWebhookRetrievalUrl) else {
-            Log(.error, "Invalid Railway endpoint URL")
-            return nil
-        }
-
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-
-            guard let response = response as? HTTPURLResponse else {
-                Log(.error, "No response object from Railway endpoint")
-                return nil
-            }
-
-            guard response.statusCode == 200 else {
-                Log(.error, "Railway endpoint returned status code: \(response.statusCode)")
-                return nil
-            }
-
-            guard let webhookURLSuffixString = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) else {
-                Log(.error, "Failed to unwrap webhook URL from Railway endpoint response")
-                return nil
-            }
-
-            // The endpoint returns the webhook URL as plain text
-            guard let webhookURLSuffix = URL(string: Secrets.slackWxycRequestsWebhook + webhookURLSuffixString) else {
-                Log(.error, "Failed to parse webhook URL from Railway endpoint response")
-                return nil
-            }
-
-            Log(.info, "Successfully fetched webhook URL from Railway endpoint: \(webhookURLSuffix)")
-            return webhookURLSuffix
-        } catch {
-            Log(.error, "Error fetching webhook URL from Railway endpoint: \(error)")
-            throw error
-        }
-    }
 }
 
 // MARK: - Action Button
@@ -200,8 +159,9 @@ struct ActionButton: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding()
+            .glassEffect(.clear)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                Capsule()
                     .fill(color)
             )
         }
