@@ -1,8 +1,9 @@
 //
-//  PlaybackButtonSwiftUI.swift
+//  PlaybackButton.swift
 //  WXYC
 //
-//  SwiftUI-native implementation of PlaybackButton
+//  Created by Jake Bromberg on 11/13/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -18,57 +19,55 @@ struct PlaybackShape: Shape {
     }
     
     func path(in rect: CGRect) -> Path {
-        var path = Path()
-        
-        let halfWidth = rect.width / 2.0
-        let eighthWidth = halfWidth / 2.0
-        let sixteenthWidth: CGFloat = eighthWidth / 2.0
-        let thirtySecondWidth: CGFloat = sixteenthWidth / 2.0
-
-        let componentWidth: CGFloat = sixteenthWidth * (1 + playbackValue)
-        let insetMargin: CGFloat = thirtySecondWidth * (1 - playbackValue)
-        
-        let firstHalfMargin: CGFloat = eighthWidth + insetMargin
-        let secondHalfMargin = halfWidth + insetMargin
-
-        let halfHeight = rect.height / 2.0
-        let quarterHeight: CGFloat = halfHeight / 2.0
-        let sixteenthHeight: CGFloat = halfHeight / 4.0
-        
-        let h1: CGFloat = sixteenthHeight * playbackValue
-        let h2: CGFloat = quarterHeight * playbackValue
-        
-        // First bar (left side)
-        path.move(to: CGPoint(x: firstHalfMargin, y: quarterHeight))
-        path.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + h1))
-        path.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + halfHeight - h1))
-        path.addLine(to: CGPoint(x: firstHalfMargin, y: quarterHeight + halfHeight))
-        path.closeSubpath()
-        
-        // Second bar (right side)
-        path.move(to: CGPoint(x: secondHalfMargin, y: quarterHeight + h1))
-        path.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + h2))
-        path.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + halfHeight - h2))
-        path.addLine(to: CGPoint(x: secondHalfMargin, y: quarterHeight + halfHeight - h1))
-        path.closeSubpath()
-        
-        return path
+        return Path { path in
+            let halfWidth = rect.width / 2.0
+            let eighthWidth = halfWidth / 2.0
+            let sixteenthWidth: CGFloat = eighthWidth / 2.0
+            let thirtySecondWidth: CGFloat = sixteenthWidth / 2.0
+            
+            let componentWidth: CGFloat = sixteenthWidth * (1 + playbackValue)
+            let insetMargin: CGFloat = thirtySecondWidth * (1 - playbackValue)
+            
+            let firstHalfMargin: CGFloat = eighthWidth + insetMargin
+            let secondHalfMargin = halfWidth + insetMargin
+            
+            let halfHeight = rect.height / 2.0
+            let quarterHeight: CGFloat = halfHeight / 2.0
+            let sixteenthHeight: CGFloat = halfHeight / 4.0
+            
+            let h1: CGFloat = sixteenthHeight * playbackValue
+            let h2: CGFloat = quarterHeight * playbackValue
+            
+            // First bar (left side)
+            path.move(to: CGPoint(x: firstHalfMargin, y: quarterHeight))
+            path.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + h1))
+            path.addLine(to: CGPoint(x: firstHalfMargin + componentWidth, y: quarterHeight + halfHeight - h1))
+            path.addLine(to: CGPoint(x: firstHalfMargin, y: quarterHeight + halfHeight))
+            path.closeSubpath()
+            
+            // Second bar (right side)
+            path.move(to: CGPoint(x: secondHalfMargin, y: quarterHeight + h1))
+            path.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + h2))
+            path.addLine(to: CGPoint(x: secondHalfMargin + componentWidth, y: quarterHeight + halfHeight - h2))
+            path.addLine(to: CGPoint(x: secondHalfMargin, y: quarterHeight + halfHeight - h1))
+            path.closeSubpath()
+        }
     }
 }
 
 struct PlaybackButton: View {
     @State private var isPlaying: Bool = RadioPlayerController.shared.isPlaying
     
-    var color: Color
+    var colorScheme: ColorScheme?
     var animationDuration: Double
     var action: (() -> Void)?
     
     init(
-        color: Color = .white,
+        colorScheme: ColorScheme? = nil,
         animationDuration: Double = 0.24,
         action: (() -> Void)? = nil
     ) {
-        self.color = color
+        self.colorScheme = colorScheme
         self.animationDuration = animationDuration
         self.action = action
     }
@@ -77,8 +76,23 @@ struct PlaybackButton: View {
         Button(action: {
             action?()
         }) {
-            PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                .fill(.ultraThickMaterial)
+            if let colorScheme {
+                switch colorScheme {
+                case .light:
+                    PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
+                        .fill(Color(red: 57 / 255, green: 56 / 255, blue: 57 / 255))
+                        .preferredColorScheme(colorScheme)
+                case .dark:
+                    PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
+                        .preferredColorScheme(colorScheme)
+                @unknown default:
+                    PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
+                        .fill(.ultraThickMaterial)
+                }
+            } else {
+                PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
+                    .fill(.ultraThickMaterial)
+            }
         }
         .buttonStyle(NoHighlightButtonStyle())
         .task {

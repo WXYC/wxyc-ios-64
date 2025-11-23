@@ -84,13 +84,13 @@ public extension PostHogSDK {
             ])
     }
     
-    func capture(_ event: String, context: String, additionalData: [String: String] = [:]) {
+    func capture(_ event: String, context: String? = nil, additionalData: [String: String] = [:]) {
         var defaultProperties = ["context": context]
         defaultProperties.merge(with: additionalData)
 
         PostHogSDK.shared.capture(
             event,
-            properties: defaultProperties
+            properties: defaultProperties as [String : Any]
         )
     }
     

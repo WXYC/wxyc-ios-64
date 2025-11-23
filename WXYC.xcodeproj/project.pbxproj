@@ -80,10 +80,10 @@
 		23660A112D72D2630057E268 /* Exceptions for "WXYC" folder in "WatchXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				iOS/Views/BackgroundLayer.swift,
 				iOS/Views/Playlist/CassetteView.swift,
 				iOS/Views/Playlist/PlaybackButton.swift,
 				iOS/Views/Playlist/PlayerHeaderView.swift,
+				iOS/Views/Root/BackgroundLayer.swift,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/PlayerPage.swift,
@@ -592,6 +592,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 				TVOS_DEPLOYMENT_TARGET = 26.0;
 				VALIDATE_PRODUCT = YES;
@@ -1031,6 +1032,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 				TVOS_DEPLOYMENT_TARGET = 26.0;
@@ -1094,6 +1096,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 				TVOS_DEPLOYMENT_TARGET = 26.0;
 				VALIDATE_PRODUCT = YES;

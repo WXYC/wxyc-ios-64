@@ -2,7 +2,8 @@
 //  BreakpointRowView.swift
 //  WXYC
 //
-//  SwiftUI view for Breakpoint playlist entries
+//  Created by Jake Bromberg on 11/15/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
