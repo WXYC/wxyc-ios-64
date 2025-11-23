@@ -6,7 +6,7 @@ struct PlayerHeaderView: View {
         ZStack(alignment: .leading) {
             GeometryReader { geometry in
                 HStack(spacing: -1) {
-                    PlaybackButton(colorScheme: colorScheme) {
+                    PlaybackButton {
                         try? RadioPlayerController.shared.toggle(reason: "player header play/pause button tapped")
                     }
                     .frame(width: geometry.size.height, height: geometry.size.height)
