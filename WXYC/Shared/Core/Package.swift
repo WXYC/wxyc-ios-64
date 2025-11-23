@@ -16,7 +16,7 @@ let package = Package(
         .package(name: "OpenNSFW", path: "../OpenNSFW"),
         .package(name: "Secrets", path: "../Secrets"),
         
-        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.20.0")),
+        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
     ],
     targets: [
         .target(
