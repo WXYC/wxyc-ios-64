@@ -17,7 +17,7 @@ import SwiftUI
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
-    let playlistService = PlaylistService()
+    var playlistService: PlaylistService { AppState.shared.playlistService }
     
     // MARK: CPTemplateApplicationSceneDelegate
     
@@ -159,7 +159,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     @MainActor
     private func observePlaylist() {
         Task {
-            for await playlist in playlistService {
+            for await playlist in playlistService.updates() {
                 self.playlist = playlist
                 self.updateListTemplate()
             }

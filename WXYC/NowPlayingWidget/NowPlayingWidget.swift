@@ -15,6 +15,9 @@ import Secrets
 import Analytics
 
 final class Provider: TimelineProvider, Sendable {
+    // Widget extensions run in a separate process from the main app.
+    // They cannot access the main app's SwiftUI environment, so they
+    // must create their own PlaylistService instance.
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
     
@@ -93,6 +96,8 @@ final class Provider: TimelineProvider, Sendable {
                     NowPlayingItem.placeholder,
                 ]
             } else {
+                // Create separate instances for timeline generation
+                // (widgets run in separate process)
                 let playlistService = PlaylistService()
                 let artworkService = MultisourceArtworkService()
 

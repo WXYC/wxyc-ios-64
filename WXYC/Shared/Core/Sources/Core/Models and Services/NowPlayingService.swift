@@ -48,16 +48,16 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
 
     public struct AsyncIterator: AsyncIteratorProtocol {
         private let service: NowPlayingService
-        private var playlistIterator: PlaylistService.AsyncIterator
+        private var playlistStream: AsyncStream<Playlist>.Iterator
 
         init(service: NowPlayingService) {
             self.service = service
-            self.playlistIterator = service.playlistService.makeAsyncIterator()
+            self.playlistStream = service.playlistService.updates().makeAsyncIterator()
         }
 
         public mutating func next() async throws -> NowPlayingItem? {
             // Get the next playlist
-            guard let playlist = await playlistIterator.next() else {
+            guard let playlist = await playlistStream.next() else {
                 return nil
             }
 
