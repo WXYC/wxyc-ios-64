@@ -10,22 +10,92 @@ import SwiftUI
 import Core
 import UIKit
 
+// Preference key to track scroll position
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct PlaycutRowView: View {
     let playcut: Playcut
     @State private var artwork: UIImage?
     @State private var isLoadingArtwork = true
     @State private var showingShareSheet = false
+    @State private var timeOffset: Int = (-10..<10).randomElement()!
+    @State private var colors = Self.randomColors()
+    @State private var shadowYOffset: CGFloat = 3
     
     private let phi = (1 + sqrt(5)) / 2
     private let size: CGFloat = 120
+    
+    // Shadow offset configuration
+    private let shadowOffsetAtTop: CGFloat = -2
+    private let shadowOffsetAtBottom: CGFloat = 3
 
     private let artworkService = MultisourceArtworkService()
 
+    private var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
+        TimelineView(.animation) { context in
+            let time = context.date.timeIntervalSince1970 + TimeInterval(timeOffset)
+            let offsetX = Float(sin(time)) * 0.25
+            let offsetY = Float(cos(time)) * 0.25
+            
+            MeshGradient(
+                width: 4,
+                height: 4,
+                points: [
+                    [0.0, 0.0],
+                    [0.3, 0.0],
+                    [0.7, 0.0],
+                    [1.0, 0.0],
+                    [0.0, 0.3],
+                    [0.2 + offsetX, 0.4 + offsetY],
+                    [0.7 + offsetX, 0.2 + offsetY],
+                    [1.0, 0.3],
+                    [0.0, 0.7],
+                    [0.3 + offsetX, 0.8],
+                    [0.7 + offsetX, 0.6],
+                    [1.0, 0.7],
+                    [0.0, 1.0],
+                    [0.3, 1.0],
+                    [0.7, 1.0],
+                    [1.0, 1.0]
+                ],
+                colors: colors
+            )
+        }
+    }
+    
+    static func randomColors() -> [Color] {
+        (0..<16).map { _ in palette.randomElement()! }
+    }
+    
+    static let palette: [Color] = [
+        .indigo,
+        .orange,
+        .pink,
+        .purple,
+        .yellow,
+        .blue,
+        .green,
+    ]
+    
     var body: some View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     // Background layer
                     BackgroundLayer()
+                    
+                    // Track position in scroll view
+                    GeometryReader { scrollProxy in
+                        Color.clear
+                            .preference(
+                                key: ScrollOffsetPreferenceKey.self,
+                                value: scrollProxy.frame(in: .named("scroll")).midY
+                            )
+                    }
                     
                     // Content that can punch through the background
                     HStack(spacing: 0) {
@@ -50,23 +120,40 @@ struct PlaycutRowView: View {
                                 ZStack(alignment: .center) {
                                     RoundedRectangle(cornerRadius: 6.0, style: .circular)
                                         .frame(
-                                            maxWidth: proxy.size.height * 0.8,
-                                            maxHeight: proxy.size.height * 0.8
+                                            maxWidth: proxy.size.height * 0.75,
+                                            maxHeight: proxy.size.height * 0.75
                                         )
                                         .glassEffect(
-                                            .clear.tint(.indigo).interactive(),
+                                            .clear
+                                                .tint(
+                                                    Color(
+                                                        hue: 248 / 360,
+                                                        saturation: 100 / 100,
+                                                        brightness: 100 / 100,
+                                                        opacity: 0.125
+                                                    )
+                                                )
+                                                .interactive(),
                                             in: RoundedRectangle(
                                                 cornerRadius: 6.0,
                                                 style: .circular
                                             )
                                         )
                                         .preferredColorScheme(.light)
-                                        .opacity(0.1625)
-
+                                        .opacity(0.65)
+                                        .shadow(radius: 3, x: 0, y: shadowYOffset)
+                                        .clipShape(
+                                            RoundedRectangle(cornerRadius: 6.0, style: .circular)
+                                        )
+                                        
                                     WXYCLogo()
-                                        .glassEffect(.regular, in: WXYCLogo())
+                                        .glassEffect(.clear, in: WXYCLogo())
                                         .preferredColorScheme(.light)
+                                        .background(meshGradientAnimation.opacity(0.6))
+                                        .clipShape(WXYCLogo())
+                                        .shadow(radius: 3, x: 0, y: shadowYOffset)
                                 }
+                                .backgroundStyle(.clear)
                             }
                         }
                         .padding(12.0)
@@ -100,6 +187,24 @@ struct PlaycutRowView: View {
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
+                // Calculate shadow offset based on scroll position
+                // The scroll position is the midY of the row in the scroll view's coordinate space
+                
+                // Get the scroll view's geometry (we'll need to pass this in or estimate)
+                // For simplicity, we'll use a typical iPhone screen height
+                let screenHeight = UIScreen.main.bounds.height
+                
+                // Normalize position: 0 at top, 1 at bottom
+                let normalizedPosition = scrollPosition / screenHeight
+                
+                // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
+                let range = shadowOffsetAtBottom - shadowOffsetAtTop
+                let newOffset = shadowOffsetAtTop + (normalizedPosition * range)
+                
+                // Clamp between min and max
+                shadowYOffset = max(shadowOffsetAtTop, min(shadowOffsetAtBottom, newOffset))
+            }
             .task {
                 await loadArtwork()
             }
