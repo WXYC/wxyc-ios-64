@@ -6,13 +6,12 @@
 //
 
 import SwiftUI
-import Combine
 
 struct ShareExtensionView: View {
-    @StateObject private var viewModel: ShareExtensionViewModel
+    @State private var viewModel: ShareExtensionViewModel
     
     init(extensionContext: NSExtensionContext?) {
-        _viewModel = StateObject(wrappedValue: ShareExtensionViewModel(extensionContext: extensionContext))
+        _viewModel = State(initialValue: ShareExtensionViewModel(extensionContext: extensionContext))
     }
     
     var body: some View {
@@ -138,8 +137,9 @@ struct ShareExtensionView: View {
 
 // MARK: - View Model
 
+@Observable
 @MainActor
-class ShareExtensionViewModel: ObservableObject {
+class ShareExtensionViewModel {
     
     enum State {
         case loading
@@ -147,9 +147,9 @@ class ShareExtensionViewModel: ObservableObject {
         case loaded(MusicTrack)
     }
     
-    @Published var state: State = .loading
-    @Published var artworkImage: UIImage?
-    @Published var isLoadingArtwork = false
+    var state: State = .loading
+    var artworkImage: UIImage?
+    var isLoadingArtwork = false
     
     private weak var extensionContext: NSExtensionContext?
     private let serviceRegistry = MusicServiceRegistry.shared
