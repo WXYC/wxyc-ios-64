@@ -1,20 +1,23 @@
 //
 //  ShareExtensionView.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
-struct ShareExtensionView: View {
+public struct ShareExtensionView: View {
     @State private var viewModel: ShareExtensionViewModel
     
-    init(extensionContext: NSExtensionContext?) {
+    public init(extensionContext: NSExtensionContext?) {
         _viewModel = State(initialValue: ShareExtensionViewModel(extensionContext: extensionContext))
     }
     
-    var body: some View {
+    public var body: some View {
         ZStack {
             // Semi-transparent background
             Color.black.opacity(0.4)
@@ -31,7 +34,7 @@ struct ShareExtensionView: View {
                 // Content
                 contentView
             }
-            .background(Color(.systemBackground))
+            .background(Color(uiColor: .systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .containerRelativeFrame(.horizontal) { width, _ in
                 width * 0.85
@@ -65,7 +68,7 @@ struct ShareExtensionView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
-        .background(Color(.secondarySystemBackground))
+        .background(Color(uiColor: .secondarySystemBackground))
     }
     
     // MARK: - Content
@@ -124,7 +127,7 @@ struct ShareExtensionView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
         } else {
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.tertiarySystemFill))
+                .fill(Color(uiColor: .tertiarySystemFill))
                 .frame(width: 150, height: 150)
                 .overlay {
                     if viewModel.isLoadingArtwork {
@@ -139,9 +142,9 @@ struct ShareExtensionView: View {
 
 @Observable
 @MainActor
-class ShareExtensionViewModel {
+public class ShareExtensionViewModel {
     
-    enum State {
+    public enum State {
         case loading
         case error
         case loaded(MusicTrack)
@@ -169,7 +172,7 @@ class ShareExtensionViewModel {
         return false
     }
     
-    init(extensionContext: NSExtensionContext?) {
+    public init(extensionContext: NSExtensionContext?) {
         self.extensionContext = extensionContext
     }
     

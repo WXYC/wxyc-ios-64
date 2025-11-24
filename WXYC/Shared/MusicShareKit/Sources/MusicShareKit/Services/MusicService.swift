@@ -1,13 +1,13 @@
 //
 //  MusicService.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-protocol MusicService {
+public protocol MusicService {
     var identifier: MusicServiceIdentifier { get }
     
     /// Check if this service can handle the given URL

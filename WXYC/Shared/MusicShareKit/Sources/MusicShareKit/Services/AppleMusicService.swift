@@ -1,23 +1,25 @@
 //
 //  AppleMusicService.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-class AppleMusicService: MusicService {
-    let identifier: MusicServiceIdentifier = .appleMusic
+public class AppleMusicService: MusicService {
+    public let identifier: MusicServiceIdentifier = .appleMusic
     
-    func canHandle(url: URL) -> Bool {
+    public init() {}
+    
+    public func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         let scheme = url.scheme?.lowercased() ?? ""
         
         return host.contains("music.apple.com") || scheme == "music"
     }
     
-    func parse(url: URL) -> MusicTrack? {
+    public func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // Handle music:// scheme URLs
@@ -83,7 +85,7 @@ class AppleMusicService: MusicService {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Use iTunes Search API to get artwork
         // API: https://itunes.apple.com/lookup?id=[trackId]
         guard let trackId = track.identifier else { return nil }

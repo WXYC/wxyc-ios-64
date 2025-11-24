@@ -1,21 +1,23 @@
 //
 //  BandcampService.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-class BandcampService: MusicService {
-    let identifier: MusicServiceIdentifier = .bandcamp
+public class BandcampService: MusicService {
+    public let identifier: MusicServiceIdentifier = .bandcamp
     
-    func canHandle(url: URL) -> Bool {
+    public init() {}
+    
+    public func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host.contains("bandcamp.com")
     }
     
-    func parse(url: URL) -> MusicTrack? {
+    public func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // Bandcamp URLs can be:
@@ -66,7 +68,7 @@ class BandcampService: MusicService {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Bandcamp doesn't have a public oEmbed API, so we need to scrape the page
         // Look for og:image meta tag in the HTML
         let (data, _) = try await URLSession.shared.data(from: track.url)
