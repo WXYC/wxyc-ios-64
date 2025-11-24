@@ -19,8 +19,6 @@ struct PlaylistPage: View {
             Color.clear
             
             ScrollView {
-                PlayerHeaderView()
-                
                 // Playlist entries
                 LazyVStack(spacing: 0) {
                     ForEach(playlistEntries, id: \.id) { entry in
