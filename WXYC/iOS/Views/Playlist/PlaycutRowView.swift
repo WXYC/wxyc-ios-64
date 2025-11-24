@@ -25,14 +25,11 @@ struct PlaycutRowView: View {
     @State private var showingShareSheet = false
     @State private var timeOffset: Int = (-10..<10).randomElement()!
     @State private var colors = Self.randomColors()
-    @State private var shadowYOffset: CGFloat = 3
-    
-    private let phi = (1 + sqrt(5)) / 2
-    private let size: CGFloat = 120
+    @State private var shadowYOffset: CGFloat = 0
     
     // Shadow offset configuration
     private let shadowOffsetAtTop: CGFloat = -2
-    private let shadowOffsetAtBottom: CGFloat = 3
+    private let shadowOffsetAtBottom: CGFloat = 2
 
     private let artworkService = MultisourceArtworkService()
 
@@ -88,15 +85,6 @@ struct PlaycutRowView: View {
                     // Background layer
                     BackgroundLayer()
                     
-                    // Track position in scroll view
-                    GeometryReader { scrollProxy in
-                        Color.clear
-                            .preference(
-                                key: ScrollOffsetPreferenceKey.self,
-                                value: scrollProxy.frame(in: .named("scroll")).midY
-                            )
-                    }
-                    
                     // Content that can punch through the background
                     HStack(spacing: 0) {
                         // Artwork
@@ -105,6 +93,17 @@ struct PlaycutRowView: View {
                                 Image(uiImage: artwork)
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
+                                    .clipShape(
+                                        RoundedRectangle(
+                                            cornerRadius: 6.0,
+                                            style: .circular
+                                        )
+                                    )
+                                    .glassEffect(
+                                        .clear,
+                                        in: RoundedRectangle(cornerRadius: 6.0, style: .circular)
+                                    )
+                                    .shadow(radius: 3, x: 0, y: shadowYOffset)
                             } else if isLoadingArtwork {
                                 RoundedRectangle(cornerRadius: 6.0, style: .circular)
                                     .glassEffect(
@@ -116,6 +115,11 @@ struct PlaycutRowView: View {
                                     )
                                     .preferredColorScheme(.light)
                                     .opacity(0.1625)
+                                    .glassEffect(
+                                        .clear,
+                                        in: RoundedRectangle(cornerRadius: 6.0, style: .circular)
+                                    )
+                                    .shadow(radius: 3, x: 0, y: shadowYOffset)
                             } else {
                                 ZStack(alignment: .center) {
                                     RoundedRectangle(cornerRadius: 6.0, style: .circular)
@@ -141,17 +145,17 @@ struct PlaycutRowView: View {
                                         )
                                         .preferredColorScheme(.light)
                                         .opacity(0.65)
-                                        .shadow(radius: 3, x: 0, y: shadowYOffset)
                                         .clipShape(
                                             RoundedRectangle(cornerRadius: 6.0, style: .circular)
                                         )
+                                        .shadow(radius: 2, x: 0, y: shadowYOffset)
                                         
                                     WXYCLogo()
                                         .glassEffect(.clear, in: WXYCLogo())
                                         .preferredColorScheme(.light)
                                         .background(meshGradientAnimation.opacity(0.6))
                                         .clipShape(WXYCLogo())
-                                        .shadow(radius: 3, x: 0, y: shadowYOffset)
+                                        .shadow(radius: 2, x: 0, y: shadowYOffset)
                                 }
                                 .backgroundStyle(.clear)
                             }
@@ -187,23 +191,41 @@ struct PlaycutRowView: View {
             .frame(maxWidth: .infinity)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            .overlay(
+                GeometryReader { scrollProxy in
+                    let scrollFrame = scrollProxy.frame(in: .named("scroll"))
+                    let localFrame = scrollProxy.frame(in: .local)
+                    let _ = print("🔍 Frame debug - local: \(localFrame), scroll: \(scrollFrame)")
+                    
+                    return Color.clear
+                        .preference(
+                            key: ScrollOffsetPreferenceKey.self,
+                            value: scrollFrame.midY
+                        )
+                }
+            )
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
                 // Calculate shadow offset based on scroll position
-                // The scroll position is the midY of the row in the scroll view's coordinate space
+                // scrollPosition is the midY of the row in the scroll view's coordinate space
                 
-                // Get the scroll view's geometry (we'll need to pass this in or estimate)
-                // For simplicity, we'll use a typical iPhone screen height
+                // Debug: print the raw scroll position to understand what values we're getting
+                print("📍 Row \(playcut.songTitle): scrollPosition = \(scrollPosition)")
+                
+                // Get screen bounds to understand visible area
                 let screenHeight = UIScreen.main.bounds.height
                 
-                // Normalize position: 0 at top, 1 at bottom
-                let normalizedPosition = scrollPosition / screenHeight
+                // The scrollPosition tells us where the row's midY is relative to the scroll content
+                // When the row is at the top of the visible screen, scrollPosition ≈ 0
+                // When the row is at the bottom of the visible screen, scrollPosition ≈ screenHeight
+                
+                // Normalize position: 0 at top of screen, 1 at bottom of screen
+                let normalizedPosition = min(max(scrollPosition / screenHeight, 0), 1)
                 
                 // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
                 let range = shadowOffsetAtBottom - shadowOffsetAtTop
-                let newOffset = shadowOffsetAtTop + (normalizedPosition * range)
+                shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
                 
-                // Clamp between min and max
-                shadowYOffset = max(shadowOffsetAtTop, min(shadowOffsetAtBottom, newOffset))
+                print("   → normalizedPosition = \(normalizedPosition), shadowYOffset = \(shadowYOffset)")
             }
             .task {
                 await loadArtwork()
