@@ -130,7 +130,6 @@
 				Shared/Analytics,
 				Shared/Core,
 				Shared/Logger,
-				Shared/MusicShareKit,
 				Shared/OpenNSFW,
 				Shared/Secrets,
 				WatchXYC/Assets.xcassets,
