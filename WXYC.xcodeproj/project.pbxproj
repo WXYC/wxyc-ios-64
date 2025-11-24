@@ -123,13 +123,23 @@
 				"iOS Intents Extension/Info.plist",
 				iOS/Info.plist,
 				iOS/ListenTogether.swift,
-				LICENSE,
 				NowPlayingWidget/Assets.xcassets,
 				NowPlayingWidget/Info.plist,
 				NowPlayingWidget/NowPlayingWidget.swift,
 				Shared/Analytics,
 				Shared/Core,
 				Shared/Logger,
+				Shared/MusicShareKit/Package.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Models/MusicTrack.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/AppleMusicService.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/BandcampService.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/MusicService.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/MusicServiceRegistry.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/SoundCloudService.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/SpotifyService.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Services/YouTubeMusicService.swift,
+				Shared/MusicShareKit/Sources/MusicShareKit/Views/ShareExtensionView.swift,
+				Shared/MusicShareKit/Tests/MusicShareKitTests/MusicShareKitTests.swift,
 				Shared/OpenNSFW,
 				Shared/Secrets,
 				WatchXYC/Assets.xcassets,
@@ -138,6 +148,7 @@
 				WatchXYC/PlayerPage.swift,
 				WatchXYC/PlaylistPage.swift,
 				"WatchXYC/Preview Content/Preview Assets.xcassets",
+				WatchXYC/RemoteImage.swift,
 				WatchXYC/RootTabView.swift,
 				WatchXYC/WatchXYCApp.swift,
 				"WXYC TV/Assets.xcassets",
@@ -163,6 +174,13 @@
 			);
 			target = 23B333452ED4F09900EFD77B /* Request Share Extension */;
 		};
+		23B3539C2ED524B600EFD77B /* Exceptions for "WXYC" folder in "Request Share Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				iOS/Images.xcassets,
+			);
+			target = 23B333452ED4F09900EFD77B /* Request Share Extension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -184,6 +202,7 @@
 				23660A122D72D2630057E268 /* Exceptions for "WXYC" folder in "Compile Sources" phase from "WatchXYC" target */,
 				239566992D751E9A0094A215 /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */,
 				236629C02D7390A00057E268 /* Exceptions for "WXYC" folder in "WXYC TV" target */,
+				23B3539C2ED524B600EFD77B /* Exceptions for "WXYC" folder in "Request Share Extension" target */,
 			);
 			path = WXYC;
 			sourceTree = "<group>";
