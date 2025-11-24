@@ -65,5 +65,29 @@ class BandcampService: MusicService {
             identifier: identifier
         )
     }
+    
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+        // Bandcamp doesn't have a public oEmbed API, so we need to scrape the page
+        // Look for og:image meta tag in the HTML
+        let (data, _) = try await URLSession.shared.data(from: track.url)
+        
+        guard let html = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        
+        // Look for og:image meta tag
+        // Pattern: <meta property="og:image" content="https://...">
+        let pattern = #"<meta\s+property=\"og:image\"\s+content=\"([^\"]+)\""#
+        let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        let range = NSRange(html.startIndex..., in: html)
+        
+        if let match = regex?.firstMatch(in: html, options: [], range: range),
+           let urlRange = Range(match.range(at: 1), in: html) {
+            let artworkUrlString = String(html[urlRange])
+            return URL(string: artworkUrlString)
+        }
+        
+        return nil
+    }
 }
 

@@ -66,5 +66,23 @@ class SpotifyService: MusicService {
             identifier: "\(type):\(identifier)"
         )
     }
+    
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+        // Use Spotify oEmbed API to get artwork (no auth required)
+        // API: https://open.spotify.com/oembed?url=[url]
+        let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard let apiURL = URL(string: "https://open.spotify.com/oembed?url=\(encodedUrl)") else {
+            return nil
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: apiURL)
+        
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let thumbnailUrlString = json?["thumbnail_url"] as? String else {
+            return nil
+        }
+        
+        return URL(string: thumbnailUrlString)
+    }
 }
 

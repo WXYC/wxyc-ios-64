@@ -82,5 +82,28 @@ class AppleMusicService: MusicService {
             identifier: identifier
         )
     }
+    
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+        // Use iTunes Search API to get artwork
+        // API: https://itunes.apple.com/lookup?id=[trackId]
+        guard let trackId = track.identifier else { return nil }
+        
+        // Extract numeric ID from identifier (could be "album:123" or just "123")
+        let numericId = trackId.components(separatedBy: ":").last ?? trackId
+        
+        let apiURL = URL(string: "https://itunes.apple.com/lookup?id=\(numericId)")!
+        let (data, _) = try await URLSession.shared.data(from: apiURL)
+        
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let results = json?["results"] as? [[String: Any]],
+              let firstResult = results.first,
+              let artworkUrlString = firstResult["artworkUrl100"] as? String else {
+            return nil
+        }
+        
+        // Get higher resolution artwork (600x600 instead of 100x100)
+        let highResUrl = artworkUrlString.replacingOccurrences(of: "100x100", with: "600x600")
+        return URL(string: highResUrl)
+    }
 }
 
