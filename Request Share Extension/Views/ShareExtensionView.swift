@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ShareExtensionView: View {
     @StateObject private var viewModel: ShareExtensionViewModel
@@ -33,7 +34,9 @@ struct ShareExtensionView: View {
             }
             .background(Color(.systemBackground))
             .clipShape(RoundedRectangle(cornerRadius: 16))
-            .frame(width: UIScreen.main.bounds.width * 0.85)
+            .containerRelativeFrame(.horizontal) { width, _ in
+                width * 0.85
+            }
         }
         .task {
             await viewModel.extractAndProcessURL()
