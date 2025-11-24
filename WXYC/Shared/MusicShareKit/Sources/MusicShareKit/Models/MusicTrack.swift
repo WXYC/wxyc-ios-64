@@ -1,23 +1,41 @@
 //
 //  MusicTrack.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-struct MusicTrack {
-    let service: MusicServiceIdentifier
-    let url: URL
-    let title: String?
-    let artist: String?
-    let album: String?
-    let identifier: String?
-    var artworkURL: URL?
+public struct MusicTrack {
+    public let service: MusicServiceIdentifier
+    public let url: URL
+    public let title: String?
+    public let artist: String?
+    public let album: String?
+    public let identifier: String?
+    public var artworkURL: URL?
+    
+    public init(
+        service: MusicServiceIdentifier,
+        url: URL,
+        title: String?,
+        artist: String?,
+        album: String?,
+        identifier: String?,
+        artworkURL: URL? = nil
+    ) {
+        self.service = service
+        self.url = url
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.identifier = identifier
+        self.artworkURL = artworkURL
+    }
     
     /// Display format: "Track Title - Artist (Album)"
-    var displayTitle: String {
+    public var displayTitle: String {
         var components: [String] = []
         
         if let title = title {
@@ -44,7 +62,7 @@ struct MusicTrack {
     }
 }
 
-enum MusicServiceIdentifier: String {
+public enum MusicServiceIdentifier: String {
     case appleMusic = "apple_music"
     case spotify = "spotify"
     case bandcamp = "bandcamp"
@@ -52,7 +70,7 @@ enum MusicServiceIdentifier: String {
     case soundcloud = "soundcloud"
     case unknown = "unknown"
     
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .appleMusic: return "Apple Music"
         case .spotify: return "Spotify"

@@ -1,23 +1,25 @@
 //
 //  YouTubeMusicService.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-class YouTubeMusicService: MusicService {
-    let identifier: MusicServiceIdentifier = .youtubeMusic
+public class YouTubeMusicService: MusicService {
+    public let identifier: MusicServiceIdentifier = .youtubeMusic
     
-    func canHandle(url: URL) -> Bool {
+    public init() {}
+    
+    public func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host.contains("music.youtube.com") || 
                (host.contains("youtube.com") && url.path.contains("/watch")) ||
                host.contains("youtu.be")
     }
     
-    func parse(url: URL) -> MusicTrack? {
+    public func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         var videoId: String?
@@ -56,7 +58,7 @@ class YouTubeMusicService: MusicService {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // YouTube has a predictable thumbnail URL pattern
         // https://img.youtube.com/vi/[VIDEO_ID]/maxresdefault.jpg (high res)
         // https://img.youtube.com/vi/[VIDEO_ID]/hqdefault.jpg (fallback)

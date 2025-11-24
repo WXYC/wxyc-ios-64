@@ -1,23 +1,25 @@
 //
 //  SpotifyService.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-class SpotifyService: MusicService {
-    let identifier: MusicServiceIdentifier = .spotify
+public class SpotifyService: MusicService {
+    public let identifier: MusicServiceIdentifier = .spotify
     
-    func canHandle(url: URL) -> Bool {
+    public init() {}
+    
+    public func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         let scheme = url.scheme?.lowercased() ?? ""
         
         return host.contains("open.spotify.com") || host.contains("spotify.com") || scheme == "spotify"
     }
     
-    func parse(url: URL) -> MusicTrack? {
+    public func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // Handle spotify: scheme URLs
@@ -67,7 +69,7 @@ class SpotifyService: MusicService {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Use Spotify oEmbed API to get artwork (no auth required)
         // API: https://open.spotify.com/oembed?url=[url]
         let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""

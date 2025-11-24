@@ -7,6 +7,7 @@
 
 import UIKit
 import SwiftUI
+import MusicShareKit
 
 @objc(ShareViewController)
 class ShareViewController: UIViewController {

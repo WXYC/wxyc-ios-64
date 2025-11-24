@@ -1,21 +1,23 @@
 //
 //  SoundCloudService.swift
-//  Request Share Extension
+//  MusicShareKit
 //
 //  Created by Jake Bromberg on 11/24/25.
 //
 
 import Foundation
 
-class SoundCloudService: MusicService {
-    let identifier: MusicServiceIdentifier = .soundcloud
+public class SoundCloudService: MusicService {
+    public let identifier: MusicServiceIdentifier = .soundcloud
     
-    func canHandle(url: URL) -> Bool {
+    public init() {}
+    
+    public func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host.contains("soundcloud.com")
     }
     
-    func parse(url: URL) -> MusicTrack? {
+    public func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // SoundCloud URLs format:
@@ -46,7 +48,7 @@ class SoundCloudService: MusicService {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Use SoundCloud oEmbed API (no auth required)
         // API: https://soundcloud.com/oembed?format=json&url=[url]
         let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
