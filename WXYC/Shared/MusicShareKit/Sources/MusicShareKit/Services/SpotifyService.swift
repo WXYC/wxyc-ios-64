@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class SpotifyService: MusicService {
+public final class SpotifyService: MusicService {
     public let identifier: MusicServiceIdentifier = .spotify
     
     public init() {}

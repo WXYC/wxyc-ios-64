@@ -408,6 +408,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				23B3AB8E2ED5122300EFD77B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				23B333472ED4F09900EFD77B /* Request Share Extension */,
@@ -457,6 +458,7 @@
 			mainGroup = 2366FA142D72CE880057E268;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				23B3AB852ED5121C00EFD77B /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
@@ -611,6 +613,10 @@
 			isa = PBXTargetDependency;
 			target = 23B333452ED4F09900EFD77B /* Request Share Extension */;
 			targetProxy = 23B3334E2ED4F09900EFD77B /* PBXContainerItemProxy */;
+		};
+		23B3AB8E2ED5122300EFD77B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 23B3AB8D2ED5122300EFD77B /* MusicShareKit */;
 		};
 		23DB84792D828090000EB53A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1331,6 +1337,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		23B3AB852ED5121C00EFD77B /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/MusicShareKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		231260462D938C1600762428 /* Secrets */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1434,6 +1447,11 @@
 		};
 		23B35B502ED50C0F00EFD77B /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
+			productName = MusicShareKit;
+		};
+		23B3AB8D2ED5122300EFD77B /* MusicShareKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23B3AB852ED5121C00EFD77B /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */;
 			productName = MusicShareKit;
 		};
 		23DB84782D828090000EB53A /* Analytics */ = {

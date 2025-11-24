@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class MusicServiceRegistry {
+public final class MusicServiceRegistry: Sendable {
     public static let shared = MusicServiceRegistry()
     
     private let services: [MusicService]

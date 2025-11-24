@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class YouTubeMusicService: MusicService {
+public final class YouTubeMusicService: MusicService {
     public let identifier: MusicServiceIdentifier = .youtubeMusic
     
     public init() {}

@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class SoundCloudService: MusicService {
+public final class SoundCloudService: MusicService {
     public let identifier: MusicServiceIdentifier = .soundcloud
     
     public init() {}

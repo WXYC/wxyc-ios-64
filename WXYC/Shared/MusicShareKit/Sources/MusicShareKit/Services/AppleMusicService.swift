@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class AppleMusicService: MusicService {
+public final class AppleMusicService: MusicService {
     public let identifier: MusicServiceIdentifier = .appleMusic
     
     public init() {}
