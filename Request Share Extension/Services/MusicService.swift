@@ -1,0 +1,19 @@
+//
+//  MusicService.swift
+//  Request Share Extension
+//
+//  Created by Jake Bromberg on 11/24/25.
+//
+
+import Foundation
+
+protocol MusicService {
+    var identifier: MusicServiceIdentifier { get }
+    
+    /// Check if this service can handle the given URL
+    func canHandle(url: URL) -> Bool
+    
+    /// Parse the URL and extract metadata to create a MusicTrack
+    func parse(url: URL) -> MusicTrack?
+}
+

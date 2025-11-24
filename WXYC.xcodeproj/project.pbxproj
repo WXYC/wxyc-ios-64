@@ -22,6 +22,7 @@
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
+		23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
 /* End PBXBuildFile section */
 
@@ -39,6 +40,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 236629602D72D5BB0057E268;
 			remoteInfo = NowPlayingWidget;
+		};
+		23B3334E2ED4F09900EFD77B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2366FA152D72CE880057E268 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 23B333452ED4F09900EFD77B;
+			remoteInfo = "Request Share Extension";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -60,6 +68,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */,
 				2366296A2D72D5BB0057E268 /* NowPlayingWidget.appex in Embed ExtensionKit Extensions */,
 			);
 			name = "Embed ExtensionKit Extensions";
@@ -74,6 +83,7 @@
 		236629792D72D94A0057E268 /* WatchXYC-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WatchXYC-Info.plist"; sourceTree = "<group>"; };
 		236629952D73905A0057E268 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		23B333462ED4F09900EFD77B /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -145,6 +155,13 @@
 			);
 			target = 236629602D72D5BB0057E268 /* NowPlayingWidget */;
 		};
+		23B333552ED4F09900EFD77B /* Exceptions for "Request Share Extension" folder in "Request Share Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 23B333452ED4F09900EFD77B /* Request Share Extension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -168,6 +185,14 @@
 				236629C02D7390A00057E268 /* Exceptions for "WXYC" folder in "WXYC TV" target */,
 			);
 			path = WXYC;
+			sourceTree = "<group>";
+		};
+		23B333472ED4F09900EFD77B /* Request Share Extension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				23B333552ED4F09900EFD77B /* Exceptions for "Request Share Extension" folder in "Request Share Extension" target */,
+			);
+			path = "Request Share Extension";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -215,6 +240,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		23B333432ED4F09900EFD77B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -231,6 +263,7 @@
 			children = (
 				236629792D72D94A0057E268 /* WatchXYC-Info.plist */,
 				2366FA1F2D72CE880057E268 /* WXYC */,
+				23B333472ED4F09900EFD77B /* Request Share Extension */,
 				236609AB2D72D0270057E268 /* Frameworks */,
 				2366FA1E2D72CE880057E268 /* Products */,
 			);
@@ -243,6 +276,7 @@
 				236609BA2D72D0420057E268 /* WatchXYC.app */,
 				236629612D72D5BB0057E268 /* NowPlayingWidget.appex */,
 				236629952D73905A0057E268 /* WXYC TV.app */,
+				23B333462ED4F09900EFD77B /* Request Share Extension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -344,6 +378,7 @@
 				236609A42D72CF5A0057E268 /* PBXTargetDependency */,
 				236609C62D72D0430057E268 /* PBXTargetDependency */,
 				236629692D72D5BB0057E268 /* PBXTargetDependency */,
+				23B3334F2ED4F09900EFD77B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				2366FA1F2D72CE880057E268 /* WXYC */,
@@ -360,6 +395,28 @@
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
 			productType = "com.apple.product-type.application";
 		};
+		23B333452ED4F09900EFD77B /* Request Share Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23B333512ED4F09900EFD77B /* Build configuration list for PBXNativeTarget "Request Share Extension" */;
+			buildPhases = (
+				23B333422ED4F09900EFD77B /* Sources */,
+				23B333432ED4F09900EFD77B /* Frameworks */,
+				23B333442ED4F09900EFD77B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				23B333472ED4F09900EFD77B /* Request Share Extension */,
+			);
+			name = "Request Share Extension";
+			packageProductDependencies = (
+			);
+			productName = "Request Share Extension";
+			productReference = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -367,7 +424,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					236609B92D72D0420057E268 = {
@@ -381,6 +438,9 @@
 					};
 					2366FA1C2D72CE880057E268 = {
 						CreatedOnToolsVersion = 16.2;
+					};
+					23B333452ED4F09900EFD77B = {
+						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
 			};
@@ -404,6 +464,7 @@
 				236609B92D72D0420057E268 /* WatchXYC */,
 				236629602D72D5BB0057E268 /* NowPlayingWidget */,
 				236629942D73905A0057E268 /* WXYC TV */,
+				23B333452ED4F09900EFD77B /* Request Share Extension */,
 			);
 		};
 /* End PBXProject section */
@@ -437,6 +498,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		23B333442ED4F09900EFD77B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -462,6 +530,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		2366FA192D72CE880057E268 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		23B333422ED4F09900EFD77B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -528,6 +603,11 @@
 		239566A72D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A62D7524D50094A215 /* OpenNSFW */;
+		};
+		23B3334F2ED4F09900EFD77B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 23B333452ED4F09900EFD77B /* Request Share Extension */;
+			targetProxy = 23B3334E2ED4F09900EFD77B /* PBXContainerItemProxy */;
 		};
 		23DB84792D828090000EB53A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1095,6 +1175,94 @@
 			};
 			name = Release;
 		};
+		23B333522ED4F09900EFD77B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Request Share Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		23B333532ED4F09900EFD77B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Request Share Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		23B333542ED4F09900EFD77B /* TestFlight */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P8QACM85EZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Request Share Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = TestFlight;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1144,6 +1312,16 @@
 				2366FA312D72CE890057E268 /* Debug */,
 				2366FA322D72CE890057E268 /* Release */,
 				231A3F3D2D809A2C0045FD68 /* TestFlight */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		23B333512ED4F09900EFD77B /* Build configuration list for PBXNativeTarget "Request Share Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23B333522ED4F09900EFD77B /* Debug */,
+				23B333532ED4F09900EFD77B /* Release */,
+				23B333542ED4F09900EFD77B /* TestFlight */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
