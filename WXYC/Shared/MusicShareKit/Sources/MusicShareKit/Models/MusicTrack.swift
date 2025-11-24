@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct MusicTrack {
+public struct MusicTrack: Sendable {
     public let service: MusicServiceIdentifier
     public let url: URL
     public let title: String?
@@ -62,7 +62,7 @@ public struct MusicTrack {
     }
 }
 
-public enum MusicServiceIdentifier: String {
+public enum MusicServiceIdentifier: String, Sendable {
     case appleMusic = "apple_music"
     case spotify = "spotify"
     case bandcamp = "bandcamp"

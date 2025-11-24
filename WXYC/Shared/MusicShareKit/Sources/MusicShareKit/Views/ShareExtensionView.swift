@@ -162,7 +162,7 @@ public class ShareExtensionViewModel {
         if case .loaded(let track) = state {
             return track.service.displayName
         }
-        return "Share Music"
+        return "Send A Request"
     }
     
     var canSubmit: Bool {
@@ -293,7 +293,130 @@ public class ShareExtensionViewModel {
 
 // MARK: - Preview
 
-#Preview {
-    ShareExtensionView(extensionContext: nil)
+#Preview("Loading") {
+    ShareExtensionPreviewView(state: .loading)
 }
 
+#Preview("Error") {
+    ShareExtensionPreviewView(state: .error)
+}
+
+#Preview("Apple Music") {
+    ShareExtensionPreviewView(state: .loaded(MusicTrack(
+        service: .appleMusic,
+        url: URL(string: "https://music.apple.com/us/album/scraping-past/273128726?i=273128743")!,
+        title: "Scraping Past",
+        artist: "Atlas Sound",
+        album: "Let the Blind Lead Those Who Can See But Cannot Feel",
+        identifier: "273128743"
+    )))
+}
+
+#Preview("Spotify") {
+    ShareExtensionPreviewView(state: .loaded(MusicTrack(
+        service: .spotify,
+        url: URL(string: "https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8")!,
+        title: "Paranoid Android",
+        artist: "Radiohead",
+        album: "OK Computer",
+        identifier: "4PTG3Z6ehGkBFwjybzWkR8"
+    )))
+}
+
+#Preview("Long Title") {
+    ShareExtensionPreviewView(state: .loaded(MusicTrack(
+        service: .bandcamp,
+        url: URL(string: "https://example.bandcamp.com/track/example")!,
+        title: "A Very Long Song Title That Might Need Multiple Lines",
+        artist: "An Artist With A Really Long Name",
+        album: "An Album With An Extremely Long Title Too",
+        identifier: "123"
+    )))
+}
+
+// MARK: - Preview Helper View
+
+private struct ShareExtensionPreviewView: View {
+    let state: ShareExtensionViewModel.State
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Button("Cancel") { }
+                    
+                    Spacer()
+                    
+                    Text(headerTitle)
+                        .fontWeight(.semibold)
+                    
+                    Spacer()
+                    
+                    Button("Submit") { }
+                        .fontWeight(.semibold)
+                        .disabled(!canSubmit)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 56)
+                .background(Color(uiColor: .secondarySystemBackground))
+                
+                // Content
+                Group {
+                    switch state {
+                    case .loading:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .error:
+                        Text("No music link found")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .loaded(let track):
+                        VStack(spacing: 16) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(uiColor: .tertiarySystemFill))
+                                .frame(width: 150, height: 150)
+                                .overlay {
+                                    Image(systemName: "music.note")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.secondary)
+                                }
+                            
+                            Text(track.displayTitle)
+                                .font(.body)
+                                .multilineTextAlignment(.center)
+                            
+                            Text("via \(track.service.displayName)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(24)
+                    }
+                }
+                .frame(minHeight: 244)
+            }
+            .background(Color(uiColor: .systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .containerRelativeFrame(.horizontal) { width, _ in
+                width * 0.85
+            }
+        }
+    }
+    
+    private var headerTitle: String {
+        if case .loaded(let track) = state {
+            return track.service.displayName
+        }
+        return "Send A Request"
+    }
+    
+    private var canSubmit: Bool {
+        if case .loaded = state {
+            return true
+        }
+        return false
+    }
+}

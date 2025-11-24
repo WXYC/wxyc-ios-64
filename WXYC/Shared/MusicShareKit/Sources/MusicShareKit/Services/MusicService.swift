@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol MusicService {
+public protocol MusicService: Sendable {
     var identifier: MusicServiceIdentifier { get }
     
     /// Check if this service can handle the given URL

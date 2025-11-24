@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class BandcampService: MusicService {
+public final class BandcampService: MusicService {
     public let identifier: MusicServiceIdentifier = .bandcamp
     
     public init() {}
