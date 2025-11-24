@@ -22,6 +22,7 @@ public class AppState: ObservableObject {
 
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
     let playlistService = PlaylistService()
+    let artworkService = MultisourceArtworkService()
 
     private init() {}
 }
@@ -74,6 +75,7 @@ struct WXYCApp: App {
                 .environmentObject(appState)
                 .environment(\.radioPlayerController, RadioPlayerController.shared)
                 .environment(\.playlistService, appState.playlistService)
+                .environment(\.artworkService, appState.artworkService)
                 .onAppear {
                     setUpNowPlayingInfoCenter()
                     setUpQuickActions()
@@ -105,7 +107,7 @@ struct WXYCApp: App {
     private func setUpNowPlayingInfoCenter() {
         let nowPlayingService = NowPlayingService(
             playlistService: appState.playlistService,
-            artworkService: MultisourceArtworkService()
+            artworkService: appState.artworkService
         )
         appState.nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
             nowPlayingService: nowPlayingService,
@@ -237,5 +239,6 @@ struct WXYCApp: App {
     RootTabView()
         .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
+        .environment(\.artworkService, MultisourceArtworkService())
         .preferredColorScheme(.light)
 }

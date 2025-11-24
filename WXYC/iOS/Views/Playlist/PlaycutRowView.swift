@@ -10,6 +10,104 @@ import SwiftUI
 import Core
 import UIKit
 
+// MARK: - Artwork View Components
+
+/// Common styling for artwork views
+private struct ArtworkStyle {
+    static let cornerRadius: CGFloat = 6.0
+    static let roundedRectangle = RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
+}
+
+/// View modifier for common artwork styling
+private struct ArtworkShadowModifier: ViewModifier {
+    let shadowRadius: CGFloat
+    let shadowYOffset: CGFloat
+    
+    func body(content: Content) -> some View {
+        content
+            .glassEffect(.clear, in: ArtworkStyle.roundedRectangle)
+            .shadow(radius: shadowRadius, x: 0, y: shadowYOffset)
+    }
+}
+
+extension View {
+    fileprivate func artworkShadow(radius: CGFloat, yOffset: CGFloat) -> some View {
+        modifier(ArtworkShadowModifier(shadowRadius: radius, shadowYOffset: yOffset))
+    }
+}
+
+/// Displays loaded artwork image
+struct LoadedArtworkView: View {
+    let artwork: UIImage
+    let shadowYOffset: CGFloat
+    
+    var body: some View {
+        Image(uiImage: artwork)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .clipShape(ArtworkStyle.roundedRectangle)
+            .artworkShadow(radius: 3, yOffset: shadowYOffset)
+    }
+}
+
+/// Loading placeholder for artwork
+struct LoadingArtworkView: View {
+    let shadowYOffset: CGFloat
+    
+    var body: some View {
+        ArtworkStyle.roundedRectangle
+            .glassEffect(
+                .clear.tint(.indigo).interactive(),
+                in: ArtworkStyle.roundedRectangle
+            )
+            .preferredColorScheme(.light)
+            .opacity(0.1625)
+            .artworkShadow(radius: 3, yOffset: shadowYOffset)
+    }
+}
+
+/// Placeholder view with WXYC logo and animated gradient
+struct PlaceholderArtworkView: View {
+    let proxyHeight: CGFloat
+    let shadowYOffset: CGFloat
+    let meshGradient: TimelineView<AnimationTimelineSchedule, MeshGradient>
+    
+    var body: some View {
+        ZStack(alignment: .center) {
+            ArtworkStyle.roundedRectangle
+                .frame(
+                    maxWidth: proxyHeight * 0.75,
+                    maxHeight: proxyHeight * 0.75
+                )
+                .glassEffect(
+                    .clear
+                        .tint(
+                            Color(
+                                hue: 248 / 360,
+                                saturation: 100 / 100,
+                                brightness: 100 / 100,
+                                opacity: 0.125
+                            )
+                        )
+                        .interactive(),
+                    in: ArtworkStyle.roundedRectangle
+                )
+                .preferredColorScheme(.light)
+                .opacity(0.65)
+                .clipShape(ArtworkStyle.roundedRectangle)
+                .shadow(radius: 2, x: 0, y: shadowYOffset)
+                
+            WXYCLogo()
+                .glassEffect(.clear, in: WXYCLogo())
+                .preferredColorScheme(.light)
+                .background(meshGradient.opacity(0.6))
+                .clipShape(WXYCLogo())
+                .shadow(radius: 2, x: 0, y: shadowYOffset)
+        }
+        .backgroundStyle(.clear)
+    }
+}
+
 // Preference key to track scroll position
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -31,7 +129,7 @@ struct PlaycutRowView: View {
     private let shadowOffsetAtTop: CGFloat = -2
     private let shadowOffsetAtBottom: CGFloat = 2
 
-    private let artworkService = MultisourceArtworkService()
+    @Environment(\.artworkService) private var artworkService
 
     private var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
         TimelineView(.animation) { context in
@@ -90,74 +188,18 @@ struct PlaycutRowView: View {
                         // Artwork
                         Group {
                             if let artwork = artwork {
-                                Image(uiImage: artwork)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .clipShape(
-                                        RoundedRectangle(
-                                            cornerRadius: 6.0,
-                                            style: .circular
-                                        )
-                                    )
-                                    .glassEffect(
-                                        .clear,
-                                        in: RoundedRectangle(cornerRadius: 6.0, style: .circular)
-                                    )
-                                    .shadow(radius: 3, x: 0, y: shadowYOffset)
+                                LoadedArtworkView(
+                                    artwork: artwork,
+                                    shadowYOffset: shadowYOffset
+                                )
                             } else if isLoadingArtwork {
-                                RoundedRectangle(cornerRadius: 6.0, style: .circular)
-                                    .glassEffect(
-                                        .clear.tint(.indigo).interactive(),
-                                        in: RoundedRectangle(
-                                            cornerRadius: 6.0,
-                                            style: .circular
-                                        )
-                                    )
-                                    .preferredColorScheme(.light)
-                                    .opacity(0.1625)
-                                    .glassEffect(
-                                        .clear,
-                                        in: RoundedRectangle(cornerRadius: 6.0, style: .circular)
-                                    )
-                                    .shadow(radius: 3, x: 0, y: shadowYOffset)
+                                LoadingArtworkView(shadowYOffset: shadowYOffset)
                             } else {
-                                ZStack(alignment: .center) {
-                                    RoundedRectangle(cornerRadius: 6.0, style: .circular)
-                                        .frame(
-                                            maxWidth: proxy.size.height * 0.75,
-                                            maxHeight: proxy.size.height * 0.75
-                                        )
-                                        .glassEffect(
-                                            .clear
-                                                .tint(
-                                                    Color(
-                                                        hue: 248 / 360,
-                                                        saturation: 100 / 100,
-                                                        brightness: 100 / 100,
-                                                        opacity: 0.125
-                                                    )
-                                                )
-                                                .interactive(),
-                                            in: RoundedRectangle(
-                                                cornerRadius: 6.0,
-                                                style: .circular
-                                            )
-                                        )
-                                        .preferredColorScheme(.light)
-                                        .opacity(0.65)
-                                        .clipShape(
-                                            RoundedRectangle(cornerRadius: 6.0, style: .circular)
-                                        )
-                                        .shadow(radius: 2, x: 0, y: shadowYOffset)
-                                        
-                                    WXYCLogo()
-                                        .glassEffect(.clear, in: WXYCLogo())
-                                        .preferredColorScheme(.light)
-                                        .background(meshGradientAnimation.opacity(0.6))
-                                        .clipShape(WXYCLogo())
-                                        .shadow(radius: 2, x: 0, y: shadowYOffset)
-                                }
-                                .backgroundStyle(.clear)
+                                PlaceholderArtworkView(
+                                    proxyHeight: proxy.size.height,
+                                    shadowYOffset: shadowYOffset,
+                                    meshGradient: meshGradientAnimation
+                                )
                             }
                         }
                         .padding(12.0)
@@ -195,7 +237,6 @@ struct PlaycutRowView: View {
                 GeometryReader { scrollProxy in
                     let scrollFrame = scrollProxy.frame(in: .named("scroll"))
                     let localFrame = scrollProxy.frame(in: .local)
-                    let _ = print("🔍 Frame debug - local: \(localFrame), scroll: \(scrollFrame)")
                     
                     return Color.clear
                         .preference(
@@ -207,9 +248,6 @@ struct PlaycutRowView: View {
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
                 // Calculate shadow offset based on scroll position
                 // scrollPosition is the midY of the row in the scroll view's coordinate space
-                
-                // Debug: print the raw scroll position to understand what values we're getting
-                print("📍 Row \(playcut.songTitle): scrollPosition = \(scrollPosition)")
                 
                 // Get screen bounds to understand visible area
                 let screenHeight = UIScreen.main.bounds.height
@@ -224,8 +262,6 @@ struct PlaycutRowView: View {
                 // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
                 let range = shadowOffsetAtBottom - shadowOffsetAtTop
                 shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
-                
-                print("   → normalizedPosition = \(normalizedPosition), shadowYOffset = \(shadowYOffset)")
             }
             .task {
                 await loadArtwork()
@@ -236,6 +272,13 @@ struct PlaycutRowView: View {
     }
 
     private func loadArtwork() async {
+        guard let artworkService = artworkService else {
+            await MainActor.run {
+                isLoadingArtwork = false
+            }
+            return
+        }
+        
         do {
             let fetchedImage = try await artworkService.fetchArtwork(for: playcut)
             await MainActor.run {
@@ -290,6 +333,7 @@ struct ShareSheet: UIViewControllerRepresentable {
     PlaylistView()
         .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
+        .environment(\.artworkService, MultisourceArtworkService())
         .background(
             Image("background")
                 .resizable()
