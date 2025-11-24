@@ -14,17 +14,33 @@ struct MusicTrack {
     let artist: String?
     let album: String?
     let identifier: String?
+    var artworkURL: URL?
     
+    /// Display format: "Track Title - Artist (Album)"
     var displayTitle: String {
-        if let title = title, let artist = artist {
-            return "\(title) - \(artist)"
-        } else if let title = title {
-            return title
-        } else if let artist = artist {
-            return artist
-        } else {
+        var components: [String] = []
+        
+        if let title = title {
+            components.append(title)
+        }
+        
+        if let artist = artist {
+            if components.isEmpty {
+                components.append(artist)
+            } else {
+                components.append("- \(artist)")
+            }
+        }
+        
+        if let album = album {
+            components.append("(\(album))")
+        }
+        
+        if components.isEmpty {
             return url.absoluteString
         }
+        
+        return components.joined(separator: " ")
     }
 }
 

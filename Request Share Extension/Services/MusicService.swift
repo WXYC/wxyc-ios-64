@@ -15,5 +15,8 @@ protocol MusicService {
     
     /// Parse the URL and extract metadata to create a MusicTrack
     func parse(url: URL) -> MusicTrack?
+    
+    /// Fetch artwork URL for the track (async)
+    func fetchArtwork(for track: MusicTrack) async throws -> URL?
 }
 

@@ -45,5 +45,23 @@ class SoundCloudService: MusicService {
             identifier: identifier
         )
     }
+    
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+        // Use SoundCloud oEmbed API (no auth required)
+        // API: https://soundcloud.com/oembed?format=json&url=[url]
+        let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard let apiURL = URL(string: "https://soundcloud.com/oembed?format=json&url=\(encodedUrl)") else {
+            return nil
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: apiURL)
+        
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard let thumbnailUrlString = json?["thumbnail_url"] as? String else {
+            return nil
+        }
+        
+        return URL(string: thumbnailUrlString)
+    }
 }
 

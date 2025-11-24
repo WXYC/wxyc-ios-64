@@ -55,5 +55,28 @@ class YouTubeMusicService: MusicService {
             identifier: id
         )
     }
+    
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+        // YouTube has a predictable thumbnail URL pattern
+        // https://img.youtube.com/vi/[VIDEO_ID]/maxresdefault.jpg (high res)
+        // https://img.youtube.com/vi/[VIDEO_ID]/hqdefault.jpg (fallback)
+        guard let videoId = track.identifier else { return nil }
+        
+        // Try high-res first, fall back to HQ if not available
+        let highResUrl = URL(string: "https://img.youtube.com/vi/\(videoId)/maxresdefault.jpg")!
+        
+        // Check if high-res exists by making a HEAD request
+        var request = URLRequest(url: highResUrl)
+        request.httpMethod = "HEAD"
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+            return highResUrl
+        }
+        
+        // Fall back to HQ default
+        return URL(string: "https://img.youtube.com/vi/\(videoId)/hqdefault.jpg")
+    }
 }
 
