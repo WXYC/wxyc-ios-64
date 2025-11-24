@@ -17,6 +17,16 @@ public struct ShareExtensionView: View {
         _viewModel = State(initialValue: ShareExtensionViewModel(extensionContext: extensionContext))
     }
     
+    /// Preview initializer for testing UI states
+    fileprivate init(viewModel: ShareExtensionViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
+    
+    /// Creates a preview with a pre-configured state
+    static func preview(state: ShareExtensionViewModel.State) -> some View {
+        ShareExtensionView(viewModel: ShareExtensionViewModel(previewState: state))
+    }
+    
     public var body: some View {
         ZStack {
             // Semi-transparent background
@@ -34,7 +44,9 @@ public struct ShareExtensionView: View {
                 // Content
                 contentView
             }
-            .background(Color(uiColor: .systemBackground))
+            .background(
+                LinearGradient(colors: [.orange, .indigo], startPoint: .top, endPoint: .bottom)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .containerRelativeFrame(.horizontal) { width, _ in
                 width * 0.85
@@ -68,7 +80,7 @@ public struct ShareExtensionView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(.regularMaterial)
     }
     
     // MARK: - Content
@@ -157,13 +169,9 @@ public class ShareExtensionViewModel {
     private weak var extensionContext: NSExtensionContext?
     private let serviceRegistry = MusicServiceRegistry.shared
     private var musicTrack: MusicTrack?
+    private let isPreview: Bool
     
-    var headerTitle: String {
-        if case .loaded(let track) = state {
-            return track.service.displayName
-        }
-        return "Send A Request"
-    }
+    let headerTitle: String = "Send A Request"
     
     var canSubmit: Bool {
         if case .loaded = state {
@@ -174,6 +182,17 @@ public class ShareExtensionViewModel {
     
     public init(extensionContext: NSExtensionContext?) {
         self.extensionContext = extensionContext
+        self.isPreview = false
+    }
+    
+    /// Preview initializer for testing UI states
+    fileprivate init(previewState: State) {
+        self.extensionContext = nil
+        self.state = previewState
+        self.isPreview = true
+        if case .loaded(let track) = previewState {
+            self.musicTrack = track
+        }
     }
     
     // MARK: - Actions
@@ -196,6 +215,9 @@ public class ShareExtensionViewModel {
     // MARK: - URL Processing
     
     func extractAndProcessURL() async {
+        // Skip URL extraction for preview mode
+        guard !isPreview else { return }
+        
         guard let extensionContext = extensionContext,
               let inputItems = extensionContext.inputItems as? [NSExtensionItem] else {
             state = .error
@@ -293,130 +315,81 @@ public class ShareExtensionViewModel {
 
 // MARK: - Preview
 
-#Preview("Loading") {
-    ShareExtensionPreviewView(state: .loading)
-}
-
-#Preview("Error") {
-    ShareExtensionPreviewView(state: .error)
-}
+// Sample track data for Patrick Cowley's "Take a Little Trip" from Afternooners (Dark Entries Records, 2017)
+private let previewTrackTitle = "Take a Little Trip"
+private let previewTrackArtist = "Patrick Cowley"
+private let previewTrackAlbum = "Afternooners"
 
 #Preview("Apple Music") {
-    ShareExtensionPreviewView(state: .loaded(MusicTrack(
-        service: .appleMusic,
-        url: URL(string: "https://music.apple.com/us/album/scraping-past/273128726?i=273128743")!,
-        title: "Scraping Past",
-        artist: "Atlas Sound",
-        album: "Let the Blind Lead Those Who Can See But Cannot Feel",
-        identifier: "273128743"
-    )))
+    ShareExtensionView.preview(
+        state: .loaded(MusicTrack(
+            service: .appleMusic,
+            url: URL(string: "https://music.apple.com/us/album/take-a-little-trip/1280170831?i=1280171884")!,
+            title: previewTrackTitle,
+            artist: previewTrackArtist,
+            album: previewTrackAlbum,
+            identifier: "1280171884"
+        ))
+    )
 }
 
 #Preview("Spotify") {
-    ShareExtensionPreviewView(state: .loaded(MusicTrack(
-        service: .spotify,
-        url: URL(string: "https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8")!,
-        title: "Paranoid Android",
-        artist: "Radiohead",
-        album: "OK Computer",
-        identifier: "4PTG3Z6ehGkBFwjybzWkR8"
-    )))
+    ShareExtensionView.preview(
+        state: .loaded(MusicTrack(
+            service: .spotify,
+            url: URL(string: "https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp")!,
+            title: previewTrackTitle,
+            artist: previewTrackArtist,
+            album: previewTrackAlbum,
+            identifier: "3n3Ppam7vgaVa1iaRUc9Lp"
+        ))
+    )
 }
 
-#Preview("Long Title") {
-    ShareExtensionPreviewView(state: .loaded(MusicTrack(
-        service: .bandcamp,
-        url: URL(string: "https://example.bandcamp.com/track/example")!,
-        title: "A Very Long Song Title That Might Need Multiple Lines",
-        artist: "An Artist With A Really Long Name",
-        album: "An Album With An Extremely Long Title Too",
-        identifier: "123"
-    )))
+#Preview("Bandcamp") {
+    ShareExtensionView.preview(
+        state: .loaded(MusicTrack(
+            service: .bandcamp,
+            url: URL(string: "https://darkentriesrecords.bandcamp.com/track/take-a-little-trip")!,
+            title: previewTrackTitle,
+            artist: previewTrackArtist,
+            album: previewTrackAlbum,
+            identifier: "take-a-little-trip"
+        ))
+    )
 }
 
-// MARK: - Preview Helper View
-
-private struct ShareExtensionPreviewView: View {
-    let state: ShareExtensionViewModel.State
-    
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button("Cancel") { }
-                    
-                    Spacer()
-                    
-                    Text(headerTitle)
-                        .fontWeight(.semibold)
-                    
-                    Spacer()
-                    
-                    Button("Submit") { }
-                        .fontWeight(.semibold)
-                        .disabled(!canSubmit)
-                }
-                .padding(.horizontal, 16)
-                .frame(height: 56)
-                .background(Color(uiColor: .secondarySystemBackground))
-                
-                // Content
-                Group {
-                    switch state {
-                    case .loading:
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    case .error:
-                        Text("No music link found")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    case .loaded(let track):
-                        VStack(spacing: 16) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(uiColor: .tertiarySystemFill))
-                                .frame(width: 150, height: 150)
-                                .overlay {
-                                    Image(systemName: "music.note")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.secondary)
-                                }
-                            
-                            Text(track.displayTitle)
-                                .font(.body)
-                                .multilineTextAlignment(.center)
-                            
-                            Text("via \(track.service.displayName)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(24)
-                    }
-                }
-                .frame(minHeight: 244)
-            }
-            .background(Color(uiColor: .systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .containerRelativeFrame(.horizontal) { width, _ in
-                width * 0.85
-            }
-        }
-    }
-    
-    private var headerTitle: String {
-        if case .loaded(let track) = state {
-            return track.service.displayName
-        }
-        return "Send A Request"
-    }
-    
-    private var canSubmit: Bool {
-        if case .loaded = state {
-            return true
-        }
-        return false
-    }
+#Preview("YouTube Music") {
+    ShareExtensionView.preview(
+        state: .loaded(MusicTrack(
+            service: .youtubeMusic,
+            url: URL(string: "https://music.youtube.com/watch?v=dQw4w9WgXcQ")!,
+            title: previewTrackTitle,
+            artist: previewTrackArtist,
+            album: previewTrackAlbum,
+            identifier: "dQw4w9WgXcQ"
+        ))
+    )
 }
+
+#Preview("SoundCloud") {
+    ShareExtensionView.preview(
+        state: .loaded(MusicTrack(
+            service: .soundcloud,
+            url: URL(string: "https://soundcloud.com/patrick-cowley/take-a-little-trip")!,
+            title: previewTrackTitle,
+            artist: previewTrackArtist,
+            album: previewTrackAlbum,
+            identifier: "take-a-little-trip"
+        ))
+    )
+}
+
+#Preview("Loading") {
+    ShareExtensionView.preview(state: .loading)
+}
+
+#Preview("Error") {
+    ShareExtensionView.preview(state: .error)
+}
+
