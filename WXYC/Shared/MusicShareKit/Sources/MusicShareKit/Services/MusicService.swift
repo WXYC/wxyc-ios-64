@@ -18,5 +18,16 @@ public protocol MusicService: Sendable {
     
     /// Fetch artwork URL for the track (async)
     func fetchArtwork(for track: MusicTrack) async throws -> URL?
+    
+    /// Fetch full metadata for the track (async). Returns updated track with title, artist, album, and artwork.
+    /// Default implementation returns the original track unchanged.
+    func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack
+}
+
+extension MusicService {
+    /// Default implementation returns the track unchanged
+    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+        return track
+    }
 }
 

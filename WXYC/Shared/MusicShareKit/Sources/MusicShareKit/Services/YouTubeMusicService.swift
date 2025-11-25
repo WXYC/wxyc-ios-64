@@ -35,13 +35,8 @@ public final class YouTubeMusicService: MusicService {
             // Handle youtube.com and music.youtube.com URLs
             // Format: https://music.youtube.com/watch?v=VIDEO_ID
             if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
-                // Try v parameter first (standard)
                 if let vParam = components.queryItems?.first(where: { $0.name == "v" })?.value {
                     videoId = vParam
-                }
-                // Some URLs might use different formats
-                else if let path = components.path.components(separatedBy: "/").last, !path.isEmpty {
-                    videoId = path
                 }
             }
         }
@@ -59,11 +54,46 @@ public final class YouTubeMusicService: MusicService {
     }
     
     public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
-        // YouTube has a predictable thumbnail URL pattern
-        // https://img.youtube.com/vi/[VIDEO_ID]/maxresdefault.jpg (high res)
-        // https://img.youtube.com/vi/[VIDEO_ID]/hqdefault.jpg (fallback)
-        guard let videoId = track.identifier else { return nil }
+        // Artwork is fetched as part of fetchMetadata, return cached value
+        return track.artworkURL
+    }
+    
+    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+        guard let videoId = track.identifier else { return track }
         
+        // Use YouTube oEmbed API (no auth required)
+        // API: https://www.youtube.com/oembed?url={url}&format=json
+        let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard let apiURL = URL(string: "https://www.youtube.com/oembed?url=\(encodedUrl)&format=json") else {
+            return track
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: apiURL)
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return track
+        }
+        
+        // Extract metadata from oEmbed response
+        let title = json["title"] as? String
+        let artist = json["author_name"] as? String
+        
+        // Use direct YouTube thumbnail URL for better quality than oEmbed thumbnail
+        let artworkURL = try await fetchHighQualityThumbnail(videoId: videoId)
+        
+        return MusicTrack(
+            service: track.service,
+            url: track.url,
+            title: title ?? track.title,
+            artist: artist ?? track.artist,
+            album: nil, // YouTube doesn't have albums
+            identifier: track.identifier,
+            artworkURL: artworkURL ?? track.artworkURL
+        )
+    }
+    
+    private func fetchHighQualityThumbnail(videoId: String) async throws -> URL? {
+        // YouTube has a predictable thumbnail URL pattern
         // Try high-res first, fall back to HQ if not available
         let highResUrl = URL(string: "https://img.youtube.com/vi/\(videoId)/maxresdefault.jpg")!
         
@@ -81,4 +111,3 @@ public final class YouTubeMusicService: MusicService {
         return URL(string: "https://img.youtube.com/vi/\(videoId)/hqdefault.jpg")
     }
 }
-
