@@ -62,7 +62,7 @@ public struct MusicTrack: Sendable {
     }
 }
 
-public enum MusicServiceIdentifier: String, Sendable {
+public enum MusicServiceIdentifier: String, Sendable, CaseIterable {
     case appleMusic = "apple_music"
     case spotify = "spotify"
     case bandcamp = "bandcamp"
