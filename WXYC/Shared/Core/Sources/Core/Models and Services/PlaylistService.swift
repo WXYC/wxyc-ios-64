@@ -7,140 +7,113 @@
 //
 
 import Foundation
-import Logger
-import PostHog
-import SwiftUI
-import Analytics
+import Synchronization
 
 public final actor PlaylistService: Sendable {
-    private let remoteFetcher: PlaylistFetcher
+    private let fetcher: RemotePlaylistFetcher
     private let interval: TimeInterval
     private var currentPlaylist: Playlist = .empty
-    private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
     private var fetchTask: Task<Void, Never>?
+    private let playlistStream: AsyncStream<Playlist>
+    private let continuation: AsyncStream<Playlist>.Continuation
+    private let observerCount = Atomic<Int>(0)
 
     public init(
-        remoteFetcher: PlaylistFetcher = URLSession.shared,
+        fetcher: RemotePlaylistFetcher = RemotePlaylistFetcher(),
         interval: TimeInterval = 30
     ) {
-        self.remoteFetcher = remoteFetcher
+        self.fetcher = fetcher
         self.interval = interval
+
+        // Create single stream with single continuation
+        var cont: AsyncStream<Playlist>.Continuation!
+        self.playlistStream = AsyncStream { continuation in
+            cont = continuation
+        }
+        self.continuation = cont
     }
 
-    /// Returns an AsyncStream that immediately yields the current cached playlist,
-    /// then yields updates whenever the playlist changes.
-    /// Multiple observers share a single fetch cycle.
+    /// Returns an AsyncStream that yields playlist updates.
+    /// If a cached playlist exists, it's yielded immediately.
+    /// Otherwise, observers wait for the first fetch to complete.
+    /// Multiple observers share a single stream.
     public nonisolated func updates() -> AsyncStream<Playlist> {
+        // Return a new stream that wraps the shared stream and tracks lifecycle
         return AsyncStream { continuation in
-            let id = UUID()
-            
-            // Start fetch task and register continuation
-            Task { [weak self] in
-                guard let self else { return }
-                
-                // Start the fetch task if not already running
-                if await self.fetchTask == nil {
-                    await self.startFetchTask()
+            let observerTask = Task { [weak self] in
+                guard let self else {
+                    continuation.finish()
+                    return
                 }
-                
-                // Immediately yield current cached value
-                let current = await self.currentPlaylist
-                continuation.yield(current)
-                
-                // Register for future updates
-                await self.registerContinuation(id: id, continuation: continuation)
+
+                // Atomically increment observer count
+                self.observerCount.wrappingAdd(1, ordering: .relaxed)
+                await self.ensureFetchTaskRunning()
+
+                // Forward all values from shared stream to this continuation
+                for await playlist in self.playlistStream {
+                    continuation.yield(playlist)
+                }
+
+                continuation.finish()
             }
-            
-            // Clean up on termination
-            continuation.onTermination = { [weak self] _ in
-                Task { [weak self] in
-                    await self?.removeContinuation(id: id)
+
+            continuation.onTermination = { @Sendable [weak self] _ in
+                observerTask.cancel()
+
+                guard let self else { return }
+
+                // Atomically decrement and check if zero (synchronously!)
+                let newCount = self.observerCount.wrappingSubtract(1, ordering: .relaxed)
+                if newCount.newValue == 0 {
+                    Task {
+                        await self.cancelFetchTask()
+                    }
                 }
             }
         }
     }
-    
-    private func startFetchTask() {
-        fetchTask = Task { await startFetching() }
+
+    private func cancelFetchTask() {
+        fetchTask?.cancel()
+        fetchTask = nil
     }
-    
-    private func registerContinuation(id: UUID, continuation: AsyncStream<Playlist>.Continuation) {
-        continuations[id] = continuation
+
+    deinit {
+        continuation.finish()
+        fetchTask?.cancel()
     }
-    
-    private func removeContinuation(id: UUID) {
-        continuations.removeValue(forKey: id)
+
+    /// Atomically ensure the fetch task is running
+    private func ensureFetchTaskRunning() {
+        guard fetchTask == nil else { return }
+
+        fetchTask = Task {
+            await startFetching()
+        }
     }
 
     /// Single background fetch loop shared by all observers
     private func startFetching() async {
+        // Yield current cache if non-empty
+        if currentPlaylist != .empty {
+            continuation.yield(currentPlaylist)
+        }
+
         while !Task.isCancelled {
-            let playlist = await fetchPlaylist()
-            
+            let playlist = await fetcher.fetchPlaylist()
+
+            guard !Task.isCancelled else { break }
+
             // Only broadcast if changed
             if playlist != currentPlaylist {
                 currentPlaylist = playlist
-                broadcast(playlist)
+                continuation.yield(playlist)
             }
-            
+
+            guard !Task.isCancelled else { break }
+
             try? await Task.sleep(for: .seconds(interval))
-        }
-    }
-    
-    /// Broadcast playlist update to all active observers
-    private func broadcast(_ playlist: Playlist) {
-        for (_, continuation) in continuations {
-            continuation.yield(playlist)
-        }
-    }
-
-    public func fetchPlaylist() async -> Playlist {
-        Log(.info, "Fetching remote playlist")
-        let timer = Timer.start()
-        do {
-            let playlist = try await self.remoteFetcher.getPlaylist()
-            let duration = timer.duration()
-            Log(.info, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
-            
-            if (1...10).randomElement() ?? 1 % 10 == 0 {
-                PostHogSDK.shared.capture("fetchPlaylist", additionalData: ["duration":"\(duration)"])
-            }
-            
-            return playlist
-        } catch let error as NSError {
-            let duration = timer.duration()
-            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            assert(duration > 0.01)
-            PostHogSDK.shared.capture(
-                error: error.localizedDescription,
-                code: error.code,
-                context: "fetchPlaylist",
-                additionalData: ["duration":"\(duration)"]
-            )
-
-            return Playlist.empty
-        } catch let error as AnalyticsOSError {
-            let duration = timer.duration()
-            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            assert(duration > 0.01)
-            PostHogSDK.shared.capture(
-                error: error,
-                context: "fetchPlaylist",
-                additionalData: ["duration":"\(duration)"]
-            )
-
-            return Playlist.empty
-        } catch let error as AnalyticsDecoderError {
-            let duration = timer.duration()
-            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            assert(duration > 0.01)
-            PostHogSDK.shared.capture(
-                error: error,
-                context: "fetchPlaylist",
-                additionalData: ["duration":"\(duration)"]
-            )
-
-            return Playlist.empty
         }
     }
 }
