@@ -83,7 +83,8 @@ public final class AppleMusicService: MusicService {
         }
         
         // Extract metadata from response
-        let title = firstResult["trackName"] as? String
+        // Use trackName for songs, fall back to collectionName for album shares
+        let title = firstResult["trackName"] as? String ?? firstResult["collectionName"] as? String
         let artist = firstResult["artistName"] as? String
         let album = firstResult["collectionName"] as? String
         
