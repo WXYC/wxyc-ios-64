@@ -54,19 +54,31 @@ final class Provider: TimelineProvider, Sendable {
         )
 
         Task {
-            let playlist = await playlistService.fetchPlaylist()
-            let recentPlaycuts = playlist.playcuts
+            let playlist = await playlistService
+                .updates()
+                .first()
+            
+            guard let playlist else {
+                let entry = NowPlayingTimelineEntry(
+                    nowPlayingItem: .placeholder,
+                    recentItems: [],
+                    family: context.family
+                )
+                completion(entry)
+                return
+            }
+            
+            var nowPlayingItems = await playlist.playcuts
                 .sorted(by: >)
                 .prefix(4)
+                .asyncFlatMap { playcut in
+                    NowPlayingItem(
+                        playcut: playcut,
+                        artwork: try? await self.artworkService.fetchArtwork(for: playcut)
+                    )
+                }
 
-            var nowPlayingItemsWithArtwork = await recentPlaycuts.asyncFlatMap { playcut in
-                NowPlayingItem(
-                    playcut: playcut,
-                    artwork: try? await self.artworkService.fetchArtwork(for: playcut)
-                )
-            }
-
-            let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
+            let (nowPlayingItem, recentItems) = nowPlayingItems.popFirst()
             let entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
                 recentItems: recentItems,
@@ -87,37 +99,39 @@ final class Provider: TimelineProvider, Sendable {
 
         Task {
             var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
+            var entry: NowPlayingTimelineEntry = .placeholder(family: family)
 
             if context.isPreview {
-                nowPlayingItemsWithArtwork = [
-                    NowPlayingItem.placeholder,
-                    NowPlayingItem.placeholder,
-                    NowPlayingItem.placeholder,
-                    NowPlayingItem.placeholder,
-                ]
+                nowPlayingItemsWithArtwork = Array(repeating: .placeholder, count: 4)
             } else {
                 // Create separate instances for timeline generation
                 // (widgets run in separate process)
                 let playlistService = PlaylistService()
                 let artworkService = MultisourceArtworkService()
 
-                let playlist = await playlistService.fetchPlaylist()
-                var playcuts = playlist.playcuts
-                    .sorted(by: >)
-                playcuts = Array(playcuts.prefix(4))
+                let playlist = await playlistService.updates().first()
+                
+                if let playlist = playlist {
+                    let playcuts = playlist
+                        .playcuts
+                        .sorted(by: >)
+                        .prefix(4)
 
-                nowPlayingItemsWithArtwork = await playcuts.asyncFlatMap { playcut in
-                    NowPlayingItem(
-                        playcut: playcut,
-                        artwork: try? await artworkService.fetchArtwork(for: playcut)
-                    )
+                    nowPlayingItemsWithArtwork = await playcuts.asyncFlatMap { playcut in
+                        NowPlayingItem(
+                            playcut: playcut,
+                            artwork: try? await artworkService.fetchArtwork(for: playcut)
+                        )
+                    }
+                } else {
+                    
                 }
             }
 
             nowPlayingItemsWithArtwork.sort(by: >)
             let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
 
-            let entry = NowPlayingTimelineEntry(
+            entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
                 recentItems: recentItems,
                 family: context.family
@@ -622,6 +636,17 @@ extension ShapeStyle where Self == Color {
         Color(white: 1, opacity: 0.25)
     }
 }
+
+extension AsyncStream {
+    func first() async -> Element? {
+        for await element in self {
+            return element
+        }
+        
+        return nil
+    }
+}
+
 
 #Preview(as: .systemLarge) {
     NowPlayingWidget()
