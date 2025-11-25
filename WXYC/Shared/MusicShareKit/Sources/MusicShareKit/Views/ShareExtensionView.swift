@@ -5,10 +5,9 @@
 //  Created by Jake Bromberg on 11/24/25.
 //
 
-import SwiftUI
 #if canImport(UIKit)
+import SwiftUI
 import UIKit
-#endif
 
 public struct ShareExtensionView: View {
     @State private var viewModel: ShareExtensionViewModel
@@ -25,6 +24,11 @@ public struct ShareExtensionView: View {
     /// Creates a preview with a pre-configured state
     static func preview(state: ShareExtensionViewModel.State) -> some View {
         ShareExtensionView(viewModel: ShareExtensionViewModel(previewState: state))
+    }
+    
+    /// Creates a preview that loads real data from a URL
+    static func preview(url: URL) -> some View {
+        ShareExtensionView(viewModel: ShareExtensionViewModel(previewURL: url))
     }
     
     public var body: some View {
@@ -45,7 +49,14 @@ public struct ShareExtensionView: View {
                 contentView
             }
             .background(
-                LinearGradient(colors: [.orange, .indigo], startPoint: .top, endPoint: .bottom)
+                LinearGradient(
+                    colors: [
+                        .orange,
+                        .yellow
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .containerRelativeFrame(.horizontal) { width, _ in
@@ -170,6 +181,7 @@ public class ShareExtensionViewModel {
     private let serviceRegistry = MusicServiceRegistry.shared
     private var musicTrack: MusicTrack?
     private let isPreview: Bool
+    private var previewURL: URL?
     
     let headerTitle: String = "Send A Request"
     
@@ -195,6 +207,13 @@ public class ShareExtensionViewModel {
         }
     }
     
+    /// Preview initializer that loads real data from a URL
+    fileprivate init(previewURL: URL) {
+        self.extensionContext = nil
+        self.isPreview = true
+        self.previewURL = previewURL
+    }
+    
     // MARK: - Actions
     
     func cancel() {
@@ -215,7 +234,13 @@ public class ShareExtensionViewModel {
     // MARK: - URL Processing
     
     func extractAndProcessURL() async {
-        // Skip URL extraction for preview mode
+        // For URL-based previews, process the stored URL
+        if let previewURL = previewURL {
+            await processURL(previewURL)
+            return
+        }
+        
+        // Skip URL extraction for state-based preview mode
         guard !isPreview else { return }
         
         guard let extensionContext = extensionContext,
@@ -280,15 +305,24 @@ public class ShareExtensionViewModel {
     }
     
     private func processURL(_ url: URL) async {
-        guard let track = serviceRegistry.parse(url: url) else {
+        guard var track = serviceRegistry.parse(url: url) else {
             state = .error
             return
+        }
+        
+        // Fetch full metadata (title, artist, artwork) before displaying
+        if let service = serviceRegistry.identifyService(for: url) {
+            do {
+                track = try await service.fetchMetadata(for: track)
+            } catch {
+                print("Failed to fetch metadata: \(error)")
+            }
         }
         
         self.musicTrack = track
         state = .loaded(track)
         
-        // Fetch artwork
+        // Fetch artwork image if we have an artwork URL
         await fetchArtwork(for: track)
     }
     
@@ -315,73 +349,33 @@ public class ShareExtensionViewModel {
 
 // MARK: - Preview
 
-// Sample track data for Patrick Cowley's "Take a Little Trip" from Afternooners (Dark Entries Records, 2017)
-private let previewTrackTitle = "Take a Little Trip"
-private let previewTrackArtist = "Patrick Cowley"
-private let previewTrackAlbum = "Afternooners"
-
 #Preview("Apple Music") {
     ShareExtensionView.preview(
-        state: .loaded(MusicTrack(
-            service: .appleMusic,
-            url: URL(string: "https://music.apple.com/us/album/take-a-little-trip/1280170831?i=1280171884")!,
-            title: previewTrackTitle,
-            artist: previewTrackArtist,
-            album: previewTrackAlbum,
-            identifier: "1280171884"
-        ))
+        url: URL(string: "https://music.apple.com/us/album/take-a-little-trip/1280170831?i=1280171884")!
     )
 }
 
 #Preview("Spotify") {
     ShareExtensionView.preview(
-        state: .loaded(MusicTrack(
-            service: .spotify,
-            url: URL(string: "https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp")!,
-            title: previewTrackTitle,
-            artist: previewTrackArtist,
-            album: previewTrackAlbum,
-            identifier: "3n3Ppam7vgaVa1iaRUc9Lp"
-        ))
+        url: URL(string: "https://open.spotify.com/track/5ghb02xEjrv3ZSrURC6O57?si=1d8bb9822f3a4f28")!
     )
 }
 
 #Preview("Bandcamp") {
     ShareExtensionView.preview(
-        state: .loaded(MusicTrack(
-            service: .bandcamp,
-            url: URL(string: "https://darkentriesrecords.bandcamp.com/track/take-a-little-trip")!,
-            title: previewTrackTitle,
-            artist: previewTrackArtist,
-            album: previewTrackAlbum,
-            identifier: "take-a-little-trip"
-        ))
+        url: URL(string: "https://patrickcowley.bandcamp.com/album/afternooners")!
     )
 }
 
-#Preview("YouTube Music") {
+#Preview("YouTube") {
     ShareExtensionView.preview(
-        state: .loaded(MusicTrack(
-            service: .youtubeMusic,
-            url: URL(string: "https://music.youtube.com/watch?v=dQw4w9WgXcQ")!,
-            title: previewTrackTitle,
-            artist: previewTrackArtist,
-            album: previewTrackAlbum,
-            identifier: "dQw4w9WgXcQ"
-        ))
+        url: URL(string: "https://www.youtube.com/watch?v=7SKorvPNRDI")!
     )
 }
 
 #Preview("SoundCloud") {
     ShareExtensionView.preview(
-        state: .loaded(MusicTrack(
-            service: .soundcloud,
-            url: URL(string: "https://soundcloud.com/patrick-cowley/take-a-little-trip")!,
-            title: previewTrackTitle,
-            artist: previewTrackArtist,
-            album: previewTrackAlbum,
-            identifier: "take-a-little-trip"
-        ))
+        url: URL(string: "https://soundcloud.com/darkentriesrecords/patrick-cowley-surfside-sex")!
     )
 }
 
@@ -392,4 +386,6 @@ private let previewTrackAlbum = "Afternooners"
 #Preview("Error") {
     ShareExtensionView.preview(state: .error)
 }
+
+#endif
 
