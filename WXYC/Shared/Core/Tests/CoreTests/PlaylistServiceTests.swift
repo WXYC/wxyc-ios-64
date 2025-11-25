@@ -3,21 +3,15 @@ import Foundation
 import Analytics
 @testable import Core
 
-// MARK: - Mock PlaylistFetcher
+// MARK: - Mock RemotePlaylistFetcher
 
-final class MockPlaylistFetcher: PlaylistFetcher, @unchecked Sendable {
-    var playlistToReturn: Playlist?
-    var errorToThrow: Error?
+final class MockRemotePlaylistFetcher: RemotePlaylistFetcher, @unchecked Sendable {
+    var playlistToReturn: Playlist = .empty
     var callCount = 0
 
-    func getPlaylist() async throws -> Playlist {
+    override func fetchPlaylist() async -> Playlist {
         callCount += 1
-
-        if let error = errorToThrow {
-            throw error
-        }
-
-        return playlistToReturn ?? .empty
+        return playlistToReturn
     }
 }
 
@@ -27,108 +21,12 @@ final class MockPlaylistFetcher: PlaylistFetcher, @unchecked Sendable {
 @Suite("PlaylistService Tests")
 struct PlaylistServiceTests {
 
-    // MARK: - Fetching Tests
-
-    @Test("Fetch playlist successfully")
-    func fetchPlaylistSuccess() async throws {
-        // Given
-        let mockFetcher = MockPlaylistFetcher()
-        let expectedPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Test Song",
-                    labelName: "Test Label",
-                    artistName: "Test Artist",
-                    releaseTitle: "Test Release"
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        mockFetcher.playlistToReturn = expectedPlaylist
-
-        let service = PlaylistService(remoteFetcher: mockFetcher)
-
-        // When
-        let result = await service.fetchPlaylist()
-
-        // Then
-        #expect(mockFetcher.callCount == 1)
-        #expect(result.playcuts.count == 1)
-        #expect(result.playcuts.first?.songTitle == "Test Song")
-        #expect(result.playcuts.first?.artistName == "Test Artist")
-    }
-
-    @Test("Fetch playlist returns empty on NSError")
-    func fetchPlaylistReturnsEmptyOnNSError() async throws {
-        // Given
-        let mockFetcher = MockPlaylistFetcher()
-        let nsError = NSError(
-            domain: "test.error",
-            code: 404,
-            userInfo: [NSLocalizedDescriptionKey: "Not found"]
-        )
-        mockFetcher.errorToThrow = nsError
-
-        let service = PlaylistService(remoteFetcher: mockFetcher)
-
-        // When
-        let result = await service.fetchPlaylist()
-
-        // Then
-        #expect(mockFetcher.callCount == 1)
-        #expect(result.playcuts.isEmpty)
-        #expect(result.breakpoints.isEmpty)
-        #expect(result.talksets.isEmpty)
-    }
-
-    @Test("Fetch playlist handles analytics errors")
-    func fetchPlaylistHandlesAnalyticsErrors() async throws {
-        // Given
-        let mockFetcher = MockPlaylistFetcher()
-        let analyticsError = AnalyticsOSError(
-            domain: "analytics.error",
-            code: 500,
-            description: "Analytics error"
-        )
-        mockFetcher.errorToThrow = analyticsError
-
-        let service = PlaylistService(remoteFetcher: mockFetcher)
-
-        // When
-        let result = await service.fetchPlaylist()
-
-        // Then
-        #expect(mockFetcher.callCount == 1)
-        #expect(result.playcuts.isEmpty)
-    }
-
-    @Test("Fetch playlist handles decoder errors")
-    func fetchPlaylistHandlesDecoderErrors() async throws {
-        // Given
-        let mockFetcher = MockPlaylistFetcher()
-        let decoderError = AnalyticsDecoderError(description: "Decoding failed")
-        mockFetcher.errorToThrow = decoderError
-
-        let service = PlaylistService(remoteFetcher: mockFetcher)
-
-        // When
-        let result = await service.fetchPlaylist()
-
-        // Then
-        #expect(mockFetcher.callCount == 1)
-        #expect(result.playcuts.isEmpty)
-    }
-
-    // MARK: - AsyncSequence Tests
+    // MARK: - Updates Stream Tests
 
     @Test("Updates stream yields playlists")
     func updatesStreamYieldsPlaylists() async throws {
         // Given
-        let mockFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let playlist1 = Playlist(
             playcuts: [
                 Playcut(
@@ -146,9 +44,9 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = playlist1
 
-        let service = PlaylistService(remoteFetcher: mockFetcher, interval: 0.1)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1)
 
-        // When - Get first playlist from stream
+        // When - Get first playlist from stream (waits for fetch since cache is empty)
         var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
 
@@ -161,7 +59,7 @@ struct PlaylistServiceTests {
     @Test("Updates stream yields cached value immediately")
     func updatesStreamYieldsCachedValueImmediately() async throws {
         // Given - Set up service with initial data
-        let mockFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let initialPlaylist = Playlist(
             playcuts: [
                 Playcut(
@@ -179,15 +77,16 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = initialPlaylist
 
-        let service = PlaylistService(remoteFetcher: mockFetcher, interval: 0.1)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1)
 
-        // Populate the cache with an initial fetch
-        _ = await service.fetchPlaylist()
+        // Populate the cache with an initial fetch from the first observer
+        var firstIterator = service.updates().makeAsyncIterator()
+        _ = await firstIterator.next()
 
-        // When - New observer starts observing
+        // When - New observer starts observing (should get cached value immediately)
         let startTime = Date()
-        var iterator = service.updates().makeAsyncIterator()
-        let cachedPlaylist = await iterator.next()
+        var secondIterator = service.updates().makeAsyncIterator()
+        let cachedPlaylist = await secondIterator.next()
         let duration = Date().timeIntervalSince(startTime)
 
         // Then - Should get cached value very quickly (< 100ms, not waiting for network)
@@ -195,10 +94,42 @@ struct PlaylistServiceTests {
         #expect(duration < 0.1) // Should be nearly instant
     }
 
+    @Test("Updates stream waits for first fetch when cache is empty")
+    func updatesStreamWaitsForFirstFetchWhenCacheIsEmpty() async throws {
+        // Given
+        let mockFetcher = MockRemotePlaylistFetcher()
+        let playlist = Playlist(
+            playcuts: [
+                Playcut(
+                    id: 1,
+                    hour: 1000,
+                    chronOrderID: 1,
+                    songTitle: "Fresh Song",
+                    labelName: nil,
+                    artistName: "Fresh Artist",
+                    releaseTitle: nil
+                )
+            ],
+            breakpoints: [],
+            talksets: []
+        )
+        mockFetcher.playlistToReturn = playlist
+
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1)
+
+        // When - Observer starts with empty cache
+        var iterator = service.updates().makeAsyncIterator()
+        let firstPlaylist = await iterator.next()
+
+        // Then - Should get the fetched playlist (not empty)
+        #expect(firstPlaylist?.playcuts.first?.songTitle == "Fresh Song")
+        #expect(mockFetcher.callCount == 1)
+    }
+
     @Test("Updates stream only broadcasts when playlist changes")
     func updatesStreamOnlyBroadcastsWhenPlaylistChanges() async throws {
         // Given
-        let mockFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let playlist = Playlist(
             playcuts: [
                 Playcut(
@@ -216,7 +147,7 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = playlist
 
-        let service = PlaylistService(remoteFetcher: mockFetcher, interval: 0.05)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.05)
 
         // When - Get two playlists from stream
         var iterator = service.updates().makeAsyncIterator()

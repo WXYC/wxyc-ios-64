@@ -73,15 +73,4 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             return NowPlayingItem(playcut: playcut, artwork: artwork)
         }
     }
-
-    /// Fetch a single now playing item immediately without iterating
-    public func fetchOnce() async throws -> NowPlayingItem? {
-        let playlist = await playlistService.fetchPlaylist()
-        guard let playcut = playlist.playcuts.first else {
-            Log(.info, "No playcut found in fetched playlist")
-            return nil
-        }
-        let artwork = try await artworkService.fetchArtwork(for: playcut)
-        return NowPlayingItem(playcut: playcut, artwork: artwork)
-    }
 }

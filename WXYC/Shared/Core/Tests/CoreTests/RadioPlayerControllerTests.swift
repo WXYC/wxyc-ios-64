@@ -363,6 +363,9 @@ struct RadioPlayerControllerTests {
         #expect(mockPlayer.pauseCallCount > pauseCountBefore)
     }
 
+    // MARK: - Audio Session Tests
+
+    #if os(iOS)
     @Test("Handles audio session interruption - began")
     func handlesInterruptionBegan() async throws {
         // Given
@@ -465,6 +468,7 @@ struct RadioPlayerControllerTests {
         // Then - Should handle gracefully (just logs)
         #expect(true) // No crash = success
     }
+    #endif
 
     // MARK: - App Lifecycle Tests
 

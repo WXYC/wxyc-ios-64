@@ -13,7 +13,7 @@ struct NowPlayingServiceTests {
     @Test("AsyncSequence yields NowPlayingItem from playlist")
     func asyncSequenceYieldsNowPlayingItem() async throws {
         // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let mockArtworkService = MockArtworkService()
         let testImage = Image.gradientImage()
         mockArtworkService.artworkToReturn = testImage
@@ -32,9 +32,9 @@ struct NowPlayingServiceTests {
             breakpoints: [],
             talksets: []
         )
-        mockPlaylistFetcher.playlistToReturn = playlist
+        mockFetcher.playlistToReturn = playlist
 
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher, interval: 0.1)
+        let playlistService = PlaylistService(fetcher: mockFetcher, interval: 0.1)
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: mockArtworkService
@@ -56,13 +56,13 @@ struct NowPlayingServiceTests {
     @Test("AsyncSequence skips empty playlists")
     func asyncSequenceSkipsEmptyPlaylists() async throws {
         // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let mockArtworkService = MockArtworkService()
 
         // Start with empty playlist
-        mockPlaylistFetcher.playlistToReturn = .empty
+        mockFetcher.playlistToReturn = .empty
 
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher, interval: 0.05)
+        let playlistService = PlaylistService(fetcher: mockFetcher, interval: 0.05)
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: mockArtworkService
@@ -82,7 +82,7 @@ struct NowPlayingServiceTests {
                 artistName: "Test Artist",
                 releaseTitle: nil
             )
-            mockPlaylistFetcher.playlistToReturn = Playlist(
+            mockFetcher.playlistToReturn = Playlist(
                 playcuts: [playcut],
                 breakpoints: [],
                 talksets: []
@@ -99,7 +99,7 @@ struct NowPlayingServiceTests {
     @Test("AsyncSequence updates when playlist changes")
     func asyncSequenceUpdatesWhenPlaylistChanges() async throws {
         // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let mockArtworkService = MockArtworkService()
 
         let playcut1 = Playcut(
@@ -111,13 +111,13 @@ struct NowPlayingServiceTests {
             artistName: "First Artist",
             releaseTitle: nil
         )
-        mockPlaylistFetcher.playlistToReturn = Playlist(
+        mockFetcher.playlistToReturn = Playlist(
             playcuts: [playcut1],
             breakpoints: [],
             talksets: []
         )
 
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher, interval: 0.05)
+        let playlistService = PlaylistService(fetcher: mockFetcher, interval: 0.05)
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: mockArtworkService
@@ -141,7 +141,7 @@ struct NowPlayingServiceTests {
             artistName: "Second Artist",
             releaseTitle: nil
         )
-        mockPlaylistFetcher.playlistToReturn = Playlist(
+        mockFetcher.playlistToReturn = Playlist(
             playcuts: [playcut2],
             breakpoints: [],
             talksets: []
@@ -157,7 +157,7 @@ struct NowPlayingServiceTests {
     @Test("AsyncSequence uses first playcut from playlist")
     func asyncSequenceUsesFirstPlaycut() async throws {
         // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
+        let mockFetcher = MockRemotePlaylistFetcher()
         let mockArtworkService = MockArtworkService()
 
         let playcut1 = Playcut(
@@ -189,13 +189,13 @@ struct NowPlayingServiceTests {
         )
 
         // Playlist with multiple playcuts (sorted descending by chronOrderID)
-        mockPlaylistFetcher.playlistToReturn = Playlist(
+        mockFetcher.playlistToReturn = Playlist(
             playcuts: [playcut1, playcut2, playcut3],
             breakpoints: [],
             talksets: []
         )
 
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher, interval: 0.1)
+        let playlistService = PlaylistService(fetcher: mockFetcher, interval: 0.1)
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: mockArtworkService
@@ -209,106 +209,6 @@ struct NowPlayingServiceTests {
         #expect(nowPlayingItem?.playcut.id == 1)
         #expect(nowPlayingItem?.playcut.songTitle == "Third Song")
         #expect(nowPlayingItem?.playcut.chronOrderID == 3)
-    }
-
-    // MARK: - fetchOnce Tests
-
-    @Test("fetchOnce returns NowPlayingItem immediately")
-    func fetchOnceReturnsImmediately() async throws {
-        // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
-        let mockArtworkService = MockArtworkService()
-        let testImage = Image.gradientImage()
-        mockArtworkService.artworkToReturn = testImage
-
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
-        mockPlaylistFetcher.playlistToReturn = Playlist(
-            playcuts: [playcut],
-            breakpoints: [],
-            talksets: []
-        )
-
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher)
-        let nowPlayingService = NowPlayingService(
-            playlistService: playlistService,
-            artworkService: mockArtworkService
-        )
-
-        // When
-        let nowPlayingItem = try await nowPlayingService.fetchOnce()
-
-        // Then
-        #expect(nowPlayingItem != nil)
-        #expect(nowPlayingItem?.playcut.songTitle == "Test Song")
-        #expect(nowPlayingItem?.playcut.artistName == "Test Artist")
-        #expect(nowPlayingItem?.artwork === testImage)
-    }
-
-    @Test("fetchOnce returns nil for empty playlist")
-    func fetchOnceReturnsNilForEmptyPlaylist() async throws {
-        // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
-        let mockArtworkService = MockArtworkService()
-
-        mockPlaylistFetcher.playlistToReturn = .empty
-
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher)
-        let nowPlayingService = NowPlayingService(
-            playlistService: playlistService,
-            artworkService: mockArtworkService
-        )
-
-        // When
-        let nowPlayingItem = try await nowPlayingService.fetchOnce()
-
-        // Then
-        #expect(nowPlayingItem == nil)
-    }
-
-    @Test("fetchOnce fetches artwork for playcut")
-    func fetchOnceFetchesArtwork() async throws {
-        // Given
-        let mockPlaylistFetcher = MockPlaylistFetcher()
-        let mockArtworkService = MockArtworkService()
-        let expectedImage = Image.gradientImage()
-        mockArtworkService.artworkToReturn = expectedImage
-
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
-        mockPlaylistFetcher.playlistToReturn = Playlist(
-            playcuts: [playcut],
-            breakpoints: [],
-            talksets: []
-        )
-
-        let playlistService = PlaylistService(remoteFetcher: mockPlaylistFetcher)
-        let nowPlayingService = NowPlayingService(
-            playlistService: playlistService,
-            artworkService: mockArtworkService
-        )
-
-        // When
-        let nowPlayingItem = try await nowPlayingService.fetchOnce()
-
-        // Then
-        #expect(nowPlayingItem?.artwork === expectedImage)
-        let callCount = mockArtworkService.fetchCount
-        #expect(callCount == 1)
     }
 
     // MARK: - NowPlayingItem Tests
