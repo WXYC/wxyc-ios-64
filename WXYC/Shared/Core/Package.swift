@@ -5,10 +5,15 @@ import PackageDescription
 let package = Package(
     name: "Core",
     platforms: [
-        .iOS(.v26), .watchOS(.v26), .macOS(.v26)
+        .iOS(.v26),
+        .watchOS(.v26),
+        .macOS(.v26)
     ],
     products: [
-        .library(name: "Core", targets: ["Core"])
+        .library(
+            name: "Core",
+            targets: ["Core"]
+        )
     ],
     dependencies: [
         .package(name: "Analytics", path: "../Analytics"),

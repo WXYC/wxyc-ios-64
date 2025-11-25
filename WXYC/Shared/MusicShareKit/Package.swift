@@ -7,6 +7,7 @@ let package = Package(
     name: "MusicShareKit",
     platforms: [
         .iOS(.v18),
+        .watchOS(.v11),
         .macOS(.v26)
     ],
     products: [
@@ -14,9 +15,13 @@ let package = Package(
             name: "MusicShareKit",
             targets: ["MusicShareKit"]),
     ],
+    dependencies: [
+        .package(path: "../RequestService"),
+    ],
     targets: [
         .target(
-            name: "MusicShareKit"),
+            name: "MusicShareKit",
+            dependencies: ["RequestService"]),
         .testTarget(
             name: "MusicShareKitTests",
             dependencies: ["MusicShareKit"]),
