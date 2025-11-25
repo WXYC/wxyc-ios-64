@@ -78,10 +78,10 @@ public struct RequestService: Sendable {
     ///   - title: The song title
     ///   - artist: The artist name
     ///   - url: Optional URL to the track (e.g., Spotify, Apple Music link)
-    public func sendRequest(title: String, artist: String, url: URL? = nil) async throws {
+    public func sendRequest(title: String, artist: String, album: String? = nil) async throws {
         var message = "\(title) by \(artist)"
-        if let url = url {
-            message += "\n\(url.absoluteString)"
+        if let album {
+            message += " from the album \(album)"
         }
         try await sendRequest(message: message)
     }
@@ -110,4 +110,5 @@ public enum RequestServiceError: Error, LocalizedError {
         }
     }
 }
+
 
