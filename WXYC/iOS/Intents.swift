@@ -13,7 +13,7 @@ import Core
 import Logger
 import PostHog
 import UIKit
-import Secrets
+import RequestService
 
 struct IntentError: Error {
     let description: String
@@ -113,7 +113,10 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     public init() { }
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
         let nowPlayingService = await MainActor.run { AppServices.nowPlayingService() }
-        guard let nowPlayingItem = try await nowPlayingService.fetchOnce() else {
+
+        // Get the first item from the now playing service
+        var iterator = nowPlayingService.makeAsyncIterator()
+        guard let nowPlayingItem = try await iterator.next() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
             PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
             Log(.error, error.localizedDescription)
@@ -179,41 +182,11 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     }
     
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog {
-        let message = "A listener has sent in a request: \(request)"
-        try await sendMessageToServer(message: String(message))
+        try await RequestService.shared.sendRequest(message: request)
         return .result(
             value: "Done",
-            dialog: "Sent"
+            dialog: "Request sent!"
         )
-    }
-    
-    func sendMessageToServer(message: String) async throws {
-//        guard let url = URL(string: Secrets.slackWxycRequestsWebhook) else { return }
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
-//        request.addValue("application/json", forHTTPHeaderField: "Content-type")
-//        
-//        let json: [String: Any] = ["text": message]
-//        guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
-//        request.httpBody = jsonData
-//        
-//        PostHogSDK.shared.capture(
-//            "Request sent",
-//            context: "MakeARequest Intent",
-//            additionalData: [
-//                "message": message
-//            ]
-//        )
-//        
-//        do {
-//            let (_, response) = try await URLSession.shared.data(for: request)
-//            if let response = response as? HTTPURLResponse {
-//                print("Response status code: \(response.statusCode)")
-//            }
-//        } catch {
-//            print("Error: \(error)")
-//            PostHogSDK.shared.capture(error: error, context: "MakeARequest Intent")
-//        }
     }
 }
 

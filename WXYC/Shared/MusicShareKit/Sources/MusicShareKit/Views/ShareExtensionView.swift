@@ -8,6 +8,7 @@
 #if canImport(UIKit)
 import SwiftUI
 import UIKit
+import RequestService
 
 public struct ShareExtensionView: View {
     @State private var viewModel: ShareExtensionViewModel
@@ -223,12 +224,20 @@ public class ShareExtensionViewModel {
     func submit() {
         guard let track = musicTrack else { return }
         
-        // TODO: Implement actual submission logic here
-        print("Submitting track: \(track.displayTitle)")
-        print("Service: \(track.service.displayName)")
-        print("URL: \(track.url.absoluteString)")
-        
-        extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+        Task {
+            do {
+                try await RequestService.shared.sendRequest(
+                    title: track.title ?? track.displayTitle,
+                    artist: track.artist ?? "Unknown Artist",
+                    url: track.url
+                )
+                extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+            } catch {
+                print("Failed to submit request: \(error)")
+                // Still complete the extension even on error to avoid hanging
+                extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+            }
+        }
     }
     
     // MARK: - URL Processing

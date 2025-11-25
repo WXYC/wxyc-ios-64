@@ -13,8 +13,7 @@ import Core
 import Logger
 import PostHog
 import Analytics
-import Secrets
-import ObfuscateMacro
+import RequestService
 
 struct InfoDetailView: View {
     @State private var showingLogPrompt = false
@@ -99,50 +98,10 @@ struct InfoDetailView: View {
     }
 
     private func sendRequest(message: String) async {
-        guard !message.isEmpty else { return }
-
         do {
-            let url = URL(string: Secrets.requestOMatic)!
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.addValue("application/json", forHTTPHeaderField: "Content-type")
-
-            let json: [String: Any] = ["message": message]
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else { return }
-            request.httpBody = jsonData
-
-            PostHogSDK.shared.capture(
-                "Request sent",
-                context: "Info ViewController",
-                additionalData: [
-                    "message": message
-                ]
-            )
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let response = response as? HTTPURLResponse else {
-                Log(.error, "No response object from Slack")
-                return
-            }
-
-            if response.statusCode == 200 {
-                Log(.info, "Response status code: \(response.statusCode)")
-                
-                PostHogSDK.shared.capture(
-                    "Request sent",
-                    context: "Info ViewController",
-                    additionalData: [
-                        "message": message
-                    ]
-                )
-            } else {
-                Log(.error, "Response status code: \(response.statusCode)")
-                Log(.error, "Data: \(String(data: data, encoding: .utf8) ?? "nil")")
-            }
-
+            try await RequestService.shared.sendRequest(message: message)
         } catch {
-            Log(.error, "Error sending message to Slack: \(error)")
+            Log(.error, "Error sending request: \(error)")
             PostHogSDK.shared.capture(error: error, context: "Info ViewController")
         }
     }
