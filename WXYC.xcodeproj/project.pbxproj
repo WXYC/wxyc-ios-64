@@ -19,9 +19,12 @@
 		236629AC2D73908D0057E268 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AB2D73908D0057E268 /* Core */; };
 		236629AE2D73908D0057E268 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AD2D73908D0057E268 /* Logger */; };
 		236629B02D73908D0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AF2D73908D0057E268 /* OpenNSFW */; };
+		238EC73B2ED6280500077EA0 /* RequestService in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2842ED55562001818C3 /* RequestService */; };
+		238EC7CA2ED628DB00077EA0 /* RequestService in Frameworks */ = {isa = PBXBuildFile; productRef = 238EC7C92ED628DB00077EA0 /* RequestService */; };
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
+		23A8E2922ED564AD001818C3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23B35B512ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B502ED50C0F00EFD77B /* MusicShareKit */; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
@@ -129,18 +132,9 @@
 				Shared/Analytics,
 				Shared/Core,
 				Shared/Logger,
-				Shared/MusicShareKit/Package.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Models/MusicTrack.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/AppleMusicService.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/BandcampService.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/MusicService.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/MusicServiceRegistry.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/SoundCloudService.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/SpotifyService.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Services/YouTubeMusicService.swift,
-				Shared/MusicShareKit/Sources/MusicShareKit/Views/ShareExtensionView.swift,
-				Shared/MusicShareKit/Tests/MusicShareKitTests/MusicShareKitTests.swift,
+				Shared/MusicShareKit,
 				Shared/OpenNSFW,
+				Shared/RequestService,
 				Shared/Secrets,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
@@ -232,6 +226,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				238EC7CA2ED628DB00077EA0 /* RequestService in Frameworks */,
 				2395669D2D7524CE0094A215 /* Logger in Frameworks */,
 				2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */,
 				2395669B2D7524CE0094A215 /* Core in Frameworks */,
@@ -252,8 +247,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				238EC73B2ED6280500077EA0 /* RequestService in Frameworks */,
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
 				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
+				23A8E2922ED564AD001818C3 /* PostHog in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
 				231260472D938C1600762428 /* Secrets in Frameworks */,
@@ -341,6 +338,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				238EC7C82ED628D400077EA0 /* PBXTargetDependency */,
 				239566A32D7524D50094A215 /* PBXTargetDependency */,
 				239566A52D7524D50094A215 /* PBXTargetDependency */,
 				239566A72D7524D50094A215 /* PBXTargetDependency */,
@@ -350,6 +348,7 @@
 				2395669A2D7524CE0094A215 /* Core */,
 				2395669C2D7524CE0094A215 /* Logger */,
 				2395669E2D7524CE0094A215 /* OpenNSFW */,
+				238EC7C92ED628DB00077EA0 /* RequestService */,
 			);
 			productName = NowPlayingWidget;
 			productReference = 236629612D72D5BB0057E268 /* NowPlayingWidget.appex */;
@@ -411,6 +410,8 @@
 				236609B02D72D0270057E268 /* OpenNSFW */,
 				23DB847A2D828093000EB53A /* Analytics */,
 				231260462D938C1600762428 /* Secrets */,
+				23A8E2842ED55562001818C3 /* RequestService */,
+				23A8E2912ED564AD001818C3 /* PostHog */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -427,7 +428,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				23B3AB8E2ED5122300EFD77B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				23B333472ED4F09900EFD77B /* Request Share Extension */,
@@ -477,7 +477,7 @@
 			mainGroup = 2366FA142D72CE880057E268;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				23B3AB852ED5121C00EFD77B /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
+				23A8E2902ED564AD001818C3 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
@@ -616,6 +616,10 @@
 			isa = PBXTargetDependency;
 			productRef = 236629A72D7390650057E268 /* OpenNSFW */;
 		};
+		238EC7C82ED628D400077EA0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 238EC7C72ED628D400077EA0 /* RequestService */;
+		};
 		239566A32D7524D50094A215 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 239566A22D7524D50094A215 /* Core */;
@@ -633,10 +637,6 @@
 			platformFilter = ios;
 			target = 23B333452ED4F09900EFD77B /* Request Share Extension */;
 			targetProxy = 23B3334E2ED4F09900EFD77B /* PBXContainerItemProxy */;
-		};
-		23B3AB8E2ED5122300EFD77B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 23B3AB8D2ED5122300EFD77B /* MusicShareKit */;
 		};
 		23DB84792D828090000EB53A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -740,6 +740,10 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared/RequestService/.build/prebuilts/swift-syntax/602.0.0/swift-6.2-RELEASE-MacroSupport-macos_aarch64/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
@@ -1016,6 +1020,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared/RequestService/.build/prebuilts/swift-syntax/602.0.0/swift-6.2-RELEASE-MacroSupport-macos_aarch64/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1058,6 +1066,10 @@
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared/RequestService/.build/prebuilts/swift-syntax/602.0.0/swift-6.2-RELEASE-MacroSupport-macos_aarch64/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
@@ -1357,12 +1369,16 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		23B3AB852ED5121C00EFD77B /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/MusicShareKit;
+/* Begin XCRemoteSwiftPackageReference section */
+		23A8E2902ED564AD001818C3 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.35.0;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		231260462D938C1600762428 /* Secrets */ = {
@@ -1441,6 +1457,14 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
+		238EC7C72ED628D400077EA0 /* RequestService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RequestService;
+		};
+		238EC7C92ED628DB00077EA0 /* RequestService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RequestService;
+		};
 		2395669A2D7524CE0094A215 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -1465,13 +1489,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
 		};
+		23A8E2842ED55562001818C3 /* RequestService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RequestService;
+		};
+		23A8E2912ED564AD001818C3 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23A8E2902ED564AD001818C3 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
 		23B35B502ED50C0F00EFD77B /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = MusicShareKit;
-		};
-		23B3AB8D2ED5122300EFD77B /* MusicShareKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 23B3AB852ED5121C00EFD77B /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */;
 			productName = MusicShareKit;
 		};
 		23DB84782D828090000EB53A /* Analytics */ = {
