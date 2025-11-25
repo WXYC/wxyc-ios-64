@@ -35,6 +35,16 @@ class ShareViewController: UIViewController {
         
         // Make the hosting controller's view transparent so our SwiftUI background shows
         hostingController.view.backgroundColor = .clear
+        hostingController.view.isOpaque = false
         view.backgroundColor = .clear
+        view.isOpaque = false
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Clear the system-provided share extension card background
+        view.superview?.backgroundColor = .clear
+        view.superview?.superview?.backgroundColor = .clear
     }
 }
