@@ -17,11 +17,12 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../RequestService"),
+        .package(path: "../Secrets"),
     ],
     targets: [
         .target(
             name: "MusicShareKit",
-            dependencies: ["RequestService"]),
+            dependencies: ["RequestService", "Secrets"]),
         .testTarget(
             name: "MusicShareKitTests",
             dependencies: ["MusicShareKit"]),

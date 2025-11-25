@@ -9,6 +9,7 @@
 import SwiftUI
 import UIKit
 import RequestService
+import Secrets
 
 public struct ShareExtensionView: View {
     @State private var viewModel: ShareExtensionViewModel
@@ -93,6 +94,7 @@ public struct ShareExtensionView: View {
         .padding(.horizontal, 16)
         .frame(height: 56)
         .background(.regularMaterial)
+        .tint(.init(red: 0.820, green: 0.441, blue: 0.664))
     }
     
     // MARK: - Content
@@ -229,7 +231,7 @@ public class ShareExtensionViewModel {
                 try await RequestService.shared.sendRequest(
                     title: track.title ?? track.displayTitle,
                     artist: track.artist ?? "Unknown Artist",
-                    url: track.url
+                    album: track.album
                 )
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             } catch {
@@ -243,6 +245,12 @@ public class ShareExtensionViewModel {
     // MARK: - URL Processing
     
     func extractAndProcessURL() async {
+        // Configure Spotify credentials
+        await SpotifyService.configure(credentials: SpotifyCredentials(
+            clientId: Secrets.spotifyClientId,
+            clientSecret: Secrets.spotifyClientSecret
+        ))
+        
         // For URL-based previews, process the stored URL
         if let previewURL = previewURL {
             await processURL(previewURL)
