@@ -108,6 +108,41 @@ struct PlaceholderArtworkView: View {
     }
 }
 
+#Preview("PlaceholderArtworkView") {
+    let colors: [Color] = [
+        .indigo, .orange, .pink, .purple,
+        .yellow, .blue, .green, .indigo,
+        .pink, .purple, .yellow, .blue,
+        .green, .indigo, .orange, .pink
+    ]
+    
+    let meshGradient = TimelineView(.animation) { context in
+        let time = context.date.timeIntervalSince1970
+        let offsetX = Float(sin(time)) * 0.25
+        let offsetY = Float(cos(time)) * 0.25
+        
+        MeshGradient(
+            width: 4,
+            height: 4,
+            points: [
+                [0.0, 0.0], [0.3, 0.0], [0.7, 0.0], [1.0, 0.0],
+                [0.0, 0.3], [0.2 + offsetX, 0.4 + offsetY], [0.7 + offsetX, 0.2 + offsetY], [1.0, 0.3],
+                [0.0, 0.7], [0.3 + offsetX, 0.8], [0.7 + offsetX, 0.6], [1.0, 0.7],
+                [0.0, 1.0], [0.3, 1.0], [0.7, 1.0], [1.0, 1.0]
+            ],
+            colors: colors
+        )
+    }
+    
+    PlaceholderArtworkView(
+        proxyHeight: 150,
+        shadowYOffset: 0,
+        meshGradient: meshGradient
+    )
+    .frame(width: 150, height: 150)
+    .padding()
+}
+
 // Preference key to track scroll position
 struct ScrollOffsetPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -126,8 +161,8 @@ struct PlaycutRowView: View {
     @State private var shadowYOffset: CGFloat = 0
     
     // Shadow offset configuration
-    private let shadowOffsetAtTop: CGFloat = -2
-    private let shadowOffsetAtBottom: CGFloat = 2
+    private let shadowOffsetAtTop: CGFloat = -3
+    private let shadowOffsetAtBottom: CGFloat = 3
 
     @Environment(\.artworkService) private var artworkService
 
