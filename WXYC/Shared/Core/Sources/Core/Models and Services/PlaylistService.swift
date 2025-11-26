@@ -7,16 +7,15 @@
 //
 
 import Foundation
-import Synchronization
 
 public final actor PlaylistService: Sendable {
     private let fetcher: RemotePlaylistFetcher
     private let interval: TimeInterval
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
-    private let playlistStream: AsyncStream<Playlist>
-    private let continuation: AsyncStream<Playlist>.Continuation
-    private let observerCount = Atomic<Int>(0)
+    
+    /// Collection of continuations for broadcasting to multiple observers
+    private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
 
     public init(
         fetcher: RemotePlaylistFetcher = RemotePlaylistFetcher(),
@@ -24,53 +23,62 @@ public final actor PlaylistService: Sendable {
     ) {
         self.fetcher = fetcher
         self.interval = interval
-
-        // Create single stream with single continuation
-        var cont: AsyncStream<Playlist>.Continuation!
-        self.playlistStream = AsyncStream { continuation in
-            cont = continuation
-        }
-        self.continuation = cont
     }
 
     /// Returns an AsyncStream that yields playlist updates.
     /// If a cached playlist exists, it's yielded immediately.
     /// Otherwise, observers wait for the first fetch to complete.
-    /// Multiple observers share a single stream.
+    /// Multiple observers each receive their own stream of updates.
     public nonisolated func updates() -> AsyncStream<Playlist> {
-        // Return a new stream that wraps the shared stream and tracks lifecycle
+        let id = UUID()
+        
         return AsyncStream { continuation in
-            let observerTask = Task { [weak self] in
+            let setupTask = Task { [weak self] in
                 guard let self else {
                     continuation.finish()
                     return
                 }
-
-                // Atomically increment observer count
-                self.observerCount.wrappingAdd(1, ordering: .relaxed)
-                await self.ensureFetchTaskRunning()
-
-                // Forward all values from shared stream to this continuation
-                for await playlist in self.playlistStream {
-                    continuation.yield(playlist)
-                }
-
-                continuation.finish()
+                
+                await self.addContinuation(continuation, for: id)
             }
-
+            
             continuation.onTermination = { @Sendable [weak self] _ in
-                observerTask.cancel()
-
+                setupTask.cancel()
+                
                 guard let self else { return }
-
-                // Atomically decrement and check if zero (synchronously!)
-                let newCount = self.observerCount.wrappingSubtract(1, ordering: .relaxed)
-                if newCount.newValue == 0 {
-                    Task {
-                        await self.cancelFetchTask()
-                    }
+                
+                Task {
+                    await self.removeContinuation(for: id)
                 }
             }
+        }
+    }
+    
+    private func addContinuation(_ continuation: AsyncStream<Playlist>.Continuation, for id: UUID) {
+        continuations[id] = continuation
+        
+        // Yield current cache immediately if non-empty
+        if currentPlaylist != .empty {
+            continuation.yield(currentPlaylist)
+        }
+        
+        // Start fetching if not already running
+        ensureFetchTaskRunning()
+    }
+    
+    private func removeContinuation(for id: UUID) {
+        continuations.removeValue(forKey: id)
+        
+        // Stop fetching if no more observers
+        if continuations.isEmpty {
+            cancelFetchTask()
+        }
+    }
+    
+    /// Broadcast a playlist update to all observers
+    private func broadcast(_ playlist: Playlist) {
+        for continuation in continuations.values {
+            continuation.yield(playlist)
         }
     }
 
@@ -80,11 +88,13 @@ public final actor PlaylistService: Sendable {
     }
 
     deinit {
-        continuation.finish()
+        for continuation in continuations.values {
+            continuation.finish()
+        }
         fetchTask?.cancel()
     }
 
-    /// Atomically ensure the fetch task is running
+    /// Ensure the fetch task is running
     private func ensureFetchTaskRunning() {
         guard fetchTask == nil else { return }
 
@@ -95,11 +105,6 @@ public final actor PlaylistService: Sendable {
 
     /// Single background fetch loop shared by all observers
     private func startFetching() async {
-        // Yield current cache if non-empty
-        if currentPlaylist != .empty {
-            continuation.yield(currentPlaylist)
-        }
-
         while !Task.isCancelled {
             let playlist = await fetcher.fetchPlaylist()
 
@@ -108,7 +113,7 @@ public final actor PlaylistService: Sendable {
             // Only broadcast if changed
             if playlist != currentPlaylist {
                 currentPlaylist = playlist
-                continuation.yield(playlist)
+                broadcast(playlist)
             }
 
             guard !Task.isCancelled else { break }

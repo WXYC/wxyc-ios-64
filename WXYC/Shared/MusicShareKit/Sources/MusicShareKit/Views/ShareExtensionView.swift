@@ -31,57 +31,38 @@ public struct ShareExtensionView: View {
     /// Creates a preview that loads real data from a URL
     static func preview(url: URL) -> some View {
         ShareExtensionView(viewModel: ShareExtensionViewModel(previewURL: url))
+            .frame(maxWidth: .infinity)
     }
     
     public var body: some View {
         ZStack {
-            // Semi-transparent background
-            Color.black.opacity(0.4)
+            Image("background", bundle: .module)
+                .resizable()
                 .ignoresSafeArea()
-                .onTapGesture {
-                    viewModel.cancel()
-                }
             
-            // Card container
-            VStack(spacing: 0) {
-                // Header
-                headerView
-                
-                // Content
+            VStack(alignment: .center, spacing: 0) {
                 contentView
+                
+                Spacer()
+                
+                footerView
+                    .safeAreaPadding(.bottom)
             }
-            .background(
-                LinearGradient(
-                    colors: [
-                        .orange,
-                        .yellow
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .containerRelativeFrame(.horizontal) { width, _ in
-                width * 0.85
-            }
+            .foregroundStyle(.white)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
             await viewModel.extractAndProcessURL()
         }
     }
     
-    // MARK: - Header
+    // MARK: - Footer
     
-    private var headerView: some View {
+    private var footerView: some View {
         HStack {
             Button("Cancel") {
                 viewModel.cancel()
             }
-            
-            Spacer()
-            
-            Text(viewModel.headerTitle)
-                .fontWeight(.semibold)
             
             Spacer()
             
@@ -92,9 +73,6 @@ public struct ShareExtensionView: View {
             .disabled(!viewModel.canSubmit)
         }
         .padding(.horizontal, 16)
-        .frame(height: 56)
-        .background(.regularMaterial)
-        .tint(.init(red: 0.820, green: 0.441, blue: 0.664))
     }
     
     // MARK: - Content
@@ -111,7 +89,7 @@ public struct ShareExtensionView: View {
                 trackView(track)
             }
         }
-        .frame(minHeight: 244)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
     
     private var loadingView: some View {
@@ -185,8 +163,6 @@ public class ShareExtensionViewModel {
     private var musicTrack: MusicTrack?
     private let isPreview: Bool
     private var previewURL: URL?
-    
-    let headerTitle: String = "Send A Request"
     
     var canSubmit: Bool {
         if case .loaded = state {
@@ -405,4 +381,3 @@ public class ShareExtensionViewModel {
 }
 
 #endif
-
