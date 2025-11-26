@@ -344,6 +344,7 @@ public class ShareExtensionViewModel {
         for item in inputItems {
             if let attachments = item.attachments {
                 for attachment in attachments {
+                    // First try public.url type
                     if attachment.hasItemConformingToTypeIdentifier("public.url") {
                         do {
                             let url = try await loadURL(from: attachment)
@@ -351,6 +352,19 @@ public class ShareExtensionViewModel {
                             return
                         } catch {
                             print("Error loading URL: \(error)")
+                        }
+                    }
+                    
+                    // Try public.plain-text type (used by Bandcamp and other apps)
+                    if attachment.hasItemConformingToTypeIdentifier("public.plain-text") {
+                        do {
+                            let text = try await loadText(from: attachment)
+                            if let url = extractURL(from: text) {
+                                await processURL(url)
+                                return
+                            }
+                        } catch {
+                            print("Error loading text: \(error)")
                         }
                     }
                 }
@@ -381,6 +395,25 @@ public class ShareExtensionViewModel {
                     continuation.resume(returning: url)
                 } else {
                     continuation.resume(throwing: NSError(domain: "ShareExtension", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"]))
+                }
+            }
+        }
+    }
+    
+    private func loadText(from attachment: NSItemProvider) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            attachment.loadItem(forTypeIdentifier: "public.plain-text", options: nil) { data, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                if let text = data as? String {
+                    continuation.resume(returning: text)
+                } else if let data = data as? Data, let text = String(data: data, encoding: .utf8) {
+                    continuation.resume(returning: text)
+                } else {
+                    continuation.resume(throwing: NSError(domain: "ShareExtension", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid text"]))
                 }
             }
         }
