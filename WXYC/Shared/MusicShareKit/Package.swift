@@ -6,8 +6,8 @@ import PackageDescription
 let package = Package(
     name: "MusicShareKit",
     platforms: [
-        .iOS(.v18),
-        .watchOS(.v11),
+        .iOS(.v26),
+        .watchOS(.v26),
         .macOS(.v26)
     ],
     products: [
@@ -22,7 +22,11 @@ let package = Package(
     targets: [
         .target(
             name: "MusicShareKit",
-            dependencies: ["RequestService", "Secrets"]),
+            dependencies: ["RequestService", "Secrets"],
+            resources: [
+                .process("Resources/Assets.xcassets")
+            ],
+        ),
         .testTarget(
             name: "MusicShareKitTests",
             dependencies: ["MusicShareKit"]),

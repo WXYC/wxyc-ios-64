@@ -6,8 +6,8 @@ import PackageDescription
 let package = Package(
     name: "RequestService",
     platforms: [
-        .iOS(.v18),
-        .watchOS(.v11),
+        .iOS(.v26),
+        .watchOS(.v26),
         .macOS(.v26)
     ],
     products: [
