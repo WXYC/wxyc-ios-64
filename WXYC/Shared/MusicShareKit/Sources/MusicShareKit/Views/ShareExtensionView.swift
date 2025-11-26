@@ -103,8 +103,13 @@ public struct ShareExtensionView: View {
     }
     
     private func trackView(_ track: MusicTrack) -> some View {
-        VStack(spacing: 16) {
-            // Artwork
+        VStack(spacing: 20) {
+            logo
+
+            Text("Send a request")
+                .font(.title3)
+                .fontWeight(.semibold)
+
             artworkView
             
             // Track info
@@ -137,6 +142,54 @@ public struct ShareExtensionView: View {
                         ProgressView()
                     }
                 }
+        }
+    }
+    
+    private var logo: some View {
+        meshGradient
+            .opacity(0.25)
+            .clipShape(WXYCLogo())
+            .glassEffect(.regular, in: WXYCLogo())
+            .shadow(
+                color: .orange.opacity(0.5),
+                radius: 2,
+                y: 3
+            )
+            .frame(height: 80)
+    }
+    
+    static let palette: [Color] = [
+        .indigo,
+        .orange,
+        .pink,
+        .purple,
+        .yellow,
+        .blue,
+        .green,
+    ]
+    
+    // Generate colors once at initialization
+    static let gradientColors: [Color] = (0..<16).map { _ in
+        palette.randomElement()!
+    }
+    
+    var meshGradient: some View {
+        TimelineView(.animation) { context in
+            let time = context.date.timeIntervalSince1970
+            let offsetX = Float(sin(time)) * 0.25
+            let offsetY = Float(cos(time)) * 0.25
+
+            MeshGradient(
+                width: 4,
+                height: 4,
+                points: [
+                    [0.0, 0.0], [0.3, 0.0], [0.7, 0.0], [1.0, 0.0],
+                    [0.0, 0.3], [0.2 + offsetX, 0.4 + offsetY], [0.7 + offsetX, 0.2 + offsetY], [1.0, 0.3],
+                    [0.0, 0.7], [0.3 + offsetX, 0.8], [0.7 + offsetX, 0.6], [1.0, 0.7],
+                    [0.0, 1.0], [0.3, 1.0], [0.7, 1.0], [1.0, 1.0]
+                ],
+                colors: Self.gradientColors
+            )
         }
     }
 }
