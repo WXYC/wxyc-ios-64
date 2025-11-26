@@ -96,7 +96,7 @@ public struct ShareExtensionView: View {
             } else {
                 BackgroundMesh()
                     .opacity(0.95)
-                    .blendMode(.multiply)
+                    .blendMode(.screen)
             }
         }
     }

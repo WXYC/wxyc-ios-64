@@ -17,7 +17,7 @@ struct PlaylistView: View {
         ZStack {
             Color.clear
             
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 PlayerHeaderView()
                 
                 // Playlist entries
