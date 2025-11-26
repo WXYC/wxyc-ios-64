@@ -101,18 +101,132 @@ extension [URLQueryItem] {
 }
 
 
-private struct Discogs {
+// MARK: - Discogs API Models
+
+struct Discogs {
     struct SearchResults: Codable {
-        let results: [Results]
+        let results: [SearchResult]
+    }
+    
+    struct SearchResult: Codable {
+        let coverImage: URL
+        let masterId: Int?
+        let id: Int
+        let type: String
+        let label: [String]?
+        let year: String?
+        let uri: String?
+        let resourceUrl: String?
         
-        struct Results: Codable {
-            let coverImage: URL
-            let masterId: Int?
-            
-            enum CodingKeys: String, CodingKey {
-                case coverImage = "cover_image"
-                case masterId = "master_id"
+        enum CodingKeys: String, CodingKey {
+            case coverImage = "cover_image"
+            case masterId = "master_id"
+            case id
+            case type
+            case label
+            case year
+            case uri
+            case resourceUrl = "resource_url"
+        }
+        
+        /// Constructs the full Discogs web URL from the uri field
+        var discogsWebURL: URL? {
+            guard let uri = uri else { return nil }
+            return URL(string: "https://www.discogs.com\(uri)")
+        }
+        
+        /// Parsed release year as Int
+        var releaseYear: Int? {
+            guard let year = year else { return nil }
+            return Int(year)
+        }
+        
+        /// First label name if available
+        var primaryLabel: String? {
+            label?.first
+        }
+    }
+    
+    // MARK: - Artist Models
+    
+    struct Artist: Codable {
+        let id: Int
+        let name: String
+        let profile: String?
+        let urls: [String]?
+        let images: [ArtistImage]?
+        
+        /// Finds Wikipedia URL from the urls array
+        var wikipediaURL: URL? {
+            guard let urls = urls else { return nil }
+            let wikipediaString = urls.first { url in
+                url.lowercased().contains("wikipedia.org") ||
+                url.lowercased().contains("en.wikipedia")
             }
+            return wikipediaString.flatMap { URL(string: $0) }
+        }
+    }
+    
+    struct ArtistImage: Codable {
+        let uri: String
+        let type: String
+    }
+    
+    // MARK: - Release Models (for detailed info)
+    
+    struct Release: Codable {
+        let id: Int
+        let title: String
+        let year: Int?
+        let labels: [Label]?
+        let artists: [ReleaseArtist]?
+        let uri: String?
+        
+        struct Label: Codable {
+            let name: String
+            let id: Int
+        }
+        
+        struct ReleaseArtist: Codable {
+            let id: Int
+            let name: String
+        }
+        
+        var primaryLabel: String? {
+            labels?.first?.name
+        }
+        
+        var primaryArtistId: Int? {
+            artists?.first?.id
+        }
+        
+        var discogsWebURL: URL? {
+            guard let uri = uri else { return nil }
+            return URL(string: "https://www.discogs.com\(uri)")
+        }
+    }
+    
+    // MARK: - Master Release Models
+    
+    struct Master: Codable {
+        let id: Int
+        let title: String
+        let year: Int?
+        let uri: String?
+        let artists: [ReleaseArtist]?
+        
+        struct ReleaseArtist: Codable {
+            let id: Int
+            let name: String
+        }
+        
+        var primaryArtistId: Int? {
+            artists?.first?.id
+        }
+        
+        var discogsWebURL: URL? {
+            guard let uri = uri else { return nil }
+            return URL(string: "https://www.discogs.com\(uri)")
         }
     }
 }

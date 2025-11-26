@@ -157,6 +157,7 @@ struct PlaycutRowView: View {
     @State private var artwork: UIImage?
     @State private var isLoadingArtwork = true
     @State private var showingShareSheet = false
+    @State private var showingDetailSheet = false
     @State private var timeOffset: Int = (-10..<10).randomElement()!
     @State private var colors = Self.randomColors()
     @State private var shadowYOffset: CGFloat = 0
@@ -251,17 +252,19 @@ struct PlaycutRowView: View {
                                 .foregroundStyle(.white)
                         }
                         .padding(0)
-                        .padding(.trailing, 12.0)
                         
-                        //            // Share button
-                        //            Button(action: {
-                        //                showingShareSheet = true
-                        //            }) {
-                        //                Image(systemName: "ellipsis")
-                        //                    .font(.title3)
-                        //                    .foregroundStyle(.white)
-                        //                    .frame(width: 44, height: 44)
-                        //            }
+                        Spacer()
+                        
+                        // Info button
+                        Button {
+                            showingDetailSheet = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.title3)
+                                .foregroundStyle(.white.opacity(0.8))
+                                .frame(width: 44, height: 44)
+                        }
+                        .padding(.trailing, 4)
                     }
                 }
             }
@@ -304,6 +307,9 @@ struct PlaycutRowView: View {
             }
             .sheet(isPresented: $showingShareSheet) {
                 ShareSheet(playcut: playcut, artwork: artwork)
+            }
+            .sheet(isPresented: $showingDetailSheet) {
+                PlaycutDetailView(playcut: playcut, artwork: artwork)
             }
     }
 
