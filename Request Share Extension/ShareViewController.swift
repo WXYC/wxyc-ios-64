@@ -39,12 +39,4 @@ class ShareViewController: UIViewController {
         view.backgroundColor = .clear
         view.isOpaque = false
     }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        
-        // Clear the system-provided share extension card background
-        view.superview?.backgroundColor = .clear
-        view.superview?.superview?.backgroundColor = .clear
-    }
 }
