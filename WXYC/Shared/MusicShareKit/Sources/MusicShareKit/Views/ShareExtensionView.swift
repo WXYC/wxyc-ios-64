@@ -63,13 +63,12 @@ public struct ShareExtensionView: View {
             Button("Cancel") {
                 viewModel.cancel()
             }
+            .wxycShareStyle(fontColor: .pink, weight: .regular)
             
-            Spacer()
-            
-            Button("Submit") {
+            Button("Request") {
                 viewModel.submit()
             }
-            .fontWeight(.semibold)
+            .wxycShareStyle(fontColor: .purple, weight: .bold)
             .disabled(!viewModel.canSubmit)
         }
         .padding(.horizontal, 16)
@@ -139,6 +138,36 @@ public struct ShareExtensionView: View {
                     }
                 }
         }
+    }
+}
+
+extension Button {
+    func wxycShareStyle(
+        fontColor: Color,
+        weight: Font.Weight
+    ) -> some View {
+        modifier(
+            ButtonModifier(
+                fontColor: fontColor,
+                weight: weight
+            )
+        )
+    }
+}
+
+struct ButtonModifier: ViewModifier {
+    let fontColor: Color
+    let weight: Font.Weight
+    
+    func body(content: Content) -> some View {
+        content
+            .frame(minWidth: 0, maxWidth: .infinity)
+            .font(Font.title3.weight(weight))
+            .foregroundStyle(fontColor)
+            .saturation(0.75)
+            .padding(.vertical, 10)
+            .clipShape(.capsule)
+            .glassEffect(.regular)
     }
 }
 
