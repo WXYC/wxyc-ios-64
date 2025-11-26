@@ -47,6 +47,7 @@ struct LoadedArtworkView: View {
             .aspectRatio(contentMode: .fit)
             .clipShape(ArtworkStyle.roundedRectangle)
             .artworkShadow(radius: 3, yOffset: shadowYOffset)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 

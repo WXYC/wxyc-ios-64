@@ -80,12 +80,15 @@ struct InfoDetailView: View {
         }
         .alert("What would you like to request?", isPresented: $showingRequestAlert) {
             TextField("Song title and artist", text: $requestText)
+                .autocorrectionDisabled(true)
+            
             Button("Request") {
                 Task {
                     await sendRequest(message: requestText)
                     requestText = ""
                 }
             }
+            
             Button("Cancel", role: .cancel) {
                 requestText = ""
             }

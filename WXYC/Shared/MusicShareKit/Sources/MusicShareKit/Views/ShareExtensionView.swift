@@ -34,10 +34,15 @@ public struct ShareExtensionView: View {
             .frame(maxWidth: .infinity)
     }
     
+    @Environment(\.colorScheme) var colorScheme
+    
     public var body: some View {
         ZStack {
-            Image("background", bundle: .module)
-                .resizable()
+            Rectangle()
+                .fill(
+                    WXYCBackground()
+                        .secondary
+                )
                 .ignoresSafeArea()
             
             VStack(alignment: .center, spacing: 0) {
@@ -63,15 +68,61 @@ public struct ShareExtensionView: View {
             Button("Cancel") {
                 viewModel.cancel()
             }
-            .wxycShareStyle(fontColor: .pink, weight: .regular)
+            .wxycShareStyle(weight: .regular)
+            .foregroundStyle(cancelButtonForegroundStyle)
             
             Button("Request") {
                 viewModel.submit()
             }
-            .wxycShareStyle(fontColor: .purple, weight: .bold)
+            .font(Font.title3.weight(.bold))
+            .frame(minWidth: 0, maxWidth: .infinity)
+            .saturation(0.75)
+            .padding(.vertical, 10)
+            .glassEffect(.clear)
+            .background(requestBackground)
+            .clipShape(.capsule)
             .disabled(!viewModel.canSubmit)
         }
         .padding(.horizontal, 16)
+    }
+    
+    var requestBackground: some View {
+        Group {
+            if colorScheme == .light {
+                BackgroundMesh()
+                    .opacity(0.4)
+                    .blendMode(.plusDarker)
+                    .colorInvert()
+            } else {
+                BackgroundMesh()
+                    .opacity(0.95)
+                    .blendMode(.multiply)
+            }
+        }
+    }
+    
+    var cancelButtonForegroundStyle: AnyShapeStyle {
+        if colorScheme == .light {
+            AnyShapeStyle(Color.pink.opacity(0.75))
+        } else {
+            AnyShapeStyle(.white)
+        }
+    }
+    
+    var requestButtonForegroundStyle: some ShapeStyle {
+        if colorScheme == .light {
+            LinearGradient(
+                colors: [.pink],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        } else {
+            LinearGradient(
+                colors: [.green],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
     }
     
     // MARK: - Content
@@ -104,7 +155,14 @@ public struct ShareExtensionView: View {
     
     private func trackView(_ track: MusicTrack) -> some View {
         VStack(spacing: 20) {
-            logo
+            WXYCLogo()
+                .blendMode(.difference)
+                .shadow(
+                    color: logoShadowColor,
+                    radius: 2,
+                    y: 2
+                )
+                .frame(height: 80)
 
             Text("Send a request")
                 .font(.title3)
@@ -136,7 +194,6 @@ public struct ShareExtensionView: View {
             }
         }
         .padding(24)
-        .preferredColorScheme(.light)
     }
     
     @ViewBuilder
@@ -162,63 +219,32 @@ public struct ShareExtensionView: View {
         .shadow(radius: 3, y: 3)
     }
     
-    private var logo: some View {
-        meshGradient
-            .opacity(0.25)
-            .clipShape(WXYCLogo())
-            .glassEffect(.regular, in: WXYCLogo())
-            .shadow(
-                color: .orange.opacity(0.5),
-                radius: 2,
-                y: 3
+    var logoShadowColor: Color {
+        switch colorScheme {
+        case .light:
+            Color(
+                hue: 250 / 360,
+                saturation: 45 / 100,
+                brightness: 100 / 100
             )
-            .frame(height: 80)
-    }
-    
-    static let palette: [Color] = [
-        .indigo,
-        .orange,
-        .pink,
-        .purple,
-        .yellow,
-        .blue,
-        .green,
-    ]
-    
-    // Generate colors once at initialization
-    static let gradientColors: [Color] = (0..<16).map { _ in
-        palette.randomElement()!
-    }
-    
-    var meshGradient: some View {
-        TimelineView(.animation) { context in
-            let time = context.date.timeIntervalSince1970
-            let offsetX = Float(sin(time)) * 0.25
-            let offsetY = Float(cos(time)) * 0.25
-
-            MeshGradient(
-                width: 4,
-                height: 4,
-                points: [
-                    [0.0, 0.0], [0.3, 0.0], [0.7, 0.0], [1.0, 0.0],
-                    [0.0, 0.3], [0.2 + offsetX, 0.4 + offsetY], [0.7 + offsetX, 0.2 + offsetY], [1.0, 0.3],
-                    [0.0, 0.7], [0.3 + offsetX, 0.8], [0.7 + offsetX, 0.6], [1.0, 0.7],
-                    [0.0, 1.0], [0.3, 1.0], [0.7, 1.0], [1.0, 1.0]
-                ],
-                colors: Self.gradientColors
+        case .dark:
+            Color(
+                hue: 250 / 360,
+                saturation: 75 / 100,
+                brightness: 80 / 100
             )
+        @unknown default:
+            fatalError()
         }
     }
 }
 
-extension Button {
+extension View {
     func wxycShareStyle(
-        fontColor: Color,
         weight: Font.Weight
     ) -> some View {
         modifier(
             ButtonModifier(
-                fontColor: fontColor,
                 weight: weight
             )
         )
@@ -226,18 +252,16 @@ extension Button {
 }
 
 struct ButtonModifier: ViewModifier {
-    let fontColor: Color
     let weight: Font.Weight
     
     func body(content: Content) -> some View {
         content
             .frame(minWidth: 0, maxWidth: .infinity)
             .font(Font.title3.weight(weight))
-            .foregroundStyle(fontColor)
             .saturation(0.75)
             .padding(.vertical, 10)
             .clipShape(.capsule)
-            .glassEffect(.regular)
+            .glassEffect(.clear)
     }
 }
 
