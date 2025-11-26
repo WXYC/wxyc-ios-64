@@ -12,6 +12,8 @@
 			<integer>10</integer>
 			<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
 			<integer>10</integer>
+			<key>NSExtensionActivationSupportsText</key>
+			<true/>
 		</dict>
 	</dict>
 	<key>NSExtensionPrincipalClass</key>
