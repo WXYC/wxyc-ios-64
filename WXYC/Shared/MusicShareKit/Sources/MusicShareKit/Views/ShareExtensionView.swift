@@ -112,37 +112,54 @@ public struct ShareExtensionView: View {
 
             artworkView
             
-            // Track info
-            Text(track.displayTitle)
-                .font(.body)
-                .multilineTextAlignment(.center)
-            
-            // Service badge
-            Text("via \(track.service.displayName)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack {
+                // Track info
+                if let title = track.title {
+                    Text(title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                }
+                
+                if let artist = track.artist {
+                    Text(artist)
+                        .font(.title2)
+                        .multilineTextAlignment(.center)
+                }
+                
+                if let album = track.album,
+                   !album.isEmpty {
+                    Text(album)
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .padding(24)
+        .preferredColorScheme(.light)
     }
     
     @ViewBuilder
     private var artworkView: some View {
-        if let image = viewModel.artworkImage {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 150, height: 150)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-        } else {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(uiColor: .tertiarySystemFill))
-                .frame(width: 150, height: 150)
-                .overlay {
-                    if viewModel.isLoadingArtwork {
-                        ProgressView()
+        Group {
+            if let image = viewModel.artworkImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(uiColor: .tertiarySystemFill))
+                    .frame(height: 200)
+                    .overlay {
+                        if viewModel.isLoadingArtwork {
+                            ProgressView()
+                        }
                     }
-                }
+            }
         }
+        .glassEffect(in: RoundedRectangle(cornerRadius: 8))
+        .shadow(radius: 3, y: 3)
     }
     
     private var logo: some View {
