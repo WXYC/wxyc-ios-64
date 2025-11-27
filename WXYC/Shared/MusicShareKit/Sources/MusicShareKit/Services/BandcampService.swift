@@ -98,7 +98,7 @@ public final class BandcampService: MusicService {
         return MusicTrack(
             service: track.service,
             url: track.url,
-            title: title ?? track.title,
+            title: nil,
             artist: artist ?? track.artist,
             album: album ?? track.album,
             identifier: track.identifier,
