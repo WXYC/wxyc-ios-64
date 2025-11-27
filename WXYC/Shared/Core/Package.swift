@@ -33,6 +33,9 @@ let package = Package(
                 "Secrets",
 
                 .product(name: "PostHog", package: "posthog-ios")
+            ],
+            resources: [
+                .process("Models and Services/Playlist Service/Streaming Platform Icons.xcassets")
             ]
         ),
         .testTarget(

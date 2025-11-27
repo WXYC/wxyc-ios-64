@@ -281,7 +281,6 @@ extension PlaycutMetadataService {
     private func fetchAppleMusicURL(for playcut: Playcut) async -> URL? {
         do {
             let query = "\(playcut.artistName) \(playcut.songTitle)"
-                .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             
             var components = URLComponents(string: "https://itunes.apple.com")!
             components.path = "/search"
