@@ -120,6 +120,9 @@ struct ArtistBioSection: View {
     let bio: String
     @Binding var expandedBio: Bool
     @State private var isTruncated: Bool = false
+    @State private var parsedBio: AttributedString?
+    
+    private let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -148,10 +151,19 @@ struct ArtistBioSection: View {
                 }
             }
         }
+        .task {
+            // Parse async with resolver to resolve artist IDs
+            parsedBio = await DiscogsFormatter.parseToAttributedString(bio, resolver: resolver)
+        }
     }
     
     private var parsedBioText: Text {
-        DiscogsFormatter.parse(bio)
+        if let parsedBio {
+            return Text(parsedBio)
+        } else {
+            // Show synchronously parsed version while async resolves
+            return DiscogsFormatter.parse(bio)
+        }
     }
 }
 
