@@ -90,7 +90,7 @@ struct WXYCApp: App {
                     handleUserActivity(userActivity)
                 }
                 .safeAreaPadding([.top, .bottom])
-                .preferredColorScheme(.light)
+//                .preferredColorScheme(.light)
 
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in

@@ -14,6 +14,7 @@ import Logger
 import PostHog
 import Analytics
 import RequestService
+import WXUI
 
 struct InfoDetailView: View {
     @State private var showingLogPrompt = false
@@ -231,9 +232,5 @@ struct FittingText: View {
 
 #Preview {
     InfoDetailView()
-        .background(
-            Image("background")
-                .resizable()
-                .ignoresSafeArea()
-        )
+        .background(WXYCBackground())
 }
