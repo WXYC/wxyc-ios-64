@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Core
+import WXUI
 
 struct RootTabView: View {
     private enum Page {
@@ -19,23 +20,16 @@ struct RootTabView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack {
-            Image("background")
-                .resizable()
-                .ignoresSafeArea()
-
-
-            // Page view with horizontal scrolling
-            TabView(selection: $selectedPage) {
-                PlaylistView()
-                    .tag(Page.playlist)
-
-                InfoDetailView()
-                    .tag(Page.infoDetail)
-            }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+        TabView(selection: $selectedPage) {
+            PlaylistView()
+                .tag(Page.playlist)
+            
+            InfoDetailView()
+                .tag(Page.infoDetail)
         }
+        .background(WXYCBackground())
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .indexViewStyle(.page(backgroundDisplayMode: .always))
         .ignoresSafeArea()
     }
 }

@@ -9,6 +9,7 @@
 import SwiftUI
 import Core
 import UIKit
+import WXUI
 
 // MARK: - Artwork View Components
 
@@ -67,82 +68,6 @@ struct LoadingArtworkView: View {
     }
 }
 
-/// Placeholder view with WXYC logo and animated gradient
-struct PlaceholderArtworkView: View {
-    let proxyHeight: CGFloat
-    let shadowYOffset: CGFloat
-    let meshGradient: TimelineView<AnimationTimelineSchedule, MeshGradient>
-    
-    var body: some View {
-        ZStack(alignment: .center) {
-            ArtworkStyle.roundedRectangle
-                .frame(
-                    maxWidth: proxyHeight * 0.75,
-                    maxHeight: proxyHeight * 0.75
-                )
-                .glassEffect(
-                    .clear
-                        .tint(
-                            Color(
-                                hue: 248 / 360,
-                                saturation: 100 / 100,
-                                brightness: 100 / 100,
-                                opacity: 0.125
-                            )
-                        )
-                        .interactive(),
-                    in: ArtworkStyle.roundedRectangle
-                )
-                .preferredColorScheme(.light)
-                .opacity(0.65)
-                .clipShape(ArtworkStyle.roundedRectangle)
-                .shadow(radius: 2, x: 0, y: shadowYOffset)
-                
-            WXYCLogo()
-                .glassEffect(.clear, in: WXYCLogo())
-                .preferredColorScheme(.light)
-                .background(meshGradient.opacity(0.6))
-                .clipShape(WXYCLogo())
-                .shadow(radius: 2, x: 0, y: shadowYOffset)
-        }
-        .backgroundStyle(.clear)
-    }
-}
-
-#Preview("PlaceholderArtworkView") {
-    let colors: [Color] = [
-        .indigo, .orange, .pink, .purple,
-        .yellow, .blue, .green, .indigo,
-        .pink, .purple, .yellow, .blue,
-        .green, .indigo, .orange, .pink
-    ]
-    
-    let meshGradient = TimelineView(.animation) { context in
-        let time = context.date.timeIntervalSince1970
-        let offsetX = Float(sin(time)) * 0.25
-        let offsetY = Float(cos(time)) * 0.25
-        
-        MeshGradient(
-            width: 4,
-            height: 4,
-            points: [
-                [0.0, 0.0], [0.3, 0.0], [0.7, 0.0], [1.0, 0.0],
-                [0.0, 0.3], [0.2 + offsetX, 0.4 + offsetY], [0.7 + offsetX, 0.2 + offsetY], [1.0, 0.3],
-                [0.0, 0.7], [0.3 + offsetX, 0.8], [0.7 + offsetX, 0.6], [1.0, 0.7],
-                [0.0, 1.0], [0.3, 1.0], [0.7, 1.0], [1.0, 1.0]
-            ],
-            colors: colors
-        )
-    }
-    
-    PlaceholderArtworkView(
-        proxyHeight: 150,
-        shadowYOffset: 0,
-        meshGradient: meshGradient
-    )
-    .frame(width: 150, height: 150)
-    .padding()
-}
 
 // Preference key to track scroll position
 struct ScrollOffsetPreferenceKey: PreferenceKey {
@@ -233,9 +158,13 @@ struct PlaycutRowView: View {
                                 LoadingArtworkView(shadowYOffset: shadowYOffset)
                             } else {
                                 PlaceholderArtworkView(
-                                    proxyHeight: proxy.size.height,
+                                    cornerRadius: ArtworkStyle.cornerRadius,
                                     shadowYOffset: shadowYOffset,
                                     meshGradient: meshGradientAnimation
+                                )
+                                .frame(
+                                    maxWidth: proxy.size.height * 0.75,
+                                    maxHeight: proxy.size.height * 0.75
                                 )
                             }
                         }
@@ -376,9 +305,5 @@ struct ShareSheet: UIViewControllerRepresentable {
         .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
         .environment(\.artworkService, MultisourceArtworkService())
-        .background(
-            Image("background")
-                .resizable()
-                .ignoresSafeArea()
-        )
+        .background(WXYCBackground())
 }

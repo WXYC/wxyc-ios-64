@@ -9,6 +9,7 @@
 import SwiftUI
 import Core
 import CoreGraphics
+import WXUI
 
 struct PlaybackShape: InsettableShape {
     var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)
@@ -109,6 +110,8 @@ struct PlaybackShape: InsettableShape {
 }
 
 struct PlaybackButton: View {
+    @Environment(\.colorScheme) private var colorScheme
+    
     @State private var isPlaying: Bool = RadioPlayerController.shared.isPlaying
     
     var animationDuration: Double
@@ -122,12 +125,20 @@ struct PlaybackButton: View {
         self.action = action
     }
     
+    fileprivate func buttonColor() -> Color {
+        if colorScheme == .light {
+            Color(red: 57 / 255, green: 56 / 255, blue: 57 / 255)
+        } else {
+            .gray
+        }
+    }
+    
     var body: some View {
         Button(action: {
             action?()
         }) {
             PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                .fill(Color(red: 57 / 255, green: 56 / 255, blue: 57 / 255))
+                .fill(buttonColor())
                 .preferredColorScheme(.dark)
         }
         .buttonStyle(NoHighlightButtonStyle())
@@ -162,16 +173,12 @@ struct PlaybackButtonExample: View {
     @State private var status: PlaybackButtonState = .paused
     
     var body: some View {
-        ZStack {
-            Image("background")
-                .resizable()
-            
-            PlaybackButton(
-                action: {
-                    status = (status == .paused) ? .playing : .paused
-                }
-            )
-        }
+        PlaybackButton(
+            action: {
+                status = (status == .paused) ? .playing : .paused
+            }
+        )
+        background(WXYCBackground())
     }
 }
 

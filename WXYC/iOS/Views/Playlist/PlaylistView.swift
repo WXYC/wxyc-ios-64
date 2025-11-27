@@ -8,10 +8,21 @@
 
 import SwiftUI
 import Core
+import WXUI
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
+    
+    init() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundColor = .clear
+        appearance.shadowColor = .clear   // removes bottom line
+
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+    }
     
     var body: some View {
         ZStack {
@@ -70,9 +81,5 @@ struct PlaylistView: View {
     PlaylistView()
         .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
-        .background(
-            Image("background")
-                .resizable()
-                .ignoresSafeArea()
-        )
+        .background(WXYCBackground())
 }
