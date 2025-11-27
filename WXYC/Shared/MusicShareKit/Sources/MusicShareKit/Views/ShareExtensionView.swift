@@ -10,6 +10,7 @@ import SwiftUI
 import UIKit
 import RequestService
 import Secrets
+import WXUI
 
 public struct ShareExtensionView: View {
     @State private var viewModel: ShareExtensionViewModel
@@ -89,14 +90,14 @@ public struct ShareExtensionView: View {
     var requestBackground: some View {
         Group {
             if colorScheme == .light {
-                BackgroundMesh()
+                WXYCBackgroundMeshAnimation()
                     .opacity(0.4)
                     .blendMode(.plusDarker)
                     .colorInvert()
             } else {
-                BackgroundMesh()
+                WXYCBackgroundMeshAnimation()
                     .opacity(0.95)
-                    .blendMode(.screen)
+                    .blendMode(.multiply)
             }
         }
     }
