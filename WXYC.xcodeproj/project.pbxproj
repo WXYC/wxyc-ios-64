@@ -104,6 +104,7 @@
 		23660A112D72D2630057E268 /* Exceptions for "WXYC" folder in "WatchXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"iOS/app icon.icon",
 				iOS/Views/Playlist/CassetteView.swift,
 				iOS/Views/Playlist/PlaybackButton.swift,
 				iOS/Views/Playlist/PlayerHeaderView.swift,
@@ -175,6 +176,7 @@
 		239566992D751E9A0094A215 /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Images.xcassets,
 				iOS/Intents.swift,
 				NowPlayingWidget/Assets.xcassets,
 				NowPlayingWidget/Extensions.swift,
