@@ -30,15 +30,17 @@ struct PlaycutDetailView: View {
                 // Close button
                 HStack {
                     Spacer()
+                        .frame(maxWidth: .infinity)
                     Button {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.gray)
-                            .glassEffect()
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .foregroundStyle(.thinMaterial)
+                            .frame(maxWidth: 30)
                     }
                 }
-                .padding(.top, 8)
                 
                 // Artwork and basic info
                 PlaycutHeaderSection(playcut: playcut, artwork: artwork)
@@ -46,7 +48,7 @@ struct PlaycutDetailView: View {
                 // Metadata section
                 if isLoadingMetadata {
                     PlaycutLoadingSection()
-                } else {
+                } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil {
                     PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
                 }
                 
@@ -93,7 +95,7 @@ struct PlaycutDetailView: View {
             hour: 0,
             chronOrderID: 1,
             songTitle: "Blue in Green",
-            labelName: "Columbia",
+            labelName: "Columbia Columbia Columbia Columbia Columbia ",
             artistName: "Miles Davis",
             releaseTitle: "Kind of Blue"
         ),

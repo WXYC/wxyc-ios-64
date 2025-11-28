@@ -15,7 +15,7 @@ struct MetadataItem: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(title)
-                .font(.caption)
+                .font(.caption.smallCaps())
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.body)
@@ -27,3 +27,25 @@ struct MetadataItem: View {
     }
 }
 
+struct MetadataLabel: View {
+    let title: String
+    
+    var body: some View {
+        Text(title)
+            .font(.caption.smallCaps())
+            .foregroundStyle(.secondary)
+    }
+}
+
+struct MetadataValue: View {
+    let value: String
+    
+    var body: some View {
+        Text(value)
+            .font(.body)
+            .fontWeight(.medium)
+            .foregroundStyle(.primary)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
+    }
+}

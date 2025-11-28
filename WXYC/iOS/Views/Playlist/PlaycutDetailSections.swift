@@ -88,22 +88,27 @@ struct PlaycutMetadataSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Label and Year
             if metadata.label != nil || metadata.releaseYear != nil {
-                HStack(spacing: 24) {
+                // Label and Year
+                Grid(alignment: .leadingFirstTextBaseline) {
                     if let label = metadata.label {
-                        MetadataItem(title: "Label", value: label)
+                        GridRow {
+                            MetadataLabel(title: "Label")
+                            MetadataValue(value: label)
+                        }
                     }
                     if let year = metadata.releaseYear {
-                        MetadataItem(title: "Year", value: String(year))
+                        GridRow {
+                            MetadataLabel(title: "Year")
+                            MetadataValue(value: String(year))
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity)
-            }
-            
-            // Artist Bio
-            if let bio = metadata.artistBio, !bio.isEmpty {
-                ArtistBioSection(bio: bio, expandedBio: $expandedBio)
+                
+                // Artist Bio
+                if let bio = metadata.artistBio, !bio.isEmpty {
+                    ArtistBioSection(bio: bio, expandedBio: $expandedBio)
+                }
             }
         }
         .padding()
@@ -111,6 +116,7 @@ struct PlaycutMetadataSection: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(.primary.opacity(0.1))
         )
+        .frame(maxWidth: .infinity)
     }
 }
 
