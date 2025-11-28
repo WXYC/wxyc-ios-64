@@ -50,3 +50,6 @@ public struct WXYCBackgroundMeshAnimation: View {
     }
 }
 
+extension WXYCBackgroundMeshAnimation: ShapeStyle {
+    
+}
