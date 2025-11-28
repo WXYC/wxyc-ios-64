@@ -62,7 +62,6 @@ struct LoadingArtworkView: View {
                 .clear.tint(.indigo).interactive(),
                 in: ArtworkStyle.roundedRectangle
             )
-            .preferredColorScheme(.light)
             .opacity(0.1625)
             .artworkShadow(radius: 3, yOffset: shadowYOffset)
     }
