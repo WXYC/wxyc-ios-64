@@ -139,7 +139,6 @@ struct PlaybackButton: View {
         }) {
             PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
                 .fill(buttonColor())
-                .preferredColorScheme(.dark)
         }
         .buttonStyle(NoHighlightButtonStyle())
         .task {
