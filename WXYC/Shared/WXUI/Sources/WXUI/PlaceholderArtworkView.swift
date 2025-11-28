@@ -79,65 +79,11 @@ public struct PlaceholderArtworkView: View {
     }
 }
 
-struct MeshGradientAnimation {
-    public let shadowOffsetAtTop: CGFloat = -3
-    public let shadowOffsetAtBottom: CGFloat = 3
-    
-    @State private var colors = Self.randomColors()
-    @State private var timeOffset: Int = (-10..<10).randomElement()!
-    
-    private static func randomColors() -> [Color] {
-        (0..<16).map { _ in palette.randomElement()! }
-    }
-    
-    private static let palette: [Color] = [
-        .indigo,
-        .orange,
-        .pink,
-        .purple,
-        .yellow,
-        .blue,
-        .green,
-    ]
-
-    var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
-        TimelineView(.animation) { context in
-            let time = context.date.timeIntervalSince1970 + TimeInterval(timeOffset)
-            let offsetX = Float(sin(time)) * 0.25
-            let offsetY = Float(cos(time)) * 0.25
-            
-            MeshGradient(
-                width: 4,
-                height: 4,
-                points: [
-                    [0.0, 0.0],
-                    [0.3, 0.0],
-                    [0.7, 0.0],
-                    [1.0, 0.0],
-                    [0.0, 0.3],
-                    [0.2 + offsetX, 0.4 + offsetY],
-                    [0.7 + offsetX, 0.2 + offsetY],
-                    [1.0, 0.3],
-                    [0.0, 0.7],
-                    [0.3 + offsetX, 0.8],
-                    [0.7 + offsetX, 0.6],
-                    [1.0, 0.7],
-                    [0.0, 1.0],
-                    [0.3, 1.0],
-                    [0.7, 1.0],
-                    [1.0, 1.0]
-                ],
-                colors: colors
-            )
-        }
-    }
-}
-
 #Preview {
     PlaceholderArtworkView(
         cornerRadius: 12,
         shadowYOffset: 2,
-        meshGradient: MeshGradientAnimation().meshGradientAnimation
+        meshGradient: WXYCBackgroundMeshAnimation().meshGradient
     )
     .background(WXYCBackground())
 }
