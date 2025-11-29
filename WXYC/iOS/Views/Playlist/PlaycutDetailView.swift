@@ -26,49 +26,56 @@ struct PlaycutDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                // Close button
-                HStack {
-                    Spacer()
-                        .frame(maxWidth: .infinity)
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .foregroundStyle(.thinMaterial)
-                            .frame(maxWidth: 30)
-                    }
+            // Close button
+            HStack {
+                Spacer()
+                    .frame(maxWidth: .infinity)
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: 30, maxHeight: 30)
                 }
-                
+            }
+            .frame(height: 30)
+            .blendMode(.softLight)
+            .opacity(0.5)
+            .padding(.horizontal)
+            .padding(.bottom, 0)
+            
+            VStack(spacing: 24) {
                 // Artwork and basic info
                 PlaycutHeaderSection(playcut: playcut, artwork: artwork)
                 
                 // Metadata section
                 if isLoadingMetadata {
                     PlaycutLoadingSection()
+                        .foregroundStyle(.white)
                 } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil {
                     PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
                 }
                 
                 // Streaming links
                 if metadata.hasStreamingLinks || !isLoadingMetadata {
                     StreamingLinksSection(metadata: metadata, isLoading: isLoadingMetadata)
+                        .foregroundStyle(.white)
                 }
                 
                 // External links (Discogs, Wikipedia)
                 if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
                     ExternalLinksSection(metadata: metadata)
+                        .foregroundStyle(.white)
                 }
                 
                 Spacer(minLength: 40)
             }
-            .padding()
+            .padding(.horizontal)
         }
         .scrollContentBackground(.hidden)
         .background(WXYCBackground())
-        .presentationBackground(.ultraThinMaterial)
         .task {
             await loadMetadata()
         }

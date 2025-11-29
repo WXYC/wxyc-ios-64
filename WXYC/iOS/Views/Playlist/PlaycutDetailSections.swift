@@ -17,7 +17,7 @@ struct PlaycutHeaderSection: View {
     let artwork: UIImage?
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack {
             // Artwork
             Group {
                 if let artwork = artwork {
@@ -56,6 +56,8 @@ struct PlaycutHeaderSection: View {
                         .multilineTextAlignment(.center)
                 }
             }
+            .foregroundStyle(.white)
+            .padding(.bottom)
         }
     }
 }
@@ -82,15 +84,52 @@ struct PlaycutLoadingSection: View {
 
 // MARK: - Metadata Section
 
+#Preview {
+    @Previewable @State var expandedBio = false
+    let metadata = PlaycutMetadata(
+        label: "We Release Whatever The Fuck We Want Okay?",
+        releaseYear: 2025,
+        discogsURL: nil,
+        artistBio: nil,
+        wikipediaURL: nil,
+        spotifyURL: nil,
+        appleMusicURL: nil,
+        youtubeMusicURL: nil,
+        bandcampURL: nil,
+        soundcloudURL: nil
+    )
+    
+    PlaycutHeaderSection(
+        playcut: Playcut(
+            id: 0,
+            hour: 0,
+            chronOrderID: 0,
+            songTitle: "Pharoah's Dance",
+            labelName: "Columbia",
+            artistName: "Miles Davis",
+            releaseTitle: "Bitches Brew"
+        ),
+        artwork: nil
+    )
+    
+    PlaycutMetadataSection(
+        metadata: metadata,
+        expandedBio: $expandedBio
+    )
+    
+    ExternalLinksSection(metadata: metadata)
+}
+
 struct PlaycutMetadataSection: View {
     let metadata: PlaycutMetadata
     @Binding var expandedBio: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+        
             if metadata.label != nil || metadata.releaseYear != nil {
                 // Label and Year
-                Grid(alignment: .leadingFirstTextBaseline) {
+                Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
                     if let label = metadata.label {
                         GridRow {
                             MetadataLabel(title: "Label")
@@ -100,7 +139,10 @@ struct PlaycutMetadataSection: View {
                     if let year = metadata.releaseYear {
                         GridRow {
                             MetadataLabel(title: "Year")
-                            MetadataValue(value: String(year))
+                            HStack {
+                                MetadataValue(value: String(year))
+                                Spacer()
+                            }
                         }
                     }
                 }
@@ -116,7 +158,6 @@ struct PlaycutMetadataSection: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(.primary.opacity(0.1))
         )
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -153,7 +194,6 @@ struct ArtistBioSection: View {
                     Text(expandedBio ? "Show Less" : "Read More")
                         .font(.caption.smallCaps())
                         .fontWeight(.bold)
-                        .foregroundStyle(.white)
                 }
             }
         }
