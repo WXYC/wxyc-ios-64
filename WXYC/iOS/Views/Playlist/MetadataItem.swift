@@ -34,6 +34,7 @@ struct MetadataLabel: View {
         Text(title)
             .font(.caption.smallCaps())
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
     }
 }
 
@@ -42,10 +43,11 @@ struct MetadataValue: View {
     
     var body: some View {
         Text(value)
+            .multilineTextAlignment(.leading)
             .font(.body)
             .fontWeight(.medium)
             .foregroundStyle(.primary)
             .lineLimit(2)
-            .multilineTextAlignment(.center)
+            .multilineTextAlignment(.leading)
     }
 }
