@@ -12,6 +12,8 @@ import Core
 import PostHog
 import Intents
 import SwiftUI
+import PlayerHeaderView
+import AudioPlayerCore
 
 @MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
@@ -92,7 +94,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     
     private func makePlayerSection() -> CPListSection {
-        let isPlaying = RadioPlayerController.shared.isPlaying
+        let isPlaying = AudioPlayerController.shared.isPlaying
         let image = isPlaying
             ? nil
             : UIImage(systemName: "play.fill")
@@ -100,7 +102,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         listenLiveItem.isPlaying = isPlaying
 
         listenLiveItem.handler = { selectableItem, completionHandler in
-            try? RadioPlayerController.shared.play(reason: "CarPlay listen live tapped")
+            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
@@ -146,7 +148,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     @MainActor
     private func observeIsPlaying() {
         let observations = Observations {
-            RadioPlayerController.shared.isPlaying
+            AudioPlayerController.shared.isPlaying
         }
 
         Task {
@@ -195,19 +197,15 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
             return false
         }
 
-        do {
-            try RadioPlayerController.shared.play(reason: "home screen play quick action")
-            return true
-        } catch {
-            return false
-        }
+        AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+        return true
     }
     
-    private func handle(userActivity: NSUserActivity) throws {
+    private func handle(userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            try RadioPlayerController.shared.play(reason: "Siri suggestion (NSUserActivity)")
+            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
         } else if let _ = userActivity.interaction?.intent as? INPlayMediaIntent {
-            try RadioPlayerController.shared.play(reason: "Siri suggestion (INPlayMediaIntent)")
+            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
         }
     }
 }
