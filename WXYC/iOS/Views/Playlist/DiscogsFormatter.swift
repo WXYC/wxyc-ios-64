@@ -102,7 +102,7 @@ private extension DiscogsFormatter {
         var displayName: String {
             switch type {
             case .artist:
-                return Self.stripDisambiguationSuffix(from: name)
+                return DiscogsFormatter.stripDisambiguationSuffix(from: name)
             case .release, .master:
                 return name
             }
@@ -120,15 +120,17 @@ private extension DiscogsFormatter {
             }
         }
         
-        /// Removes Discogs disambiguation suffix like " (8)" from artist names
-        private static func stripDisambiguationSuffix(from name: String) -> String {
-            // Pattern: ends with " (N)" where N is one or more digits
-            let pattern = #" \(\d+\)$"#
-            guard let range = name.range(of: pattern, options: .regularExpression) else {
-                return name
-            }
-            return String(name[..<range.lowerBound])
+    }
+    
+    /// Removes Discogs disambiguation suffix like " (8)" from artist names
+    /// e.g., "Salamanda (8)" becomes "Salamanda"
+    static func stripDisambiguationSuffix(from name: String) -> String {
+        // Pattern: ends with " (N)" where N is one or more digits
+        let pattern = #" \(\d+\)$"#
+        guard let range = name.range(of: pattern, options: .regularExpression) else {
+            return name
         }
+        return String(name[..<range.lowerBound])
     }
     
     /// Internal parser that handles both sync and async parsing
@@ -326,9 +328,17 @@ private extension DiscogsFormatter {
         ) -> (attributed: AttributedString?, newRemaining: Substring) {
             
             if tag.hasPrefix("a=") {
-                // Artist link: [a=Artist Name] -> just show the name
+                // Artist link: [a=Artist Name] -> show name with disambiguation suffix removed, link to Discogs search
                 let artistName = String(tag.dropFirst(2))
-                return (AttributedString(artistName), remaining[remaining.index(after: closingBracket)...])
+                let displayName = DiscogsFormatter.stripDisambiguationSuffix(from: artistName)
+                var attributed = AttributedString(displayName)
+                // Use original name (with disambiguation) for search to find the exact artist
+                if let encodedName = artistName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+                    attributed.link = URL(string: "https://www.discogs.com/search/?q=\(encodedName)&type=artist")
+                }
+                attributed.foregroundColor = .secondary
+                attributed.underlineStyle = .single
+                return (attributed, remaining[remaining.index(after: closingBracket)...])
                 
             } else if tag.hasPrefix("a") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
                 // Artist link by ID: [a12345] -> skip in sync mode
