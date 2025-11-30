@@ -10,6 +10,7 @@ import SwiftUI
 import Core
 import WXUI
 import AppIntents
+import PlayerHeaderView
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
@@ -20,7 +21,7 @@ struct PlaylistView: View {
             Color.clear
             
             ScrollView(showsIndicators: false) {
-                PlayerHeaderView()
+                PlayerHeaderView(streamURL: RadioStation.WXYC.streamURL)
                 
                 // Playlist entries
                 LazyVStack(spacing: 0) {
