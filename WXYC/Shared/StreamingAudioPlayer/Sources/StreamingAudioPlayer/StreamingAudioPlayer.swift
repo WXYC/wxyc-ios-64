@@ -11,6 +11,7 @@ import AudioStreaming
 
 /// Low-level audio player that wraps the AudioStreaming package
 /// Handles basic playback control and state management
+@MainActor
 @Observable
 public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
@@ -28,7 +29,7 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Private Properties
     
-    private let player: AudioPlayer
+    @ObservationIgnored private nonisolated(unsafe) let player: AudioPlayer
     
     // MARK: - Initialization
     
@@ -88,13 +89,10 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
         let oldState = state
         state = newState
         isPlaying = (newState == .playing || newState == .buffering)
-        
-        DispatchQueue.main.async { [weak self] in
-            self?.onStateChange?(oldState, newState)
-        }
+        onStateChange?(oldState, newState)
     }
     
-    private func mapPlayerState(_ playerState: AudioPlayerState) -> AudioPlayerPlaybackState {
+    nonisolated private func mapPlayerState(_ playerState: AudioPlayerState) -> AudioPlayerPlaybackState {
         switch playerState {
         case .ready, .stopped:
             return .stopped
@@ -115,43 +113,42 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
 // MARK: - AudioPlayerDelegate
 
 extension StreamingAudioPlayer: AudioPlayerDelegate {
-    public func audioPlayerDidStartPlaying(player: AudioPlayer, with entryId: AudioEntryId) {
-        DispatchQueue.main.async { [weak self] in
+    nonisolated public func audioPlayerDidStartPlaying(player: AudioPlayer, with entryId: AudioEntryId) {
+        Task { @MainActor [weak self] in
             self?.updateState(.playing)
         }
     }
     
-    public func audioPlayerDidFinishBuffering(player: AudioPlayer, with entryId: AudioEntryId) {
+    nonisolated public func audioPlayerDidFinishBuffering(player: AudioPlayer, with entryId: AudioEntryId) {
         // Buffering complete, state will update via state change callback
     }
     
-    public func audioPlayerStateChanged(player: AudioPlayer, with newState: AudioPlayerState, previous: AudioPlayerState) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            let mappedState = self.mapPlayerState(newState)
-            self.updateState(mappedState)
+    nonisolated public func audioPlayerStateChanged(player: AudioPlayer, with newState: AudioPlayerState, previous: AudioPlayerState) {
+        let mappedState = mapPlayerState(newState)
+        Task { @MainActor [weak self] in
+            self?.updateState(mappedState)
         }
     }
     
-    public func audioPlayerDidFinishPlaying(player: AudioPlayer, entryId: AudioEntryId, stopReason: AudioPlayerStopReason, progress: Double, duration: Double) {
-        DispatchQueue.main.async { [weak self] in
+    nonisolated public func audioPlayerDidFinishPlaying(player: AudioPlayer, entryId: AudioEntryId, stopReason: AudioPlayerStopReason, progress: Double, duration: Double) {
+        Task { @MainActor [weak self] in
             self?.updateState(.stopped)
         }
     }
     
-    public func audioPlayerUnexpectedError(player: AudioPlayer, error: AudioPlayerError) {
+    nonisolated public func audioPlayerUnexpectedError(player: AudioPlayer, error: AudioPlayerError) {
         print("StreamingAudioPlayer error: \(error)")
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.updateState(.error)
         }
     }
     
-    public func audioPlayerDidCancel(player: AudioPlayer, queuedItems: [AudioEntryId]) {
+    nonisolated public func audioPlayerDidCancel(player: AudioPlayer, queuedItems: [AudioEntryId]) {
         // Queue cancelled
     }
     
-    public func audioPlayerDidReadMetadata(player: AudioPlayer, metadata: [String: String]) {
-        DispatchQueue.main.async { [weak self] in
+    nonisolated public func audioPlayerDidReadMetadata(player: AudioPlayer, metadata: [String: String]) {
+        Task { @MainActor [weak self] in
             self?.onMetadata?(metadata)
         }
     }
