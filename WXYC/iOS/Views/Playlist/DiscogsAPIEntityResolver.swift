@@ -8,70 +8,76 @@
 
 import Foundation
 import Secrets
+import Core
 
 /// Resolves Discogs entity IDs by calling the Discogs API
-final class DiscogsAPIEntityResolver: DiscogsEntityResolver, @unchecked Sendable {
-    private let session: URLSession
+final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
+    private let session: WebSession
     private let decoder: JSONDecoder
+    private let cache: CacheCoordinator
     
-    // Cache resolved entities to avoid redundant API calls
-    private var artistCache: [Int: String] = [:]
-    private var releaseCache: [Int: String] = [:]
-    private var masterCache: [Int: String] = [:]
-    private let cacheQueue = DispatchQueue(label: "com.wxyc.entityResolver.cache")
+    /// Cache lifespan: 30 days (entity names essentially never change)
+    private static let cacheLifespan: TimeInterval = 60 * 60 * 24 * 30
     
     /// Shared instance for convenience
     static let shared = DiscogsAPIEntityResolver()
     
-    init(session: URLSession = .shared) {
+    init(session: WebSession = URLSession.shared, cache: CacheCoordinator = .AlbumArt) {
         self.session = session
         self.decoder = JSONDecoder()
+        self.cache = cache
     }
     
     func resolveArtist(id: Int) async throws -> String {
+        let cacheKey = "discogs-artist-\(id)"
+        
         // Check cache first
-        if let cached = cacheQueue.sync(execute: { artistCache[id] }) {
+        if let cached: String = try? await cache.value(for: cacheKey) {
             return cached
         }
         
         let url = makeURL(path: "/artists/\(id)")
-        let (data, _) = try await session.data(from: url)
+        let data = try await session.data(from: url)
         let artist = try decoder.decode(DiscogsArtist.self, from: data)
         
         // Cache the result
-        cacheQueue.sync { artistCache[id] = artist.name }
+        await cache.set(value: artist.name, for: cacheKey, lifespan: Self.cacheLifespan)
         
         return artist.name
     }
     
     func resolveRelease(id: Int) async throws -> String {
+        let cacheKey = "discogs-release-\(id)"
+        
         // Check cache first
-        if let cached = cacheQueue.sync(execute: { releaseCache[id] }) {
+        if let cached: String = try? await cache.value(for: cacheKey) {
             return cached
         }
         
         let url = makeURL(path: "/releases/\(id)")
-        let (data, _) = try await session.data(from: url)
+        let data = try await session.data(from: url)
         let release = try decoder.decode(DiscogsRelease.self, from: data)
         
         // Cache the result
-        cacheQueue.sync { releaseCache[id] = release.title }
+        await cache.set(value: release.title, for: cacheKey, lifespan: Self.cacheLifespan)
         
         return release.title
     }
     
     func resolveMaster(id: Int) async throws -> String {
+        let cacheKey = "discogs-master-\(id)"
+        
         // Check cache first
-        if let cached = cacheQueue.sync(execute: { masterCache[id] }) {
+        if let cached: String = try? await cache.value(for: cacheKey) {
             return cached
         }
         
         let url = makeURL(path: "/masters/\(id)")
-        let (data, _) = try await session.data(from: url)
+        let data = try await session.data(from: url)
         let master = try decoder.decode(DiscogsMaster.self, from: data)
         
         // Cache the result
-        cacheQueue.sync { masterCache[id] = master.title }
+        await cache.set(value: master.title, for: cacheKey, lifespan: Self.cacheLifespan)
         
         return master.title
     }

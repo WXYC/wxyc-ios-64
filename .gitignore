@@ -24,3 +24,4 @@ WXYC/Shared/*/.gitignore
 
 # Third-party audio streaming library
 AudioStreaming/
+.cursor

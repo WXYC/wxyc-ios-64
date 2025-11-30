@@ -12,6 +12,6 @@ enum ServiceError: String, Swift.Error, LocalizedError, Codable {
     case noNewData
 }
 
-protocol WebSession: Sendable {
+public protocol WebSession: Sendable {
     func data(from url: URL) async throws -> Data
 }
