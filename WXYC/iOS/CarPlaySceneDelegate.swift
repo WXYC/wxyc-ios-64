@@ -13,7 +13,7 @@ import PostHog
 import Intents
 import SwiftUI
 import PlayerHeaderView
-import AudioPlayerCore
+import StreamingAudioPlayer
 
 @MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
@@ -102,7 +102,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         listenLiveItem.isPlaying = isPlaying
 
         listenLiveItem.handler = { selectableItem, completionHandler in
-            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+            AudioPlayerController.shared.play()
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
@@ -197,15 +197,15 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
             return false
         }
 
-        AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+        AudioPlayerController.shared.play()
         return true
     }
     
     private func handle(userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+            AudioPlayerController.shared.play()
         } else if let _ = userActivity.interaction?.intent as? INPlayMediaIntent {
-            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+            AudioPlayerController.shared.play()
         }
     }
 }
