@@ -14,7 +14,7 @@ import Logger
 import PostHog
 import UIKit
 import RequestService
-import AudioPlayerCore
+import StreamingAudioPlayer
 import WidgetKit
 
 struct IntentError: Error {
@@ -57,7 +57,7 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public init() { }
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         Log(.info, "PlayWXYC intent")
-        await AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+        await AudioPlayerController.shared.play()
         await syncWidgetPlaybackState()
         let value = "Tuning in to WXYC…"
         return .result(

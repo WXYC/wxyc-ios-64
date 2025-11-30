@@ -15,7 +15,7 @@ import WidgetKit
 import Intents
 import AVFoundation
 import PlayerHeaderView
-import AudioPlayerCore
+import StreamingAudioPlayer
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
@@ -41,7 +41,6 @@ struct WXYCApp: App {
         PostHogSDK.shared.capture("app launch")
 
         // Configure shared AudioPlayerController with StreamingAudioPlayer
-        AudioPlayerController.configureShared(player: StreamingAudioPlayer())
         AudioPlayerController.shared.defaultStreamURL = RadioStation.WXYC.streamURL
 
         // AVAudioSession setup
@@ -133,15 +132,15 @@ struct WXYCApp: App {
     private func handleURL(_ url: URL) {
         // Handle deep links and user activities
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
-            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+            AudioPlayerController.shared.play()
         }
     }
 
     private func handleUserActivity(_ userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+            AudioPlayerController.shared.play()
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
-            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+            AudioPlayerController.shared.play()
             PostHogSDK.shared.capture(
                 "Handle INIntent",
                 context: "Intents",
