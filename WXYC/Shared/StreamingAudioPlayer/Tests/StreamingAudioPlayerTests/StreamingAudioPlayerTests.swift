@@ -5,6 +5,7 @@
 
 import Testing
 import AVFoundation
+import Analytics
 @testable import StreamingAudioPlayer
 
 @Suite("StreamingAudioPlayer Tests")
@@ -55,7 +56,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!
@@ -76,7 +78,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!
@@ -97,7 +100,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!
@@ -117,7 +121,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!
@@ -138,7 +143,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         #expect(mockSession.setCategoryCallCount == 1)
@@ -155,7 +161,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         #expect(mockCommandCenter.playCommand.isEnabled == true)
@@ -174,7 +181,8 @@ struct AudioPlayerControllerTests {
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         #expect(controller.isPlaying == false)
@@ -199,7 +207,8 @@ struct AudioPlayerControllerTests {
         
         let controller = AudioPlayerController(
             player: mockPlayer,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!
@@ -216,7 +225,8 @@ struct AudioPlayerControllerTests {
         
         let controller = AudioPlayerController(
             player: mockPlayer,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!
@@ -233,7 +243,8 @@ struct AudioPlayerControllerTests {
         
         let controller = AudioPlayerController(
             player: mockPlayer,
-            notificationCenter: .default
+            notificationCenter: .default,
+            analytics: nil
         )
         
         let url = URL(string: "https://example.com/stream")!

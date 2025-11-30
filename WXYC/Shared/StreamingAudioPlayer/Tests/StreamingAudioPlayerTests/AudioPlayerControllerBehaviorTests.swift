@@ -11,6 +11,7 @@
 
 import Testing
 import AVFoundation
+import Analytics
 @testable import StreamingAudioPlayer
 
 // MARK: - Player Controller Behavior Protocol
