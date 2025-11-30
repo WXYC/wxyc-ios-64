@@ -14,9 +14,18 @@ import Logger
 import PostHog
 import UIKit
 import RequestService
+import AudioPlayerCore
+import WidgetKit
 
 struct IntentError: Error {
     let description: String
+}
+
+/// Helper to sync playback state with widget
+@MainActor
+private func syncWidgetPlaybackState() {
+    UserDefaults.wxyc.set(AudioPlayerController.shared.isPlaying, forKey: "isPlaying")
+    WidgetCenter.shared.reloadAllTimelines()
 }
 
 // App-level service access for intents
@@ -47,17 +56,14 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
-        do {
-            Log(.info, "PlayWXYC intent")
-            try await RadioPlayerController.shared.play(reason: "PlayWXYC intent")
-            let value = "Tuning in to WXYC…"
-            return .result(
-                value: value,
-                dialog: IntentDialog(stringLiteral: value)
-            )
-        } catch {
-            throw error
-        }
+        Log(.info, "PlayWXYC intent")
+        await AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
+        await syncWidgetPlaybackState()
+        let value = "Tuning in to WXYC…"
+        return .result(
+            value: value,
+            dialog: IntentDialog(stringLiteral: value)
+        )
     }
     
     @available(iOS 26.0, *)
@@ -74,7 +80,8 @@ struct PauseWXYC: AudioPlaybackIntent {
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         PostHogSDK.shared.capture("PauseWXYC intent")
-        await RadioPlayerController.shared.pause()
+        await AudioPlayerController.shared.pause()
+        await syncWidgetPlaybackState()
         return .result(value: "Now pausing WXYC")
     }
 }
@@ -88,7 +95,8 @@ struct ToggleWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        try await RadioPlayerController.shared.toggle(reason: "ToggleWXYC intent")
+        await AudioPlayerController.shared.toggle()
+        await syncWidgetPlaybackState()
         return .result(value: "Now toggling WXYC")
     }
 }
