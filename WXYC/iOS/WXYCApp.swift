@@ -14,6 +14,8 @@ import Secrets
 import WidgetKit
 import Intents
 import AVFoundation
+import PlayerHeaderView
+import AudioPlayerCore
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
@@ -37,6 +39,10 @@ struct WXYCApp: App {
         // Analytics setup
         setUpAnalytics()
         PostHogSDK.shared.capture("app launch")
+
+        // Configure shared AudioPlayerController with StreamingAudioPlayer
+        AudioPlayerController.configureShared(player: StreamingAudioPlayer())
+        AudioPlayerController.shared.defaultStreamURL = RadioStation.WXYC.streamURL
 
         // AVAudioSession setup
         do {
@@ -73,7 +79,6 @@ struct WXYCApp: App {
         WindowGroup {
             RootTabView()
                 .environmentObject(appState)
-                .environment(\.radioPlayerController, RadioPlayerController.shared)
                 .environment(\.playlistService, appState.playlistService)
                 .environment(\.artworkService, appState.artworkService)
                 .onAppear {
@@ -110,8 +115,7 @@ struct WXYCApp: App {
             artworkService: appState.artworkService
         )
         appState.nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
-            nowPlayingService: nowPlayingService,
-            radioPlayerController: RadioPlayerController.shared
+            nowPlayingService: nowPlayingService
         )
     }
 
@@ -129,15 +133,15 @@ struct WXYCApp: App {
     private func handleURL(_ url: URL) {
         // Handle deep links and user activities
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
-            try? RadioPlayerController.shared.play(reason: "URL scheme")
+            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
         }
     }
 
     private func handleUserActivity(_ userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            try? RadioPlayerController.shared.play(reason: "Siri suggestion (NSUserActivity)")
+            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
-            try? RadioPlayerController.shared.play(reason: "Siri suggestion (INPlayMediaIntent)")
+            AudioPlayerController.shared.play(url: RadioStation.WXYC.streamURL)
             PostHogSDK.shared.capture(
                 "Handle INIntent",
                 context: "Intents",
@@ -149,19 +153,20 @@ struct WXYCApp: App {
     private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .background:
-            // Save state when entering background
+            // Save state and handle audio session when entering background
             PostHogSDK.shared.capture("App entered background", properties: [
-                "Is Playing?": RadioPlayerController.shared.isPlaying
+                "Is Playing?": AudioPlayerController.shared.isPlaying
             ])
-            UserDefaults.wxyc.set(RadioPlayerController.shared.isPlaying, forKey: "isPlaying")
+            UserDefaults.wxyc.set(AudioPlayerController.shared.isPlaying, forKey: "isPlaying")
+            AudioPlayerController.shared.handleAppDidEnterBackground()
 
         case .inactive:
             // Handle becoming inactive (e.g., phone call, control center)
             break
 
         case .active:
-            // Handle becoming active
-            break
+            // Handle becoming active - reactivate audio session if needed
+            AudioPlayerController.shared.handleAppWillEnterForeground()
 
         @unknown default:
             break
@@ -237,7 +242,6 @@ struct WXYCApp: App {
 
 #Preview {
     RootTabView()
-        .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
         .environment(\.artworkService, MultisourceArtworkService())
         .preferredColorScheme(.light)

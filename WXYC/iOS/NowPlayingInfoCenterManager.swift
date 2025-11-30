@@ -10,17 +10,15 @@ import Core
 import Foundation
 import MediaPlayer
 import Logger
+import PlayerHeaderView
+import AudioPlayerCore
 
 @MainActor
 final class NowPlayingInfoCenterManager {
-    private let radioPlayerController: RadioPlayerController
+    /// Uses the shared AudioPlayerController singleton
+    private var controller: AudioPlayerController { AudioPlayerController.shared }
 
-    init(
-        nowPlayingService: NowPlayingService,
-        radioPlayerController: RadioPlayerController
-    ) {
-        self.radioPlayerController = radioPlayerController
-
+    init(nowPlayingService: NowPlayingService) {
         Task {
             for try await nowPlayingItem in nowPlayingService {
                 self.update(playcut: nowPlayingItem.playcut)
@@ -37,7 +35,7 @@ final class NowPlayingInfoCenterManager {
         }
         
         MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
-        MPNowPlayingInfoCenter.default().playbackState = radioPlayerController.isPlaying ? .playing : .paused
+        MPNowPlayingInfoCenter.default().playbackState = controller.isPlaying ? .playing : .paused
     }
 
     private func update(artwork: UIImage?) {
@@ -54,7 +52,7 @@ final class NowPlayingInfoCenterManager {
         MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] =
             self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
         MPNowPlayingInfoCenter.default().playbackState =
-            radioPlayerController.isPlaying ? .playing : .paused
+            controller.isPlaying ? .playing : .paused
     }
     
     private nonisolated func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
