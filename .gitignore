@@ -18,3 +18,9 @@ Build*.txt
 
 # Local gitignore files in packages
 WXYC/Shared/*/.gitignore
+
+# VS Code configuration
+.vscode/
+
+# Third-party audio streaming library
+AudioStreaming/
