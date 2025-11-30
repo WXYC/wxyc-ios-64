@@ -92,6 +92,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2307EE312EDD0B9D007AB889 /* AudioPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = AudioPlayer.xcodeproj; sourceTree = "<group>"; };
 		236609B42D72D02D0057E268 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		236609BA2D72D0420057E268 /* WatchXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		236629612D72D5BB0057E268 /* NowPlayingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = NowPlayingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -317,6 +318,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		2307EE372EDD0B9D007AB889 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		236609AB2D72D0270057E268 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -574,6 +582,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 2307EE372EDD0B9D007AB889 /* Products */;
+					ProjectRef = 2307EE312EDD0B9D007AB889 /* AudioPlayer.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				2366FA1C2D72CE880057E268 /* WXYC */,
