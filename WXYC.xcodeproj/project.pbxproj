@@ -104,7 +104,7 @@
 		23660A112D72D2630057E268 /* Exceptions for "WXYC" folder in "WatchXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"iOS/app icon.icon",
+				iOS/AppIcon.icon,
 				iOS/Views/Playlist/CassetteView.swift,
 				iOS/Views/Playlist/PlaybackButton.swift,
 				iOS/Views/Playlist/PlayerHeaderView.swift,
