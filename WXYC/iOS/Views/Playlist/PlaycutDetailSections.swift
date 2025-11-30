@@ -24,6 +24,7 @@ struct PlaycutHeaderSection: View {
                     Image(uiImage: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
+                        .padding(.bottom, 16)
                 } else {
                     PlaceholderArtworkView(
                         cornerRadius: 12,
@@ -68,7 +69,7 @@ struct PlaycutLoadingSection: View {
     var body: some View {
         VStack(spacing: 12) {
             ProgressView()
-                .tint(.primary)
+                .tint(.white)
             Text("Loading metadata...")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -98,6 +99,8 @@ struct PlaycutLoadingSection: View {
         bandcampURL: nil,
         soundcloudURL: nil
     )
+    
+    PlaycutLoadingSection()
     
     PlaycutHeaderSection(
         playcut: Playcut(
@@ -253,6 +256,7 @@ private struct TruncationDetector: View {
 struct StreamingLinksSection: View {
     let metadata: PlaycutMetadata
     let isLoading: Bool
+    var onServiceTapped: ((StreamingService) -> Void)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -268,31 +272,36 @@ struct StreamingLinksSection: View {
                 StreamingButton(
                     service: .spotify,
                     url: metadata.spotifyURL,
-                    isLoading: isLoading
+                    isLoading: isLoading,
+                    onTap: onServiceTapped
                 )
                 
                 StreamingButton(
                     service: .appleMusic,
                     url: metadata.appleMusicURL,
-                    isLoading: isLoading
+                    isLoading: isLoading,
+                    onTap: onServiceTapped
                 )
                 
                 StreamingButton(
                     service: .youtubeMusic,
                     url: metadata.youtubeMusicURL,
-                    isLoading: isLoading
+                    isLoading: isLoading,
+                    onTap: onServiceTapped
                 )
                 
                 StreamingButton(
                     service: .bandcamp,
                     url: metadata.bandcampURL,
-                    isLoading: isLoading
+                    isLoading: isLoading,
+                    onTap: onServiceTapped
                 )
                 
                 StreamingButton(
                     service: .soundcloud,
                     url: metadata.soundcloudURL,
-                    isLoading: isLoading
+                    isLoading: isLoading,
+                    onTap: onServiceTapped
                 )
             }
         }
@@ -308,6 +317,7 @@ struct StreamingLinksSection: View {
 
 struct ExternalLinksSection: View {
     let metadata: PlaycutMetadata
+    var onLinkTapped: ((String) -> Void)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -321,7 +331,8 @@ struct ExternalLinksSection: View {
                     ExternalLinkButton(
                         title: "Discogs",
                         imageName: "discogs",
-                        url: discogsURL
+                        url: discogsURL,
+                        onTap: onLinkTapped
                     )
                 }
                 
@@ -329,7 +340,8 @@ struct ExternalLinksSection: View {
                     ExternalLinkButton(
                         title: "Wikipedia",
                         imageName: "wikipedia",
-                        url: wikipediaURL
+                        url: wikipediaURL,
+                        onTap: onLinkTapped
                     )
                 }
             }
