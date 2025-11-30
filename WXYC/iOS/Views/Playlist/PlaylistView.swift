@@ -21,7 +21,7 @@ struct PlaylistView: View {
             Color.clear
             
             ScrollView(showsIndicators: false) {
-                PlayerHeaderView(streamURL: RadioStation.WXYC.streamURL)
+                PlayerHeaderView()
                 
                 // Playlist entries
                 LazyVStack(spacing: 0) {
@@ -71,7 +71,6 @@ struct PlaylistView: View {
 
 #Preview {
     PlaylistView()
-        .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
         .background(WXYCBackground())
 }

@@ -36,6 +36,5 @@ struct RootTabView: View {
 
 #Preview {
     RootTabView()
-        .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
 }

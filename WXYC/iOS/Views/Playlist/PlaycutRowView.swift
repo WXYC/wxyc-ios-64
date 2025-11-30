@@ -301,7 +301,6 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 #Preview {
     PlaylistView()
-        .environment(\.radioPlayerController, RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
         .environment(\.artworkService, MultisourceArtworkService())
         .background(WXYCBackground())

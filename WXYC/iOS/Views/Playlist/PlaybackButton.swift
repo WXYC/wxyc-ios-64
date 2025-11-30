@@ -10,6 +10,7 @@ import SwiftUI
 import Core
 import CoreGraphics
 import WXUI
+import PlayerHeaderView
 
 struct PlaybackShape: InsettableShape {
     var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)
@@ -112,7 +113,7 @@ struct PlaybackShape: InsettableShape {
 struct PlaybackButton: View {
     @Environment(\.colorScheme) private var colorScheme
     
-    @State private var isPlaying: Bool = RadioPlayerController.shared.isPlaying
+    @State private var isPlaying: Bool = AudioPlayerController.shared.isPlaying
     
     var animationDuration: Double
     var action: (() -> Void)?
@@ -142,9 +143,9 @@ struct PlaybackButton: View {
         }
         .buttonStyle(NoHighlightButtonStyle())
         .task {
-            // Observe playback state changes from RadioPlayerController
+            // Observe playback state changes from AudioPlayerController
             let observation = Observations {
-                RadioPlayerController.shared.isPlaying
+                AudioPlayerController.shared.isPlaying
             }
             
             for await newIsPlaying in observation {
