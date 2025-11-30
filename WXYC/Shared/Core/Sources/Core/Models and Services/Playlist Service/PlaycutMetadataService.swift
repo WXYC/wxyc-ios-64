@@ -16,6 +16,7 @@ import Logger
 public actor PlaycutMetadataService {
     private let session: WebSession
     private let decoder: JSONDecoder
+    private let cache: CacheCoordinator
     
     // Discogs API credentials
     private static let discogsKey = Secrets.discogsApiKeyV2_5
@@ -32,16 +33,28 @@ public actor PlaycutMetadataService {
     public init() {
         self.session = URLSession.shared
         self.decoder = JSONDecoder()
+        self.cache = .AlbumArt
     }
     
     // Internal initializer for testing
-    init(session: WebSession) {
+    init(session: WebSession, cache: CacheCoordinator = .AlbumArt) {
         self.session = session
         self.decoder = JSONDecoder()
+        self.cache = cache
     }
+    
+    /// Cache lifespan: 7 days (metadata rarely changes)
+    private static let cacheLifespan: TimeInterval = 60 * 60 * 24 * 7
     
     /// Fetches all available metadata for a playcut
     public func fetchMetadata(for playcut: Playcut) async -> PlaycutMetadata {
+        let cacheKey = "playcut-metadata-\(playcut.id)"
+        
+        // Check cache first
+        if let cached: PlaycutMetadata = try? await cache.value(for: cacheKey) {
+            return cached
+        }
+        
         // Fetch from all sources concurrently
         async let discogsMetadata = fetchDiscogsMetadata(for: playcut)
         async let spotifyURL = fetchSpotifyURL(for: playcut)
@@ -52,7 +65,7 @@ public actor PlaycutMetadataService {
         
         let discogs = await discogsMetadata
         
-        return PlaycutMetadata(
+        let metadata = PlaycutMetadata(
             label: discogs.label ?? playcut.labelName,
             releaseYear: discogs.releaseYear,
             discogsURL: discogs.discogsURL,
@@ -64,6 +77,11 @@ public actor PlaycutMetadataService {
             bandcampURL: await bandcampURL,
             soundcloudURL: await soundcloudURL
         )
+        
+        // Cache result
+        await cache.set(value: metadata, for: cacheKey, lifespan: Self.cacheLifespan)
+        
+        return metadata
     }
 }
 

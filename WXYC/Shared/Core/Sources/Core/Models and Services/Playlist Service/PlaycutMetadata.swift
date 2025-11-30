@@ -9,7 +9,7 @@
 import Foundation
 
 /// Extended metadata for a Playcut, fetched from external services
-public struct PlaycutMetadata: Sendable, Equatable {
+public struct PlaycutMetadata: Sendable, Equatable, Codable {
     // MARK: - Discogs Metadata
     
     /// Record label name
