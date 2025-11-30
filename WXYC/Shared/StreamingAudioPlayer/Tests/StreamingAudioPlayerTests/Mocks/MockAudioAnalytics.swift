@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Analytics
 @testable import StreamingAudioPlayer
 
 /// Mock analytics tracker for testing

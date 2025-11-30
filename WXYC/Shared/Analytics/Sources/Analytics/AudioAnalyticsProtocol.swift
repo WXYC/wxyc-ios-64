@@ -1,11 +1,12 @@
 //
 //  AudioAnalyticsProtocol.swift
-//  StreamingAudioPlayer
+//  Analytics
 //
 //  Protocol for analytics reporting in audio playback
 //
 
 import Foundation
+import PostHog
 
 /// Protocol for analytics reporting during audio playback
 /// Implementations can integrate with PostHog, Firebase, or other analytics services
@@ -41,6 +42,51 @@ public extension AudioAnalyticsProtocol {
     /// Pause without a specific reason
     func pause(source: String, duration: TimeInterval) {
         pause(source: source, duration: duration, reason: "")
+    }
+}
+
+// MARK: - PostHogSDK Conformance
+
+extension PostHogSDK: AudioAnalyticsProtocol {
+    public func play(source: String, reason: String) {
+        capture(
+            "play",
+            properties: [
+                "source": source,
+                "reason": reason,
+            ]
+        )
+    }
+    
+    public func pause(source: String, duration: TimeInterval) {
+        capture(
+            "pause",
+            properties: [
+                "source": source,
+                "duration": duration,
+            ]
+        )
+    }
+    
+    public func pause(source: String, duration: TimeInterval, reason: String) {
+        capture(
+            "pause",
+            properties: [
+                "source": source,
+                "duration": duration,
+                "reason": reason,
+            ]
+        )
+    }
+    
+    public func capture(error: Error, context: String) {
+        capture(
+            "error",
+            properties: [
+                "description": "\(error.localizedDescription)",
+                "context": context,
+            ]
+        )
     }
 }
 

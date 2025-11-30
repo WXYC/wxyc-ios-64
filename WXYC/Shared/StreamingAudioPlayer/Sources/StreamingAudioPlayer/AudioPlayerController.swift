@@ -8,6 +8,8 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
+import Analytics
+import PostHog
 #if os(iOS)
 import UIKit
 #endif
@@ -27,13 +29,15 @@ public final class AudioPlayerController {
         player: StreamingAudioPlayer(),
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
-        notificationCenter: .default
+        notificationCenter: .default,
+        analytics: PostHogSDK.shared
     )
     #else
     /// Shared singleton instance for app-wide usage
     public static let shared = AudioPlayerController(
         player: StreamingAudioPlayer(),
-        notificationCenter: .default
+        notificationCenter: .default,
+        analytics: PostHogSDK.shared
     )
     #endif
     
@@ -83,7 +87,7 @@ public final class AudioPlayerController {
         audioSession: AudioSessionProtocol?,
         remoteCommandCenter: RemoteCommandCenterProtocol?,
         notificationCenter: NotificationCenter = .default,
-        analytics: AudioAnalyticsProtocol? = nil
+        analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -100,7 +104,7 @@ public final class AudioPlayerController {
     public init(
         player: AudioPlayerProtocol,
         notificationCenter: NotificationCenter = .default,
-        analytics: AudioAnalyticsProtocol? = nil
+        analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
     ) {
         self.player = player
         self.notificationCenter = notificationCenter

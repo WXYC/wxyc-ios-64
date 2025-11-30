@@ -17,7 +17,7 @@ let package = Package(
         .target(
             name: "Analytics",
             dependencies: [
-                .product(name: "PostHog", package: "posthog-ios")
+                .product(name: "PostHog", package: "posthog-ios"),
             ]
         ),
 //        .testTarget(
