@@ -18,6 +18,7 @@ public enum AudioPlayerPlaybackState: Sendable {
 }
 
 /// Protocol defining the low-level audio player interface
+@MainActor
 public protocol AudioPlayerProtocol: AnyObject {
     /// Whether the player is currently playing audio
     var isPlaying: Bool { get }

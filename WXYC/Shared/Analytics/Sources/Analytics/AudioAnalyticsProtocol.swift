@@ -10,7 +10,7 @@ import PostHog
 
 /// Protocol for analytics reporting during audio playback
 /// Implementations can integrate with PostHog, Firebase, or other analytics services
-public protocol AudioAnalyticsProtocol: AnyObject, Sendable {
+public protocol AudioAnalyticsProtocol: AnyObject {
     /// Called when playback starts
     /// - Parameters:
     ///   - source: The source of the play action (e.g., function name)
