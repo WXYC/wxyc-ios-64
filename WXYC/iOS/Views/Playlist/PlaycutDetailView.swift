@@ -10,6 +10,7 @@ import SwiftUI
 import Core
 import UIKit
 import WXUI
+import PostHog
 
 struct PlaycutDetailView: View {
     let playcut: Playcut
@@ -26,27 +27,10 @@ struct PlaycutDetailView: View {
     
     var body: some View {
         ScrollView {
-            // Close button
-            HStack {
-                Spacer()
-                    .frame(maxWidth: .infinity)
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: 30, maxHeight: 30)
-                }
-            }
-            .frame(height: 30)
-            .blendMode(.softLight)
-            .opacity(0.5)
-            .padding(.horizontal)
-            .padding(.bottom, 0)
-            
             VStack(spacing: 24) {
                 // Artwork and basic info
                 PlaycutHeaderSection(playcut: playcut, artwork: artwork)
+                    .padding(.top, 30)
                 
                 // Metadata section
                 if isLoadingMetadata {
@@ -60,14 +44,31 @@ struct PlaycutDetailView: View {
                 
                 // Streaming links
                 if metadata.hasStreamingLinks || !isLoadingMetadata {
-                    StreamingLinksSection(metadata: metadata, isLoading: isLoadingMetadata)
-                        .foregroundStyle(.white)
+                    StreamingLinksSection(
+                        metadata: metadata,
+                        isLoading: isLoadingMetadata,
+                        onServiceTapped: { service in
+                            PostHogSDK.shared.capture(
+                                "streaming link tapped",
+                                properties: ["service": service.name]
+                            )
+                        }
+                    )
+                    .foregroundStyle(.white)
                 }
                 
                 // External links (Discogs, Wikipedia)
                 if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
-                    ExternalLinksSection(metadata: metadata)
-                        .foregroundStyle(.white)
+                    ExternalLinksSection(
+                        metadata: metadata,
+                        onLinkTapped: { service in
+                            PostHogSDK.shared.capture(
+                                "external link tapped",
+                                properties: ["service": service]
+                            )
+                        }
+                    )
+                    .foregroundStyle(.white)
                 }
                 
                 Spacer(minLength: 40)
@@ -76,6 +77,9 @@ struct PlaycutDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(WXYCBackground())
+        .onAppear {
+            PostHogSDK.shared.capture("playcut detail view presented")
+        }
         .task {
             await loadMetadata()
         }
@@ -101,10 +105,10 @@ struct PlaycutDetailView: View {
             id: 1,
             hour: 0,
             chronOrderID: 1,
-            songTitle: "Blue in Green",
-            labelName: "Columbia Columbia Columbia Columbia Columbia ",
-            artistName: "Miles Davis",
-            releaseTitle: "Kind of Blue"
+            songTitle: "Marilyn (feat. Micachu)",
+            labelName: "Warp",
+            artistName: "Mount Kimbie",
+            releaseTitle: "Love What Survives"
         ),
         artwork: nil
     )
