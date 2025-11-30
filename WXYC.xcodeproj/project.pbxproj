@@ -107,8 +107,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				iOS/AppIcon.icon,
-				iOS/Views/Playlist/CassetteView.swift,
-				iOS/Views/Playlist/PlaybackButton.swift,
 				iOS/Views/Playlist/PlayerHeaderView.swift,
 				iOS/Views/Root/BackgroundLayer.swift,
 				WatchXYC/Assets.xcassets,
@@ -152,6 +150,7 @@
 				NowPlayingWidget/Views/PlayButton.swift,
 				NowPlayingWidget/Views/RecentlyPlayedRow.swift,
 				NowPlayingWidget/Views/SmallNowPlayingWidgetEntryView.swift,
+				NowPlayingWidget/WidgetIntents.swift,
 				Shared/Analytics,
 				Shared/Core,
 				Shared/Logger,
@@ -179,7 +178,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				iOS/Images.xcassets,
-				iOS/Intents.swift,
 				NowPlayingWidget/Assets.xcassets,
 				NowPlayingWidget/Extensions.swift,
 				"NowPlayingWidget/NowPlayingItem+Placeholder.swift",
@@ -193,6 +191,7 @@
 				NowPlayingWidget/Views/PlayButton.swift,
 				NowPlayingWidget/Views/RecentlyPlayedRow.swift,
 				NowPlayingWidget/Views/SmallNowPlayingWidgetEntryView.swift,
+				NowPlayingWidget/WidgetIntents.swift,
 			);
 			target = 236629602D72D5BB0057E268 /* NowPlayingWidget */;
 		};
