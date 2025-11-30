@@ -177,10 +177,11 @@ struct ArtistBioSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("About the Artist")
-                .font(.headline)
+                .font(.headline.smallCaps())
                 .foregroundStyle(.primary)
             
             parsedBioText
+                .textSelection(.enabled)
                 .font(.body)
                 .foregroundStyle(.primary)
                 .lineLimit(expandedBio ? nil : 4)
