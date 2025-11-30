@@ -13,11 +13,15 @@ struct StreamingButton: View {
     let service: StreamingService
     let url: URL?
     let isLoading: Bool
+    var onTap: ((StreamingService) -> Void)?
     
     var body: some View {
         Group {
             if let url = url {
-                Link(destination: url) {
+                Button {
+                    onTap?(service)
+                    UIApplication.shared.open(url)
+                } label: {
                     buttonContent
                 }
             } else {

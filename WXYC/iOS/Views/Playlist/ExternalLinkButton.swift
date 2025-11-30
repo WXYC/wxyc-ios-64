@@ -13,10 +13,14 @@ struct ExternalLinkButton: View {
     let title: String
     let imageName: String
     let url: URL
+    var onTap: ((String) -> Void)?
     
     var body: some View {
-        Link(destination: url) {
-            HStack(spacing: 8) {
+        Button {
+            onTap?(title)
+            UIApplication.shared.open(url)
+        } label: {
+            HStack(spacing: 12) {
                 Image(imageName, bundle: .core)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
