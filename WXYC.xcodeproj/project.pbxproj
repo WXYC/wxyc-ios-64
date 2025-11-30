@@ -26,6 +26,8 @@
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2395669F2D7524CE0094A215 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669E2D7524CE0094A215 /* OpenNSFW */; };
+		2397F56D2EDC22F500F6594F /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 2397F56C2EDC22F500F6594F /* PlayerHeaderView */; };
+		2397F6342EDC239400F6594F /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 2397F6332EDC239400F6594F /* PlayerHeaderView */; };
 		23A8E2922ED564AD001818C3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23B35B512ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B502ED50C0F00EFD77B /* MusicShareKit */; };
@@ -291,8 +293,10 @@
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
 				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
 				23A8E2922ED564AD001818C3 /* PostHog in Frameworks */,
+				2397F6342EDC239400F6594F /* PlayerHeaderView in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
+				2397F56D2EDC22F500F6594F /* PlayerHeaderView in Frameworks */,
 				231260472D938C1600762428 /* Secrets in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -465,6 +469,8 @@
 				23A8E2842ED55562001818C3 /* RequestService */,
 				23A8E2912ED564AD001818C3 /* PostHog */,
 				2386DDE22ED7DA9400F3C501 /* WXUI */,
+				2397F56C2EDC22F500F6594F /* PlayerHeaderView */,
+				2397F6332EDC239400F6594F /* PlayerHeaderView */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -565,6 +571,7 @@
 				23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */,
 				23C1A1A62ED8000000000006 /* XCLocalSwiftPackageReference "WXYC/Shared/RequestService" */,
 				23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
+				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "../PlayerHeaderView" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
@@ -1561,6 +1568,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "../PlayerHeaderView" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../PlayerHeaderView;
+		};
 		23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = WXYC/Shared/Core;
@@ -1729,6 +1740,14 @@
 		239566A62D7524D50094A215 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
+		};
+		2397F56C2EDC22F500F6594F /* PlayerHeaderView */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlayerHeaderView;
+		};
+		2397F6332EDC239400F6594F /* PlayerHeaderView */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlayerHeaderView;
 		};
 		23A8E2842ED55562001818C3 /* RequestService */ = {
 			isa = XCSwiftPackageProductDependency;
