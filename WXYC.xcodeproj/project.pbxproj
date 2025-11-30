@@ -107,7 +107,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				iOS/AppIcon.icon,
-				iOS/Views/Playlist/PlayerHeaderView.swift,
 				iOS/Views/Root/BackgroundLayer.swift,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
