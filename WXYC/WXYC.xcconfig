@@ -12,7 +12,8 @@ CURRENT_PROJECT_VERSION = 1
 // This prevents example projects from being processed during builds
 // Note: These exclusions help prevent Xcode from trying to process PostHog's example projects
 // which contain broken binary targets that aren't meant to be built
-EXCLUDED_SOURCE_FILE_NAMES = **/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift
+// Also exclude .build directories from local Swift packages to prevent archive issues
+EXCLUDED_SOURCE_FILE_NAMES = **/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift **/.build/** **/.build/*
 
 // Framework Search Paths
 FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared $(PROJECT_DIR)/WXYC/Shared/StreamingAudioPlayer/build/Release-iphoneos
