@@ -33,6 +33,7 @@
 		23B35B512ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B502ED50C0F00EFD77B /* MusicShareKit */; };
 		23C1A1B12ED8000000000011 /* StreamingAudioPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B02ED8000000000010 /* StreamingAudioPlayer */; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
+		23EDE6492EDD31850034F39B /* PartyHorn in Frameworks */ = {isa = PBXBuildFile; productRef = 23EDE0792EDD2A570034F39B /* PartyHorn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -295,6 +296,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23EDE6492EDD31850034F39B /* PartyHorn in Frameworks */,
 				238EC73B2ED6280500077EA0 /* RequestService in Frameworks */,
 				2386DDE32ED7DA9400F3C501 /* WXUI in Frameworks */,
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
@@ -1813,7 +1815,7 @@
 		};
 		23EDE0792EDD2A570034F39B /* PartyHorn */ = {
 			isa = XCSwiftPackageProductDependency;
-		package = 23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "WXYC/Shared/Party Horn" */;
+			package = 23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "WXYC/Shared/Party Horn" */;
 			productName = PartyHorn;
 		};
 /* End XCSwiftPackageProductDependency section */
