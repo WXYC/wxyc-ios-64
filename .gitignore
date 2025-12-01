@@ -25,3 +25,9 @@ WXYC/Shared/*/.gitignore
 # Third-party audio streaming library
 AudioStreaming/
 .cursor
+
+# Affinity Designer files
+*.afdesign
+
+# Party Horn assets (separate project)
+WXYC/Shared/Party Horn/assets/
