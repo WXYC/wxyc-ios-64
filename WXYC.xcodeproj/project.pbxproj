@@ -164,8 +164,10 @@
 				Shared/Logger,
 				Shared/MusicShareKit,
 				Shared/OpenNSFW,
+				"Shared/Party Horn",
 				Shared/RequestService,
 				Shared/Secrets,
+				Shared/StreamingAudioPlayer,
 				Shared/WXUI,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
@@ -938,6 +940,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = P8QACM85EZ;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = TEST_FLIGHT;
@@ -1184,6 +1187,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYCDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -1198,6 +1202,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 			};
 			name = Release;
 		};
