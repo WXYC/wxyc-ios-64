@@ -26,7 +26,7 @@ private struct ArtworkShadowModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .glassEffect(.clear, in: ArtworkStyle.roundedRectangle)
+            .glassEffectClearIfAvailable(in: ArtworkStyle.roundedRectangle)
             .shadow(radius: shadowRadius, x: 0, y: shadowYOffset)
     }
 }
@@ -58,8 +58,8 @@ struct LoadingArtworkView: View {
     
     var body: some View {
         ArtworkStyle.roundedRectangle
-            .glassEffect(
-                .clear.tint(.indigo).interactive(),
+            .glassEffectClearTintedInteractiveIfAvailable(
+                tint: .indigo,
                 in: ArtworkStyle.roundedRectangle
             )
             .opacity(0.1625)
