@@ -1,0 +1,53 @@
+// WXYC Common Build Settings
+// This file contains shared build settings for Debug, Release, and TestFlight configurations
+
+// Asset Catalog
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
+
+// Version
+CURRENT_PROJECT_VERSION = 1
+
+// Exclude PostHog example projects and storyboards from compilation
+// This prevents example projects from being processed during builds
+// Note: These exclusions help prevent Xcode from trying to process PostHog's example projects
+// which contain broken binary targets that aren't meant to be built
+EXCLUDED_SOURCE_FILE_NAMES = **/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift
+
+// Framework Search Paths
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared $(PROJECT_DIR)/WXYC/Shared/StreamingAudioPlayer/build/Release-iphoneos
+
+// Info.plist
+GENERATE_INFOPLIST_FILE = YES
+INFOPLIST_FILE = WXYC/iOS/Info.plist
+INFOPLIST_KEY_CFBundleDisplayName = WXYC
+INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.music
+INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES
+INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard
+INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7
+INFOPLIST_KEY_UIRequiresFullScreen = YES
+INFOPLIST_KEY_UIStatusBarHidden = NO
+INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent
+INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
+INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+
+// Library Search Paths
+LIBRARY_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared/RequestService/.build/prebuilts/swift-syntax/602.0.0/swift-6.2-RELEASE-MacroSupport-macos_aarch64/lib
+
+// Linker
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
+
+// Deployment Targets
+MACOSX_DEPLOYMENT_TARGET = 26.0
+XROS_DEPLOYMENT_TARGET = 26.0
+
+// Product
+PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp
+PRODUCT_NAME = $(TARGET_NAME)
+
+// Swift
+SWIFT_EMIT_LOC_STRINGS = YES
+
+// Target Device Family
+TARGETED_DEVICE_FAMILY = 1,2
+
