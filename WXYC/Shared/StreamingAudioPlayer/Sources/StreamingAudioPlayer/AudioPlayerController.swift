@@ -50,7 +50,7 @@ public final class AudioPlayerController {
     
     /// Whether playback is loading (play initiated but not yet playing)
     public var isLoading: Bool {
-        playbackIntended && !isPlaying
+        playbackIntended && player.state == .buffering
     }
     
     /// The current stream URL
