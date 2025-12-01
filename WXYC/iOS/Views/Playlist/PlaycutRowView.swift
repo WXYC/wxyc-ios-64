@@ -168,7 +168,7 @@ struct PlaycutRowView: View {
                             }
                         }
                         .padding(12.0)
-                        .clipShape(.rect(corners: .concentric))
+                        .clipRounded()
                         .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
                         
                         // Song info
@@ -261,6 +261,30 @@ struct PlaycutRowView: View {
             await MainActor.run {
                 isLoadingArtwork = false
             }
+        }
+    }
+}
+
+extension View {
+    nonisolated public func clipRounded() -> some View {
+        clipShape(Self.rectShape)
+    }
+
+    static nonisolated var rectShape: some Shape {
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+            AnyShape(ConcentricRectangle.rect(corners: .concentric))
+        } else {
+            AnyShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+extension Shape {
+    static var rectShape: some Shape {
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+            AnyShape(ConcentricRectangle.rect(corners: .concentric))
+        } else {
+            AnyShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 }
