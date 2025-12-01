@@ -35,17 +35,13 @@ public struct PlaceholderArtworkView: View {
         GeometryReader { geometry in
             ZStack {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
-                    .glassEffect(
-                        .clear
-                            .tint(
-                                Color(
-                                    hue: 248 / 360,
-                                    saturation: 100 / 100,
-                                    brightness: 100 / 100,
-                                    opacity: 0.25
-                                )
-                            )
-                            .interactive(),
+                    .glassEffectClearTintedInteractiveIfAvailable(
+                        tint: Color(
+                            hue: 248 / 360,
+                            saturation: 100 / 100,
+                            brightness: 100 / 100,
+                            opacity: 0.25
+                        ),
                         in: RoundedRectangle(
                             cornerRadius: cornerRadius,
                             style: .circular
@@ -62,7 +58,7 @@ public struct PlaceholderArtworkView: View {
                     .shadow(radius: 2, x: 0, y: shadowYOffset)
                 
                 WXYCLogo()
-                    .glassEffect(.clear, in: WXYCLogoShape())
+                    .glassEffectClearIfAvailable(in: WXYCLogoShape())
                     .preferredColorScheme(.light)
                     .background(
                         meshGradient.opacity(0.6)

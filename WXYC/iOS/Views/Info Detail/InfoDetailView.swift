@@ -130,7 +130,7 @@ struct ActionButton: View {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding()
-            .glassEffect(.clear)
+            .glassEffectClearIfAvailable()
             .background(
                 Capsule()
                     .fill(color)
