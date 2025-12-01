@@ -16,6 +16,7 @@ import Intents
 import AVFoundation
 import PlayerHeaderView
 import StreamingAudioPlayer
+import WXUI
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
@@ -76,26 +77,32 @@ struct WXYCApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
-                .environmentObject(appState)
-                .environment(\.playlistService, appState.playlistService)
-                .environment(\.artworkService, appState.artworkService)
-                .onAppear {
-                    setUpNowPlayingInfoCenter()
-                    setUpQuickActions()
-                }
-                .onOpenURL { url in
-                    handleURL(url)
-                }
-                .onContinueUserActivity("org.wxyc.iphoneapp.play") { userActivity in
-                    handleUserActivity(userActivity)
-                }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                    handleUserActivity(userActivity)
-                }
-                .safeAreaPadding([.top, .bottom])
-//                .preferredColorScheme(.light)
+            ZStack {
+                Rectangle()
+                    .fill(WXYCBackground())
+                    .ignoresSafeArea()
 
+                RootTabView()
+                    .frame(maxWidth: 440)
+                    .background(WXYCBackground())
+                    .environmentObject(appState)
+                    .environment(\.playlistService, appState.playlistService)
+                    .environment(\.artworkService, appState.artworkService)
+                    .onAppear {
+                        setUpNowPlayingInfoCenter()
+                        setUpQuickActions()
+                    }
+                    .onOpenURL { url in
+                        handleURL(url)
+                    }
+                    .onContinueUserActivity("org.wxyc.iphoneapp.play") { userActivity in
+                        handleUserActivity(userActivity)
+                    }
+                    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                        handleUserActivity(userActivity)
+                    }
+                    .safeAreaPadding([.top, .bottom])
+            }
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
@@ -103,7 +110,7 @@ struct WXYCApp: App {
         .backgroundTask(.appRefresh("com.wxyc.refresh")) { _ in
             // Handle background refresh if needed
         }
-        
+
     }
 
     // MARK: - Setup
