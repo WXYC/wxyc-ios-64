@@ -8,7 +8,6 @@
 
 import SwiftUI
 import Core
-import WXUI
 
 struct RootTabView: View {
     private enum Page {
@@ -27,7 +26,6 @@ struct RootTabView: View {
             InfoDetailView()
                 .tag(Page.infoDetail)
         }
-        .background(WXYCBackground())
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
         .ignoresSafeArea()
