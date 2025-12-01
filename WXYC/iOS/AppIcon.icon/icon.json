@@ -48,7 +48,7 @@
           "name" : "logo gradient",
           "opacity-specializations" : [
             {
-              "value" : 0.66
+              "value" : 0.75
             },
             {
               "appearance" : "dark",
