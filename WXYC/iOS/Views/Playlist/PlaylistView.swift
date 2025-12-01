@@ -11,10 +11,13 @@ import Core
 import WXUI
 import AppIntents
 import PlayerHeaderView
+import PartyHorn
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
+    
+    @State private var showingPartyHorn = false
     
     var body: some View {
         ZStack {
@@ -32,15 +35,20 @@ struct PlaylistView: View {
                     
                     // Footer button
                     if !playlistEntries.isEmpty {
-                        Text("what the freq?")
-                            .fontWeight(.black)
-                            .foregroundStyle(.white)
-                            .padding(.top, 20)
-                            .safeAreaPadding(.bottom)
+                        Button("what the freq?") {
+                            showingPartyHorn = true
+                        }
+                        .fontWeight(.black)
+                        .foregroundStyle(.white)
+                        .padding(.top, 20)
+                        .safeAreaPadding(.bottom)
                     }
                 }
             }
             .coordinateSpace(name: "scroll")
+        }
+        .fullScreenCover(isPresented: $showingPartyHorn) {
+            PartyHornSwiftUIView()
         }
         .padding(.horizontal, 12)
         .task {
