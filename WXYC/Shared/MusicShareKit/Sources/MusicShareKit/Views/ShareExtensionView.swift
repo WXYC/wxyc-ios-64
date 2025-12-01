@@ -57,6 +57,7 @@ public struct ShareExtensionView: View {
             .foregroundStyle(.white)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .requestSentHUD(isPresented: $viewModel.showRequestSentHUD)
         .task {
             await viewModel.extractAndProcessURL()
         }
@@ -281,6 +282,7 @@ public class ShareExtensionViewModel {
     var state: State = .loading
     var artworkImage: UIImage?
     var isLoadingArtwork = false
+    var showRequestSentHUD = false
 
     private weak var extensionContext: NSExtensionContext?
     private let serviceRegistry = MusicServiceRegistry.shared
@@ -333,6 +335,11 @@ public class ShareExtensionViewModel {
                     artist: track.artist ?? "Unknown Artist",
                     album: track.album
                 )
+                withAnimation {
+                    showRequestSentHUD = true
+                }
+                // Delay dismissal to show the HUD
+                try? await Task.sleep(for: .seconds(1.5))
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             } catch {
                 print("Failed to submit request: \(error)")
