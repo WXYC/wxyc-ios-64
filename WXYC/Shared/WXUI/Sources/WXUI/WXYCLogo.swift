@@ -16,7 +16,7 @@ public struct WXYCLogo: View {
         WXYCBackgroundMeshAnimation()
             .opacity(colorScheme == .light ? 0.25 : 0.40)
             .clipShape(WXYCLogoShape())
-            .glassEffect(.regular, in: WXYCLogoShape())
+            .glassEffectRegularIfAvailable(in: WXYCLogoShape())
     }
 }
 
