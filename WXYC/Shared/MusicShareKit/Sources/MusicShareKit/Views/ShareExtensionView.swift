@@ -79,7 +79,7 @@ public struct ShareExtensionView: View {
             .frame(minWidth: 0, maxWidth: .infinity)
             .saturation(0.75)
             .padding(.vertical, 10)
-            .glassEffect(.clear)
+            .glassEffectClearIfAvailable()
             .background(requestBackground)
             .clipShape(.capsule)
             .disabled(!viewModel.canSubmit)
@@ -216,7 +216,7 @@ public struct ShareExtensionView: View {
                     }
             }
         }
-        .glassEffect(in: RoundedRectangle(cornerRadius: 8))
+        .glassEffectIfAvailable(in: RoundedRectangle(cornerRadius: 8))
         .shadow(radius: 3, y: 3)
     }
     
@@ -262,7 +262,7 @@ struct ButtonModifier: ViewModifier {
             .saturation(0.75)
             .padding(.vertical, 10)
             .clipShape(.capsule)
-            .glassEffect(.clear)
+            .glassEffectClearIfAvailable()
     }
 }
 
@@ -281,7 +281,7 @@ public class ShareExtensionViewModel {
     var state: State = .loading
     var artworkImage: UIImage?
     var isLoadingArtwork = false
-    
+
     private weak var extensionContext: NSExtensionContext?
     private let serviceRegistry = MusicServiceRegistry.shared
     private var musicTrack: MusicTrack?
