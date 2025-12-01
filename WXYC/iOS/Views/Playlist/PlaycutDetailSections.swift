@@ -24,6 +24,7 @@ struct PlaycutHeaderSection: View {
                     Image(uiImage: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
+                        .cornerRadius(12)
                         .padding(.bottom, 16)
                 } else {
                     PlaceholderArtworkView(
