@@ -9,6 +9,11 @@ import Foundation
 import AVFoundation
 import AudioStreaming
 
+/// Holds audio buffer callback in a non-actor-isolated way for realtime audio thread access
+private final class AudioBufferCallbackHolder: @unchecked Sendable {
+    var callback: ((AVAudioPCMBuffer) -> Void)?
+}
+
 /// Low-level audio player that wraps the AudioStreaming package
 /// Handles basic playback control and state management
 @MainActor
@@ -23,12 +28,18 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Callbacks
     
-    public var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
+    /// Callback for audio buffer data. Called from realtime audio thread.
+    public var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)? {
+        get { audioBufferCallbackHolder.callback }
+        set { audioBufferCallbackHolder.callback = newValue }
+    }
     public var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
     public var onMetadata: (([String: String]) -> Void)?
     
     // MARK: - Private Properties
     
+    /// Must be nonisolated so setupFrameFilter can access it without inheriting MainActor isolation
+    @ObservationIgnored nonisolated private let audioBufferCallbackHolder = AudioBufferCallbackHolder()
     @ObservationIgnored private nonisolated(unsafe) let player: AudioPlayer
     
     // MARK: - Initialization
@@ -48,9 +59,12 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Setup
     
-    private func setupFrameFilter() {
-        let filter = FilterEntry(name: "audio-buffer-callback") { [weak self] buffer, _ in
-            self?.onAudioBuffer?(buffer)
+    /// Must be nonisolated so the closure passed to FilterEntry doesn't inherit MainActor isolation.
+    /// This closure is called from a realtime audio thread and cannot have actor isolation requirements.
+    nonisolated private func setupFrameFilter() {
+        let holder = audioBufferCallbackHolder
+        let filter = FilterEntry(name: "audio-buffer-callback") { buffer, _ in
+            holder.callback?(buffer)
         }
         player.frameFiltering.add(entry: filter)
     }

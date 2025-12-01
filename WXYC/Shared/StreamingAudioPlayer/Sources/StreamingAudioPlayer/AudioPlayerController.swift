@@ -48,6 +48,11 @@ public final class AudioPlayerController {
         player.isPlaying
     }
     
+    /// Whether playback is loading (play initiated but not yet playing)
+    public var isLoading: Bool {
+        playbackIntended && !isPlaying
+    }
+    
     /// The current stream URL
     public var currentURL: URL? {
         player.currentURL
@@ -301,8 +306,11 @@ public final class AudioPlayerController {
             object: nil,
             queue: nil
         ) { [weak self] notification in
+            let userInfo = notification.userInfo
+            let typeValue = userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            let optionsValue = userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
             Task { @MainActor [weak self] in
-                self?.handleInterruption(notification)
+                self?.handleInterruption(typeValue: typeValue, optionsValue: optionsValue)
             }
         }
         notificationObservers.append(interruptionObserver)
@@ -313,8 +321,10 @@ public final class AudioPlayerController {
             object: nil,
             queue: nil
         ) { [weak self] notification in
+            let userInfo = notification.userInfo
+            let reasonValue = userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
             Task { @MainActor [weak self] in
-                self?.handleRouteChange(notification)
+                self?.handleRouteChange(reasonValue: reasonValue)
             }
         }
         notificationObservers.append(routeChangeObserver)
@@ -343,9 +353,8 @@ public final class AudioPlayerController {
     #endif
     
     #if os(iOS) || os(tvOS) || os(watchOS)
-    private func handleInterruption(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+    private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
+        guard let typeValue = typeValue,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
             return
         }
@@ -358,7 +367,7 @@ public final class AudioPlayerController {
             }
             
         case .ended:
-            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+            guard let optionsValue = optionsValue else { return }
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
             
             if options.contains(.shouldResume) && wasPlayingBeforeInterruption {
@@ -371,9 +380,8 @@ public final class AudioPlayerController {
         }
     }
     
-    private func handleRouteChange(_ notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+    private func handleRouteChange(reasonValue: UInt?) {
+        guard let reasonValue = reasonValue,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
             return
         }
