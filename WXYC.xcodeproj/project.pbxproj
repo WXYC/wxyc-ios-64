@@ -32,6 +32,7 @@
 		23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23B35B512ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B502ED50C0F00EFD77B /* MusicShareKit */; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
+		23C1A1B12ED8000000000011 /* StreamingAudioPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B02ED8000000000010 /* StreamingAudioPlayer */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,7 +93,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		2307EE312EDD0B9D007AB889 /* AudioPlayer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = AudioPlayer.xcodeproj; sourceTree = "<group>"; };
+		230750572EDD0F9F007AB889 /* Sandbox.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Sandbox.xcodeproj; sourceTree = "<group>"; };
+		230750672EDD0F9F007AB889 /* Party Horn.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Party Horn.xcodeproj"; sourceTree = "<group>"; };
+		230776962EDD1097007AB889 /* Sandbox.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Sandbox.xcodeproj; sourceTree = "<group>"; };
+		230776FD2EDD1097007AB889 /* Party Horn.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Party Horn.xcodeproj"; sourceTree = "<group>"; };
 		236609B42D72D02D0057E268 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		236609BA2D72D0420057E268 /* WatchXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		236629612D72D5BB0057E268 /* NowPlayingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = NowPlayingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -158,6 +162,7 @@
 				Shared/OpenNSFW,
 				Shared/RequestService,
 				Shared/Secrets,
+				Shared/StreamingAudioPlayer,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/Info.plist,
@@ -297,6 +302,7 @@
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
 				2397F56D2EDC22F500F6594F /* PlayerHeaderView in Frameworks */,
 				231260472D938C1600762428 /* Secrets in Frameworks */,
+				23C1A1B12ED8000000000011 /* StreamingAudioPlayer in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -318,7 +324,28 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		2307EE372EDD0B9D007AB889 /* Products */ = {
+		230750682EDD0F9F007AB889 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2307506A2EDD0F9F007AB889 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2307772D2EDD1097007AB889 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2307772F2EDD1097007AB889 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -477,6 +504,7 @@
 				2386DDE22ED7DA9400F3C501 /* WXUI */,
 				2397F56C2EDC22F500F6594F /* PlayerHeaderView */,
 				2397F6332EDC239400F6594F /* PlayerHeaderView */,
+				23C1A1B02ED8000000000010 /* StreamingAudioPlayer */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -577,6 +605,7 @@
 				23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */,
 				23C1A1A62ED8000000000006 /* XCLocalSwiftPackageReference "WXYC/Shared/RequestService" */,
 				23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
+				23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */,
 				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "../PlayerHeaderView" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -584,8 +613,20 @@
 			projectDirPath = "";
 			projectReferences = (
 				{
-					ProductGroup = 2307EE372EDD0B9D007AB889 /* Products */;
-					ProjectRef = 2307EE312EDD0B9D007AB889 /* AudioPlayer.xcodeproj */;
+					ProductGroup = 230750682EDD0F9F007AB889 /* Products */;
+					ProjectRef = 230750672EDD0F9F007AB889 /* Party Horn.xcodeproj */;
+				},
+				{
+					ProductGroup = 2307772D2EDD1097007AB889 /* Products */;
+					ProjectRef = 230776FD2EDD1097007AB889 /* Party Horn.xcodeproj */;
+				},
+				{
+					ProductGroup = 2307506A2EDD0F9F007AB889 /* Products */;
+					ProjectRef = 230750572EDD0F9F007AB889 /* Sandbox.xcodeproj */;
+				},
+				{
+					ProductGroup = 2307772F2EDD1097007AB889 /* Products */;
+					ProjectRef = 230776962EDD1097007AB889 /* Sandbox.xcodeproj */;
 				},
 			);
 			projectRoot = "";
@@ -1612,6 +1653,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = WXYC/Shared/MusicShareKit;
 		};
+		23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/StreamingAudioPlayer;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -1784,6 +1829,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */;
 			productName = Analytics;
+		};
+		23C1A1B02ED8000000000010 /* StreamingAudioPlayer */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */;
+			productName = StreamingAudioPlayer;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
