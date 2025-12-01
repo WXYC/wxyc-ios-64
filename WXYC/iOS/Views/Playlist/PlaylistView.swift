@@ -19,12 +19,20 @@ struct PlaylistView: View {
     
     @State private var showingPartyHorn = false
     
+    var showFPS: Bool {
+#if DEBUG
+        true
+#else
+        false
+#endif
+    }
+    
     var body: some View {
         ZStack {
             Color.clear
             
             ScrollView(showsIndicators: false) {
-                PlayerHeaderView()
+                PlayerHeaderView(showFPS: showFPS)
                 
                 // Playlist entries
                 LazyVStack(spacing: 0) {
