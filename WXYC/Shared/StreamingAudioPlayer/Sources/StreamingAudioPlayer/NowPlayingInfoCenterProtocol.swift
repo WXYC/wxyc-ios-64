@@ -22,3 +22,4 @@ public protocol NowPlayingInfoCenterProtocol: AnyObject {
 extension MPNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {}
 #endif
 
+
