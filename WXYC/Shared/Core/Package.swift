@@ -5,9 +5,9 @@ import PackageDescription
 let package = Package(
     name: "Core",
     platforms: [
-        .iOS(.v26),
-        .watchOS(.v26),
-        .macOS(.v26)
+        .iOS(.v18),
+        .watchOS(.v11),
+        .macOS(.v15)
     ],
     products: [
         .library(

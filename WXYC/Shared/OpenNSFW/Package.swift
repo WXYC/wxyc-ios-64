@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "OpenNSFW",
     platforms: [
-        .iOS(.v26), .watchOS(.v11), .macOS(.v26)
+        .iOS(.v18), .watchOS(.v11), .macOS(.v15)
     ],
     products: [
         .library(name: "OpenNSFW", targets: ["OpenNSFW"])

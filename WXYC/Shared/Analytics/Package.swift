@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "Analytics",
     platforms: [
-        .iOS(.v18), .watchOS(.v11), .macOS(.v26)
+        .iOS(.v18), .watchOS(.v11), .macOS(.v15)
     ],
     products: [
         .library(name: "Analytics", targets: ["Analytics"]),
