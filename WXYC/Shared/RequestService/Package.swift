@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "RequestService",
     platforms: [
-        .iOS(.v18),
+        .iOS("18.4"),
         .watchOS(.v11),
         .macOS(.v15)
     ],
@@ -20,6 +20,7 @@ let package = Package(
         .package(path: "../Secrets"),
         .package(path: "../Analytics"),
         .package(path: "../Logger"),
+        .package(path: "../WXUI"),
     ],
     targets: [
         .target(
@@ -28,6 +29,7 @@ let package = Package(
                 "Secrets",
                 "Analytics",
                 "Logger",
+                "WXUI",
             ]
         ),
         .testTarget(
