@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Bar Data
 
 /// Data model for a single bar in the chart
-public struct BarData: Identifiable {
+public struct BarData: Identifiable, Equatable {
     public var id: String { category }
     public let category: String
     public let value: Int
@@ -35,8 +35,13 @@ public struct LCDBarChartView: View {
     public let segmentsPerBar: Int
     public let maxValue: Double
     
+    // Track previous active states to detect transitions
+    @State private var previousActiveStates: [String: Set<Int>] = [:]
+    @State private var animationProgress: Double = 1.0
+    
     private static let saturation = 0.75
     private static let hue = 23.0 / 360.0
+    private static let transitionDuration: Double = 0.15 // Fast animation
     
     public init(data: [BarData], maxValue: Double, segmentsPerBar: Int = 8) {
         self.data = data
@@ -70,6 +75,9 @@ public struct LCDBarChartView: View {
                 let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
                 let x = drawingRect.minX + CGFloat(barIndex) * (barWidth + horizontalGap)
                 
+                // Get previous active state for this bar
+                let previousActive = previousActiveStates[item.id] ?? Set<Int>()
+                
                 for segmentIndex in 0..<segmentsPerBar {
                     // Determine if this segment is active
                     let isActive: Bool
@@ -80,6 +88,10 @@ public struct LCDBarChartView: View {
                         // Normal bar mode - light up all segments below activeSegments
                         isActive = segmentIndex < activeSegments
                     }
+                    
+                    // Check if this segment is transitioning from active to inactive
+                    let wasActive = previousActive.contains(segmentIndex)
+                    let isTransitioning = wasActive && !isActive
                     
                     // Draw from bottom up (segment 0 at bottom)
                     let y = drawingRect.maxY - CGFloat(segmentIndex + 1) * (segmentHeight + verticalGap) + verticalGap
@@ -94,13 +106,25 @@ public struct LCDBarChartView: View {
                     let path = Path(roundedRect: rect, cornerRadius: cornerRadius)
                     
                     // Calculate brightness-scaled colors for this segment position
-                    let segmentColor = segmentColor(isActive: isActive, segmentIndex: segmentIndex)
-                    let glowColor = glowColor(for: segmentIndex)
+                    // If transitioning, interpolate between active and inactive brightness
+                    let segmentColor = segmentColor(
+                        isActive: isActive,
+                        segmentIndex: segmentIndex,
+                        isTransitioning: isTransitioning,
+                        transitionProgress: animationProgress
+                    )
+                    let glowColor = glowColor(
+                        for: segmentIndex,
+                        isActive: isActive,
+                        isTransitioning: isTransitioning,
+                        transitionProgress: animationProgress
+                    )
                     
-                    // Draw glow/shadow for active segments
-                    if isActive {
+                    // Draw glow/shadow for active segments or transitioning segments
+                    if isActive || (isTransitioning && animationProgress > 0) {
                         var glowContext = context
-                        glowContext.addFilter(.blur(radius: glowRadius))
+                        let blurRadius = isActive ? glowRadius : glowRadius * (1.0 - animationProgress)
+                        glowContext.addFilter(.blur(radius: blurRadius))
                         glowContext.fill(path, with: .color(glowColor))
                     } else {
                         var glowContext = context
@@ -112,6 +136,71 @@ public struct LCDBarChartView: View {
                     context.fill(path, with: .color(segmentColor))
                 }
             }
+        }
+        .onChange(of: data) { oldData, newData in
+            // Detect transitions and trigger animation
+            var hasTransition = false
+            var newPreviousStates: [String: Set<Int>] = [:]
+            
+            for item in newData {
+                let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
+                var activeSet = Set<Int>()
+                
+                if let dotPosition = item.singleDotPosition {
+                    if dotPosition >= 0 {
+                        activeSet.insert(dotPosition)
+                    }
+                } else {
+                    for segmentIndex in 0..<activeSegments {
+                        activeSet.insert(segmentIndex)
+                    }
+                }
+                
+                let previousActive = previousActiveStates[item.id] ?? Set<Int>()
+                
+                // Check if any segment transitioned from active to inactive
+                for segmentIndex in previousActive {
+                    if !activeSet.contains(segmentIndex) {
+                        hasTransition = true
+                        break
+                    }
+                }
+                
+                newPreviousStates[item.id] = activeSet
+            }
+            
+            // Update previous states
+            previousActiveStates = newPreviousStates
+            
+            // Trigger animation if there's a transition
+            if hasTransition {
+                animationProgress = 0.0
+                withAnimation(.easeOut(duration: Self.transitionDuration)) {
+                    animationProgress = 1.0
+                }
+            }
+        }
+        .onAppear {
+            // Initialize previous states
+            var initialStates: [String: Set<Int>] = [:]
+            for item in data {
+                let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
+                var activeSet = Set<Int>()
+                
+                if let dotPosition = item.singleDotPosition {
+                    if dotPosition >= 0 {
+                        activeSet.insert(dotPosition)
+                    }
+                } else {
+                    for segmentIndex in 0..<activeSegments {
+                        activeSet.insert(segmentIndex)
+                    }
+                }
+                
+                initialStates[item.id] = activeSet
+            }
+            previousActiveStates = initialStates
+            animationProgress = 1.0
         }
     }
     
@@ -125,21 +214,41 @@ public struct LCDBarChartView: View {
         return maxBrightness - (brightnessSpan * progress)
     }
     
-    private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {
+    private func segmentColor(isActive: Bool, segmentIndex: Int, isTransitioning: Bool = false, transitionProgress: Double = 1.0) -> Color {
         let multiplier = brightnessMultiplier(for: segmentIndex)
         
-        if isActive {
-            let baseBrightness = colorScheme == .light ? 1.5 : 1.24
-            return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness * multiplier)
+        let activeBrightness = colorScheme == .light ? 1.5 : 1.24
+        let inactiveBrightness = colorScheme == .light ? 1.15 : 0.90
+        
+        let brightness: Double
+        if isTransitioning {
+            // Interpolate from active to inactive brightness during transition
+            let progress = transitionProgress
+            brightness = activeBrightness * (1.0 - progress) + inactiveBrightness * progress
+        } else if isActive {
+            brightness = activeBrightness
         } else {
-            let baseBrightness = colorScheme == .light ? 1.15 : 0.90
-            return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness * multiplier)
+            brightness = inactiveBrightness
         }
+        
+        return Color(hue: Self.hue, saturation: Self.saturation, brightness: brightness * multiplier)
     }
     
-    private func glowColor(for segmentIndex: Int) -> Color {
+    private func glowColor(for segmentIndex: Int, isActive: Bool, isTransitioning: Bool = false, transitionProgress: Double = 1.0) -> Color {
         let multiplier = brightnessMultiplier(for: segmentIndex)
-        return Color(hue: Self.hue, saturation: Self.saturation, brightness: 1.5 * multiplier).opacity(0.6)
+        let baseBrightness = 1.5 * multiplier
+        
+        let opacity: Double
+        if isTransitioning {
+            // Fade out glow during transition
+            opacity = 0.6 * (1.0 - transitionProgress)
+        } else if isActive {
+            opacity = 0.6
+        } else {
+            opacity = 0.6
+        }
+        
+        return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness).opacity(opacity)
     }
 }
 
