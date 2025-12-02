@@ -130,6 +130,7 @@
 		236629C02D7390A00057E268 /* Exceptions for "WXYC" folder in "WXYC TV" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Intents.swift,
 				WatchXYC/PlayerPage.swift,
 				WatchXYC/RemoteImage.swift,
 				"WXYC TV/Assets.xcassets",
