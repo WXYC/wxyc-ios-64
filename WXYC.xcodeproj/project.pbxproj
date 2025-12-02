@@ -638,7 +638,7 @@
 				23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
 				23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */,
 				23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */,
-				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "../PlayerHeaderView" */,
+				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
@@ -940,7 +940,7 @@
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYC.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = P8QACM85EZ;
+				DEVELOPMENT_TEAM = 92V374HC38;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -1358,7 +1358,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1388,7 +1387,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1418,7 +1416,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1573,9 +1570,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "../PlayerHeaderView" */ = {
+		2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../PlayerHeaderView;
+			relativePath = WXYC/Shared/PlayerHeaderView;
 		};
 		23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -1783,10 +1780,12 @@
 		};
 		2397F56C2EDC22F500F6594F /* PlayerHeaderView */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */;
 			productName = PlayerHeaderView;
 		};
 		2397F6332EDC239400F6594F /* PlayerHeaderView */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */;
 			productName = PlayerHeaderView;
 		};
 		23A8E2842ED55562001818C3 /* RequestService */ = {
