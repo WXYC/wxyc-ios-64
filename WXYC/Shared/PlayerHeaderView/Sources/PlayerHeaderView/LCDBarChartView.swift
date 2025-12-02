@@ -1,0 +1,145 @@
+//
+//  LCDBarChartView.swift
+//  PlayerHeaderView
+//
+//  Canvas-based GPU-accelerated LCD bar chart for audio visualization
+//
+
+import SwiftUI
+
+// MARK: - Bar Data
+
+/// Data model for a single bar in the chart
+public struct BarData: Identifiable {
+    public var id: String { category }
+    public let category: String
+    public let value: Int
+    /// When set, shows only a single segment at this position (for falling dot animation)
+    public let singleDotPosition: Int?
+    
+    public init(category: String, value: Int, singleDotPosition: Int? = nil) {
+        self.category = category
+        self.value = value
+        self.singleDotPosition = singleDotPosition
+    }
+}
+
+// MARK: - LCD Bar Chart View
+
+/// An LCD-style segmented bar chart view for audio visualization
+/// Uses Canvas for GPU-accelerated rendering instead of SwiftUI Charts
+public struct LCDBarChartView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    
+    public let data: [BarData]
+    public let segmentsPerBar: Int
+    public let maxValue: Double
+    
+    private static let saturation = 0.75
+    private static let hue = 23.0 / 360.0
+    
+    public init(data: [BarData], maxValue: Double, segmentsPerBar: Int = 8) {
+        self.data = data
+        self.maxValue = maxValue
+        self.segmentsPerBar = segmentsPerBar
+    }
+    
+    public var body: some View {
+        Canvas { context, size in
+            let barCount = data.count
+            guard barCount > 0 else { return }
+            
+            // Inset drawing area to prevent glow clipping at edges
+            let glowRadius: CGFloat = 3
+            let inset = glowRadius + 1
+            let drawingRect = CGRect(
+                x: inset,
+                y: inset,
+                width: size.width - inset * 2,
+                height: size.height - inset * 2
+            )
+            
+            // Calculate dimensions within the inset area
+            let horizontalGap: CGFloat = 3.5
+            let verticalGap: CGFloat = 5.5
+            let barWidth = (drawingRect.width - horizontalGap * CGFloat(barCount - 1)) / CGFloat(barCount)
+            let segmentHeight = (drawingRect.height - verticalGap * CGFloat(segmentsPerBar - 1)) / CGFloat(segmentsPerBar)
+            let cornerRadius: CGFloat = min(barWidth, segmentHeight) * 0.2
+            
+            for (barIndex, item) in data.enumerated() {
+                let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
+                let x = drawingRect.minX + CGFloat(barIndex) * (barWidth + horizontalGap)
+                
+                for segmentIndex in 0..<segmentsPerBar {
+                    // Determine if this segment is active
+                    let isActive: Bool
+                    if let dotPosition = item.singleDotPosition {
+                        // Single dot mode - only light up the segment at dotPosition
+                        isActive = segmentIndex == dotPosition && dotPosition >= 0
+                    } else {
+                        // Normal bar mode - light up all segments below activeSegments
+                        isActive = segmentIndex < activeSegments
+                    }
+                    
+                    // Draw from bottom up (segment 0 at bottom)
+                    let y = drawingRect.maxY - CGFloat(segmentIndex + 1) * (segmentHeight + verticalGap) + verticalGap
+                    
+                    let rect = CGRect(
+                        x: x,
+                        y: y,
+                        width: barWidth,
+                        height: segmentHeight
+                    )
+                    
+                    let path = Path(roundedRect: rect, cornerRadius: cornerRadius)
+                    
+                    // Calculate brightness-scaled colors for this segment position
+                    let segmentColor = segmentColor(isActive: isActive, segmentIndex: segmentIndex)
+                    let glowColor = glowColor(for: segmentIndex)
+                    
+                    // Draw glow/shadow for active segments
+                    if isActive {
+                        var glowContext = context
+                        glowContext.addFilter(.blur(radius: glowRadius))
+                        glowContext.fill(path, with: .color(glowColor))
+                    } else {
+                        var glowContext = context
+                        glowContext.addFilter(.blur(radius: 1))
+                        glowContext.fill(path, with: .color(glowColor))
+                    }
+                    
+                    // Draw the segment
+                    context.fill(path, with: .color(segmentColor))
+                }
+            }
+        }
+    }
+    
+    /// Calculates brightness multiplier based on segment position (0 = bottom, segmentsPerBar-1 = top)
+    /// Returns a value from 0.65 at bottom to 1.0 at top for a gradient effect
+    private func brightnessMultiplier(for segmentIndex: Int) -> Double {
+        let minBrightness = 0.75
+        let maxBrightness = 1.0
+        let brightnessSpan = maxBrightness - minBrightness
+        let progress = Double(segmentIndex) / Double(max(segmentsPerBar - 1, 1))
+        return maxBrightness - (brightnessSpan * progress)
+    }
+    
+    private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {
+        let multiplier = brightnessMultiplier(for: segmentIndex)
+        
+        if isActive {
+            let baseBrightness = colorScheme == .light ? 1.5 : 1.24
+            return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness * multiplier)
+        } else {
+            let baseBrightness = colorScheme == .light ? 1.15 : 0.90
+            return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness * multiplier)
+        }
+    }
+    
+    private func glowColor(for segmentIndex: Int) -> Color {
+        let multiplier = brightnessMultiplier(for: segmentIndex)
+        return Color(hue: Self.hue, saturation: Self.saturation, brightness: 1.5 * multiplier).opacity(0.6)
+    }
+}
+
