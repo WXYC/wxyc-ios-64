@@ -150,7 +150,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     
     private nonisolated func observeIsPlaying() {
         if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            let observations = Observations {
+            let observations = Observations { @MainActor in
                 AudioPlayerController.shared.isPlaying
             }
 
