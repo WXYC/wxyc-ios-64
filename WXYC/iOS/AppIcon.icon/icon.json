@@ -2,7 +2,7 @@
   "fill-specializations" : [
     {
       "value" : {
-        "solid" : "srgb:0.43922,0.43922,1.00000,1.00000"
+        "solid" : "srgb:0.67840,0.67840,1.00000,1.00000"
       }
     },
     {
@@ -48,7 +48,7 @@
           "name" : "logo gradient",
           "opacity-specializations" : [
             {
-              "value" : 0.75
+              "value" : 0.8
             },
             {
               "appearance" : "dark",

@@ -59,7 +59,6 @@ public struct PlaceholderArtworkView: View {
                 
                 WXYCLogo()
                     .glassEffectClearIfAvailable(in: WXYCLogoShape())
-                    .preferredColorScheme(.light)
                     .background(
                         meshGradient.opacity(0.6)
                     )
