@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "StreamingAudioPlayer",
     platforms: [
-        .iOS(.v18),
+        .iOS("18.4"),
         .macOS(.v15),
         .watchOS(.v11),
         .tvOS(.v18)
@@ -34,4 +34,3 @@ let package = Package(
         ),
     ]
 )
-
