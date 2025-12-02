@@ -26,8 +26,40 @@ public class AppState: ObservableObject {
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
+    
+    private var playlistObservationTask: Task<Void, Never>?
+    private var isForegrounded = false
 
     private init() {}
+    
+    /// Update the foreground state (called when scene phase changes)
+    func setForegrounded(_ foregrounded: Bool) {
+        isForegrounded = foregrounded
+    }
+    
+    /// Start observing playlist updates and reload widgets when the playlist changes
+    /// Note: Widget reloads only occur when the app is in the foreground to avoid
+    /// consuming the daily refresh budget (40-70 updates/day) when backgrounded.
+    func startObservingPlaylistUpdates() {
+        // Cancel any existing observation task
+        playlistObservationTask?.cancel()
+        
+        let service = playlistService
+        playlistObservationTask = Task { [weak self] in
+            for await _ in service.updates() {
+                // Only reload widgets when app is in foreground
+                // (foreground reloads don't count against daily budget)
+                await MainActor.run {
+                    guard let self, self.isForegrounded else { return }
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
+            }
+        }
+    }
+    
+    deinit {
+        playlistObservationTask?.cancel()
+    }
 }
 
 @main
@@ -91,6 +123,8 @@ struct WXYCApp: App {
                     .onAppear {
                         setUpNowPlayingInfoCenter()
                         setUpQuickActions()
+                        appState.setForegrounded(true)
+                        appState.startObservingPlaylistUpdates()
                     }
                     .onOpenURL { url in
                         handleURL(url)
@@ -165,14 +199,18 @@ struct WXYCApp: App {
             ])
             UserDefaults.wxyc.set(AudioPlayerController.shared.isPlaying, forKey: "isPlaying")
             AudioPlayerController.shared.handleAppDidEnterBackground()
+            appState.setForegrounded(false)
 
         case .inactive:
             // Handle becoming inactive (e.g., phone call, control center)
-            break
+            appState.setForegrounded(false)
 
         case .active:
             // Handle becoming active - reactivate audio session if needed
             AudioPlayerController.shared.handleAppWillEnterForeground()
+            appState.setForegrounded(true)
+            // Reload widgets when app becomes active to show latest data
+            WidgetCenter.shared.reloadAllTimelines()
 
         @unknown default:
             break
