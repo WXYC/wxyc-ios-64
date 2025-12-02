@@ -157,16 +157,25 @@ struct PlaybackButton: View {
                 }
             } else {
                 @Sendable func observeIsPlaying() {
-                    let _ = withObservationTracking {
-                        Task { @MainActor in
+                    Task { @MainActor in
+                        let currentState = withObservationTracking {
                             AudioPlayerController.shared.isPlaying
+                        } onChange: {
+                            Task { @MainActor in
+                                let newState = AudioPlayerController.shared.isPlaying
+                                withAnimation(.easeInOut(duration: animationDuration)) {
+                                    isPlaying = newState
+                                }
+                                observeIsPlaying()
+                            }
                         }
-                    } onChange: {
-                        // Re-register for continuous updates
-                        observeIsPlaying()
+                        // Update initial state
+                        withAnimation(.easeInOut(duration: animationDuration)) {
+                            isPlaying = currentState
+                        }
                     }
                 }
-                
+
                 observeIsPlaying()
             }
         }

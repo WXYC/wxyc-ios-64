@@ -1,5 +1,5 @@
 {
-  "originHash" : "a808809214295f6507175c90e5b48ce58609dc45f50eb42fe4016ca5ea747557",
+  "originHash" : "013a632e7571af198160b113cdecac8cf57e8235648cd4839cbff0167ae5d91f",
   "pins" : [
     {
       "identity" : "audiostreaming",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "a663621be36e6d018355949cb9ab23015e076525",
         "version" : "1.4.1"
+      }
+    },
+    {
+      "identity" : "obfuscatemacro",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/p-x9/ObfuscateMacro.git",
+      "state" : {
+        "revision" : "5fd8dfe96142229d67aaeb8d274c584dec8f732b",
+        "version" : "0.12.0"
       }
     },
     {
@@ -26,6 +35,51 @@
       "state" : {
         "revision" : "b71b7b1ba861391377d01251479530b938881ce0",
         "version" : "3.35.0"
+      }
+    },
+    {
+      "identity" : "swift-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-algorithms",
+      "state" : {
+        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
+        "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-asn1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-asn1.git",
+      "state" : {
+        "revision" : "40d25bbb2fc5b557a9aa8512210bded327c0f60d",
+        "version" : "1.5.0"
+      }
+    },
+    {
+      "identity" : "swift-crypto",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-crypto.git",
+      "state" : {
+        "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
+        "version" : "3.15.1"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics.git",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax.git",
+      "state" : {
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
       }
     },
     {
