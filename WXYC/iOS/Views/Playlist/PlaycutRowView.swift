@@ -195,6 +195,9 @@ struct PlaycutRowView: View {
                         .padding(.trailing, 4)
                     }
                 }
+                .onTapGesture {
+                    showingDetailSheet = true
+                }
             }
             .aspectRatio(2.5, contentMode: .fill)
             .frame(maxWidth: .infinity)
