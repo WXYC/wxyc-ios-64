@@ -101,7 +101,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         let listenLiveItem = CPListItem(text: "Listen Live", detailText: nil, image: image)
         listenLiveItem.isPlaying = isPlaying
 
-        listenLiveItem.handler = { selectableItem, completionHandler in
+        listenLiveItem.handler = { (_: CPSelectableListItem, completionHandler: @escaping () -> Void) in
             AudioPlayerController.shared.play()
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
@@ -131,10 +131,13 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         }
         
         playlistItems.forEach {
-            $0.handler = { item, completion in
+            $0.handler = { (item: CPSelectableListItem, completion: @escaping () -> Void) in
                 completion()
-                item.isEnabled = false
-                item.isEnabled = true
+                // Briefly disable/enable to give selection feedback if it’s a CPListItem
+                if let listItem = item as? CPListItem {
+                    listItem.isEnabled = false
+                    listItem.isEnabled = true
+                }
             }
         }
         
@@ -145,16 +148,30 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         )
     }
     
-    @MainActor
-    private func observeIsPlaying() {
-        let observations = Observations {
-            AudioPlayerController.shared.isPlaying
-        }
-
-        Task {
-            for await _ in observations {
-                self.updateListTemplate()
+    private nonisolated func observeIsPlaying() {
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+            let observations = Observations {
+                Task { @MainActor in AudioPlayerController.shared.isPlaying }
             }
+
+            Task {
+                for await _ in observations {
+                    Task { @MainActor in
+                        self.updateListTemplate()
+                    }
+                }
+            }
+        } else {
+            @Sendable func observeIsPlaying() {
+                let _ = withObservationTracking {
+                    Task { @MainActor in AudioPlayerController.shared.isPlaying }
+                } onChange: {
+                    // Re-register for continuous updates
+                    observeIsPlaying()
+                }
+            }
+            
+            observeIsPlaying()
         }
     }
     
