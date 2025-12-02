@@ -47,7 +47,11 @@ public struct VisualizerTimelineView: View {
         self.isPlaying = isPlaying
         self.rmsPerBar = rmsPerBar
         self.normalizationMode = normalizationMode
+        #if DEBUG
+        self.onModeTapped = nil
+        #else
         self.onModeTapped = onModeTapped
+        #endif
     }
     
     public var body: some View {
