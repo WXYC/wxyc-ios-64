@@ -48,14 +48,14 @@ public struct PlayerHeaderView: View {
             }
 
             VisualizerTimelineView(
+                visualizer: visualizer,
                 barHistory: $barHistory,
                 isPlaying: Self.controller.isPlaying,
                 rmsPerBar: visualizer.rmsPerBar,
-                showFPS: showFPS,
-                normalizationMode: visualizer.normalizationMode
+                showFPS: showFPS
             ) {
-                // Cycle through normalization modes on tap
-                visualizer.normalizationMode = visualizer.normalizationMode.next
+                // Cycle through normalization modes on tap (non-DEBUG builds only)
+                visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
             }
         }
         .padding(12)
