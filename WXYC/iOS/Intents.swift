@@ -101,9 +101,11 @@ struct ToggleWXYC: AudioPlaybackIntent {
     }
 }
 
+#if os(iOS)
 extension PlayWXYC: ControlConfigurationIntent {
     
 }
+#endif
 
 struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
