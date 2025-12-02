@@ -149,31 +149,30 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     }
     
     private nonisolated func observeIsPlaying() {
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            let observations = Observations { @MainActor in
-                AudioPlayerController.shared.isPlaying
-            }
-
-            Task { @MainActor in
-                for await _ in observations {
+        Task { @MainActor in
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+                let observation = Observations {
+                    AudioPlayerController.shared.isPlaying
+                }
+                
+                for await _ in observation {
                     self.updateListTemplate()
                 }
+            } else {
+                observeIsPlayingLegacy()
             }
-        } else {
-            @Sendable func observeIsPlaying() {
-                Task { @MainActor in
-                    let _ = withObservationTracking {
-                        AudioPlayerController.shared.isPlaying
-                    } onChange: {
-                        Task { @MainActor in
-                            self.updateListTemplate()
-                            observeIsPlaying()
-                        }
-                    }
-                }
+        }
+    }
+    
+    @MainActor
+    private func observeIsPlayingLegacy() {
+        let _ = withObservationTracking {
+            AudioPlayerController.shared.isPlaying
+        } onChange: {
+            Task { @MainActor in
+                self.updateListTemplate()
+                self.observeIsPlayingLegacy()
             }
-
-            observeIsPlaying()
         }
     }
     
