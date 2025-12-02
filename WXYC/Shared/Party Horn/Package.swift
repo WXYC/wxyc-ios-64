@@ -6,10 +6,10 @@ let package = Package(
     name: "PartyHorn",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v18),
+        .iOS("18.4"),
         .macOS(.v15),
         .watchOS(.v11),
-        .tvOS(.v18)
+        .tvOS("18.4")
     ],
     products: [
         .library(

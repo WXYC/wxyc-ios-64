@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "MusicShareKit",
     platforms: [
-        .iOS(.v18),
+        .iOS("18.4"),
         .watchOS(.v11),
         .macOS(.v15)
     ],
