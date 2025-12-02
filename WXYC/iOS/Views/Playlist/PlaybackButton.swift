@@ -156,7 +156,8 @@ struct PlaybackButton: View {
                     }
                 }
             } else {
-                @Sendable func observeIsPlaying() {
+                // Keep the entire legacy observation path on the main actor.
+                @Sendable func observe() {
                     Task { @MainActor in
                         let currentState = withObservationTracking {
                             AudioPlayerController.shared.isPlaying
@@ -166,7 +167,8 @@ struct PlaybackButton: View {
                                 withAnimation(.easeInOut(duration: animationDuration)) {
                                     isPlaying = newState
                                 }
-                                observeIsPlaying()
+                                // Re-arm observation
+                                observe()
                             }
                         }
                         // Update initial state
@@ -175,8 +177,7 @@ struct PlaybackButton: View {
                         }
                     }
                 }
-
-                observeIsPlaying()
+                observe()
             }
         }
     }
@@ -203,7 +204,7 @@ struct PlaybackButtonExample: View {
                 status = (status == .paused) ? .playing : .paused
             }
         )
-        background(WXYCBackground())
+        .background(WXYCBackground())
     }
 }
 
