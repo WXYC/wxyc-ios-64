@@ -12,6 +12,7 @@ import Analytics
 struct StreamingAudioPlayerTests {
     
     @Test("Initial state is stopped")
+    @MainActor
     func initialState() {
         let player = StreamingAudioPlayer()
         #expect(player.isPlaying == false)
@@ -32,6 +33,7 @@ struct StreamingAudioPlayerTests {
     }
     
     @Test("MockAudioPlayer conforms to AudioPlayerProtocol")
+    @MainActor
     func mockPlayerConformsToProtocol() {
         let player: AudioPlayerProtocol = MockAudioPlayer()
         #expect(player.isPlaying == false)
