@@ -12,11 +12,38 @@ import StreamingAudioPlayer
 
 /// A SwiftUI view that displays an animated audio visualizer using historical bar data
 public struct VisualizerTimelineView: View {
+    @Bindable public var visualizer: VisualizerDataSource
     @Binding public var barHistory: [[Float]]
     public var isPlaying: Bool
     public var rmsPerBar: [Float]
-    public var normalizationMode: NormalizationMode
     public var onModeTapped: (() -> Void)?
+    
+    /// Computed property to get the current display data based on displayProcessor
+    private var displayData: [Float] {
+        switch visualizer.displayProcessor {
+        case .fft:
+            return visualizer.fftMagnitudes
+        case .rms:
+            return visualizer.rmsPerBar
+        case .both:
+            // For "both", default to RMS for now (could be enhanced to show side-by-side)
+            return visualizer.rmsPerBar
+        }
+    }
+    
+    /// Computed property to get the current normalization mode for display
+    private var displayNormalizationMode: NormalizationMode {
+        switch visualizer.displayProcessor {
+        case .fft:
+            return visualizer.fftNormalizationMode
+        case .rms, .both:
+            return visualizer.rmsNormalizationMode
+        }
+    }
+    
+    #if DEBUG
+    @State private var showDebugSheet = false
+    #endif
     
     /// Falling dot positions (one per bar) - used when playback stops
     @State private var fallingDots: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
@@ -42,11 +69,11 @@ public struct VisualizerTimelineView: View {
         isPlaying || isFalling
     }
     
-    public init(barHistory: Binding<[[Float]]>, isPlaying: Bool, rmsPerBar: [Float], showFPS: Bool = false, normalizationMode: NormalizationMode = .ema, onModeTapped: (() -> Void)? = nil) {
+    public init(visualizer: VisualizerDataSource, barHistory: Binding<[[Float]]>, isPlaying: Bool, rmsPerBar: [Float], showFPS: Bool = false, onModeTapped: (() -> Void)? = nil) {
+        self.visualizer = visualizer
         self._barHistory = barHistory
         self.isPlaying = isPlaying
         self.rmsPerBar = rmsPerBar
-        self.normalizationMode = normalizationMode
         #if DEBUG
         self.onModeTapped = nil
         #else
@@ -92,7 +119,7 @@ public struct VisualizerTimelineView: View {
             }
             .overlay(alignment: .center) {
                 if showModeIndicator {
-                    ModeIndicatorView(mode: normalizationMode)
+                    ModeIndicatorView(mode: displayNormalizationMode)
                         .transition(.opacity.combined(with: .scale))
                 }
             }
@@ -107,12 +134,17 @@ public struct VisualizerTimelineView: View {
                 startFalling()
             }
         }
-        .onTapGesture {
 #if DEBUG
+        .onTapGesture {
+            showDebugSheet = true
             onModeTapped?()
             showModeIndicatorBriefly()
-#endif
         }
+        .sheet(isPresented: $showDebugSheet) {
+            VisualizerDebugView(visualizer: visualizer)
+                .presentationDetents([.fraction(0.75)])
+        }
+#endif
     }
     
     /// Capture current bar tops and start the falling animation
@@ -140,8 +172,9 @@ public struct VisualizerTimelineView: View {
                 barHistory[barIndex][historyIndex] = barHistory[barIndex][historyIndex - 1]
             }
             
-            let newValue = barIndex < rmsPerBar.count 
-                ? min(rmsPerBar[barIndex], VisualizerConstants.magnitudeLimit) 
+            // Use displayData which switches between FFT and RMS based on displayProcessor
+            let newValue = barIndex < displayData.count 
+                ? min(displayData[barIndex], VisualizerConstants.magnitudeLimit) 
                 : 0
             barHistory[barIndex][0] = newValue
         }

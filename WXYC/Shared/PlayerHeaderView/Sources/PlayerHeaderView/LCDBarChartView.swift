@@ -207,7 +207,7 @@ public struct LCDBarChartView: View {
     /// Calculates brightness multiplier based on segment position (0 = bottom, segmentsPerBar-1 = top)
     /// Returns a value from 0.65 at bottom to 1.0 at top for a gradient effect
     private func brightnessMultiplier(for segmentIndex: Int) -> Double {
-        let minBrightness = 0.75
+        let minBrightness = 0.90
         let maxBrightness = 1.0
         let brightnessSpan = maxBrightness - minBrightness
         let progress = Double(segmentIndex) / Double(max(segmentsPerBar - 1, 1))
