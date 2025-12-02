@@ -1,5 +1,6 @@
-import PostHog
 import Foundation
+import PostHog
+import Secrets
 
 protocol AnalyticsError: Error { }
 
@@ -31,6 +32,16 @@ public extension PostHogSDK {
             "additionalData": "\(additionalData)"
         ])
     }
+    
+//    func setUp() {
+//        let POSTHOG_API_KEY = Secrets.posthogApiKey
+//        let POSTHOG_HOST = "https://us.i.posthog.com"
+//        
+//        let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
+//        
+//        PostHogSDK.shared.setup(config)
+//        PostHogSDK.shared.register(["Build Configuration" : self.buildConfiguration()])
+//    }
     
     func capture(error: Error, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = [
@@ -66,7 +77,7 @@ public extension PostHogSDK {
             "context": context
         ]
         defaultProperties.merge(with: additionalData)
-
+        
         PostHogSDK.shared.capture(
             "error",
             properties: defaultProperties
@@ -87,7 +98,7 @@ public extension PostHogSDK {
     func capture(_ event: String, context: String? = nil, additionalData: [String: String] = [:]) {
         var defaultProperties = ["context": context]
         defaultProperties.merge(with: additionalData)
-
+        
         PostHogSDK.shared.capture(
             event,
             properties: defaultProperties as [String : Any]
