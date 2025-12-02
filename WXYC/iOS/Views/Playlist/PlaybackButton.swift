@@ -114,7 +114,8 @@ struct PlaybackButton: View {
     @Environment(\.colorScheme) private var colorScheme
     
     @State private var isPlaying: Bool = AudioPlayerController.shared.isPlaying
-    
+    @State private var isExpanded = false
+
     var animationDuration: Double
     var action: (() -> Void)?
     
@@ -142,16 +143,31 @@ struct PlaybackButton: View {
                 .fill(buttonColor())
         }
         .buttonStyle(NoHighlightButtonStyle())
+        .animation(.spring(), value: isExpanded)
         .task {
-            // Observe playback state changes from AudioPlayerController
-            let observation = Observations {
-                AudioPlayerController.shared.isPlaying
-            }
-            
-            for await newIsPlaying in observation {
-                withAnimation(.easeInOut(duration: animationDuration)) {
-                    isPlaying = newIsPlaying
+            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
+                let observation = Observations {
+                    AudioPlayerController.shared.isPlaying
                 }
+                
+                for await newIsPlaying in observation {
+                    withAnimation(.easeInOut(duration: animationDuration)) {
+                        isPlaying = newIsPlaying
+                    }
+                }
+            } else {
+                @Sendable func observeIsPlaying() {
+                    let _ = withObservationTracking {
+                        Task { @MainActor in
+                            AudioPlayerController.shared.isPlaying
+                        }
+                    } onChange: {
+                        // Re-register for continuous updates
+                        observeIsPlaying()
+                    }
+                }
+                
+                observeIsPlaying()
             }
         }
     }
