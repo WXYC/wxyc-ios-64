@@ -10,12 +10,16 @@ import SwiftUI
 public struct RequestSentHUD: View {
     public var body: some View {
         VStack(spacing: 8) {
+            Spacer()
+            
             Image(systemName: "phone.connection.fill")
                 .font(.system(size: 40))
             
             Text("Request Sent")
                 .font(.headline)
+            
         }
+        .aspectRatio(1.0, contentMode: .fill)
         .padding(.vertical, 16)
         .padding(.horizontal, 24)
         .background(.ultraThinMaterial) // or Color.black.opacity(0.8) if you prefer
@@ -28,7 +32,7 @@ public struct RequestSentHUD: View {
 
 struct RequestSentHUDModifier: ViewModifier {
     @Binding var isPresented: Bool
-    var autoDismissAfter: TimeInterval = 1.5
+    var autoDismissAfter = Duration.milliseconds(1500)
     
     func body(content: Content) -> some View {
         ZStack {
@@ -38,11 +42,9 @@ struct RequestSentHUDModifier: ViewModifier {
                 RequestSentHUD()
                     .transition(.scale.combined(with: .opacity))
                     .onAppear {
-                        // auto dismiss
-                        DispatchQueue.main.asyncAfter(deadline: .now() + autoDismissAfter) {
-                            withAnimation {
-                                isPresented = false
-                            }
+                        Task {
+                            try await Task.sleep(until: .now + autoDismissAfter)
+                            isPresented = false
                         }
                     }
             }
@@ -55,13 +57,14 @@ struct RequestSentHUDModifier: ViewModifier {
 public extension View {
     func requestSentHUD(isPresented: Binding<Bool>,
                         autoDismissAfter: TimeInterval = 1.5) -> some View {
-        modifier(RequestSentHUDModifier(isPresented: isPresented,
-                                        autoDismissAfter: autoDismissAfter))
+        modifier(
+            RequestSentHUDModifier(isPresented: isPresented)
+        )
     }
 }
 
 struct ContentView: View {
-    @State private var showRequestSentHUD = false
+    @State private var showRequestSentHUD = true
     
     var body: some View {
         VStack(spacing: 20) {
@@ -74,7 +77,7 @@ struct ContentView: View {
         }
         .requestSentHUD(isPresented: $showRequestSentHUD)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.green)
+        .background(Gradient(colors: [.purple, .pink]))
     }
 }
 
