@@ -194,9 +194,9 @@ public final class PartyHornView: UIView, UIGestureRecognizerDelegate {
             initialSpringVelocity: 0.8,
             options: [.curveEaseInOut],
             animations: {
+                self.alpha = 1.0
                 self.imageView.transform = CGAffineTransform(scaleX: 1, y: 1)
                 self.superview?.layoutIfNeeded()
-                
             },
             completion: nil
         )
@@ -290,19 +290,40 @@ public final class PartyHornView: UIView, UIGestureRecognizerDelegate {
 @available(iOS 13.0, *)
 public struct PartyHornSwiftUIView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var partyHornView: PartyHornView?
     
     public init() {}
     
     public var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Image("party horn background", bundle: .module)
+                Image("layer 0 background", bundle: .module)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                 
-                PartyHornViewRepresentable()
+                Image("layer 1 swizzles", bundle: .module)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
+                    .wipe(direction: .bottomToTop)
+                
+                Image("layer 2 swizzles", bundle: .module)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .wipe(direction: .topToBottom)
+
+                PartyHornViewRepresentable { view in
+                    partyHornView = view
+                    partyHornView?.alpha = 0.0
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        partyHornView?.zoomInPartyHorn()
+                    }
+                }
                 
                 VStack {
                     HStack {
@@ -333,16 +354,31 @@ public struct PartyHornSwiftUIView: View {
 
 @available(iOS 13.0, *)
 private struct PartyHornViewRepresentable: UIViewRepresentable {
+    var onViewReady: ((PartyHornView) -> Void)?
+    
     func makeUIView(context: Context) -> PartyHornView {
         let view = PartyHornView()
         // Set the default image from the package bundle
         if let image = UIImage(named: "party horn", in: .module, compatibleWith: nil) {
             view.image = image
         }
+        context.coordinator.view = view
+        // Notify when view is ready
+        DispatchQueue.main.async {
+            onViewReady?(view)
+        }
         return view
     }
     
     func updateUIView(_ uiView: PartyHornView, context: Context) {
         // No updates needed
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
+    final class Coordinator {
+        var view: PartyHornView?
     }
 }
