@@ -86,6 +86,34 @@ public struct VisualizerDebugView: View {
                     Text("Amplify audio signal before processing. 1.0x = no boost.")
                 }
                 
+                // LCD Brightness
+                Section {
+                    HStack {
+                        Text("Min Brightness")
+                        Spacer()
+                        Text(String(format: "%.2f", visualizer.minBrightness))
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $visualizer.minBrightness, in: 0.0...1.5)
+                    
+                    HStack {
+                        Text("Max Brightness")
+                        Spacer()
+                        Text(String(format: "%.2f", visualizer.maxBrightness))
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $visualizer.maxBrightness, in: 0.0...1.5)
+                    
+                    Button("Reset Brightness") {
+                        visualizer.minBrightness = 0.90
+                        visualizer.maxBrightness = 1.0
+                    }
+                } header: {
+                    Text("LCD Brightness")
+                } footer: {
+                    Text("Controls the brightness gradient of LCD segments. Min is applied to top segments, max to bottom.")
+                }
+                
                 // Actions
                 Section("Actions") {
                     Button("Reset All Settings") {

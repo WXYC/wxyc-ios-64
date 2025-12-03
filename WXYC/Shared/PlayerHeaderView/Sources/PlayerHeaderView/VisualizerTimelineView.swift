@@ -55,6 +55,17 @@ public struct VisualizerTimelineView: View {
     /// At 60 FPS, 0.92 gives a nice ~1 second fall to zero.
     private let fallDecayFactor: Float = 0.92
     
+    /// Smoothed display values that animate at frame rate (interpolates between audio updates)
+    @State private var smoothedValues: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
+    
+    /// Attack factor for rising values (higher = faster response to increases)
+    /// At 60 FPS, 0.5 gives quick attack (~2 frames to reach target)
+    private let attackFactor: Float = 0.5
+    
+    /// Decay factor for falling values (lower = slower decay for smooth falloff)
+    /// At 60 FPS, 0.85 gives a smooth ~0.5 second decay
+    private let decayFactor: Float = 0.85
+    
     @State private var fpsCounter = FPSCounter()
     @State private var showModeIndicator = false
     
@@ -103,7 +114,9 @@ public struct VisualizerTimelineView: View {
                         )
                     }
                 },
-                maxValue: Double(VisualizerConstants.magnitudeLimit)
+                maxValue: Double(VisualizerConstants.magnitudeLimit),
+                minBrightness: visualizer.minBrightness,
+                maxBrightness: visualizer.maxBrightness
             )
             .frame(height: 75)
             .padding()
@@ -164,7 +177,8 @@ public struct VisualizerTimelineView: View {
         }
     }
     
-    /// Update visualizer with live audio data
+    /// Update visualizer with live audio data using frame-level smoothing
+    /// This interpolates between audio buffer updates to achieve smooth 60 FPS animation
     private func updatePlaybackData() {
         for barIndex in 0..<VisualizerConstants.barAmount {
             // Shift history buffer
@@ -172,11 +186,24 @@ public struct VisualizerTimelineView: View {
                 barHistory[barIndex][historyIndex] = barHistory[barIndex][historyIndex - 1]
             }
             
-            // Use displayData which switches between FFT and RMS based on displayProcessor
-            let newValue = barIndex < displayData.count 
+            // Get target value from audio data
+            let targetValue = barIndex < displayData.count 
                 ? min(displayData[barIndex], VisualizerConstants.magnitudeLimit) 
-                : 0
-            barHistory[barIndex][0] = newValue
+                : Float(0)
+            
+            // Apply asymmetric smoothing: fast attack, slow decay
+            let currentSmoothed = smoothedValues[barIndex]
+            let smoothedValue: Float
+            if targetValue > currentSmoothed {
+                // Rising: fast attack to catch beats/peaks
+                smoothedValue = currentSmoothed + (targetValue - currentSmoothed) * attackFactor
+            } else {
+                // Falling: smooth decay for visual appeal
+                smoothedValue = currentSmoothed * decayFactor + targetValue * (1 - decayFactor)
+            }
+            smoothedValues[barIndex] = smoothedValue
+            
+            barHistory[barIndex][0] = smoothedValue
         }
     }
     
