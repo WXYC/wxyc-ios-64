@@ -262,8 +262,8 @@ struct StreamingLinksSection: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Listen On")
-                .font(.headline)
+            Text("Add it to your library")
+                .font(.headline.smallCaps())
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
