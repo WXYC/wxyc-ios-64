@@ -110,6 +110,16 @@ public final class VisualizerDataSource: @unchecked Sendable {
     /// Whether RMS processing is enabled (saves CPU when disabled)
     public var rmsProcessingEnabled: Bool = true
     
+    /// Minimum brightness for LCD segments (bottom segments)
+    public var minBrightness: Double = 0.90 {
+        didSet { minBrightness = max(0.0, min(minBrightness, maxBrightness)) }
+    }
+    
+    /// Maximum brightness for LCD segments (top segments)
+    public var maxBrightness: Double = 1.0 {
+        didSet { maxBrightness = max(minBrightness, min(maxBrightness, 1.5)) }
+    }
+    
     /// Legacy property for backwards compatibility - returns RMS mode
     @available(*, deprecated, message: "Use fftNormalizationMode or rmsNormalizationMode instead")
     public var normalizationMode: NormalizationMode {

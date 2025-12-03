@@ -34,6 +34,8 @@ public struct LCDBarChartView: View {
     public let data: [BarData]
     public let segmentsPerBar: Int
     public let maxValue: Double
+    public let minBrightness: Double
+    public let maxBrightness: Double
     
     // Track previous active states to detect transitions
     @State private var previousActiveStates: [String: Set<Int>] = [:]
@@ -43,10 +45,12 @@ public struct LCDBarChartView: View {
     private static let hue = 23.0 / 360.0
     private static let transitionDuration: Double = 0.15 // Fast animation
     
-    public init(data: [BarData], maxValue: Double, segmentsPerBar: Int = 8) {
+    public init(data: [BarData], maxValue: Double, segmentsPerBar: Int = 8, minBrightness: Double = 0.90, maxBrightness: Double = 1.0) {
         self.data = data
         self.maxValue = maxValue
         self.segmentsPerBar = segmentsPerBar
+        self.minBrightness = minBrightness
+        self.maxBrightness = maxBrightness
     }
     
     public var body: some View {
@@ -205,10 +209,8 @@ public struct LCDBarChartView: View {
     }
     
     /// Calculates brightness multiplier based on segment position (0 = bottom, segmentsPerBar-1 = top)
-    /// Returns a value from 0.65 at bottom to 1.0 at top for a gradient effect
+    /// Returns a value from minBrightness at top to maxBrightness at bottom for a gradient effect
     private func brightnessMultiplier(for segmentIndex: Int) -> Double {
-        let minBrightness = 0.90
-        let maxBrightness = 1.0
         let brightnessSpan = maxBrightness - minBrightness
         let progress = Double(segmentIndex) / Double(max(segmentsPerBar - 1, 1))
         return maxBrightness - (brightnessSpan * progress)
