@@ -147,6 +147,8 @@ public final class AudioPlayerController {
     /// Start or resume playback
     public func play() {
         guard let url = player.currentURL else { return }
+        playbackIntended = true
+        playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS) || os(watchOS)
         activateAudioSession()
         #endif
