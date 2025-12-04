@@ -18,6 +18,7 @@ struct PlaylistView: View {
     @Environment(\.playlistService) private var playlistService
     
     @State private var showingPartyHorn = false
+    @State private var showingSiriTip = false
     
     var showFPS: Bool {
 #if DEBUG
@@ -33,7 +34,15 @@ struct PlaylistView: View {
             
             ScrollView(showsIndicators: false) {
                 PlayerHeaderView(showFPS: showFPS)
-                
+
+                // Siri tip
+                if showingSiriTip {
+                    SiriTipView(isVisible: $showingSiriTip) {
+                        SiriTipView.recordDismissal()
+                    }
+                    .padding(.vertical, 8)
+                }
+
                 // Playlist entries
                 LazyVStack(spacing: 0) {
                     ForEach(playlistEntries, id: \.id) { entry in
@@ -52,18 +61,22 @@ struct PlaylistView: View {
                             showingPartyHorn = true
                         }
                         .fontWeight(.black)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WXYCMeshAnimation())
                         .padding(.top, 20)
                         .safeAreaPadding(.bottom)
                     }
                 }
+
             }
+            .padding(.horizontal, 12)
             .coordinateSpace(name: "scroll")
         }
         .fullScreenCover(isPresented: $showingPartyHorn) {
             PartyHornSwiftUIView()
         }
-        .padding(.horizontal, 12)
+        .onAppear {
+            showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
+        }
         .task {
             guard let playlistService else { return }
             for await playlist in playlistService.updates() {
