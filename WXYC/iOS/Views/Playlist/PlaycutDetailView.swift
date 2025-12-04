@@ -19,69 +19,97 @@ struct PlaycutDetailView: View {
     @State private var metadata: PlaycutMetadata = .empty
     @State private var isLoadingMetadata = true
     @State private var expandedBio = false
+    @State private var isShowingArtworkLightbox = false
+    @Namespace private var artworkNamespace
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     
     private let metadataService = PlaycutMetadataService()
     
+    private var artworkGeometryID: String {
+        "playcut-artwork-\(playcut.id)"
+    }
+    
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Artwork and basic info
-                PlaycutHeaderSection(playcut: playcut, artwork: artwork)
+        ZStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Artwork and basic info
+                    PlaycutHeaderSection(
+                        playcut: playcut,
+                        artwork: artwork,
+                        isShowingLightbox: $isShowingArtworkLightbox,
+                        artworkNamespace: artworkNamespace,
+                        artworkGeometryID: artworkGeometryID
+                    )
                     .padding(.top, 30)
-                
-                // Metadata section
-                if isLoadingMetadata {
-                    PlaycutLoadingSection()
+                    
+                    // Metadata section
+                    if isLoadingMetadata {
+                        PlaycutLoadingSection()
+                            .foregroundStyle(.white)
+                    } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil {
+                        PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
+                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(.white)
+                    }
+                    
+                    // Streaming links
+                    if metadata.hasStreamingLinks || !isLoadingMetadata {
+                        StreamingLinksSection(
+                            metadata: metadata,
+                            isLoading: isLoadingMetadata,
+                            onServiceTapped: { service in
+                                PostHogSDK.shared.capture(
+                                    "streaming link tapped",
+                                    properties: ["service": service.name]
+                                )
+                            }
+                        )
                         .foregroundStyle(.white)
-                } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil {
-                    PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
-                        .frame(maxWidth: .infinity)
+                    }
+                    
+                    // External links (Discogs, Wikipedia)
+                    if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
+                        ExternalLinksSection(
+                            metadata: metadata,
+                            onLinkTapped: { service in
+                                PostHogSDK.shared.capture(
+                                    "external link tapped",
+                                    properties: ["service": service]
+                                )
+                            }
+                        )
                         .foregroundStyle(.white)
+                    }
+                    
+                    Spacer(minLength: 40)
                 }
-                
-                // Streaming links
-                if metadata.hasStreamingLinks || !isLoadingMetadata {
-                    StreamingLinksSection(
-                        metadata: metadata,
-                        isLoading: isLoadingMetadata,
-                        onServiceTapped: { service in
-                            PostHogSDK.shared.capture(
-                                "streaming link tapped",
-                                properties: ["service": service.name]
-                            )
-                        }
-                    )
-                    .foregroundStyle(.white)
-                }
-                
-                // External links (Discogs, Wikipedia)
-                if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
-                    ExternalLinksSection(
-                        metadata: metadata,
-                        onLinkTapped: { service in
-                            PostHogSDK.shared.capture(
-                                "external link tapped",
-                                properties: ["service": service]
-                            )
-                        }
-                    )
-                    .foregroundStyle(.white)
-                }
-                
-                Spacer(minLength: 40)
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
-        }
-        .scrollContentBackground(.hidden)
-        .background(WXYCBackground())
-        .onAppear {
-            PostHogSDK.shared.capture("playcut detail view presented")
-        }
-        .task {
-            await loadMetadata()
+            .scrollContentBackground(.hidden)
+            .background(WXYCBackground())
+            .onAppear {
+                PostHogSDK.shared.capture("playcut detail view presented")
+            }
+            .task {
+                await loadMetadata()
+            }
+            
+            if isShowingArtworkLightbox, let artwork {
+                ArtworkLightboxView(
+                    image: artwork,
+                    namespace: artworkNamespace,
+                    geometryID: artworkGeometryID
+                ) {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        isShowingArtworkLightbox = false
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(1)
+            }
         }
     }
     
