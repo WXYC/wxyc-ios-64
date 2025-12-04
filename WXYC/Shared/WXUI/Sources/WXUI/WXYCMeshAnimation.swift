@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-public struct WXYCBackgroundMeshAnimation: View {
+public struct WXYCMeshAnimation: View {
     public init() {}
     
     public var body: some View {
@@ -50,6 +50,6 @@ public struct WXYCBackgroundMeshAnimation: View {
     }
 }
 
-extension WXYCBackgroundMeshAnimation: ShapeStyle {
+extension WXYCMeshAnimation: ShapeStyle {
     
 }
