@@ -319,6 +319,192 @@ struct AudioPlayerControllerAnalyticsTests {
     }
 }
 
+// MARK: - Background/Foreground Behavior Tests
+
+@Suite("AudioPlayerController Background/Foreground Behavior Tests")
+@MainActor
+struct AudioPlayerControllerBackgroundBehaviorTests {
+    
+    @Test("play(url:) sets playbackIntended - background does NOT deactivate session")
+    func playWithURLSetsPlaybackIntended() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        harness.controller.play(url: url, reason: "test")
+        harness.mockSession.reset()  // Clear the activation from play()
+        
+        harness.controller.handleAppDidEnterBackground()
+        
+        // Should NOT have deactivated (playbackIntended is true)
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background while playing should NOT deactivate session")
+    }
+    
+    @Test("play() without URL sets playbackIntended - background does NOT deactivate session")
+    func playWithoutURLSetsPlaybackIntended() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        // First play with URL to set up currentURL
+        harness.controller.play(url: url, reason: "initial")
+        
+        // Pause (clears playbackIntended)
+        harness.controller.pause()
+        
+        // Resume with play() - should set playbackIntended = true
+        harness.controller.play()
+        
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        
+        // Should NOT have deactivated
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background after play() should NOT deactivate - playbackIntended should be true")
+    }
+    
+    @Test("pause() clears playbackIntended - background DOES deactivate session")
+    func pauseClearsPlaybackIntended() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        harness.controller.play(url: url, reason: "test")
+        harness.controller.pause()
+        
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        
+        // SHOULD have deactivated (playbackIntended is false)
+        #expect(harness.mockSession.setActiveCallCount == 1,
+               "Background after pause should deactivate session")
+        #expect(harness.mockSession.lastActiveState == false,
+               "Session should be set to inactive")
+    }
+    
+    @Test("pause then play() keeps playbackIntended true")
+    func pauseThenPlayKeepsPlaybackIntended() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        // Play -> Pause -> Play cycle
+        harness.controller.play(url: url, reason: "initial")
+        harness.controller.pause()  // playbackIntended = false
+        harness.controller.play()   // playbackIntended should be true again
+        
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background after pause-then-play should NOT deactivate")
+    }
+    
+    @Test("pause then toggle() keeps playbackIntended true")
+    func pauseThenToggleKeepsPlaybackIntended() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        // Play -> Pause -> Toggle cycle
+        harness.controller.play(url: url, reason: "initial")
+        harness.controller.pause()
+        harness.controller.toggle()  // Should resume and set playbackIntended = true
+        
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background after pause-then-toggle should NOT deactivate")
+    }
+    
+    @Test("stop() clears playbackIntended and deactivates immediately")
+    func stopClearsPlaybackIntendedAndDeactivates() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        harness.controller.play(url: url, reason: "test")
+        harness.mockSession.reset()
+        
+        harness.controller.stop()
+        
+        // stop() itself should deactivate
+        #expect(harness.mockSession.setActiveCallCount >= 1,
+               "stop() should deactivate session")
+        #expect(harness.mockSession.lastActiveState == false,
+               "Session should be inactive after stop()")
+    }
+    
+    @Test("foreground while playbackIntended reactivates session")
+    func foregroundWhilePlaybackIntendedReactivates() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        harness.controller.play(url: url, reason: "test")
+        harness.controller.handleAppDidEnterBackground()  // No deactivation (playing)
+        
+        harness.mockSession.reset()
+        harness.controller.handleAppWillEnterForeground()
+        
+        #expect(harness.mockSession.setActiveCallCount == 1,
+               "Foreground while playing should activate session")
+        #expect(harness.mockSession.lastActiveState == true,
+               "Session should be active")
+    }
+    
+    @Test("foreground without playbackIntended does NOT activate session")
+    func foregroundWithoutPlaybackIntendedDoesNotActivate() async {
+        let harness = AudioPlayerControllerTestHarness()
+        
+        // Never played - go to foreground
+        harness.mockSession.reset()
+        harness.controller.handleAppWillEnterForeground()
+        
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Foreground without playback intent should NOT activate session")
+    }
+    
+    @Test("Real-world scenario: Apple Music interrupted, WXYC plays, backgrounding keeps WXYC playing")
+    func appleMusicInterruptionScenario() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let wxycURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
+        
+        // User starts WXYC (interrupts Apple Music)
+        harness.controller.play(url: wxycURL, reason: "user started stream")
+        #expect(harness.controller.isPlaying)
+        
+        // User backgrounds app while WXYC is playing
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        
+        // Critical: Session should NOT be deactivated
+        // If it is, Apple Music will resume
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "CRITICAL: Backgrounding while playing should NOT deactivate session (would let Apple Music resume)")
+        #expect(harness.mockSession.lastActiveState != false,
+               "Session should remain active so WXYC continues playing")
+    }
+    
+    @Test("Real-world scenario: Pause then resume, backgrounding keeps playing")
+    func pauseResumeBackgroundScenario() async {
+        let harness = AudioPlayerControllerTestHarness()
+        let url = URL(string: "https://example.com/stream")!
+        
+        // Start playing
+        harness.controller.play(url: url, reason: "initial")
+        
+        // User pauses temporarily
+        harness.controller.pause()
+        
+        // User resumes via play()
+        harness.controller.play()
+        
+        // User backgrounds app
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        
+        // Should NOT deactivate - still playing
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Backgrounding after pause-resume cycle should NOT deactivate")
+    }
+}
+
 // MARK: - Behavioral Contract Documentation
 
 /*
@@ -329,24 +515,28 @@ struct AudioPlayerControllerAnalyticsTests {
     - play() should call the underlying player's play method
     - play() should activate the audio session (iOS)
     - play() should call analytics with reason
+    - play() should set playbackIntended = true (prevents background deactivation)
  
  2. PAUSE BEHAVIOR
     - pause() should set isPlaying to false
     - pause() should call the underlying player's pause method
     - pause() should call analytics with duration
+    - pause() should set playbackIntended = false
  
  3. TOGGLE BEHAVIOR
     - toggle() while playing should pause
-    - toggle() while paused should resume/play
+    - toggle() while paused should resume/play (and set playbackIntended = true)
  
  4. STATE CONSISTENCY
     - isPlaying should accurately reflect playback state
     - State changes should be observable
+    - playbackIntended tracks user intent, survives transient states
  
  5. AUDIO SESSION (iOS)
     - Session should be activated before playback
-    - Session should remain active during background playback
+    - Session should remain active during background playback IF playbackIntended is true
     - Session should be deactivated when stopped (not just paused)
+    - Session should be deactivated on background IF playbackIntended is false
  
  6. REMOTE COMMANDS (iOS)
     - Play/Pause/Toggle commands should be enabled
@@ -363,6 +553,12 @@ struct AudioPlayerControllerAnalyticsTests {
     - play() should log analytics with reason
     - pause() should log analytics with duration
     - stop() should log analytics with duration
+ 
+ 10. BACKGROUND/FOREGROUND BEHAVIOR
+    - Background while playbackIntended: do NOT deactivate session
+    - Background without playbackIntended: deactivate session
+    - Foreground while playbackIntended: reactivate session
+    - Foreground without playbackIntended: do NOT activate session
  */
 
 #endif
