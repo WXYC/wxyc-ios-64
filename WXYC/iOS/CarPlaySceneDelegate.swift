@@ -195,7 +195,7 @@ class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
     
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if let ua = connectionOptions.userActivities.first {
-            try? handle(userActivity: ua)
+            handle(userActivity: ua)
         }
 
         guard let windowScene = scene as? UIWindowScene,
