@@ -13,10 +13,22 @@ public struct WXYCLogo: View {
     public init() {}
     
     public var body: some View {
-        WXYCBackgroundMeshAnimation()
+        WXYCMeshAnimation()
             .opacity(colorScheme == .light ? 0.25 : 0.40)
             .clipShape(WXYCLogoShape())
-            .glassEffectRegularIfAvailable(in: WXYCLogoShape())
+            .glassEffectClearTintedInteractiveIfAvailable(
+                tint: Color(
+                    hue: 248 / 360,
+                    saturation: 100 / 100,
+                    brightness: 100 / 100,
+                    opacity: 0.25
+                ),
+                in: WXYCLogoShape()
+            )
     }
 }
 
+#Preview {
+    WXYCLogo()
+        .background(WXYCBackground())
+}

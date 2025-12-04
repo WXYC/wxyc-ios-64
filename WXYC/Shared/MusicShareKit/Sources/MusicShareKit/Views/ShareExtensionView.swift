@@ -91,12 +91,12 @@ public struct ShareExtensionView: View {
     var requestBackground: some View {
         Group {
             if colorScheme == .light {
-                WXYCBackgroundMeshAnimation()
+                WXYCMeshAnimation()
                     .opacity(0.4)
                     .blendMode(.plusDarker)
                     .colorInvert()
             } else {
-                WXYCBackgroundMeshAnimation()
+                WXYCMeshAnimation()
                     .opacity(0.95)
                     .blendMode(.multiply)
             }

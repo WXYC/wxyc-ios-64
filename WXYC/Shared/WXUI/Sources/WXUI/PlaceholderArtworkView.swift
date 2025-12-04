@@ -24,7 +24,7 @@ public struct PlaceholderArtworkView: View {
     public init(
         cornerRadius: CGFloat = 12,
         shadowYOffset: CGFloat = 0,
-        meshGradient: TimelineView<AnimationTimelineSchedule, MeshGradient> = WXYCBackgroundMeshAnimation().meshGradient
+        meshGradient: TimelineView<AnimationTimelineSchedule, MeshGradient> = WXYCMeshAnimation().meshGradient
     ) {
         self.cornerRadius = cornerRadius
         self.shadowYOffset = shadowYOffset
@@ -78,7 +78,7 @@ public struct PlaceholderArtworkView: View {
     PlaceholderArtworkView(
         cornerRadius: 12,
         shadowYOffset: 2,
-        meshGradient: WXYCBackgroundMeshAnimation().meshGradient
+        meshGradient: WXYCMeshAnimation().meshGradient
     )
     .background(WXYCBackground())
 }

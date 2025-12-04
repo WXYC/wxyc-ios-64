@@ -94,7 +94,7 @@ public struct VisualizerTimelineView: View {
     
     public var body: some View {
         TimelineView(.animation(minimumInterval: VisualizerConstants.updateInterval, paused: !isAnimating)) { timeline in
-            LCDBarChartView(
+            LCDSpectrumAnalyzerView(
                 data: barHistory.enumerated().map {
                     index,
                     history in

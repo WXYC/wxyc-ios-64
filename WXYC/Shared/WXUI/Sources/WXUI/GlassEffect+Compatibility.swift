@@ -35,7 +35,7 @@ extension View {
     @ViewBuilder
     public func glassEffectRegularIfAvailable<S: Shape>(in shape: S) -> some View {
         if #available(iOS 26, watchOS 26, tvOS 26, visionOS 26, macOS 26, *) {
-            self.glassEffect(.regular, in: shape)
+            self.glassEffect(.clear, in: shape)
         } else {
             self
         }
