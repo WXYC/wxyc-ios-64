@@ -320,7 +320,7 @@ public struct PartyHornSwiftUIView: View {
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         partyHornView?.zoomInPartyHorn()
                     }
                 }
