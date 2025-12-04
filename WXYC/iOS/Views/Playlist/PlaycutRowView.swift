@@ -80,7 +80,6 @@ struct PlaycutRowView: View {
     let playcut: Playcut
     @State private var artwork: UIImage?
     @State private var isLoadingArtwork = true
-    @State private var showingShareSheet = false
     @State private var showingDetailSheet = false
     @State private var timeOffset: Int = (-10..<10).randomElement()!
     @State private var colors = Self.randomColors()
@@ -91,7 +90,6 @@ struct PlaycutRowView: View {
     private let shadowOffsetAtBottom: CGFloat = 3
 
     @Environment(\.artworkService) private var artworkService
-
     private var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
         TimelineView(.animation) { context in
             let time = context.date.timeIntervalSince1970 + TimeInterval(timeOffset)
@@ -145,10 +143,10 @@ struct PlaycutRowView: View {
                     BackgroundLayer()
                     
                     // Content that can punch through the background
-                    HStack(spacing: 0) {
+                    HStack(alignment: .center, spacing: 0) {
                         // Artwork
                         Group {
-                            if let artwork = artwork {
+                            if let artwork {
                                 LoadedArtworkView(
                                     artwork: artwork,
                                     shadowYOffset: shadowYOffset
@@ -162,7 +160,7 @@ struct PlaycutRowView: View {
                                     meshGradient: meshGradientAnimation
                                 )
                                 .frame(
-                                    maxWidth: proxy.size.height * 0.75,
+                                    maxWidth: .infinity,
                                     maxHeight: proxy.size.height * 0.75
                                 )
                             }
@@ -206,7 +204,6 @@ struct PlaycutRowView: View {
             .overlay(
                 GeometryReader { scrollProxy in
                     let scrollFrame = scrollProxy.frame(in: .named("scroll"))
-                    let localFrame = scrollProxy.frame(in: .local)
                     
                     return Color.clear
                         .preference(
@@ -235,9 +232,6 @@ struct PlaycutRowView: View {
             }
             .task {
                 await loadArtwork()
-            }
-            .sheet(isPresented: $showingShareSheet) {
-                ShareSheet(playcut: playcut, artwork: artwork)
             }
             .sheet(isPresented: $showingDetailSheet) {
                 PlaycutDetailView(playcut: playcut, artwork: artwork)
@@ -292,43 +286,26 @@ extension Shape {
     }
 }
 
-// MARK: - Share Sheet
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let playcut: Playcut
-    let artwork: UIImage?
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let activity = PlaycutActivityItem(playcut: playcut)
-
-        if let artwork = artwork {
-            activity.image = artwork
-        } else {
-            activity.image = UIImage(named: "logo.pdf")
-        }
-
-        let items: [Any] = [
-            activity.image ?? UIImage.logoImage,
-            activity.activityTitle ?? "WXYC 89.3 FM",
-            URL(string: "http://wxyc.org")!
-        ]
-
-        let activityViewController = UIActivityViewController(
-            activityItems: items,
-            applicationActivities: nil
-        )
-
-        return activityViewController
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
-        // No updates needed
-    }
-}
-
 #Preview {
     PlaylistView()
         .environment(\.playlistService, PlaylistService())
+        .environment(\.artworkService, MultisourceArtworkService())
+        .background(WXYCBackground())
+}
+
+#Preview {
+    PlaycutRowView(
+        playcut: Playcut(
+            id: 1,
+            hour: 0,
+            chronOrderID: 1,
+            songTitle: "Belleville",
+            labelName: nil,
+            artistName: "Laurel Halo",
+            releaseTitle: "Atlas"
+        ))
+//    PlaylistView()
+//        .environment(\.playlistService, PlaylistService())
         .environment(\.artworkService, MultisourceArtworkService())
         .background(WXYCBackground())
 }
