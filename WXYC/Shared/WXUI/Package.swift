@@ -15,11 +15,12 @@ let package = Package(
             name: "WXUI",
             targets: ["WXUI"]),
     ],
-    dependencies: [],
+    dependencies: [
+        .package(url: "https://github.com/Livsy90/IntelligenceGlow.git", branch: "main"),
+    ],
     targets: [
         .target(
             name: "WXUI",
-            dependencies: []
         ),
         .testTarget(
             name: "WXUITests",

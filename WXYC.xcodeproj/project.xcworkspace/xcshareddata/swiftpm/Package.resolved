@@ -1,5 +1,5 @@
 {
-  "originHash" : "a0e7e837406a9a875dcdff2caf33fc5b163b7a934e69e296b73918e1b38b11f3",
+  "originHash" : "c009e952d769ae17f6b987542d613a90e06be6869e51cd478240c05434d4dc95",
   "pins" : [
     {
       "identity" : "audiostreaming",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "a663621be36e6d018355949cb9ab23015e076525",
         "version" : "1.4.1"
+      }
+    },
+    {
+      "identity" : "intelligenceglow",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Livsy90/IntelligenceGlow.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "7801e6fdad21a81f1fbad06c5a6352c836bc42af"
       }
     },
     {
