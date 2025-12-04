@@ -18,11 +18,22 @@ import UIKit
 
 @MainActor
 @Observable
-public final class RadioPlayerController {
+public final class RadioPlayerController: PlaybackController {
     public static let shared = RadioPlayerController()
+    
+    // MARK: - PlaybackController Protocol
+    
+    public var streamURL: URL {
+        RadioStation.WXYC.streamURL
+    }
     
     public var isPlaying: Bool {
         self.radioPlayer.isPlaying
+    }
+    
+    public var isLoading: Bool {
+        // RadioPlayerController doesn't track loading state separately
+        false
     }
     
     public convenience init(
@@ -130,6 +141,31 @@ public final class RadioPlayerController {
     public func pause() {
         self.radioPlayer.pause()
     }
+    
+    public func stop() {
+        // RadioPlayerController treats stop as pause for live streams
+        self.pause()
+    }
+    
+    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
+        // RadioPlayerController uses AVPlayer which doesn't provide raw audio buffers
+        // No-op implementation
+    }
+    
+    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
+        // RadioPlayerController doesn't currently expose stream metadata
+        // No-op implementation
+    }
+    
+    #if os(iOS)
+    public func handleAppDidEnterBackground() {
+        applicationDidEnterBackground(Notification(name: UIApplication.didEnterBackgroundNotification))
+    }
+    
+    public func handleAppWillEnterForeground() {
+        applicationWillEnterForeground(Notification(name: UIApplication.willEnterForegroundNotification))
+    }
+    #endif
     
     // MARK: Private
     

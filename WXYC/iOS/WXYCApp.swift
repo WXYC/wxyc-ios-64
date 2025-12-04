@@ -68,6 +68,9 @@ struct WXYCApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // Cache migration - purge if version changed
+        CacheMigrationManager.migrateIfNeeded()
+        
         UserDefaults.standard.removeObject(forKey: "isPlaying")
         // Analytics setup
         setUpAnalytics()
@@ -120,6 +123,7 @@ struct WXYCApp: App {
                     .environmentObject(appState)
                     .environment(\.playlistService, appState.playlistService)
                     .environment(\.artworkService, appState.artworkService)
+                    .environment(\.playbackController, AudioPlayerController.shared)
                     .onAppear {
                         setUpNowPlayingInfoCenter()
                         setUpQuickActions()
@@ -285,8 +289,15 @@ struct WXYCApp: App {
 }
 
 #Preview {
-    RootTabView()
-        .environment(\.playlistService, PlaylistService())
-        .environment(\.artworkService, MultisourceArtworkService())
-        .preferredColorScheme(.light)
+    ZStack {
+        Rectangle()
+            .fill(WXYCBackground())
+            .ignoresSafeArea()
+        
+        RootTabView()
+            .environment(\.playlistService, PlaylistService())
+            .environment(\.artworkService, MultisourceArtworkService())
+            .environment(\.playbackController, AudioPlayerController.shared)
+            .preferredColorScheme(.light)
+    }
 }
