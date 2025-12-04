@@ -21,10 +21,22 @@ struct IntentError: Error {
     let description: String
 }
 
+// MARK: - Notifications
+
+extension Notification.Name {
+    /// Posted when the PlayWXYC intent is invoked via Siri
+    static let playWXYCIntentInvoked = Notification.Name("playWXYCIntentInvoked")
+}
+
 /// Helper to sync playback state with widget
+/// Note: App Intents run in a separate process and cannot access SwiftUI environment,
+/// so they access the shared controller directly.
+@MainActor
+private var playbackController: PlaybackController { AudioPlayerController.shared }
+
 @MainActor
 private func syncWidgetPlaybackState() {
-    UserDefaults.wxyc.set(AudioPlayerController.shared.isPlaying, forKey: "isPlaying")
+    UserDefaults.wxyc.set(playbackController.isPlaying, forKey: "isPlaying")
     WidgetCenter.shared.reloadAllTimelines()
 }
 
@@ -57,8 +69,16 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public init() { }
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         Log(.info, "PlayWXYC intent")
-        await AudioPlayerController.shared.play()
+        try await MainActor.run {
+            try playbackController.play(reason: "PlayWXYC intent")
+        }
         await syncWidgetPlaybackState()
+        
+        // Notify the app that the intent was invoked (for Siri tip glow effect)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .playWXYCIntentInvoked, object: nil)
+        }
+        
         let value = "Tuning in to WXYC…"
         return .result(
             value: value,
@@ -79,8 +99,9 @@ struct PauseWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        PostHogSDK.shared.capture("PauseWXYC intent")
-        await AudioPlayerController.shared.pause()
+        await MainActor.run {
+            playbackController.pause()
+        }
         await syncWidgetPlaybackState()
         return .result(value: "Now pausing WXYC")
     }
@@ -95,7 +116,9 @@ struct ToggleWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        await AudioPlayerController.shared.toggle()
+        try await MainActor.run {
+            try playbackController.toggle(reason: "ToggleWXYC intent")
+        }
         await syncWidgetPlaybackState()
         return .result(value: "Now toggling WXYC")
     }
