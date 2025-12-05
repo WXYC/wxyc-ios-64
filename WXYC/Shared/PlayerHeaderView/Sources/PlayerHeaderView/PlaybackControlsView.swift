@@ -34,6 +34,3 @@ public struct PlaybackControlsView: View {
     }
 }
 
-#Preview {
-    PlaybackControlsView(isPlaying: false, onPlayTapped: { })
-}

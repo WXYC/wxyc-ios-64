@@ -10,18 +10,19 @@ import SwiftUI
 public struct RequestSentHUD: View {
     public var body: some View {
         VStack(spacing: 8) {
+            Spacer()
+            
             Image(systemName: "phone.connection.fill")
                 .font(.system(size: 40))
             
             Text("Request Sent")
                 .font(.headline)
+            
         }
-        .foregroundStyle(.white)
-        .shadow(color: .white, radius: 1.125)
-        .frame(width: 120, height: 120)
-        .padding(.vertical, 20)
+        .aspectRatio(1.0, contentMode: .fill)
+        .padding(.vertical, 16)
         .padding(.horizontal, 24)
-        .background(.ultraThinMaterial)
+        .background(.ultraThinMaterial) // or Color.black.opacity(0.8) if you prefer
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(radius: 2.5, y: 1.5)
     }
