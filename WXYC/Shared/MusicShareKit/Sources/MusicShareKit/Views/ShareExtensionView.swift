@@ -40,10 +40,7 @@ public struct ShareExtensionView: View {
     public var body: some View {
         ZStack {
             Rectangle()
-                .fill(
-                    WXYCBackground()
-                        .secondary
-                )
+                .fill(WXYCBackground())
                 .ignoresSafeArea()
             
             VStack(alignment: .center, spacing: 0) {
@@ -161,8 +158,7 @@ public struct ShareExtensionView: View {
                 .blendMode(.difference)
                 .shadow(
                     color: logoShadowColor,
-                    radius: 2,
-                    y: 2
+                    radius: 2
                 )
                 .frame(height: 80)
 
@@ -227,7 +223,7 @@ public struct ShareExtensionView: View {
             Color(
                 hue: 250 / 360,
                 saturation: 45 / 100,
-                brightness: 100 / 100
+                brightness: 150 / 100
             )
         case .dark:
             Color(
