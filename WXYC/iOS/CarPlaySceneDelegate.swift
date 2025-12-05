@@ -19,7 +19,7 @@ import StreamingAudioPlayer
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
-    var playlistService: PlaylistService { AppState.shared.playlistService }
+    var playlistService: PlaylistService { Singletonia.shared.playlistService }
     
     // MARK: CPTemplateApplicationSceneDelegate
     
@@ -183,47 +183,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 self.playlist = playlist
                 self.updateListTemplate()
             }
-        }
-    }
-}
-
-class LoggerWindowSceneDelegate: NSObject, UIWindowSceneDelegate {
-
-    internal var window: UIWindow?
-    
-    // MARK: UISceneDelegate
-    
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        if let ua = connectionOptions.userActivities.first {
-            handle(userActivity: ua)
-        }
-
-        guard let windowScene = scene as? UIWindowScene,
-              session.configuration.name == "LoggerSceneConfiguration" else {
-            return
-        }
-        
-        window = UIWindow(frame: windowScene.coordinateSpace.bounds)
-
-        window?.rootViewController = UIHostingController(rootView: RootTabView())
-        window?.windowScene = windowScene
-        window?.makeKeyAndVisible()
-    }
-    
-    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
-        guard shortcutItem.type == "org.wxyc.iphoneapp.play" else {
-            return false
-        }
-
-        AudioPlayerController.shared.play()
-        return true
-    }
-    
-    private func handle(userActivity: NSUserActivity) {
-        if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            AudioPlayerController.shared.play()
-        } else if let _ = userActivity.interaction?.intent as? INPlayMediaIntent {
-            AudioPlayerController.shared.play()
         }
     }
 }
