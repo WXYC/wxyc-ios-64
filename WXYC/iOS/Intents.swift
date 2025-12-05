@@ -21,13 +21,6 @@ struct IntentError: Error {
     let description: String
 }
 
-// MARK: - Notifications
-
-extension Notification.Name {
-    /// Posted when the PlayWXYC intent is invoked via Siri
-    static let playWXYCIntentInvoked = Notification.Name("playWXYCIntentInvoked")
-}
-
 /// Helper to sync playback state with widget
 /// Note: App Intents run in a separate process and cannot access SwiftUI environment,
 /// so they access the shared controller directly.
@@ -73,11 +66,6 @@ struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
             try playbackController.play(reason: "PlayWXYC intent")
         }
         await syncWidgetPlaybackState()
-        
-        // Notify the app that the intent was invoked (for Siri tip glow effect)
-        await MainActor.run {
-            NotificationCenter.default.post(name: .playWXYCIntentInvoked, object: nil)
-        }
         
         let value = "Tuning in to WXYC…"
         return .result(
