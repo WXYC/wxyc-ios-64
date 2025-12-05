@@ -2,12 +2,11 @@
 //  StreamingAudioPlayer.swift
 //  StreamingAudioPlayer
 //
-//  Low-level audio player that wraps AudioStreaming package
+//  Low-level audio player that wraps the AudioStreaming package
 //
 
 import Foundation
 import AVFoundation
-import AudioStreaming
 
 /// Holds audio buffer callback in a non-actor-isolated way for realtime audio thread access
 private final class AudioBufferCallbackHolder: @unchecked Sendable {
@@ -40,7 +39,7 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     /// Must be nonisolated so setupFrameFilter can access it without inheriting MainActor isolation
     @ObservationIgnored nonisolated private let audioBufferCallbackHolder = AudioBufferCallbackHolder()
-    @ObservationIgnored private nonisolated(unsafe) let player: AudioPlayer
+    @ObservationIgnored private let player: AudioPlayer
     
     // MARK: - Initialization
     
@@ -167,4 +166,3 @@ extension StreamingAudioPlayer: AudioPlayerDelegate {
         }
     }
 }
-

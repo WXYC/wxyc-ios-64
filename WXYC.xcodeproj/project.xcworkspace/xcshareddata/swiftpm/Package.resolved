@@ -1,15 +1,6 @@
 {
-  "originHash" : "c009e952d769ae17f6b987542d613a90e06be6869e51cd478240c05434d4dc95",
+  "originHash" : "426300ba78ea54ac17ff8f25bc4bef51973a725b6ab3dd7562ee86dcf546abaf",
   "pins" : [
-    {
-      "identity" : "audiostreaming",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/dimitris-c/AudioStreaming.git",
-      "state" : {
-        "revision" : "a663621be36e6d018355949cb9ab23015e076525",
-        "version" : "1.4.1"
-      }
-    },
     {
       "identity" : "intelligenceglow",
       "kind" : "remoteSourceControl",
@@ -26,15 +17,6 @@
       "state" : {
         "revision" : "5fd8dfe96142229d67aaeb8d274c584dec8f732b",
         "version" : "0.12.0"
-      }
-    },
-    {
-      "identity" : "ogg-binary-xcframework",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/sbooth/ogg-binary-xcframework",
-      "state" : {
-        "revision" : "c0e822e18738ad913864e98d9614927ac1e9337c",
-        "version" : "0.1.2"
       }
     },
     {
@@ -89,15 +71,6 @@
       "state" : {
         "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
         "version" : "602.0.0"
-      }
-    },
-    {
-      "identity" : "vorbis-binary-xcframework",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/sbooth/vorbis-binary-xcframework",
-      "state" : {
-        "revision" : "842020eabcebe410e698c68545d6597b2d232e51",
-        "version" : "0.1.2"
       }
     },
     {
