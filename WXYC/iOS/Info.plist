@@ -59,17 +59,6 @@
 					<string>WXYC.CarPlaySceneDelegate</string>
 				</dict>
 			</array>
-			<key>UIWindowSceneSessionRoleApplication</key>
-			<array>
-				<dict>
-					<key>UISceneClassName</key>
-					<string>UIWindowScene</string>
-					<key>UISceneConfigurationName</key>
-					<string>LoggerSceneConfiguration</string>
-					<key>UISceneDelegateClassName</key>
-					<string>WXYC.LoggerWindowSceneDelegate</string>
-				</dict>
-			</array>
 		</dict>
 	</dict>
 	<key>UIBackgroundModes</key>
