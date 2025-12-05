@@ -108,7 +108,7 @@ struct DiskCache: Cache, @unchecked Sendable {
     func allRecords() -> any Sequence<(String, Data)> {
         let contents: [URL]
         do {
-            guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            guard let cacheDirectory else {
                 let error: DiskCacheError = "Failed to find Cache Directory."
                 Log(.error, error.localizedDescription)
                 PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")

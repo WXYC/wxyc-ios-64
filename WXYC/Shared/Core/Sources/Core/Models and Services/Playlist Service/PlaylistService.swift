@@ -7,22 +7,63 @@
 //
 
 import Foundation
+import Logger
 
 public final actor PlaylistService: Sendable {
     private let fetcher: RemotePlaylistFetcher
     private let interval: TimeInterval
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
+    private let cacheCoordinator: CacheCoordinator
+    private static let cacheKey = "com.wxyc.playlist.cache"
+    private static let cacheLifespan: TimeInterval = 15 * 60 // 15 minutes
     
     /// Collection of continuations for broadcasting to multiple observers
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
 
     public init(
         fetcher: RemotePlaylistFetcher = RemotePlaylistFetcher(),
-        interval: TimeInterval = 30
+        interval: TimeInterval = 30,
+        cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist
     ) {
         self.fetcher = fetcher
         self.interval = interval
+        self.cacheCoordinator = cacheCoordinator
+        Task {
+            await loadCachedPlaylist()
+        }
+    }
+    
+    /// Load cached playlist if available and not expired
+    private func loadCachedPlaylist() async {
+        do {
+            let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
+            currentPlaylist = cachedPlaylist
+            // Broadcast cached data to any existing observers
+            broadcast(cachedPlaylist)
+            Log(.info, "Loaded cached playlist with \(cachedPlaylist.entries.count) entries")
+        } catch {
+            Log(.info, "No valid cached playlist available")
+        }
+    }
+    
+    /// Fetch playlist and cache it, always fetching fresh data (ignores cache).
+    /// Used for background refresh to ensure we always get the latest data.
+    public func fetchAndCachePlaylist() async -> Playlist {
+        // Always fetch fresh data, ignoring cache
+        let playlist = await fetcher.fetchPlaylist()
+        
+        // Cache the fresh playlist (this will overwrite any existing cache)
+        await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+        
+        // Update current playlist and broadcast if changed
+        if playlist != currentPlaylist {
+            currentPlaylist = playlist
+            broadcast(playlist)
+        }
+        
+        Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries")
+        return playlist
     }
 
     /// Returns an AsyncStream that yields playlist updates.
@@ -107,6 +148,9 @@ public final actor PlaylistService: Sendable {
     private func startFetching() async {
         while !Task.isCancelled {
             let playlist = await fetcher.fetchPlaylist()
+            
+            // Cache the fetched playlist
+            await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
 
             guard !Task.isCancelled else { break }
 

@@ -6,7 +6,38 @@
 //
 
 import Testing
+import Foundation
 @testable import Core
+
+// MARK: - Mock Cache for Tests
+
+/// In-memory cache for isolated test execution (race condition tests)
+final class RaceConditionTestMockCache: Cache, @unchecked Sendable {
+    private var storage: [String: Data] = [:]
+    private let lock = NSLock()
+
+    func object(for key: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage[key]
+    }
+
+    func set(object: Data?, for key: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if let object = object {
+            storage[key] = object
+        } else {
+            storage.removeValue(forKey: key)
+        }
+    }
+
+    func allRecords() -> any Sequence<(String, Data)> {
+        lock.lock()
+        defer { lock.unlock() }
+        return Array(storage.map { ($0.key, $0.value) })
+    }
+}
 
 /// Mock protocol-based fetcher for tracking concurrency
 actor ConcurrentTrackingMockFetcher: PlaylistFetcher {
@@ -56,7 +87,8 @@ struct PlaylistServiceRaceConditionTests {
         let fetcher = TrackingRemotePlaylistFetcher(tracker: tracker)
         let service = PlaylistService(
             fetcher: fetcher,
-            interval: 1.0 // Short interval for testing
+            interval: 1.0, // Short interval for testing
+            cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
 
         // When: Many observers subscribe concurrently and consume values
@@ -96,7 +128,8 @@ struct PlaylistServiceRaceConditionTests {
         let fetcher = TrackingRemotePlaylistFetcher(tracker: tracker)
         let service = PlaylistService(
             fetcher: fetcher,
-            interval: 0.5
+            interval: 0.5,
+            cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
 
         // Create some observers
@@ -140,7 +173,8 @@ struct PlaylistServiceRaceConditionTests {
         let fetcher = TrackingRemotePlaylistFetcher(tracker: tracker)
         let service = PlaylistService(
             fetcher: fetcher,
-            interval: 1.0
+            interval: 1.0,
+            cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
 
         let stream = service.updates()
