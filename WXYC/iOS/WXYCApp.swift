@@ -17,6 +17,8 @@ import AVFoundation
 import PlayerHeaderView
 import StreamingAudioPlayer
 import WXUI
+import BackgroundTasks
+
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
@@ -145,10 +147,47 @@ struct WXYCApp: App {
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
         }
-        .backgroundTask(.appRefresh("com.wxyc.refresh")) { _ in
-            // Handle background refresh if needed
+        .backgroundTask(.appRefresh("com.wxyc.refresh")) {
+            Log(.info, "Background refresh started")
+            
+            defer {
+                // Always schedule the next refresh, even if this one failed
+                scheduleBackgroundRefresh()
+            }
+            
+            // Fetch fresh playlist (this always fetches from network, ignoring cache)
+            // and caches it with a 15-minute lifespan
+            let playlist = await appState.playlistService.fetchAndCachePlaylist()
+            
+            // Update widget with fresh data
+            WidgetCenter.shared.reloadAllTimelines()
+            
+            Log(.info, "Background refresh completed successfully with \(playlist.entries.count) entries")
+            
+            PostHogSDK.shared.capture("Background refresh completed", additionalData: [
+                "entry_count": "\(playlist.entries.count)"
+            ])
         }
-
+        .commands {
+                CommandMenu("Playback") {
+                    Button("Play/Pause") {
+                        AudioPlayerController.shared.toggle()
+                    }
+                    .keyboardShortcut(.space, modifiers: [])
+                }
+            #if DEBUG
+                CommandMenu("Debug") {
+                    Button("Trigger Background Refresh") {
+                        Task {
+                            Log(.info, "Manual background refresh triggered")
+                            let playlist = await appState.playlistService.fetchAndCachePlaylist()
+                            WidgetCenter.shared.reloadAllTimelines()
+                            Log(.info, "Manual background refresh completed with \(playlist.entries.count) entries")
+                        }
+                    }
+                }
+            #endif
+            }
     }
 
     // MARK: - Setup
@@ -215,6 +254,8 @@ struct WXYCApp: App {
             appState.setForegrounded(true)
             // Reload widgets when app becomes active to show latest data
             WidgetCenter.shared.reloadAllTimelines()
+            // Schedule next background refresh
+            scheduleBackgroundRefresh()
 
         @unknown default:
             break
@@ -239,6 +280,22 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
+
+    // MARK: - Background Refresh
+
+    private func scheduleBackgroundRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: "com.wxyc.refresh")
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
+        
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            Log(.info, "Scheduled background refresh for 15 minutes from now")
+        } catch {
+            Log(.error, "Failed to schedule background refresh: \(error)")
+            PostHogSDK.shared.capture(error: error, context: "scheduleBackgroundRefresh")
+        }
+    }
+
 
     // MARK: - Siri Intents
 

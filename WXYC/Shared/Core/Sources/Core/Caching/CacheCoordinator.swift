@@ -5,6 +5,7 @@ import Analytics
 
 public final actor CacheCoordinator {
     public static let AlbumArt = CacheCoordinator(cache: DiskCache())
+    public static let Playlist = CacheCoordinator(cache: DiskCache())
     
     enum Error: String, LocalizedError, Codable {
         case noCachedResult

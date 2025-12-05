@@ -15,6 +15,41 @@ final class MockRemotePlaylistFetcher: RemotePlaylistFetcher, @unchecked Sendabl
     }
 }
 
+// MARK: - Mock Cache for Tests
+
+/// In-memory cache for isolated test execution
+final class PlaylistTestMockCache: Cache, @unchecked Sendable {
+    private var storage: [String: Data] = [:]
+    private let lock = NSLock()
+
+    func object(for key: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage[key]
+    }
+
+    func set(object: Data?, for key: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if let object = object {
+            storage[key] = object
+        } else {
+            storage.removeValue(forKey: key)
+        }
+    }
+
+    func allRecords() -> any Sequence<(String, Data)> {
+        lock.lock()
+        defer { lock.unlock() }
+        return Array(storage.map { ($0.key, $0.value) })
+    }
+}
+
+/// Helper to create an isolated cache coordinator for testing
+func makeTestCacheCoordinator() -> CacheCoordinator {
+    CacheCoordinator(cache: PlaylistTestMockCache())
+}
+
 // MARK: - Tests
 
 @MainActor
@@ -44,7 +79,7 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = playlist1
 
-        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1, cacheCoordinator: makeTestCacheCoordinator())
 
         // When - Get first playlist from stream (waits for fetch since cache is empty)
         var iterator = service.updates().makeAsyncIterator()
@@ -77,7 +112,7 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = initialPlaylist
 
-        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1, cacheCoordinator: makeTestCacheCoordinator())
 
         // Populate the cache with an initial fetch from the first observer
         var firstIterator = service.updates().makeAsyncIterator()
@@ -115,7 +150,7 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = playlist
 
-        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.1, cacheCoordinator: makeTestCacheCoordinator())
 
         // When - Observer starts with empty cache
         var iterator = service.updates().makeAsyncIterator()
@@ -147,7 +182,7 @@ struct PlaylistServiceTests {
         )
         mockFetcher.playlistToReturn = playlist
 
-        let service = PlaylistService(fetcher: mockFetcher, interval: 0.05)
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.05, cacheCoordinator: makeTestCacheCoordinator())
 
         // When - Get two playlists from stream
         var iterator = service.updates().makeAsyncIterator()

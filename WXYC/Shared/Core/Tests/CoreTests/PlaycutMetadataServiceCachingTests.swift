@@ -11,7 +11,8 @@ import Foundation
 
 // MARK: - Mock Cache
 
-final class MockCache: Cache, @unchecked Sendable {
+/// Mock cache for PlaycutMetadataService tests (has additional tracking properties)
+final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
     private var storage: [String: Data] = [:]
     var getCallCount = 0
     var setCallCount = 0
@@ -83,7 +84,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Returns cached metadata without making API calls")
     func returnsCachedMetadata() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
@@ -130,7 +131,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Fetches from API and caches result on cache miss")
     func fetchesAndCachesOnMiss() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
@@ -173,7 +174,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Uses correct cache key format")
     func usesCorrectCacheKey() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
@@ -189,8 +190,8 @@ struct PlaycutMetadataServiceCachingTests {
         )
         
         // Mock empty responses
-        mockSession.responses["api.discogs.com"] = """{"results": []}""".data(using: .utf8)!
-        mockSession.responses["itunes.apple.com"] = """{"results": []}""".data(using: .utf8)!
+        mockSession.responses["api.discogs.com"] = "{\"results\": []}".data(using: .utf8)!
+        mockSession.responses["itunes.apple.com"] = "{\"results\": []}".data(using: .utf8)!
         
         // When
         _ = await service.fetchMetadata(for: playcut)
@@ -203,7 +204,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Second fetch returns cached data without API call")
     func secondFetchReturnsCached() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
@@ -219,8 +220,12 @@ struct PlaycutMetadataServiceCachingTests {
         )
         
         // Mock responses
-        mockSession.responses["api.discogs.com"] = """{"results": []}""".data(using: .utf8)!
-        mockSession.responses["itunes.apple.com"] = """{"results": []}""".data(using: .utf8)!
+        mockSession.responses["api.discogs.com"] = """
+        {"results": []}
+        """.data(using: .utf8)!
+        mockSession.responses["itunes.apple.com"] = """
+        {"results": []}
+        """.data(using: .utf8)!
         
         // When - first fetch
         _ = await service.fetchMetadata(for: playcut)
