@@ -32,8 +32,7 @@ struct SiriTipView: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Siri microphone icon
-            Image(systemName: "microphone.circle.fill")
+            Image(systemName: "siri")
                 .font(.system(size: 32))
                 .foregroundColor(.secondary)
             
@@ -76,19 +75,20 @@ struct SiriTipView: View {
             RoundedRectangle(cornerRadius: 16)
                 .fill(.ultraThinMaterial)
         )
-        .compositingGroup() // Try this
+        .intelligenceBackground(
+            in: RoundedRectangle(cornerRadius: 16),
+            lineWidths: isGlowing ? [2, 4, 6] : [0, 0, 0],
+            blurs: isGlowing ? [5, 6, 12] : [0, 0, 0]
+        )
         .intelligenceOverlay(
             in: RoundedRectangle(cornerRadius: 16),
             lineWidths: isGlowing ? [2, 4, 6] : [0, 0, 0],
-            blurs: isGlowing ? [0, 6, 12] : [0, 0, 0]
+            blurs: isGlowing ? [5, 6, 12] : [0, 0, 0]
         )
         .transition(.asymmetric(
             insertion: .scale(scale: 0.9).combined(with: .opacity),
             removal: .scale(scale: 0.9).combined(with: .opacity)
         ))
-        .onReceive(NotificationCenter.default.publisher(for: .playWXYCIntentInvoked)) { _ in
-            triggerGlow()
-        }
     }
     
     /// Triggers the glow effect temporarily
@@ -155,6 +155,8 @@ extension SiriTipView {
         defaults.removeObject(forKey: wasDismissedKey)
     }
 }
+
+// https://github.com/Livsy90/IntelligenceGlow/tree/main
 
 public extension View {
     /// Applies a glowing angular-gradient stroke as a background using the provided shape.
@@ -279,6 +281,7 @@ private struct IntelligenceStrokeView<S: InsettableShape>: View {
                     )
             }
         }
+        .clipShape(shape)
         .task(id: updateInterval) {
             while !Task.isCancelled {
                 stops = gradientGenerator()
@@ -307,12 +310,12 @@ private struct IntelligenceStrokeView<S: InsettableShape>: View {
 #Preview {
     ZStack {
         Color.indigo
+            .backgroundStyle(WXYCBackground())
         
         VStack {
             SiriTipView(isVisible: .constant(true)) {
                 print("Dismissed")
             }
-//            .intelligenceBackground(in: .rect(cornerRadius: 16))
             .padding()
         }
     }
