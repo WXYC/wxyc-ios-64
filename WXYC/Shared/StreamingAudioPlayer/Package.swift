@@ -17,14 +17,12 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/dimitris-c/AudioStreaming.git", from: "1.0.0"),
         .package(name: "Analytics", path: "../Analytics"),
     ],
     targets: [
         .target(
             name: "StreamingAudioPlayer",
             dependencies: [
-                "AudioStreaming",
                 "Analytics",
             ]
         ),

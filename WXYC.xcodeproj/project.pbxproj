@@ -30,7 +30,6 @@
 		2397F6342EDC239400F6594F /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 2397F6332EDC239400F6594F /* PlayerHeaderView */; };
 		23A8E2922ED564AD001818C3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23A8E2982ED564AD001818CA /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2952ED564AD001818C7 /* ObfuscateMacro */; };
-		23A8E2992ED564AD001818CB /* AudioStreaming in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2962ED564AD001818C8 /* AudioStreaming */; };
 		23A8E29A2ED564AD001818CC /* Vortex in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2972ED564AD001818C9 /* Vortex */; };
 		23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23B35B512ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B502ED50C0F00EFD77B /* MusicShareKit */; };
@@ -338,7 +337,6 @@
 				231260472D938C1600762428 /* Secrets in Frameworks */,
 				23C1A1B12ED8000000000011 /* StreamingAudioPlayer in Frameworks */,
 				23D382DB2EE16B9D00A032BE /* (null) in Frameworks */,
-				23A8E2992ED564AD001818CB /* AudioStreaming in Frameworks */,
 				23A8E29A2ED564AD001818CC /* Vortex in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -579,7 +577,6 @@
 				23C1A1B02ED8000000000010 /* StreamingAudioPlayer */,
 				23EDE0792EDD2A570034F39B /* PartyHorn */,
 				23A8E2952ED564AD001818C7 /* ObfuscateMacro */,
-				23A8E2962ED564AD001818C8 /* AudioStreaming */,
 				23A8E2972ED564AD001818C9 /* Vortex */,
 				23D383CF2EE170A000A032BE /* LaminatedGlass */,
 			);
@@ -678,7 +675,6 @@
 			packageReferences = (
 				23A8E2902ED564AD001818C3 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				23A8E2922ED564AD001818C4 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */,
-				23A8E2932ED564AD001818C5 /* XCRemoteSwiftPackageReference "AudioStreaming" */,
 				23A8E2942ED564AD001818C6 /* XCRemoteSwiftPackageReference "Vortex" */,
 				23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */,
 				23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */,
@@ -1719,14 +1715,6 @@
 				minimumVersion = 0.12.0;
 			};
 		};
-		23A8E2932ED564AD001818C5 /* XCRemoteSwiftPackageReference "AudioStreaming" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/dimitris-c/AudioStreaming.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.4.1;
-			};
-		};
 		23A8E2942ED564AD001818C6 /* XCRemoteSwiftPackageReference "Vortex" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/twostraws/Vortex.git";
@@ -1912,11 +1900,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 23A8E2922ED564AD001818C4 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */;
 			productName = ObfuscateMacro;
-		};
-		23A8E2962ED564AD001818C8 /* AudioStreaming */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 23A8E2932ED564AD001818C5 /* XCRemoteSwiftPackageReference "AudioStreaming" */;
-			productName = AudioStreaming;
 		};
 		23A8E2972ED564AD001818C9 /* Vortex */ = {
 			isa = XCSwiftPackageProductDependency;
