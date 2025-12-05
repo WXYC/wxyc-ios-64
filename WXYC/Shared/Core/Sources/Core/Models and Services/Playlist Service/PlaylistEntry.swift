@@ -121,9 +121,9 @@ public struct Playcut: PlaylistEntry, Hashable {
 
         do {
             self.songTitle = try container.decode(String.self, forKey: .songTitle)
-            self.labelName = try container.decode(String?.self, forKey: .labelName)
+            self.labelName = try container.decodeIfPresent(String.self, forKey: .labelName)
             self.artistName = try container.decode(String.self, forKey: .artistName)
-            self.releaseTitle = try container.decode(String?.self, forKey: .releaseTitle)
+            self.releaseTitle = try container.decodeIfPresent(String.self, forKey: .releaseTitle)
         } catch {
             Log(.error, "Could not decode Playcut: \(error)")
             PostHogSDK.shared.capture(error: error, context: "Playcut init")
