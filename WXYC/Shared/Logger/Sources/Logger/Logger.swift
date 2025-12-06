@@ -35,8 +35,7 @@ public final class Logger: Sendable {
         _ fileName: StaticString,
         _ line: Int,
         _ functionName: StaticString,
-        _ level:
-        LogLevel, _
+        _ level: LogLevel, _
         message: Any...
     ) {
         let logStatement = "\(Logger.timestamp()) \(fileName):\(line) \(functionName) [\(level)] \(message)"
