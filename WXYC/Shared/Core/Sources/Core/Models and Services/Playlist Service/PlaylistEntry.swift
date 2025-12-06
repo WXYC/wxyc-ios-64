@@ -157,3 +157,100 @@ public extension Playlist {
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
     }
 }
+
+public extension Playlist {
+    static let marketingList = Playlist(
+        playcuts: placeholderPlaycuts,
+        breakpoints: [],
+        talksets: []
+    )
+    
+    private struct PlaceholderSong {
+        let songTitle: String
+        let artistName: String
+        let releaseTitle: String
+    }
+    
+    nonisolated(unsafe) private static var placeholderSongs: [PlaceholderSong] = [
+        PlaceholderSong(
+            songTitle: "wetdoggs beat",
+            artistName: "wetdogg",
+            releaseTitle: "pssssssp..."
+        ),
+        PlaceholderSong(
+            songTitle: "Big Shot",
+            artistName: "Patric Cowley",
+            releaseTitle: "Afternooners"
+        ),
+        PlaceholderSong(
+            songTitle: "The Laarge Daark Aardvark Song",
+            artistName: "X-Cetra",
+            releaseTitle: "Summer 2000"
+        ),
+        PlaceholderSong(
+            songTitle: "VI Scose Poise",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        ),
+        PlaceholderSong(
+            songTitle: "Come Inside",
+            artistName: "The Shades Of Love",
+            releaseTitle: "Mr Bongo Record Club, Vol. 7"
+        ),
+        PlaceholderSong(
+            songTitle: "Guinnevere",
+            artistName: "Miles Davis",
+            releaseTitle: "Bitches Brew"
+        ),
+        PlaceholderSong(
+            songTitle: "Render",
+            artistName: "Lyra Pramuk",
+            releaseTitle: "Hymna"
+        ),
+        PlaceholderSong(
+            songTitle: "Mevlana (Based On Turkish Religious Melody)",
+            artistName: "East New York Ensemble de Music",
+            releaseTitle: "At the Helm"
+        ),
+        PlaceholderSong(
+            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
+            artistName: "Harold Budd",
+            releaseTitle: "Pavilion of Dreams"
+        ),
+        PlaceholderSong(
+            songTitle: "Belleville",
+            artistName: "Laurel Halo",
+            releaseTitle: "Atlas"
+        ),
+        PlaceholderSong(
+            songTitle: "The Remembering Self",
+            artistName: "Barker",
+            releaseTitle: "Stochastic Drift"
+        ),
+        PlaceholderSong(
+            songTitle: "Nutrition",
+            artistName: "Carmen Villain",
+            releaseTitle: "Nutrition EP"
+        ),
+    ]
+    
+    private static let placeholderPlaycuts: [Playcut] = placeholderSongs.shuffled().enumerated().map { index, song in
+        Playcut(
+            id: UInt64(index),
+            hour: 0,
+            chronOrderID: UInt64(index),
+            songTitle: song.songTitle,
+            labelName: nil,
+            artistName: song.artistName,
+            releaseTitle: song.releaseTitle
+        )
+    }
+}
+
+public struct PlaceholderFetcher: PlaylistFetcher {
+    public init() { }
+    
+    public func getPlaylist() async throws -> Playlist {
+        Playlist.marketingList
+    }
+}
