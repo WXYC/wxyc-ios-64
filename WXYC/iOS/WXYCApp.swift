@@ -22,8 +22,8 @@ import BackgroundTasks
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
-public class AppState: ObservableObject {
-    static let shared = AppState()
+public class Singletonia: ObservableObject {
+    static let shared = Singletonia()
 
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
     let playlistService = PlaylistService()
@@ -66,7 +66,7 @@ public class AppState: ObservableObject {
 
 @main
 struct WXYCApp: App {
-    @StateObject private var appState = AppState.shared
+    @StateObject private var appState = Singletonia.shared
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
