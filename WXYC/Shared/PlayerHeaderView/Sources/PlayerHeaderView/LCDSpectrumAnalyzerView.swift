@@ -39,13 +39,20 @@ public struct LCDSpectrumAnalyzerView: View {
     
     // Track previous active states to detect transitions
     @State private var previousActiveStates: [String: Set<Int>] = [:]
+    @State private var transitioningSegments: [String: Set<Int>] = [:]
     @State private var animationProgress: Double = 1.0
     
     private static let saturation = 0.75
     private static let hue = 23.0 / 360.0
     private static let transitionDuration: Double = 0.25 // Fast animation
     
-    public init(data: [BarData], maxValue: Double, segmentsPerBar: Int = 8, minBrightness: Double = 0.90, maxBrightness: Double = 1.0) {
+    public init(
+        data: [BarData],
+        maxValue: Double,
+        segmentsPerBar: Int = 8,
+        minBrightness: Double = 0.80,
+        maxBrightness: Double = 1.0
+    ) {
         self.data = data
         self.maxValue = maxValue
         self.segmentsPerBar = segmentsPerBar
@@ -94,8 +101,7 @@ public struct LCDSpectrumAnalyzerView: View {
                     }
                     
                     // Check if this segment is transitioning from active to inactive
-                    let wasActive = previousActive.contains(segmentIndex)
-                    let isTransitioning = wasActive && !isActive
+                    let isTransitioning = transitioningSegments[item.id]?.contains(segmentIndex) ?? false
                     
                     // Draw from bottom up (segment 0 at bottom)
                     let y = drawingRect.maxY - CGFloat(segmentIndex + 1) * (segmentHeight + verticalGap) + verticalGap
@@ -145,6 +151,7 @@ public struct LCDSpectrumAnalyzerView: View {
             // Detect transitions and trigger animation
             var hasTransition = false
             var newPreviousStates: [String: Set<Int>] = [:]
+            var newTransitioningSegments = transitioningSegments
             
             for item in newData {
                 let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
@@ -162,19 +169,29 @@ public struct LCDSpectrumAnalyzerView: View {
                 
                 let previousActive = previousActiveStates[item.id] ?? Set<Int>()
                 
-                // Check if any segment transitioned from active to inactive
-                for segmentIndex in previousActive {
-                    if !activeSet.contains(segmentIndex) {
-                        hasTransition = true
-                        break
-                    }
+                // Identify falling edges (turned off) and rising edges (turned on)
+                let fallingEdges = previousActive.subtracting(activeSet)
+                let risingEdges = activeSet.subtracting(previousActive)
+                
+                // Update transitioning segments
+                var currentTransitioning = newTransitioningSegments[item.id] ?? Set<Int>()
+                
+                // Add new falling edges to transitioning set
+                if !fallingEdges.isEmpty {
+                    currentTransitioning.formUnion(fallingEdges)
+                    hasTransition = true
                 }
                 
+                // Remove any segments that turned back on (aborted transition)
+                currentTransitioning.subtract(risingEdges)
+                
+                newTransitioningSegments[item.id] = currentTransitioning
                 newPreviousStates[item.id] = activeSet
             }
             
-            // Update previous states
+            // Update states
             previousActiveStates = newPreviousStates
+            transitioningSegments = newTransitioningSegments
             
             // Trigger animation if there's a transition
             if hasTransition {
