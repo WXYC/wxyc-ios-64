@@ -304,8 +304,6 @@ extension Shape {
             artistName: "Laurel Halo",
             releaseTitle: "Atlas"
         ))
-//    PlaylistView()
-//        .environment(\.playlistService, PlaylistService())
         .environment(\.artworkService, MultisourceArtworkService())
         .background(WXYCBackground())
 }
