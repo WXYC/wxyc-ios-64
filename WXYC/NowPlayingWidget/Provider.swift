@@ -54,20 +54,8 @@ final class Provider: TimelineProvider, Sendable {
         )
 
         Task {
-            let playlist = await playlistService
-                .updates()
-                .first()
-            
-            guard let playlist else {
-                let entry = NowPlayingTimelineEntry(
-                    nowPlayingItem: .placeholder,
-                    recentItems: [],
-                    family: context.family
-                )
-                completion(entry)
-                return
-            }
-            
+            let playlist = await playlistService.fetchPlaylist()
+
             var nowPlayingItems = await playlist.playcuts
                 .sorted(by: >)
                 .prefix(4)
@@ -104,20 +92,17 @@ final class Provider: TimelineProvider, Sendable {
             if context.isPreview {
                 nowPlayingItemsWithArtwork = Array(repeating: .placeholder, count: 4)
             } else {
-                let playlist = await playlistService.updates().first()
-                
-                if let playlist = playlist {
-                    let playcuts = playlist
-                        .playcuts
-                        .sorted(by: >)
-                        .prefix(4)
+                let playlist = await playlistService.fetchPlaylist()
+                let playcuts = playlist
+                    .playcuts
+                    .sorted(by: >)
+                    .prefix(4)
 
-                    nowPlayingItemsWithArtwork = await playcuts.asyncMap { playcut in
-                        NowPlayingItem(
-                            playcut: playcut,
-                            artwork: try? await self.artworkService.fetchArtwork(for: playcut)
-                        )
-                    }
+                nowPlayingItemsWithArtwork = await playcuts.asyncMap { playcut in
+                    NowPlayingItem(
+                        playcut: playcut,
+                        artwork: try? await self.artworkService.fetchArtwork(for: playcut)
+                    )
                 }
             }
 

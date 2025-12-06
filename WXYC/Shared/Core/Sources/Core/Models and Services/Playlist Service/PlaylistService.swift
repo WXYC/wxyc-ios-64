@@ -52,18 +52,40 @@ public final actor PlaylistService: Sendable {
     public func fetchAndCachePlaylist() async -> Playlist {
         // Always fetch fresh data, ignoring cache
         let playlist = await fetcher.fetchPlaylist()
-        
+
         // Cache the fresh playlist (this will overwrite any existing cache)
         await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
-        
+
         // Update current playlist and broadcast if changed
         if playlist != currentPlaylist {
             currentPlaylist = playlist
             broadcast(playlist)
         }
-        
+
         Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries")
         return playlist
+    }
+
+    /// Direct fetch method for widgets and extensions that need immediate data.
+    /// First checks the cache, and if cache is empty or expired, fetches from network.
+    /// This method is designed for widget timeline providers that have strict time constraints.
+    public func fetchPlaylist() async -> Playlist {
+        // Try to get cached playlist first
+        do {
+            let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
+            Log(.info, "Returning cached playlist with \(cachedPlaylist.entries.count) entries")
+            return cachedPlaylist
+        } catch {
+            // Cache miss or expired - fetch from network
+            Log(.info, "Cache miss, fetching fresh playlist")
+            let playlist = await fetcher.fetchPlaylist()
+
+            // Cache the result for future use
+            await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+
+            Log(.info, "Fetched and cached new playlist with \(playlist.entries.count) entries")
+            return playlist
+        }
     }
 
     /// Returns an AsyncStream that yields playlist updates.
