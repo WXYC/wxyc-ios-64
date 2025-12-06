@@ -131,14 +131,14 @@ public final class Logger: Sendable {
     }
     
     @LoggerActor
-    private static let fileHandle: FileHandle = {
+    private static let fileHandle: FileHandle? = {
         guard let logFileURL = todaysLogFile else {
-            return FileHandle.standardOutput
+            return nil
         }
         
-        guard let fileHandle = FileHandle(forWritingAtPath: todaysLogFile!.path) else {
+        guard let fileHandle = FileHandle(forWritingAtPath: logFileURL.path()) else {
             Log(.error, "Failed create file handle")
-            return FileHandle.standardOutput
+            return nil
         }
         
         do {
@@ -148,13 +148,15 @@ public final class Logger: Sendable {
             Log(.error, "Failed to seek to end of log file handle: \(error)")
         }
         
-        return FileHandle.standardOutput
+        return nil
     }()
     
     @LoggerActor
     private static func writeToLogFile(_ message: String) {
+        guard let fileHandle else { return }
+        
         do {
-            fileHandle.seekToEndOfFile()
+            try fileHandle.seekToEnd()
             guard let data = (message + "\n").data(using: .utf8) else {
                 Log(.error, "Failed convert string to data: \(message)")
                 return
