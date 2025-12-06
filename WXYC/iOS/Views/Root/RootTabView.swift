@@ -28,7 +28,7 @@ struct RootTabView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .vertical)
     }
 }
 
