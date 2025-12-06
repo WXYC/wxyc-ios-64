@@ -61,5 +61,14 @@ enum StreamingService {
         case .youtubeMusic, .soundcloud: return false
         }
     }
+    
+    /// Services that link to search pages (not direct deep links) should open in Safari
+    /// to preserve query parameters that would be lost via Universal Links
+    var opensInBrowser: Bool {
+        switch self {
+        case .spotify, .appleMusic, .youtubeMusic, .bandcamp: return false
+        case .soundcloud: return true
+        }
+    }
 }
 
