@@ -219,8 +219,10 @@ extension PlaycutMetadataService {
         do {
             let token = try await getSpotifyToken()
             
-            let query = "\(playcut.artistName) \(playcut.songTitle)"
-                .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            var query = "track:\(playcut.songTitle) artist:\(playcut.artistName)"
+            if let album = playcut.releaseTitle {
+                query += " album:\(album)"
+            }
             
             var components = URLComponents(string: "https://api.spotify.com")!
             components.path = "/v1/search"
