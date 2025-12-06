@@ -90,15 +90,3 @@ extension ShapeStyle where Self == Color {
     }
 }
 
-// MARK: - AsyncStream
-
-extension AsyncStream {
-    func first() async -> Element? {
-        for await element in self {
-            return element
-        }
-        
-        return nil
-    }
-}
-
