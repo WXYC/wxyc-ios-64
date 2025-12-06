@@ -15,14 +15,23 @@ struct StreamingButton: View {
     let isLoading: Bool
     var onTap: ((StreamingService) -> Void)?
     
+    @State private var showingSafari = false
+    
     var body: some View {
         Group {
             if let url = url {
                 Button {
                     onTap?(service)
-                    UIApplication.shared.open(url)
+                    if service.opensInBrowser {
+                        showingSafari = true
+                    } else {
+                        UIApplication.shared.open(url)
+                    }
                 } label: {
                     buttonContent
+                }
+                .sheet(isPresented: $showingSafari) {
+                    SafariView(url: url)
                 }
             } else {
                 buttonContent
