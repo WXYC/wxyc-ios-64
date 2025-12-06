@@ -182,6 +182,7 @@
 				Shared/MusicShareKit,
 				Shared/OpenNSFW,
 				"Shared/Party Horn",
+				Shared/PlayerHeaderView,
 				Shared/RequestService,
 				Shared/Secrets,
 				Shared/StreamingAudioPlayer,
