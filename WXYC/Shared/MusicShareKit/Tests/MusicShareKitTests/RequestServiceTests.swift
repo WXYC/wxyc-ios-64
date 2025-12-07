@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import RequestService
+@testable import MusicShareKit
 
 @Suite("RequestService Tests")
 struct RequestServiceTests {

@@ -13,7 +13,7 @@ import Core
 import Logger
 import PostHog
 import UIKit
-import RequestService
+import MusicShareKit
 import StreamingAudioPlayer
 import WidgetKit
 

@@ -13,7 +13,7 @@ import Core
 import Logger
 import PostHog
 import Analytics
-import RequestService
+import MusicShareKit
 import WXUI
 
 struct InfoDetailView: View {

@@ -8,7 +8,6 @@
 #if canImport(UIKit)
 import SwiftUI
 import UIKit
-import RequestService
 import Secrets
 import WXUI
 
