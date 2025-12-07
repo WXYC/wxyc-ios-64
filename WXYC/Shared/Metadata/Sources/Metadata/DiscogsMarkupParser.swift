@@ -32,8 +32,9 @@ public struct DiscogsMarkupParser: Sendable {
     /// Parses Discogs formatting syntax and returns an AttributedString
     /// Note: ID-based tags ([a12345], [r12345], [m123]) are skipped without a resolver
     public static func parse(_ text: String) -> AttributedString {
-        let parser = Parser(text: text, resolver: nil)
-        return parser.parse()
+        let tokens = tokenize(text)
+        let resolved = resolve(tokens)
+        return render(resolved)
     }
     
     // MARK: - Async API (with ID resolution)
@@ -41,8 +42,9 @@ public struct DiscogsMarkupParser: Sendable {
     /// Parses Discogs formatting syntax and returns an AttributedString,
     /// resolving ID-based tags via the provided resolver
     public static func parse(_ text: String, resolver: DiscogsEntityResolver) async -> AttributedString {
-        let parser = Parser(text: text, resolver: resolver)
-        return await parser.parseAsync()
+        let tokens = tokenize(text)
+        let resolved = await resolve(tokens, using: resolver)
+        return render(resolved)
     }
     
     // MARK: - Utility
@@ -59,7 +61,7 @@ public struct DiscogsMarkupParser: Sendable {
     }
 }
 
-// MARK: - Internal Parser
+// MARK: - Token Types
 
 extension DiscogsMarkupParser {
     
@@ -70,342 +72,183 @@ extension DiscogsMarkupParser {
         case master
     }
     
-    /// Represents an ID-based tag that needs resolution
-    struct PendingResolution: Sendable {
-        let type: EntityType
-        let id: Int
-        let insertionIndex: Int  // Position in the result where resolved name should be inserted
+    /// Parsed token representing Discogs markup syntax (AST)
+    /// Note: Formatting tags (bold, italic, underline, url) contain raw string content,
+    /// not recursively parsed children, to match Discogs rendering behavior.
+    enum DiscogsToken: Sendable {
+        case plainText(String)
+        case artistName(String)           // [a=Name]
+        case artistId(Int)                // [a12345]
+        case releaseId(Int)               // [r12345]
+        case masterId(Int)                // [m123]
+        case labelName(String)            // [l=Name]
+        case bold(String)                 // [b]...[/b] - raw content
+        case italic(String)               // [i]...[/i] - raw content
+        case underline(String)            // [u]...[/u] - raw content
+        case url(String, String)          // [url=...]...[/url] - URL and raw content
     }
     
-    /// Represents a resolved entity with its display name and link URL
-    public struct ResolvedEntity: Sendable {
-        public let name: String
-        public let type: EntityType
-        public let id: Int
-        
-        public init(name: String, type: EntityType, id: Int) {
-            self.name = name
-            self.type = type
-            self.id = id
-        }
-        
-        /// The display name, with Discogs disambiguation suffix removed for artists
-        /// e.g., "Salamanda (8)" becomes "Salamanda"
-        public var displayName: String {
-            switch type {
-            case .artist:
-                return DiscogsMarkupParser.stripDisambiguationSuffix(from: name)
-            case .release, .master:
-                return name
-            }
-        }
-        
-        /// Constructs the Discogs URL for this entity
-        public var discogsURL: URL {
-            switch type {
-            case .artist:
-                return URL(string: "https://www.discogs.com/artist/\(id)")!
-            case .release:
-                return URL(string: "https://www.discogs.com/release/\(id)")!
-            case .master:
-                return URL(string: "https://www.discogs.com/master/\(id)")!
-            }
-        }
+    /// Resolved token with all IDs replaced by actual data
+    enum ResolvedToken: Sendable {
+        case plainText(String)
+        case artistLink(name: String, displayName: String, url: URL)
+        case labelName(String)
+        case releaseLink(title: String, url: URL)
+        case masterLink(title: String, url: URL)
+        case bold(String)
+        case italic(String)
+        case underline(String)
+        case urlLink(URL?, String)
     }
-    
-    /// Internal parser that handles both sync and async parsing
-    struct Parser: Sendable {
-        let text: String
-        let resolver: DiscogsEntityResolver?
-        
-        /// Synchronous parse - skips ID-based tags
-        func parse() -> AttributedString {
-            var result = AttributedString()
-            var remaining = text[...]
-            
-            while !remaining.isEmpty {
-                guard let bracketIndex = remaining.firstIndex(of: "[") else {
-                    result.append(AttributedString(String(remaining)))
-                    break
-                }
-                
-                // Add text before the bracket
-                let beforeBracket = remaining[..<bracketIndex]
-                if !beforeBracket.isEmpty {
-                    result.append(AttributedString(String(beforeBracket)))
-                }
-                
-                guard let closingBracket = remaining[bracketIndex...].firstIndex(of: "]") else {
-                    result.append(AttributedString(String(remaining)))
-                    break
-                }
-                
-                let tagContent = remaining[remaining.index(after: bracketIndex)..<closingBracket]
-                let tag = String(tagContent)
-                
-                let parseResult = handleTag(tag, remaining: remaining, closingBracket: closingBracket)
-                if let attributed = parseResult.attributed {
-                    result.append(attributed)
-                }
-                remaining = parseResult.newRemaining
-            }
-            
-            return result
-        }
-        
-        /// Async parse - resolves ID-based tags via resolver
-        func parseAsync() async -> AttributedString {
-            // First pass: parse and collect pending resolutions
-            var result = AttributedString()
-            var remaining = text[...]
-            var pendingResolutions: [PendingResolution] = []
-            
-            while !remaining.isEmpty {
-                guard let bracketIndex = remaining.firstIndex(of: "[") else {
-                    result.append(AttributedString(String(remaining)))
-                    break
-                }
-                
-                let beforeBracket = remaining[..<bracketIndex]
-                if !beforeBracket.isEmpty {
-                    result.append(AttributedString(String(beforeBracket)))
-                }
-                
-                guard let closingBracket = remaining[bracketIndex...].firstIndex(of: "]") else {
-                    result.append(AttributedString(String(remaining)))
-                    break
-                }
-                
-                let tagContent = remaining[remaining.index(after: bracketIndex)..<closingBracket]
-                let tag = String(tagContent)
-                
-                // Check for ID-based tags
-                if let resolution = checkForIdTag(tag) {
-                    // Record position and add placeholder
-                    let placeholder = AttributedString("") // Will be replaced
-                    pendingResolutions.append(PendingResolution(
-                        type: resolution.type,
-                        id: resolution.id,
-                        insertionIndex: result.characters.count
-                    ))
-                    result.append(placeholder)
-                    remaining = remaining[remaining.index(after: closingBracket)...]
-                } else {
-                    let parseResult = handleTag(tag, remaining: remaining, closingBracket: closingBracket)
-                    if let attributed = parseResult.attributed {
-                        result.append(attributed)
-                    }
-                    remaining = parseResult.newRemaining
-                }
-            }
-            
-            // Second pass: resolve IDs concurrently and rebuild
-            guard let resolver = resolver, !pendingResolutions.isEmpty else {
-                return result
-            }
-            
-            // Resolve all IDs concurrently
-            let resolvedEntities = await withTaskGroup(of: (Int, ResolvedEntity?).self) { group in
-                for (index, pending) in pendingResolutions.enumerated() {
-                    group.addTask {
-                        let entity: ResolvedEntity?
-                        do {
-                            switch pending.type {
-                            case .artist:
-                                let name = try await resolver.resolveArtist(id: pending.id)
-                                entity = ResolvedEntity(name: name, type: .artist, id: pending.id)
-                            case .release:
-                                let name = try await resolver.resolveRelease(id: pending.id)
-                                entity = ResolvedEntity(name: name, type: .release, id: pending.id)
-                            case .master:
-                                let name = try await resolver.resolveMaster(id: pending.id)
-                                entity = ResolvedEntity(name: name, type: .master, id: pending.id)
-                            }
-                        } catch {
-                            entity = nil
-                        }
-                        return (index, entity)
-                    }
-                }
-                
-                var entities: [Int: ResolvedEntity?] = [:]
-                for await (index, entity) in group {
-                    entities[index] = entity
-                }
-                return entities
-            }
-            
-            // Rebuild with resolved names (parse again with resolved values)
-            var finalResult = AttributedString()
-            remaining = text[...]
-            var resolutionIndex = 0
-            
-            while !remaining.isEmpty {
-                guard let bracketIndex = remaining.firstIndex(of: "[") else {
-                    finalResult.append(AttributedString(String(remaining)))
-                    break
-                }
+}
 
-                let beforeBracket = remaining[..<bracketIndex]
-                if !beforeBracket.isEmpty {
-                    finalResult.append(AttributedString(String(beforeBracket)))
-                }
-                
-                guard let closingBracket = remaining[bracketIndex...].firstIndex(of: "]") else {
-                    finalResult.append(AttributedString(String(remaining)))
-                    break
-                }
-                
-                let tagContent = remaining[remaining.index(after: bracketIndex)..<closingBracket]
-                let tag = String(tagContent)
-                
-                if checkForIdTag(tag) != nil {
-                    // Insert resolved name with link
-                    if let entity = resolvedEntities[resolutionIndex] ?? nil {
-                        var attributed = AttributedString(entity.displayName)
-                        attributed.link = entity.discogsURL
-                        attributed.underlineStyle = .single
-                        finalResult.append(attributed)
-                    }
-                    resolutionIndex += 1
-                    remaining = remaining[remaining.index(after: closingBracket)...]
-                } else {
-                    let parseResult = handleTag(tag, remaining: remaining, closingBracket: closingBracket)
-                    if let attributed = parseResult.attributed {
-                        finalResult.append(attributed)
-                    }
-                    
-                    remaining = parseResult.newRemaining
-                }
+// MARK: - Regex Patterns
+
+extension DiscogsMarkupParser {
+    
+    // Tag delimiter pattern - finds [...] (allows empty content)
+    nonisolated(unsafe) private static let tagPattern = /\[([^\]]*)\]/
+    
+    // Tag classification patterns (applied to tag content)
+    nonisolated(unsafe) private static let artistNamePattern = /^a=(.+)$/
+    nonisolated(unsafe) private static let artistIdPattern = /^a(\d+)$/
+    nonisolated(unsafe) private static let releaseIdPattern = /^r(\d+)$/
+    nonisolated(unsafe) private static let masterIdPattern = /^m(\d+)$/
+    nonisolated(unsafe) private static let labelNamePattern = /^l=(.+)$/
+    nonisolated(unsafe) private static let urlOpenPattern = /^url=(.+)$/
+    nonisolated(unsafe) private static let closingTagPattern = /^\/(.+)$/
+}
+
+// MARK: - Phase 1: Tokenize
+
+extension DiscogsMarkupParser {
+    
+    /// Tokenizes Discogs markup into a flat list of tokens
+    static func tokenize(_ text: String) -> [DiscogsToken] {
+        var tokens: [DiscogsToken] = []
+        var remaining = text[...]
+        
+        while !remaining.isEmpty {
+            // First check if there's a '[' at all
+            guard let bracketIndex = remaining.firstIndex(of: "[") else {
+                // No brackets, add remaining as plain text
+                tokens.append(.plainText(String(remaining)))
+                break
             }
             
-            return finalResult
+            // Add plain text before the bracket
+            let beforeBracket = remaining[..<bracketIndex]
+            if !beforeBracket.isEmpty {
+                tokens.append(.plainText(String(beforeBracket)))
+            }
+            
+            // Now look for the closing ']'
+            guard let closingBracket = remaining[bracketIndex...].firstIndex(of: "]") else {
+                // No closing bracket - match old behavior: append full remaining (including beforeBracket again)
+                tokens.append(.plainText(String(remaining)))
+                break
+            }
+            
+            // Extract tag content (may be empty for "[]")
+            let tagContent = String(remaining[remaining.index(after: bracketIndex)..<closingBracket])
+            
+            // Advance past the tag
+            remaining = remaining[remaining.index(after: closingBracket)...]
+            
+            // Classify and handle the tag (empty tags return nil and are skipped)
+            if !tagContent.isEmpty, let token = classifyTag(tagContent, remaining: &remaining) {
+                tokens.append(token)
+            }
+            // Unknown/orphaned/empty tags are silently skipped
         }
         
-        /// Checks if a tag is an ID-based tag and returns its type and ID
-        private func checkForIdTag(_ tag: String) -> (type: EntityType, id: Int)? {
-            if tag.hasPrefix("a") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
-                if let id = Int(tag.dropFirst()) {
-                    return (.artist, id)
-                }
-            } else if tag.hasPrefix("r") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
-                if let id = Int(tag.dropFirst()) {
-                    return (.release, id)
-                }
-            } else if tag.hasPrefix("m") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
-                if let id = Int(tag.dropFirst()) {
-                    return (.master, id)
-                }
+        return tokens
+    }
+    
+    /// Classifies a tag and returns the appropriate token
+    private static func classifyTag(_ tag: String, remaining: inout Substring) -> DiscogsToken? {
+        // Artist name: [a=Name]
+        if let match = tag.wholeMatch(of: artistNamePattern) {
+            return .artistName(String(match.1))
+        }
+        
+        // Artist ID: [a12345]
+        if let match = tag.wholeMatch(of: artistIdPattern), let id = Int(match.1) {
+            return .artistId(id)
+        }
+        
+        // Release ID: [r12345]
+        if let match = tag.wholeMatch(of: releaseIdPattern), let id = Int(match.1) {
+            return .releaseId(id)
+        }
+        
+        // Master ID: [m123]
+        if let match = tag.wholeMatch(of: masterIdPattern), let id = Int(match.1) {
+            return .masterId(id)
+        }
+        
+        // Label name: [l=Name]
+        if let match = tag.wholeMatch(of: labelNamePattern) {
+            return .labelName(String(match.1))
+        }
+        
+        // URL: [url=...]...[/url]
+        if let match = tag.wholeMatch(of: urlOpenPattern) {
+            let urlString = String(match.1)
+            if let (content, newRemaining) = findClosingTag(in: remaining, tag: "url") {
+                remaining = newRemaining
+                return .url(urlString, content)
+            } else {
+                // No closing tag - show URL and remaining text combined
+                let content = String(remaining)
+                remaining = remaining[remaining.endIndex...]
+                return .plainText(urlString + content)
             }
+        }
+        
+        // Bold: [b]...[/b]
+        if tag == "b" {
+            if let (content, newRemaining) = findClosingTag(in: remaining, tag: "b") {
+                remaining = newRemaining
+                return .bold(content)
+            } else {
+                // No closing tag, skip
+                return nil
+            }
+        }
+        
+        // Italic: [i]...[/i]
+        if tag == "i" {
+            if let (content, newRemaining) = findClosingTag(in: remaining, tag: "i") {
+                remaining = newRemaining
+                return .italic(content)
+            } else {
+                return nil
+            }
+        }
+        
+        // Underline: [u]...[/u]
+        if tag == "u" {
+            if let (content, newRemaining) = findClosingTag(in: remaining, tag: "u") {
+                remaining = newRemaining
+                return .underline(content)
+            } else {
+                return nil
+            }
+        }
+        
+        // Orphaned closing tags - skip
+        if tag.wholeMatch(of: closingTagPattern) != nil {
             return nil
         }
         
-        /// Handles a single tag and returns the attributed string and new remaining substring
-        private func handleTag(
-            _ tag: String,
-            remaining: Substring,
-            closingBracket: String.Index
-        ) -> (attributed: AttributedString?, newRemaining: Substring) {
-            
-            if tag.hasPrefix("a=") {
-                // Artist link: [a=Artist Name] -> show name with disambiguation suffix removed, link to Discogs search
-                let artistName = String(tag.dropFirst(2))
-                let displayName = DiscogsMarkupParser.stripDisambiguationSuffix(from: artistName)
-                var attributed = AttributedString(displayName)
-                // Use original name (with disambiguation) for search to find the exact artist
-                if let encodedName = artistName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-                    attributed.link = URL(string: "https://www.discogs.com/search/?q=\(encodedName)&type=artist")
-                }
-                attributed.underlineStyle = .single
-                return (attributed, remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag.hasPrefix("a") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
-                // Artist link by ID: [a12345] -> skip in sync mode
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag == "b" {
-                // Bold start: [b]...[/b]
-                if let endTag = DiscogsMarkupParser.findClosingTag(in: remaining[remaining.index(after: closingBracket)...], tag: "b") {
-                    let boldText = String(remaining[remaining.index(after: closingBracket)..<endTag.startIndex])
-                    var attributed = AttributedString(boldText)
-                    attributed.inlinePresentationIntent = .stronglyEmphasized
-                    return (attributed, remaining[endTag.endIndex...])
-                } else {
-                    return (nil, remaining[remaining.index(after: closingBracket)...])
-                }
-                
-            } else if tag == "/b" {
-                // Bold end (orphaned closing tag, skip it)
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag == "i" {
-                // Italic start: [i]...[/i]
-                if let endTag = DiscogsMarkupParser.findClosingTag(in: remaining[remaining.index(after: closingBracket)...], tag: "i") {
-                    let italicText = String(remaining[remaining.index(after: closingBracket)..<endTag.startIndex])
-                    var attributed = AttributedString(italicText)
-                    attributed.inlinePresentationIntent = .emphasized
-                    return (attributed, remaining[endTag.endIndex...])
-                } else {
-                    return (nil, remaining[remaining.index(after: closingBracket)...])
-                }
-                
-            } else if tag == "/i" {
-                // Italic end (orphaned closing tag, skip it)
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag == "u" {
-                // Underline start: [u]...[/u]
-                if let endTag = DiscogsMarkupParser.findClosingTag(in: remaining[remaining.index(after: closingBracket)...], tag: "u") {
-                    let underlineText = String(remaining[remaining.index(after: closingBracket)..<endTag.startIndex])
-                    var attributed = AttributedString(underlineText)
-                    attributed.underlineStyle = .single
-                    return (attributed, remaining[endTag.endIndex...])
-                } else {
-                    return (nil, remaining[remaining.index(after: closingBracket)...])
-                }
-                
-            } else if tag == "/u" {
-                // Underline end (orphaned closing tag, skip it)
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag.hasPrefix("l=") {
-                // Label link: [l=Label Name] -> just show the name
-                let labelName = String(tag.dropFirst(2))
-                return (AttributedString(labelName), remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag.hasPrefix("url=") {
-                // URL link: [url=http://example.com]Link Text[/url]
-                let urlString = String(tag.dropFirst(4))
-                if let urlEndTag = DiscogsMarkupParser.findClosingTag(in: remaining[remaining.index(after: closingBracket)...], tag: "url") {
-                    let linkText = String(remaining[remaining.index(after: closingBracket)..<urlEndTag.startIndex])
-                    var attributed = AttributedString(linkText)
-                    if let url = URL(string: urlString) {
-                        attributed.link = url
-                    }
-                    attributed.underlineStyle = .single
-                    return (attributed, remaining[urlEndTag.endIndex...])
-                } else {
-                    // No closing tag, just show the URL
-                    return (AttributedString(urlString), remaining[remaining.index(after: closingBracket)...])
-                }
-                
-            } else if tag.hasPrefix("r") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
-                // Release link by ID: [r12345] -> skip in sync mode
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-                
-            } else if tag.hasPrefix("m") && tag.count > 1 && tag.dropFirst().allSatisfy(\.isNumber) {
-                // Master link by ID: [m123] -> skip in sync mode
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-                
-            } else {
-                // Unknown tag, skip it
-                return (nil, remaining[remaining.index(after: closingBracket)...])
-            }
-        }
+        // Unknown tag - skip
+        return nil
     }
     
-    /// Finds a closing tag like [/tag] in the remaining text, handling nested tags
-    static func findClosingTag(in text: Substring, tag: String) -> (startIndex: String.Index, endIndex: String.Index)? {
+    /// Finds a closing tag like [/tag] in the remaining text, handling same-type nesting via depth tracking.
+    /// Returns the content between tags and the remaining substring after the closing tag.
+    private static func findClosingTag(in text: Substring, tag: String) -> (content: String, remaining: Substring)? {
         var searchStart = text.startIndex
         var depth = 1
         
@@ -423,7 +266,9 @@ extension DiscogsMarkupParser {
             } else if currentTag == "/\(tag)" {
                 depth -= 1
                 if depth == 0 {
-                    return (openBracket, text.index(after: closeBracket))
+                    let content = String(text[..<openBracket])
+                    let remaining = text[text.index(after: closeBracket)...]
+                    return (content, remaining)
                 }
             }
             
@@ -431,5 +276,186 @@ extension DiscogsMarkupParser {
         }
         
         return nil
+    }
+}
+
+// MARK: - Phase 2: Resolve
+
+extension DiscogsMarkupParser {
+    
+    /// Resolves tokens without a resolver (skips ID-based tokens)
+    static func resolve(_ tokens: [DiscogsToken]) -> [ResolvedToken] {
+        let emptyIds: [String: String] = [:]
+        return tokens.compactMap { resolveToken($0, resolvedIds: emptyIds) }
+    }
+    
+    /// Resolves tokens with a resolver (fetches ID-based data)
+    static func resolve(_ tokens: [DiscogsToken], using resolver: DiscogsEntityResolver) async -> [ResolvedToken] {
+        // Collect all IDs from the tokens
+        var artistIds: Set<Int> = []
+        var releaseIds: Set<Int> = []
+        var masterIds: Set<Int> = []
+        
+        for token in tokens {
+            switch token {
+            case .artistId(let id):
+                artistIds.insert(id)
+            case .releaseId(let id):
+                releaseIds.insert(id)
+            case .masterId(let id):
+                masterIds.insert(id)
+            default:
+                break
+            }
+        }
+        
+        // Resolve all IDs concurrently
+        let resolvedIds = await withTaskGroup(of: (String, String?).self) { group in
+            for id in artistIds {
+                group.addTask {
+                    let name = try? await resolver.resolveArtist(id: id)
+                    return ("artist-\(id)", name)
+                }
+            }
+            for id in releaseIds {
+                group.addTask {
+                    let title = try? await resolver.resolveRelease(id: id)
+                    return ("release-\(id)", title)
+                }
+            }
+            for id in masterIds {
+                group.addTask {
+                    let title = try? await resolver.resolveMaster(id: id)
+                    return ("master-\(id)", title)
+                }
+            }
+            
+            var results: [String: String] = [:]
+            for await (key, value) in group {
+                if let value {
+                    results[key] = value
+                }
+            }
+            return results
+        }
+        
+        // Rebuild with resolved values
+        return tokens.compactMap { resolveToken($0, resolvedIds: resolvedIds) }
+    }
+    
+    /// Resolves a single token using the resolved ID map
+    private static func resolveToken(_ token: DiscogsToken, resolvedIds: [String: String]) -> ResolvedToken? {
+        switch token {
+        case .plainText(let text):
+            return .plainText(text)
+            
+        case .artistName(let name):
+            let displayName = stripDisambiguationSuffix(from: name)
+            let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? name
+            let url = URL(string: "https://www.discogs.com/search/?q=\(encodedName)&type=artist")!
+            return .artistLink(name: name, displayName: displayName, url: url)
+            
+        case .artistId(let id):
+            guard let name = resolvedIds["artist-\(id)"] else {
+                return nil // Skip unresolved
+            }
+            let displayName = stripDisambiguationSuffix(from: name)
+            let url = URL(string: "https://www.discogs.com/artist/\(id)")!
+            return .artistLink(name: name, displayName: displayName, url: url)
+            
+        case .releaseId(let id):
+            guard let title = resolvedIds["release-\(id)"] else {
+                return nil // Skip unresolved
+            }
+            let url = URL(string: "https://www.discogs.com/release/\(id)")!
+            return .releaseLink(title: title, url: url)
+            
+        case .masterId(let id):
+            guard let title = resolvedIds["master-\(id)"] else {
+                return nil // Skip unresolved
+            }
+            let url = URL(string: "https://www.discogs.com/master/\(id)")!
+            return .masterLink(title: title, url: url)
+            
+        case .labelName(let name):
+            return .labelName(name)
+            
+        case .bold(let content):
+            return .bold(content)
+            
+        case .italic(let content):
+            return .italic(content)
+            
+        case .underline(let content):
+            return .underline(content)
+            
+        case .url(let urlString, let content):
+            let url = URL(string: urlString)
+            return .urlLink(url, content)
+        }
+    }
+}
+
+// MARK: - Phase 3: Render
+
+extension DiscogsMarkupParser {
+    
+    /// Renders resolved tokens to AttributedString
+    static func render(_ tokens: [ResolvedToken]) -> AttributedString {
+        tokens.reduce(into: AttributedString()) { result, token in
+            result.append(renderToken(token))
+        }
+    }
+    
+    /// Renders a single resolved token
+    private static func renderToken(_ token: ResolvedToken) -> AttributedString {
+        switch token {
+        case .plainText(let text):
+            return AttributedString(text)
+            
+        case .artistLink(_, let displayName, let url):
+            var attr = AttributedString(displayName)
+            attr.link = url
+            attr.underlineStyle = .single
+            return attr
+            
+        case .labelName(let name):
+            return AttributedString(name)
+            
+        case .releaseLink(let title, let url):
+            var attr = AttributedString(title)
+            attr.link = url
+            attr.underlineStyle = .single
+            return attr
+            
+        case .masterLink(let title, let url):
+            var attr = AttributedString(title)
+            attr.link = url
+            attr.underlineStyle = .single
+            return attr
+            
+        case .bold(let content):
+            var attr = AttributedString(content)
+            attr.inlinePresentationIntent = .stronglyEmphasized
+            return attr
+            
+        case .italic(let content):
+            var attr = AttributedString(content)
+            attr.inlinePresentationIntent = .emphasized
+            return attr
+            
+        case .underline(let content):
+            var attr = AttributedString(content)
+            attr.underlineStyle = .single
+            return attr
+            
+        case .urlLink(let url, let content):
+            var attr = AttributedString(content)
+            if let url {
+                attr.link = url
+            }
+            attr.underlineStyle = .single
+            return attr
+        }
     }
 }
