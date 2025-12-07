@@ -15,9 +15,6 @@ let package = Package(
             name: "WXUI",
             targets: ["WXUI"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/Livsy90/IntelligenceGlow.git", branch: "main"),
-    ],
     targets: [
         .target(
             name: "WXUI",

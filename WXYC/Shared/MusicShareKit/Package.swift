@@ -16,14 +16,15 @@ let package = Package(
             targets: ["MusicShareKit"]),
     ],
     dependencies: [
-        .package(path: "../RequestService"),
         .package(path: "../Secrets"),
         .package(path: "../WXUI"),
+        .package(path: "../Analytics"),
+        .package(path: "../Logger"),
     ],
     targets: [
         .target(
             name: "MusicShareKit",
-            dependencies: ["RequestService", "Secrets", "WXUI"],
+            dependencies: ["Secrets", "WXUI", "Analytics", "Logger"],
             resources: [
                 .process("Resources/Assets.xcassets")
             ],
