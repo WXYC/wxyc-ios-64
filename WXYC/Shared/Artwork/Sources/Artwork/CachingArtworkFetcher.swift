@@ -25,10 +25,10 @@ extension CacheCoordinator: ArtworkService {
            !releaseTitle.isEmpty {
             cacheKey = releaseTitle
         } else {
-        cacheKey = playcut.songTitle + playcut.artistName
+            cacheKey = playcut.songTitle + playcut.artistName
         }
         
-        let cachedData: Data = try await self.value(for: cacheKey)
+        let cachedData: Data = try self.data(for: cacheKey)
         guard let artwork = Image(compatibilityData: cachedData) else {
             throw Error.noCachedResult
         }
@@ -38,6 +38,6 @@ extension CacheCoordinator: ArtworkService {
     
     func set(artwork: Image, for id: String) async {
         let artworkData = artwork.pngDataCompatibility
-        self.set(value: artworkData, for: id, lifespan: .thirtyDays)
+        self.setData(artworkData, for: id, lifespan: .thirtyDays)
     }
 }

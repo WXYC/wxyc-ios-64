@@ -24,41 +24,57 @@ import Foundation
 // MARK: - Mock Cache
 
 final class MockCache: Cache, @unchecked Sendable {
-    private var storage: [String: Data] = [:]
+    private var dataStorage: [String: Data] = [:]
+    private var metadataStorage: [String: CacheMetadata] = [:]
     private let lock = NSLock()
 
-    func object(for key: String) -> Data? {
+    func metadata(for key: String) -> CacheMetadata? {
         lock.lock()
         defer { lock.unlock() }
-        return storage[key]
+        return metadataStorage[key]
+    }
+    
+    func data(for key: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return dataStorage[key]
     }
 
-    func set(object: Data?, for key: String) {
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
         lock.lock()
         defer { lock.unlock() }
-        if let object = object {
-            storage[key] = object
+        if let data = data {
+            dataStorage[key] = data
+            metadataStorage[key] = metadata
         } else {
-            storage.removeValue(forKey: key)
+            remove(for: key)
         }
     }
-
-    func allRecords() -> any Sequence<(String, Data)> {
+    
+    func remove(for key: String) {
         lock.lock()
         defer { lock.unlock() }
-        return Array(storage.map { ($0.key, $0.value) })
+        dataStorage.removeValue(forKey: key)
+        metadataStorage.removeValue(forKey: key)
+    }
+
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        lock.lock()
+        defer { lock.unlock() }
+        return metadataStorage.map { ($0.key, $0.value) }
     }
 
     func clear() {
         lock.lock()
         defer { lock.unlock() }
-        storage.removeAll()
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
     }
 
     func count() -> Int {
         lock.lock()
         defer { lock.unlock() }
-        return storage.count
+        return dataStorage.count
     }
 }
 
@@ -216,7 +232,7 @@ struct CacheCoordinatorTests {
         await coordinator.set(value: value, for: key, lifespan: 0.001)
 
         // Verify it's in cache
-        #expect(mockCache.object(for: key) != nil)
+        #expect(mockCache.data(for: key) != nil)
 
         // Wait for expiration
         try await Task.sleep(for: .milliseconds(10))
@@ -229,7 +245,7 @@ struct CacheCoordinatorTests {
         // Then - Should be removed from underlying cache
         // Give async cleanup time to complete
         try await Task.sleep(for: .milliseconds(50))
-        #expect(mockCache.object(for: key) == nil)
+        #expect(mockCache.data(for: key) == nil)
     }
 
     // MARK: - Error Handling
@@ -275,12 +291,12 @@ struct CacheCoordinatorTests {
 
         // When
         await coordinator.set(value: value, for: key, lifespan: 3600)
-        #expect(mockCache.object(for: key) != nil)
+        #expect(mockCache.data(for: key) != nil)
 
         await coordinator.set(value: nil as String?, for: key, lifespan: 3600)
 
         // Then
-        #expect(mockCache.object(for: key) == nil)
+        #expect(mockCache.data(for: key) == nil)
 
         await #expect(throws: CacheCoordinator.Error.noCachedResult) {
             let _: String = try await coordinator.value(for: key)
@@ -527,68 +543,63 @@ struct CacheCoordinatorTests {
     }
 }
 
-// MARK: - CachedRecord Tests
+// MARK: - CacheMetadata Tests
 
-@Suite("CachedRecord Tests")
-struct CachedRecordTests {
+@Suite("CacheMetadata Tests")
+struct CacheMetadataTests {
 
-    @Test("Creates record with custom timestamp")
-    func createsRecordWithCustomTimestamp() async throws {
+    @Test("Creates metadata with custom timestamp")
+    func createsMetadataWithCustomTimestamp() async throws {
         // Given
-        let value = "Test"
         let timestamp: TimeInterval = 1000
         let lifespan: TimeInterval = 3600
 
         // When
-        let record = CachedRecord(value: value, timestamp: timestamp, lifespan: lifespan)
+        let metadata = CacheMetadata(timestamp: timestamp, lifespan: lifespan)
 
         // Then
-        #expect(record.value == value)
-        #expect(record.timestamp == timestamp)
-        #expect(record.lifespan == lifespan)
+        #expect(metadata.timestamp == timestamp)
+        #expect(metadata.lifespan == lifespan)
     }
 
-    @Test("Detects expired records")
-    func detectsExpiredRecords() async throws {
-        // Given - Create record in the past
-        let value = "Expired"
+    @Test("Detects expired metadata")
+    func detectsExpiredMetadata() async throws {
+        // Given - Create metadata in the past
         let timestamp = Date.timeIntervalSinceReferenceDate - 7200 // 2 hours ago
         let lifespan: TimeInterval = 3600 // 1 hour lifespan
 
         // When
-        let record = CachedRecord(value: value, timestamp: timestamp, lifespan: lifespan)
+        let metadata = CacheMetadata(timestamp: timestamp, lifespan: lifespan)
 
         // Then
-        #expect(record.isExpired == true)
+        #expect(metadata.isExpired == true)
     }
 
-    @Test("Detects valid records")
-    func detectsValidRecords() async throws {
-        // Given - Create fresh record
-        let value = "Valid"
+    @Test("Detects valid metadata")
+    func detectsValidMetadata() async throws {
+        // Given - Create fresh metadata
         let timestamp = Date.timeIntervalSinceReferenceDate
         let lifespan: TimeInterval = 3600
 
         // When
-        let record = CachedRecord(value: value, timestamp: timestamp, lifespan: lifespan)
+        let metadata = CacheMetadata(timestamp: timestamp, lifespan: lifespan)
 
         // Then
-        #expect(record.isExpired == false)
+        #expect(metadata.isExpired == false)
     }
 
     @Test("Encodes and decodes correctly")
     func encodesAndDecodesCorrectly() async throws {
         // Given
-        let original = CachedRecord(value: "Test", lifespan: 3600)
+        let original = CacheMetadata(lifespan: 3600)
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
 
         // When
         let encoded = try encoder.encode(original)
-        let decoded = try decoder.decode(CachedRecord<String>.self, from: encoded)
+        let decoded = try decoder.decode(CacheMetadata.self, from: encoded)
 
         // Then
-        #expect(decoded.value == original.value)
         #expect(decoded.lifespan == original.lifespan)
         // Timestamp might differ slightly, but should be close
         #expect(abs(decoded.timestamp - original.timestamp) < 1.0)

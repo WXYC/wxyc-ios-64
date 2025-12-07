@@ -16,34 +16,46 @@ import Playlist
 
 /// Mock cache for PlaycutMetadataService tests (has additional tracking properties)
 final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
-    private var storage: [String: Data] = [:]
+    private var dataStorage: [String: Data] = [:]
+    private var metadataStorage: [String: CacheMetadata] = [:]
     var getCallCount = 0
     var setCallCount = 0
     var lastSetKey: String?
     var lastGetKey: String?
     
-    func object(for key: String) -> Data? {
+    func metadata(for key: String) -> CacheMetadata? {
         getCallCount += 1
         lastGetKey = key
-        return storage[key]
+        return metadataStorage[key]
     }
     
-    func set(object: Data?, for key: String) {
+    func data(for key: String) -> Data? {
+        return dataStorage[key]
+    }
+    
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
         setCallCount += 1
         lastSetKey = key
-        if let object {
-            storage[key] = object
+        if let data {
+            dataStorage[key] = data
+            metadataStorage[key] = metadata
         } else {
-            storage.removeValue(forKey: key)
+            remove(for: key)
         }
     }
     
-    func allRecords() -> any Sequence<(String, Data)> {
-        Array(storage.map { ($0.key, $0.value) })
+    func remove(for key: String) {
+        dataStorage.removeValue(forKey: key)
+        metadataStorage.removeValue(forKey: key)
+    }
+    
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        metadataStorage.map { ($0.key, $0.value) }
     }
     
     func reset() {
-        storage.removeAll()
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
         getCallCount = 0
         setCallCount = 0
         lastSetKey = nil

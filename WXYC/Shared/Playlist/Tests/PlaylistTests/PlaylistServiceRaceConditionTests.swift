@@ -14,29 +14,44 @@ import Foundation
 
 /// In-memory cache for isolated test execution (race condition tests)
 final class RaceConditionTestMockCache: Cache, @unchecked Sendable {
-    private var storage: [String: Data] = [:]
+    private var dataStorage: [String: Data] = [:]
+    private var metadataStorage: [String: CacheMetadata] = [:]
     private let lock = NSLock()
 
-    func object(for key: String) -> Data? {
+    func metadata(for key: String) -> CacheMetadata? {
         lock.lock()
         defer { lock.unlock() }
-        return storage[key]
+        return metadataStorage[key]
+    }
+    
+    func data(for key: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return dataStorage[key]
     }
 
-    func set(object: Data?, for key: String) {
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
         lock.lock()
         defer { lock.unlock() }
-        if let object = object {
-            storage[key] = object
+        if let data = data {
+            dataStorage[key] = data
+            metadataStorage[key] = metadata
         } else {
-            storage.removeValue(forKey: key)
+            remove(for: key)
         }
     }
-
-    func allRecords() -> any Sequence<(String, Data)> {
+    
+    func remove(for key: String) {
         lock.lock()
         defer { lock.unlock() }
-        return Array(storage.map { ($0.key, $0.value) })
+        dataStorage.removeValue(forKey: key)
+        metadataStorage.removeValue(forKey: key)
+    }
+
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        lock.lock()
+        defer { lock.unlock() }
+        return metadataStorage.map { ($0.key, $0.value) }
     }
 }
 

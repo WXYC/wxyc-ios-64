@@ -13,7 +13,7 @@ public final actor CacheCoordinator {
     
     internal init(cache: Cache) {
         self.cache = cache
-        self.purgeRecords()
+        self.purgeExpiredEntries()
     }
     
     // MARK: Private vars
@@ -23,47 +23,102 @@ public final actor CacheCoordinator {
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
     
-    // MARK: Public methods
+    // MARK: Public methods - Binary data (images, etc.)
     
+    /// Retrieve raw binary data from cache
+    public func data(for key: String) throws -> Data {
+        #if DEBUG
+        assert(!key.isEmpty, "Cache key cannot be empty")
+        #endif
+        
+        guard let metadata = cache.metadata(for: key) else {
+            Log(.warning, "No metadata for '\(key)'")
+            throw Error.noCachedResult
+        }
+        
+        guard !metadata.isExpired else {
+            Log(.info, "Cache entry expired for '\(key)'")
+            cache.remove(for: key)
+            throw Error.noCachedResult
+        }
+        
+        guard let data = cache.data(for: key) else {
+            Log(.warning, "No data for '\(key)'")
+            throw Error.noCachedResult
+        }
+        
+        Log(.info, "cache hit!", key, "\(data.count) bytes")
+        return data
+    }
+    
+    /// Store raw binary data in cache
+    public func setData(_ data: Data?, for key: String, lifespan: TimeInterval) {
+        Log(.info, "Setting data for key \(key). Data is \(data == nil ? "nil" : "\(data!.count) bytes"). Lifespan: \(lifespan)")
+        
+        guard let data else {
+            cache.remove(for: key)
+            return
+        }
+        
+        let metadata = CacheMetadata(lifespan: lifespan)
+        cache.set(data, metadata: metadata, for: key)
+    }
+    
+    // MARK: Public methods - Codable values (playlists, etc.)
+    
+    /// Retrieve a Codable value from cache
     public func value<Value: Codable>(for key: String) async throws -> Value {
         #if DEBUG
-        assert(key.isEmpty == false, "Cache key cannot be empty")
+        assert(!key.isEmpty, "Cache key cannot be empty")
         #endif
+        
+        guard let metadata = cache.metadata(for: key) else {
+            Log(.warning, "No metadata for '\(key)'")
+            throw Error.noCachedResult
+        }
+        
+        guard !metadata.isExpired else {
+            Log(.info, "Cache entry expired for '\(key)'")
+            cache.remove(for: key)
+            throw Error.noCachedResult
+        }
+        
+        guard let data = cache.data(for: key) else {
+            Log(.warning, "No data for '\(key)'")
+            throw Error.noCachedResult
+        }
+        
         do {
-            guard let encodedCachedRecord = self.cache.object(for: key) else {
-                throw Error.noCachedResult
-            }
-            
-            let cachedRecord: CachedRecord<Value> = try self.decode(value: encodedCachedRecord, forKey: key)
-            
-            // nil out record, if expired
-            guard !cachedRecord.isExpired else {
-                self.cache.set(object: nil, for: key) // Nil-out expired record
-                
-                throw Error.noCachedResult
-            }
-            
-            Log(.info, "cache hit!", key, cachedRecord.value)
-            
-            return cachedRecord.value
+            let value = try Self.decoder.decode(Value.self, from: data)
+            Log(.info, "cache hit!", key, value)
+            return value
         } catch {
-            Log(.warning, "No value for '\(key)': ", error)
+            Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
+            PostHogSDK.shared.capture(
+                error: error,
+                context: "CacheCoordinator decode value",
+                additionalData: [
+                    "value type": String(describing: Value.self),
+                    "key": key
+                ]
+            )
             throw error
         }
     }
     
+    /// Store a Codable value in cache
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
         Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan). Value type is \(String(describing: Value.self))")
         
         guard let value else {
-            self.cache.set(object: nil, for: key)
+            cache.remove(for: key)
             return
         }
         
         do {
-            let record = CachedRecord(value: value, lifespan: lifespan)
-            let encodedRecord = try Self.encoder.encode(record)
-            self.cache.set(object: encodedRecord, for: key)
+            let data = try Self.encoder.encode(value)
+            let metadata = CacheMetadata(lifespan: lifespan)
+            cache.set(data, metadata: metadata, for: key)
         } catch {
             Log(.error, "Failed to encode value for \(key): \(error)")
             PostHogSDK.shared.capture(
@@ -79,43 +134,14 @@ public final actor CacheCoordinator {
     
     // MARK: Private methods
     
-    private nonisolated func decode<Value: Decodable>(value: Data, forKey key: String) throws -> CachedRecord<Value> {
-        do {
-            return try Self.decoder.decode(CachedRecord<Value>.self, from: value)
-        } catch {
-            Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
-            Log(.error, "\(try Self.decoder.decode(CachedRecord<String>.self, from: value))")
-            PostHogSDK.shared.capture(
-                error: error,
-                context: "CacheCoordinator decode value",
-                additionalData: [
-                    "value type": String(describing: Value.self),
-                    "key": key
-                ]
-            )
-            
-            throw error
-        }
-    }
-    
-    private nonisolated func purgeRecords() {
+    private nonisolated func purgeExpiredEntries() {
         Task {
-            Log(.info, "Purging records")
+            Log(.info, "Purging expired cache entries")
             let cache = await self.cache
-            for (key, value) in cache.allRecords() {
-                do {
-                    let record: CachedRecord<String> = try self.decode(value: value, forKey: key)
-                    if record.isExpired || record.lifespan == .infinity {
-                        cache.set(object: nil, for: key)
-                    }
-                } catch {
-                    PostHogSDK.shared.capture(
-                        error: error,
-                        context: "CacheCoordinator purgeRecords",
-                        additionalData: ["key" : key]
-                    )
-                    Log(.error, "Failed to decode value for \(key): \(error)\nDeleting it anyway.")
-                    cache.set(object: nil, for: key)
+            for (key, metadata) in cache.allMetadata() {
+                if metadata.isExpired || metadata.lifespan == .infinity {
+                    Log(.info, "Purging expired entry: \(key)")
+                    cache.remove(for: key)
                 }
             }
         }

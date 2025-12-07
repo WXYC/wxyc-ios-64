@@ -2,41 +2,37 @@ import Testing
 import Foundation
 @testable import Caching
 
-/// Tests for CacheCoordinator behavior when encountering corrupted cache data.
+/// Tests for CacheCoordinator behavior when encountering corrupted or problematic cache data.
 ///
 /// These tests verify:
 /// 1. When `value(for:)` fails to decode cached data, it throws but does NOT delete the entry
-/// 2. When `purgeRecords()` runs (at CacheCoordinator init), it DOES delete corrupted entries
-/// 3. Corrupted entries persist across multiple `value(for:)` calls within a session
+/// 2. When `purgeExpiredEntries()` runs (at CacheCoordinator init), it deletes expired entries
+/// 3. Type mismatch scenarios are handled correctly
 @Suite("DiskCache Corruption Handling Tests")
 @MainActor
 struct DiskCacheReproductionTests {
     
-    // MARK: - Test that value(for:) does NOT delete corrupted entries
+    // MARK: - Test that value(for:) does NOT delete entries on decode failure
     
     @Test("Corrupted data causes decode failure but entry is not deleted")
     func corruptedDataPersistsAfterDecodeFailure() async throws {
-        // Given: A mock cache with corrupted data
+        // Given: A mock cache with corrupted data (valid metadata, invalid JSON payload)
         let mockCache = MockCache()
         let key = "corrupted_playlist"
         
-        // Write invalid JSON directly to the cache (simulating corruption)
-        let corruptedData = "Not valid JSON for CachedRecord<String>".data(using: .utf8)!
-        mockCache.set(object: corruptedData, for: key)
+        // Write invalid JSON directly to the cache with valid metadata
+        let corruptedData = "Not valid JSON".data(using: .utf8)!
+        let metadata = CacheMetadata(lifespan: 3600)
+        mockCache.set(corruptedData, metadata: metadata, for: key)
         
-        // Create coordinator WITHOUT purging (we'll test purging separately)
-        // Note: CacheCoordinator calls purgeRecords() in init, but we can verify
-        // the value(for:) behavior by writing AFTER init
+        // Create coordinator
         let coordinator = CacheCoordinator(cache: mockCache)
         
         // Wait for any async purge to complete
         try await Task.sleep(for: .milliseconds(100))
         
-        // Now write corrupted data AFTER coordinator init (so purgeRecords already ran)
-        mockCache.set(object: corruptedData, for: key)
-        
         // Verify the corrupted data is in the cache
-        #expect(mockCache.object(for: key) != nil)
+        #expect(mockCache.data(for: key) != nil)
         
         // When: Try to read the corrupted value
         await #expect(throws: (any Error).self) {
@@ -45,7 +41,7 @@ struct DiskCacheReproductionTests {
         
         // Then: The corrupted entry should STILL be in the cache
         // (value(for:) throws but does NOT delete on decode failure)
-        #expect(mockCache.object(for: key) != nil, "Corrupted entry should persist after decode failure")
+        #expect(mockCache.data(for: key) != nil, "Corrupted entry should persist after decode failure")
     }
     
     @Test("Corrupted data causes repeated failures on subsequent reads")
@@ -54,12 +50,13 @@ struct DiskCacheReproductionTests {
         let mockCache = MockCache()
         let key = "persistent_corruption"
         let corruptedData = "{ invalid json }".data(using: .utf8)!
+        let metadata = CacheMetadata(lifespan: 3600)
         
         let coordinator = CacheCoordinator(cache: mockCache)
         try await Task.sleep(for: .milliseconds(100))
         
         // Write corrupted data after init
-        mockCache.set(object: corruptedData, for: key)
+        mockCache.set(corruptedData, metadata: metadata, for: key)
         
         // When: Try to read multiple times
         for _ in 0..<3 {
@@ -68,60 +65,70 @@ struct DiskCacheReproductionTests {
             }
         }
         
-        // Then: Entry still persists (this is the "persistent" symptom from the original comments)
-        #expect(mockCache.object(for: key) != nil, "Corrupted entry persists across multiple read attempts")
+        // Then: Entry still persists
+        #expect(mockCache.data(for: key) != nil, "Corrupted entry persists across multiple read attempts")
     }
     
-    // MARK: - Test that purgeRecords() DOES delete corrupted entries
+    // MARK: - Test that purgeExpiredEntries() deletes expired entries
     
-    @Test("purgeRecords deletes corrupted entries on coordinator initialization")
-    func purgeRecordsDeletesCorruptedEntries() async throws {
-        // Given: A mock cache pre-populated with corrupted data
+    @Test("purgeExpiredEntries deletes expired entries on coordinator initialization")
+    func purgeExpiredEntriesDeletesExpiredEntries() async throws {
+        // Given: A mock cache pre-populated with expired data
         let mockCache = MockCache()
-        let corruptedKey = "corrupted_on_init"
-        let corruptedData = "garbage data that won't decode".data(using: .utf8)!
-        mockCache.set(object: corruptedData, for: corruptedKey)
+        let expiredKey = "expired_on_init"
+        let expiredData = "some data".data(using: .utf8)!
         
-        // Verify corrupted data is present
-        #expect(mockCache.object(for: corruptedKey) != nil)
+        // Create metadata that is already expired
+        let expiredMetadata = CacheMetadata(
+            timestamp: Date.timeIntervalSinceReferenceDate - 7200, // 2 hours ago
+            lifespan: 3600 // 1 hour lifespan
+        )
+        mockCache.set(expiredData, metadata: expiredMetadata, for: expiredKey)
         
-        // When: Create a new CacheCoordinator (which calls purgeRecords in init)
+        // Verify expired data is present
+        #expect(mockCache.data(for: expiredKey) != nil)
+        
+        // When: Create a new CacheCoordinator (which calls purgeExpiredEntries in init)
         _ = CacheCoordinator(cache: mockCache)
         
-        // Wait for async purgeRecords to complete
+        // Wait for async purge to complete
         try await Task.sleep(for: .milliseconds(200))
         
-        // Then: The corrupted entry should be deleted by purgeRecords
-        #expect(mockCache.object(for: corruptedKey) == nil, "purgeRecords should delete corrupted entries")
+        // Then: The expired entry should be deleted by purgeExpiredEntries
+        #expect(mockCache.data(for: expiredKey) == nil, "purgeExpiredEntries should delete expired entries")
     }
     
-    @Test("purgeRecords preserves valid entries while deleting corrupted ones")
-    func purgeRecordsPreservesValidEntries() async throws {
-        // Given: A cache with both valid and corrupted entries
+    @Test("purgeExpiredEntries preserves valid entries while deleting expired ones")
+    func purgeExpiredEntriesPreservesValidEntries() async throws {
+        // Given: A cache with both valid and expired entries
         let mockCache = MockCache()
         let validKey = "valid_entry"
-        let corruptedKey = "corrupted_entry"
+        let expiredKey = "expired_entry"
         
-        // Create valid CachedRecord data
-        let validRecord = CachedRecord(value: "Hello", lifespan: 3600)
-        let validData = try JSONEncoder().encode(validRecord)
-        mockCache.set(object: validData, for: validKey)
+        // Create valid entry with fresh metadata
+        let validData = try JSONEncoder().encode("Hello")
+        let validMetadata = CacheMetadata(lifespan: 3600)
+        mockCache.set(validData, metadata: validMetadata, for: validKey)
         
-        // Create corrupted data
-        let corruptedData = "not a cached record".data(using: .utf8)!
-        mockCache.set(object: corruptedData, for: corruptedKey)
+        // Create expired entry
+        let expiredData = "expired data".data(using: .utf8)!
+        let expiredMetadata = CacheMetadata(
+            timestamp: Date.timeIntervalSinceReferenceDate - 7200,
+            lifespan: 3600
+        )
+        mockCache.set(expiredData, metadata: expiredMetadata, for: expiredKey)
         
         // Verify both are present
-        #expect(mockCache.object(for: validKey) != nil)
-        #expect(mockCache.object(for: corruptedKey) != nil)
+        #expect(mockCache.data(for: validKey) != nil)
+        #expect(mockCache.data(for: expiredKey) != nil)
         
-        // When: Create coordinator (triggers purgeRecords)
+        // When: Create coordinator (triggers purgeExpiredEntries)
         let coordinator = CacheCoordinator(cache: mockCache)
         try await Task.sleep(for: .milliseconds(200))
         
-        // Then: Valid entry preserved, corrupted entry deleted
-        #expect(mockCache.object(for: validKey) != nil, "Valid entry should be preserved")
-        #expect(mockCache.object(for: corruptedKey) == nil, "Corrupted entry should be deleted")
+        // Then: Valid entry preserved, expired entry deleted
+        #expect(mockCache.data(for: validKey) != nil, "Valid entry should be preserved")
+        #expect(mockCache.data(for: expiredKey) == nil, "Expired entry should be deleted")
         
         // And we can still read the valid entry
         let retrieved: String = try await coordinator.value(for: validKey)
@@ -140,7 +147,7 @@ struct DiskCacheReproductionTests {
         await coordinator.set(value: "Not a number", for: key, lifespan: 3600)
         
         // Verify it's stored
-        #expect(mockCache.object(for: key) != nil)
+        #expect(mockCache.data(for: key) != nil)
         
         // When: Try to read as Int (type mismatch)
         await #expect(throws: (any Error).self) {
@@ -148,7 +155,7 @@ struct DiskCacheReproductionTests {
         }
         
         // Then: Entry should still exist (we might want to read it as String later)
-        #expect(mockCache.object(for: key) != nil, "Entry should persist after type mismatch error")
+        #expect(mockCache.data(for: key) != nil, "Entry should persist after type mismatch error")
         
         // And we CAN read it as the correct type
         let retrieved: String = try await coordinator.value(for: key)
