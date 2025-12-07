@@ -6,6 +6,7 @@
 //  Copyright © 2021 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 /// ICY is built on HTTP some old servers might still send headers in the stream.
@@ -90,3 +91,4 @@ final class IcycastHeadersProcessor {
         }
     }
 }
+#endif

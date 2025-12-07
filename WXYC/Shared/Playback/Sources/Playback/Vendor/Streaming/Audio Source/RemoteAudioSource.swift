@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AudioToolbox
 import AVFoundation
 import Foundation
@@ -438,3 +439,4 @@ extension RemoteAudioSource: MetadataStreamSourceDelegate {
         delegate?.metadataReceived(data: data)
     }
 }
+#endif

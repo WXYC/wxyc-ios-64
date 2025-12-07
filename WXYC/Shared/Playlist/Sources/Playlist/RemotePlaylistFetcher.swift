@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Core
 import Logger
 import PostHog
 import Analytics
@@ -24,7 +25,7 @@ open class RemotePlaylistFetcher: @unchecked Sendable {
     /// Returns an empty playlist if the fetch fails.
     open func fetchPlaylist() async -> Playlist {
         Log(.info, "Fetching remote playlist")
-        let timer = Timer.start()
+        let timer = Core.Timer.start()
         do {
             let playlist = try await self.remoteFetcher.getPlaylist()
             let duration = timer.duration()

@@ -6,6 +6,9 @@
 //
 
 import Foundation
+import Caching
+import Core
+import Playlist
 
 // TODO: Remove this and replace with `CachingArtworkService`.
 extension CacheCoordinator: ArtworkService {

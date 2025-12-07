@@ -7,7 +7,7 @@
 
 import Foundation
 import Analytics
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 /// Mock analytics tracker for testing
 public final class MockAudioAnalytics: AudioAnalyticsProtocol, @unchecked Sendable {

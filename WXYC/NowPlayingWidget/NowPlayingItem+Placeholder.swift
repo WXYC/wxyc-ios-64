@@ -6,6 +6,8 @@
 //
 
 import Core
+import AppServices
+import Playlist
 
 extension NowPlayingItem {
     static var placeholder: NowPlayingItem {

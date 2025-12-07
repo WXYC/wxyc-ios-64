@@ -9,6 +9,7 @@
 import SwiftUI
 import Core
 import WXUI
+import Metadata
 
 struct ArtistBioSection: View {
     let bio: String

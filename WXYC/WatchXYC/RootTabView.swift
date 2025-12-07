@@ -8,6 +8,9 @@
 
 import SwiftUI
 import Core
+import Playlist
+import Playback
+import AppServices
 
 struct RootTabView: View {
     let radioPlayerController: RadioPlayerController

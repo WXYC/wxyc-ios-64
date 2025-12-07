@@ -7,7 +7,7 @@
 
 import Foundation
 import AVFoundation
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 #if os(iOS) || os(tvOS) || os(watchOS)
 

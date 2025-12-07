@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 protocol Parser {
@@ -29,3 +30,4 @@ struct AnyParser<Input, Output>: Parser {
         _parse(input)
     }
 }
+#endif

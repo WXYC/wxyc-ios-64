@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 import OSLog
 
@@ -301,3 +302,4 @@ final class Mp4Restructure {
         return T(data: data[offset ..< end]).bigEndian
     }
 }
+#endif

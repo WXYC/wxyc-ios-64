@@ -9,6 +9,8 @@
 import SwiftUI
 import Core
 import WXUI
+import Playlist
+import Metadata
 
 struct StreamingLinksSection: View {
     let metadata: PlaycutMetadata

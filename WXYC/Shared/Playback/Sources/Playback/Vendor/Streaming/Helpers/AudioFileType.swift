@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AudioToolbox
 import Foundation
 
@@ -68,3 +69,4 @@ func audioFileType(fileExtension: String) -> AudioFileTypeID {
     guard let fileType = fileTypesFromFileExtension[fileExtension] else { return 0 }
     return fileType
 }
+#endif

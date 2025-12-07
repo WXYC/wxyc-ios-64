@@ -1,4 +1,6 @@
 import Foundation
+import Core
+import Playlist
 
 final class iTunesArtworkService: ArtworkService {
     private let session: WebSession

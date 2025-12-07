@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class AudioPlayerContext {
@@ -57,3 +58,4 @@ final class AudioPlayerContext {
         }
     }
 }
+#endif

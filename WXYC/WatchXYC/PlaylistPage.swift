@@ -9,6 +9,8 @@
 import Foundation
 import SwiftUI
 import Core
+import Playlist
+import AppServices
 
 struct PlaylistPage: View {
     @State private var playlistEntries: [any PlaylistEntry] = []

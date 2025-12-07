@@ -8,6 +8,7 @@
 
 import UIKit
 import Core
+import Playlist
 
 nonisolated extension UIActivity.ActivityType {
     static let wxyc = UIActivity.ActivityType("org.wxyc")

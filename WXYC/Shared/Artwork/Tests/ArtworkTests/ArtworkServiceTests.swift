@@ -1,6 +1,9 @@
 import Testing
 import Foundation
+@testable import Artwork
+@testable import Playlist
 @testable import Core
+@testable import Caching
 
 // MARK: - Mock ArtworkService
 

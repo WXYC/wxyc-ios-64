@@ -14,7 +14,43 @@ import AVFoundation
 import MediaPlayer
 import UIKit
 @testable import Core
-@testable import StreamingAudioPlayer
+@testable import Playback
+
+// MARK: - Mock Player for RadioPlayer
+
+final class MockRadioPlayer: PlayerProtocol, @unchecked Sendable {
+    nonisolated(unsafe) var rate: Float = 0
+    nonisolated(unsafe) var playCallCount = 0
+    nonisolated(unsafe) var pauseCallCount = 0
+    nonisolated(unsafe) var replaceCurrentItemCallCount = 0
+    
+    /// Simulates whether the player is in a "playing" state
+    nonisolated(unsafe) var simulatedIsPlaying = false
+    
+    nonisolated func play() {
+        playCallCount += 1
+        rate = 1.0
+        simulatedIsPlaying = true
+    }
+    
+    nonisolated func pause() {
+        pauseCallCount += 1
+        rate = 0
+        simulatedIsPlaying = false
+    }
+    
+    nonisolated func replaceCurrentItem(with item: AVPlayerItem?) {
+        replaceCurrentItemCallCount += 1
+    }
+    
+    func reset() {
+        rate = 0
+        playCallCount = 0
+        pauseCallCount = 0
+        replaceCurrentItemCallCount = 0
+        simulatedIsPlaying = false
+    }
+}
 
 // MARK: - Unified Test Harness Protocol
 

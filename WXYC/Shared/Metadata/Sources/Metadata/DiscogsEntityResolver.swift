@@ -9,9 +9,17 @@
 import Foundation
 import Secrets
 import Core
+import Caching
+
+/// Protocol for resolving Discogs entity IDs to their names
+public protocol DiscogsEntityResolver: Sendable {
+    func resolveArtist(id: Int) async throws -> String
+    func resolveRelease(id: Int) async throws -> String
+    func resolveMaster(id: Int) async throws -> String
+}
 
 /// Resolves Discogs entity IDs by calling the Discogs API
-final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
+public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     private let session: WebSession
     private let decoder: JSONDecoder
     private let cache: CacheCoordinator
@@ -20,7 +28,7 @@ final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     private static let cacheLifespan: TimeInterval = 60 * 60 * 24 * 30
     
     /// Shared instance for convenience
-    static let shared = DiscogsAPIEntityResolver()
+    public static let shared = DiscogsAPIEntityResolver()
     
     init(session: WebSession = URLSession.shared, cache: CacheCoordinator = .AlbumArt) {
         self.session = session
@@ -28,7 +36,7 @@ final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
         self.cache = cache
     }
     
-    func resolveArtist(id: Int) async throws -> String {
+    public func resolveArtist(id: Int) async throws -> String {
         let cacheKey = "discogs-artist-\(id)"
         
         // Check cache first
@@ -46,7 +54,7 @@ final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
         return artist.name
     }
     
-    func resolveRelease(id: Int) async throws -> String {
+    public func resolveRelease(id: Int) async throws -> String {
         let cacheKey = "discogs-release-\(id)"
         
         // Check cache first
@@ -64,7 +72,7 @@ final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
         return release.title
     }
     
-    func resolveMaster(id: Int) async throws -> String {
+    public func resolveMaster(id: Int) async throws -> String {
         let cacheKey = "discogs-master-\(id)"
         
         // Check cache first

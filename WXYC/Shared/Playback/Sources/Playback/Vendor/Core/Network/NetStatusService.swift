@@ -3,6 +3,7 @@
 //  Copyright © 2020 decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 import Network
 
@@ -96,3 +97,4 @@ extension NWPath {
         return .undetermined
     }
 }
+#endif

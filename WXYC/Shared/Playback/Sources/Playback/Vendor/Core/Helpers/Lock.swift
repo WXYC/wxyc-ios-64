@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 import os
 
@@ -128,3 +129,4 @@ private class UnfairStorageLock: Lock {
         os_unfair_lock_unlock(unfairLock)
     }
 }
+#endif

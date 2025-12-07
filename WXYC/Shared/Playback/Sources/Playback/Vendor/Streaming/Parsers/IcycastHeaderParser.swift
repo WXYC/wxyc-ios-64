@@ -6,6 +6,7 @@
 //  Copyright © 2021 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 struct IcycastHeaderParser: Parser {
@@ -33,3 +34,4 @@ struct IcycastHeaderParser: Parser {
         )
     }
 }
+#endif

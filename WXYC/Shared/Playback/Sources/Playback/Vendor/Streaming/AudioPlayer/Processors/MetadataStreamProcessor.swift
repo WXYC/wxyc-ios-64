@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 
 protocol MetadataStreamSourceDelegate: AnyObject {
@@ -126,3 +127,4 @@ final class MetadataStreamProcessor: MetadataStreamSource {
         }
     }
 }
+#endif

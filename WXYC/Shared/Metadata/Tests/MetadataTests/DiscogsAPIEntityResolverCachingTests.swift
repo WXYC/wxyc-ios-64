@@ -1,14 +1,15 @@
 //
 //  DiscogsAPIEntityResolverCachingTests.swift
-//  WXYCTests
+//  MetadataTests
 //
 //  Tests for DiscogsAPIEntityResolver caching functionality
 //
 
 import Testing
 import Foundation
-@testable import WXYC
-@testable import Core
+import Core
+@testable import Caching
+@testable import Metadata
 
 // MARK: - Mock Cache for Entity Resolver Tests
 

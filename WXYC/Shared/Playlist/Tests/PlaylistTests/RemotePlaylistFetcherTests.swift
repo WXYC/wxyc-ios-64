@@ -1,7 +1,7 @@
 import Testing
 import Foundation
-@testable import Core
-@testable import Analytics
+import Analytics
+@testable import Playlist
 
 // MARK: - Mock PlaylistFetcher
 

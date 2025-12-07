@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Core
+import Playlist
 
 struct RootTabView: View {
     private enum Page {

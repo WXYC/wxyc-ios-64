@@ -18,16 +18,16 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(path: "../wxyc-ios-64/WXYC/Shared/StreamingAudioPlayer")
+        .package(name: "Playback", path: "../Playback")
     ],
     targets: [
         .target(
             name: "PlayerHeaderView",
-            dependencies: ["StreamingAudioPlayer"]
+            dependencies: ["Playback"]
         ),
         .testTarget(
             name: "PlayerHeaderViewTests",
-            dependencies: ["PlayerHeaderView", "StreamingAudioPlayer"]
+            dependencies: ["PlayerHeaderView", "Playback"]
         ),
     ]
 )

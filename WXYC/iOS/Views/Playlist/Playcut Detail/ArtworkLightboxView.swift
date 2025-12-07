@@ -28,7 +28,7 @@ struct ArtworkLightboxView: View {
         ZStack {
             Rectangle()
                 .ignoresSafeArea()
-                .foregroundStyle(            Material.ultraThinMaterial.opacity(backgroundOpacity))
+                .foregroundStyle(Material.ultraThinMaterial.opacity(backgroundOpacity))
                 .onTapGesture {
                     dismiss()
                 }

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Core
+import AppServices
 
 struct RecentlyPlayedRow: View {
     let nowPlayingItem: NowPlayingItem

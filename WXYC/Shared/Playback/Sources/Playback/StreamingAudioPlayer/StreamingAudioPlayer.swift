@@ -5,6 +5,7 @@
 //  Low-level audio player that wraps the AudioStreaming package
 //
 
+#if !os(watchOS)
 import Foundation
 import AVFoundation
 
@@ -166,3 +167,4 @@ extension StreamingAudioPlayer: AudioPlayerDelegate {
         }
     }
 }
+#endif

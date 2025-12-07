@@ -5,6 +5,7 @@
 //  Inspired by Thong Nguyen's StreamingKit. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 import OSLog
 
@@ -321,3 +322,4 @@ final class AudioPlayerRenderProcessor: NSObject {
         )
     }
 }
+#endif

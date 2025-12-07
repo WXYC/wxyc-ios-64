@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 // MARK: Internal State
@@ -122,3 +123,4 @@ public enum AudioSystemError: LocalizedError, Equatable, Sendable {
         }
     }
 }
+#endif

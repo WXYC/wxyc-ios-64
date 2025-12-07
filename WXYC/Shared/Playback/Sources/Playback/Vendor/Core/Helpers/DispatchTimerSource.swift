@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 /**
@@ -74,3 +75,4 @@ final class DispatchTimerSource {
         timer.schedule(deadline: .now() + interval, repeating: repeats ? interval : .never)
     }
 }
+#endif

@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 enum DataStreamError: Error {
@@ -138,3 +139,4 @@ private func operationQueue(underlyingQueue: DispatchQueue) -> OperationQueue {
     delegateQueue.name = "com.decimal.session.delegate.queue"
     return delegateQueue
 }
+#endif

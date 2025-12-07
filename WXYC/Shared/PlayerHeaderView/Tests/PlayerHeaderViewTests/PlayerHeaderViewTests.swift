@@ -1,35 +1,39 @@
-import XCTest
+import Testing
 @testable import PlayerHeaderView
 
-final class PlayerHeaderViewTests: XCTestCase {
-    func testVisualizerConstantsDefaults() {
-        XCTAssertEqual(VisualizerConstants.barAmount, 16)
-        XCTAssertEqual(VisualizerConstants.historyLength, 8)
-        XCTAssertEqual(VisualizerConstants.magnitudeLimit, 32)
-        XCTAssertEqual(VisualizerConstants.updateInterval, 0.05)
+@Suite("PlayerHeaderView Tests")
+struct PlayerHeaderViewTests {
+    @Test("VisualizerConstants has correct default values")
+    func visualizerConstantsDefaults() {
+        #expect(VisualizerConstants.barAmount == 16)
+        #expect(VisualizerConstants.historyLength == 8)
+        #expect(VisualizerConstants.magnitudeLimit == 32)
+        #expect(VisualizerConstants.updateInterval == 0.05)
     }
     
-    func testBarDataIdentifiable() {
+    @Test("BarData is identifiable and stores correct values")
+    func barDataIdentifiable() {
         let barData = BarData(category: "test", value: 10)
-        XCTAssertEqual(barData.id, "test")
-        XCTAssertEqual(barData.category, "test")
-        XCTAssertEqual(barData.value, 10)
+        #expect(barData.id == "test")
+        #expect(barData.category == "test")
+        #expect(barData.value == 10)
     }
     
-    func testCreateBarHistoryWithNoValues() {
+    @Test("createBarHistory with no values returns zeroed history")
+    func createBarHistoryWithNoValues() {
         let history = createBarHistory()
-        XCTAssertEqual(history.count, VisualizerConstants.barAmount)
-        XCTAssertEqual(history[0].count, VisualizerConstants.historyLength)
-        XCTAssertTrue(history[0].allSatisfy { $0 == 0 })
+        #expect(history.count == VisualizerConstants.barAmount)
+        #expect(history[0].count == VisualizerConstants.historyLength)
+        #expect(history[0].allSatisfy { $0 == 0 })
     }
     
-    func testCreateBarHistoryWithPreviewValues() {
+    @Test("createBarHistory with preview values returns populated history")
+    func createBarHistoryWithPreviewValues() {
         let previewValues: [Float] = [10, 20, 30]
         let history = createBarHistory(previewValues: previewValues)
-        XCTAssertEqual(history.count, 3)
-        XCTAssertEqual(history[0][0], 10)
-        XCTAssertEqual(history[1][0], 20)
-        XCTAssertEqual(history[2][0], 30)
+        #expect(history.count == 3)
+        #expect(history[0][0] == 10)
+        #expect(history[1][0] == 20)
+        #expect(history[2][0] == 30)
     }
 }
-

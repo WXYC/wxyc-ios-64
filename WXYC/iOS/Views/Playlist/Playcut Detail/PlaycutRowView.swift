@@ -10,6 +10,8 @@ import SwiftUI
 import Core
 import UIKit
 import WXUI
+import Playlist
+import Artwork
 
 // MARK: - Artwork View Components
 

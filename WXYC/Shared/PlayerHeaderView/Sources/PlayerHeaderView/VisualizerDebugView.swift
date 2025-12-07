@@ -123,7 +123,9 @@ public struct VisualizerDebugView: View {
                 }
             }
             .navigationTitle("Visualizer Settings")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {

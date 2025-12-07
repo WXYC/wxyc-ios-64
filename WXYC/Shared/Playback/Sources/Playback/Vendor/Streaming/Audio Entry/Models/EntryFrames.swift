@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class EntryFramesState {
@@ -10,3 +11,4 @@ final class EntryFramesState {
     var played: Int = 0
     var lastFrameQueued: Int = -1
 }
+#endif

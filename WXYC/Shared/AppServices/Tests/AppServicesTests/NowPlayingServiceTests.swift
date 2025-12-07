@@ -1,6 +1,51 @@
 import Testing
 import Foundation
-@testable import Core
+import Artwork
+@testable import Playlist
+@testable import AppServices
+
+// MARK: - Mock Types
+
+final class MockRemotePlaylistFetcher: RemotePlaylistFetcher, @unchecked Sendable {
+    var playlistToReturn: Playlist = .empty
+    var callCount = 0
+
+    override func fetchPlaylist() async -> Playlist {
+        callCount += 1
+        return playlistToReturn
+    }
+}
+
+final class MockArtworkService: ArtworkService, @unchecked Sendable {
+    var artworkToReturn: Image?
+    var errorToThrow: Error?
+    var fetchCount = 0
+    var lastPlaycut: Playcut?
+    var delaySeconds: Double = 0
+
+    func fetchArtwork(for playcut: Playcut) async throws -> Image {
+        fetchCount += 1
+        lastPlaycut = playcut
+
+        if delaySeconds > 0 {
+            try? await Task.sleep(for: .seconds(delaySeconds))
+        }
+
+        if let error = errorToThrow {
+            throw error
+        }
+
+        guard let artwork = artworkToReturn else {
+            throw ArtworkServiceError.noResults
+        }
+
+        return artwork
+    }
+}
+
+enum ArtworkServiceError: Error {
+    case noResults
+}
 
 // MARK: - Tests
 

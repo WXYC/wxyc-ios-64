@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 import CoreAudio
 import OSLog
@@ -1103,3 +1104,4 @@ extension AudioPlayer: AudioStreamSourceDelegate {
         }
     }
 }
+#endif

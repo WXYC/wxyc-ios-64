@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 /**
  Operations visualised below
  ```
@@ -99,3 +100,4 @@ final class Queue<Element: Equatable>: Sequence, CustomDebugStringConvertible {
         return "Queue with elements: \(_storage)"
     }
 }
+#endif

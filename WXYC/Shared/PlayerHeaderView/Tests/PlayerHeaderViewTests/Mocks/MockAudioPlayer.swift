@@ -7,7 +7,7 @@
 
 import Foundation
 import AVFoundation
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 /// Mock audio player for testing
 public final class MockAudioPlayer: AudioPlayerProtocol {

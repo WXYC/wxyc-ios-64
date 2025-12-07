@@ -11,7 +11,8 @@
 
 import Testing
 import Foundation
-@testable import Core
+@testable import Playlist
+@testable import Caching
 
 // MARK: - Test Mock Cache
 

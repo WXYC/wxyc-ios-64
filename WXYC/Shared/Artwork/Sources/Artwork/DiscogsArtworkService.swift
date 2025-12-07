@@ -1,6 +1,8 @@
 import Secrets
 import Logger
 import Foundation
+import Core
+import Playlist
 
 final class DiscogsArtworkService: ArtworkService {
     private static let key    = Secrets.discogsApiKeyV2_5
@@ -103,20 +105,20 @@ extension [URLQueryItem] {
 
 // MARK: - Discogs API Models
 
-struct Discogs {
-    struct SearchResults: Codable {
-        let results: [SearchResult]
+public struct Discogs {
+    public struct SearchResults: Codable {
+        public let results: [SearchResult]
     }
     
-    struct SearchResult: Codable {
-        let coverImage: URL
-        let masterId: Int?
-        let id: Int
-        let type: String
-        let label: [String]?
-        let year: String?
-        let uri: String?
-        let resourceUrl: String?
+    public struct SearchResult: Codable {
+        public let coverImage: URL
+        public let masterId: Int?
+        public let id: Int
+        public let type: String
+        public let label: [String]?
+        public let year: String?
+        public let uri: String?
+        public let resourceUrl: String?
         
         enum CodingKeys: String, CodingKey {
             case coverImage = "cover_image"
@@ -130,34 +132,34 @@ struct Discogs {
         }
         
         /// Constructs the full Discogs web URL from the uri field
-        var discogsWebURL: URL? {
+        public var discogsWebURL: URL? {
             guard let uri = uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")
         }
         
         /// Parsed release year as Int
-        var releaseYear: Int? {
+        public var releaseYear: Int? {
             guard let year = year else { return nil }
             return Int(year)
         }
         
         /// First label name if available
-        var primaryLabel: String? {
+        public var primaryLabel: String? {
             label?.first
         }
     }
     
     // MARK: - Artist Models
     
-    struct Artist: Codable {
-        let id: Int
-        let name: String
-        let profile: String?
-        let urls: [String]?
-        let images: [ArtistImage]?
+    public struct Artist: Codable {
+        public let id: Int
+        public let name: String
+        public let profile: String?
+        public let urls: [String]?
+        public let images: [ArtistImage]?
         
         /// Finds Wikipedia URL from the urls array
-        var wikipediaURL: URL? {
+        public var wikipediaURL: URL? {
             guard let urls = urls else { return nil }
             let wikipediaString = urls.first { url in
                 url.lowercased().contains("wikipedia.org") ||
@@ -167,14 +169,14 @@ struct Discogs {
         }
     }
     
-    struct ArtistImage: Codable {
+    public struct ArtistImage: Codable {
         let uri: String
         let type: String
     }
     
     // MARK: - Release Models (for detailed info)
     
-    struct Release: Codable {
+    public struct Release: Codable {
         let id: Int
         let title: String
         let year: Int?
@@ -192,15 +194,15 @@ struct Discogs {
             let name: String
         }
         
-        var primaryLabel: String? {
+        public var primaryLabel: String? {
             labels?.first?.name
         }
         
-        var primaryArtistId: Int? {
+        public var primaryArtistId: Int? {
             artists?.first?.id
         }
         
-        var discogsWebURL: URL? {
+        public var discogsWebURL: URL? {
             guard let uri = uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")
         }
@@ -208,7 +210,7 @@ struct Discogs {
     
     // MARK: - Master Release Models
     
-    struct Master: Codable {
+    public struct Master: Codable {
         let id: Int
         let title: String
         let year: Int?
@@ -220,11 +222,11 @@ struct Discogs {
             let name: String
         }
         
-        var primaryArtistId: Int? {
+        public var primaryArtistId: Int? {
             artists?.first?.id
         }
         
-        var discogsWebURL: URL? {
+        public var discogsWebURL: URL? {
             guard let uri = uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")
         }

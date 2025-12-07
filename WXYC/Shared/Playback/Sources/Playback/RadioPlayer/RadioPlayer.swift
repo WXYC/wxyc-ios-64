@@ -11,6 +11,7 @@ import AVFoundation
 import MediaPlayer
 import Logger
 import Core
+import Caching
 import PostHog
 import Analytics
 
@@ -19,7 +20,7 @@ import Analytics
 internal final class RadioPlayer: Sendable {
     private let streamURL: URL
     private var playerObservation: (any NSObjectProtocol)?
-    private var timer: Timer = Timer.start()
+    private var timer: Core.Timer = Core.Timer.start()
     private let userDefaults: UserDefaults
     private let analytics: AnalyticsService?
     private let notificationCenter: NotificationCenter

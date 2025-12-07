@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15)],
     products: [.library(name: "Metadata", targets: ["Metadata"])],
     dependencies: [
+        .package(name: "Artwork", path: "../Artwork"),
         .package(name: "Core", path: "../Core"),
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Playlist", path: "../Playlist"),
@@ -15,7 +16,7 @@ let package = Package(
     targets: [
         .target(
             name: "Metadata",
-            dependencies: ["Core", "Caching", "Playlist", "Secrets", "Logger"]
+            dependencies: ["Artwork", "Core", "Caching", "Playlist", "Secrets", "Logger"]
         ),
         .testTarget(
             name: "MetadataTests",
@@ -23,3 +24,4 @@ let package = Package(
         )
     ]
 )
+

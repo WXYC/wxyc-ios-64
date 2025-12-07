@@ -9,6 +9,8 @@
 import Foundation
 import SwiftUI
 import Core
+import Playlist
+import Artwork
 
 struct RemoteImage: View {
     @State var artwork: UIImage = UIImage(named: "logo")!

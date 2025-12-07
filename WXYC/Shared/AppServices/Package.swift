@@ -9,7 +9,6 @@ let package = Package(
         .package(name: "Core", path: "../Core"),
         .package(name: "Playlist", path: "../Playlist"),
         .package(name: "Artwork", path: "../Artwork"),
-        .package(name: "Playback", path: "../Playback"),
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
@@ -19,7 +18,7 @@ let package = Package(
         .target(
             name: "AppServices",
             dependencies: [
-                "Core", "Playlist", "Artwork", "Playback", "Caching", "Analytics", "Logger",
+                "Core", "Playlist", "Artwork", "Caching", "Analytics", "Logger",
                 .product(name: "PostHog", package: "posthog-ios")
             ]
         ),
@@ -29,3 +28,4 @@ let package = Package(
         )
     ]
 )
+

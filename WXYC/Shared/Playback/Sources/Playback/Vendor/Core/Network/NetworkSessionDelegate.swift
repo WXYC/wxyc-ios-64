@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class NetworkSessionDelegate: NSObject, URLSessionDataDelegate {
@@ -49,3 +50,4 @@ final class NetworkSessionDelegate: NSObject, URLSessionDataDelegate {
         completionHandler(.allow)
     }
 }
+#endif

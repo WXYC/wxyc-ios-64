@@ -12,7 +12,7 @@ import OpenNSFW
 import Logger
 import Caching
 import Playlist
-import Metadata
+import Core
 
 public protocol ArtworkService: Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> Image
@@ -84,7 +84,7 @@ public final actor MultisourceArtworkService: ArtworkService {
             Log(.info, "Previous attempt to find artwork errored \(error) for \(errorCacheKeyId), skipping")
         }
         
-        let timer = Timer.start()
+        let timer = Core.Timer.start()
         
         for fetcher in self.fetchers {
             do {

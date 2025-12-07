@@ -22,12 +22,5 @@ let package = Package(
                 .product(name: "PostHog", package: "posthog-ios"),
             ]
         ),
-//        .testTarget(
-//            name: "AnalyticsTests",
-//            dependencies: [
-//                "Analytics",
-//                .product(name: "PostHog", package: "posthog-ios")
-//            ]
-//        ),
     ]
 )

@@ -7,7 +7,7 @@
 
 import Foundation
 import MediaPlayer
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 /// Mock remote command for testing
 public final class MockRemoteCommand: RemoteCommandProtocol {

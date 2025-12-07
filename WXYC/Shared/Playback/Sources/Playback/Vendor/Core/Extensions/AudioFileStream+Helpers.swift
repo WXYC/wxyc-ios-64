@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 
 @discardableResult
@@ -161,3 +162,4 @@ public extension AudioFileStreamPropertyID {
         }
     }
 }
+#endif

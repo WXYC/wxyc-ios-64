@@ -3,6 +3,7 @@
 //  Copyright © 2024 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 // Struct representing a buffer for handling binary data
@@ -185,3 +186,4 @@ extension ExpressibleByIntegerLiteral {
         self.init(data: Data(data))
     }
 }
+#endif

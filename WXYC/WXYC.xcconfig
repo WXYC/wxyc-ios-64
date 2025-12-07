@@ -16,7 +16,7 @@ CURRENT_PROJECT_VERSION = 1
 EXCLUDED_SOURCE_FILE_NAMES = **/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift **/.build/** **/.build/*
 
 // Framework Search Paths
-FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared $(PROJECT_DIR)/WXYC/Shared/StreamingAudioPlayer/build/Release-iphoneos
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared $(PROJECT_DIR)/WXYC/Shared/Playback/build/Release-iphoneos
 
 // Info.plist
 GENERATE_INFOPLIST_FILE = YES
@@ -41,6 +41,9 @@ LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
 // Deployment Targets
 MACOSX_DEPLOYMENT_TARGET = 26.0
 XROS_DEPLOYMENT_TARGET = 26.0
+
+// Marketing Version
+MARKETING_VERSION=3.0.1
 
 // Product
 PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp

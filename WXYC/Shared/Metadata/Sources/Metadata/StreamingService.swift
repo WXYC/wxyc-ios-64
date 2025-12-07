@@ -8,14 +8,14 @@
 
 import SwiftUI
 
-enum StreamingService {
+public enum StreamingService {
     case spotify
     case appleMusic
     case youtubeMusic
     case bandcamp
     case soundcloud
     
-    var name: String {
+    public var name: String {
         switch self {
         case .spotify: return "Spotify"
         case .appleMusic: return "Apple Music"
@@ -25,7 +25,7 @@ enum StreamingService {
         }
     }
     
-    var iconName: String {
+    public var iconName: String {
         switch self {
         case .spotify: return "spotify"
         case .appleMusic: return "applemusic"
@@ -35,7 +35,7 @@ enum StreamingService {
         }
     }
     
-    var systemIcon: String {
+    public var systemIcon: String {
         switch self {
         case .spotify: return "music.note"
         case .appleMusic: return "music.note"
@@ -45,7 +45,7 @@ enum StreamingService {
         }
     }
     
-    var color: Color {
+    public var color: Color {
         switch self {
         case .spotify: return Color(red: 0.11, green: 0.73, blue: 0.33)
         case .appleMusic: return Color(red: 0.98, green: 0.18, blue: 0.33)
@@ -55,7 +55,7 @@ enum StreamingService {
         }
     }
     
-    var hasCustomIcon: Bool {
+    public var hasCustomIcon: Bool {
         switch self {
         case .spotify, .appleMusic, .bandcamp: return true
         case .youtubeMusic, .soundcloud: return false
@@ -64,7 +64,7 @@ enum StreamingService {
     
     /// Services that link to search pages (not direct deep links) should open in Safari
     /// to preserve query parameters that would be lost via Universal Links
-    var opensInBrowser: Bool {
+    public var opensInBrowser: Bool {
         switch self {
         case .spotify, .appleMusic, .youtubeMusic, .bandcamp: return false
         case .soundcloud: return true

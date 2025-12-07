@@ -11,6 +11,9 @@ import Core
 import PostHog
 import Secrets
 import Analytics
+import Artwork
+import Playlist
+import AppServices
 
 final class Provider: TimelineProvider, Sendable {
     typealias Entry = NowPlayingTimelineEntry

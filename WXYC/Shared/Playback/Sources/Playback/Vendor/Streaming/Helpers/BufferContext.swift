@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class BufferContext {
@@ -26,3 +27,4 @@ final class BufferContext {
         frameUsedCount = 0
     }
 }
+#endif
