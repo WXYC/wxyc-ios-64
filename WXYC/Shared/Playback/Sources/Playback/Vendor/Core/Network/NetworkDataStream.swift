@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class NetworkDataStream {
@@ -161,3 +162,4 @@ extension NetworkDataStream.State {
         }
     }
 }
+#endif

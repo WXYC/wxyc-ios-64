@@ -46,6 +46,7 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
+      codeCoverageEnabled = "YES"
       shouldAutocreateTestPlan = "YES">
       <Testables>
          <TestableReference
@@ -57,6 +58,105 @@
                BuildableName = "WXYCTests.xctest"
                BlueprintName = "WXYCTests"
                ReferencedContainer = "container:WXYC.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AppServicesTests"
+               BuildableName = "AppServicesTests"
+               BlueprintName = "AppServicesTests"
+               ReferencedContainer = "container:WXYC/Shared/AppServices">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "ArtworkTests"
+               BuildableName = "ArtworkTests"
+               BlueprintName = "ArtworkTests"
+               ReferencedContainer = "container:WXYC/Shared/Artwork">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "CachingTests"
+               BuildableName = "CachingTests"
+               BlueprintName = "CachingTests"
+               ReferencedContainer = "container:WXYC/Shared/Caching">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "MetadataTests"
+               BuildableName = "MetadataTests"
+               BlueprintName = "MetadataTests"
+               ReferencedContainer = "container:WXYC/Shared/Metadata">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "MusicShareKitTests"
+               BuildableName = "MusicShareKitTests"
+               BlueprintName = "MusicShareKitTests"
+               ReferencedContainer = "container:WXYC/Shared/MusicShareKit">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "PlaybackTests"
+               BuildableName = "PlaybackTests"
+               BlueprintName = "PlaybackTests"
+               ReferencedContainer = "container:WXYC/Shared/Playback">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "PlayerHeaderViewTests"
+               BuildableName = "PlayerHeaderViewTests"
+               BlueprintName = "PlayerHeaderViewTests"
+               ReferencedContainer = "container:WXYC/Shared/PlayerHeaderView">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "PlaylistTests"
+               BuildableName = "PlaylistTests"
+               BlueprintName = "PlaylistTests"
+               ReferencedContainer = "container:WXYC/Shared/Playlist">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "WXUITests"
+               BuildableName = "WXUITests"
+               BlueprintName = "WXUITests"
+               ReferencedContainer = "container:WXYC/Shared/WXUI">
             </BuildableReference>
          </TestableReference>
       </Testables>

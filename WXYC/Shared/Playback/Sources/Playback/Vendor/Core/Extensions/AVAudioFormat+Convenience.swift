@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 
 public extension AVAudioFormat {
@@ -13,3 +14,4 @@ public extension AVAudioFormat {
         return streamDescription.pointee
     }
 }
+#endif

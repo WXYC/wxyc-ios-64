@@ -1,13 +1,16 @@
 //
 //  PlaycutMetadataServiceCachingTests.swift
-//  CoreTests
+//  MetadataTests
 //
 //  Tests for PlaycutMetadataService caching functionality
 //
 
 import Testing
 import Foundation
-@testable import Core
+import Core
+import Playlist
+@testable import Caching
+@testable import Metadata
 
 // MARK: - Mock Cache
 

@@ -7,7 +7,7 @@
 //
 
 import SwiftUI
-import Core
+import Playlist
 
 struct ExternalLinkButton: View {
     let title: String
@@ -21,7 +21,7 @@ struct ExternalLinkButton: View {
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 12) {
-                Image(imageName, bundle: .core)
+                Image(imageName, bundle: .playlist)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 20, height: 16)

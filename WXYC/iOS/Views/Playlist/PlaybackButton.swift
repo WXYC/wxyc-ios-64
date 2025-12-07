@@ -11,7 +11,7 @@ import Core
 import CoreGraphics
 import WXUI
 import PlayerHeaderView
-import StreamingAudioPlayer
+import Playback
 
 struct PlaybackShape: InsettableShape {
     var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)

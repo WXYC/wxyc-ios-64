@@ -5,24 +5,25 @@
 //  Tests for AudioPlayerController with mock dependencies
 //
 
-import XCTest
+import Testing
 import AVFoundation
 #if os(iOS)
 import UIKit
 #endif
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 #if os(iOS) || os(tvOS) || os(watchOS)
 
+@Suite("AudioPlayerController Tests (iOS)")
 @MainActor
-final class AudioPlayerControllerTests: XCTestCase {
+struct AudioPlayerControllerTests {
     
-    var mockPlayer: MockAudioPlayer!
-    var mockSession: MockAudioSession!
-    var mockCommandCenter: MockRemoteCommandCenter!
-    var controller: AudioPlayerController!
+    let mockPlayer: MockAudioPlayer
+    let mockSession: MockAudioSession
+    let mockCommandCenter: MockRemoteCommandCenter
+    let controller: AudioPlayerController
     
-    override func setUp() async throws {
+    init() {
         mockPlayer = MockAudioPlayer()
         mockSession = MockAudioSession()
         mockCommandCenter = MockRemoteCommandCenter()
@@ -35,126 +36,131 @@ final class AudioPlayerControllerTests: XCTestCase {
         )
     }
     
-    override func tearDown() async throws {
-        mockPlayer = nil
-        mockSession = nil
-        mockCommandCenter = nil
-        controller = nil
-    }
-    
     // MARK: - Playback Tests
     
-    func testPlayWithURL() {
+    @Test("play(url:) starts playback")
+    func playWithURL() {
         let url = URL(string: "https://example.com/stream")!
         
         controller.play(url: url)
         
-        XCTAssertEqual(mockPlayer.playCallCount, 1)
-        XCTAssertEqual(mockPlayer.lastPlayedURL, url)
-        XCTAssertTrue(mockPlayer.isPlaying)
+        #expect(mockPlayer.playCallCount == 1)
+        #expect(mockPlayer.lastPlayedURL == url)
+        #expect(mockPlayer.isPlaying)
     }
     
-    func testPause() {
+    @Test("pause() pauses playback")
+    func pause() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.pause()
         
-        XCTAssertEqual(mockPlayer.pauseCallCount, 1)
-        XCTAssertFalse(mockPlayer.isPlaying)
+        #expect(mockPlayer.pauseCallCount == 1)
+        #expect(!mockPlayer.isPlaying)
     }
     
-    func testToggleFromStopped() {
+    @Test("toggle() from stopped resumes playback")
+    func toggleFromStopped() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         mockPlayer.pause() // Simulate paused state
         
         controller.toggle()
         
-        XCTAssertEqual(mockPlayer.resumeCallCount, 1)
+        #expect(mockPlayer.resumeCallCount == 1)
     }
     
-    func testToggleFromPlaying() {
+    @Test("toggle() from playing pauses playback")
+    func toggleFromPlaying() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.toggle()
         
-        XCTAssertEqual(mockPlayer.pauseCallCount, 1)
+        #expect(mockPlayer.pauseCallCount == 1)
     }
     
-    func testStop() {
+    @Test("stop() stops playback")
+    func stop() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.stop()
         
-        XCTAssertEqual(mockPlayer.stopCallCount, 1)
-        XCTAssertFalse(mockPlayer.isPlaying)
+        #expect(mockPlayer.stopCallCount == 1)
+        #expect(!mockPlayer.isPlaying)
     }
     
     // MARK: - Audio Session Tests
     
-    func testAudioSessionConfiguredOnInit() {
+    @Test("Audio session is configured on init")
+    func audioSessionConfiguredOnInit() {
         // Session category should be set during init
-        XCTAssertEqual(mockSession.setCategoryCallCount, 1)
-        XCTAssertEqual(mockSession.lastCategory, .playback)
+        #expect(mockSession.setCategoryCallCount == 1)
+        #expect(mockSession.lastCategory == .playback)
     }
     
-    func testAudioSessionActivatedOnPlay() {
+    @Test("Audio session is activated on play")
+    func audioSessionActivatedOnPlay() {
         let url = URL(string: "https://example.com/stream")!
         
         controller.play(url: url)
         
-        XCTAssertEqual(mockSession.setActiveCallCount, 1)
-        XCTAssertEqual(mockSession.lastActiveState, true)
+        #expect(mockSession.setActiveCallCount == 1)
+        #expect(mockSession.lastActiveState == true)
     }
     
-    func testAudioSessionDeactivatedOnStop() {
+    @Test("Audio session is deactivated on stop")
+    func audioSessionDeactivatedOnStop() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.stop()
         
-        XCTAssertEqual(mockSession.setActiveCallCount, 2) // Once for play, once for stop
-        XCTAssertEqual(mockSession.lastActiveState, false)
+        #expect(mockSession.setActiveCallCount == 2) // Once for play, once for stop
+        #expect(mockSession.lastActiveState == false)
     }
     
     // MARK: - Remote Command Center Tests
     
-    func testRemoteCommandsConfigured() {
-        XCTAssertTrue(mockCommandCenter.playCommand.isEnabled)
-        XCTAssertTrue(mockCommandCenter.pauseCommand.isEnabled)
-        XCTAssertTrue(mockCommandCenter.togglePlayPauseCommand.isEnabled)
-        XCTAssertFalse(mockCommandCenter.stopCommand.isEnabled)
-        XCTAssertFalse(mockCommandCenter.skipForwardCommand.isEnabled)
-        XCTAssertFalse(mockCommandCenter.skipBackwardCommand.isEnabled)
+    @Test("Remote commands are configured correctly")
+    func remoteCommandsConfigured() {
+        #expect(mockCommandCenter.playCommand.isEnabled)
+        #expect(mockCommandCenter.pauseCommand.isEnabled)
+        #expect(mockCommandCenter.togglePlayPauseCommand.isEnabled)
+        #expect(!mockCommandCenter.stopCommand.isEnabled)
+        #expect(!mockCommandCenter.skipForwardCommand.isEnabled)
+        #expect(!mockCommandCenter.skipBackwardCommand.isEnabled)
     }
     
-    func testRemoteCommandTargetsAdded() {
-        XCTAssertFalse(mockCommandCenter.mockPlayCommand.targets.isEmpty)
-        XCTAssertFalse(mockCommandCenter.mockPauseCommand.targets.isEmpty)
-        XCTAssertFalse(mockCommandCenter.mockTogglePlayPauseCommand.targets.isEmpty)
+    @Test("Remote command targets are added")
+    func remoteCommandTargetsAdded() {
+        #expect(!mockCommandCenter.mockPlayCommand.targets.isEmpty)
+        #expect(!mockCommandCenter.mockPauseCommand.targets.isEmpty)
+        #expect(!mockCommandCenter.mockTogglePlayPauseCommand.targets.isEmpty)
     }
     
     // MARK: - IsPlaying State Tests
     
-    func testIsPlayingReflectsPlayerState() {
-        XCTAssertFalse(controller.isPlaying)
+    @Test("isPlaying reflects player state")
+    func isPlayingReflectsPlayerState() {
+        #expect(!controller.isPlaying)
         
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
-        XCTAssertTrue(controller.isPlaying)
+        #expect(controller.isPlaying)
         
         controller.pause()
         
-        XCTAssertFalse(controller.isPlaying)
+        #expect(!controller.isPlaying)
     }
     
     // MARK: - Callback Tests
     
-    func testSetAudioBufferHandler() {
+    @Test("setAudioBufferHandler receives buffers")
+    func setAudioBufferHandler() {
         var receivedBuffer: AVAudioPCMBuffer?
         
         controller.setAudioBufferHandler { buffer in
@@ -168,10 +174,11 @@ final class AudioPlayerControllerTests: XCTestCase {
         
         mockPlayer.simulateAudioBuffer(buffer)
         
-        XCTAssertNotNil(receivedBuffer)
+        #expect(receivedBuffer != nil)
     }
     
-    func testSetMetadataHandler() {
+    @Test("setMetadataHandler receives metadata")
+    func setMetadataHandler() {
         var receivedMetadata: [String: String]?
         
         controller.setMetadataHandler { metadata in
@@ -181,7 +188,7 @@ final class AudioPlayerControllerTests: XCTestCase {
         let testMetadata = ["StreamTitle": "Test Song"]
         mockPlayer.simulateMetadata(testMetadata)
         
-        XCTAssertEqual(receivedMetadata?["StreamTitle"], "Test Song")
+        #expect(receivedMetadata?["StreamTitle"] == "Test Song")
     }
     
     // MARK: - App Lifecycle Tests (iOS only)
@@ -189,17 +196,18 @@ final class AudioPlayerControllerTests: XCTestCase {
     // from SwiftUI's scenePhase handler
     
     #if os(iOS)
-    func testBackgroundWhileNotPlayingDeactivatesSession() {
-        // Not playing, go to background
+    @Test("Background while not playing deactivates session")
+    func backgroundWhileNotPlayingDeactivatesSession() {
         mockSession.reset()
         
         controller.handleAppDidEnterBackground()
         
         // Session should be deactivated when not playing
-        XCTAssertEqual(mockSession.lastActiveState, false)
+        #expect(mockSession.lastActiveState == false)
     }
     
-    func testBackgroundWhilePlayingKeepsSessionActive() {
+    @Test("Background while playing keeps session active")
+    func backgroundWhilePlayingKeepsSessionActive() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         mockSession.reset() // Reset to track only background behavior
@@ -207,10 +215,11 @@ final class AudioPlayerControllerTests: XCTestCase {
         controller.handleAppDidEnterBackground()
         
         // Session should NOT be deactivated when playing (no setActive call)
-        XCTAssertEqual(mockSession.setActiveCallCount, 0)
+        #expect(mockSession.setActiveCallCount == 0)
     }
     
-    func testForegroundWhilePlayingActivatesSession() {
+    @Test("Foreground while playing activates session")
+    func foregroundWhilePlayingActivatesSession() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         mockSession.reset() // Reset to track only foreground behavior
@@ -218,20 +227,22 @@ final class AudioPlayerControllerTests: XCTestCase {
         controller.handleAppWillEnterForeground()
         
         // Session should be activated when returning to foreground while playing
-        XCTAssertEqual(mockSession.lastActiveState, true)
+        #expect(mockSession.lastActiveState == true)
     }
     
-    func testForegroundWhileNotPlayingDoesNotActivateSession() {
+    @Test("Foreground while not playing does not activate session")
+    func foregroundWhileNotPlayingDoesNotActivateSession() {
         // Not playing, return to foreground
         mockSession.reset()
         
         controller.handleAppWillEnterForeground()
         
         // Session should NOT be activated when not playing
-        XCTAssertEqual(mockSession.setActiveCallCount, 0)
+        #expect(mockSession.setActiveCallCount == 0)
     }
     
-    func testRapidBackgroundForegroundTransitions() {
+    @Test("Rapid background/foreground transitions remain stable")
+    func rapidBackgroundForegroundTransitions() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
@@ -242,11 +253,12 @@ final class AudioPlayerControllerTests: XCTestCase {
         }
         
         // Should still be playing and session should be active
-        XCTAssertTrue(controller.isPlaying)
-        XCTAssertEqual(mockSession.lastActiveState, true)
+        #expect(controller.isPlaying)
+        #expect(mockSession.lastActiveState == true)
     }
     
-    func testBackgroundAfterPauseDeactivatesSession() {
+    @Test("Background after pause deactivates session")
+    func backgroundAfterPauseDeactivatesSession() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         controller.pause()
@@ -255,7 +267,7 @@ final class AudioPlayerControllerTests: XCTestCase {
         controller.handleAppDidEnterBackground()
         
         // Session should be deactivated after pause + background
-        XCTAssertEqual(mockSession.lastActiveState, false)
+        #expect(mockSession.lastActiveState == false)
     }
     #endif
 }
@@ -263,13 +275,14 @@ final class AudioPlayerControllerTests: XCTestCase {
 #else
 
 // macOS tests - simplified without audio session/remote commands
+@Suite("AudioPlayerController Tests (macOS)")
 @MainActor
-final class AudioPlayerControllerTests: XCTestCase {
+struct AudioPlayerControllerTests {
     
-    var mockPlayer: MockAudioPlayer!
-    var controller: AudioPlayerController!
+    let mockPlayer: MockAudioPlayer
+    let controller: AudioPlayerController
     
-    override func setUp() async throws {
+    init() {
         mockPlayer = MockAudioPlayer()
         controller = AudioPlayerController(
             player: mockPlayer,
@@ -277,63 +290,63 @@ final class AudioPlayerControllerTests: XCTestCase {
         )
     }
     
-    override func tearDown() async throws {
-        mockPlayer = nil
-        controller = nil
-    }
-    
     // MARK: - Playback Tests
     
-    func testPlayWithURL() {
+    @Test("play(url:) starts playback")
+    func playWithURL() {
         let url = URL(string: "https://example.com/stream")!
         
         controller.play(url: url)
         
-        XCTAssertEqual(mockPlayer.playCallCount, 1)
-        XCTAssertEqual(mockPlayer.lastPlayedURL, url)
-        XCTAssertTrue(mockPlayer.isPlaying)
+        #expect(mockPlayer.playCallCount == 1)
+        #expect(mockPlayer.lastPlayedURL == url)
+        #expect(mockPlayer.isPlaying)
     }
     
-    func testPause() {
+    @Test("pause() pauses playback")
+    func pause() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.pause()
         
-        XCTAssertEqual(mockPlayer.pauseCallCount, 1)
-        XCTAssertFalse(mockPlayer.isPlaying)
+        #expect(mockPlayer.pauseCallCount == 1)
+        #expect(!mockPlayer.isPlaying)
     }
     
-    func testToggleFromPlaying() {
+    @Test("toggle() from playing pauses playback")
+    func toggleFromPlaying() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.toggle()
         
-        XCTAssertEqual(mockPlayer.pauseCallCount, 1)
+        #expect(mockPlayer.pauseCallCount == 1)
     }
     
-    func testStop() {
+    @Test("stop() stops playback")
+    func stop() {
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
         controller.stop()
         
-        XCTAssertEqual(mockPlayer.stopCallCount, 1)
-        XCTAssertFalse(mockPlayer.isPlaying)
+        #expect(mockPlayer.stopCallCount == 1)
+        #expect(!mockPlayer.isPlaying)
     }
     
-    func testIsPlayingReflectsPlayerState() {
-        XCTAssertFalse(controller.isPlaying)
+    @Test("isPlaying reflects player state")
+    func isPlayingReflectsPlayerState() {
+        #expect(!controller.isPlaying)
         
         let url = URL(string: "https://example.com/stream")!
         controller.play(url: url)
         
-        XCTAssertTrue(controller.isPlaying)
+        #expect(controller.isPlaying)
         
         controller.pause()
         
-        XCTAssertFalse(controller.isPlaying)
+        #expect(!controller.isPlaying)
     }
 }
 

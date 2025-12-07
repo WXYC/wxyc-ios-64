@@ -1,9 +1,10 @@
-import XCTest
+import Testing
 @testable import WXUI
 
-final class WXUITests: XCTestCase {
-    func testExample() throws {
-        // Placeholder test
-        XCTAssert(true)
+@Suite("WXUI Tests")
+struct WXUITests {
+    @Test("Placeholder test")
+    func example() throws {
+        #expect(true)
     }
 }

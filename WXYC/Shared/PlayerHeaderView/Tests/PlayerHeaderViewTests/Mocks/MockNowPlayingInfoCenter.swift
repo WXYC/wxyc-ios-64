@@ -8,7 +8,7 @@
 import Foundation
 import MediaPlayer
 @testable import PlayerHeaderView
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 /// Mock now playing info center for testing
 public final class MockNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {

@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class SeekRequest {
@@ -11,3 +12,4 @@ final class SeekRequest {
     var version = Atomic<Int>(0)
     var time: Double = 0
 }
+#endif

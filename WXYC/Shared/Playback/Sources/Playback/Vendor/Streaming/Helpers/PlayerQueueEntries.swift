@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 enum PlayerQueueType {
     case upcoming
     case buffering
@@ -157,3 +158,4 @@ extension PlayerQueueEntries: CustomDebugStringConvertible {
         "PlayerQueue upcoming: \(upcoming.count), buffering: \(bufferring.count)"
     }
 }
+#endif

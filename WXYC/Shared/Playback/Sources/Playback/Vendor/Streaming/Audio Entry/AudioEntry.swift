@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AudioToolbox
 import AVFoundation
 
@@ -189,3 +190,4 @@ extension AudioEntry: CustomDebugStringConvertible {
         "[AudioEntry: \(id)]"
     }
 }
+#endif

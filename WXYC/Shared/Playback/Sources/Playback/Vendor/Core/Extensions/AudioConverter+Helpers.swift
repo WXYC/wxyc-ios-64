@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 
 public enum AudioConverterError: CustomDebugStringConvertible, Sendable {
@@ -72,3 +73,4 @@ public enum AudioConverterError: CustomDebugStringConvertible, Sendable {
         }
     }
 }
+#endif

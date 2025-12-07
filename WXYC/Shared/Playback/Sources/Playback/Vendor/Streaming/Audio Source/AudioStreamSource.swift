@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AudioToolbox
 import Foundation
 
@@ -49,3 +50,4 @@ protocol AudioStreamSource: CoreAudioStreamSource {
     /// A `MetadataStreamSource` object that handles the metadata parsing
     var metadataStreamProcessor: MetadataStreamSource { get }
 }
+#endif

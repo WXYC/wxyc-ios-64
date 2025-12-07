@@ -12,6 +12,7 @@ import WXUI
 import AppIntents
 import PlayerHeaderView
 import PartyHorn
+import Playlist
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []

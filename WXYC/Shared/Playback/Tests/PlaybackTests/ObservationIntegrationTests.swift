@@ -7,7 +7,7 @@
 
 import Testing
 import Foundation
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 @Suite("Observation Integration Tests", .serialized)
 @MainActor

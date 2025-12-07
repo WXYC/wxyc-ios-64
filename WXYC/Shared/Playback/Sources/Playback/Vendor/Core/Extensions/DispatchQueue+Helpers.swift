@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 /// Helper method to dispatch the given block asynchronously on the MainQueue
@@ -15,3 +16,4 @@ func asyncOnMain(_ block: @escaping () -> Void) {
 func asyncOnMain(deadline: DispatchTimeInterval, block: @escaping () -> Void) {
     DispatchQueue.main.asyncAfter(deadline: .now() + deadline, execute: block)
 }
+#endif

@@ -7,7 +7,8 @@
 
 import Testing
 import Foundation
-@testable import Core
+@testable import Playlist
+@testable import Caching
 
 // MARK: - Mock Cache for Tests
 
@@ -75,9 +76,18 @@ final class TrackingRemotePlaylistFetcher: RemotePlaylistFetcher, @unchecked Sen
         self.tracker = tracker
         super.init(remoteFetcher: tracker)
     }
+
+    /// Override to bypass parent's logging and network code
+    override func fetchPlaylist() async -> Playlist {
+        do {
+            return try await tracker.getPlaylist()
+        } catch {
+            return .empty
+        }
+    }
 }
 
-@Suite("PlaylistService Race Condition Tests")
+@Suite("PlaylistService Race Condition Tests", .serialized)
 struct PlaylistServiceRaceConditionTests {
 
     @Test("Concurrent observers start only one fetch task")
@@ -111,10 +121,18 @@ struct PlaylistServiceRaceConditionTests {
         // Then: Only one fetch task should be running
         let maxConcurrent = await tracker.maxConcurrentFetches
 
+        // Cancel all tasks to trigger cleanup
+        for task in tasks {
+            task.cancel()
+        }
+        
         // Wait for all tasks to complete
         for task in tasks {
             await task.value
         }
+        
+        // Give the service time to clean up
+        try await Task.sleep(for: .milliseconds(100))
 
         #expect(
             maxConcurrent == 1,
@@ -152,9 +170,14 @@ struct PlaylistServiceRaceConditionTests {
         for task in tasks {
             task.cancel()
         }
+        
+        // Wait for all tasks to complete
+        for task in tasks {
+            await task.value
+        }
 
         // Wait for cleanup
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(200))
 
         // Wait longer than the fetch interval
         try await Task.sleep(for: .milliseconds(600))
@@ -177,11 +200,20 @@ struct PlaylistServiceRaceConditionTests {
             cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
 
-        let stream = service.updates()
-        var iterator = stream.makeAsyncIterator()
-
+        // Use a Task to properly manage the stream lifecycle
+        let task = Task {
+            var iterator = service.updates().makeAsyncIterator()
+            return await iterator.next()
+        }
+        
         // Should receive a value (will wait for first fetch since cache is empty)
-        let firstValue = await iterator.next()
+        let firstValue = await task.value
         #expect(firstValue != nil, "Expected to receive initial playlist value")
+        
+        // Cancel the task to ensure cleanup
+        task.cancel()
+        
+        // Give the service time to clean up
+        try await Task.sleep(for: .milliseconds(100))
     }
 }

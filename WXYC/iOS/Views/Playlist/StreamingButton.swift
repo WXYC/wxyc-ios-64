@@ -6,8 +6,11 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Foundation
 import SwiftUI
 import Core
+import Metadata
+import Playlist
 
 struct StreamingButton: View {
     let service: StreamingService
@@ -44,7 +47,7 @@ struct StreamingButton: View {
         HStack(spacing: 8) {
             Group {
                 if service.hasCustomIcon {
-                    Image(service.iconName, bundle: .core)
+                    Image(service.iconName, bundle: .playlist)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                 } else {

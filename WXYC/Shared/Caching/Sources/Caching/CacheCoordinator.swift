@@ -7,7 +7,7 @@ public final actor CacheCoordinator {
     public static let AlbumArt = CacheCoordinator(cache: DiskCache())
     public static let Playlist = CacheCoordinator(cache: DiskCache())
     
-    enum Error: String, LocalizedError, Codable {
+    public enum Error: String, LocalizedError, Codable {
         case noCachedResult
     }
     
@@ -85,16 +85,14 @@ public final actor CacheCoordinator {
         } catch {
             Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
             Log(.error, "\(try Self.decoder.decode(CachedRecord<String>.self, from: value))")
-            if Value.self != CachedRecord<MultisourceArtworkService.Error>.self {
-                PostHogSDK.shared.capture(
-                    error: error,
-                    context: "CacheCoordinator decode value",
-                    additionalData: [
-                        "value type": String(describing: Value.self),
-                        "key": key
-                    ]
-                )
-            }
+            PostHogSDK.shared.capture(
+                error: error,
+                context: "CacheCoordinator decode value",
+                additionalData: [
+                    "value type": String(describing: Value.self),
+                    "key": key
+                ]
+            )
             
             throw error
         }
@@ -107,7 +105,7 @@ public final actor CacheCoordinator {
             for (key, value) in cache.allRecords() {
                 do {
                     let record: CachedRecord<String> = try self.decode(value: value, forKey: key)
-                    if record.isExpired || record.lifespan == .distantFuture {
+                    if record.isExpired || record.lifespan == .infinity {
                         cache.set(object: nil, for: key)
                     }
                 } catch {

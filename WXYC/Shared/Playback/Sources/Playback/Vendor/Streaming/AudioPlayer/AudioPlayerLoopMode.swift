@@ -3,6 +3,7 @@
 //  Copyright © 2025 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 /// Defines the loop/repeat mode for the audio player
@@ -23,3 +24,4 @@ internal struct LoopEntryInfo: Equatable {
     let headers: [String: String]
 }
 
+#endif

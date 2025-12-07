@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 final class Atomic<Value> {
@@ -37,3 +38,4 @@ extension Atomic: Comparable where Value: Comparable {
         lhs.value < rhs.value
     }
 }
+#endif

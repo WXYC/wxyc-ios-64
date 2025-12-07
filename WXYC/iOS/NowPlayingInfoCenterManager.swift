@@ -11,7 +11,9 @@ import Foundation
 import MediaPlayer
 import Logger
 import PlayerHeaderView
-import StreamingAudioPlayer
+import Playback
+import Playlist
+import AppServices
 
 @MainActor
 final class NowPlayingInfoCenterManager {

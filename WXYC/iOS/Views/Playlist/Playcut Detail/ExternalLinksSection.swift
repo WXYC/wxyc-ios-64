@@ -9,6 +9,7 @@
 import SwiftUI
 import Core
 import WXUI
+import Metadata
 
 struct ExternalLinksSection: View {
     let metadata: PlaycutMetadata

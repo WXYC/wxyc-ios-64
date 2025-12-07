@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 public enum MetadataParsingError: Error, Equatable {
@@ -37,3 +38,4 @@ struct MetadataParser: Parser {
         return .success(metadata)
     }
 }
+#endif

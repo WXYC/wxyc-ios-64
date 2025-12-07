@@ -5,6 +5,7 @@
 //  Inspired by Thong Nguyen's StreamingKit. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 import CoreAudio
 import OSLog
@@ -741,3 +742,4 @@ private func getHardwareCodecClassDescription(formatId: UInt32, classDesc: Unsaf
     #endif
     return false
 }
+#endif

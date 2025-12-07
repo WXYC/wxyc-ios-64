@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 
 protocol AudioEntryProviding {
@@ -63,3 +64,4 @@ final class AudioEntryProvider: AudioEntryProviding {
         return provideAudioSource(url: url, httpMethod: httpMethod, httpBody: httpBody, headers: headers)
     }
 }
+#endif

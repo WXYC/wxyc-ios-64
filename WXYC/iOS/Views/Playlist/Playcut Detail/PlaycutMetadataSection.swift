@@ -9,6 +9,8 @@
 import SwiftUI
 import Core
 import WXUI
+import Metadata
+import Playlist
 
 struct PlaycutMetadataSection: View {
     let metadata: PlaycutMetadata

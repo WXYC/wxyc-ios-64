@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 public protocol AudioPlayerDelegate: AnyObject {
@@ -32,3 +33,4 @@ public protocol AudioPlayerDelegate: AnyObject {
     /// Tells the delegate when a metadata read occurred from the stream.
     func audioPlayerDidReadMetadata(player: AudioPlayer, metadata: [String: String])
 }
+#endif

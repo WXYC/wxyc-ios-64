@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 import CoreAudio
 
@@ -82,3 +83,4 @@ private func allocateBufferList(dataByteSize: Int) -> UnsafeMutablePointer<Audio
 
     return _bufferList.unsafeMutablePointer
 }
+#endif

@@ -9,7 +9,6 @@ let package = Package(
         .package(name: "Core", path: "../Core"),
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Playlist", path: "../Playlist"),
-        .package(name: "Metadata", path: "../Metadata"),
         .package(name: "Secrets", path: "../Secrets"),
         .package(name: "OpenNSFW", path: "../OpenNSFW"),
         .package(name: "Logger", path: "../Logger"),
@@ -17,7 +16,7 @@ let package = Package(
     targets: [
         .target(
             name: "Artwork",
-            dependencies: ["Core", "Caching", "Playlist", "Metadata", "Secrets", "OpenNSFW", "Logger"]
+            dependencies: ["Core", "Caching", "Playlist", "Secrets", "OpenNSFW", "Logger"]
         ),
         .testTarget(
             name: "ArtworkTests",
@@ -25,3 +24,4 @@ let package = Package(
         )
     ]
 )
+

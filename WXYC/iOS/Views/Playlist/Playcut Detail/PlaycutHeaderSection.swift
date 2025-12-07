@@ -9,6 +9,7 @@
 import SwiftUI
 import Core
 import WXUI
+import Playlist
 
 struct PlaycutHeaderSection: View {
     let playcut: Playcut

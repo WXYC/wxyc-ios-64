@@ -32,13 +32,16 @@
 		23B333502ED4F09900EFD77B /* Request Share Extension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = 23B333462ED4F09900EFD77B /* Request Share Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		23B35B512ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B502ED50C0F00EFD77B /* MusicShareKit */; };
 		23B35B522ED50C0F00EFD77B /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 23B35B532ED50C0F00EFD77B /* MusicShareKit */; };
-		23C1A1B12ED8000000000011 /* StreamingAudioPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B02ED8000000000010 /* StreamingAudioPlayer */; };
+		23C1A1B12ED8000000000011 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B02ED8000000000010 /* Playback */; };
+		23C1A1B62ED8000000000022 /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B12ED8000000000017 /* Caching */; };
+		23C1A1B72ED8000000000023 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B22ED8000000000018 /* Playlist */; };
+		23C1A1B82ED8000000000024 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B32ED8000000000019 /* Metadata */; };
+		23C1A1B92ED8000000000025 /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B42ED8000000000020 /* Artwork */; };
+		23C1A1BA2ED8000000000026 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B52ED8000000000021 /* AppServices */; };
 		23D382DA2EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		23D382DB2EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		23D382DC2EE16B9D00A032BE /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23D382DD2EE16B9D00A032BE /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2952ED564AD001818C7 /* ObfuscateMacro */; };
-		23D382DE2EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
-		23D382DF2EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		23D382E02EE16B9D00A032BE /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2952ED564AD001818C7 /* ObfuscateMacro */; };
 		23D382E12EE16B9D00A032BE /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23D382E22EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
@@ -46,8 +49,19 @@
 		23D382E42EE16B9D00A032BE /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2952ED564AD001818C7 /* ObfuscateMacro */; };
 		23D382E52EE16B9D00A032BE /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23D383D02EE170A000A032BE /* LaminatedGlass in Frameworks */ = {isa = PBXBuildFile; productRef = 23D383CF2EE170A000A032BE /* LaminatedGlass */; };
+		23DACD172EE554B800E9AB35 /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B12ED8000000000017 /* Caching */; };
+		23DACD182EE554B800E9AB35 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B22ED8000000000018 /* Playlist */; };
+		23DACD192EE554B800E9AB35 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B32ED8000000000019 /* Metadata */; };
+		23DACD1A2EE554B800E9AB35 /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B42ED8000000000020 /* Artwork */; };
+		23DACD1B2EE554B800E9AB35 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B02ED8000000000010 /* Playback */; };
+		23DACD1C2EE554B800E9AB35 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B52ED8000000000021 /* AppServices */; };
 		23DB847B2D828093000EB53A /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DB847A2D828093000EB53A /* Analytics */; };
 		23EDE6492EDD31850034F39B /* PartyHorn in Frameworks */ = {isa = PBXBuildFile; productRef = 23EDE0792EDD2A570034F39B /* PartyHorn */; };
+		23F100012EF8000000000001 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 23F100022EF8000000000002 /* AppServices */; };
+		23F100032EF8000000000003 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 23F100042EF8000000000004 /* Playlist */; };
+		23F100052EF8000000000005 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = 23F100062EF8000000000006 /* Secrets */; };
+		23F100072EF8000000000007 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23F100082EF8000000000008 /* Analytics */; };
+		23F100092EF8000000000009 /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 23F1000A2EF800000000000A /* Artwork */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -160,6 +174,14 @@
 		2384755E2EE541C8000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
 		238475C72EE541C8000C6CB3 /* Algorithms.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Algorithms.xcodeproj; sourceTree = "<group>"; };
 		23847AC02EE541C8000C6CB3 /* SwiftRefactorExtension.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SwiftRefactorExtension.xcodeproj; sourceTree = "<group>"; };
+		2384A71C2EE542ED000C6CB3 /* PostHogExampleAutocapture.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleAutocapture.xcodeproj; sourceTree = "<group>"; };
+		2384A7422EE542ED000C6CB3 /* PostHogExampleVisionOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleVisionOS.xcodeproj; sourceTree = "<group>"; };
+		2384A74A2EE542ED000C6CB3 /* PostHogExampleWatchOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWatchOS.xcodeproj; sourceTree = "<group>"; };
+		2384A7542EE542ED000C6CB3 /* PostHogExampleWithPods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithPods.xcodeproj; sourceTree = "<group>"; };
+		2384A75F2EE542ED000C6CB3 /* PostHogExampleWithSPM.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithSPM.xcodeproj; sourceTree = "<group>"; };
+		2384A84E2EE542ED000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
+		2384A8B72EE542ED000C6CB3 /* Algorithms.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Algorithms.xcodeproj; sourceTree = "<group>"; };
+		2384AEAC2EE542ED000C6CB3 /* SwiftRefactorExtension.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SwiftRefactorExtension.xcodeproj; sourceTree = "<group>"; };
 		23B333462ED4F09900EFD77B /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		23EC619F2ED810EB001C27E9 /* WXYCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -214,14 +236,19 @@
 				NowPlayingWidget/Views/SmallNowPlayingWidgetEntryView.swift,
 				NowPlayingWidget/WidgetIntents.swift,
 				Shared/Analytics,
+				Shared/AppServices,
+				Shared/Artwork,
+				Shared/Caching,
 				Shared/Core,
 				Shared/Logger,
+				Shared/Metadata,
 				Shared/MusicShareKit,
 				Shared/OpenNSFW,
 				"Shared/Party Horn",
+				Shared/Playback,
 				Shared/PlayerHeaderView,
+				Shared/Playlist,
 				Shared/Secrets,
-				Shared/StreamingAudioPlayer,
 				Shared/WXUI,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
@@ -320,6 +347,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23DACD1C2EE554B800E9AB35 /* AppServices in Frameworks */,
+				23DACD1B2EE554B800E9AB35 /* Playback in Frameworks */,
+				23DACD1A2EE554B800E9AB35 /* Artwork in Frameworks */,
+				23DACD192EE554B800E9AB35 /* Metadata in Frameworks */,
+				23DACD182EE554B800E9AB35 /* Playlist in Frameworks */,
+				23DACD172EE554B800E9AB35 /* Caching in Frameworks */,
 				236609E32D72D08C0057E268 /* Logger in Frameworks */,
 				238049F42ED7E03900DD28A4 /* WXUI in Frameworks */,
 				236609E52D72D08C0057E268 /* OpenNSFW in Frameworks */,
@@ -338,8 +371,11 @@
 				23D382E12EE16B9D00A032BE /* PostHog in Frameworks */,
 				23D382E02EE16B9D00A032BE /* ObfuscateMacro in Frameworks */,
 				2395669B2D7524CE0094A215 /* Core in Frameworks */,
-				23D382DE2EE16B9D00A032BE /* (null) in Frameworks */,
-				23D382DF2EE16B9D00A032BE /* (null) in Frameworks */,
+				23F100012EF8000000000001 /* AppServices in Frameworks */,
+				23F100032EF8000000000003 /* Playlist in Frameworks */,
+				23F100052EF8000000000005 /* Secrets in Frameworks */,
+				23F100072EF8000000000007 /* Analytics in Frameworks */,
+				23F100092EF8000000000009 /* Artwork in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -370,7 +406,12 @@
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
 				2397F56D2EDC22F500F6594F /* PlayerHeaderView in Frameworks */,
 				231260472D938C1600762428 /* Secrets in Frameworks */,
-				23C1A1B12ED8000000000011 /* StreamingAudioPlayer in Frameworks */,
+				23C1A1B12ED8000000000011 /* Playback in Frameworks */,
+				23C1A1B62ED8000000000022 /* Caching in Frameworks */,
+				23C1A1B72ED8000000000023 /* Playlist in Frameworks */,
+				23C1A1B82ED8000000000024 /* Metadata in Frameworks */,
+				23C1A1B92ED8000000000025 /* Artwork in Frameworks */,
+				23C1A1BA2ED8000000000026 /* AppServices in Frameworks */,
 				23D382DB2EE16B9D00A032BE /* (null) in Frameworks */,
 				23A8E29A2ED564AD001818CC /* Vortex in Frameworks */,
 				23B35B522ED50C0F00EFD77B /* MusicShareKit in Frameworks */,
@@ -752,6 +793,62 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		2384B14A2EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B14C2EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B14E2EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B1502EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B1522EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B1542EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B1562EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384B1582EE542ED000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -779,6 +876,12 @@
 				238049F32ED7E03900DD28A4 /* WXUI */,
 				23A8E2952ED564AD001818C7 /* ObfuscateMacro */,
 				23A8E2912ED564AD001818C3 /* PostHog */,
+				23C1A1B12ED8000000000017 /* Caching */,
+				23C1A1B22ED8000000000018 /* Playlist */,
+				23C1A1B32ED8000000000019 /* Metadata */,
+				23C1A1B42ED8000000000020 /* Artwork */,
+				23C1A1B02ED8000000000010 /* Playback */,
+				23C1A1B52ED8000000000021 /* AppServices */,
 			);
 			productName = "WatchXYC Watch App";
 			productReference = 236609BA2D72D0420057E268 /* WatchXYC.app */;
@@ -806,6 +909,11 @@
 				2395669E2D7524CE0094A215 /* OpenNSFW */,
 				23A8E2952ED564AD001818C7 /* ObfuscateMacro */,
 				23A8E2912ED564AD001818C3 /* PostHog */,
+				23F100022EF8000000000002 /* AppServices */,
+				23F100042EF8000000000004 /* Playlist */,
+				23F100062EF8000000000006 /* Secrets */,
+				23F100082EF8000000000008 /* Analytics */,
+				23F1000A2EF800000000000A /* Artwork */,
 			);
 			productName = NowPlayingWidget;
 			productReference = 236629612D72D5BB0057E268 /* NowPlayingWidget.appex */;
@@ -873,7 +981,12 @@
 				2386DDE22ED7DA9400F3C501 /* WXUI */,
 				2397F56C2EDC22F500F6594F /* PlayerHeaderView */,
 				2397F6332EDC239400F6594F /* PlayerHeaderView */,
-				23C1A1B02ED8000000000010 /* StreamingAudioPlayer */,
+				23C1A1B02ED8000000000010 /* Playback */,
+				23C1A1B12ED8000000000017 /* Caching */,
+				23C1A1B22ED8000000000018 /* Playlist */,
+				23C1A1B32ED8000000000019 /* Metadata */,
+				23C1A1B42ED8000000000020 /* Artwork */,
+				23C1A1B52ED8000000000021 /* AppServices */,
 				23EDE0792EDD2A570034F39B /* PartyHorn */,
 				23A8E2952ED564AD001818C7 /* ObfuscateMacro */,
 				23A8E2972ED564AD001818C9 /* Vortex */,
@@ -982,7 +1095,12 @@
 				23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */,
 				23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */,
 				23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
-				23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */,
+				23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/Playback" */,
+				23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "WXYC/Shared/Caching" */,
+				23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */,
+				23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "WXYC/Shared/Metadata" */,
+				23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */,
+				23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */,
 				23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */,
 				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */,
 				23D383CE2EE170A000A032BE /* XCLocalSwiftPackageReference "../LaminatedGlass" */,
@@ -1006,6 +1124,10 @@
 				{
 					ProductGroup = 23847D642EE541C8000C6CB3 /* Products */;
 					ProjectRef = 238475C72EE541C8000C6CB3 /* Algorithms.xcodeproj */;
+				},
+				{
+					ProductGroup = 2384B1502EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A8B72EE542ED000C6CB3 /* Algorithms.xcodeproj */;
 				},
 				{
 					ProductGroup = 2307779D2EDD2539007AB889 /* Products */;
@@ -1036,6 +1158,10 @@
 					ProjectRef = 2384755E2EE541C8000C6CB3 /* PostHog.xcodeproj */;
 				},
 				{
+					ProductGroup = 2384B1562EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A84E2EE542ED000C6CB3 /* PostHog.xcodeproj */;
+				},
+				{
 					ProductGroup = 238451992EE541C5000C6CB3 /* Products */;
 					ProjectRef = 238447652EE541C5000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
 				},
@@ -1056,12 +1182,20 @@
 					ProjectRef = 230775812EDD2539007AB889 /* PostHogExampleAutocapture.xcodeproj */;
 				},
 				{
+					ProductGroup = 2384B1582EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A71C2EE542ED000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
 					ProductGroup = 23843A742EE541C3000C6CB3 /* Products */;
 					ProjectRef = 2384303A2EE541C3000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
 				},
 				{
 					ProductGroup = 238451932EE541C5000C6CB3 /* Products */;
 					ProjectRef = 2384478B2EE541C5000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 2384B14A2EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A7422EE542ED000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
 				},
 				{
 					ProductGroup = 2307779B2EDD2539007AB889 /* Products */;
@@ -1072,12 +1206,12 @@
 					ProjectRef = 238474522EE541C8000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
 				},
 				{
-					ProductGroup = 23842CA02EE541A6000C6CB3 /* Products */;
-					ProjectRef = 23842B8F2EE541A6000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
-				},
-				{
 					ProductGroup = 238445A92EE541C4000C6CB3 /* Products */;
 					ProjectRef = 23843C4D2EE541C4000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CA02EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842B8F2EE541A6000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
 				},
 				{
 					ProductGroup = 23843A702EE541C3000C6CB3 /* Products */;
@@ -1108,8 +1242,16 @@
 					ProjectRef = 238430682EE541C3000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
 				},
 				{
+					ProductGroup = 2384B1522EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A74A2EE542ED000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
 					ProductGroup = 238445AD2EE541C4000C6CB3 /* Products */;
 					ProjectRef = 23843C5F2EE541C4000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
+				},
+				{
+					ProductGroup = 2384B14C2EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A7542EE542ED000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
 				},
 				{
 					ProductGroup = 2384519B2EE541C5000C6CB3 /* Products */;
@@ -1152,6 +1294,10 @@
 					ProjectRef = 2384746F2EE541C8000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
 				},
 				{
+					ProductGroup = 2384B14E2EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384A75F2EE542ED000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
+				},
+				{
 					ProductGroup = 23842CA22EE541A6000C6CB3 /* Products */;
 					ProjectRef = 23842BAC2EE541A6000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
 				},
@@ -1162,6 +1308,10 @@
 				{
 					ProductGroup = 23843A6A2EE541C3000C6CB3 /* Products */;
 					ProjectRef = 238437CA2EE541C3000C6CB3 /* SwiftRefactorExtension.xcodeproj */;
+				},
+				{
+					ProductGroup = 2384B1542EE542ED000C6CB3 /* Products */;
+					ProjectRef = 2384AEAC2EE542ED000C6CB3 /* SwiftRefactorExtension.xcodeproj */;
 				},
 				{
 					ProductGroup = 23847D682EE541C8000C6CB3 /* Products */;
@@ -1443,6 +1593,12 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared/AppServices/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+					"$(PROJECT_DIR)/WXYC/Shared/Playback/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+					"$(PROJECT_DIR)/WXYC/Shared/Metadata/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+				);
 				MARKETING_VERSION = 3.0.1;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -1535,6 +1691,8 @@
 		};
 		236609CA2D72D0430057E268 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1563,6 +1721,8 @@
 		};
 		236609CB2D72D0430057E268 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1591,6 +1751,8 @@
 		};
 		2366296C2D72D5BB0057E268 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/NowPlayingWidgetDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -1616,6 +1778,8 @@
 		};
 		2366296D2D72D5BB0057E268 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/NowPlayingWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -1641,6 +1805,8 @@
 		};
 		236629A12D73905B0057E268 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1666,6 +1832,8 @@
 		};
 		236629A22D73905B0057E268 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1700,6 +1868,12 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared/AppServices/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+					"$(PROJECT_DIR)/WXYC/Shared/Playback/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+					"$(PROJECT_DIR)/WXYC/Shared/Metadata/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+				);
 				MARKETING_VERSION = 3.0.1;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
@@ -1725,6 +1899,12 @@
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared/AppServices/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+					"$(PROJECT_DIR)/WXYC/Shared/Playback/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+					"$(PROJECT_DIR)/WXYC/Shared/Metadata/.build/index-build/prebuilts/swift-syntax/602.0.0/swiftlang-6.2.1.4.8-MacroSupport-macos_aarch64/lib",
+				);
 				MARKETING_VERSION = 3.0.1;
 				REGISTER_APP_GROUPS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1873,6 +2053,8 @@
 		};
 		23B333522ED4F09900EFD77B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -1900,6 +2082,8 @@
 		};
 		23B333532ED4F09900EFD77B /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 2366FA1F2D72CE880057E268 /* WXYC */;
+			baseConfigurationReferenceRelativePath = WXYC.xcconfig;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -2126,9 +2310,9 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = WXYC/Shared/MusicShareKit;
 		};
-		23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */ = {
+		23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/Playback" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/StreamingAudioPlayer;
+			relativePath = WXYC/Shared/Playback;
 		};
 		23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -2137,6 +2321,26 @@
 		23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "WXYC/Shared/Party Horn" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "WXYC/Shared/Party Horn";
+		};
+		23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "WXYC/Shared/Caching" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/Caching;
+		};
+		23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/Playlist;
+		};
+		23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "WXYC/Shared/Metadata" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/Metadata;
+		};
+		23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/Artwork;
+		};
+		23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WXYC/Shared/AppServices;
 		};
 		23D383CE2EE170A000A032BE /* XCLocalSwiftPackageReference "../LaminatedGlass" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -2347,10 +2551,35 @@
 			package = 23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */;
 			productName = MusicShareKit;
 		};
-		23C1A1B02ED8000000000010 /* StreamingAudioPlayer */ = {
+		23C1A1B02ED8000000000010 /* Playback */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/StreamingAudioPlayer" */;
-			productName = StreamingAudioPlayer;
+			package = 23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/Playback" */;
+			productName = Playback;
+		};
+		23C1A1B12ED8000000000017 /* Caching */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "WXYC/Shared/Caching" */;
+			productName = Caching;
+		};
+		23C1A1B22ED8000000000018 /* Playlist */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */;
+			productName = Playlist;
+		};
+		23C1A1B32ED8000000000019 /* Metadata */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "WXYC/Shared/Metadata" */;
+			productName = Metadata;
+		};
+		23C1A1B42ED8000000000020 /* Artwork */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */;
+			productName = Artwork;
+		};
+		23C1A1B52ED8000000000021 /* AppServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */;
+			productName = AppServices;
 		};
 		23D383CF2EE170A000A032BE /* LaminatedGlass */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2370,6 +2599,31 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "WXYC/Shared/Party Horn" */;
 			productName = PartyHorn;
+		};
+		23F100022EF8000000000002 /* AppServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */;
+			productName = AppServices;
+		};
+		23F100042EF8000000000004 /* Playlist */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */;
+			productName = Playlist;
+		};
+		23F100062EF8000000000006 /* Secrets */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */;
+			productName = Secrets;
+		};
+		23F100082EF8000000000008 /* Analytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */;
+			productName = Analytics;
+		};
+		23F1000A2EF800000000000A /* Artwork */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */;
+			productName = Artwork;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

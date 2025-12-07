@@ -13,7 +13,11 @@ import PostHog
 #if os(iOS)
 import UIKit
 #endif
+import Core
 
+// AudioPlayerController is not available on watchOS.
+// Use RadioPlayerController from the Core module on watchOS instead.
+#if !os(watchOS)
 
 /// High-level controller for audio playback
 /// Handles audio session, remote commands, and system notifications
@@ -23,8 +27,8 @@ public final class AudioPlayerController {
     
     // MARK: - Singleton
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
-    /// Shared singleton instance for app-wide usage
+    #if os(iOS) || os(tvOS)
+    /// Shared singleton instance for app-wide usage (iOS/tvOS)
     public static let shared = AudioPlayerController(
         player: StreamingAudioPlayer(),
         audioSession: AVAudioSession.sharedInstance(),
@@ -33,7 +37,7 @@ public final class AudioPlayerController {
         analytics: PostHogSDK.shared
     )
     #else
-    /// Shared singleton instance for app-wide usage
+    /// Shared singleton instance for app-wide usage (macOS)
     public static let shared = AudioPlayerController(
         player: StreamingAudioPlayer(),
         notificationCenter: .default,
@@ -68,7 +72,7 @@ public final class AudioPlayerController {
     @ObservationIgnored private nonisolated(unsafe) var notificationCenter: NotificationCenter
     @ObservationIgnored private nonisolated(unsafe) var analytics: AudioAnalyticsProtocol?
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
+    #if os(iOS) || os(tvOS)
     @ObservationIgnored private nonisolated(unsafe) var audioSession: AudioSessionProtocol?
     @ObservationIgnored private nonisolated(unsafe) var remoteCommandCenter: RemoteCommandCenterProtocol?
     #endif
@@ -85,8 +89,8 @@ public final class AudioPlayerController {
     
     // MARK: - Initialization
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
-    /// Creates a controller with injected dependencies (iOS/tvOS/watchOS)
+    #if os(iOS) || os(tvOS)
+    /// Creates a controller with injected dependencies (iOS/tvOS)
     public init(
         player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
@@ -122,7 +126,7 @@ public final class AudioPlayerController {
         for observer in notificationObservers {
             notificationCenter.removeObserver(observer)
         }
-        #if os(iOS) || os(tvOS) || os(watchOS)
+        #if os(iOS) || os(tvOS)
         removeRemoteCommandTargets()
         #endif
     }
@@ -149,7 +153,7 @@ public final class AudioPlayerController {
         guard let url = player.currentURL else { return }
         playbackIntended = true
         playbackStartTime = playbackStartTime ?? Date()
-        #if os(iOS) || os(tvOS) || os(watchOS)
+        #if os(iOS) || os(tvOS)
         activateAudioSession()
         #endif
         
@@ -164,7 +168,7 @@ public final class AudioPlayerController {
     public func play(url: URL, reason: String = "play") {
         playbackIntended = true
         playbackStartTime = Date()
-        #if os(iOS) || os(tvOS) || os(watchOS)
+        #if os(iOS) || os(tvOS)
         activateAudioSession()
         #endif
         player.play(url: url)
@@ -200,14 +204,14 @@ public final class AudioPlayerController {
             analytics?.pause(source: #function, duration: duration)
         }
         playbackStartTime = nil
-        #if os(iOS) || os(tvOS) || os(watchOS)
+        #if os(iOS) || os(tvOS)
         deactivateAudioSession()
         #endif
     }
     
-    // MARK: - Audio Session (iOS/tvOS/watchOS only)
+    // MARK: - Audio Session (iOS/tvOS only)
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
+    #if os(iOS) || os(tvOS)
     private func setupAudioSession() {
         guard let session = audioSession else { return }
         do {
@@ -236,9 +240,9 @@ public final class AudioPlayerController {
     }
     #endif
     
-    // MARK: - Remote Command Center (iOS/tvOS/watchOS only)
+    // MARK: - Remote Command Center (iOS/tvOS only)
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
+    #if os(iOS) || os(tvOS)
     private func setupRemoteCommandCenter() {
         guard let commandCenter = remoteCommandCenter else { return }
         
@@ -298,9 +302,9 @@ public final class AudioPlayerController {
     }
     #endif
     
-    // MARK: - Notifications (iOS/tvOS/watchOS only)
+    // MARK: - Notifications (iOS/tvOS only)
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
+    #if os(iOS) || os(tvOS)
     private func setupNotifications() {
         // Handle audio interruptions
         let interruptionObserver = notificationCenter.addObserver(
@@ -354,7 +358,7 @@ public final class AudioPlayerController {
     }
     #endif
     
-    #if os(iOS) || os(tvOS) || os(watchOS)
+    #if os(iOS) || os(tvOS)
     private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
         guard let typeValue = typeValue,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
@@ -421,3 +425,33 @@ extension AudioPlayerController {
     }
 }
 
+extension AudioPlayerController: PlaybackController {
+    
+    public var streamURL: URL {
+        // Return the current URL or the default stream URL
+        currentURL ?? defaultStreamURL ?? RadioStation.WXYC.streamURL
+    }
+    
+    public func play(reason: String) throws {
+        // AudioPlayerController uses the streamURL directly
+        play(url: streamURL, reason: reason)
+    }
+    
+    public func toggle(reason: String) throws {
+        // AudioPlayerController's toggle doesn't take a reason,
+        // but we match the protocol signature
+        toggle()
+    }
+    
+    // Explicit stop() to satisfy protocol (AudioPlayerController has stop(reason:))
+    public func stop() {
+        stop(reason: nil)
+    }
+    
+    // Explicit pause() to satisfy protocol (AudioPlayerController has pause(reason:))
+    public func pause() {
+        pause(reason: nil)
+    }
+}
+
+#endif

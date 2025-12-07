@@ -6,7 +6,7 @@
 import Testing
 import AVFoundation
 import Analytics
-@testable import StreamingAudioPlayer
+@testable import Playback
 
 @Suite("StreamingAudioPlayer Tests")
 struct StreamingAudioPlayerTests {

@@ -11,6 +11,8 @@ import Core
 import UIKit
 import WXUI
 import PostHog
+import Playlist
+import Metadata
 
 struct PlaycutDetailView: View {
     let playcut: Playcut

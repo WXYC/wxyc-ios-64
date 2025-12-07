@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 extension UnsafeMutablePointer where Pointee == UInt8 {
@@ -26,3 +27,4 @@ extension UnsafeMutableRawPointer {
         return Unmanaged<Object>.passUnretained(object).toOpaque()
     }
 }
+#endif

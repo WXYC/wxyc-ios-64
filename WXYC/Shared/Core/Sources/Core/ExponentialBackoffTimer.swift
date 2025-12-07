@@ -7,22 +7,22 @@
 
 import Foundation
 
-struct ExponentialBackoff: CustomStringConvertible {
+public struct ExponentialBackoff: CustomStringConvertible {
     // Tracks the number of connection attempts.
-    private(set) var numberOfAttempts: UInt = 0
-    private(set) var totalWaitTime: TimeInterval = 0.0
+    public private(set) var numberOfAttempts: UInt = 0
+    public private(set) var totalWaitTime: TimeInterval = 0.0
     
-    let initialWaitTime: TimeInterval
-    let maximumWaitTime: TimeInterval
+    public let initialWaitTime: TimeInterval
+    public let maximumWaitTime: TimeInterval
     
-    init(initialWaitTime: TimeInterval = 0.25, maximumWaitTime: TimeInterval = 10.0) {
+    public init(initialWaitTime: TimeInterval = 0.25, maximumWaitTime: TimeInterval = 10.0) {
         self.initialWaitTime = initialWaitTime
         self.maximumWaitTime = maximumWaitTime
     }
     
     /// Returns the wait time for the next attempt.
     /// - Note: The first attempt returns 0.0 (i.e. immediate attempt).
-    mutating func nextWaitTime() -> TimeInterval {
+    public mutating func nextWaitTime() -> TimeInterval {
         // For the first attempt, immediately return 0.0.
         if numberOfAttempts == 0 {
             numberOfAttempts += 1
@@ -47,12 +47,12 @@ struct ExponentialBackoff: CustomStringConvertible {
     }
     
     /// Resets the attempt counter.
-    mutating func reset() {
+    public mutating func reset() {
         numberOfAttempts = 0
         totalWaitTime = 0
     }
     
-    var description: String {
+    public var description: String {
         "(attempts: \(numberOfAttempts), totalWaitTime \(totalWaitTime))"
     }
 }

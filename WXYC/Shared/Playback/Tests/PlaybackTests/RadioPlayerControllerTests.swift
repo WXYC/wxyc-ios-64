@@ -26,8 +26,9 @@ import Testing
 import Foundation
 import AVFoundation
 import MediaPlayer
-@testable import Core
-@testable import Analytics
+import Core
+import Analytics
+@testable import Playback
 
 // MARK: - Mock PostHog
 

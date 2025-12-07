@@ -8,6 +8,7 @@
 import WidgetKit
 import SwiftUI
 import Core
+import AppServices
 
 struct NowPlayingTimelineEntry: TimelineEntry {
     let date: Date = Date(timeIntervalSinceNow: 1)

@@ -1,7 +1,8 @@
 import Testing
 import Foundation
 import Analytics
-@testable import Core
+@testable import Playlist
+@testable import Caching
 
 // MARK: - Mock RemotePlaylistFetcher
 
@@ -53,7 +54,7 @@ func makeTestCacheCoordinator() -> CacheCoordinator {
 // MARK: - Tests
 
 @MainActor
-@Suite("PlaylistService Tests")
+@Suite("PlaylistService Tests", .serialized)
 struct PlaylistServiceTests {
 
     // MARK: - Updates Stream Tests

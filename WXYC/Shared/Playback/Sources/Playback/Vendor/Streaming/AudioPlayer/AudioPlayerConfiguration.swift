@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 import OSLog
 
@@ -84,3 +85,4 @@ public struct AudioPlayerConfiguration: Equatable, Sendable {
                                         enableLogs: enableLogs)
     }
 }
+#endif

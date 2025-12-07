@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AudioToolbox.AudioFile
 import Foundation
 
@@ -105,3 +106,4 @@ extension Parser where Self: HTTPHeaderParsing {
         return nil
     }
 }
+#endif

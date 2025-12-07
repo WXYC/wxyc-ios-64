@@ -1,6 +1,6 @@
 //
 //  RadioPlayerControllerBehaviorTests.swift
-//  WXYCTests
+//  PlaybackTests
 //
 //  Parameterized tests that verify RadioPlayerController follows the same
 //  behavioral contract as AudioPlayerController in PlayerHeaderView.
@@ -10,35 +10,37 @@
 
 import Testing
 import AVFoundation
-@testable import Core
+import Core
+#if canImport(UIKit)
 import UIKit
+#endif
 import MediaPlayer
+@testable import Playback
 
 // MARK: - Mock Player for RadioPlayer
 
-@MainActor
 final class MockRadioPlayer: PlayerProtocol, @unchecked Sendable {
-    var rate: Float = 0
-    var playCallCount = 0
-    var pauseCallCount = 0
-    var replaceCurrentItemCallCount = 0
+    nonisolated(unsafe) var rate: Float = 0
+    nonisolated(unsafe) var playCallCount = 0
+    nonisolated(unsafe) var pauseCallCount = 0
+    nonisolated(unsafe) var replaceCurrentItemCallCount = 0
     
     /// Simulates whether the player is in a "playing" state
-    var simulatedIsPlaying = false
+    nonisolated(unsafe) var simulatedIsPlaying = false
     
-    func play() {
+    nonisolated func play() {
         playCallCount += 1
         rate = 1.0
         simulatedIsPlaying = true
     }
     
-    func pause() {
+    nonisolated func pause() {
         pauseCallCount += 1
         rate = 0
         simulatedIsPlaying = false
     }
     
-    func replaceCurrentItem(with item: AVPlayerItem?) {
+    nonisolated func replaceCurrentItem(with item: AVPlayerItem?) {
         replaceCurrentItemCallCount += 1
     }
     

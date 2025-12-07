@@ -17,7 +17,7 @@
 
 import Testing
 import Foundation
-@testable import Core
+@testable import Caching
 
 // MARK: - UserDefaultsCache Tests
 

@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 
 /// An object that coordinates the retrying of a method (closure)
@@ -60,3 +61,4 @@ final class Retrier {
         }
     }
 }
+#endif

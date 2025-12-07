@@ -3,6 +3,7 @@
 //  Copyright © 2021 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import AVFoundation
 
 ///
@@ -174,3 +175,4 @@ final class FrameFilterProcessor: NSObject, FrameFiltering {
         mixerNode.removeTap(onBus: 0)
     }
 }
+#endif

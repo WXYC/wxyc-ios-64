@@ -3,9 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "Playback",
-    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15)],
+    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15), .tvOS(.v18)],
     products: [.library(name: "Playback", targets: ["Playback"])],
     dependencies: [
+        .package(name: "Caching", path: "../Caching"),
         .package(name: "Core", path: "../Core"),
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
@@ -14,7 +15,7 @@ let package = Package(
     targets: [
         .target(
             name: "Playback",
-            dependencies: ["Core", "Analytics", "Logger", .product(name: "PostHog", package: "posthog-ios")]
+            dependencies: ["Caching", "Core", "Analytics", "Logger", .product(name: "PostHog", package: "posthog-ios")]
         ),
         .testTarget(
             name: "PlaybackTests",
@@ -22,3 +23,4 @@ let package = Package(
         )
     ]
 )
+

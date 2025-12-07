@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import StreamingAudioPlayer
+import Playback
 
 // MARK: - Visualizer Timeline View
 

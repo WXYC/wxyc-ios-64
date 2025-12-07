@@ -13,7 +13,9 @@ import PostHog
 import Intents
 import SwiftUI
 import PlayerHeaderView
-import StreamingAudioPlayer
+import Playback
+import Playlist
+import Artwork
 
 @MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {

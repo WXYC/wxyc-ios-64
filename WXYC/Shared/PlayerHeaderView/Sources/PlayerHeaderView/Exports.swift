@@ -5,5 +5,5 @@
 //  Re-export StreamingAudioPlayer so consumers get AudioPlayerController automatically
 //
 
-@_exported import StreamingAudioPlayer
+@_exported import Playback
 

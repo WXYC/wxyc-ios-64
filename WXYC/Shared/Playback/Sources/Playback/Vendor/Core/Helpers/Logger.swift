@@ -3,6 +3,7 @@
 //  Copyright © 2020 Decimal. All rights reserved.
 //
 
+#if !os(watchOS)
 import Foundation
 import OSLog
 
@@ -58,3 +59,4 @@ extension Logger {
         }
     }
 }
+#endif
