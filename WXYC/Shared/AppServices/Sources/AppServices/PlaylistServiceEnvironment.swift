@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import Playlist
+import Artwork
 
 // MARK: - Environment Key
 

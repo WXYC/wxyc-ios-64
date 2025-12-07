@@ -122,6 +122,44 @@
 		236629792D72D94A0057E268 /* WatchXYC-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WatchXYC-Info.plist"; sourceTree = "<group>"; };
 		236629952D73905A0057E268 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		23842B692EE541A6000C6CB3 /* PostHogExampleAutocapture.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleAutocapture.xcodeproj; sourceTree = "<group>"; };
+		23842B8F2EE541A6000C6CB3 /* PostHogExampleVisionOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleVisionOS.xcodeproj; sourceTree = "<group>"; };
+		23842B972EE541A6000C6CB3 /* PostHogExampleWatchOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWatchOS.xcodeproj; sourceTree = "<group>"; };
+		23842BA12EE541A6000C6CB3 /* PostHogExampleWithPods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithPods.xcodeproj; sourceTree = "<group>"; };
+		23842BAC2EE541A6000C6CB3 /* PostHogExampleWithSPM.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithSPM.xcodeproj; sourceTree = "<group>"; };
+		23842C9B2EE541A6000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
+		2384303A2EE541C3000C6CB3 /* PostHogExampleAutocapture.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleAutocapture.xcodeproj; sourceTree = "<group>"; };
+		238430602EE541C3000C6CB3 /* PostHogExampleVisionOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleVisionOS.xcodeproj; sourceTree = "<group>"; };
+		238430682EE541C3000C6CB3 /* PostHogExampleWatchOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWatchOS.xcodeproj; sourceTree = "<group>"; };
+		238430722EE541C3000C6CB3 /* PostHogExampleWithPods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithPods.xcodeproj; sourceTree = "<group>"; };
+		2384307D2EE541C3000C6CB3 /* PostHogExampleWithSPM.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithSPM.xcodeproj; sourceTree = "<group>"; };
+		2384316C2EE541C3000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
+		238431D52EE541C3000C6CB3 /* Algorithms.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Algorithms.xcodeproj; sourceTree = "<group>"; };
+		238437CA2EE541C3000C6CB3 /* SwiftRefactorExtension.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SwiftRefactorExtension.xcodeproj; sourceTree = "<group>"; };
+		23843C272EE541C4000C6CB3 /* PostHogExampleAutocapture.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleAutocapture.xcodeproj; sourceTree = "<group>"; };
+		23843C4D2EE541C4000C6CB3 /* PostHogExampleVisionOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleVisionOS.xcodeproj; sourceTree = "<group>"; };
+		23843C552EE541C4000C6CB3 /* PostHogExampleWatchOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWatchOS.xcodeproj; sourceTree = "<group>"; };
+		23843C5F2EE541C4000C6CB3 /* PostHogExampleWithPods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithPods.xcodeproj; sourceTree = "<group>"; };
+		23843C6A2EE541C4000C6CB3 /* PostHogExampleWithSPM.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithSPM.xcodeproj; sourceTree = "<group>"; };
+		23843D592EE541C4000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
+		23843DC22EE541C4000C6CB3 /* Algorithms.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Algorithms.xcodeproj; sourceTree = "<group>"; };
+		238443092EE541C4000C6CB3 /* SwiftRefactorExtension.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SwiftRefactorExtension.xcodeproj; sourceTree = "<group>"; };
+		238447652EE541C5000C6CB3 /* PostHogExampleAutocapture.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleAutocapture.xcodeproj; sourceTree = "<group>"; };
+		2384478B2EE541C5000C6CB3 /* PostHogExampleVisionOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleVisionOS.xcodeproj; sourceTree = "<group>"; };
+		238447932EE541C5000C6CB3 /* PostHogExampleWatchOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWatchOS.xcodeproj; sourceTree = "<group>"; };
+		2384479D2EE541C5000C6CB3 /* PostHogExampleWithPods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithPods.xcodeproj; sourceTree = "<group>"; };
+		238447A82EE541C5000C6CB3 /* PostHogExampleWithSPM.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithSPM.xcodeproj; sourceTree = "<group>"; };
+		238448972EE541C5000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
+		238449002EE541C5000C6CB3 /* Algorithms.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Algorithms.xcodeproj; sourceTree = "<group>"; };
+		23844EF52EE541C5000C6CB3 /* SwiftRefactorExtension.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SwiftRefactorExtension.xcodeproj; sourceTree = "<group>"; };
+		2384742C2EE541C8000C6CB3 /* PostHogExampleAutocapture.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleAutocapture.xcodeproj; sourceTree = "<group>"; };
+		238474522EE541C8000C6CB3 /* PostHogExampleVisionOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleVisionOS.xcodeproj; sourceTree = "<group>"; };
+		2384745A2EE541C8000C6CB3 /* PostHogExampleWatchOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWatchOS.xcodeproj; sourceTree = "<group>"; };
+		238474642EE541C8000C6CB3 /* PostHogExampleWithPods.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithPods.xcodeproj; sourceTree = "<group>"; };
+		2384746F2EE541C8000C6CB3 /* PostHogExampleWithSPM.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHogExampleWithSPM.xcodeproj; sourceTree = "<group>"; };
+		2384755E2EE541C8000C6CB3 /* PostHog.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = PostHog.xcodeproj; sourceTree = "<group>"; };
+		238475C72EE541C8000C6CB3 /* Algorithms.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Algorithms.xcodeproj; sourceTree = "<group>"; };
+		23847AC02EE541C8000C6CB3 /* SwiftRefactorExtension.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = SwiftRefactorExtension.xcodeproj; sourceTree = "<group>"; };
 		23B333462ED4F09900EFD77B /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		23EC619F2ED810EB001C27E9 /* WXYCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -448,6 +486,272 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		23842CA02EE541A6000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23842CA22EE541A6000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23842CA42EE541A6000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23842CA62EE541A6000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23842CA82EE541A6000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23842CAA2EE541A6000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A682EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A6A2EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A6C2EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A6E2EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A702EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A722EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A742EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23843A762EE541C3000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445A72EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445A92EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445AB2EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445AD2EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445AF2EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445B12EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445B32EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238445B52EE541C4000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238451932EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238451952EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238451972EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238451992EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384519B2EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384519D2EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2384519F2EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		238451A12EE541C5000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D5E2EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D602EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D622EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D642EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D662EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D682EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D6A2EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		23847D6C2EE541C8000C6CB3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -688,24 +992,140 @@
 			projectDirPath = "";
 			projectReferences = (
 				{
+					ProductGroup = 238451972EE541C5000C6CB3 /* Products */;
+					ProjectRef = 238449002EE541C5000C6CB3 /* Algorithms.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A722EE541C3000C6CB3 /* Products */;
+					ProjectRef = 238431D52EE541C3000C6CB3 /* Algorithms.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445AF2EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843DC22EE541C4000C6CB3 /* Algorithms.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D642EE541C8000C6CB3 /* Products */;
+					ProjectRef = 238475C72EE541C8000C6CB3 /* Algorithms.xcodeproj */;
+				},
+				{
 					ProductGroup = 2307779D2EDD2539007AB889 /* Products */;
 					ProjectRef = 230773FE2EDD2539007AB889 /* AudioPlayer.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CA62EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842C9B2EE541A6000C6CB3 /* PostHog.xcodeproj */;
 				},
 				{
 					ProductGroup = 230777992EDD2539007AB889 /* Products */;
 					ProjectRef = 230776B52EDD2539007AB889 /* PostHog.xcodeproj */;
 				},
 				{
+					ProductGroup = 2384519D2EE541C5000C6CB3 /* Products */;
+					ProjectRef = 238448972EE541C5000C6CB3 /* PostHog.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A762EE541C3000C6CB3 /* Products */;
+					ProjectRef = 2384316C2EE541C3000C6CB3 /* PostHog.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445A72EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843D592EE541C4000C6CB3 /* PostHog.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D662EE541C8000C6CB3 /* Products */;
+					ProjectRef = 2384755E2EE541C8000C6CB3 /* PostHog.xcodeproj */;
+				},
+				{
+					ProductGroup = 238451992EE541C5000C6CB3 /* Products */;
+					ProjectRef = 238447652EE541C5000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D6A2EE541C8000C6CB3 /* Products */;
+					ProjectRef = 2384742C2EE541C8000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CA42EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842B692EE541A6000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445AB2EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843C272EE541C4000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
 					ProductGroup = 230777952EDD2539007AB889 /* Products */;
 					ProjectRef = 230775812EDD2539007AB889 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A742EE541C3000C6CB3 /* Products */;
+					ProjectRef = 2384303A2EE541C3000C6CB3 /* PostHogExampleAutocapture.xcodeproj */;
+				},
+				{
+					ProductGroup = 238451932EE541C5000C6CB3 /* Products */;
+					ProjectRef = 2384478B2EE541C5000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
 				},
 				{
 					ProductGroup = 2307779B2EDD2539007AB889 /* Products */;
 					ProjectRef = 230775A72EDD2539007AB889 /* PostHogExampleVisionOS.xcodeproj */;
 				},
 				{
+					ProductGroup = 23847D602EE541C8000C6CB3 /* Products */;
+					ProjectRef = 238474522EE541C8000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CA02EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842B8F2EE541A6000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445A92EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843C4D2EE541C4000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A702EE541C3000C6CB3 /* Products */;
+					ProjectRef = 238430602EE541C3000C6CB3 /* PostHogExampleVisionOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 238451952EE541C5000C6CB3 /* Products */;
+					ProjectRef = 238447932EE541C5000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D622EE541C8000C6CB3 /* Products */;
+					ProjectRef = 2384745A2EE541C8000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445B32EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843C552EE541C4000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CAA2EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842B972EE541A6000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
 					ProductGroup = 2307779F2EDD2539007AB889 /* Products */;
 					ProjectRef = 230775AF2EDD2539007AB889 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A6C2EE541C3000C6CB3 /* Products */;
+					ProjectRef = 238430682EE541C3000C6CB3 /* PostHogExampleWatchOS.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445AD2EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843C5F2EE541C4000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
+				},
+				{
+					ProductGroup = 2384519B2EE541C5000C6CB3 /* Products */;
+					ProjectRef = 2384479D2EE541C5000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CA82EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842BA12EE541A6000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A682EE541C3000C6CB3 /* Products */;
+					ProjectRef = 238430722EE541C3000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D6C2EE541C8000C6CB3 /* Products */;
+					ProjectRef = 238474642EE541C8000C6CB3 /* PostHogExampleWithPods.xcodeproj */;
 				},
 				{
 					ProductGroup = 230777972EDD2539007AB889 /* Products */;
@@ -716,8 +1136,44 @@
 					ProjectRef = 230775C42EDD2539007AB889 /* PostHogExampleWithSPM.xcodeproj */;
 				},
 				{
+					ProductGroup = 2384519F2EE541C5000C6CB3 /* Products */;
+					ProjectRef = 238447A82EE541C5000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445B12EE541C4000C6CB3 /* Products */;
+					ProjectRef = 23843C6A2EE541C4000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A6E2EE541C3000C6CB3 /* Products */;
+					ProjectRef = 2384307D2EE541C3000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D5E2EE541C8000C6CB3 /* Products */;
+					ProjectRef = 2384746F2EE541C8000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
+				},
+				{
+					ProductGroup = 23842CA22EE541A6000C6CB3 /* Products */;
+					ProjectRef = 23842BAC2EE541A6000C6CB3 /* PostHogExampleWithSPM.xcodeproj */;
+				},
+				{
 					ProductGroup = 235871E72EE006EC00383F56 /* Products */;
 					ProjectRef = 235871E52EE006EC00383F56 /* SampleApp.xcodeproj */;
+				},
+				{
+					ProductGroup = 23843A6A2EE541C3000C6CB3 /* Products */;
+					ProjectRef = 238437CA2EE541C3000C6CB3 /* SwiftRefactorExtension.xcodeproj */;
+				},
+				{
+					ProductGroup = 23847D682EE541C8000C6CB3 /* Products */;
+					ProjectRef = 23847AC02EE541C8000C6CB3 /* SwiftRefactorExtension.xcodeproj */;
+				},
+				{
+					ProductGroup = 238445B52EE541C4000C6CB3 /* Products */;
+					ProjectRef = 238443092EE541C4000C6CB3 /* SwiftRefactorExtension.xcodeproj */;
+				},
+				{
+					ProductGroup = 238451A12EE541C5000C6CB3 /* Products */;
+					ProjectRef = 23844EF52EE541C5000C6CB3 /* SwiftRefactorExtension.xcodeproj */;
 				},
 			);
 			projectRoot = "";

@@ -10,6 +10,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Logger
+import Core
 import PostHog
 import Analytics
 

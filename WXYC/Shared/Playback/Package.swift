@@ -1,0 +1,24 @@
+// swift-tools-version:6.2
+import PackageDescription
+
+let package = Package(
+    name: "Playback",
+    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15)],
+    products: [.library(name: "Playback", targets: ["Playback"])],
+    dependencies: [
+        .package(name: "Core", path: "../Core"),
+        .package(name: "Analytics", path: "../Analytics"),
+        .package(name: "Logger", path: "../Logger"),
+        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
+    ],
+    targets: [
+        .target(
+            name: "Playback",
+            dependencies: ["Core", "Analytics", "Logger", .product(name: "PostHog", package: "posthog-ios")]
+        ),
+        .testTarget(
+            name: "PlaybackTests",
+            dependencies: ["Playback"]
+        )
+    ]
+)

@@ -12,6 +12,7 @@ import MediaPlayer
 import Logger
 import PostHog
 import SwiftUI
+import Core
 #if os(iOS)
 import UIKit
 #endif

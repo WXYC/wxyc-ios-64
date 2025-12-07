@@ -8,6 +8,8 @@
 
 import Foundation
 import Logger
+import Playlist
+import Artwork
 
 public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
