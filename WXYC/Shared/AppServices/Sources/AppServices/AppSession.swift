@@ -8,6 +8,7 @@
 
 import Foundation
 import Logger
+import Core
 
 private let SessionStartTimer = Timer.start()
 

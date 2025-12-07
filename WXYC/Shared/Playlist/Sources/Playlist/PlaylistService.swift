@@ -8,6 +8,7 @@
 
 import Foundation
 import Logger
+import Caching
 
 public final actor PlaylistService: Sendable {
     private let fetcher: RemotePlaylistFetcher

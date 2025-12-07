@@ -10,6 +10,9 @@ import Foundation
 import Combine
 import OpenNSFW
 import Logger
+import Caching
+import Playlist
+import Metadata
 
 public protocol ArtworkService: Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> Image

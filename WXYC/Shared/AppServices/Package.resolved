@@ -1,5 +1,5 @@
 {
-  "originHash" : "c1d0939ee9c919c1854c5438fe6928d0152854a4139de2e288d8fed033a35bf3",
+  "originHash" : "adbdc3ffc4bf01f6d3ae992c70eb16d7950b4582eb6551b8780806ef6c7e43a1",
   "pins" : [
     {
       "identity" : "obfuscatemacro",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PostHog/posthog-ios.git",
       "state" : {
-        "revision" : "b71b7b1ba861391377d01251479530b938881ce0",
-        "version" : "3.35.0"
+        "revision" : "fac9fc77380d2a38c3389f3cf4505a534921ee41",
+        "version" : "3.35.1"
       }
     },
     {
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-asn1.git",
       "state" : {
-        "revision" : "40d25bbb2fc5b557a9aa8512210bded327c0f60d",
-        "version" : "1.5.0"
+        "revision" : "810496cf121e525d660cd0ea89a758740476b85f",
+        "version" : "1.5.1"
       }
     },
     {
