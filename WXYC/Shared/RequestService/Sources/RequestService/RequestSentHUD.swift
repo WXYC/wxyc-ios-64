@@ -8,6 +8,8 @@
 import SwiftUI
 
 public struct RequestSentHUD: View {
+    @State private var contentSize: CGSize = .zero
+
     public var body: some View {
         VStack(spacing: 8) {
             Spacer()
@@ -15,16 +17,38 @@ public struct RequestSentHUD: View {
             Image(systemName: "phone.connection.fill")
                 .font(.system(size: 40))
             
+            Spacer()
+            
             Text("Request Sent")
                 .font(.headline)
-            
         }
-        .aspectRatio(1.0, contentMode: .fill)
         .padding(.vertical, 16)
         .padding(.horizontal, 24)
+        .fixedSize(horizontal: true, vertical: false)
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: SizePreferenceKey.self, value: proxy.size)
+            }
+        )
+        .onPreferenceChange(SizePreferenceKey.self) { size in
+            contentSize = size
+        }
+        .frame(
+            width: max(contentSize.width, contentSize.height),
+            height: max(contentSize.width, contentSize.height)
+        )
         .background(.ultraThinMaterial) // or Color.black.opacity(0.8) if you prefer
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(radius: 2.5, y: 1.5)
+    }
+}
+
+private struct SizePreferenceKey: PreferenceKey {
+    static let defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        value = CGSize(width: max(value.width, next.width), height: max(value.height, next.height))
     }
 }
 
@@ -55,8 +79,10 @@ struct RequestSentHUDModifier: ViewModifier {
 }
 
 public extension View {
-    func requestSentHUD(isPresented: Binding<Bool>,
-                        autoDismissAfter: TimeInterval = 1.5) -> some View {
+    func requestSentHUD(
+        isPresented: Binding<Bool>,
+        autoDismissAfter: TimeInterval = 1.5
+    ) -> some View {
         modifier(
             RequestSentHUDModifier(isPresented: isPresented)
         )
