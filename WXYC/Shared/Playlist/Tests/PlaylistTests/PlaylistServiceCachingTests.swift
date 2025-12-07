@@ -19,35 +19,51 @@ import Foundation
 /// Mock cache for PlaylistService caching tests
 /// (Defined locally to avoid ambiguity with other MockCache classes)
 final class PlaylistServiceMockCache: Cache, @unchecked Sendable {
-    private var storage: [String: Data] = [:]
+    private var dataStorage: [String: Data] = [:]
+    private var metadataStorage: [String: CacheMetadata] = [:]
     private let lock = NSLock()
 
-    func object(for key: String) -> Data? {
+    func metadata(for key: String) -> CacheMetadata? {
         lock.lock()
         defer { lock.unlock() }
-        return storage[key]
+        return metadataStorage[key]
+    }
+    
+    func data(for key: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return dataStorage[key]
     }
 
-    func set(object: Data?, for key: String) {
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
         lock.lock()
         defer { lock.unlock() }
-        if let object = object {
-            storage[key] = object
+        if let data = data {
+            dataStorage[key] = data
+            metadataStorage[key] = metadata
         } else {
-            storage.removeValue(forKey: key)
+            remove(for: key)
         }
     }
-
-    func allRecords() -> any Sequence<(String, Data)> {
+    
+    func remove(for key: String) {
         lock.lock()
         defer { lock.unlock() }
-        return Array(storage.map { ($0.key, $0.value) })
+        dataStorage.removeValue(forKey: key)
+        metadataStorage.removeValue(forKey: key)
+    }
+
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        lock.lock()
+        defer { lock.unlock() }
+        return metadataStorage.map { ($0.key, $0.value) }
     }
     
     func clear() {
         lock.lock()
         defer { lock.unlock() }
-        storage.removeAll()
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
     }
 }
 
@@ -127,14 +143,13 @@ struct PlaylistServiceCachingTests {
         )
         
         // Create an expired record manually
-        let expiredRecord = CachedRecord(
-            value: expiredPlaylist,
+        let encoder = JSONEncoder()
+        let encoded = try encoder.encode(expiredPlaylist)
+        let expiredMetadata = CacheMetadata(
             timestamp: Date.timeIntervalSinceReferenceDate - (16 * 60), // 16 minutes ago
             lifespan: 15 * 60 // 15 minute lifespan
         )
-        let encoder = JSONEncoder()
-        let encoded = try encoder.encode(expiredRecord)
-        mockCache.set(object: encoded, for: "com.wxyc.playlist.cache")
+        mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
         
         // When - Create service
         let mockFetcher = MockRemotePlaylistFetcher()
@@ -341,14 +356,13 @@ struct PlaylistServiceCachingTests {
         )
         
         // Manually create expired record
-        let expiredRecord = CachedRecord(
-            value: oldPlaylist,
+        let encoder = JSONEncoder()
+        let encoded = try encoder.encode(oldPlaylist)
+        let expiredMetadata = CacheMetadata(
             timestamp: Date.timeIntervalSinceReferenceDate - (16 * 60), // 16 minutes ago
             lifespan: 15 * 60 // 15 minute lifespan
         )
-        let encoder = JSONEncoder()
-        let encoded = try encoder.encode(expiredRecord)
-        mockCache.set(object: encoded, for: "com.wxyc.playlist.cache")
+        mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
         
         // When - Try to retrieve
         // Then - Should throw noCachedResult error
@@ -379,14 +393,13 @@ struct PlaylistServiceCachingTests {
         )
         
         // Manually create recent record
-        let recentRecord = CachedRecord(
-            value: recentPlaylist,
+        let encoder = JSONEncoder()
+        let encoded = try encoder.encode(recentPlaylist)
+        let recentMetadata = CacheMetadata(
             timestamp: Date.timeIntervalSinceReferenceDate - (10 * 60), // 10 minutes ago
             lifespan: 15 * 60
         )
-        let encoder = JSONEncoder()
-        let encoded = try encoder.encode(recentRecord)
-        mockCache.set(object: encoded, for: "com.wxyc.playlist.cache")
+        mockCache.set(encoded, metadata: recentMetadata, for: "com.wxyc.playlist.cache")
         
         // When - Try to retrieve
         let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")

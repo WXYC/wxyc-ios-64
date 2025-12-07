@@ -1,5 +1,5 @@
 //
-//  Defaults.swift
+//  Cache.swift
 //  WXYC
 //
 //  Created by Jake Bromberg on 2/26/19.
@@ -11,27 +11,75 @@ import Logger
 import PostHog
 import Analytics
 
+// MARK: - CacheMetadata
+
+struct CacheMetadata: Codable, Sendable {
+    let timestamp: TimeInterval
+    let lifespan: TimeInterval
+    
+    init(timestamp: TimeInterval = Date.timeIntervalSinceReferenceDate, lifespan: TimeInterval) {
+        self.timestamp = timestamp
+        self.lifespan = lifespan
+    }
+    
+    var isExpired: Bool {
+        Date.timeIntervalSinceReferenceDate - timestamp > lifespan
+    }
+}
+
+// MARK: - Cache Protocol
+
 protocol Cache: Sendable {
-    func object(for key: String) -> Data?
+    /// Read metadata only (from xattr, not file contents)
+    func metadata(for key: String) -> CacheMetadata?
     
-    func set(object: Data?, for key: String)
+    /// Read data (file contents)
+    func data(for key: String) -> Data?
     
-    func allRecords() -> any Sequence<(String, Data)>
+    /// Write both data and metadata
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String)
+    
+    /// Delete entry
+    func remove(for key: String)
+    
+    /// For pruning - only reads metadata, never file contents
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)]
 }
 
 struct UserDefaultsCache: Cache {
+    private static let metadataSuffix = ".metadata"
     private func userDefaults() -> UserDefaults { .standard }
     
-    func object(for key: String) -> Data? {
-        self.userDefaults().object(forKey: key) as? Data
+    func metadata(for key: String) -> CacheMetadata? {
+        guard let data = userDefaults().data(forKey: key + Self.metadataSuffix) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(CacheMetadata.self, from: data)
     }
     
-    func set(object: Data?, for key: String) {
-        self.userDefaults().set(object, forKey: key)
+    func data(for key: String) -> Data? {
+        userDefaults().data(forKey: key)
     }
     
-    func allRecords() -> any Sequence<(String, Data)> {
-        EmptyCollection()
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
+        if let data {
+            userDefaults().set(data, forKey: key)
+            if let metadataData = try? JSONEncoder().encode(metadata) {
+                userDefaults().set(metadataData, forKey: key + Self.metadataSuffix)
+            }
+        } else {
+            remove(for: key)
+        }
+    }
+    
+    func remove(for key: String) {
+        userDefaults().removeObject(forKey: key)
+        userDefaults().removeObject(forKey: key + Self.metadataSuffix)
+    }
+    
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        // UserDefaultsCache doesn't support iteration for pruning
+        []
     }
 }
 
@@ -50,95 +98,147 @@ struct DiskCache: Cache, @unchecked Sendable {
         }
     }
     
+    private static let metadataAttributeName = "com.wxyc.cache.metadata"
     private let cache = NSCache<NSString, NSData>()
     private let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
     
-    func object(for key: String) -> Data? {
-        if let cacheDirectory = cacheDirectory {
-            let fileName = cacheDirectory.appendingPathComponent(key)
+    // MARK: - xattr helpers
+    
+    private func getMetadata(for fileURL: URL) -> CacheMetadata? {
+        fileURL.withUnsafeFileSystemRepresentation { path -> CacheMetadata? in
+            guard let path else { return nil }
             
-            guard FileManager.default.fileExists(atPath: fileName.path(percentEncoded: false)) else {
-                return nil
-            }
+            // First, get the size of the attribute
+            let size = getxattr(path, Self.metadataAttributeName, nil, 0, 0, 0)
+            guard size > 0 else { return nil }
             
-            do {
-                return try Data(contentsOf: fileName)
-            } catch let error as NSError {
-                Log(.error, "Failed to read file \(fileName): \(error)")
-                let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileName): Error Domain=\(error.domain) Code=\(error.code) \(error.localizedDescription)")
-                PostHogSDK.shared.capture(error: postHogError, context: "DiskCache object(forKey:): failed to read file")
-                return nil
+            // Then read the attribute data
+            var data = Data(count: size)
+            let result = data.withUnsafeMutableBytes { buffer in
+                getxattr(path, Self.metadataAttributeName, buffer.baseAddress, size, 0, 0)
             }
-        } else {
-            let error: DiskCacheError = "Failed to find Cache Directory, trying NSCache."
-            Log(.error, error.localizedDescription)
-            PostHogSDK.shared.capture(error: error, context: "DiskCache object(forKey:): failed to find Cache Directory")
-            let data: NSData? = self.cache.object(forKey: key as NSString)
-            return data as? Data
+            guard result == size else { return nil }
+            
+            return try? JSONDecoder().decode(CacheMetadata.self, from: data)
         }
     }
     
-    func set(object: Data?, for key: String) {
-        if let cacheDirectory = cacheDirectory {
-            let fileName = cacheDirectory.appendingPathComponent(key)
-            if let object {
-                FileManager.default.createFile(atPath: fileName.path(percentEncoded: false), contents: object)
-            } else {
-                do {
-                    try FileManager.default.removeItem(at: fileName)
-                } catch {
-                    Log(.error, "Failed to remove \(fileName) from disk: \(error)")
-                }
-            }
-        } else {
-            let error: DiskCacheError = "Failed to find Cache Directory, trying NSCache."
-            Log(.error, error.localizedDescription)
-            PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
-            if let object = object as? NSData {
-                self.cache.setObject(object, forKey: key as NSString)
-            } else {
-                let error: DiskCacheError = "Failed to convert object to NSData, removing old object from cache."
-                Log(.error, error.localizedDescription)
-                PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
-                self.cache.removeObject(forKey: key as NSString)
+    private func setMetadata(_ metadata: CacheMetadata, for fileURL: URL) {
+        guard let data = try? JSONEncoder().encode(metadata) else { return }
+        
+        fileURL.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            data.withUnsafeBytes { buffer in
+                _ = setxattr(path, Self.metadataAttributeName, buffer.baseAddress, buffer.count, 0, 0)
             }
         }
     }
     
-    func allRecords() -> any Sequence<(String, Data)> {
+    private func removeMetadata(for fileURL: URL) {
+        fileURL.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = removexattr(path, Self.metadataAttributeName, 0)
+        }
+    }
+    
+    private func fileURL(for key: String) -> URL? {
+        cacheDirectory?.appendingPathComponent(key)
+    }
+    
+    // MARK: - Cache protocol
+    
+    func metadata(for key: String) -> CacheMetadata? {
+        guard let fileURL = fileURL(for: key),
+              FileManager.default.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+        
+        // If no xattr exists, this is an old-format file - purge it
+        guard let metadata = getMetadata(for: fileURL) else {
+            Log(.info, "No xattr metadata for \(key), purging old-format file")
+            try? FileManager.default.removeItem(at: fileURL)
+            return nil
+        }
+        
+        return metadata
+    }
+    
+    func data(for key: String) -> Data? {
+        guard let fileURL = fileURL(for: key),
+              FileManager.default.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+        
+        // Check for xattr - if missing, purge old-format file
+        guard getMetadata(for: fileURL) != nil else {
+            Log(.info, "No xattr metadata for \(key), purging old-format file")
+            try? FileManager.default.removeItem(at: fileURL)
+            return nil
+        }
+        
+        do {
+            return try Data(contentsOf: fileURL)
+        } catch let error as NSError {
+            Log(.error, "Failed to read file \(fileURL): \(error)")
+            let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileURL): Error Domain=\(error.domain) Code=\(error.code) \(error.localizedDescription)")
+            PostHogSDK.shared.capture(error: postHogError, context: "DiskCache data(for:): failed to read file")
+            return nil
+        }
+    }
+    
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
+        guard let fileURL = fileURL(for: key) else {
+            let error: DiskCacheError = "Failed to find Cache Directory."
+            Log(.error, error.localizedDescription)
+            PostHogSDK.shared.capture(error: error, context: "DiskCache set(_:metadata:for:)")
+            
+            // Fall back to NSCache for data only (no metadata support)
+            if let data = data as? NSData {
+                cache.setObject(data, forKey: key as NSString)
+            } else {
+                cache.removeObject(forKey: key as NSString)
+            }
+            return
+        }
+        
+        if let data {
+            FileManager.default.createFile(atPath: fileURL.path, contents: data)
+            setMetadata(metadata, for: fileURL)
+        } else {
+            remove(for: key)
+        }
+    }
+    
+    func remove(for key: String) {
+        guard let fileURL = fileURL(for: key) else { return }
+        
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+        } catch {
+            Log(.error, "Failed to remove \(fileURL) from disk: \(error)")
+        }
+    }
+    
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        guard let cacheDirectory else {
+            let error: DiskCacheError = "Failed to find Cache Directory."
+            Log(.error, error.localizedDescription)
+            PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
+            return []
+        }
+        
         let contents: [URL]
         do {
-            guard let cacheDirectory else {
-                let error: DiskCacheError = "Failed to find Cache Directory."
-                Log(.error, error.localizedDescription)
-                PostHogSDK.shared.capture(error: error, context: "DiskCache set(object:for:)")
-                return EmptyCollection()
-            }
             contents = try FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
         } catch {
             Log(.error, "Failed to read Cache Directory: \(error.localizedDescription)")
-            PostHogSDK.shared.capture(error: error, context: "DiskCache allRecords")
-            
-            return EmptyCollection()
+            PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
+            return []
         }
         
-        var contentsIterator = contents
-            .filter { FileManager.default.isReadableFile(atPath: $0.absoluteString) }
-            .makeIterator()
-        let iterator = AnyIterator<(String, Data)> {
-            guard let fileURL = contentsIterator.next() else { return nil }
-            do {
-                let data = try Data(contentsOf: fileURL)
-                let fileName = fileURL.lastPathComponent
-                return (fileName, data)
-            } catch {
-                Log(.error, "Failed to read data at \(fileURL): \(error.localizedDescription)")
-                PostHogSDK.shared.capture(error: error, context: "DiskCache allRecords")
-                
-                return nil
-            }
+        return contents.compactMap { fileURL -> (key: String, metadata: CacheMetadata)? in
+            guard let metadata = getMetadata(for: fileURL) else { return nil }
+            return (fileURL.lastPathComponent, metadata)
         }
-            
-        return AnySequence(iterator)
     }
 }
