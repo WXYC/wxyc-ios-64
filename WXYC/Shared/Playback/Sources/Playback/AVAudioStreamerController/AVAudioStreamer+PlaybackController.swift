@@ -1,0 +1,84 @@
+//
+//  AVAudioStreamer+PlaybackController.swift
+//  Playback
+//
+//  Extension to conform AVAudioStreamer to PlaybackController protocol
+//
+
+import Foundation
+import AVFoundation
+
+#if os(iOS)
+import UIKit
+#endif
+
+// AVAudioStreamer is not available on watchOS (AudioToolbox dependency)
+#if !os(watchOS)
+import AVAudioStreamer
+
+// MARK: - PlaybackController Conformance
+
+extension AVAudioStreamer: PlaybackController {
+    
+    // streamURL is already defined in AVAudioStreamer
+    
+    public var isPlaying: Bool {
+        state == .playing
+    }
+    
+    public var isLoading: Bool {
+        switch state {
+        case .connecting, .buffering:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    public func play(reason: String) throws {
+        Task {
+            do {
+                try await self.play()
+            } catch {
+                // Error is already handled by state change to .error
+            }
+        }
+    }
+    
+    public func toggle(reason: String) throws {
+        if isPlaying {
+            pause()
+        } else {
+            try play(reason: reason)
+        }
+    }
+    
+    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
+        audioBufferHandler = handler
+    }
+    
+    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
+        // AVAudioStreamer doesn't currently support metadata extraction
+        // No-op implementation
+    }
+    
+    #if os(iOS)
+    public func handleAppDidEnterBackground() {
+        // If not playing, we don't need to do anything special
+        // AVAudioStreamer uses AVAudioEngine which handles background audio automatically
+        // when configured properly
+        guard !isPlaying else { return }
+        
+        // Could deactivate audio session here if needed, but for streaming
+        // we typically want to keep it active
+    }
+    
+    public func handleAppWillEnterForeground() {
+        // If we were playing, ensure playback continues
+        // AVAudioEngine typically handles this automatically
+    }
+    #endif
+}
+
+#endif // !os(watchOS)
+
