@@ -26,7 +26,8 @@ let package = Package(
         ),
         .testTarget(
             name: "CoreTests",
-            dependencies: ["Core"]
+            dependencies: ["Core"],
+            path: "Tests/CoreTests"
         )
     ]
 )

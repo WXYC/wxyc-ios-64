@@ -8,6 +8,7 @@
 import UIKit
 import CoreHaptics
 
+@MainActor
 final class Haptics {
     private var engine: CHHapticEngine?
 
@@ -25,12 +26,12 @@ final class Haptics {
             print("Haptics init error:", error)
         }
         
-        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil) { notification in
-            self.engine?.stop()
+        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.engine?.stop()
         }
         
-        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: nil) { notification in
-            try? self.engine?.start()
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+            try? self?.engine?.start()
         }
     }
 
