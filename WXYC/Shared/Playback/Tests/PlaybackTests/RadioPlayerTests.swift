@@ -9,31 +9,25 @@ import Analytics
 @MainActor
 final class MockPlayer: PlayerProtocol, @unchecked Sendable {
     nonisolated(unsafe) var rate: Float = 0
-    var playCallCount = 0
-    var pauseCallCount = 0
-    var replaceCurrentItemCallCount = 0
-    var lastReplacedItem: AVPlayerItem?
+    nonisolated(unsafe) var playCallCount = 0
+    nonisolated(unsafe) var pauseCallCount = 0
+    nonisolated(unsafe) var replaceCurrentItemCallCount = 0
+    nonisolated(unsafe) var lastReplacedItem: AVPlayerItem?
 
     nonisolated func play() {
-        Task { @MainActor in
-            self.playCallCount += 1
-            self.rate = 1.0
-        }
+        playCallCount += 1
+        rate = 1.0
     }
 
     nonisolated func pause() {
-        Task { @MainActor in
-            self.pauseCallCount += 1
-            self.rate = 0
-        }
+        pauseCallCount += 1
+        rate = 0
     }
 
     nonisolated func replaceCurrentItem(with item: AVPlayerItem?) {
-        Task { @MainActor in
-            self.replaceCurrentItemCallCount += 1
-            self.lastReplacedItem = item
-            self.rate = 0
-        }
+        replaceCurrentItemCallCount += 1
+        lastReplacedItem = item
+        rate = 0
     }
 
     func reset() {
