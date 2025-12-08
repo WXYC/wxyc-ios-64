@@ -3,13 +3,13 @@ import Foundation
 @testable import Playlist
 @testable import Caching
 
-// MARK: - Mock RemotePlaylistFetcher
+// MARK: - Mock PlaylistFetcher
 
-final class MockRemotePlaylistFetcher: RemotePlaylistFetcher, @unchecked Sendable {
+final class MockPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
     var playlistToReturn: Playlist = .empty
     var callCount = 0
 
-    override func fetchPlaylist() async -> Playlist {
+    func fetchPlaylist() async -> Playlist {
         callCount += 1
         return playlistToReturn
     }
@@ -73,10 +73,10 @@ struct PlaylistServiceTests {
 
     // MARK: - Updates Stream Tests
 
-    @Test("Updates stream yields playlists")
+    @Test("Updates stream yields playlists", .timeLimit(.minutes(1)))
     func updatesStreamYieldsPlaylists() async throws {
         // Given
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let playlist1 = Playlist(
             playcuts: [
                 Playcut(
@@ -106,10 +106,10 @@ struct PlaylistServiceTests {
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Song 1")
     }
 
-    @Test("Updates stream yields cached value immediately")
+    @Test("Updates stream yields cached value immediately", .timeLimit(.minutes(1)))
     func updatesStreamYieldsCachedValueImmediately() async throws {
         // Given - Set up service with initial data
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let initialPlaylist = Playlist(
             playcuts: [
                 Playcut(
@@ -144,10 +144,10 @@ struct PlaylistServiceTests {
         #expect(duration < 0.1) // Should be nearly instant
     }
 
-    @Test("Updates stream waits for first fetch when cache is empty")
+    @Test("Updates stream waits for first fetch when cache is empty", .timeLimit(.minutes(1)))
     func updatesStreamWaitsForFirstFetchWhenCacheIsEmpty() async throws {
         // Given
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let playlist = Playlist(
             playcuts: [
                 Playcut(
@@ -176,10 +176,10 @@ struct PlaylistServiceTests {
         #expect(mockFetcher.callCount == 1)
     }
 
-    @Test("Updates stream only broadcasts when playlist changes")
+    @Test("Updates stream only broadcasts when playlist changes", .timeLimit(.minutes(1)))
     func updatesStreamOnlyBroadcastsWhenPlaylistChanges() async throws {
         // Given
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let playlist = Playlist(
             playcuts: [
                 Playcut(

@@ -247,7 +247,7 @@ public extension Playlist {
     }
 }
 
-public struct PlaceholderFetcher: PlaylistFetcher {
+public struct PlaceholderFetcher: PlaylistDataSource {
     public init() { }
     
     public func getPlaylist() async throws -> Playlist {

@@ -55,25 +55,42 @@ final class RaceConditionTestMockCache: Cache, @unchecked Sendable {
     }
 }
 
-/// Mock protocol-based fetcher for tracking concurrency
-actor ConcurrentTrackingMockFetcher: PlaylistFetcher {
+/// Mock fetcher for tracking concurrency in race condition tests
+actor ConcurrentTrackingMockFetcher: PlaylistFetcherProtocol {
     var activeFetchCount: Int = 0
     var maxConcurrentFetches: Int = 0
     var totalFetchCount: Int = 0
+    
+    /// Returns a non-empty playlist so broadcasts happen
+    private let testPlaylist = Playlist(
+        playcuts: [
+            Playcut(
+                id: 1,
+                hour: 1000,
+                chronOrderID: 1,
+                songTitle: "Test Song",
+                labelName: nil,
+                artistName: "Test Artist",
+                releaseTitle: nil
+            )
+        ],
+        breakpoints: [],
+        talksets: []
+    )
 
-    func getPlaylist() async throws -> Playlist {
+    func fetchPlaylist() async -> Playlist {
         // Track entry into fetch
         activeFetchCount += 1
         totalFetchCount += 1
         maxConcurrentFetches = max(maxConcurrentFetches, activeFetchCount)
 
         // Simulate network delay to increase race window
-        try await Task.sleep(for: .milliseconds(50))
+        try? await Task.sleep(for: .milliseconds(50))
 
         // Track exit from fetch
         activeFetchCount -= 1
 
-        return Playlist.empty
+        return testPlaylist
     }
 
     func reset() {
@@ -83,35 +100,15 @@ actor ConcurrentTrackingMockFetcher: PlaylistFetcher {
     }
 }
 
-/// Wrapper RemotePlaylistFetcher for race condition testing
-final class TrackingRemotePlaylistFetcher: RemotePlaylistFetcher, @unchecked Sendable {
-    let tracker: ConcurrentTrackingMockFetcher
-
-    init(tracker: ConcurrentTrackingMockFetcher) {
-        self.tracker = tracker
-        super.init(remoteFetcher: tracker)
-    }
-
-    /// Override to bypass parent's logging and network code
-    override func fetchPlaylist() async -> Playlist {
-        do {
-            return try await tracker.getPlaylist()
-        } catch {
-            return .empty
-        }
-    }
-}
-
-@Suite("PlaylistService Race Condition Tests", .serialized)
+@Suite("PlaylistService Race Condition Tests")
 struct PlaylistServiceRaceConditionTests {
 
-    @Test("Concurrent observers start only one fetch task")
+    @Test("Concurrent observers start only one fetch task", .timeLimit(.minutes(1)))
     func concurrentObserversStartOnlyOneFetchTask() async throws {
         // Given: A playlist service with a mock fetcher
         let tracker = ConcurrentTrackingMockFetcher()
-        let fetcher = TrackingRemotePlaylistFetcher(tracker: tracker)
         let service = PlaylistService(
-            fetcher: fetcher,
+            fetcher: tracker,
             interval: 1.0, // Short interval for testing
             cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
@@ -155,12 +152,11 @@ struct PlaylistServiceRaceConditionTests {
         )
     }
 
-    @Test("Fetch task stops when all observers disconnect")
+    @Test("Fetch task stops when all observers disconnect", .timeLimit(.minutes(1)))
     func fetchTaskStopsWhenAllObserversDisconnect() async throws {
         let tracker = ConcurrentTrackingMockFetcher()
-        let fetcher = TrackingRemotePlaylistFetcher(tracker: tracker)
         let service = PlaylistService(
-            fetcher: fetcher,
+            fetcher: tracker,
             interval: 0.5,
             cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
@@ -205,12 +201,11 @@ struct PlaylistServiceRaceConditionTests {
         )
     }
 
-    @Test("Observers receive initial value")
+    @Test("Observers receive initial value", .timeLimit(.minutes(1)))
     func observersReceiveInitialValue() async throws {
         let tracker = ConcurrentTrackingMockFetcher()
-        let fetcher = TrackingRemotePlaylistFetcher(tracker: tracker)
         let service = PlaylistService(
-            fetcher: fetcher,
+            fetcher: tracker,
             interval: 1.0,
             cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
