@@ -64,7 +64,11 @@ struct PlaycutDetailView: View {
                             onServiceTapped: { service in
                                 PostHogSDK.shared.capture(
                                     "streaming link tapped",
-                                    properties: ["service": service.name]
+                                    properties: [
+                                        "service": service.name,
+                                        "artist": playcut.artistName,
+                                        "album": playcut.releaseTitle
+                                    ]
                                 )
                             }
                         )
@@ -78,7 +82,11 @@ struct PlaycutDetailView: View {
                             onLinkTapped: { service in
                                 PostHogSDK.shared.capture(
                                     "external link tapped",
-                                    properties: ["service": service]
+                                    properties: [
+                                        "service": service,
+                                        "artist": playcut.artistName,
+                                        "album": playcut.releaseTitle
+                                    ]
                                 )
                             }
                         )
@@ -92,7 +100,13 @@ struct PlaycutDetailView: View {
             .scrollContentBackground(.hidden)
             .background(WXYCBackground())
             .onAppear {
-                PostHogSDK.shared.capture("playcut detail view presented")
+                PostHogSDK.shared.capture(
+                    "playcut detail view presented",
+                    properties: [
+                        "artist": playcut.artistName,
+                        "album": playcut.releaseTitle
+                    ]
+                )
             }
             .task {
                 await loadMetadata()
