@@ -63,7 +63,7 @@ public struct PlayerHeaderView: View {
                 rmsPerBar: visualizer.rmsPerBar,
                 onModeTapped: {
                     // Cycle through normalization modes on tap (non-DEBUG builds only)
-                    visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
+                    // visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
                 },
                 onPlayerTypeChanged: onPlayerTypeChanged
             )
@@ -72,6 +72,10 @@ public struct PlayerHeaderView: View {
         .background(.ultraThinMaterial)
         .cornerRadius(12)
         .onAppear {
+            // Apply persisted player type on launch (onChange only fires on changes, not initial value)
+            let newPlayer = AudioPlayerController.createPlayer(for: selectedPlayerType)
+            Self.controller.replacePlayer(newPlayer)
+            
             // Connect visualizer to controller's audio buffer
             Self.controller.setAudioBufferHandler { buffer in
                 visualizer.processBuffer(buffer)
