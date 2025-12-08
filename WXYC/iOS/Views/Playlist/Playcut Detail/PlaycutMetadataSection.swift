@@ -54,7 +54,7 @@ struct PlaycutMetadataSection: View {
 #Preview {
     @Previewable @State var expandedBio = false
     @Previewable @State var isShowingLightbox = false
-    @Namespace var previewNamespace
+    @Previewable @Namespace var previewNamespace
     
     let metadata = PlaycutMetadata(
         label: "We Release Whatever The Fuck We Want Okay?",

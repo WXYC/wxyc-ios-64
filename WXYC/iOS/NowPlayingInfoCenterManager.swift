@@ -57,13 +57,12 @@ final class NowPlayingInfoCenterManager {
             controller.isPlaying ? .playing : .paused
     }
     
-    private nonisolated func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
-        return MPMediaItemArtwork(boundsSize: boundsSize) { _ in
-            if let image {
-                return image
-            } else {
-                return UIImage.placeholder
-            }
+    private func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
+        // Capture the resolved image on MainActor before creating the artwork.
+        // The closure will be called by the system on an arbitrary queue.
+        let resolvedImage = image ?? UIImage.placeholder
+        return MPMediaItemArtwork(boundsSize: boundsSize) { @Sendable _ in
+            resolvedImage
         }
     }
 }
