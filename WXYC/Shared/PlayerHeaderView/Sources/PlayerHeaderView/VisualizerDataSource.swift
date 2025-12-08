@@ -77,6 +77,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         static let signalBoostEnabled = "visualizer.signalBoostEnabled"
         static let fftNormalizationMode = "visualizer.fftNormalizationMode"
         static let rmsNormalizationMode = "visualizer.rmsNormalizationMode"
+        static let fftFrequencyWeighting = "visualizer.fftFrequencyWeighting"
         static let displayProcessor = "visualizer.displayProcessor"
         static let fftProcessingEnabled = "visualizer.fftProcessingEnabled"
         static let rmsProcessingEnabled = "visualizer.rmsProcessingEnabled"
@@ -115,6 +116,17 @@ public final class VisualizerDataSource: @unchecked Sendable {
         }
     }
     
+    /// Frequency weighting exponent for FFT processor (compensates for natural roll-off)
+    /// 0 = raw/bass-heavy, 0.5 = balanced, 1.0 = treble-emphasized
+    public var fftFrequencyWeighting: Float {
+        get { _fftFrequencyWeighting }
+        set {
+            _fftFrequencyWeighting = max(0.0, min(newValue, 1.0))
+            fftProcessor.setFrequencyWeightingExponent(_fftFrequencyWeighting)
+            UserDefaults.standard.set(_fftFrequencyWeighting, forKey: Keys.fftFrequencyWeighting)
+        }
+    }
+    
     /// Normalization mode for RMS processor
     public var rmsNormalizationMode: NormalizationMode = .ema {
         didSet {
@@ -124,8 +136,23 @@ public final class VisualizerDataSource: @unchecked Sendable {
     }
     
     /// Which processor's output to display in the visualizer
+    /// Automatically enables the required processor(s) when changed
     public var displayProcessor: ProcessorType = .rms {
-        didSet { UserDefaults.standard.set(displayProcessor.rawValue, forKey: Keys.displayProcessor) }
+        didSet {
+            UserDefaults.standard.set(displayProcessor.rawValue, forKey: Keys.displayProcessor)
+            // Auto-enable required processors, disable unused ones to save CPU
+            switch displayProcessor {
+            case .fft:
+                fftProcessingEnabled = true
+                rmsProcessingEnabled = false
+            case .rms:
+                fftProcessingEnabled = false
+                rmsProcessingEnabled = true
+            case .both:
+                fftProcessingEnabled = true
+                rmsProcessingEnabled = true
+            }
+        }
     }
     
     /// Whether FFT processing is enabled (saves CPU when disabled)
@@ -171,6 +198,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
     // MARK: - Private Properties
     
     private var _signalBoost: Float = 1.0
+    private var _fftFrequencyWeighting: Float = 0.5  // Default: balanced
     private var _minBrightness: Double = 0.90
     private var _maxBrightness: Double = 1.0
     private let rmsSmoothing: Float = 0.0  // No smoothing for maximum frame-to-frame sensitivity
@@ -213,18 +241,20 @@ public final class VisualizerDataSource: @unchecked Sendable {
             rmsProcessor.setNormalizationMode(rmsMode)
         }
         
-        // Display processor
+        // Frequency weighting
+        if defaults.object(forKey: Keys.fftFrequencyWeighting) != nil {
+            _fftFrequencyWeighting = defaults.float(forKey: Keys.fftFrequencyWeighting)
+            fftProcessor.setFrequencyWeightingExponent(_fftFrequencyWeighting)
+        }
+        
+        // Display processor (also sets processing flags via didSet)
         if let displayRaw = defaults.string(forKey: Keys.displayProcessor),
            let display = ProcessorType(rawValue: displayRaw) {
             displayProcessor = display
-        }
-        
-        // Processing flags
-        if defaults.object(forKey: Keys.fftProcessingEnabled) != nil {
-            fftProcessingEnabled = defaults.bool(forKey: Keys.fftProcessingEnabled)
-        }
-        if defaults.object(forKey: Keys.rmsProcessingEnabled) != nil {
-            rmsProcessingEnabled = defaults.bool(forKey: Keys.rmsProcessingEnabled)
+        } else {
+            // Apply default processing flags for default display mode (.rms)
+            fftProcessingEnabled = false
+            rmsProcessingEnabled = true
         }
         
         // Brightness - load directly to backing vars to avoid re-persisting
@@ -300,10 +330,10 @@ public final class VisualizerDataSource: @unchecked Sendable {
         _signalBoost = 1.0
         signalBoostEnabled = true
         fftNormalizationMode = .none
+        fftFrequencyWeighting = 0.5  // Balanced
         rmsNormalizationMode = .ema
+        // displayProcessor's didSet will set the processing flags appropriately
         displayProcessor = .rms
-        fftProcessingEnabled = true
-        rmsProcessingEnabled = true
         _minBrightness = 0.90
         _maxBrightness = 1.0
         showFPS = false
@@ -328,6 +358,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         defaults.removeObject(forKey: Keys.signalBoost)
         defaults.removeObject(forKey: Keys.signalBoostEnabled)
         defaults.removeObject(forKey: Keys.fftNormalizationMode)
+        defaults.removeObject(forKey: Keys.fftFrequencyWeighting)
         defaults.removeObject(forKey: Keys.rmsNormalizationMode)
         defaults.removeObject(forKey: Keys.displayProcessor)
         defaults.removeObject(forKey: Keys.fftProcessingEnabled)

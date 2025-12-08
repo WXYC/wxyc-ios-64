@@ -46,49 +46,72 @@ struct VisualizerDebugView: View {
                 }
                 
                 // Display Control
-                Section("Display") {
+                Section {
                     Picker("Show", selection: $visualizer.displayProcessor) {
                         ForEach(ProcessorType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
                         }
                     }
                     Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
-                }
-                
-                // Processing Control
-                Section {
-                    Toggle("FFT Processing", isOn: $visualizer.fftProcessingEnabled)
-                    Toggle("RMS Processing", isOn: $visualizer.rmsProcessingEnabled)
                 } header: {
-                    Text("Processing")
+                    Text("Display")
                 } footer: {
-                    Text("Disable processors to save CPU. Disabled processors won't compute data.")
-                }
-                
-                // FFT Normalization
-                Section {
-                    Picker("Normalization Mode", selection: $visualizer.fftNormalizationMode) {
-                        ForEach(NormalizationMode.allCases, id: \.self) { mode in
-                            Text(mode.displayName).tag(mode)
-                        }
+                    switch visualizer.displayProcessor {
+                    case .fft:
+                        Text("FFT analyzes frequency content. Bass appears in left bars, treble in right bars.")
+                    case .rms:
+                        Text("RMS measures loudness over time slices. Does not separate frequencies.")
+                    case .both:
+                        Text("Shows both processors side-by-side for comparison.")
                     }
-                } header: {
-                    Text("FFT Normalization")
-                } footer: {
-                    Text("How FFT frequency magnitudes are normalized for display.")
                 }
                 
-                // RMS Normalization
-                Section {
-                    Picker("Normalization Mode", selection: $visualizer.rmsNormalizationMode) {
-                        ForEach(NormalizationMode.allCases, id: \.self) { mode in
-                            Text(mode.displayName).tag(mode)
+                // FFT Settings (shown for FFT or Both)
+                if visualizer.displayProcessor == .fft || visualizer.displayProcessor == .both {
+                    Section {
+                        HStack {
+                            Text("Frequency Weighting")
+                            Spacer()
+                            Text(String(format: "%.2f", visualizer.fftFrequencyWeighting))
+                                .foregroundStyle(.secondary)
                         }
+                        Slider(value: $visualizer.fftFrequencyWeighting, in: 0.0...1.0)
+                        HStack {
+                            Text("Bass")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("Treble")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Picker("Normalization", selection: $visualizer.fftNormalizationMode) {
+                            ForEach(NormalizationMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
+                        }
+                    } header: {
+                        Text("FFT Settings")
+                    } footer: {
+                        Text("Frequency weighting: 0 = raw/bass-heavy, 0.5 = balanced, 1.0 = treble-emphasized.")
                     }
-                } header: {
-                    Text("RMS Normalization")
-                } footer: {
-                    Text("How RMS time-domain values are normalized for display.")
+                    
+                }
+                
+                // RMS Settings (shown for RMS or Both)
+                if visualizer.displayProcessor == .rms || visualizer.displayProcessor == .both {
+                    Section {
+                        Picker("Normalization Mode", selection: $visualizer.rmsNormalizationMode) {
+                            ForEach(NormalizationMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
+                        }
+                    } header: {
+                        Text("RMS Settings")
+                    } footer: {
+                        Text("How RMS time-domain values are normalized for display.")
+                    }
                 }
                 
                 // Signal Boost
@@ -149,6 +172,7 @@ struct VisualizerDebugView: View {
                     .foregroundStyle(.red)
                 }
             }
+            .listRowSeparator(.hidden)
             .navigationTitle("Visualizer Settings")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
