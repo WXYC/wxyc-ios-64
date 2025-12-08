@@ -10,7 +10,10 @@ import SwiftUI
 // MARK: - RangeReplaceableCollection
 
 extension RangeReplaceableCollection {
-    mutating func popFirst() -> (Element, Self) {
+    /// Removes and returns the first element along with the remaining collection.
+    /// Returns `nil` if the collection is empty.
+    mutating func popFirst() -> (Element, Self)? {
+        guard !isEmpty else { return nil }
         let first = removeFirst()
         return (first, self)
     }

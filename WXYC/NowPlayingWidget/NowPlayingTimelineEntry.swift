@@ -38,5 +38,26 @@ struct NowPlayingTimelineEntry: TimelineEntry {
             family: family
         )
     }
+    
+    /// Creates an entry representing an empty playlist state.
+    /// Used when the playlist service returns no playcuts.
+    static func emptyState(family: WidgetFamily) -> Self {
+        NowPlayingTimelineEntry(
+            artist: "No Data Available",
+            songTitle: "Tune in to WXYC 89.3 FM",
+            artwork: nil,
+            recentItems: [],
+            family: family
+        )
+    }
+    
+    /// Private initializer for creating entries with raw values (used for empty state)
+    private init(artist: String, songTitle: String, artwork: SwiftUI.Image?, recentItems: [NowPlayingItem], family: WidgetFamily) {
+        self.artist = artist
+        self.songTitle = songTitle
+        self.artwork = artwork
+        self.recentItems = recentItems
+        self.family = family
+    }
 }
 

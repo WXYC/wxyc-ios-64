@@ -37,13 +37,24 @@ struct NowPlayingWidget: Widget {
 
 // MARK: - Widget Bundle
 
+#if DEBUG
 @main
 struct NowPlayingWidgetBundle: WidgetBundle {
+    @WidgetBundleBuilder
+    var body: some Widget {
+        NowPlayingWidget()
+    }
+}
+#else
+@main
+struct NowPlayingWidgetBundle: WidgetBundle {
+    @WidgetBundleBuilder
     var body: some Widget {
         NowPlayingControl()
         NowPlayingWidget()
     }
 }
+#endif
 
 // MARK: - Control Widget
 
@@ -62,10 +73,42 @@ struct NowPlayingControl: ControlWidget {
     }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
-#Preview(as: .systemLarge) {
+#Preview("Large", as: .systemLarge) {
     NowPlayingWidget()
 } timeline: {
     NowPlayingTimelineEntry.placeholder(family: .systemLarge)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    NowPlayingWidget()
+} timeline: {
+    NowPlayingTimelineEntry.placeholder(family: .systemMedium)
+}
+
+#Preview("Small", as: .systemSmall) {
+    NowPlayingWidget()
+} timeline: {
+    NowPlayingTimelineEntry.placeholder(family: .systemSmall)
+}
+
+// MARK: - Empty State Previews
+
+#Preview("Empty - Large", as: .systemLarge) {
+    NowPlayingWidget()
+} timeline: {
+    NowPlayingTimelineEntry.emptyState(family: .systemLarge)
+}
+
+#Preview("Empty - Medium", as: .systemMedium) {
+    NowPlayingWidget()
+} timeline: {
+    NowPlayingTimelineEntry.emptyState(family: .systemMedium)
+}
+
+#Preview("Empty - Small", as: .systemSmall) {
+    NowPlayingWidget()
+} timeline: {
+    NowPlayingTimelineEntry.emptyState(family: .systemSmall)
 }
