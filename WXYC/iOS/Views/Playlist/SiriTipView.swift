@@ -113,14 +113,18 @@ extension SiriTipView {
     
     /// Resets the Siri tip state (useful for testing).
     static func resetState() {
-        Color.indigo
-            .backgroundStyle(WXYCBackground())
-        
-        VStack {
-            SiriTipView(isVisible: .constant(true)) {
-                print("Dismissed")
-            }
-            .padding()
-        }
+        let defaults = UserDefaults.wxyc
+        defaults.removeObject(forKey: hasLaunchedBeforeKey)
+        defaults.removeObject(forKey: wasDismissedKey)
     }
+}
+
+#Preview {
+    VStack {
+        SiriTipView(isVisible: .constant(true)) {
+            print("Dismissed")
+        }
+        .padding()
+    }
+    .background(WXYCBackground())
 }

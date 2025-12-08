@@ -161,11 +161,6 @@ struct WXYCApp: App {
         .backgroundTask(.appRefresh("com.wxyc.refresh")) {
             Log(.info, "Background refresh started")
             
-            defer {
-                // Always schedule the next refresh, even if this one failed
-                scheduleBackgroundRefresh()
-            }
-            
             // Fetch fresh playlist (this always fetches from network, ignoring cache)
             // and caches it with a 15-minute lifespan
             let playlist = await appState.playlistService.fetchAndCachePlaylist()
@@ -178,6 +173,11 @@ struct WXYCApp: App {
             PostHogSDK.shared.capture("Background refresh completed", additionalData: [
                 "entry_count": "\(playlist.entries.count)"
             ])
+            
+            // Schedule the next refresh
+            await MainActor.run {
+                scheduleBackgroundRefresh()
+            }
         }
         .commands {
                 CommandMenu("Playback") {

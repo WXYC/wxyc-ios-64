@@ -23,7 +23,7 @@ struct TruncationDetector: View {
                         Color.clear.onAppear {
                             checkTruncation(fullHeight: fullTextGeometry.size.height, availableWidth: geometry.size.width)
                         }
-                        .onChange(of: fullTextGeometry.size) { _ in
+                        .onChange(of: fullTextGeometry.size) {
                             checkTruncation(fullHeight: fullTextGeometry.size.height, availableWidth: geometry.size.width)
                         }
                     }
