@@ -45,6 +45,22 @@ public final class AudioPlayerController {
     )
     #endif
     
+    // MARK: - Player Factory
+    
+    /// Creates an audio player instance based on the controller type
+    /// Note: Currently only StreamingAudioPlayer (audioPlayer type) is supported
+    /// Other types would require adapters to conform to AudioPlayerProtocol
+    @MainActor
+    public static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
+        switch type {
+        case .audioPlayer, .radioPlayer, .avAudioStreamer, .miniMP3Streamer:
+            // For now, all types use StreamingAudioPlayer since it's the only
+            // implementation that conforms to AudioPlayerProtocol
+            // TODO: Create adapters for other player types if needed
+            return StreamingAudioPlayer()
+        }
+    }
+    
     // MARK: - Public Properties
     
     /// Whether audio is currently playing
@@ -132,6 +148,42 @@ public final class AudioPlayerController {
     }
     
     // MARK: - Public Methods
+    
+    /// Replace the underlying audio player with a new instance
+    /// Preserves current playback state and URL if playing
+    @MainActor
+    public func replacePlayer(_ newPlayer: AudioPlayerProtocol) {
+        let wasPlaying = isPlaying
+        let currentURL = player.currentURL
+        
+        // Stop current player
+        if wasPlaying {
+            player.stop()
+        }
+        
+        // Transfer audio buffer handler if set
+        if let handler = player.onAudioBuffer {
+            newPlayer.onAudioBuffer = handler
+        }
+        
+        // Transfer metadata handler if set
+        if let handler = player.onMetadata {
+            newPlayer.onMetadata = handler
+        }
+        
+        // Replace player
+        player = newPlayer
+        
+        // Restore playback state if it was playing
+        if wasPlaying, let url = currentURL {
+            playbackIntended = true
+            playbackStartTime = playbackStartTime ?? Date()
+            #if os(iOS) || os(tvOS)
+            activateAudioSession()
+            #endif
+            player.play(url: url)
+        }
+    }
     
     /// Toggle playback state
     /// If no URL is currently set, uses `defaultStreamURL` if available
