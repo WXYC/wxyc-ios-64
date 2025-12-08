@@ -32,6 +32,18 @@ extension CGImagePropertyOrientation {
     }
 }
 
+/// Returns the URL to the OpenNSFW model, checking the shared container first
+/// (for widgets/extensions), then falling back to the main app bundle.
+private func openNSFWModelURL() -> URL? {
+    // Check shared container first (for widgets that don't have the model bundled)
+    if let sharedURL = ModelSeeder.sharedModelURL,
+       FileManager.default.fileExists(atPath: sharedURL.path) {
+        return sharedURL
+    }
+    // Fall back to main app bundle (model is only included in main app target)
+    return Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc")
+}
+
 public extension UIImage {
     enum AnalysisError: Error {
         case InvalidImage
@@ -39,6 +51,7 @@ public extension UIImage {
         case InvalidObservationType
         case NoObservations
         case Unknown
+        case ModelNotFound
     }
     
     func checkNSFW() async throws -> NSFW {
@@ -46,10 +59,18 @@ public extension UIImage {
             Log(.error, "🧨 Could not create CIImage")
             throw AnalysisError.InvalidImage
         }
+        
+        // Check for model availability - return permissive fallback if not found
+        // (e.g., widget before main app seeds model to shared container)
+        guard let modelURL = openNSFWModelURL() else {
+            Log(.info, "OpenNSFW model not available, assuming SFW")
+            return .sfw
+        }
+        
         let orientation = CGImagePropertyOrientation(self.imageOrientation)
         let handler = VNImageRequestHandler(ciImage: ciImage, orientation: orientation, options: [:])
         let modelConfig = MLModelConfiguration()
-        let model = try OpenNSFW(configuration: modelConfig)
+        let model = try OpenNSFW(contentsOf: modelURL, configuration: modelConfig)
         let NSFWmodel = try VNCoreMLModel(for: model.model)
         
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<NSFW, any Error>) in

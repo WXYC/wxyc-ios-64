@@ -15,6 +15,7 @@ import Playlist
 import Core
 import Intents
 import Logger
+import OpenNSFW
 import Playback
 import PlayerHeaderView
 import Playlist
@@ -77,6 +78,11 @@ struct WXYCApp: App {
     init() {
         // Cache migration - purge if version changed
         CacheMigrationManager.migrateIfNeeded()
+        
+        // Seed OpenNSFW model to shared container for widget
+        if let bundleURL = Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc") {
+            ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
+        }
         
         UserDefaults.standard.removeObject(forKey: "isPlaying")
         // Analytics setup
