@@ -53,6 +53,7 @@ struct PlaylistView: View {
                         Button("what the freq?") {
                             showingPartyHorn = true
                         }
+                        .foregroundStyle(.white)
                         .fontWeight(.black)
                         .foregroundStyle(WXYCMeshAnimation())
                         .padding(.top, 20)
