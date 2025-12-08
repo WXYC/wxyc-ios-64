@@ -6,14 +6,13 @@
 //
 
 import SwiftUI
-import Playback
 
 // MARK: - FPS Counter
 
 /// Tracks frame timing for FPS calculation
 @Observable
 public final class FPSCounter {
-    public var fps: Double = 0
+    var fps: Double = 0
     
     private var lastFrameTime: CFAbsoluteTime = 0
     private var frameTimes: [CFAbsoluteTime] = []
@@ -48,7 +47,7 @@ public final class FPSCounter {
 
 /// A small overlay view that displays the current FPS
 public struct FPSDebugView: View {
-    public let fps: Double
+    let fps: Double
     
     public init(fps: Double) {
         self.fps = fps

@@ -8,7 +8,6 @@
 import Foundation
 @preconcurrency import CarPlay
 import Logger
-import Core
 import PostHog
 import Intents
 import SwiftUI

@@ -10,7 +10,6 @@ import CoreHaptics
 
 final class Haptics {
     private var engine: CHHapticEngine?
-    private var observers: [NSObjectProtocol] = []
 
     init() {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }

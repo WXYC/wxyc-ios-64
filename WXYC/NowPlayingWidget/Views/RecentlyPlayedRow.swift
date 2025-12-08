@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Core
 import AppServices
 
 struct RecentlyPlayedRow: View {

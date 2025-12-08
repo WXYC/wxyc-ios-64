@@ -1,0 +1,102 @@
+{
+  "configurations" : [
+    {
+      "id" : "8352E484-6229-4172-B8D2-71926BAD23A8",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:WXYC.xcodeproj",
+      "identifier" : "2366FA1C2D72CE880057E268",
+      "name" : "WXYC"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC.xcodeproj",
+        "identifier" : "23EC619E2ED810EB001C27E9",
+        "name" : "WXYCTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/AppServices",
+        "identifier" : "AppServicesTests",
+        "name" : "AppServicesTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/Artwork",
+        "identifier" : "ArtworkTests",
+        "name" : "ArtworkTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/Caching",
+        "identifier" : "CachingTests",
+        "name" : "CachingTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/Metadata",
+        "identifier" : "MetadataTests",
+        "name" : "MetadataTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/MusicShareKit",
+        "identifier" : "MusicShareKitTests",
+        "name" : "MusicShareKitTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/Playback",
+        "identifier" : "PlaybackTests",
+        "name" : "PlaybackTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/PlayerHeaderView",
+        "identifier" : "PlayerHeaderViewTests",
+        "name" : "PlayerHeaderViewTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/Playlist",
+        "identifier" : "PlaylistTests",
+        "name" : "PlaylistTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:WXYC\/Shared\/WXUI",
+        "identifier" : "WXUITests",
+        "name" : "WXUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

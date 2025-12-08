@@ -8,13 +8,3 @@
 import UIKit
 import Vortex
 import SwiftUI
-
-class ViewController: UIViewController {
-    @IBOutlet weak var partyHorn: PartyHornView!
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        self.partyHorn.zoomInPartyHorn()
-    }
-}

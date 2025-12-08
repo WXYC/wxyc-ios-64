@@ -19,12 +19,6 @@ final class MockPlaylistFetcher: PlaylistFetcher, @unchecked Sendable {
 
         return playlistToReturn
     }
-
-    func reset() {
-        playlistToReturn = .empty
-        errorToThrow = nil
-        fetchCount = 0
-    }
 }
 
 // MARK: - RemotePlaylistFetcher Tests

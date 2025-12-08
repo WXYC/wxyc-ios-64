@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Core
 import UIKit
 import WXUI
 import PostHog

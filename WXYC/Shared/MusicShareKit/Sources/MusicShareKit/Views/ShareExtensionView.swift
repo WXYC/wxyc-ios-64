@@ -110,21 +110,6 @@ public struct ShareExtensionView: View {
         }
     }
     
-    var requestButtonForegroundStyle: some ShapeStyle {
-        if colorScheme == .light {
-            LinearGradient(
-                colors: [.pink],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        } else {
-            LinearGradient(
-                colors: [.green],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-    }
     
     // MARK: - Content
     
@@ -270,9 +255,9 @@ struct ButtonModifier: ViewModifier {
 
 @Observable
 @MainActor
-public class ShareExtensionViewModel {
+class ShareExtensionViewModel {
     
-    public enum State {
+    enum State {
         case loading
         case error
         case loaded(MusicTrack)
@@ -296,7 +281,7 @@ public class ShareExtensionViewModel {
         return false
     }
     
-    public init(extensionContext: NSExtensionContext?) {
+    init(extensionContext: NSExtensionContext?) {
         self.extensionContext = extensionContext
         self.isPreview = false
     }

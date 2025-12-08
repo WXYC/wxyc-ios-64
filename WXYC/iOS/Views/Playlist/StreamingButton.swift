@@ -8,7 +8,6 @@
 
 import Foundation
 import SwiftUI
-import Core
 import Metadata
 import Playlist
 

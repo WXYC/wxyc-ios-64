@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Core
 
 struct TextRowView: View {
     let text: String

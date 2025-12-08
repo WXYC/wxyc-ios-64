@@ -26,8 +26,6 @@ import Testing
 import Foundation
 import AVFoundation
 import MediaPlayer
-import Core
-import Analytics
 @testable import Playback
 
 // MARK: - Mock PostHog
@@ -35,9 +33,8 @@ import Analytics
 final class MockPostHog: @unchecked Sendable {
     private let capturedEvents = NSMutableArray()
 
-    func capture(_ event: String, properties: [String: Any]?) {
-        let capture = EventCapture(event: event, properties: properties)
-        capturedEvents.add(capture)
+    func capture(_ event: String, properties: [String: Any]? = nil) {
+        capturedEvents.add(EventCapture(event: event, properties: properties))
     }
 
     func play(reason: String) {

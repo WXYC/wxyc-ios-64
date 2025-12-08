@@ -10,7 +10,6 @@
 
 import Testing
 import AVFoundation
-import Core
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -53,16 +52,16 @@ final class MockRadioPlayer: PlayerProtocol, @unchecked Sendable {
     }
 }
 
-// MARK: - RadioPlayerController Test Harness
+// MARK: - Test Harness
 
-/// Test harness for RadioPlayerController with injectable dependencies
+/// Test harness for RadioPlayerController tests
 @MainActor
 final class RadioPlayerControllerTestHarness {
-    let mockPlayer: MockRadioPlayer
-    let radioPlayer: RadioPlayer
-    let controller: RadioPlayerController
-    let notificationCenter: NotificationCenter
-    let testUserDefaults: UserDefaults
+    var mockPlayer: MockRadioPlayer
+    var notificationCenter: NotificationCenter
+    var testUserDefaults: UserDefaults
+    var radioPlayer: RadioPlayer
+    var controller: RadioPlayerController
     
     init() {
         mockPlayer = MockRadioPlayer()

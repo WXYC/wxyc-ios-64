@@ -129,6 +129,7 @@
 		2366FA1D2D72CE880057E268 /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		23B333462ED4F09900EFD77B /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		23EC619F2ED810EB001C27E9 /* WXYCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		23FA30072EE6654100BC14A8 /* WXYC.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = WXYC.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -395,6 +396,7 @@
 		2366FA142D72CE880057E268 = {
 			isa = PBXGroup;
 			children = (
+				23FA30072EE6654100BC14A8 /* WXYC.xctestplan */,
 				236629792D72D94A0057E268 /* WatchXYC-Info.plist */,
 				2366FA1F2D72CE880057E268 /* WXYC */,
 				23B333472ED4F09900EFD77B /* Request Share Extension */,

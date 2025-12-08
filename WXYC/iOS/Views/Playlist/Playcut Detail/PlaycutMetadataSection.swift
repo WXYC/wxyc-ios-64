@@ -7,8 +7,6 @@
 //
 
 import SwiftUI
-import Core
-import WXUI
 import Metadata
 import Playlist
 

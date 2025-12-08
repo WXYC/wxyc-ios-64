@@ -1,5 +1,4 @@
 import Secrets
-import Logger
 import Foundation
 import Core
 import Playlist

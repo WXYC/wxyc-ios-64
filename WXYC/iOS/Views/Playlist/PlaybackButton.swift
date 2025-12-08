@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Core
 import CoreGraphics
 import WXUI
 import PlayerHeaderView

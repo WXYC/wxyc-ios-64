@@ -9,7 +9,6 @@
 import Foundation
 import AppIntents
 import SwiftUI
-import Core
 import Logger
 import PostHog
 import UIKit

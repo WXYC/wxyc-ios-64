@@ -66,11 +66,6 @@ public struct DiscogsMarkupParser: Sendable {
 extension DiscogsMarkupParser {
     
     /// Entity types that can be resolved
-    public enum EntityType: Sendable {
-        case artist
-        case release
-        case master
-    }
     
     /// Parsed token representing Discogs markup syntax (AST)
     /// Note: Formatting tags (bold, italic, underline, url) contain raw string content,

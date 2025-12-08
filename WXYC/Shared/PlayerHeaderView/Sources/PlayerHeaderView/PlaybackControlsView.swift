@@ -10,12 +10,12 @@ import SwiftUI
 // MARK: - Playback Controls View
 
 /// A simple play/pause button view
-public struct PlaybackControlsView: View {
-    public var isPlaying: Bool
-    public var isLoading: Bool
-    public var onPlayTapped: () -> Void
+struct PlaybackControlsView: View {
+    var isPlaying: Bool
+    var isLoading: Bool
+    var onPlayTapped: () -> Void
     
-    public init(isPlaying: Bool, isLoading: Bool = false, onPlayTapped: @escaping () -> Void) {
+    init(isPlaying: Bool, isLoading: Bool = false, onPlayTapped: @escaping () -> Void) {
         self.isPlaying = isPlaying
         self.isLoading = isLoading
         self.onPlayTapped = onPlayTapped

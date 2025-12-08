@@ -25,12 +25,6 @@ final class MockWebSession: WebSession, @unchecked Sendable {
 
         return data
     }
-
-    func reset() {
-        dataToReturn = nil
-        errorToThrow = nil
-        requestedURLs.removeAll()
-    }
 }
 
 // MARK: - Test Helpers

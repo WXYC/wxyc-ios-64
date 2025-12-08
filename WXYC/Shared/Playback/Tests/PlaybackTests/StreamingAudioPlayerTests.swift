@@ -5,7 +5,6 @@
 
 import Testing
 import AVFoundation
-import Analytics
 @testable import Playback
 
 @Suite("StreamingAudioPlayer Tests")

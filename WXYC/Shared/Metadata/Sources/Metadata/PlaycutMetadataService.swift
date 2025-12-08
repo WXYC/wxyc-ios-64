@@ -378,7 +378,6 @@ extension PlaycutMetadataService {
     enum MetadataError: Error {
         case authenticationFailed
         case invalidResponse
-        case notFound
     }
 }
 

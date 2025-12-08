@@ -83,33 +83,11 @@ public struct PlaycutMetadata: Sendable, Equatable, Codable {
     }
     
     /// Check if any metadata is available
-    public var hasAnyData: Bool {
-        label != nil ||
-        releaseYear != nil ||
-        discogsURL != nil ||
-        artistBio != nil ||
-        wikipediaURL != nil ||
-        hasStreamingLinks
-    }
 }
 
 // MARK: - Builder Pattern for Incremental Updates
 
 extension PlaycutMetadata {
     /// Merge with another metadata instance, preferring non-nil values from the other
-    public func merging(with other: PlaycutMetadata) -> PlaycutMetadata {
-        PlaycutMetadata(
-            label: other.label ?? self.label,
-            releaseYear: other.releaseYear ?? self.releaseYear,
-            discogsURL: other.discogsURL ?? self.discogsURL,
-            artistBio: other.artistBio ?? self.artistBio,
-            wikipediaURL: other.wikipediaURL ?? self.wikipediaURL,
-            spotifyURL: other.spotifyURL ?? self.spotifyURL,
-            appleMusicURL: other.appleMusicURL ?? self.appleMusicURL,
-            youtubeMusicURL: other.youtubeMusicURL ?? self.youtubeMusicURL,
-            bandcampURL: other.bandcampURL ?? self.bandcampURL,
-            soundcloudURL: other.soundcloudURL ?? self.soundcloudURL
-        )
-    }
 }
 

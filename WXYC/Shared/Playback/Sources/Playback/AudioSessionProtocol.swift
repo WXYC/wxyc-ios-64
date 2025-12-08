@@ -35,23 +35,6 @@ public protocol AudioSessionProtocol: AnyObject {
 #endif
 
 /// A no-op audio session for platforms that don't support AVAudioSession or for testing
-public final class NoOpAudioSession: AudioSessionProtocol {
-    public init() {}
-    
-    #if os(iOS) || os(tvOS) || os(watchOS)
-    public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
-        // No-op
-    }
-    
-    public func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
-        // No-op
-    }
-    #else
-    public func setActive(_ active: Bool) throws {
-        // No-op
-    }
-    #endif
-}
 
 
 

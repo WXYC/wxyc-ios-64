@@ -190,29 +190,6 @@ struct MailComposerView: UIViewControllerRepresentable {
     }
 }
 
-struct JustifiedText: UIViewRepresentable {
-    let text: String
-    let font: UIFont
-    let textColor: UIColor = .white
-    
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.isEditable = false
-        textView.isScrollEnabled = false
-        textView.backgroundColor = .clear
-        textView.textAlignment = .justified
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
-        return textView
-    }
-    
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        uiView.text = text
-        uiView.font = font
-        uiView.textColor = textColor
-    }
-}
-
 struct FittingText: View {
     let text: String
     

@@ -1,6 +1,5 @@
 import Foundation
 import PostHog
-import Secrets
 
 protocol AnalyticsError: Error { }
 

@@ -8,25 +8,6 @@
 
 import SwiftUI
 
-struct MetadataItem: View {
-    let title: String
-    let value: String
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.caption.smallCaps())
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body)
-                .fontWeight(.medium)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-        }
-    }
-}
-
 struct MetadataLabel: View {
     let title: String
     

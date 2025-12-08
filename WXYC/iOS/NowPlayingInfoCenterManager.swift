@@ -79,17 +79,6 @@ extension Playcut {
 }
 
 extension Optional where Wrapped == Playcut {
-    var playcutMediaItems: [String: Any] {
-        if case .some(let playcut) = self {
-            return playcut.playcutMediaItems
-        } else {
-            return [
-                MPMediaItemPropertyArtist : RadioStation.WXYC.name,
-                MPMediaItemPropertyTitle : RadioStation.WXYC.secondaryName,
-                MPMediaItemPropertyAlbumTitle : "",
-            ]
-        }
-    }
 }
 
 extension Dictionary {

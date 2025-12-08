@@ -90,7 +90,7 @@ actor SpotifyTokenManager {
     }
 }
 
-public enum SpotifyError: Error {
+enum SpotifyError: Error {
     case notConfigured
     case authenticationFailed
     case invalidTokenResponse
@@ -98,24 +98,24 @@ public enum SpotifyError: Error {
     case invalidResponse
 }
 
-public final class SpotifyService: MusicService {
-    public let identifier: MusicServiceIdentifier = .spotify
+final class SpotifyService: MusicService {
+    let identifier: MusicServiceIdentifier = .spotify
     
-    public init() {}
+    init() {}
     
     /// Configure Spotify API credentials. Must be called before fetchMetadata.
-    public static func configure(credentials: SpotifyCredentials) async {
+    static func configure(credentials: SpotifyCredentials) async {
         await SpotifyTokenManager.shared.configure(with: credentials)
     }
     
-    public func canHandle(url: URL) -> Bool {
+    func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         let scheme = url.scheme?.lowercased() ?? ""
         
         return host.contains("open.spotify.com") || host.contains("spotify.com") || scheme == "spotify"
     }
     
-    public func parse(url: URL) -> MusicTrack? {
+    func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // Handle spotify: scheme URLs
@@ -158,12 +158,12 @@ public final class SpotifyService: MusicService {
         )
     }
     
-    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Artwork is fetched as part of fetchMetadata, return cached value
         return track.artworkURL
     }
     
-    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+    func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         guard let identifier = track.identifier else { return track }
         
         // Parse type and ID from identifier (format: "track:abc123")

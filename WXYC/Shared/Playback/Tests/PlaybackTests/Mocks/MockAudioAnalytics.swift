@@ -10,48 +10,48 @@ import Analytics
 @testable import Playback
 
 /// Mock analytics tracker for testing
-public final class MockAudioAnalytics: AudioAnalyticsProtocol, @unchecked Sendable {
+final class MockAudioAnalytics: AudioAnalyticsProtocol, @unchecked Sendable {
     
     // MARK: - Call Tracking
     
-    public var playCallCount = 0
-    public var lastPlaySource: String?
-    public var lastPlayReason: String?
+    var playCallCount = 0
+    var lastPlaySource: String?
+    var lastPlayReason: String?
     
-    public var pauseCallCount = 0
-    public var lastPauseSource: String?
-    public var lastPauseDuration: TimeInterval?
-    public var lastPauseReason: String?
+    var pauseCallCount = 0
+    var lastPauseSource: String?
+    var lastPauseDuration: TimeInterval?
+    var lastPauseReason: String?
     
-    public var captureErrorCallCount = 0
-    public var lastCapturedError: Error?
-    public var lastCapturedContext: String?
+    var captureErrorCallCount = 0
+    var lastCapturedError: Error?
+    var lastCapturedContext: String?
     
     // MARK: - AudioAnalyticsProtocol
     
-    public init() {}
+    init() {}
     
-    public func play(source: String, reason: String) {
+    func play(source: String, reason: String) {
         playCallCount += 1
         lastPlaySource = source
         lastPlayReason = reason
     }
     
-    public func pause(source: String, duration: TimeInterval) {
+    func pause(source: String, duration: TimeInterval) {
         pauseCallCount += 1
         lastPauseSource = source
         lastPauseDuration = duration
         lastPauseReason = nil
     }
     
-    public func pause(source: String, duration: TimeInterval, reason: String) {
+    func pause(source: String, duration: TimeInterval, reason: String) {
         pauseCallCount += 1
         lastPauseSource = source
         lastPauseDuration = duration
         lastPauseReason = reason
     }
     
-    public func capture(error: Error, context: String) {
+    func capture(error: Error, context: String) {
         captureErrorCallCount += 1
         lastCapturedError = error
         lastCapturedContext = context
@@ -59,7 +59,7 @@ public final class MockAudioAnalytics: AudioAnalyticsProtocol, @unchecked Sendab
     
     // MARK: - Test Helpers
     
-    public func reset() {
+    func reset() {
         playCallCount = 0
         lastPlaySource = nil
         lastPlayReason = nil

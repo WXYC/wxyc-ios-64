@@ -20,8 +20,8 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
     var artworkToReturn: Image?
     var errorToThrow: Error?
     var fetchCount = 0
-    var lastPlaycut: Playcut?
     var delaySeconds: Double = 0
+    var lastPlaycut: Playcut?
 
     func fetchArtwork(for playcut: Playcut) async throws -> Image {
         fetchCount += 1

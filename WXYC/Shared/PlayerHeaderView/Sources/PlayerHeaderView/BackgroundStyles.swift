@@ -83,8 +83,8 @@ struct WXYCBackground: ShapeStyle {
 // MARK: - Header Item Background Style
 
 /// A background style for header items with an orange tint
-public struct HeaderItemBackgroundStyle: ShapeStyle {
-    public init() {}
+struct HeaderItemBackgroundStyle: ShapeStyle {
+    init() {}
     
     public func resolve(in environment: EnvironmentValues) -> some ShapeStyle {
         Color(

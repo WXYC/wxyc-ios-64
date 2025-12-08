@@ -18,9 +18,9 @@ final class EntityResolverMockCache: Cache, @unchecked Sendable {
     private var metadataStorage: [String: CacheMetadata] = [:]
     var getCallCount = 0
     var setCallCount = 0
-    var lastSetKey: String?
-    var lastGetKey: String?
     var keysSet: [String] = []
+    var lastGetKey: String?
+    var lastSetKey: String?
     
     func metadata(for key: String) -> CacheMetadata? {
         getCallCount += 1
@@ -52,16 +52,6 @@ final class EntityResolverMockCache: Cache, @unchecked Sendable {
     func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
         metadataStorage.map { ($0.key, $0.value) }
     }
-    
-    func reset() {
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-        getCallCount = 0
-        setCallCount = 0
-        lastSetKey = nil
-        lastGetKey = nil
-        keysSet.removeAll()
-    }
 }
 
 // MARK: - Mock WebSession for Entity Resolver
@@ -88,13 +78,6 @@ final class EntityResolverMockWebSession: WebSession, @unchecked Sendable {
         }
         
         throw URLError(.resourceUnavailable)
-    }
-    
-    func reset() {
-        responses.removeAll()
-        requestedURLs.removeAll()
-        requestCount = 0
-        shouldFail = false
     }
 }
 

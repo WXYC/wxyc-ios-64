@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Core
 import WXUI
 
 /// A custom Siri tip view that displays a suggestion to use voice commands.
@@ -114,14 +113,6 @@ extension SiriTipView {
     
     /// Resets the Siri tip state (useful for testing).
     static func resetState() {
-        let defaults = UserDefaults.wxyc
-        defaults.removeObject(forKey: hasLaunchedBeforeKey)
-        defaults.removeObject(forKey: wasDismissedKey)
-    }
-}
-
-#Preview {
-    ZStack {
         Color.indigo
             .backgroundStyle(WXYCBackground())
         

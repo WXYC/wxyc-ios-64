@@ -28,7 +28,7 @@ import WXUI
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
-public class Singletonia: ObservableObject {
+class Singletonia: ObservableObject {
     static let shared = Singletonia()
 
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?

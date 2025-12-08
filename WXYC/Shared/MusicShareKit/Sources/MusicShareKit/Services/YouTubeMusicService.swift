@@ -7,19 +7,19 @@
 
 import Foundation
 
-public final class YouTubeMusicService: MusicService {
-    public let identifier: MusicServiceIdentifier = .youtubeMusic
+final class YouTubeMusicService: MusicService {
+    let identifier: MusicServiceIdentifier = .youtubeMusic
     
-    public init() {}
+    init() {}
     
-    public func canHandle(url: URL) -> Bool {
+    func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host.contains("music.youtube.com") || 
                (host.contains("youtube.com") && url.path.contains("/watch")) ||
                host.contains("youtu.be")
     }
     
-    public func parse(url: URL) -> MusicTrack? {
+    func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         var videoId: String?
@@ -53,12 +53,12 @@ public final class YouTubeMusicService: MusicService {
         )
     }
     
-    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Artwork is fetched as part of fetchMetadata, return cached value
         return track.artworkURL
     }
     
-    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+    func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         guard let videoId = track.identifier else { return track }
         
         // Use YouTube oEmbed API (no auth required)
