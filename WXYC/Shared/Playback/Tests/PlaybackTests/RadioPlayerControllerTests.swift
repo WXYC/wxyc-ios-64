@@ -355,6 +355,7 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
+        // Controller subscribes to notifications on init; must exist during test to handle them
         _ = RadioPlayerController(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
@@ -394,6 +395,7 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
+        // Controller subscribes to notifications on init; must exist during test to handle them
         _ = RadioPlayerController(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
@@ -437,6 +439,7 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
+        // Controller subscribes to notifications on init; must exist during test to handle them
         _ = RadioPlayerController(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
@@ -476,6 +479,7 @@ struct RadioPlayerControllerTests {
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
+        // Controller subscribes to notifications on init; must exist during test to handle them
         _ = RadioPlayerController(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
@@ -535,6 +539,7 @@ struct RadioPlayerControllerTests {
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
+        // Controller subscribes to notifications on init; must exist during test to handle them
         _ = RadioPlayerController(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
@@ -671,6 +676,7 @@ struct RadioPlayerControllerTests {
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
+        // Controller subscribes to notifications on init; must exist during test to handle them
         _ = RadioPlayerController(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
