@@ -45,37 +45,24 @@ struct VisualizerDebugView: View {
                     Text(selectedPlayerType.shortDescription)
                 }
                 
-                // Display Control
+                // Processor & Settings
                 Section {
-                    Picker("Show", selection: $visualizer.displayProcessor) {
+                    Picker("Processor", selection: $visualizer.displayProcessor) {
                         ForEach(ProcessorType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
                         }
                     }
                     Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
-                } header: {
-                    Text("Display")
-                } footer: {
-                    switch visualizer.displayProcessor {
-                    case .fft:
-                        Text("FFT analyzes frequency content. Bass appears in left bars, treble in right bars.")
-                    case .rms:
-                        Text("RMS measures loudness over time slices. Does not separate frequencies.")
-                    case .both:
-                        Text("Shows both processors side-by-side for comparison.")
-                    }
-                }
-                
-                // FFT Settings (shown for FFT or Both)
-                if visualizer.displayProcessor == .fft || visualizer.displayProcessor == .both {
-                    Section {
+                    
+                    // FFT Settings (shown for FFT or Both)
+                    if visualizer.displayProcessor == .fft || visualizer.displayProcessor == .both {
                         HStack {
                             Text("Frequency Weighting")
                             Spacer()
                             Text(String(format: "%.2f", visualizer.fftFrequencyWeighting))
                                 .foregroundStyle(.secondary)
                         }
-                        Slider(value: $visualizer.fftFrequencyWeighting, in: 0.0...1.0)
+                        Slider(value: $visualizer.fftFrequencyWeighting, in: 0.0...1.5)
                         HStack {
                             Text("Bass")
                                 .font(.caption)
@@ -86,31 +73,31 @@ struct VisualizerDebugView: View {
                                 .foregroundStyle(.secondary)
                         }
                         
-                        Picker("Normalization", selection: $visualizer.fftNormalizationMode) {
+                        Picker("FFT Normalization", selection: $visualizer.fftNormalizationMode) {
                             ForEach(NormalizationMode.allCases, id: \.self) { mode in
                                 Text(mode.displayName).tag(mode)
                             }
                         }
-                    } header: {
-                        Text("FFT Settings")
-                    } footer: {
-                        Text("Frequency weighting: 0 = raw/bass-heavy, 0.5 = balanced, 1.0 = treble-emphasized.")
                     }
                     
-                }
-                
-                // RMS Settings (shown for RMS or Both)
-                if visualizer.displayProcessor == .rms || visualizer.displayProcessor == .both {
-                    Section {
-                        Picker("Normalization Mode", selection: $visualizer.rmsNormalizationMode) {
+                    // RMS Settings (shown for RMS or Both)
+                    if visualizer.displayProcessor == .rms || visualizer.displayProcessor == .both {
+                        Picker("RMS Normalization", selection: $visualizer.rmsNormalizationMode) {
                             ForEach(NormalizationMode.allCases, id: \.self) { mode in
                                 Text(mode.displayName).tag(mode)
                             }
                         }
-                    } header: {
-                        Text("RMS Settings")
-                    } footer: {
-                        Text("How RMS time-domain values are normalized for display.")
+                    }
+                } header: {
+                    Text("Processor")
+                } footer: {
+                    switch visualizer.displayProcessor {
+                    case .fft:
+                        Text("FFT analyzes frequency content. Bass appears in left bars, treble in right bars.")
+                    case .rms:
+                        Text("RMS measures loudness over time slices. Does not separate frequencies.")
+                    case .both:
+                        Text("Shows both processors side-by-side for comparison.")
                     }
                 }
                 
