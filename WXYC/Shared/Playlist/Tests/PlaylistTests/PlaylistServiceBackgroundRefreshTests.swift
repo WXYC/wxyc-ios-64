@@ -44,7 +44,7 @@ struct PlaylistServiceBackgroundRefreshTests {
             lifespan: 15 * 60
         )
         
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let newPlaylist = Playlist(
             playcuts: [
                 Playcut(
@@ -105,7 +105,7 @@ struct PlaylistServiceBackgroundRefreshTests {
             lifespan: 15 * 60
         )
         
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         mockFetcher.playlistToReturn = cachedPlaylist // Same data, but should still fetch
         
         let service = PlaylistService(

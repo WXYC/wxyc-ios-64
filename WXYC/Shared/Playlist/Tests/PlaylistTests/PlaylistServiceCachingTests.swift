@@ -67,7 +67,7 @@ struct PlaylistServiceCachingTests {
     
     // MARK: - Cache Loading Tests
     
-    @Test("Loads cached playlist on initialization if available")
+    @Test("Loads cached playlist on initialization if available", .timeLimit(.minutes(1)))
     func loadsCachedPlaylistOnInit() async throws {
         // Given - Set up cache with a playlist
         let mockCache = PlaylistServiceMockCache()
@@ -96,7 +96,7 @@ struct PlaylistServiceCachingTests {
         )
         
         // When - Create service (should load from cache)
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
@@ -114,7 +114,7 @@ struct PlaylistServiceCachingTests {
         // Note: fetcher may have been called by the time we check, so we just verify we got cached data
     }
     
-    @Test("Does not load expired cached playlist")
+    @Test("Does not load expired cached playlist", .timeLimit(.minutes(1)))
     func doesNotLoadExpiredCache() async throws {
         // Given - Set up cache with expired playlist
         let mockCache = PlaylistServiceMockCache()
@@ -145,7 +145,7 @@ struct PlaylistServiceCachingTests {
         mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
         
         // When - Create service
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let freshPlaylist = Playlist(
             playcuts: [
                 Playcut(
@@ -209,7 +209,7 @@ struct PlaylistServiceCachingTests {
             lifespan: 15 * 60
         )
         
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let freshPlaylist = Playlist(
             playcuts: [
                 Playcut(
@@ -250,7 +250,7 @@ struct PlaylistServiceCachingTests {
         // Given
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let playlist = Playlist(
             playcuts: [
                 Playcut(
@@ -284,12 +284,12 @@ struct PlaylistServiceCachingTests {
     
     // MARK: - Regular Fetching Caching Tests
     
-    @Test("Regular fetching caches results")
+    @Test("Regular fetching caches results", .timeLimit(.minutes(1)))
     func regularFetchingCachesResults() async throws {
         // Given
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let mockFetcher = MockRemotePlaylistFetcher()
+        let mockFetcher = MockPlaylistFetcher()
         let playlist = Playlist(
             playcuts: [
                 Playcut(

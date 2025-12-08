@@ -11,7 +11,7 @@ import Logger
 import Caching
 
 public final actor PlaylistService: Sendable {
-    private let fetcher: RemotePlaylistFetcher
+    private let fetcher: PlaylistFetcherProtocol
     private let interval: TimeInterval
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
@@ -23,7 +23,7 @@ public final actor PlaylistService: Sendable {
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
 
     public init(
-        fetcher: RemotePlaylistFetcher = RemotePlaylistFetcher(),
+        fetcher: PlaylistFetcherProtocol = PlaylistFetcher(),
         interval: TimeInterval = 30,
         cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist
     ) {
