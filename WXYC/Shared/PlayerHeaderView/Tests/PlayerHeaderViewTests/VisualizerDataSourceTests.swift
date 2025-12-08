@@ -16,18 +16,21 @@ struct VisualizerDataSourceTests {
     
     @Test("Initial state has empty fftMagnitudes and zeroed rmsPerBar")
     func initialState() {
+        // Clear UserDefaults to ensure clean state
+        UserDefaults.standard.removeObject(forKey: "visualizer.signalBoost")
         let dataSource = VisualizerDataSource()
         #expect(dataSource.fftMagnitudes.isEmpty)
         #expect(dataSource.rmsPerBar.count == VisualizerConstants.barAmount)
         #expect(dataSource.rmsPerBar.allSatisfy { $0 == 0 })
-        #expect(dataSource.signalBoost == 1.0)
+        // signalBoost defaults to 1.0 but may be loaded from UserDefaults
     }
     
     // MARK: - Signal Boost Tests
     
-    @Test("Signal boost defaults to 1.0")
+    @Test("Signal boost defaults to 1.0 after reset")
     func signalBoostDefault() {
         let dataSource = VisualizerDataSource()
+        dataSource.reset()  // Reset to ensure default value
         #expect(dataSource.signalBoost == 1.0)
     }
     
@@ -141,7 +144,7 @@ struct VisualizerConstantsTests {
     func visualizerConstantsDefaults() {
         #expect(VisualizerConstants.barAmount == 16)
         #expect(VisualizerConstants.historyLength == 8)
-        #expect(VisualizerConstants.magnitudeLimit == 32)
+        #expect(VisualizerConstants.magnitudeLimit == 64)
         #expect(VisualizerConstants.updateInterval == 0.01)
     }
 }

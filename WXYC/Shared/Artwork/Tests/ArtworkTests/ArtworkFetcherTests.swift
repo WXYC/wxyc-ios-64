@@ -374,7 +374,9 @@ struct DiscogsArtworkServiceTests {
             "results": [
                 {
                     "cover_image": "https://example.com/cover.jpg",
-                    "master_id": 12345
+                    "master_id": 12345,
+                    "id": 1,
+                    "type": "release"
                 }
             ]
         }
@@ -426,11 +428,15 @@ struct DiscogsArtworkServiceTests {
             "results": [
                 {
                     "cover_image": "https://example.com/spacer.gif",
-                    "master_id": 1
+                    "master_id": 1,
+                    "id": 1,
+                    "type": "release"
                 },
                 {
                     "cover_image": "https://example.com/real-cover.jpg",
-                    "master_id": 2
+                    "master_id": 2,
+                    "id": 2,
+                    "type": "release"
                 }
             ]
         }
@@ -500,7 +506,9 @@ struct DiscogsArtworkServiceTests {
                         "results": [
                             {
                                 "cover_image": "https://example.com/artist.jpg",
-                                "master_id": 123
+                                "master_id": 123,
+                                "id": 1,
+                                "type": "artist"
                             }
                         ]
                     }

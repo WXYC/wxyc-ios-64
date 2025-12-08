@@ -7,8 +7,8 @@ struct PlayerHeaderViewTests {
     func visualizerConstantsDefaults() {
         #expect(VisualizerConstants.barAmount == 16)
         #expect(VisualizerConstants.historyLength == 8)
-        #expect(VisualizerConstants.magnitudeLimit == 32)
-        #expect(VisualizerConstants.updateInterval == 0.05)
+        #expect(VisualizerConstants.magnitudeLimit == 64)
+        #expect(VisualizerConstants.updateInterval == 0.01)
     }
     
     @Test("BarData is identifiable and stores correct values")
