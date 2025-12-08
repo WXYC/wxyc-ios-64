@@ -5,7 +5,8 @@ import Analytics
 
 public final actor CacheCoordinator {
     public static let AlbumArt = CacheCoordinator(cache: DiskCache())
-    public static let Playlist = CacheCoordinator(cache: DiskCache())
+    /// Playlist cache uses MigratingDiskCache to migrate from private to shared App Group container
+    public static let Playlist = CacheCoordinator(cache: MigratingDiskCache())
     
     public enum Error: String, LocalizedError, Codable {
         case noCachedResult

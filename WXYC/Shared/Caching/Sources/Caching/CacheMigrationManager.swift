@@ -24,10 +24,20 @@ public enum CacheMigrationManager {
         }
     }
     
+    private static let appGroupID = "group.wxyc.iphone"
+    
     private static func purgeAllCaches() {
-        // Clear disk cache directory
+        // Clear private cache directory
         if let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
             try? FileManager.default.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil)
+                .forEach { try? FileManager.default.removeItem(at: $0) }
+        }
+        
+        // Clear shared container cache directory
+        if let sharedCacheDir = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
+            .appendingPathComponent("Library/Caches", isDirectory: true) {
+            try? FileManager.default.contentsOfDirectory(at: sharedCacheDir, includingPropertiesForKeys: nil)
                 .forEach { try? FileManager.default.removeItem(at: $0) }
         }
     }
