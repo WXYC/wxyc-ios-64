@@ -22,7 +22,19 @@ public struct PlayerHeaderView: View {
     /// 2D matrix tracking historical RMS values per bar
     @State var barHistory: [[Float]]
     
-    public init(previewValues: [Float]? = nil) {
+    /// Selected player controller type for debug switching
+    @State var selectedPlayerType: PlayerControllerType
+    
+    /// Callback when player type is changed
+    var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
+    
+    public init(
+        previewValues: [Float]? = nil,
+        selectedPlayerType: PlayerControllerType = PlayerControllerType.loadPersisted(),
+        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
+    ) {
+        self._selectedPlayerType = State(initialValue: selectedPlayerType)
+        self.onPlayerTypeChanged = onPlayerTypeChanged
         if let values = previewValues {
             _barHistory = State(initialValue: values.map { value in
                 var history = Array(repeating: Float(0), count: VisualizerConstants.historyLength)
@@ -46,12 +58,15 @@ public struct PlayerHeaderView: View {
             VisualizerTimelineView(
                 visualizer: visualizer,
                 barHistory: $barHistory,
+                selectedPlayerType: $selectedPlayerType,
                 isPlaying: Self.controller.isPlaying,
-                rmsPerBar: visualizer.rmsPerBar
-            ) {
-                // Cycle through normalization modes on tap (non-DEBUG builds only)
-                visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
-            }
+                rmsPerBar: visualizer.rmsPerBar,
+                onModeTapped: {
+                    // Cycle through normalization modes on tap (non-DEBUG builds only)
+                    visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
+                },
+                onPlayerTypeChanged: onPlayerTypeChanged
+            )
         }
         .padding(12)
         .background(.ultraThinMaterial)
@@ -60,6 +75,19 @@ public struct PlayerHeaderView: View {
             // Connect visualizer to controller's audio buffer
             Self.controller.setAudioBufferHandler { buffer in
                 visualizer.processBuffer(buffer)
+            }
+        }
+        .onChange(of: selectedPlayerType) { _, newType in
+            // Switch the player when type changes
+            Task { @MainActor in
+                let newPlayer = AudioPlayerController.createPlayer(for: newType)
+                Self.controller.replacePlayer(newPlayer)
+                // Reconnect visualizer to new player's audio buffer
+                Self.controller.setAudioBufferHandler { buffer in
+                    visualizer.processBuffer(buffer)
+                }
+                // Call the callback if provided
+                onPlayerTypeChanged?(newType)
             }
         }
     }

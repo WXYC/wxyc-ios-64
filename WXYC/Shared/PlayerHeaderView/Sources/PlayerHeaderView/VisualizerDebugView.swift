@@ -6,19 +6,45 @@
 //
 
 import SwiftUI
+import Playback
 
 #if DEBUG
 struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
+    @Binding var selectedPlayerType: PlayerControllerType
+    var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
     @Environment(\.dismiss) private var dismiss
     
-    init(visualizer: VisualizerDataSource) {
+    init(
+        visualizer: VisualizerDataSource,
+        selectedPlayerType: Binding<PlayerControllerType>,
+        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
+    ) {
         self.visualizer = visualizer
+        self._selectedPlayerType = selectedPlayerType
+        self.onPlayerTypeChanged = onPlayerTypeChanged
     }
     
     public var body: some View {
         NavigationStack {
             Form {
+                // Player Controller Selection
+                Section {
+                    Picker("Player Controller", selection: $selectedPlayerType) {
+                        ForEach(PlayerControllerType.allCases) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .onChange(of: selectedPlayerType) { _, newValue in
+                        newValue.persist()
+                        onPlayerTypeChanged?(newValue)
+                    }
+                } header: {
+                    Text("Player Controller")
+                } footer: {
+                    Text(selectedPlayerType.shortDescription)
+                }
+                
                 // Display Control
                 Section("Display") {
                     Picker("Show", selection: $visualizer.displayProcessor) {
