@@ -17,14 +17,14 @@ enum HTTPStreamError: Error {
 /// HTTP client for streaming audio data using SwiftNIO
 final class HTTPStreamClient: @unchecked Sendable {
     private let url: URL
-    private let configuration: StreamingAudioConfiguration
+    private let configuration: AVAudioStreamerConfiguration
     private let eventLoopGroup: MultiThreadedEventLoopGroup
     private weak var delegate: (any HTTPStreamClientDelegate)?
 
     private let state: StateBox
     private let channelBox: ChannelBox
 
-    init(url: URL, configuration: StreamingAudioConfiguration, delegate: any HTTPStreamClientDelegate) {
+    init(url: URL, configuration: AVAudioStreamerConfiguration, delegate: any HTTPStreamClientDelegate) {
         self.url = url
         self.configuration = configuration
         self.delegate = delegate

@@ -16,7 +16,7 @@ CURRENT_PROJECT_VERSION = 1
 EXCLUDED_SOURCE_FILE_NAMES = **/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift **/.build/** **/.build/*
 
 // Framework Search Paths
-FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared $(PROJECT_DIR)/WXYC/Shared/Playback/build/Release-iphoneos
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared
 
 // Info.plist
 GENERATE_INFOPLIST_FILE = YES
@@ -26,14 +26,14 @@ INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.music
 INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES
 INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard
 INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7
-INFOPLIST_KEY_UIRequiresFullScreen = YES
+// UIRequiresFullScreen deprecated in iOS 26.0 - removed
 INFOPLIST_KEY_UIStatusBarHidden = NO
 INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent
 INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
 INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
 
 // Library Search Paths
-LIBRARY_SEARCH_PATHS = $(inherited) $(PROJECT_DIR)/WXYC/Shared/RequestService/.build/prebuilts/swift-syntax/602.0.0/swift-6.2-RELEASE-MacroSupport-macos_aarch64/lib
+LIBRARY_SEARCH_PATHS = $(inherited)
 
 // Linker
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks

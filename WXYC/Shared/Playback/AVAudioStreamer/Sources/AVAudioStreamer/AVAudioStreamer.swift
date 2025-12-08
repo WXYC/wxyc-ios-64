@@ -34,7 +34,7 @@ public final class AVAudioStreamer {
     // MARK: - Private Properties
 
     @ObservationIgnored
-    public let configuration: StreamingAudioConfiguration
+    public let configuration: AVAudioStreamerConfiguration
     @ObservationIgnored
     private let httpClient: HTTPStreamClient
     @ObservationIgnored
@@ -64,7 +64,7 @@ public final class AVAudioStreamer {
 
     // MARK: - Initialization
 
-    public init(configuration: StreamingAudioConfiguration) {
+    public init(configuration: AVAudioStreamerConfiguration) {
         self.configuration = configuration
 
         // Create delegate adapters

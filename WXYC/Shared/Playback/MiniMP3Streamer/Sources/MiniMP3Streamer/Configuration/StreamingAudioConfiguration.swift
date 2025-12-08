@@ -1,7 +1,7 @@
 import Foundation
 
 /// Configuration for streaming audio playback
-public struct StreamingAudioConfiguration: Sendable {
+public struct MiniMP3StreamerConfiguration: Sendable {
     /// The URL of the audio stream
     public let url: URL
 
