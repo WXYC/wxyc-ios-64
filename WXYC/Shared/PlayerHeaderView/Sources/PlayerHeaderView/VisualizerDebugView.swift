@@ -8,11 +8,11 @@
 import SwiftUI
 
 #if DEBUG
-public struct VisualizerDebugView: View {
+struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Environment(\.dismiss) private var dismiss
     
-    public init(visualizer: VisualizerDataSource) {
+    init(visualizer: VisualizerDataSource) {
         self.visualizer = visualizer
     }
     
@@ -26,6 +26,7 @@ public struct VisualizerDebugView: View {
                             Text(type.displayName).tag(type)
                         }
                     }
+                    Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
                 }
                 
                 // Processing Control

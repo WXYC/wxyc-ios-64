@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Core
 import WXUI
 import AppIntents
 import PlayerHeaderView
@@ -21,20 +20,12 @@ struct PlaylistView: View {
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     
-    var showFPS: Bool {
-#if DEBUG
-        true
-#else
-        false
-#endif
-    }
-    
     var body: some View {
         ZStack {
             Color.clear
             
             ScrollView(showsIndicators: false) {
-                PlayerHeaderView(showFPS: showFPS)
+                PlayerHeaderView()
 
                 // Siri tip
                 if showingSiriTip {
