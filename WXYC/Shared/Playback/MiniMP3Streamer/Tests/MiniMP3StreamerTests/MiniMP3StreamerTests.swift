@@ -1,10 +1,10 @@
 import Testing
 import Foundation
 import AVFoundation
-@testable import AVAudioStreamer
+@testable import MiniMP3Streamer
 
-@Suite("AVAudioStreamer Tests")
-struct AVAudioStreamerTests {
+@Suite("MiniMP3Streamer Tests")
+struct MiniMP3StreamerTests {
     // Test stream URL
     static let testStreamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
 
@@ -54,7 +54,7 @@ struct AVAudioStreamerTests {
     func testStreamerInitialization() async {
         await MainActor.run {
             let config = StreamingAudioConfiguration(url: Self.testStreamURL)
-            let streamer = AVAudioStreamer(configuration: config)
+            let streamer = MiniMP3Streamer(configuration: config)
 
             #expect(streamer.state == .idle)
             #expect(streamer.volume == 1.0)
@@ -68,7 +68,7 @@ struct AVAudioStreamerTests {
                 url: Self.testStreamURL,
                 autoReconnect: false
             )
-            let streamer = AVAudioStreamer(configuration: config)
+            let streamer = MiniMP3Streamer(configuration: config)
             let delegate = TestDelegate()
             streamer.delegate = delegate
 
@@ -93,7 +93,7 @@ struct AVAudioStreamerTests {
     func testReceivePCMBuffers() async throws {
         try await MainActor.run {
             let config = StreamingAudioConfiguration(url: Self.testStreamURL)
-            let streamer = AVAudioStreamer(configuration: config)
+            let streamer = MiniMP3Streamer(configuration: config)
             let delegate = TestDelegate()
             streamer.delegate = delegate
 
@@ -121,7 +121,7 @@ struct AVAudioStreamerTests {
     func testStateTransitions() async throws {
         try await MainActor.run {
             let config = StreamingAudioConfiguration(url: Self.testStreamURL)
-            let streamer = AVAudioStreamer(configuration: config)
+            let streamer = MiniMP3Streamer(configuration: config)
             let delegate = TestDelegate()
             streamer.delegate = delegate
 
@@ -156,7 +156,7 @@ struct AVAudioStreamerTests {
     func testPauseAndResume() async throws {
         try await MainActor.run {
             let config = StreamingAudioConfiguration(url: Self.testStreamURL)
-            let streamer = AVAudioStreamer(configuration: config)
+            let streamer = MiniMP3Streamer(configuration: config)
 
             // Start streaming
             try await streamer.play()
@@ -192,7 +192,7 @@ struct AVAudioStreamerTests {
     func testVolumeControl() async {
         await MainActor.run {
             let config = StreamingAudioConfiguration(url: Self.testStreamURL)
-            let streamer = AVAudioStreamer(configuration: config)
+            let streamer = MiniMP3Streamer(configuration: config)
 
             // Default volume should be 1.0
             #expect(streamer.volume == 1.0)
@@ -215,20 +215,20 @@ struct AVAudioStreamerTests {
 // MARK: - Test Helpers
 
 @MainActor
-final class TestDelegate: AVAudioStreamerDelegate {
+final class TestDelegate: MiniMP3StreamerDelegate {
     var receivedBuffers: [AVAudioPCMBuffer] = []
     var stateChanges: [StreamingAudioState] = []
     var errors: [Error] = []
 
-    func audioStreamer(didOutput buffer: AVAudioPCMBuffer, at time: AVAudioTime?) {
+    func miniMP3Streamer(didOutput buffer: AVAudioPCMBuffer, at time: AVAudioTime?) {
         receivedBuffers.append(buffer)
     }
 
-    func audioStreamer(didChangeState state: StreamingAudioState) {
+    func miniMP3Streamer(didChangeState state: StreamingAudioState) {
         stateChanges.append(state)
     }
 
-    func audioStreamer(didEncounterError error: Error) {
+    func miniMP3Streamer(didEncounterError error: Error) {
         errors.append(error)
     }
 }
