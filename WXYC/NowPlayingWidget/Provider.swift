@@ -38,11 +38,13 @@ final class Provider: TimelineProvider, Sendable {
             NowPlayingItem.placeholder,
         ]
         
-        let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
+        guard let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst() else {
+            return .placeholder(family: context.family)
+        }
 
         return NowPlayingTimelineEntry(
             nowPlayingItem: nowPlayingItem,
-            recentItems: recentItems,
+            recentItems: Array(recentItems),
             family: context.family
         )
     }
@@ -68,11 +70,16 @@ final class Provider: TimelineProvider, Sendable {
                     )
                 }
 
-            let (nowPlayingItem, recentItems) = nowPlayingItems.popFirst()
+            // Handle empty playlist gracefully with empty state
+            guard let (nowPlayingItem, recentItems) = nowPlayingItems.popFirst() else {
+                completion(.emptyState(family: family))
+                return
+            }
+            
             let entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
-                recentItems: recentItems,
-                family: context.family
+                recentItems: Array(recentItems),
+                family: family
             )
 
             completion(entry)
@@ -89,7 +96,8 @@ final class Provider: TimelineProvider, Sendable {
 
         Task {
             var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
-            var entry: NowPlayingTimelineEntry = .placeholder(family: family)
+            // Default to empty state; will be replaced if we have data
+            var entry: NowPlayingTimelineEntry = .emptyState(family: family)
 
             if context.isPreview {
                 nowPlayingItemsWithArtwork = Array(repeating: .placeholder, count: 4)
@@ -108,13 +116,11 @@ final class Provider: TimelineProvider, Sendable {
                 }
             }
 
-            if nowPlayingItemsWithArtwork.count > 0 {
-                nowPlayingItemsWithArtwork.sort(by: >)
-                let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst()
-                
+            nowPlayingItemsWithArtwork.sort(by: >)
+            if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst() {
                 entry = NowPlayingTimelineEntry(
                     nowPlayingItem: nowPlayingItem,
-                    recentItems: recentItems,
+                    recentItems: Array(recentItems),
                     family: context.family
                 )
             }
