@@ -88,14 +88,6 @@
         "identifier" : "PlaylistTests",
         "name" : "PlaylistTests"
       }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:WXYC\/Shared\/WXUI",
-        "identifier" : "WXUITests",
-        "name" : "WXUITests"
-      }
     }
   ],
   "version" : 1
