@@ -28,14 +28,14 @@ public struct BarData: Identifiable, Equatable {
 
 /// An LCD-style segmented bar chart view for audio visualization
 /// Uses Canvas for GPU-accelerated rendering instead of SwiftUI Charts
-public struct LCDSpectrumAnalyzerView: View {
+struct LCDSpectrumAnalyzerView: View {
     @Environment(\.colorScheme) private var colorScheme
     
-    public let data: [BarData]
-    public let segmentsPerBar: Int
-    public let maxValue: Double
-    public let minBrightness: Double
-    public let maxBrightness: Double
+    let data: [BarData]
+    let segmentsPerBar: Int
+    let maxValue: Double
+    let minBrightness: Double
+    let maxBrightness: Double
     
     // Track previous active states to detect transitions
     @State private var previousActiveStates: [String: Set<Int>] = [:]
@@ -46,7 +46,7 @@ public struct LCDSpectrumAnalyzerView: View {
     private static let hue = 23.0 / 360.0
     private static let transitionDuration: Double = 0.25 // Fast animation
     
-    public init(
+    init(
         data: [BarData],
         maxValue: Double,
         segmentsPerBar: Int = 8,

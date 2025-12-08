@@ -12,27 +12,27 @@ import AVFoundation
 #if os(iOS) || os(tvOS) || os(watchOS)
 
 /// Mock audio session for testing (iOS/tvOS/watchOS)
-public final class MockAudioSession: AudioSessionProtocol {
+final class MockAudioSession: AudioSessionProtocol {
     
     // MARK: - State Tracking
     
-    public var setCategoryCallCount = 0
-    public var setActiveCallCount = 0
+    var setCategoryCallCount = 0
+    var setActiveCallCount = 0
     
-    public var lastCategory: AVAudioSession.Category?
-    public var lastMode: AVAudioSession.Mode?
-    public var lastCategoryOptions: AVAudioSession.CategoryOptions?
-    public var lastActiveState: Bool?
-    public var lastActiveOptions: AVAudioSession.SetActiveOptions?
+    var lastCategory: AVAudioSession.Category?
+    var lastMode: AVAudioSession.Mode?
+    var lastCategoryOptions: AVAudioSession.CategoryOptions?
+    var lastActiveState: Bool?
+    var lastActiveOptions: AVAudioSession.SetActiveOptions?
     
-    public var shouldThrowOnSetCategory = false
-    public var shouldThrowOnSetActive = false
+    var shouldThrowOnSetCategory = false
+    var shouldThrowOnSetActive = false
     
-    public init() {}
+    init() {}
     
     // MARK: - AudioSessionProtocol
     
-    public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
+    func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
         setCategoryCallCount += 1
         lastCategory = category
         lastMode = mode
@@ -43,7 +43,7 @@ public final class MockAudioSession: AudioSessionProtocol {
         }
     }
     
-    public func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
+    func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
         setActiveCallCount += 1
         lastActiveState = active
         lastActiveOptions = options
@@ -55,7 +55,7 @@ public final class MockAudioSession: AudioSessionProtocol {
     
     // MARK: - Test Helpers
     
-    public func reset() {
+    func reset() {
         setCategoryCallCount = 0
         setActiveCallCount = 0
         lastCategory = nil
@@ -103,7 +103,7 @@ public final class MockAudioSession: AudioSessionProtocol {
 
 #endif
 
-public enum MockAudioSessionError: Error {
+enum MockAudioSessionError: Error {
     case setCategoryFailed
     case setActiveFailed
 }

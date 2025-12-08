@@ -52,15 +52,6 @@ final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
     func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
         metadataStorage.map { ($0.key, $0.value) }
     }
-    
-    func reset() {
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-        getCallCount = 0
-        setCallCount = 0
-        lastSetKey = nil
-        lastGetKey = nil
-    }
 }
 
 // MARK: - Mock WebSession for Metadata Service

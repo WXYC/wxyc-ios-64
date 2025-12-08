@@ -32,14 +32,6 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
 
         return artwork
     }
-
-    func reset() {
-        artworkToReturn = nil
-        errorToThrow = nil
-        fetchCount = 0
-        lastPlaycut = nil
-        delaySeconds = 0
-    }
 }
 
 // MARK: - Mock CacheCoordinator
@@ -47,31 +39,10 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
 actor MockCacheCoordinator {
     private var storage: [String: Data] = [:]
 
-    func value<T: Codable>(for key: String) async throws -> T {
-        guard let data = storage[key] else {
-            throw CacheCoordinator.Error.noCachedResult
-        }
-        return try JSONDecoder().decode(T.self, from: data)
-    }
-
-    func set<T: Codable>(value: T, for key: String, lifespan: TimeInterval) {
-        if let data = try? JSONEncoder().encode(value) {
-            storage[key] = data
-        }
-    }
-
     func set(artwork: Image, for key: String) {
         if let data = artwork.pngDataCompatibility {
             storage[key] = data
         }
-    }
-
-    func fetchError(for key: String) async throws -> MultisourceArtworkService.Error {
-        try await value(for: key)
-    }
-
-    func clear() {
-        storage.removeAll()
     }
 
     func hasKey(_ key: String) -> Bool {

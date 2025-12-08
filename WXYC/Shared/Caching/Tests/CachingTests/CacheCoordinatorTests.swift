@@ -63,19 +63,6 @@ final class MockCache: Cache, @unchecked Sendable {
         defer { lock.unlock() }
         return metadataStorage.map { ($0.key, $0.value) }
     }
-
-    func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func count() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage.count
-    }
 }
 
 // MARK: - Test Data Types

@@ -18,23 +18,23 @@ private final class AudioBufferCallbackHolder: @unchecked Sendable {
 /// Handles basic playback control and state management
 @MainActor
 @Observable
-public final class StreamingAudioPlayer: AudioPlayerProtocol {
+final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Public Properties
     
-    public private(set) var isPlaying: Bool = false
-    public private(set) var state: AudioPlayerPlaybackState = .stopped
-    public private(set) var currentURL: URL?
+    private(set) var isPlaying: Bool = false
+    private(set) var state: AudioPlayerPlaybackState = .stopped
+    private(set) var currentURL: URL?
     
     // MARK: - Callbacks
     
     /// Callback for audio buffer data. Called from realtime audio thread.
-    public var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)? {
+    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)? {
         get { audioBufferCallbackHolder.callback }
         set { audioBufferCallbackHolder.callback = newValue }
     }
-    public var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
-    public var onMetadata: (([String: String]) -> Void)?
+    var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
+    var onMetadata: (([String: String]) -> Void)?
     
     // MARK: - Private Properties
     
@@ -44,18 +44,13 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Initialization
     
-    public init() {
+    init() {
         self.player = AudioPlayer()
         setupFrameFilter()
         setupDelegate()
     }
     
     /// Internal initializer for testing with a custom player
-    internal init(player: AudioPlayer) {
-        self.player = player
-        setupFrameFilter()
-        setupDelegate()
-    }
     
     // MARK: - Setup
     
@@ -75,23 +70,23 @@ public final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - AudioPlayerProtocol
     
-    public func play(url: URL) {
+    func play(url: URL) {
         currentURL = url
         player.play(url: url)
         updateState(.buffering)
     }
     
-    public func pause() {
+    func pause() {
         player.pause()
         updateState(.paused)
     }
     
-    public func resume() {
+    func resume() {
         player.resume()
         updateState(.playing)
     }
     
-    public func stop() {
+    func stop() {
         player.stop()
         currentURL = nil
         updateState(.stopped)

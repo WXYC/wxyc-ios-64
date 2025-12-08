@@ -7,7 +7,6 @@
 
 import SwiftUI
 import WidgetKit
-import Core
 
 struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
     let entry: NowPlayingTimelineEntry

@@ -7,19 +7,19 @@
 
 import Foundation
 
-public final class AppleMusicService: MusicService {
-    public let identifier: MusicServiceIdentifier = .appleMusic
+final class AppleMusicService: MusicService {
+    let identifier: MusicServiceIdentifier = .appleMusic
     
-    public init() {}
+    init() {}
     
-    public func canHandle(url: URL) -> Bool {
+    func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         let scheme = url.scheme?.lowercased() ?? ""
         
         return host.contains("music.apple.com") || scheme == "music"
     }
     
-    public func parse(url: URL) -> MusicTrack? {
+    func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         var identifier: String?
@@ -61,12 +61,12 @@ public final class AppleMusicService: MusicService {
         )
     }
     
-    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Artwork is fetched as part of fetchMetadata, return cached value
         return track.artworkURL
     }
     
-    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+    func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         guard let trackId = track.identifier else { return track }
         
         // Extract numeric ID from identifier (could be "album:123" or just "123")

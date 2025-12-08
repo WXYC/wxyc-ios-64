@@ -10,11 +10,10 @@ import UIKit
 import SwiftUI
 import os
 
-public final class PartyHornView: UIView, UIGestureRecognizerDelegate {
+final class PartyHornView: UIView, UIGestureRecognizerDelegate {
     private let soundPlayer = SoundPlayer()
     private let impact = UIImpactFeedbackGenerator(style: .medium)
     private let haptics = Haptics()
-    private let logger = Logger(subsystem: "com.jakebromberg.partyhorn", category: "PartyHornView")
     
     // Composed UIImageView
     private let imageView: UIImageView = {
@@ -59,7 +58,7 @@ public final class PartyHornView: UIView, UIGestureRecognizerDelegate {
     }
     
     // Forward UIImageView properties
-    public var image: UIImage? {
+    var image: UIImage? {
         get { imageView.image }
         set { imageView.image = newValue }
     }
@@ -152,7 +151,6 @@ public final class PartyHornView: UIView, UIGestureRecognizerDelegate {
         case inverted
     }
     
-    private let inversionFilter: CIFilter? = CIFilter(name: "CIColorInvert")
     private let inversionView: UIView = .init()
     private var inversionStyle: InversionStyle = .normal
     private lazy var inversionTimer = RepeatingTimer(initialDelay: 2, interval: 0.5) {

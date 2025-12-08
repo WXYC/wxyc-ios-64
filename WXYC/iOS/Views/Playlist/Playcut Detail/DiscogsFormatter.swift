@@ -35,9 +35,6 @@ struct DiscogsFormatter {
     
     /// Parses Discogs formatting syntax and converts it to SwiftUI Text,
     /// resolving ID-based tags via the provided resolver
-    static func parse(_ text: String, resolver: DiscogsEntityResolver) async -> Text {
-        Text(await parseToAttributedString(text, resolver: resolver))
-    }
     
     /// Parses Discogs formatting syntax and returns an AttributedString with SwiftUI styling,
     /// resolving ID-based tags via the provided resolver

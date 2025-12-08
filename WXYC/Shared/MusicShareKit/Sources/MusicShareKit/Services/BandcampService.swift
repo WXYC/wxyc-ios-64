@@ -7,17 +7,17 @@
 
 import Foundation
 
-public final class BandcampService: MusicService {
-    public let identifier: MusicServiceIdentifier = .bandcamp
+final class BandcampService: MusicService {
+    let identifier: MusicServiceIdentifier = .bandcamp
     
-    public init() {}
+    init() {}
     
-    public func canHandle(url: URL) -> Bool {
+    func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host.contains("bandcamp.com")
     }
     
-    public func parse(url: URL) -> MusicTrack? {
+    func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // Bandcamp URLs:
@@ -41,12 +41,12 @@ public final class BandcampService: MusicService {
         )
     }
     
-    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Artwork is fetched as part of fetchMetadata, return cached value
         return track.artworkURL
     }
     
-    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+    func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         // Bandcamp doesn't have a public API, so we scrape the page for Open Graph tags
         let (data, _) = try await URLSession.shared.data(from: track.url)
         

@@ -51,7 +51,6 @@ public extension UIImage {
         case InvalidObservationType
         case NoObservations
         case Unknown
-        case ModelNotFound
     }
     
     func checkNSFW() async throws -> NSFW {

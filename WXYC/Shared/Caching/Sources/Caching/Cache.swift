@@ -134,13 +134,6 @@ struct DiskCache: Cache, @unchecked Sendable {
         }
     }
     
-    private func removeMetadata(for fileURL: URL) {
-        fileURL.withUnsafeFileSystemRepresentation { path in
-            guard let path else { return }
-            _ = removexattr(path, Self.metadataAttributeName, 0)
-        }
-    }
-    
     private func fileURL(for key: String) -> URL? {
         cacheDirectory?.appendingPathComponent(key)
     }

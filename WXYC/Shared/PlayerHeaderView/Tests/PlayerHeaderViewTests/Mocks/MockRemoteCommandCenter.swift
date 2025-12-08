@@ -35,37 +35,22 @@ public final class MockRemoteCommand: RemoteCommandProtocol {
     }
     
     /// Simulate triggering the command
-    public func simulateTrigger() -> MPRemoteCommandHandlerStatus {
-        guard let handler = targetHandlers.last else {
-            return .commandFailed
-        }
-        // Create a mock event - we can't actually create MPRemoteCommandEvent,
-        // but we can test the handler indirectly
-        // For testing purposes, we'll use a custom approach
-        return .success
-    }
-    
-    public func reset() {
-        isEnabled = false
-        targetHandlers.removeAll()
-        targets.removeAll()
-    }
 }
 
 /// Mock remote command center for testing
-public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
+final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     
-    public let playCommand: RemoteCommandProtocol
-    public let pauseCommand: RemoteCommandProtocol
-    public let stopCommand: RemoteCommandProtocol
-    public let togglePlayPauseCommand: RemoteCommandProtocol
-    public let skipForwardCommand: RemoteCommandProtocol
-    public let skipBackwardCommand: RemoteCommandProtocol
-    public let nextTrackCommand: RemoteCommandProtocol
-    public let previousTrackCommand: RemoteCommandProtocol
-    public let seekForwardCommand: RemoteCommandProtocol
-    public let seekBackwardCommand: RemoteCommandProtocol
-    public let changePlaybackPositionCommand: RemoteCommandProtocol
+    let playCommand: RemoteCommandProtocol
+    let pauseCommand: RemoteCommandProtocol
+    let stopCommand: RemoteCommandProtocol
+    let togglePlayPauseCommand: RemoteCommandProtocol
+    let skipForwardCommand: RemoteCommandProtocol
+    let skipBackwardCommand: RemoteCommandProtocol
+    let nextTrackCommand: RemoteCommandProtocol
+    let previousTrackCommand: RemoteCommandProtocol
+    let seekForwardCommand: RemoteCommandProtocol
+    let seekBackwardCommand: RemoteCommandProtocol
+    let changePlaybackPositionCommand: RemoteCommandProtocol
     
     private let _playCommand = MockRemoteCommand()
     private let _pauseCommand = MockRemoteCommand()
@@ -79,7 +64,7 @@ public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     private let _seekBackwardCommand = MockRemoteCommand()
     private let _changePlaybackPositionCommand = MockRemoteCommand()
     
-    public init() {
+    init() {
         playCommand = _playCommand
         pauseCommand = _pauseCommand
         stopCommand = _stopCommand
@@ -95,22 +80,7 @@ public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     
     // MARK: - Test Helpers
     
-    public var mockPlayCommand: MockRemoteCommand { _playCommand }
-    public var mockPauseCommand: MockRemoteCommand { _pauseCommand }
-    public var mockStopCommand: MockRemoteCommand { _stopCommand }
-    public var mockTogglePlayPauseCommand: MockRemoteCommand { _togglePlayPauseCommand }
-    
-    public func reset() {
-        _playCommand.reset()
-        _pauseCommand.reset()
-        _stopCommand.reset()
-        _togglePlayPauseCommand.reset()
-        _skipForwardCommand.reset()
-        _skipBackwardCommand.reset()
-        _nextTrackCommand.reset()
-        _previousTrackCommand.reset()
-        _seekForwardCommand.reset()
-        _seekBackwardCommand.reset()
-        _changePlaybackPositionCommand.reset()
-    }
+    var mockPlayCommand: MockRemoteCommand { _playCommand }
+    var mockPauseCommand: MockRemoteCommand { _pauseCommand }
+    var mockTogglePlayPauseCommand: MockRemoteCommand { _togglePlayPauseCommand }
 }

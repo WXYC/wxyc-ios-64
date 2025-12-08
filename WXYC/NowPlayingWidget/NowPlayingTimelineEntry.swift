@@ -7,7 +7,6 @@
 
 import WidgetKit
 import SwiftUI
-import Core
 import AppServices
 
 struct NowPlayingTimelineEntry: TimelineEntry {

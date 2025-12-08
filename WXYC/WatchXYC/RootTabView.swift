@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import Core
 import Playlist
 import Playback
 import AppServices

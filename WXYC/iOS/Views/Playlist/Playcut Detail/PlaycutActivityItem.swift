@@ -7,7 +7,6 @@
 //
 
 import UIKit
-import Core
 import Playlist
 
 nonisolated extension UIActivity.ActivityType {

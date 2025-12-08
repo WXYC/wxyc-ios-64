@@ -7,8 +7,6 @@
 //
 
 import SwiftUI
-import Core
-import WXUI
 
 struct ArtworkLightboxView: View {
     let image: UIImage

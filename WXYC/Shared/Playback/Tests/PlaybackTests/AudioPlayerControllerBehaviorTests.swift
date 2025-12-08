@@ -11,7 +11,6 @@
 
 import Testing
 import AVFoundation
-import Analytics
 @testable import Playback
 
 // MARK: - Player Controller Behavior Protocol

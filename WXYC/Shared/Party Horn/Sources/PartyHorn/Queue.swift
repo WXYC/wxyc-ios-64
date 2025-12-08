@@ -33,11 +33,6 @@ internal struct Queue<T>: RandomAccessCollection {
         }
     }
     
-    mutating func dequeue() -> T? {
-        guard !isEmpty else { return nil }
-        return queue.removeFirst()
-    }
-    
     private var queue: [T] = []
 }
 

@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-public struct RequestSentHUD: View {
+struct RequestSentHUD: View {
     @State private var contentSize: CGSize = .zero
 
     public var body: some View {

@@ -7,17 +7,17 @@
 
 import Foundation
 
-public final class SoundCloudService: MusicService {
-    public let identifier: MusicServiceIdentifier = .soundcloud
+final class SoundCloudService: MusicService {
+    let identifier: MusicServiceIdentifier = .soundcloud
     
-    public init() {}
+    init() {}
     
-    public func canHandle(url: URL) -> Bool {
+    func canHandle(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         return host.contains("soundcloud.com")
     }
     
-    public func parse(url: URL) -> MusicTrack? {
+    func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
         // SoundCloud URLs format:
@@ -39,12 +39,12 @@ public final class SoundCloudService: MusicService {
         )
     }
     
-    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
         // Artwork is fetched as part of fetchMetadata, return cached value
         return track.artworkURL
     }
     
-    public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
+    func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         // Use SoundCloud oEmbed API (no auth required)
         // API: https://soundcloud.com/oembed?format=json&url=[url]
         let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""

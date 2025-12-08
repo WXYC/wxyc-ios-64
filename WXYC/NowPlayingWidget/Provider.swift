@@ -7,7 +7,6 @@
 
 import WidgetKit
 import SwiftUI
-import Core
 import PostHog
 import Secrets
 import Analytics

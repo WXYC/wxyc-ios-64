@@ -8,11 +8,11 @@
 import Foundation
 import SwiftUI
 
-public struct WXYCLogoShape: Shape {
+struct WXYCLogoShape: Shape {
     // Original aspect ratio from SVG viewBox: 2000 x 750
     private static let aspectRatio: CGFloat = 2000 / 750
 
-    public init() {}
+    init() {}
 
     public func path(
         in rect: CGRect

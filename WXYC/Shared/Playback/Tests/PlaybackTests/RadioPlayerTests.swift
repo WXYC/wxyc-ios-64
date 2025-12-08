@@ -1,7 +1,6 @@
 import Testing
 import Foundation
 import AVFoundation
-import Core
 import Analytics
 @testable import Playback
 

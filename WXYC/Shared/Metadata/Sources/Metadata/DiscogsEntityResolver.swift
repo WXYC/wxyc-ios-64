@@ -104,16 +104,13 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
 // MARK: - Discogs API Response Models
 
 private struct DiscogsArtist: Codable, Sendable {
-    let id: Int
     let name: String
 }
 
 private struct DiscogsRelease: Codable, Sendable {
-    let id: Int
     let title: String
 }
 
 private struct DiscogsMaster: Codable, Sendable {
-    let id: Int
     let title: String
 }

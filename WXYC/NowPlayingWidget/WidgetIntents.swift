@@ -8,7 +8,6 @@
 
 import Foundation
 import AppIntents
-import Core
 
 // MARK: - Widget Playback Intents
 
