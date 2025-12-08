@@ -22,11 +22,7 @@ public struct PlayerHeaderView: View {
     /// 2D matrix tracking historical RMS values per bar
     @State var barHistory: [[Float]]
     
-    /// Whether to show the FPS debug overlay
-    public var showFPS: Bool
-    
-    public init(previewValues: [Float]? = nil, showFPS: Bool = false) {
-        self.showFPS = showFPS
+    public init(previewValues: [Float]? = nil) {
         if let values = previewValues {
             _barHistory = State(initialValue: values.map { value in
                 var history = Array(repeating: Float(0), count: VisualizerConstants.historyLength)
@@ -51,8 +47,7 @@ public struct PlayerHeaderView: View {
                 visualizer: visualizer,
                 barHistory: $barHistory,
                 isPlaying: Self.controller.isPlaying,
-                rmsPerBar: visualizer.rmsPerBar,
-                showFPS: showFPS
+                rmsPerBar: visualizer.rmsPerBar
             ) {
                 // Cycle through normalization modes on tap (non-DEBUG builds only)
                 visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
@@ -70,16 +65,12 @@ public struct PlayerHeaderView: View {
     }
     
     /// Configures the signal boost for the audio visualizer
-    public func signalBoost(_ boost: Float) -> Self {
-        visualizer.signalBoost = boost
-        return self
-    }
 }
 
 // MARK: - Helper Functions
 
 /// Creates an initial bar history array with optional preview values
-public func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
+func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
     if let values = previewValues {
         return values.map { value in
             var history = Array(repeating: Float(0), count: VisualizerConstants.historyLength)
@@ -100,7 +91,7 @@ public func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
     ZStack {
         Rectangle()
             .foregroundStyle(WXYCBackground())
-        PlayerHeaderView(showFPS: true)
+        PlayerHeaderView()
             .padding()
     }
 }

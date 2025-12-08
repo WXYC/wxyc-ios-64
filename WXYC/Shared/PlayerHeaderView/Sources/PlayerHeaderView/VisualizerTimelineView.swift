@@ -6,17 +6,16 @@
 //
 
 import SwiftUI
-import Playback
 
 // MARK: - Visualizer Timeline View
 
 /// A SwiftUI view that displays an animated audio visualizer using historical bar data
 public struct VisualizerTimelineView: View {
-    @Bindable public var visualizer: VisualizerDataSource
-    @Binding public var barHistory: [[Float]]
-    public var isPlaying: Bool
-    public var rmsPerBar: [Float]
-    public var onModeTapped: (() -> Void)?
+    @Bindable var visualizer: VisualizerDataSource
+    @Binding var barHistory: [[Float]]
+    var isPlaying: Bool
+    var rmsPerBar: [Float]
+    var onModeTapped: (() -> Void)?
     
     /// Computed property to get the current display data based on displayProcessor
     private var displayData: [Float] {
@@ -69,18 +68,12 @@ public struct VisualizerTimelineView: View {
     @State private var fpsCounter = FPSCounter()
     @State private var showModeIndicator = false
     
-#if DEBUG
-    let showFPS = true
-#else
-    let showFPS = false
-#endif
-    
     /// Animation runs during playback OR while dots are falling
     private var isAnimating: Bool {
         isPlaying || isFalling
     }
     
-    public init(visualizer: VisualizerDataSource, barHistory: Binding<[[Float]]>, isPlaying: Bool, rmsPerBar: [Float], showFPS: Bool = false, onModeTapped: (() -> Void)? = nil) {
+    public init(visualizer: VisualizerDataSource, barHistory: Binding<[[Float]]>, isPlaying: Bool, rmsPerBar: [Float], onModeTapped: (() -> Void)? = nil) {
         self.visualizer = visualizer
         self._barHistory = barHistory
         self.isPlaying = isPlaying
@@ -125,7 +118,7 @@ public struct VisualizerTimelineView: View {
             )
             .cornerRadius(10)
             .overlay(alignment: .topTrailing) {
-                if showFPS {
+                if visualizer.showFPS {
                     FPSDebugView(fps: fpsCounter.fps)
                         .padding(8)
                 }

@@ -11,15 +11,15 @@ import AVFoundation
 import Accelerate
 
 /// Configuration constants for the audio visualizer
-public enum VisualizerConstants {
-    public static let updateInterval = 0.01
-    public static let barAmount = 16
-    public static let historyLength = 8
-    public static let magnitudeLimit: Float = 64
+enum VisualizerConstants {
+    static let updateInterval = 0.01
+    static let barAmount = 16
+    static let historyLength = 8
+    static let magnitudeLimit: Float = 64
     
     /// Size of circular buffer for rolling peak normalization
     /// At 100Hz (0.01s interval), 6000 samples = 1 minute window
-    public static let peakHistorySize = 6000
+    static let peakHistorySize = 6000
 }
 
 /// Normalization mode for adaptive audio visualization
@@ -119,6 +119,9 @@ public final class VisualizerDataSource: @unchecked Sendable {
     public var maxBrightness: Double = 1.0 {
         didSet { maxBrightness = max(minBrightness, min(maxBrightness, 1.5)) }
     }
+    
+    /// Whether to show the FPS debug overlay
+    public var showFPS: Bool = false
     
     /// Legacy property for backwards compatibility - returns RMS mode
     @available(*, deprecated, message: "Use fftNormalizationMode or rmsNormalizationMode instead")
