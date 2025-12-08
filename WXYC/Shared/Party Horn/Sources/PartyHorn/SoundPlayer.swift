@@ -7,6 +7,7 @@
 
 import AVFoundation
 
+@MainActor
 final class SoundPlayer {
     private var player: AVAudioPlayer
     
@@ -23,15 +24,11 @@ final class SoundPlayer {
         player.prepareToPlay()
     }
     
-    let audioQueue = DispatchQueue(label: "AudioControlQueue")
-    
     func play() {
-        audioQueue.async {
-            self.player.currentTime = 0
-            if !self.player.isPlaying {
-                self.player.stop()
-                self.player.play()
-            }
+        player.currentTime = 0
+        if !player.isPlaying {
+            player.stop()
+            player.play()
         }
     }
 }
