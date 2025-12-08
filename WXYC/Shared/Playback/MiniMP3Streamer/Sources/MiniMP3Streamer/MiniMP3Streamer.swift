@@ -35,7 +35,7 @@ public final class MiniMP3Streamer {
     // MARK: - Private Properties
 
     @ObservationIgnored
-    public let configuration: StreamingAudioConfiguration
+    public let configuration: MiniMP3StreamerConfiguration
     @ObservationIgnored
     private let httpClient: HTTPStreamClient
     @ObservationIgnored
@@ -65,7 +65,7 @@ public final class MiniMP3Streamer {
 
     // MARK: - Initialization
 
-    public init(configuration: StreamingAudioConfiguration) {
+    public init(configuration: MiniMP3StreamerConfiguration) {
         self.configuration = configuration
 
         // Create delegate adapters
