@@ -12,6 +12,7 @@ import AppIntents
 import PlayerHeaderView
 import PartyHorn
 import Playlist
+import PostHog
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
@@ -65,6 +66,9 @@ struct PlaylistView: View {
         }
         .fullScreenCover(isPresented: $showingPartyHorn) {
             PartyHornSwiftUIView()
+                .onAppear {
+                    PostHogSDK.shared.capture("party horn presented")
+                }
         }
         .onAppear {
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
