@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Playback
 
 // MARK: - Visualizer Timeline View
 
@@ -13,9 +14,11 @@ import SwiftUI
 public struct VisualizerTimelineView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var barHistory: [[Float]]
+    @Binding var selectedPlayerType: PlayerControllerType
     var isPlaying: Bool
     var rmsPerBar: [Float]
     var onModeTapped: (() -> Void)?
+    var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
     
     /// Computed property to get the current display data based on displayProcessor
     private var displayData: [Float] {
@@ -73,11 +76,21 @@ public struct VisualizerTimelineView: View {
         isPlaying || isFalling
     }
     
-    public init(visualizer: VisualizerDataSource, barHistory: Binding<[[Float]]>, isPlaying: Bool, rmsPerBar: [Float], onModeTapped: (() -> Void)? = nil) {
+    public init(
+        visualizer: VisualizerDataSource,
+        barHistory: Binding<[[Float]]>,
+        selectedPlayerType: Binding<PlayerControllerType>,
+        isPlaying: Bool,
+        rmsPerBar: [Float],
+        onModeTapped: (() -> Void)? = nil,
+        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
+    ) {
         self.visualizer = visualizer
         self._barHistory = barHistory
+        self._selectedPlayerType = selectedPlayerType
         self.isPlaying = isPlaying
         self.rmsPerBar = rmsPerBar
+        self.onPlayerTypeChanged = onPlayerTypeChanged
         #if DEBUG
         self.onModeTapped = nil
         #else
@@ -147,8 +160,12 @@ public struct VisualizerTimelineView: View {
             showModeIndicatorBriefly()
         }
         .sheet(isPresented: $showDebugSheet) {
-            VisualizerDebugView(visualizer: visualizer)
-                .presentationDetents([.fraction(0.75)])
+            VisualizerDebugView(
+                visualizer: visualizer,
+                selectedPlayerType: $selectedPlayerType,
+                onPlayerTypeChanged: onPlayerTypeChanged
+            )
+            .presentationDetents([.fraction(0.75)])
         }
 #endif
     }
