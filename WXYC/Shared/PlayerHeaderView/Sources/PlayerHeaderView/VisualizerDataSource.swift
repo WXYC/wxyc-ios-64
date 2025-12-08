@@ -139,18 +139,20 @@ public final class VisualizerDataSource: @unchecked Sendable {
     }
     
     /// Minimum brightness for LCD segments (bottom segments)
-    public var minBrightness: Double = 0.90 {
-        didSet {
-            minBrightness = max(0.0, min(minBrightness, maxBrightness))
-            UserDefaults.standard.set(minBrightness, forKey: Keys.minBrightness)
+    public var minBrightness: Double {
+        get { _minBrightness }
+        set {
+            _minBrightness = max(0.0, min(newValue, _maxBrightness))
+            UserDefaults.standard.set(_minBrightness, forKey: Keys.minBrightness)
         }
     }
     
     /// Maximum brightness for LCD segments (top segments)
-    public var maxBrightness: Double = 1.0 {
-        didSet {
-            maxBrightness = max(minBrightness, min(maxBrightness, 1.5))
-            UserDefaults.standard.set(maxBrightness, forKey: Keys.maxBrightness)
+    public var maxBrightness: Double {
+        get { _maxBrightness }
+        set {
+            _maxBrightness = max(_minBrightness, min(newValue, 1.5))
+            UserDefaults.standard.set(_maxBrightness, forKey: Keys.maxBrightness)
         }
     }
     
@@ -169,6 +171,8 @@ public final class VisualizerDataSource: @unchecked Sendable {
     // MARK: - Private Properties
     
     private var _signalBoost: Float = 1.0
+    private var _minBrightness: Double = 0.90
+    private var _maxBrightness: Double = 1.0
     private let rmsSmoothing: Float = 0.0  // No smoothing for maximum frame-to-frame sensitivity
     private let fftProcessor: FFTProcessor
     private let rmsProcessor: RMSProcessor
@@ -223,12 +227,12 @@ public final class VisualizerDataSource: @unchecked Sendable {
             rmsProcessingEnabled = defaults.bool(forKey: Keys.rmsProcessingEnabled)
         }
         
-        // Brightness
-        if defaults.object(forKey: Keys.minBrightness) != nil {
-            minBrightness = defaults.double(forKey: Keys.minBrightness)
-        }
+        // Brightness - load directly to backing vars to avoid re-persisting
         if defaults.object(forKey: Keys.maxBrightness) != nil {
-            maxBrightness = defaults.double(forKey: Keys.maxBrightness)
+            _maxBrightness = defaults.double(forKey: Keys.maxBrightness)
+        }
+        if defaults.object(forKey: Keys.minBrightness) != nil {
+            _minBrightness = defaults.double(forKey: Keys.minBrightness)
         }
         
         // Debug flags
@@ -292,7 +296,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         fftProcessor.reset()
         rmsProcessor.reset()
         
-        // Reset persisted settings to defaults
+        // Reset persisted settings to defaults (use backing vars where available)
         _signalBoost = 1.0
         signalBoostEnabled = true
         fftNormalizationMode = .none
@@ -300,8 +304,8 @@ public final class VisualizerDataSource: @unchecked Sendable {
         displayProcessor = .rms
         fftProcessingEnabled = true
         rmsProcessingEnabled = true
-        minBrightness = 0.90
-        maxBrightness = 1.0
+        _minBrightness = 0.90
+        _maxBrightness = 1.0
         showFPS = false
         
         // Clear persisted values (will use defaults on next launch)
