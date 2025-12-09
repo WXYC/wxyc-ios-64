@@ -21,6 +21,7 @@
 		236629B02D73908D0057E268 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 236629AF2D73908D0057E268 /* OpenNSFW */; };
 		238049F42ED7E03900DD28A4 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 238049F32ED7E03900DD28A4 /* WXUI */; };
 		2386DDE32ED7DA9400F3C501 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2386DDE22ED7DA9400F3C501 /* WXUI */; };
+		238DA3182EE7E820004EA68C /* ObservableDefaults in Frameworks */ = {isa = PBXBuildFile; productRef = 238DA3172EE7E820004EA68C /* ObservableDefaults */; };
 		2395669B2D7524CE0094A215 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669A2D7524CE0094A215 /* Core */; };
 		2395669D2D7524CE0094A215 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2395669C2D7524CE0094A215 /* Logger */; };
 		2397F56D2EDC22F500F6594F /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 2397F56C2EDC22F500F6594F /* PlayerHeaderView */; };
@@ -346,6 +347,7 @@
 				236609AF2D72D0270057E268 /* Logger in Frameworks */,
 				23DB847B2D828093000EB53A /* Analytics in Frameworks */,
 				23D382DA2EE16B9D00A032BE /* (null) in Frameworks */,
+				238DA3182EE7E820004EA68C /* ObservableDefaults in Frameworks */,
 				2397F6342EDC239400F6594F /* PlayerHeaderView in Frameworks */,
 				236609B12D72D0270057E268 /* OpenNSFW in Frameworks */,
 				236609AD2D72D0270057E268 /* Core in Frameworks */,
@@ -561,6 +563,7 @@
 				23A8E2972ED564AD001818C9 /* Vortex */,
 				23D383CF2EE170A000A032BE /* LaminatedGlass */,
 				23B35B532ED50C0F00EFD77B /* MusicShareKit */,
+				238DA3172EE7E820004EA68C /* ObservableDefaults */,
 			);
 			productName = WXYC;
 			productReference = 2366FA1D2D72CE880057E268 /* WXYC.app */;
@@ -673,6 +676,7 @@
 				23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */,
 				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */,
 				23D383CE2EE170A000A032BE /* XCLocalSwiftPackageReference "../LaminatedGlass" */,
+				238DA3162EE7E820004EA68C /* XCRemoteSwiftPackageReference "ObservableDefaults" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2366FA1E2D72CE880057E268 /* Products */;
@@ -914,7 +918,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 3.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -925,9 +929,9 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
-				TVOS_DEPLOYMENT_TARGET = 26.0;
+				TVOS_DEPLOYMENT_TARGET = 18.6;
 				VALIDATE_PRODUCT = YES;
-				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
 			};
 			name = TestFlight;
 		};
@@ -1303,7 +1307,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 3.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -1317,8 +1321,8 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
-				TVOS_DEPLOYMENT_TARGET = 26.0;
-				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+				TVOS_DEPLOYMENT_TARGET = 18.6;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
 			};
 			name = Debug;
 		};
@@ -1369,7 +1373,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 3.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -1380,9 +1384,9 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
-				TVOS_DEPLOYMENT_TARGET = 26.0;
+				TVOS_DEPLOYMENT_TARGET = 18.6;
 				VALIDATE_PRODUCT = YES;
-				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
 			};
 			name = Release;
 		};
@@ -1687,6 +1691,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		238DA3162EE7E820004EA68C /* XCRemoteSwiftPackageReference "ObservableDefaults" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/fatbobman/ObservableDefaults";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.7.2;
+			};
+		};
 		23A8E2902ED564AD001818C3 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
@@ -1823,6 +1835,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */;
 			productName = WXUI;
+		};
+		238DA3172EE7E820004EA68C /* ObservableDefaults */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 238DA3162EE7E820004EA68C /* XCRemoteSwiftPackageReference "ObservableDefaults" */;
+			productName = ObservableDefaults;
 		};
 		2395669A2D7524CE0094A215 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
