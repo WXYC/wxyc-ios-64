@@ -82,9 +82,11 @@ struct PlaycutMetadataSection: View {
             releaseTitle: "Bitches Brew"
         ),
         artwork: nil,
-        isShowingLightbox: $isShowingLightbox,
+        isLightboxActive: $isShowingLightbox,
+        hideArtwork: false,
         artworkNamespace: previewNamespace,
-        artworkGeometryID: "preview-artwork"
+        artworkGeometryID: "preview-artwork",
+        onArtworkTap: {}
     )
     
     PlaycutMetadataSection(

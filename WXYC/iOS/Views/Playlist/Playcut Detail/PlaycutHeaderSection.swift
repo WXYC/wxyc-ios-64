@@ -13,25 +13,21 @@ import Playlist
 struct PlaycutHeaderSection: View {
     let playcut: Playcut
     let artwork: UIImage?
-    @Binding var isShowingLightbox: Bool
+    @Binding var isLightboxActive: Bool
+    let hideArtwork: Bool
     let artworkNamespace: Namespace.ID
     let artworkGeometryID: String
+    let onArtworkTap: () -> Void
     
     var body: some View {
         VStack {
             // Artwork
-            Button {
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                    isShowingLightbox = true
-                }
-            } label: {
+            Button(action: onArtworkTap) {
                 if let artwork = artwork {
                     Image(uiImage: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .cornerRadius(12)
-                        .padding(.bottom, 16)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 } else {
                     PlaceholderArtworkView(
                         cornerRadius: 12,
@@ -46,8 +42,11 @@ struct PlaycutHeaderSection: View {
             .accessibilityLabel("Expand artwork")
             .accessibilityHint("Tap to view full-screen")
             .accessibilityAddTraits(.isButton)
-            .matchedGeometryEffect(id: artworkGeometryID, in: artworkNamespace, isSource: !isShowingLightbox)
+            .opacity(hideArtwork ? 0 : 1)
+            .matchedGeometryEffect(id: artworkGeometryID, in: artworkNamespace, isSource: !isLightboxActive)
             .shadow(radius: 20, x: 0, y: 10)
+            .disabled(artwork == nil)
+            .padding(.bottom, 16)
             
             // Song info
             VStack {
