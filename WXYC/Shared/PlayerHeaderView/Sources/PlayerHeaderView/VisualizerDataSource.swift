@@ -88,14 +88,14 @@ public final class VisualizerDataSource: @unchecked Sendable {
     
     /// Normalization mode for FFT processor
     @DefaultsKey(userDefaultsKey: "visualizer.fftNormalizationMode")
-    public var fftNormalizationMode: NormalizationMode = .none {
+    public var fftNormalizationMode: NormalizationMode = .perBandEMA {
         didSet { fftProcessor.setNormalizationMode(fftNormalizationMode) }
     }
     
     /// Frequency weighting exponent for FFT processor (compensates for natural roll-off)
     /// 0 = raw/bass-heavy, 0.5 = balanced, 1.0+ = treble-emphasized
     @DefaultsKey(userDefaultsKey: "visualizer.fftFrequencyWeighting")
-    public var fftFrequencyWeighting: Float = 0.5 {
+    public var fftFrequencyWeighting: Float = 1.0 {
         didSet { fftProcessor.setFrequencyWeightingExponent(fftFrequencyWeighting) }
     }
     
@@ -145,14 +145,6 @@ public final class VisualizerDataSource: @unchecked Sendable {
     @DefaultsKey(userDefaultsKey: "visualizer.showFPS")
     public var showFPS: Bool = false
     
-    /// Legacy property for backwards compatibility - returns RMS mode
-    @available(*, deprecated, message: "Use fftNormalizationMode or rmsNormalizationMode instead")
-    @Ignore
-    public var normalizationMode: NormalizationMode {
-        get { rmsNormalizationMode }
-        set { rmsNormalizationMode = newValue }
-    }
-    
     // MARK: - Private Properties (not persisted)
     
     @Ignore
@@ -167,16 +159,22 @@ public final class VisualizerDataSource: @unchecked Sendable {
     // MARK: - Initialization
     
     public init() {
-        self.fftProcessor = FFTProcessor(normalizationMode: .none)
-        self.rmsProcessor = RMSProcessor(normalizationMode: .ema)
+        // Read persisted values directly from UserDefaults before self is fully initialized
+        // (property wrappers aren't accessible until after init completes)
+        let storedNormMode = UserDefaults.standard.string(forKey: "visualizer.fftNormalizationMode")
+            .flatMap { NormalizationMode(rawValue: $0) } ?? .perBandEMA
+        let storedWeighting = UserDefaults.standard.object(forKey: "visualizer.fftFrequencyWeighting") as? Float ?? 1.0
+        let storedRmsNormMode = UserDefaults.standard.string(forKey: "visualizer.rmsNormalizationMode")
+            .flatMap { NormalizationMode(rawValue: $0) } ?? .ema
+        
+        self.fftProcessor = FFTProcessor(
+            normalizationMode: storedNormMode,
+            frequencyWeightingExponent: storedWeighting
+        )
+        self.rmsProcessor = RMSProcessor(normalizationMode: storedRmsNormMode)
         
         // Start listening for UserDefaults changes (required by ObservableDefaults)
         observerStarter()
-        
-        // Sync processor state with loaded settings
-        fftProcessor.setNormalizationMode(fftNormalizationMode)
-        fftProcessor.setFrequencyWeightingExponent(fftFrequencyWeighting)
-        rmsProcessor.setNormalizationMode(rmsNormalizationMode)
     }
     
     // MARK: - Public Methods

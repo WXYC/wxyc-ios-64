@@ -32,7 +32,11 @@ struct PlaylistView: View {
                 PlayerHeaderView(
                     visualizer: visualizer,
                     selectedPlayerType: $selectedPlayerType,
-                    onPresentDebug: { showVisualizerDebug = true }
+                    onDebugTapped: {
+                        #if DEBUG
+                        showVisualizerDebug = true
+                        #endif
+                    }
                 )
 
                 // Siri tip
@@ -67,7 +71,6 @@ struct PlaylistView: View {
                         .safeAreaPadding(.bottom)
                     }
                 }
-
             }
             .padding(.horizontal, 12)
             .coordinateSpace(name: "scroll")
