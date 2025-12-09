@@ -14,11 +14,10 @@ import Playback
 public struct VisualizerTimelineView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var barHistory: [[Float]]
-    @Binding var selectedPlayerType: PlayerControllerType
     var isPlaying: Bool
     var rmsPerBar: [Float]
     var onModeTapped: (() -> Void)?
-    var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
+    var onDebugTapped: (() -> Void)?
     
     /// Computed property to get the current display data based on displayProcessor
     private var displayData: [Float] {
@@ -42,10 +41,6 @@ public struct VisualizerTimelineView: View {
             return visualizer.rmsNormalizationMode
         }
     }
-    
-    #if DEBUG
-    @State private var showDebugSheet = false
-    #endif
     
     /// Falling dot positions (one per bar) - used when playback stops
     @State private var fallingDots: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
@@ -79,18 +74,16 @@ public struct VisualizerTimelineView: View {
     public init(
         visualizer: VisualizerDataSource,
         barHistory: Binding<[[Float]]>,
-        selectedPlayerType: Binding<PlayerControllerType>,
         isPlaying: Bool,
         rmsPerBar: [Float],
         onModeTapped: (() -> Void)? = nil,
-        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
+        onDebugTapped: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._barHistory = barHistory
-        self._selectedPlayerType = selectedPlayerType
         self.isPlaying = isPlaying
         self.rmsPerBar = rmsPerBar
-        self.onPlayerTypeChanged = onPlayerTypeChanged
+        self.onDebugTapped = onDebugTapped
         #if DEBUG
         self.onModeTapped = nil
         #else
@@ -155,17 +148,7 @@ public struct VisualizerTimelineView: View {
         }
 #if DEBUG
         .onTapGesture {
-            showDebugSheet = true
-            onModeTapped?()
-            showModeIndicatorBriefly()
-        }
-        .sheet(isPresented: $showDebugSheet) {
-            VisualizerDebugView(
-                visualizer: visualizer,
-                selectedPlayerType: $selectedPlayerType,
-                onPlayerTypeChanged: onPlayerTypeChanged
-            )
-            .presentationDetents([.fraction(0.75)])
+            onDebugTapped?()
         }
 #endif
     }

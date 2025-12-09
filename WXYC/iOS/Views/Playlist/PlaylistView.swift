@@ -18,6 +18,9 @@ struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
     
+    @State private var visualizer = VisualizerDataSource()
+    @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
+    @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     
@@ -26,7 +29,11 @@ struct PlaylistView: View {
             Color.clear
             
             ScrollView(showsIndicators: false) {
-                PlayerHeaderView()
+                PlayerHeaderView(
+                    visualizer: visualizer,
+                    selectedPlayerType: $selectedPlayerType,
+                    onPresentDebug: { showVisualizerDebug = true }
+                )
 
                 // Siri tip
                 if showingSiriTip {
@@ -71,6 +78,15 @@ struct PlaylistView: View {
                     PostHogSDK.shared.capture("party horn presented")
                 }
         }
+        #if DEBUG
+        .sheet(isPresented: $showVisualizerDebug) {
+            VisualizerDebugView(
+                visualizer: visualizer,
+                selectedPlayerType: $selectedPlayerType
+            )
+            .presentationDetents([.fraction(0.75)])
+        }
+        #endif
         .onAppear {
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
         }
