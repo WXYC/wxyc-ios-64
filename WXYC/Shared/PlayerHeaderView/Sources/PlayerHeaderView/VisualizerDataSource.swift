@@ -30,6 +30,8 @@ public enum NormalizationMode: String, Sendable, CaseIterable, Hashable {
     case ema
     /// Circular buffer - exact window, may have step changes when peaks exit
     case circularBuffer
+    /// Per-band EMA - each frequency band normalized independently (auto-balances frequencies)
+    case perBandEMA
     
     /// Returns the next mode in the cycle
     public var next: NormalizationMode {
@@ -45,6 +47,7 @@ public enum NormalizationMode: String, Sendable, CaseIterable, Hashable {
         case .none: return "None"
         case .ema: return "EMA"
         case .circularBuffer: return "Circular Buffer"
+        case .perBandEMA: return "Per-Band (Auto)"
         }
     }
 }
@@ -117,11 +120,11 @@ public final class VisualizerDataSource: @unchecked Sendable {
     }
     
     /// Frequency weighting exponent for FFT processor (compensates for natural roll-off)
-    /// 0 = raw/bass-heavy, 0.5 = balanced, 1.0 = treble-emphasized
+    /// 0 = raw/bass-heavy, 0.5 = balanced, 1.0+ = treble-emphasized
     public var fftFrequencyWeighting: Float {
         get { _fftFrequencyWeighting }
         set {
-            _fftFrequencyWeighting = max(0.0, min(newValue, 1.0))
+            _fftFrequencyWeighting = max(0.0, min(newValue, 1.5))
             fftProcessor.setFrequencyWeightingExponent(_fftFrequencyWeighting)
             UserDefaults.standard.set(_fftFrequencyWeighting, forKey: Keys.fftFrequencyWeighting)
         }

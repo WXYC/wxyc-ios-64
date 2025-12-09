@@ -99,6 +99,39 @@ final class CircularBufferNormalizer: @unchecked Sendable, Normalizer {
     }
 }
 
+/// Per-band EMA normalization - each frequency band has its own peak tracker
+/// This automatically balances the visualization across all frequencies regardless of content.
+/// Bass-heavy music won't dominate; quiet high frequencies will be boosted relative to their own history.
+/// Note: @unchecked Sendable because mutable state is protected by Mutex in the processors
+final class PerBandEMANormalizer: @unchecked Sendable, Normalizer {
+    private var runningPeaks: [Float]
+    private let peakDecay: Float = 0.9997  // Slightly faster decay than global EMA (~30s half-life at 100Hz)
+    private let normalizationFloor: Float = 0.001
+    
+    init(bandCount: Int = VisualizerConstants.barAmount) {
+        self.runningPeaks = Array(repeating: 0.001, count: bandCount)
+    }
+    
+    func normalize(_ values: inout [Float], outputScale: Float) {
+        let count = min(values.count, runningPeaks.count)
+        
+        for i in 0..<count {
+            // Update per-band running peak: slow decay, instant rise
+            runningPeaks[i] = max(values[i], runningPeaks[i] * peakDecay)
+            runningPeaks[i] = max(runningPeaks[i], normalizationFloor)
+            
+            // Normalize this band by its own running peak
+            values[i] = (values[i] / runningPeaks[i]) * outputScale
+        }
+    }
+    
+    func reset() {
+        for i in 0..<runningPeaks.count {
+            runningPeaks[i] = normalizationFloor
+        }
+    }
+}
+
 extension NormalizationMode {
     /// Create a normalizer instance for this mode
     func createNormalizer() -> any Normalizer {
@@ -109,6 +142,8 @@ extension NormalizationMode {
             return EMANormalizer()
         case .circularBuffer:
             return CircularBufferNormalizer()
+        case .perBandEMA:
+            return PerBandEMANormalizer()
         }
     }
 }
