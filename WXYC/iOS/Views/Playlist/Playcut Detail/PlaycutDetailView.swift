@@ -20,7 +20,9 @@ struct PlaycutDetailView: View {
     @State private var metadata: PlaycutMetadata = .empty
     @State private var isLoadingMetadata = true
     @State private var expandedBio = false
-    @State private var isShowingArtworkLightbox = false
+    @State private var isLightboxActive = false
+    @State private var showLightboxContainer = false
+    @State private var hideHeaderArtwork = false
     @Namespace private var artworkNamespace
     
     @Environment(\.dismiss) private var dismiss
@@ -32,98 +34,102 @@ struct PlaycutDetailView: View {
         "playcut-artwork-\(playcut.id)"
     }
     
+    private let heroSpringResponse: Double = 0.45
+    private let heroSpringAnimation = Animation.spring(response: 0.45, dampingFraction: 0.85)
+    
     var body: some View {
-        ZStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Artwork and basic info
-                    PlaycutHeaderSection(
-                        playcut: playcut,
-                        artwork: artwork,
-                        isShowingLightbox: $isShowingArtworkLightbox,
-                        artworkNamespace: artworkNamespace,
-                        artworkGeometryID: artworkGeometryID
-                    )
-                    .padding(.top, 30)
-                    
-                    // Metadata section
-                    if isLoadingMetadata {
-                        PlaycutLoadingSection()
-                            .foregroundStyle(.white)
-                    } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil {
-                        PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
-                            .frame(maxWidth: .infinity)
-                            .foregroundStyle(.white)
-                    }
-                    
-                    // Streaming links
-                    if metadata.hasStreamingLinks || !isLoadingMetadata {
-                        StreamingLinksSection(
-                            metadata: metadata,
-                            isLoading: isLoadingMetadata,
-                            onServiceTapped: { service in
-                                PostHogSDK.shared.capture(
-                                    "streaming link tapped",
-                                    properties: [
-                                        "service": service.name,
-                                        "artist": playcut.artistName,
-                                        "album": playcut.releaseTitle
-                                    ]
-                                )
-                            }
-                        )
-                        .foregroundStyle(.white)
-                    }
-                    
-                    // External links (Discogs, Wikipedia)
-                    if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
-                        ExternalLinksSection(
-                            metadata: metadata,
-                            onLinkTapped: { service in
-                                PostHogSDK.shared.capture(
-                                    "external link tapped",
-                                    properties: [
-                                        "service": service,
-                                        "artist": playcut.artistName,
-                                        "album": playcut.releaseTitle
-                                    ]
-                                )
-                            }
-                        )
-                        .foregroundStyle(.white)
-                    }
-                    
-                    Spacer(minLength: 40)
-                }
-                .padding(.horizontal)
-            }
-            .scrollContentBackground(.hidden)
-            .background(WXYCBackground())
-            .onAppear {
-                PostHogSDK.shared.capture(
-                    "playcut detail view presented",
-                    properties: [
-                        "artist": playcut.artistName,
-                        "album": playcut.releaseTitle
-                    ]
+        ScrollView {
+            VStack(spacing: 24) {
+                // Artwork and basic info
+                PlaycutHeaderSection(
+                    playcut: playcut,
+                    artwork: artwork,
+                    isLightboxActive: $isLightboxActive,
+                    hideArtwork: hideHeaderArtwork,
+                    artworkNamespace: artworkNamespace,
+                    artworkGeometryID: artworkGeometryID,
+                    onArtworkTap: presentArtworkLightbox
                 )
+                .padding(.top, 30)
+                
+                // Metadata section
+                if isLoadingMetadata {
+                    PlaycutLoadingSection()
+                        .foregroundStyle(.white)
+                } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil {
+                    PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                }
+                
+                // Streaming links
+                if metadata.hasStreamingLinks || !isLoadingMetadata {
+                    StreamingLinksSection(
+                        metadata: metadata,
+                        isLoading: isLoadingMetadata,
+                        onServiceTapped: { service in
+                            PostHogSDK.shared.capture(
+                                "streaming link tapped",
+                                properties: [
+                                    "service": service.name,
+                                    "artist": playcut.artistName,
+                                    "album": playcut.releaseTitle
+                                ]
+                            )
+                        }
+                    )
+                    .foregroundStyle(.white)
+                }
+                
+                // External links (Discogs, Wikipedia)
+                if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
+                    ExternalLinksSection(
+                        metadata: metadata,
+                        onLinkTapped: { service in
+                            PostHogSDK.shared.capture(
+                                "external link tapped",
+                                properties: [
+                                    "service": service,
+                                    "artist": playcut.artistName,
+                                    "album": playcut.releaseTitle
+                                ]
+                            )
+                        }
+                    )
+                    .foregroundStyle(.white)
+                }
+                
+                Spacer(minLength: 40)
             }
-            .task {
-                await loadMetadata()
-            }
-            
-            if isShowingArtworkLightbox, let artwork {
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+        .scrollContentBackground(.hidden)
+        .background(WXYCBackground())
+        .onAppear {
+            PostHogSDK.shared.capture(
+                "playcut detail view presented",
+                properties: [
+                    "artist": playcut.artistName,
+                    "album": playcut.releaseTitle
+                ]
+            )
+        }
+        .task {
+            await loadMetadata()
+        }
+        .overlay {
+            if showLightboxContainer, let artwork {
                 ArtworkLightboxView(
                     image: artwork,
                     namespace: artworkNamespace,
-                    geometryID: artworkGeometryID
+                    geometryID: artworkGeometryID,
+                    isActive: isLightboxActive,
+                    cornerRadius: 12
                 ) {
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                        isShowingArtworkLightbox = false
-                    }
+                    dismissArtworkLightbox()
                 }
-                .transition(.opacity)
-                .zIndex(1)
+                .transition(.identity)
             }
         }
     }
@@ -135,6 +141,29 @@ struct PlaycutDetailView: View {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.metadata = fetchedMetadata
                 self.isLoadingMetadata = false
+            }
+        }
+    }
+    
+    private func presentArtworkLightbox() {
+        guard artwork != nil else { return }
+        hideHeaderArtwork = true
+        showLightboxContainer = true
+        withAnimation(heroSpringAnimation) {
+            isLightboxActive = true
+        }
+    }
+    
+    private func dismissArtworkLightbox() {
+        withAnimation(heroSpringAnimation) {
+            isLightboxActive = false
+        }
+        
+        // Allow the matched geometry animation to complete before revealing the source.
+        DispatchQueue.main.asyncAfter(deadline: .now() + heroSpringResponse) {
+            if !isLightboxActive {
+                hideHeaderArtwork = false
+                showLightboxContainer = false
             }
         }
     }

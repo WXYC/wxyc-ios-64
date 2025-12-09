@@ -12,40 +12,68 @@ struct ArtworkLightboxView: View {
     let image: UIImage
     let namespace: Namespace.ID
     let geometryID: String
+    let isActive: Bool
+    let cornerRadius: CGFloat
     let onDismiss: () -> Void
     
     @State private var scale: CGFloat = 1
     @State private var gestureScale: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var accumulatedOffset: CGSize = .zero
-    @State private var backgroundOpacity: CGFloat = 1
+    @State private var backgroundOpacity: CGFloat = 0
     
     private var effectiveScale: CGFloat { scale * gestureScale }
+    @State private var animatedCornerRadius: CGFloat = 12
+    @State private var shadowOpacity: CGFloat = 1
     
     var body: some View {
-        ZStack {
-            Rectangle()
-                .ignoresSafeArea()
-                .foregroundStyle(Material.ultraThinMaterial.opacity(backgroundOpacity))
-                .onTapGesture {
-                    dismiss()
-                }
-            
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .matchedGeometryEffect(id: geometryID, in: namespace, isSource: true)
-                .scaleEffect(effectiveScale)
-                .offset(offset)
-                .simultaneousGesture(dragGesture)
-                .gesture(magnificationGesture)
-                .onTapGesture(count: 2, perform: toggleZoom)
-                .accessibilityLabel("Dismiss artwork")
-                .accessibilityHint("Swipe down or tap background to close")
+        GeometryReader { geometry in
+            ZStack {
+                Rectangle()
+                    .foregroundStyle(Material.ultraThinMaterial.opacity(backgroundOpacity))
+                    .onTapGesture {
+                        dismiss()
+                    }
+                
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: animatedCornerRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.3 * shadowOpacity), radius: 20 * shadowOpacity, x: 0, y: 10 * shadowOpacity)
+                    .matchedGeometryEffect(id: geometryID, in: namespace, isSource: isActive)
+                    .scaleEffect(effectiveScale)
+                    .offset(offset)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(dragGesture)
+                    .gesture(magnificationGesture)
+                    .onTapGesture(count: 2, perform: toggleZoom)
+                    .accessibilityLabel("Dismiss artwork")
+                    .accessibilityHint("Swipe down or tap background to close")
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
+        .ignoresSafeArea()
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: offset)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: backgroundOpacity)
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: animatedCornerRadius)
+        .animation(.spring(response: 0.45, dampingFraction: 0.85), value: shadowOpacity)
         .accessibilityAction(.escape, dismiss)
+        .onAppear {
+            animatedCornerRadius = cornerRadius
+            shadowOpacity = 1
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                backgroundOpacity = 1
+                animatedCornerRadius = 0
+                shadowOpacity = 0
+            }
+        }
+        .onChange(of: isActive) { _, active in
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                backgroundOpacity = active ? 1 : 0
+                animatedCornerRadius = active ? 0 : cornerRadius
+                shadowOpacity = active ? 0 : 1
+            }
+        }
         .onDisappear {
             resetState()
         }
@@ -115,7 +143,8 @@ struct ArtworkLightboxView: View {
         scale = 1
         gestureScale = 1
         resetOffsets()
-        backgroundOpacity = 1
+        backgroundOpacity = 0
+        shadowOpacity = 1
     }
     
     private func resetOffsets() {
