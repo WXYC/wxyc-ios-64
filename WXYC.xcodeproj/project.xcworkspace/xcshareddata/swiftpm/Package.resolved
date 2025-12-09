@@ -1,5 +1,5 @@
 {
-  "originHash" : "1be98b15b6a1cd8390a7cbd5106621d798113e195fbe3baa7dc0898bad9a9d15",
+  "originHash" : "9ec0d8db5914392a997f805efbfe940d2856065ca195462bfe8a90c89167eb1a",
   "pins" : [
     {
       "identity" : "obfuscatemacro",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "5fd8dfe96142229d67aaeb8d274c584dec8f732b",
         "version" : "0.12.0"
+      }
+    },
+    {
+      "identity" : "observabledefaults",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/fatbobman/ObservableDefaults",
+      "state" : {
+        "revision" : "e47f77885e2adcf5682dad77d98e0bb2c787a609",
+        "version" : "1.7.2"
       }
     },
     {

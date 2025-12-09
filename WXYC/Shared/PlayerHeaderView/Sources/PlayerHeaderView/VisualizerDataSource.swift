@@ -9,6 +9,7 @@
 import Foundation
 import AVFoundation
 import Accelerate
+import ObservableDefaults
 
 /// Configuration constants for the audio visualizer
 enum VisualizerConstants {
@@ -33,21 +34,13 @@ public enum NormalizationMode: String, Sendable, CaseIterable, Hashable {
     /// Per-band EMA - each frequency band normalized independently (auto-balances frequencies)
     case perBandEMA
     
-    /// Returns the next mode in the cycle
-    public var next: NormalizationMode {
-        let all = Self.allCases
-        let currentIndex = all.firstIndex(of: self)!
-        let nextIndex = (currentIndex + 1) % all.count
-        return all[nextIndex]
-    }
-    
     /// Display name for UI
     public var displayName: String {
         switch self {
-        case .none: return "None"
-        case .ema: return "EMA"
-        case .circularBuffer: return "Circular Buffer"
-        case .perBandEMA: return "Per-Band (Auto)"
+        case .none: "None"
+        case .ema: "EMA"
+        case .circularBuffer: "Circular Buffer"
+        case .perBandEMA: "Per-Band (Auto)"
         }
     }
 }
@@ -60,9 +53,9 @@ public enum ProcessorType: String, Sendable, CaseIterable, Hashable {
     
     public var displayName: String {
         switch self {
-        case .fft: return "FFT"
-        case .rms: return "RMS"
-        case .both: return "Both"
+        case .fft: "FFT"
+        case .rms: "RMS"
+        case .both: "Both"
         }
     }
 }
@@ -70,79 +63,53 @@ public enum ProcessorType: String, Sendable, CaseIterable, Hashable {
 /// Processes audio buffers to produce FFT magnitudes and RMS values for visualization.
 /// Note: Not @MainActor because processBuffer is called from realtime audio thread.
 /// Observable property updates are dispatched to MainActor internally.
-@Observable
+@ObservableDefaults(autoInit: false)
 public final class VisualizerDataSource: @unchecked Sendable {
     
-    // MARK: - UserDefaults Keys
-    
-    private enum Keys {
-        static let signalBoost = "visualizer.signalBoost"
-        static let signalBoostEnabled = "visualizer.signalBoostEnabled"
-        static let fftNormalizationMode = "visualizer.fftNormalizationMode"
-        static let rmsNormalizationMode = "visualizer.rmsNormalizationMode"
-        static let fftFrequencyWeighting = "visualizer.fftFrequencyWeighting"
-        static let displayProcessor = "visualizer.displayProcessor"
-        static let fftProcessingEnabled = "visualizer.fftProcessingEnabled"
-        static let rmsProcessingEnabled = "visualizer.rmsProcessingEnabled"
-        static let minBrightness = "visualizer.minBrightness"
-        static let maxBrightness = "visualizer.maxBrightness"
-        static let showFPS = "visualizer.showFPS"
-    }
-    
-    // MARK: - Public Properties
+    // MARK: - Observable Output (not persisted)
     
     /// FFT magnitude values for visualization
-    public private(set) var fftMagnitudes: [Float] = []
+    @ObservableOnly
+    public var fftMagnitudes: [Float] = []
     
     /// RMS values per frequency bar
-    public private(set) var rmsPerBar: [Float]
+    @ObservableOnly
+    public var rmsPerBar: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
+    
+    // MARK: - Persisted Settings
     
     /// Signal boost multiplier for amplifying visualization (1.0 = no boost)
-    public var signalBoost: Float {
-        get { _signalBoost }
-        set {
-            _signalBoost = max(0.1, min(newValue, 10.0))
-            UserDefaults.standard.set(_signalBoost, forKey: Keys.signalBoost)
-        }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.signalBoost")
+    public var signalBoost: Float = 1.0
     
     /// Whether signal boost is applied (when false, boost is bypassed regardless of value)
-    public var signalBoostEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(signalBoostEnabled, forKey: Keys.signalBoostEnabled) }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.signalBoostEnabled")
+    public var signalBoostEnabled: Bool = true
     
     /// Normalization mode for FFT processor
+    @DefaultsKey(userDefaultsKey: "visualizer.fftNormalizationMode")
     public var fftNormalizationMode: NormalizationMode = .none {
-        didSet {
-            fftProcessor.setNormalizationMode(fftNormalizationMode)
-            UserDefaults.standard.set(fftNormalizationMode.rawValue, forKey: Keys.fftNormalizationMode)
-        }
+        didSet { fftProcessor.setNormalizationMode(fftNormalizationMode) }
     }
     
     /// Frequency weighting exponent for FFT processor (compensates for natural roll-off)
     /// 0 = raw/bass-heavy, 0.5 = balanced, 1.0+ = treble-emphasized
-    public var fftFrequencyWeighting: Float {
-        get { _fftFrequencyWeighting }
-        set {
-            _fftFrequencyWeighting = max(0.0, min(newValue, 1.5))
-            fftProcessor.setFrequencyWeightingExponent(_fftFrequencyWeighting)
-            UserDefaults.standard.set(_fftFrequencyWeighting, forKey: Keys.fftFrequencyWeighting)
-        }
+    @DefaultsKey(userDefaultsKey: "visualizer.fftFrequencyWeighting")
+    public var fftFrequencyWeighting: Float = 0.5 {
+        didSet { fftProcessor.setFrequencyWeightingExponent(fftFrequencyWeighting) }
     }
     
     /// Normalization mode for RMS processor
+    @DefaultsKey(userDefaultsKey: "visualizer.rmsNormalizationMode")
     public var rmsNormalizationMode: NormalizationMode = .ema {
-        didSet {
-            rmsProcessor.setNormalizationMode(rmsNormalizationMode)
-            UserDefaults.standard.set(rmsNormalizationMode.rawValue, forKey: Keys.rmsNormalizationMode)
-        }
+        didSet { rmsProcessor.setNormalizationMode(rmsNormalizationMode) }
     }
     
     /// Which processor's output to display in the visualizer
     /// Automatically enables the required processor(s) when changed
-    public var displayProcessor: ProcessorType = .rms {
+    @DefaultsKey(userDefaultsKey: "visualizer.displayProcessor")
+    public var displayProcessor: ProcessorType = .fft {
         didSet {
-            UserDefaults.standard.set(displayProcessor.rawValue, forKey: Keys.displayProcessor)
             // Auto-enable required processors, disable unused ones to save CPU
             switch displayProcessor {
             case .fft:
@@ -159,119 +126,57 @@ public final class VisualizerDataSource: @unchecked Sendable {
     }
     
     /// Whether FFT processing is enabled (saves CPU when disabled)
-    public var fftProcessingEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(fftProcessingEnabled, forKey: Keys.fftProcessingEnabled) }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.fftProcessingEnabled")
+    public var fftProcessingEnabled: Bool = true
     
     /// Whether RMS processing is enabled (saves CPU when disabled)
-    public var rmsProcessingEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(rmsProcessingEnabled, forKey: Keys.rmsProcessingEnabled) }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.rmsProcessingEnabled")
+    public var rmsProcessingEnabled: Bool = true
     
     /// Minimum brightness for LCD segments (bottom segments)
-    public var minBrightness: Double {
-        get { _minBrightness }
-        set {
-            _minBrightness = max(0.0, min(newValue, _maxBrightness))
-            UserDefaults.standard.set(_minBrightness, forKey: Keys.minBrightness)
-        }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.minBrightness")
+    public var minBrightness: Double = 0.90
     
     /// Maximum brightness for LCD segments (top segments)
-    public var maxBrightness: Double {
-        get { _maxBrightness }
-        set {
-            _maxBrightness = max(_minBrightness, min(newValue, 1.5))
-            UserDefaults.standard.set(_maxBrightness, forKey: Keys.maxBrightness)
-        }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.maxBrightness")
+    public var maxBrightness: Double = 1.0
     
     /// Whether to show the FPS debug overlay
-    public var showFPS: Bool = false {
-        didSet { UserDefaults.standard.set(showFPS, forKey: Keys.showFPS) }
-    }
+    @DefaultsKey(userDefaultsKey: "visualizer.showFPS")
+    public var showFPS: Bool = false
     
     /// Legacy property for backwards compatibility - returns RMS mode
     @available(*, deprecated, message: "Use fftNormalizationMode or rmsNormalizationMode instead")
+    @Ignore
     public var normalizationMode: NormalizationMode {
         get { rmsNormalizationMode }
         set { rmsNormalizationMode = newValue }
     }
     
-    // MARK: - Private Properties
+    // MARK: - Private Properties (not persisted)
     
-    private var _signalBoost: Float = 1.0
-    private var _fftFrequencyWeighting: Float = 0.5  // Default: balanced
-    private var _minBrightness: Double = 0.90
-    private var _maxBrightness: Double = 1.0
+    @Ignore
     private let rmsSmoothing: Float = 0.0  // No smoothing for maximum frame-to-frame sensitivity
+    
+    @Ignore
     private let fftProcessor: FFTProcessor
+    
+    @Ignore
     private let rmsProcessor: RMSProcessor
     
     // MARK: - Initialization
     
     public init() {
-        self.rmsPerBar = Array(repeating: 0, count: VisualizerConstants.barAmount)
         self.fftProcessor = FFTProcessor(normalizationMode: .none)
         self.rmsProcessor = RMSProcessor(normalizationMode: .ema)
         
-        // Load persisted settings
-        loadPersistedSettings()
-    }
-    
-    // MARK: - Persistence
-    
-    private func loadPersistedSettings() {
-        let defaults = UserDefaults.standard
+        // Start listening for UserDefaults changes (required by ObservableDefaults)
+        observerStarter()
         
-        // Signal boost
-        if defaults.object(forKey: Keys.signalBoost) != nil {
-            _signalBoost = defaults.float(forKey: Keys.signalBoost)
-        }
-        if defaults.object(forKey: Keys.signalBoostEnabled) != nil {
-            signalBoostEnabled = defaults.bool(forKey: Keys.signalBoostEnabled)
-        }
-        
-        // Normalization modes
-        if let fftModeRaw = defaults.string(forKey: Keys.fftNormalizationMode),
-           let fftMode = NormalizationMode(rawValue: fftModeRaw) {
-            fftNormalizationMode = fftMode
-            fftProcessor.setNormalizationMode(fftMode)
-        }
-        if let rmsModeRaw = defaults.string(forKey: Keys.rmsNormalizationMode),
-           let rmsMode = NormalizationMode(rawValue: rmsModeRaw) {
-            rmsNormalizationMode = rmsMode
-            rmsProcessor.setNormalizationMode(rmsMode)
-        }
-        
-        // Frequency weighting
-        if defaults.object(forKey: Keys.fftFrequencyWeighting) != nil {
-            _fftFrequencyWeighting = defaults.float(forKey: Keys.fftFrequencyWeighting)
-            fftProcessor.setFrequencyWeightingExponent(_fftFrequencyWeighting)
-        }
-        
-        // Display processor (also sets processing flags via didSet)
-        if let displayRaw = defaults.string(forKey: Keys.displayProcessor),
-           let display = ProcessorType(rawValue: displayRaw) {
-            displayProcessor = display
-        } else {
-            // Apply default processing flags for default display mode (.rms)
-            fftProcessingEnabled = false
-            rmsProcessingEnabled = true
-        }
-        
-        // Brightness - load directly to backing vars to avoid re-persisting
-        if defaults.object(forKey: Keys.maxBrightness) != nil {
-            _maxBrightness = defaults.double(forKey: Keys.maxBrightness)
-        }
-        if defaults.object(forKey: Keys.minBrightness) != nil {
-            _minBrightness = defaults.double(forKey: Keys.minBrightness)
-        }
-        
-        // Debug flags
-        if defaults.object(forKey: Keys.showFPS) != nil {
-            showFPS = defaults.bool(forKey: Keys.showFPS)
-        }
+        // Sync processor state with loaded settings
+        fftProcessor.setNormalizationMode(fftNormalizationMode)
+        fftProcessor.setFrequencyWeightingExponent(fftFrequencyWeighting)
+        rmsProcessor.setNormalizationMode(rmsNormalizationMode)
     }
     
     // MARK: - Public Methods
@@ -285,10 +190,11 @@ public final class VisualizerDataSource: @unchecked Sendable {
         let boostedData: UnsafeMutablePointer<Float>
         let needsCleanup: Bool
         
-        // Apply signal boost if enabled and needed
-        if signalBoostEnabled && _signalBoost != 1.0 {
+        // Apply signal boost if enabled and needed (clamp to valid range)
+        let clampedBoost = max(0.1, min(signalBoost, 10.0))
+        if signalBoostEnabled && clampedBoost != 1.0 {
             boostedData = UnsafeMutablePointer<Float>.allocate(capacity: frameLength)
-            var boost = _signalBoost
+            var boost = clampedBoost
             vDSP_vsmul(channelData, 1, &boost, boostedData, 1, vDSP_Length(frameLength))
             needsCleanup = true
         } else {
@@ -329,20 +235,17 @@ public final class VisualizerDataSource: @unchecked Sendable {
         fftProcessor.reset()
         rmsProcessor.reset()
         
-        // Reset persisted settings to defaults (use backing vars where available)
-        _signalBoost = 1.0
+        // Reset persisted settings to defaults
+        signalBoost = 1.0
         signalBoostEnabled = true
         fftNormalizationMode = .none
-        fftFrequencyWeighting = 0.5  // Balanced
+        fftFrequencyWeighting = 0.5
         rmsNormalizationMode = .ema
         // displayProcessor's didSet will set the processing flags appropriately
         displayProcessor = .rms
-        _minBrightness = 0.90
-        _maxBrightness = 1.0
+        minBrightness = 0.90
+        maxBrightness = 1.0
         showFPS = false
-        
-        // Clear persisted values (will use defaults on next launch)
-        clearPersistedSettings()
     }
     
     /// Sets the signal boost level
@@ -354,26 +257,8 @@ public final class VisualizerDataSource: @unchecked Sendable {
     public func resetSignalBoost() {
         signalBoost = 1.0
     }
-    
-    /// Clears all persisted settings from UserDefaults
-    private func clearPersistedSettings() {
-        let defaults = UserDefaults.standard
-        defaults.removeObject(forKey: Keys.signalBoost)
-        defaults.removeObject(forKey: Keys.signalBoostEnabled)
-        defaults.removeObject(forKey: Keys.fftNormalizationMode)
-        defaults.removeObject(forKey: Keys.fftFrequencyWeighting)
-        defaults.removeObject(forKey: Keys.rmsNormalizationMode)
-        defaults.removeObject(forKey: Keys.displayProcessor)
-        defaults.removeObject(forKey: Keys.fftProcessingEnabled)
-        defaults.removeObject(forKey: Keys.rmsProcessingEnabled)
-        defaults.removeObject(forKey: Keys.minBrightness)
-        defaults.removeObject(forKey: Keys.maxBrightness)
-        defaults.removeObject(forKey: Keys.showFPS)
-    }
-    
 }
 
 /// Legacy typealias for backwards compatibility
 @available(*, deprecated, renamed: "VisualizerDataSource")
 public typealias AudioVisualizer = VisualizerDataSource
-
