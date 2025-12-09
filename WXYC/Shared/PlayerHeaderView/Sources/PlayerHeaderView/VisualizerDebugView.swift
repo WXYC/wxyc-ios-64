@@ -9,13 +9,13 @@ import SwiftUI
 import Playback
 
 #if DEBUG
-struct VisualizerDebugView: View {
+public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
     var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
     @Environment(\.dismiss) private var dismiss
     
-    init(
+    public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
         onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
