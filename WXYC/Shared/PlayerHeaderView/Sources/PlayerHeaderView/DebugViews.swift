@@ -75,6 +75,7 @@ struct ModeIndicatorView: View {
         case .none: "waveform.slash"
         case .ema: "waveform.path"
         case .circularBuffer: "clock.arrow.circlepath"
+        case .perBandEMA: "slider.horizontal.3"
         }
     }
     
@@ -83,6 +84,7 @@ struct ModeIndicatorView: View {
         case .none: "Off"
         case .ema: "EMA"
         case .circularBuffer: "Buffer"
+        case .perBandEMA: "Per-Band"
         }
     }
     
