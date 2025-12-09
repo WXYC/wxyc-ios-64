@@ -21,6 +21,19 @@ public final actor PlaylistService: Sendable {
     
     /// Collection of continuations for broadcasting to multiple observers
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
+    
+    /// Task that loads the initial cached playlist. Awaited before first yield to prevent
+    /// race conditions where observers subscribe before cache is loaded.
+    /// 
+    /// Note: This is marked `nonisolated(unsafe)` because it's assigned once during `init`
+    /// (which is nonisolated in actors) and only read afterwards. This is safe because:
+    /// 1. The write happens before any async work can read it
+    /// 2. Task is a reference type and the reference itself doesn't change after init
+    private nonisolated(unsafe) var cacheLoadTask: Task<Void, Never>?
+    
+    /// Whether the initial cache load has completed. Used to avoid awaiting the task
+    /// on subsequent subscriptions.
+    private var cacheLoaded = false
 
     public init(
         fetcher: PlaylistFetcherProtocol = PlaylistFetcher(),
@@ -30,13 +43,19 @@ public final actor PlaylistService: Sendable {
         self.fetcher = fetcher
         self.interval = interval
         self.cacheCoordinator = cacheCoordinator
-        Task {
-            await loadCachedPlaylist()
+        
+        // Start loading cached playlist immediately.
+        // Observers will await this task before receiving their first value.
+        cacheLoadTask = Task { [self] in
+            await self.loadCachedPlaylist()
         }
     }
     
-    /// Load cached playlist if available and not expired
+    /// Load cached playlist if available and not expired.
+    /// Called once at initialization.
     private func loadCachedPlaylist() async {
+        defer { cacheLoaded = true }
+        
         do {
             let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
             currentPlaylist = cachedPlaylist
@@ -48,22 +67,47 @@ public final actor PlaylistService: Sendable {
         }
     }
     
+    /// Check if the cached playlist has expired or doesn't exist.
+    /// Used to determine if a foreground refresh is needed.
+    public func isCacheExpired() async -> Bool {
+        do {
+            // Attempt to read from cache - this will throw if expired or missing
+            let _: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
+            return false
+        } catch {
+            return true
+        }
+    }
+    
     /// Fetch playlist and cache it, always fetching fresh data (ignores cache).
     /// Used for background refresh to ensure we always get the latest data.
+    ///
+    /// Important: This method does NOT replace valid data with empty playlists.
+    /// If the fetch fails (returning `.empty`), existing cached data is preserved.
     public func fetchAndCachePlaylist() async -> Playlist {
         // Always fetch fresh data, ignoring cache
         let playlist = await fetcher.fetchPlaylist()
+        
+        // Only cache and broadcast non-empty playlists, OR if we don't have any data yet.
+        // This prevents network errors (which return .empty) from clearing valid cached data.
+        let shouldUpdate = playlist != .empty || currentPlaylist == .empty
+        
+        if shouldUpdate {
+            // Cache the fresh playlist (this will overwrite any existing cache)
+            await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
 
-        // Cache the fresh playlist (this will overwrite any existing cache)
-        await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+            // Update current playlist and broadcast if changed
+            if playlist != currentPlaylist {
+                currentPlaylist = playlist
+                broadcast(playlist)
+            }
 
-        // Update current playlist and broadcast if changed
-        if playlist != currentPlaylist {
-            currentPlaylist = playlist
-            broadcast(playlist)
+            Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries")
+        } else {
+            Log(.warning, "Ignoring empty playlist from background refresh - keeping existing data with \(currentPlaylist.entries.count) entries")
         }
-
-        Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries")
+        
+        // Return the fetched playlist (may be empty), but in-memory state is preserved
         return playlist
     }
 
@@ -118,8 +162,15 @@ public final actor PlaylistService: Sendable {
         }
     }
     
-    private func addContinuation(_ continuation: AsyncStream<Playlist>.Continuation, for id: UUID) {
+    private func addContinuation(_ continuation: AsyncStream<Playlist>.Continuation, for id: UUID) async {
         continuations[id] = continuation
+        
+        // Wait for initial cache load to complete before deciding whether to yield.
+        // This prevents a race condition where observers subscribe before the cache
+        // is loaded, causing them to see an empty playlist until the network fetch completes.
+        if !cacheLoaded {
+            await cacheLoadTask?.value
+        }
         
         // Yield current cache immediately if non-empty
         if currentPlaylist != .empty {
@@ -167,20 +218,33 @@ public final actor PlaylistService: Sendable {
         }
     }
 
-    /// Single background fetch loop shared by all observers
+    /// Single background fetch loop shared by all observers.
+    /// 
+    /// Important: This method intentionally does NOT broadcast empty playlists when we already
+    /// have valid data. This prevents transient network errors from clearing the UI. The fetcher
+    /// returns `.empty` on any error (network timeout, server error, etc.), so without this
+    /// protection, a temporary network issue would replace good cached data with nothing.
     private func startFetching() async {
         while !Task.isCancelled {
             let playlist = await fetcher.fetchPlaylist()
             
-            // Cache the fetched playlist
-            await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+            // Only cache and broadcast non-empty playlists, OR if we don't have any data yet.
+            // This prevents network errors (which return .empty) from clearing valid cached data.
+            let shouldUpdate = playlist != .empty || currentPlaylist == .empty
+            
+            if shouldUpdate {
+                // Cache the fetched playlist
+                await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
 
-            guard !Task.isCancelled else { break }
+                guard !Task.isCancelled else { break }
 
-            // Only broadcast if changed
-            if playlist != currentPlaylist {
-                currentPlaylist = playlist
-                broadcast(playlist)
+                // Only broadcast if changed
+                if playlist != currentPlaylist {
+                    currentPlaylist = playlist
+                    broadcast(playlist)
+                }
+            } else {
+                Log(.warning, "Ignoring empty playlist from fetch - keeping existing data with \(currentPlaylist.entries.count) entries")
             }
 
             guard !Task.isCancelled else { break }
