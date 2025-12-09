@@ -18,12 +18,16 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(name: "Playback", path: "../Playback")
+        .package(name: "Playback", path: "../Playback"),
+        .package(url: "https://github.com/fatbobman/ObservableDefaults", from: "1.7.0")
     ],
     targets: [
         .target(
             name: "PlayerHeaderView",
-            dependencies: ["Playback"]
+            dependencies: [
+                "Playback",
+                .product(name: "ObservableDefaults", package: "ObservableDefaults")
+            ]
         ),
         .testTarget(
             name: "PlayerHeaderViewTests",

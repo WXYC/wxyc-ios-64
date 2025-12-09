@@ -11,12 +11,14 @@ import Playback
 // MARK: - Player Header View
 
 /// A complete player header view with playback controls and visualizer
-/// Uses PlaybackControllerManager to handle switching between controller implementations
+/// Uses AudioPlayerController.shared singleton for playback control
+/// Note: The consuming app must call `AudioPlayerController.shared.play(url:)` to start playback
 public struct PlayerHeaderView: View {
-    /// Uses the shared controller manager
-    private var manager: PlaybackControllerManager { PlaybackControllerManager.shared }
+    /// Uses the shared singleton controller
+    private static var controller: AudioPlayerController { AudioPlayerController.shared }
     
     @Bindable var visualizer: VisualizerDataSource
+    
     /// 2D matrix tracking historical RMS values per bar
     @State var barHistory: [[Float]]
     
@@ -25,20 +27,21 @@ public struct PlayerHeaderView: View {
     
     /// Callback when player type is changed
     var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
-    /// Callback to present the debug sheet (owned by a parent to avoid TimelineView churn)
-    var onPresentDebug: (() -> Void)?
     
-    /// Convenience initializer that owns its own visualizer and selection state
+    /// Callback when debug tap occurs (DEBUG only)
+    var onDebugTapped: (() -> Void)?
+    
     public init(
+        visualizer: VisualizerDataSource,
+        selectedPlayerType: Binding<PlayerControllerType>,
         previewValues: [Float]? = nil,
-        selectedPlayerType: PlayerControllerType = PlayerControllerType.loadPersisted(),
         onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil,
-        onPresentDebug: (() -> Void)? = nil
+        onDebugTapped: (() -> Void)? = nil
     ) {
-        self.visualizer = VisualizerDataSource()
-        self._selectedPlayerType = State(initialValue: selectedPlayerType).projectedValue
+        self.visualizer = visualizer
+        self._selectedPlayerType = selectedPlayerType
         self.onPlayerTypeChanged = onPlayerTypeChanged
-        self.onPresentDebug = onPresentDebug
+        self.onDebugTapped = onDebugTapped
         if let values = previewValues {
             _barHistory = State(initialValue: values.map { value in
                 var history = Array(repeating: Float(0), count: VisualizerConstants.historyLength)
@@ -52,53 +55,20 @@ public struct PlayerHeaderView: View {
             ))
         }
     }
-
-    /// Initializer that reuses a shared visualizer and selection binding (preferred for app usage)
-    public init(
-        visualizer: VisualizerDataSource,
-        selectedPlayerType: Binding<PlayerControllerType>,
-        previewValues: [Float]? = nil,
-        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil,
-        onPresentDebug: (() -> Void)? = nil
-    ) {
-        self.visualizer = visualizer
-        self._selectedPlayerType = selectedPlayerType
-        self.onPlayerTypeChanged = onPlayerTypeChanged
-        self.onPresentDebug = onPresentDebug
-        if let values = previewValues {
-            self._barHistory = State(initialValue: values.map { value in
-                var history = Array(repeating: Float(0), count: VisualizerConstants.historyLength)
-                history[0] = value
-                return history
-            })
-        } else {
-            self._barHistory = State(initialValue: Array(
-                repeating: Array(repeating: 0, count: VisualizerConstants.historyLength),
-                count: VisualizerConstants.barAmount
-            ))
-        }
-    }
     
     public var body: some View {
         HStack(alignment: .center) {
-            PlaybackControlsView(isPlaying: manager.isPlaying, isLoading: manager.isLoading) {
-                manager.toggle()
+            PlaybackControlsView(isPlaying: Self.controller.isPlaying, isLoading: Self.controller.isLoading) {
+                Self.controller.toggle()
             }
 
             VisualizerTimelineView(
                 visualizer: visualizer,
                 barHistory: $barHistory,
-                isPlaying: manager.isPlaying,
+                isPlaying: Self.controller.isPlaying,
                 rmsPerBar: visualizer.rmsPerBar,
-                onModeTapped: {
-                    // Cycle through normalization modes on tap (non-DEBUG builds only)
-                    // visualizer.rmsNormalizationMode = visualizer.rmsNormalizationMode.next
-                },
-                onDebugTapped: {
-                    #if DEBUG
-                    onPresentDebug?()
-                    #endif
-                }
+                onModeTapped: nil,
+                onDebugTapped: onDebugTapped
             )
         }
         .padding(12)
@@ -106,17 +76,22 @@ public struct PlayerHeaderView: View {
         .cornerRadius(12)
         .onAppear {
             // Connect visualizer to controller's audio buffer
-            manager.setAudioBufferHandler { buffer in
+            Self.controller.setAudioBufferHandler { buffer in
                 visualizer.processBuffer(buffer)
             }
         }
         .onChange(of: selectedPlayerType) { _, newType in
-            // Switch to the new controller type
-            manager.switchTo(newType)
-            // Persist the selection
-            newType.persist()
-            // Call the callback if provided
-            onPlayerTypeChanged?(newType)
+            // Switch the player when type changes
+            Task { @MainActor in
+                let newPlayer = AudioPlayerController.createPlayer(for: newType)
+                Self.controller.replacePlayer(newPlayer)
+                // Reconnect visualizer to new player's audio buffer
+                Self.controller.setAudioBufferHandler { buffer in
+                    visualizer.processBuffer(buffer)
+                }
+                // Call the callback if provided
+                onPlayerTypeChanged?(newType)
+            }
         }
     }
     
@@ -144,10 +119,15 @@ func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
 // MARK: - Preview
 
 #Preview {
+    @Previewable @State var selectedPlayerType = PlayerControllerType.loadPersisted()
+    
     ZStack {
         Rectangle()
             .foregroundStyle(WXYCBackground())
-        PlayerHeaderView()
-            .padding()
+        PlayerHeaderView(
+            visualizer: VisualizerDataSource(),
+            selectedPlayerType: $selectedPlayerType
+        )
+        .padding()
     }
 }
