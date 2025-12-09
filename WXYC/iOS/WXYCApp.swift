@@ -267,6 +267,10 @@ struct WXYCApp: App {
             WidgetCenter.shared.reloadAllTimelines()
             // Schedule next background refresh
             scheduleBackgroundRefresh()
+            // Refresh playlist if cache has expired while in background.
+            // This ensures users see fresh data when returning to the app after
+            // an extended period, rather than waiting for the next fetch cycle.
+            refreshPlaylistIfCacheExpired()
 
         @unknown default:
             break
@@ -304,6 +308,20 @@ struct WXYCApp: App {
         } catch {
             Log(.error, "Failed to schedule background refresh: \(error)")
             PostHogSDK.shared.capture(error: error, context: "scheduleBackgroundRefresh")
+        }
+    }
+    
+    /// Refresh the playlist if the cache has expired.
+    /// Called when the app returns to foreground after potentially being backgrounded
+    /// for an extended period. This ensures users see fresh data immediately rather
+    /// than waiting for the next periodic fetch cycle.
+    private func refreshPlaylistIfCacheExpired() {
+        Task {
+            let isExpired = await appState.playlistService.isCacheExpired()
+            if isExpired {
+                Log(.info, "Cache expired while backgrounded - triggering foreground refresh")
+                _ = await appState.playlistService.fetchAndCachePlaylist()
+            }
         }
     }
 

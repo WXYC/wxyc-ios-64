@@ -385,4 +385,215 @@ struct PlaylistServiceTests {
         #expect(!formattedDate.isEmpty)
         #expect(formattedDate.contains("AM") || formattedDate.contains("PM"))
     }
+    
+    // MARK: - Empty Playlist Protection Tests
+    
+    @Test("Empty playlist from fetch does not replace valid data", .timeLimit(.minutes(1)))
+    func emptyPlaylistDoesNotReplaceValidData() async throws {
+        // Given - A service with valid cached data
+        let mockFetcher = MockPlaylistFetcher()
+        let validPlaylist = Playlist(
+            playcuts: [
+                Playcut(
+                    id: 1,
+                    hour: 1000,
+                    chronOrderID: 1,
+                    songTitle: "Valid Song",
+                    labelName: nil,
+                    artistName: "Valid Artist",
+                    releaseTitle: nil
+                )
+            ],
+            breakpoints: [],
+            talksets: []
+        )
+        mockFetcher.playlistToReturn = validPlaylist
+        
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.05, cacheCoordinator: makeTestCacheCoordinator())
+        
+        // First, establish valid data
+        var iterator = service.updates().makeAsyncIterator()
+        let firstPlaylist = await iterator.next()
+        #expect(firstPlaylist?.playcuts.first?.songTitle == "Valid Song")
+        
+        // When - Fetcher starts returning empty (simulating network error)
+        mockFetcher.playlistToReturn = .empty
+        
+        // Wait for a few fetch cycles
+        try await Task.sleep(for: .milliseconds(150))
+        
+        // Then - Service should still have the valid data (not replaced by empty)
+        // We verify this by checking that no empty playlist was broadcast
+        // The iterator should not yield .empty because the service protects against it
+        let task = Task {
+            // This should timeout because no new value should be yielded
+            return await iterator.next()
+        }
+        
+        // Give it a short time to potentially yield (it shouldn't)
+        try await Task.sleep(for: .milliseconds(100))
+        task.cancel()
+        
+        // Verify by subscribing again - should get the cached valid data
+        var newIterator = service.updates().makeAsyncIterator()
+        let cachedPlaylist = await newIterator.next()
+        #expect(cachedPlaylist?.playcuts.first?.songTitle == "Valid Song")
+    }
+    
+    @Test("fetchAndCachePlaylist does not replace valid data with empty", .timeLimit(.minutes(1)))
+    func fetchAndCachePlaylistDoesNotReplaceValidDataWithEmpty() async throws {
+        // Given - A service with valid cached data
+        let mockFetcher = MockPlaylistFetcher()
+        let validPlaylist = Playlist(
+            playcuts: [
+                Playcut(
+                    id: 1,
+                    hour: 1000,
+                    chronOrderID: 1,
+                    songTitle: "Valid Song",
+                    labelName: nil,
+                    artistName: "Valid Artist",
+                    releaseTitle: nil
+                )
+            ],
+            breakpoints: [],
+            talksets: []
+        )
+        mockFetcher.playlistToReturn = validPlaylist
+        
+        let service = PlaylistService(fetcher: mockFetcher, interval: 30, cacheCoordinator: makeTestCacheCoordinator())
+        
+        // First, establish valid data via fetchAndCachePlaylist
+        _ = await service.fetchAndCachePlaylist()
+        
+        // When - Fetcher starts returning empty (simulating network error)
+        mockFetcher.playlistToReturn = .empty
+        let emptyResult = await service.fetchAndCachePlaylist()
+        
+        // Then - The returned value is empty (as fetched)
+        #expect(emptyResult == .empty)
+        
+        // But the cached/in-memory data should still be valid
+        var iterator = service.updates().makeAsyncIterator()
+        let cachedPlaylist = await iterator.next()
+        #expect(cachedPlaylist?.playcuts.first?.songTitle == "Valid Song")
+    }
+    
+    @Test("Empty playlist is accepted when no valid data exists", .timeLimit(.minutes(1)))
+    func emptyPlaylistAcceptedWhenNoValidDataExists() async throws {
+        // Given - A service with no data
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = .empty
+        
+        let service = PlaylistService(fetcher: mockFetcher, interval: 0.05, cacheCoordinator: makeTestCacheCoordinator())
+        
+        // When - First fetch returns empty
+        var iterator = service.updates().makeAsyncIterator()
+        
+        // The iterator will wait for data, but since empty is the only thing available
+        // and we have no prior data, it should eventually yield empty
+        let result = await service.fetchAndCachePlaylist()
+        
+        // Then - Empty should be accepted since we have no prior data
+        #expect(result == .empty)
+    }
+    
+    // MARK: - Cache Expiration Tests
+    
+    @Test("isCacheExpired returns true when cache is empty", .timeLimit(.minutes(1)))
+    func isCacheExpiredReturnsTrueWhenEmpty() async throws {
+        // Given - A service with no cached data
+        let mockFetcher = MockPlaylistFetcher()
+        let service = PlaylistService(fetcher: mockFetcher, interval: 30, cacheCoordinator: makeTestCacheCoordinator())
+        
+        // Wait for initial cache load attempt to complete
+        try await Task.sleep(for: .milliseconds(50))
+        
+        // When
+        let isExpired = await service.isCacheExpired()
+        
+        // Then
+        #expect(isExpired == true)
+    }
+    
+    @Test("isCacheExpired returns false when cache is valid", .timeLimit(.minutes(1)))
+    func isCacheExpiredReturnsFalseWhenValid() async throws {
+        // Given - A service with cached data
+        let mockFetcher = MockPlaylistFetcher()
+        let playlist = Playlist(
+            playcuts: [
+                Playcut(
+                    id: 1,
+                    hour: 1000,
+                    chronOrderID: 1,
+                    songTitle: "Cached Song",
+                    labelName: nil,
+                    artistName: "Cached Artist",
+                    releaseTitle: nil
+                )
+            ],
+            breakpoints: [],
+            talksets: []
+        )
+        mockFetcher.playlistToReturn = playlist
+        
+        let service = PlaylistService(fetcher: mockFetcher, interval: 30, cacheCoordinator: makeTestCacheCoordinator())
+        
+        // Populate cache
+        _ = await service.fetchAndCachePlaylist()
+        
+        // When
+        let isExpired = await service.isCacheExpired()
+        
+        // Then
+        #expect(isExpired == false)
+    }
+    
+    // MARK: - Cache Load Race Condition Tests
+    
+    @Test("Observer receives cached data even if subscription happens during cache load", .timeLimit(.minutes(1)))
+    func observerReceivesCachedDataDuringCacheLoad() async throws {
+        // Given - Pre-populate cache before creating service
+        let mockCache = PlaylistTestMockCache()
+        let cacheCoordinator = CacheCoordinator(cache: mockCache)
+        let cachedPlaylist = Playlist(
+            playcuts: [
+                Playcut(
+                    id: 1,
+                    hour: 1000,
+                    chronOrderID: 1,
+                    songTitle: "Pre-cached Song",
+                    labelName: nil,
+                    artistName: "Pre-cached Artist",
+                    releaseTitle: nil
+                )
+            ],
+            breakpoints: [],
+            talksets: []
+        )
+        
+        // Pre-populate the cache
+        await cacheCoordinator.set(
+            value: cachedPlaylist,
+            for: "com.wxyc.playlist.cache",
+            lifespan: 15 * 60
+        )
+        
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = cachedPlaylist
+        
+        // When - Create service (cache load starts) and immediately subscribe
+        let service = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator
+        )
+        
+        // Subscribe immediately (before cache load might complete)
+        var iterator = service.updates().makeAsyncIterator()
+        let firstPlaylist = await iterator.next()
+        
+        // Then - Should receive the cached data (not empty, and not have to wait for network)
+        #expect(firstPlaylist?.playcuts.first?.songTitle == "Pre-cached Song")
+    }
 }
