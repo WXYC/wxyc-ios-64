@@ -35,7 +35,7 @@ final class FFTProcessor: @unchecked Sendable, AudioProcessor {
     /// - Parameters:
     ///   - normalizationMode: How to normalize FFT magnitudes for display
     ///   - frequencyWeightingExponent: Exponent for frequency compensation (0 = raw/bass-heavy, 0.5 = balanced, 1.0 = treble-emphasized)
-    init(normalizationMode: NormalizationMode = .ema, frequencyWeightingExponent: Float = 0.5) {
+    init(normalizationMode: NormalizationMode, frequencyWeightingExponent: Float) {
         self.normalizerMutex = Mutex(normalizationMode.createNormalizer())
         
         // Create Hann window: w[n] = 0.5 * (1 - cos(2πn / N))
