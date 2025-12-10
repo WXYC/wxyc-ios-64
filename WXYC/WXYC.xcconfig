@@ -52,6 +52,12 @@ PRODUCT_NAME = $(TARGET_NAME)
 // Swift
 SWIFT_EMIT_LOC_STRINGS = YES
 
+// Architectures - Modern Apple Silicon only (arm64)
+EXCLUDED_ARCHS[sdk=watchsimulator*] = x86_64 i386
+EXCLUDED_ARCHS[sdk=watchos*] = arm64_32 armv7k
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64 i386
+EXCLUDED_ARCHS[sdk=appletvsimulator*] = x86_64 i386
+
 // Target Device Family
 TARGETED_DEVICE_FAMILY = 1,2
 

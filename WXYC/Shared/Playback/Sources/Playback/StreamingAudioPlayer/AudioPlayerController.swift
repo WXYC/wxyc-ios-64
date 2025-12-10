@@ -53,7 +53,7 @@ public final class AudioPlayerController {
     @MainActor
     public static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
         switch type {
-        case .audioPlayer, .radioPlayer, .avAudioStreamer, .miniMP3Streamer:
+        case .audioPlayer, .radioPlayer, .avAudioStreamer, .miniMP3Streamer, .ffmpegAudio:
             // For now, all types use StreamingAudioPlayer since it's the only
             // implementation that conforms to AudioPlayerProtocol
             // TODO: Create adapters for other player types if needed
