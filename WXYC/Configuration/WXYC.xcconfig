@@ -1,0 +1,35 @@
+// WXYC iOS/iPadOS Build Settings
+// This file contains iOS-specific build settings
+
+#include "Shared.xcconfig"
+
+// Info.plist - iOS specific
+INFOPLIST_FILE = $(SRCROOT)/WXYC/iOS/Info.plist
+INFOPLIST_KEY_AVInitialRouteSharingPolicy = LongFormAudio
+INFOPLIST_KEY_CFBundleDisplayName = WXYC
+INFOPLIST_KEY_CFBundleSignature = ????
+INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO
+INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.music
+INFOPLIST_KEY_NSUserActivityTypes = NSUserActivityTypeBrowsingWeb INPlayMediaIntent INSearchForMediaIntent
+INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES
+INFOPLIST_KEY_UIBackgroundModes = audio fetch
+// iOS-only Info.plist keys (not valid for watchOS)
+INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphoneos*] = LaunchScreen.storyboard
+INFOPLIST_KEY_UILaunchStoryboardName[sdk=iphonesimulator*] = LaunchScreen.storyboard
+INFOPLIST_KEY_UIRequiredDeviceCapabilities[sdk=iphoneos*] = armv7
+INFOPLIST_KEY_UIRequiredDeviceCapabilities[sdk=iphonesimulator*] = armv7
+INFOPLIST_KEY_UIRequiresFullScreen = YES
+INFOPLIST_KEY_UIStatusBarHidden = NO
+INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent
+INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
+INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+
+// Deployment Targets - iOS specific
+MACOSX_DEPLOYMENT_TARGET = 26.0
+XROS_DEPLOYMENT_TARGET = 26.0
+
+// Product - iOS specific
+PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp
+
+// Target Device Family - iOS and iPadOS
+TARGETED_DEVICE_FAMILY = 1,2

@@ -1,0 +1,25 @@
+// WatchXYC Build Settings
+// This file contains watchOS-specific build settings
+
+#include "Shared.xcconfig"
+
+// Info.plist - watchOS specific
+INFOPLIST_FILE = $(SRCROOT)/WatchXYC-Info.plist
+INFOPLIST_KEY_CFBundleDisplayName = WatchXYC
+INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+INFOPLIST_KEY_WKCompanionAppBundleIdentifier = org.wxyc.iphoneapp
+
+// Deployment Target - watchOS 26.0 minimum
+WATCHOS_DEPLOYMENT_TARGET = 26.0
+
+// Architectures - watchOS specific
+// watchOS 11+ only supports arm64 (Series 6+); arm64_32 (Series 3-5) and armv7k (Series 0-2) are excluded
+ARCHS = $(ARCHS_STANDARD)
+ONLY_ACTIVE_ARCH = NO
+EXCLUDED_ARCHS[sdk=watchos*] = arm64_32 armv7k
+
+// Product - watchOS specific
+PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp
+
+// Target Device Family - watchOS
+TARGETED_DEVICE_FAMILY = 4

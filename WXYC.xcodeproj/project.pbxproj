@@ -39,7 +39,6 @@
 		23C1A1B92ED8000000000025 /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B42ED8000000000020 /* Artwork */; };
 		23C1A1BA2ED8000000000026 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 23C1A1B52ED8000000000021 /* AppServices */; };
 		23D382DA2EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
-		23D382DB2EE16B9D00A032BE /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		23D382DC2EE16B9D00A032BE /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2912ED564AD001818C3 /* PostHog */; };
 		23D382DD2EE16B9D00A032BE /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2952ED564AD001818C7 /* ObfuscateMacro */; };
 		23D382E02EE16B9D00A032BE /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 23A8E2952ED564AD001818C7 /* ObfuscateMacro */; };
@@ -165,8 +164,13 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"Build Tools/generate_secrets.sh",
+				Configuration/Shared.xcconfig,
+				Configuration/WatchXYC.xcconfig,
+				Configuration/WXYC.xcconfig,
 				"iOS Intents Extension/Info.plist",
+				iOS/discos.afdesign,
 				iOS/Info.plist,
+				LICENSE,
 				NowPlayingWidget/Assets.xcassets,
 				NowPlayingWidget/Extensions.swift,
 				NowPlayingWidget/Info.plist,
@@ -182,21 +186,8 @@
 				NowPlayingWidget/Views/RecentlyPlayedRow.swift,
 				NowPlayingWidget/Views/SmallNowPlayingWidgetEntryView.swift,
 				NowPlayingWidget/WidgetIntents.swift,
-				Shared/Analytics,
-				Shared/AppServices,
-				Shared/Artwork,
-				Shared/Caching,
-				Shared/Core,
-				Shared/Logger,
-				Shared/Metadata,
-				Shared/MusicShareKit,
-				Shared/OpenNSFW,
-				"Shared/Party Horn",
-				Shared/Playback,
-				Shared/PlayerHeaderView,
-				Shared/Playlist,
-				Shared/Secrets,
-				Shared/WXUI,
+				Shared/PlayerHeaderView/Package.resolved,
+				WatchXYC.xcconfig,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/Info.plist,
@@ -210,6 +201,7 @@
 				"WXYC TV/ContentView.swift",
 				"WXYC TV/WXYC-TV-Info.plist",
 				"WXYC TV/WXYCTVApp.swift",
+				WXYC.xcconfig,
 			);
 			target = 2366FA1C2D72CE880057E268 /* WXYC */;
 		};
@@ -359,7 +351,6 @@
 				23C1A1B82ED8000000000024 /* Metadata in Frameworks */,
 				23C1A1B92ED8000000000025 /* Artwork in Frameworks */,
 				23C1A1BA2ED8000000000026 /* AppServices in Frameworks */,
-				23D382DB2EE16B9D00A032BE /* (null) in Frameworks */,
 				23A8E29A2ED564AD001818CC /* Vortex in Frameworks */,
 				23B35B522ED50C0F00EFD77B /* MusicShareKit in Frameworks */,
 			);
@@ -558,7 +549,6 @@
 				23C1A1B32ED8000000000019 /* Metadata */,
 				23C1A1B42ED8000000000020 /* Artwork */,
 				23C1A1B52ED8000000000021 /* AppServices */,
-				23EDE0792EDD2A570034F39B /* PartyHorn */,
 				23A8E2952ED564AD001818C7 /* ObfuscateMacro */,
 				23A8E2972ED564AD001818C9 /* Vortex */,
 				23D383CF2EE170A000A032BE /* LaminatedGlass */,
@@ -661,20 +651,21 @@
 				23A8E2902ED564AD001818C3 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				23A8E2922ED564AD001818C4 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */,
 				23A8E2942ED564AD001818C6 /* XCRemoteSwiftPackageReference "Vortex" */,
-				23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */,
-				23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */,
-				23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */,
-				23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */,
-				23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */,
-				23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */,
-				23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/Playback" */,
-				23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "WXYC/Shared/Caching" */,
-				23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */,
-				23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "WXYC/Shared/Metadata" */,
-				23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */,
-				23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */,
-				23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */,
-				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */,
+				23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */,
+				23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */,
+				23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */,
+				23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "Shared/Analytics" */,
+				23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "Shared/Secrets" */,
+				23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */,
+				23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "Shared/Playback" */,
+				23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "Shared/Caching" */,
+				23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "Shared/Playlist" */,
+				23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "Shared/Metadata" */,
+				23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "Shared/Artwork" */,
+				23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "Shared/AppServices" */,
+				23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "Shared/WXUI" */,
+				23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "Shared/PartyHorn" */,
+				2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */,
 				23D383CE2EE170A000A032BE /* XCLocalSwiftPackageReference "../LaminatedGlass" */,
 				238DA3162EE7E820004EA68C /* XCRemoteSwiftPackageReference "ObservableDefaults" */,
 			);
@@ -1636,65 +1627,65 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */ = {
+		2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/PlayerHeaderView;
+			relativePath = Shared/PlayerHeaderView;
 		};
-		23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */ = {
+		23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Core;
+			relativePath = Shared/Core;
 		};
-		23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */ = {
+		23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Logger;
+			relativePath = Shared/Logger;
 		};
-		23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */ = {
+		23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/OpenNSFW;
+			relativePath = Shared/OpenNSFW;
 		};
-		23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */ = {
+		23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "Shared/Analytics" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Analytics;
+			relativePath = Shared/Analytics;
 		};
-		23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */ = {
+		23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "Shared/Secrets" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Secrets;
+			relativePath = Shared/Secrets;
 		};
-		23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */ = {
+		23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/MusicShareKit;
+			relativePath = Shared/MusicShareKit;
 		};
-		23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/Playback" */ = {
+		23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "Shared/Playback" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Playback;
+			relativePath = Shared/Playback;
 		};
-		23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */ = {
+		23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "Shared/WXUI" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/WXUI;
+			relativePath = Shared/WXUI;
 		};
-		23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "WXYC/Shared/Party Horn" */ = {
+		23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "Shared/PartyHorn" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "WXYC/Shared/Party Horn";
+			relativePath = Shared/PartyHorn;
 		};
-		23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "WXYC/Shared/Caching" */ = {
+		23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "Shared/Caching" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Caching;
+			relativePath = Shared/Caching;
 		};
-		23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */ = {
+		23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "Shared/Playlist" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Playlist;
+			relativePath = Shared/Playlist;
 		};
-		23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "WXYC/Shared/Metadata" */ = {
+		23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "Shared/Metadata" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Metadata;
+			relativePath = Shared/Metadata;
 		};
-		23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */ = {
+		23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "Shared/Artwork" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/Artwork;
+			relativePath = Shared/Artwork;
 		};
-		23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */ = {
+		23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "Shared/AppServices" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = WXYC/Shared/AppServices;
+			relativePath = Shared/AppServices;
 		};
 		23D383CE2EE170A000A032BE /* XCLocalSwiftPackageReference "../LaminatedGlass" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -1740,112 +1731,112 @@
 /* Begin XCSwiftPackageProductDependency section */
 		231260462D938C1600762428 /* Secrets */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */;
+			package = 23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "Shared/Secrets" */;
 			productName = Secrets;
 		};
 		2366099F2D72CF5A0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		236609A12D72CF5A0057E268 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		236609A32D72CF5A0057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		236609AC2D72D0270057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		236609AE2D72D0270057E268 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		236609B02D72D0270057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		236609D82D72D0840057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		236609DA2D72D0840057E268 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		236609DC2D72D0840057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		236609E02D72D08C0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		236609E22D72D08C0057E268 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		236609E42D72D08C0057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		236629A32D7390650057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		236629A52D7390650057E268 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		236629A72D7390650057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		236629AB2D73908D0057E268 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		236629AD2D73908D0057E268 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		236629AF2D73908D0057E268 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		238049F12ED7E03300DD28A4 /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */;
+			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "Shared/WXUI" */;
 			productName = WXUI;
 		};
 		238049F32ED7E03900DD28A4 /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */;
+			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "Shared/WXUI" */;
 			productName = WXUI;
 		};
 		2386DDE22ED7DA9400F3C501 /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "WXYC/Shared/WXUI" */;
+			package = 23C1A1A92ED8000000000009 /* XCLocalSwiftPackageReference "Shared/WXUI" */;
 			productName = WXUI;
 		};
 		238DA3172EE7E820004EA68C /* ObservableDefaults */ = {
@@ -1855,37 +1846,37 @@
 		};
 		2395669A2D7524CE0094A215 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		2395669C2D7524CE0094A215 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		239566A22D7524D50094A215 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "WXYC/Shared/Core" */;
+			package = 23C1A1A12ED8000000000001 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
 		239566A42D7524D50094A215 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "WXYC/Shared/Logger" */;
+			package = 23C1A1A22ED8000000000002 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
 		};
 		239566A62D7524D50094A215 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "WXYC/Shared/OpenNSFW" */;
+			package = 23C1A1A32ED8000000000003 /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
 		2397F56C2EDC22F500F6594F /* PlayerHeaderView */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */;
+			package = 2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */;
 			productName = PlayerHeaderView;
 		};
 		2397F6332EDC239400F6594F /* PlayerHeaderView */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "WXYC/Shared/PlayerHeaderView" */;
+			package = 2397F56B2EDC22F500F6594F /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */;
 			productName = PlayerHeaderView;
 		};
 		23A8E2912ED564AD001818C3 /* PostHog */ = {
@@ -1905,42 +1896,42 @@
 		};
 		23B35B502ED50C0F00EFD77B /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */;
+			package = 23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */;
 			productName = MusicShareKit;
 		};
 		23B35B532ED50C0F00EFD77B /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "WXYC/Shared/MusicShareKit" */;
+			package = 23C1A1A72ED8000000000007 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */;
 			productName = MusicShareKit;
 		};
 		23C1A1B02ED8000000000010 /* Playback */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "WXYC/Shared/Playback" */;
+			package = 23C1A1A82ED8000000000008 /* XCLocalSwiftPackageReference "Shared/Playback" */;
 			productName = Playback;
 		};
 		23C1A1B12ED8000000000017 /* Caching */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "WXYC/Shared/Caching" */;
+			package = 23C1A1AB2ED8000000000012 /* XCLocalSwiftPackageReference "Shared/Caching" */;
 			productName = Caching;
 		};
 		23C1A1B22ED8000000000018 /* Playlist */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */;
+			package = 23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "Shared/Playlist" */;
 			productName = Playlist;
 		};
 		23C1A1B32ED8000000000019 /* Metadata */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "WXYC/Shared/Metadata" */;
+			package = 23C1A1AD2ED8000000000014 /* XCLocalSwiftPackageReference "Shared/Metadata" */;
 			productName = Metadata;
 		};
 		23C1A1B42ED8000000000020 /* Artwork */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */;
+			package = 23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "Shared/Artwork" */;
 			productName = Artwork;
 		};
 		23C1A1B52ED8000000000021 /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */;
+			package = 23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "Shared/AppServices" */;
 			productName = AppServices;
 		};
 		23D383CF2EE170A000A032BE /* LaminatedGlass */ = {
@@ -1949,42 +1940,42 @@
 		};
 		23DB84782D828090000EB53A /* Analytics */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */;
+			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "Shared/Analytics" */;
 			productName = Analytics;
 		};
 		23DB847A2D828093000EB53A /* Analytics */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */;
+			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "Shared/Analytics" */;
 			productName = Analytics;
 		};
 		23EDE0792EDD2A570034F39B /* PartyHorn */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "WXYC/Shared/Party Horn" */;
+			package = 23C1A1AA2ED8000000000011 /* XCLocalSwiftPackageReference "Shared/PartyHorn" */;
 			productName = PartyHorn;
 		};
 		23F100022EF8000000000002 /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "WXYC/Shared/AppServices" */;
+			package = 23C1A1AF2ED8000000000016 /* XCLocalSwiftPackageReference "Shared/AppServices" */;
 			productName = AppServices;
 		};
 		23F100042EF8000000000004 /* Playlist */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "WXYC/Shared/Playlist" */;
+			package = 23C1A1AC2ED8000000000013 /* XCLocalSwiftPackageReference "Shared/Playlist" */;
 			productName = Playlist;
 		};
 		23F100062EF8000000000006 /* Secrets */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "WXYC/Shared/Secrets" */;
+			package = 23C1A1A52ED8000000000005 /* XCLocalSwiftPackageReference "Shared/Secrets" */;
 			productName = Secrets;
 		};
 		23F100082EF8000000000008 /* Analytics */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "WXYC/Shared/Analytics" */;
+			package = 23C1A1A42ED8000000000004 /* XCLocalSwiftPackageReference "Shared/Analytics" */;
 			productName = Analytics;
 		};
 		23F1000A2EF800000000000A /* Artwork */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "WXYC/Shared/Artwork" */;
+			package = 23C1A1AE2ED8000000000015 /* XCLocalSwiftPackageReference "Shared/Artwork" */;
 			productName = Artwork;
 		};
 /* End XCSwiftPackageProductDependency section */

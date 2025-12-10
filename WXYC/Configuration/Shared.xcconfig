@@ -1,0 +1,40 @@
+// Shared Build Settings
+// This file contains common build settings shared across all targets
+
+// Asset Catalog
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
+
+// Version
+CURRENT_PROJECT_VERSION = 1
+MARKETING_VERSION = 3.0.1
+
+// Framework Search Paths
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(SRCROOT)/WXYC/Shared
+
+// Info.plist
+GENERATE_INFOPLIST_FILE = YES
+
+// Library Search Paths
+LIBRARY_SEARCH_PATHS = $(inherited)
+
+// Linker
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
+
+// Product
+PRODUCT_NAME = $(TARGET_NAME)
+
+// Swift
+SWIFT_EMIT_LOC_STRINGS = YES
+
+// Exclude PostHog example projects and storyboards from compilation
+// This prevents example projects from being processed during builds
+// Note: These exclusions help prevent Xcode from trying to process PostHog's example projects
+// which contain broken binary targets that aren't meant to be built
+// Also exclude .build directories from local Swift packages to prevent archive issues
+EXCLUDED_SOURCE_FILE_NAMES = **/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift **/.build/** **/.build/*
+
+// Architecture Exclusions - Exclude legacy simulator architectures
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64 i386
+EXCLUDED_ARCHS[sdk=appletvsimulator*] = x86_64 i386
+EXCLUDED_ARCHS[sdk=watchsimulator*] = x86_64 i386
