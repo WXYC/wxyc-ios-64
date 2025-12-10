@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/jake/Developer/libFfmpegAudio/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/FfmpegAudio-tvOS/InstallationBuildProductsLocation/Library/Frameworks/FfmpegAudio.framework/FfmpegAudio'
+relocations:     []
+...

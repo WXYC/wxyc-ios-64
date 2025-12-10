@@ -7,20 +7,24 @@
 		<dict>
 			<key>BinaryPath</key>
 			<string>FfmpegAudio.framework/FfmpegAudio</string>
+			<key>DebugSymbolsPath</key>
+			<string>dSYMs</string>
 			<key>LibraryIdentifier</key>
-			<string>tvos-arm64</string>
+			<string>watchos-arm64_32</string>
 			<key>LibraryPath</key>
 			<string>FfmpegAudio.framework</string>
 			<key>SupportedArchitectures</key>
 			<array>
-				<string>arm64</string>
+				<string>arm64_32</string>
 			</array>
 			<key>SupportedPlatform</key>
-			<string>tvos</string>
+			<string>watchos</string>
 		</dict>
 		<dict>
 			<key>BinaryPath</key>
 			<string>FfmpegAudio.framework/FfmpegAudio</string>
+			<key>DebugSymbolsPath</key>
+			<string>dSYMs</string>
 			<key>LibraryIdentifier</key>
 			<string>tvos-arm64-simulator</string>
 			<key>LibraryPath</key>
@@ -37,20 +41,8 @@
 		<dict>
 			<key>BinaryPath</key>
 			<string>FfmpegAudio.framework/FfmpegAudio</string>
-			<key>LibraryIdentifier</key>
-			<string>ios-arm64</string>
-			<key>LibraryPath</key>
-			<string>FfmpegAudio.framework</string>
-			<key>SupportedArchitectures</key>
-			<array>
-				<string>arm64</string>
-			</array>
-			<key>SupportedPlatform</key>
-			<string>ios</string>
-		</dict>
-		<dict>
-			<key>BinaryPath</key>
-			<string>FfmpegAudio.framework/FfmpegAudio</string>
+			<key>DebugSymbolsPath</key>
+			<string>dSYMs</string>
 			<key>LibraryIdentifier</key>
 			<string>ios-arm64-simulator</string>
 			<key>LibraryPath</key>
@@ -67,8 +59,10 @@
 		<dict>
 			<key>BinaryPath</key>
 			<string>FfmpegAudio.framework/FfmpegAudio</string>
+			<key>DebugSymbolsPath</key>
+			<string>dSYMs</string>
 			<key>LibraryIdentifier</key>
-			<string>watchos-arm64</string>
+			<string>ios-arm64</string>
 			<key>LibraryPath</key>
 			<string>FfmpegAudio.framework</string>
 			<key>SupportedArchitectures</key>
@@ -76,11 +70,29 @@
 				<string>arm64</string>
 			</array>
 			<key>SupportedPlatform</key>
-			<string>watchos</string>
+			<string>ios</string>
 		</dict>
 		<dict>
 			<key>BinaryPath</key>
 			<string>FfmpegAudio.framework/FfmpegAudio</string>
+			<key>DebugSymbolsPath</key>
+			<string>dSYMs</string>
+			<key>LibraryIdentifier</key>
+			<string>tvos-arm64</string>
+			<key>LibraryPath</key>
+			<string>FfmpegAudio.framework</string>
+			<key>SupportedArchitectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>SupportedPlatform</key>
+			<string>tvos</string>
+		</dict>
+		<dict>
+			<key>BinaryPath</key>
+			<string>FfmpegAudio.framework/FfmpegAudio</string>
+			<key>DebugSymbolsPath</key>
+			<string>dSYMs</string>
 			<key>LibraryIdentifier</key>
 			<string>watchos-arm64-simulator</string>
 			<key>LibraryPath</key>
