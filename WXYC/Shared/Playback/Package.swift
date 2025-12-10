@@ -15,6 +15,10 @@ let package = Package(
         .package(name: "MiniMP3Streamer", path: "MiniMP3Streamer"),
     ],
     targets: [
+        .binaryTarget(
+            name: "FfmpegAudio",
+            path: "Vendor/FfmpegAudio.xcframework"
+        ),
         .target(
             name: "Playback",
             dependencies: [
@@ -25,6 +29,7 @@ let package = Package(
                 .product(name: "PostHog", package: "posthog-ios"),
                 .product(name: "AVAudioStreamer", package: "AVAudioStreamer", condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
                 .product(name: "MiniMP3Streamer", package: "MiniMP3Streamer"),
+                .target(name: "FfmpegAudio", condition: .when(platforms: [.iOS, .watchOS]))
             ]
         ),
         .testTarget(

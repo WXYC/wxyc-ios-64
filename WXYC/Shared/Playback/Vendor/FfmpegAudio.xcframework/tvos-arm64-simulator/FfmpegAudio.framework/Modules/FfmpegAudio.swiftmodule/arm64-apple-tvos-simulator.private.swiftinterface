@@ -1,0 +1,34 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.2.1 (swiftlang-6.2.1.4.8 clang-1700.4.4.1)
+// swift-module-flags: -target arm64-apple-tvos18.0-simulator -enable-objc-interop -enable-library-evolution -swift-version 6 -enforce-exclusivity=checked -O -enable-experimental-feature DebugDescriptionMacro -module-name FfmpegAudio
+// swift-module-flags-ignorable: -no-verify-emitted-module-interface -formal-cxx-interoperability-mode=off -interface-compiler-version 6.2.1
+import AVFoundation
+@_exported import FfmpegAudio
+import Swift
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+@_Concurrency.MainActor final public class StreamPlayer {
+  public enum State : Swift.Equatable, Swift.Sendable {
+    case idle
+    case starting
+    case playing
+    case stopping
+    case failed(FfmpegAudio.StreamPlayer.StreamPlayerError)
+    public static func == (lhs: FfmpegAudio.StreamPlayer.State, rhs: FfmpegAudio.StreamPlayer.State) -> Swift.Bool
+  }
+  public enum StreamPlayerError : Swift.Error, Swift.Sendable {
+    case openFailed
+    case decodeFailed
+    case engineError(Swift.String)
+  }
+  @_Concurrency.MainActor final public var state: FfmpegAudio.StreamPlayer.State {
+    get
+  }
+  @_Concurrency.MainActor final public var analysisHandler: (@_Concurrency.MainActor @Sendable (AVFAudio.AVAudioPCMBuffer, AVFAudio.AVAudioTime?) -> Swift.Void)?
+  @_Concurrency.MainActor public init()
+  @objc deinit
+  @_Concurrency.MainActor final public func start(url: Foundation.URL)
+  @_Concurrency.MainActor final public func stop()
+}
+extension FfmpegAudio.StreamPlayer : Swift.Sendable {}

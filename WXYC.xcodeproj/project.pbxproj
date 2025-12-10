@@ -910,6 +910,10 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = "x86_64 i386";
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "x86_64 i386";
+				"EXCLUDED_ARCHS[sdk=watchos*]" = "arm64_32 armv7k";
+				"EXCLUDED_ARCHS[sdk=watchsimulator*]" = "x86_64 i386";
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1293,6 +1297,10 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = "x86_64 i386";
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "x86_64 i386";
+				"EXCLUDED_ARCHS[sdk=watchos*]" = "arm64_32 armv7k";
+				"EXCLUDED_ARCHS[sdk=watchsimulator*]" = "x86_64 i386";
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1365,6 +1373,10 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = "x86_64 i386";
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = "x86_64 i386";
+				"EXCLUDED_ARCHS[sdk=watchos*]" = "arm64_32 armv7k";
+				"EXCLUDED_ARCHS[sdk=watchsimulator*]" = "x86_64 i386";
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
