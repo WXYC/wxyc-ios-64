@@ -18,7 +18,7 @@
 		</data>
 		<key>Info.plist</key>
 		<data>
-		mP/PlDZHKCFUbil4hRgmbHVqTOk=
+		skvOsrQ0aObZyxKVcCiRFDqEY+E=
 		</data>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.abi.json</key>
 		<data>
@@ -26,19 +26,19 @@
 		</data>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.private.swiftinterface</key>
 		<data>
-		U5C+eTBIJeVWsdVAjCSOBgtxKzI=
+		PfykH0B4ZRoSBLnCM+yBSnsvtzY=
 		</data>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.swiftdoc</key>
 		<data>
-		yO4YESLhiDh+5Kg+QQ1bojYrB6U=
+		8Lp+jAteBwyZZGQEmpXagCJaicA=
 		</data>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.swiftinterface</key>
 		<data>
-		U5C+eTBIJeVWsdVAjCSOBgtxKzI=
+		PfykH0B4ZRoSBLnCM+yBSnsvtzY=
 		</data>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.swiftmodule</key>
 		<data>
-		JAtwd+K7zBD3eVm0fHdVg38iyZo=
+		Y2RAy6+/3LJPyVSWywGzDtwKn5A=
 		</data>
 		<key>Modules/module.modulemap</key>
 		<data>
@@ -79,28 +79,28 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			y17B4N9zt2dkFa1qBs8JWRzjFAxkpp3aO/2RAbrDzoE=
+			9C+OEcjqCKhAg0VjsA9+mB2hGrnVpxRPOiVgyLRazrQ=
 			</data>
 		</dict>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.swiftdoc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			KU9aavvV5snOGlCBVo5ePHVF3xW7PFsZh8GA9kFk/lQ=
+			wyhN4V0JugQ4g4/sSStTGMrrOM55Pi1We0RDJCTuR24=
 			</data>
 		</dict>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.swiftinterface</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			y17B4N9zt2dkFa1qBs8JWRzjFAxkpp3aO/2RAbrDzoE=
+			9C+OEcjqCKhAg0VjsA9+mB2hGrnVpxRPOiVgyLRazrQ=
 			</data>
 		</dict>
 		<key>Modules/FfmpegAudio.swiftmodule/arm64-apple-watchos-simulator.swiftmodule</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			JzE78Hg6nFHJtfuEksmRUm2IQZnH1ZA/1wHsHvZJvV8=
+			Zoe7o2IGXXMfVKotc7Gs6pNB4CFndLfJilJ2wUzhN5Q=
 			</data>
 		</dict>
 		<key>Modules/module.modulemap</key>
