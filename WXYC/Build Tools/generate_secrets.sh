@@ -4,7 +4,7 @@
 # SCRIPT_INPUT_FILE_0 - your input secrets file (e.g., Secrets.txt)
 # SCRIPT_OUTPUT_FILE_0 - your output Swift file (e.g., Secrets.swift)
 SECRETS_FILE="$SRCROOT/../secrets/secrets.txt"
-OUTPUT_FILE="$SRCROOT/WXYC/Shared/Secrets/Sources/Secrets/Secrets.swift"
+OUTPUT_FILE="$SRCROOT/Shared/Secrets/Sources/Secrets/Secrets.swift"
 
 # Use a temp file to avoid race conditions with the compiler
 TEMP_FILE=$(mktemp)
