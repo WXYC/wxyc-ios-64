@@ -71,7 +71,13 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             }
 
             // Fetch artwork for the playcut
-            let artwork = try await service.artworkService.fetchArtwork(for: playcut)
+            let artwork: Image?
+            do {
+                artwork = try await service.artworkService.fetchArtwork(for: playcut)
+            } catch {
+                Log(.warning, "Artwork fetch failed for playcut \(playcut.id): \(error)")
+                artwork = nil
+            }
             return NowPlayingItem(playcut: playcut, artwork: artwork)
         }
     }

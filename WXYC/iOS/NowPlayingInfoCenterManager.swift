@@ -41,9 +41,7 @@ final class NowPlayingInfoCenterManager {
     }
 
     private func update(artwork: UIImage?) {
-        guard let artwork = artwork else {
-            return
-        }
+        let artwork = artwork ?? UIImage.placeholder
         if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
         }
