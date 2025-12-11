@@ -1,29 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "2600"
-   version = "1.7">
+   LastUpgradeVersion = "1620"
+   version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES"
-      buildArchitectures = "Automatic">
-      <PreActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Script"
-               scriptText = "${SRCROOT}&quot;/WXYC/Build Tools/generate_secrets.sh&quot;&#10;">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "236609B92D72D0420057E268"
-                     BuildableName = "WatchXYC.app"
-                     BlueprintName = "WatchXYC"
-                     ReferencedContainer = "container:WXYC.xcodeproj">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-      </PreActions>
+      buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -33,23 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "236609B92D72D0420057E268"
+               BlueprintIdentifier = "7D10437EC0EA6CBA5D9C60D0"
                BuildableName = "WatchXYC.app"
                BlueprintName = "WatchXYC"
-               ReferencedContainer = "container:WXYC.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2366FA1C2D72CE880057E268"
-               BuildableName = "WXYC.app"
-               BlueprintName = "WXYC"
                ReferencedContainer = "container:WXYC.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -59,20 +26,17 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      shouldAutocreateTestPlan = "YES">
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "7D10437EC0EA6CBA5D9C60D0"
+            BuildableName = "WatchXYC.app"
+            BlueprintName = "WatchXYC"
+            ReferencedContainer = "container:WXYC.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "23EC619E2ED810EB001C27E9"
-               BuildableName = "WXYCTests.xctest"
-               BlueprintName = "WXYCTests"
-               ReferencedContainer = "container:WXYC.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -89,7 +53,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "236609B92D72D0420057E268"
+            BlueprintIdentifier = "7D10437EC0EA6CBA5D9C60D0"
             BuildableName = "WatchXYC.app"
             BlueprintName = "WatchXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
@@ -106,7 +70,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "236609B92D72D0420057E268"
+            BlueprintIdentifier = "7D10437EC0EA6CBA5D9C60D0"
             BuildableName = "WatchXYC.app"
             BlueprintName = "WatchXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">

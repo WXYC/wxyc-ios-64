@@ -1,5 +1,4 @@
 {
-  "originHash" : "8aa87a66ca0b76c566fdbe5778f91bf5847c4e4c3c04a424d18ef939b7009e09",
   "pins" : [
     {
       "identity" : "obfuscatemacro",
@@ -128,5 +127,5 @@
       }
     }
   ],
-  "version" : 3
+  "version" : 2
 }
