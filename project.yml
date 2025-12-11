@@ -1,0 +1,463 @@
+name: WXYC
+options:
+  xcodeVersion: "16.2"
+  deploymentTarget:
+    iOS: "18.6"
+    watchOS: "11.5"
+    tvOS: "18.6"
+  defaultConfig: Release
+  groupSortPosition: top
+  generateEmptyDirectories: true
+  bundleIdPrefix: org.wxyc
+  developmentLanguage: en
+  useBaseInternationalization: true
+  createIntermediateGroups: true
+  minimizedProjectReferenceProxies: true
+
+configs:
+  Debug: debug
+  Release: release
+  TestFlight: release
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 92V374HC38
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    CLANG_CXX_LANGUAGE_STANDARD: "gnu++20"
+    GCC_C_LANGUAGE_STANDARD: gnu17
+    MARKETING_VERSION: "3.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: true
+    LOCALIZATION_PREFERS_STRING_CATALOGS: true
+    STRING_CATALOG_GENERATE_SYMBOLS: true
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: true
+    # Exclude architectures for Apple Silicon only
+  configs:
+    Debug:
+      DEBUG_INFORMATION_FORMAT: dwarf
+      ENABLE_TESTABILITY: true
+      GCC_OPTIMIZATION_LEVEL: "0"
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG $(inherited)"
+      OTHER_SWIFT_FLAGS: "-D DEBUG_PLAYLIST"
+      MTL_ENABLE_DEBUG_INFO: INCLUDE_SOURCE
+      ONLY_ACTIVE_ARCH: true
+      GCC_DYNAMIC_NO_PIC: false
+      GCC_PREPROCESSOR_DEFINITIONS:
+        - "DEBUG=1"
+        - "$(inherited)"
+    Release:
+      DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+      ENABLE_NS_ASSERTIONS: false
+      SWIFT_COMPILATION_MODE: wholemodule
+      MTL_ENABLE_DEBUG_INFO: false
+      MTL_FAST_MATH: true
+      VALIDATE_PRODUCT: true
+    TestFlight:
+      DEBUG_INFORMATION_FORMAT: "dwarf-with-dsym"
+      ENABLE_NS_ASSERTIONS: false
+      SWIFT_COMPILATION_MODE: wholemodule
+      MTL_ENABLE_DEBUG_INFO: false
+      MTL_FAST_MATH: true
+      VALIDATE_PRODUCT: true
+
+packages:
+  # Remote packages
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios.git
+    from: "3.35.0"
+  ObfuscateMacro:
+    url: https://github.com/p-x9/ObfuscateMacro.git
+    from: "0.12.0"
+  Vortex:
+    url: https://github.com/twostraws/Vortex.git
+    from: "1.0.4"
+  ObservableDefaults:
+    url: https://github.com/fatbobman/ObservableDefaults
+    from: "1.7.2"
+  # Local packages
+  Core:
+    path: Shared/Core
+  Logger:
+    path: Shared/Logger
+  OpenNSFW:
+    path: Shared/OpenNSFW
+  Analytics:
+    path: Shared/Analytics
+  Secrets:
+    path: Shared/Secrets
+  MusicShareKit:
+    path: Shared/MusicShareKit
+  Playback:
+    path: Shared/Playback
+  Caching:
+    path: Shared/Caching
+  Playlist:
+    path: Shared/Playlist
+  Metadata:
+    path: Shared/Metadata
+  Artwork:
+    path: Shared/Artwork
+  AppServices:
+    path: Shared/AppServices
+  WXUI:
+    path: Shared/WXUI
+  PartyHorn:
+    path: Shared/PartyHorn
+  PlayerHeaderView:
+    path: Shared/PlayerHeaderView
+  LaminatedGlass:
+    path: ../LaminatedGlass
+
+fileGroups:
+  - WXYC/iOS/Tests/WXYC.xctestplan
+  - WXYC/WatchXYC/WatchXYC-Info.plist
+  - WXYC/Configuration
+
+targets:
+  WXYC:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.6"
+    sources:
+      - path: WXYC/iOS/Assets
+        type: syncedFolder
+      - path: WXYC/iOS/Views
+        type: syncedFolder
+      - path: WXYC/iOS/CarPlaySceneDelegate.swift
+      - path: WXYC/iOS/Intents.swift
+      - path: WXYC/iOS/NowPlayingInfoCenterManager.swift
+      - path: WXYC/iOS/WXYCApp.swift
+      - path: WXYC/Configuration
+        type: syncedFolder
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.wxyc.iphoneapp
+        INFOPLIST_FILE: WXYC/iOS/Assets/Info.plist
+        MARKETING_VERSION: "3.0.1"
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_APP_SANDBOX: true
+        ENABLE_HARDENED_RUNTIME: true
+        ENABLE_OUTGOING_NETWORK_CONNECTIONS: true
+        REGISTER_APP_GROUPS: true
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        SUPPORTS_MACCATALYST: false
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: true
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: true
+        TARGETED_DEVICE_FAMILY: "1,2"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(PROJECT_DIR)/WXYC/Shared"
+        INFOPLIST_KEY_CFBundleDisplayName: WXYC
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.music"
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchStoryboardName: "LaunchScreen.storyboard"
+        INFOPLIST_KEY_UIRequiredDeviceCapabilities: armv7
+        INFOPLIST_KEY_UIStatusBarHidden: false
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
+        EXCLUDED_SOURCE_FILE_NAMES: "**/PostHogExample*/*.storyboard **/PostHogObjCExample/*.storyboard **/PostHogExampleStoryboard/*.storyboard **/PostHogExampleAutocapture/*/*.storyboard **/PostHogExampleExternalSDK/** **/PostHogExample*/** **/PostHogExampleExternalSDK/Package.swift **/.build/** **/.build/*"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: WXYC/Entitlements/WXYCDebug.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: WXYC/Entitlements/WXYC.entitlements
+          ENABLE_USER_SCRIPT_SANDBOXING: false
+        TestFlight:
+          CODE_SIGN_ENTITLEMENTS: WXYC/Entitlements/WXYC.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: TEST_FLIGHT
+    dependencies:
+      # Local packages
+      - package: Core
+      - package: Logger
+      - package: OpenNSFW
+      - package: Analytics
+      - package: Secrets
+      - package: MusicShareKit
+      - package: Playback
+      - package: Caching
+      - package: Playlist
+      - package: Metadata
+      - package: Artwork
+      - package: AppServices
+      - package: WXUI
+      - package: PartyHorn
+      - package: PlayerHeaderView
+      - package: LaminatedGlass
+      # Remote packages
+      - package: PostHog
+      - package: ObfuscateMacro
+      - package: Vortex
+      - package: ObservableDefaults
+      # Embedded targets
+      - target: WatchXYC
+        embed: true
+        codeSign: true
+      - target: NowPlayingWidget
+        embed: true
+        codeSign: true
+      - target: Request Share Extension
+        embed: true
+        codeSign: true
+
+  WatchXYC:
+    type: application
+    platform: watchOS
+    deploymentTarget: "11.5"
+    sources:
+      - path: WXYC/WatchXYC
+        type: syncedFolder
+      - path: WXYC/iOS/Views/Root/BackgroundLayer.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.wxyc.iphoneapp.watchkitapp
+        INFOPLIST_FILE: WXYC/WatchXYC/WatchXYC-Info.plist
+        MARKETING_VERSION: "3.0.1"
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: true
+        SKIP_INSTALL: true
+        TARGETED_DEVICE_FAMILY: 4
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_ASSET_PATHS: "\"WXYC/WatchXYC/Preview Content\""
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        INFOPLIST_KEY_CFBundleDisplayName: WatchXYC
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: org.wxyc.iphoneapp
+    dependencies:
+      - package: Core
+      - package: Logger
+      - package: OpenNSFW
+      - package: WXUI
+      - package: Playback
+      - package: Caching
+      - package: Playlist
+      - package: Metadata
+      - package: Artwork
+      - package: AppServices
+      - package: PostHog
+      - package: ObfuscateMacro
+
+  NowPlayingWidget:
+    type: extensionkit-extension
+    platform: iOS
+    deploymentTarget: "18.6"
+    sources:
+      - path: WXYC/iOS/NowPlayingWidget
+        type: syncedFolder
+      - path: WXYC/iOS/Assets/Images.xcassets
+        buildPhase: resources
+    info:
+      path: WXYC/iOS/NowPlayingWidget-Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSExceptionDomains:
+            wxyc.info:
+              NSExceptionAllowsInsecureHTTPLoads: true
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.wxyc.iphoneapp.now-playing-widget
+        MARKETING_VERSION: "3.0.1"
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: true
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+        INFOPLIST_KEY_CFBundleDisplayName: NowPlayingWidget
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: WXYC/Entitlements/NowPlayingWidgetDebug.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: WXYC/Entitlements/NowPlayingWidget.entitlements
+        TestFlight:
+          CODE_SIGN_ENTITLEMENTS: WXYC/Entitlements/NowPlayingWidget.entitlements
+    dependencies:
+      - package: Core
+      - package: Logger
+      - package: AppServices
+      - package: Playlist
+      - package: Secrets
+      - package: Analytics
+      - package: Artwork
+      - package: PostHog
+      - package: ObfuscateMacro
+
+  WXYC TV:
+    type: application
+    platform: tvOS
+    deploymentTarget: "18.6"
+    sources:
+      - path: WXYC/WXYC TV
+        type: syncedFolder
+      - path: WXYC/iOS/Intents.swift
+      - path: WXYC/WatchXYC/PlayerPage.swift
+      - path: WXYC/WatchXYC/RemoteImage.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.wxyc.tv
+        INFOPLIST_FILE: WXYC/WXYC TV/WXYC-TV-Info.plist
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: 3
+        SWIFT_VERSION: "5.0"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.music"
+        INFOPLIST_KEY_UIUserInterfaceStyle: Automatic
+    dependencies:
+      - package: Core
+      - package: Logger
+      - package: OpenNSFW
+
+  Request Share Extension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.6"
+    sources:
+      - path: WXYC/iOS/Request Share Extension
+        type: syncedFolder
+      - path: WXYC/iOS/Assets/Images.xcassets
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.wxyc.iphoneapp.Request-Share-Extension
+        INFOPLIST_FILE: WXYC/iOS/Request Share Extension/Info.plist
+        MARKETING_VERSION: "3.0.1"
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: true
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        SWIFT_APPROACHABLE_CONCURRENCY: true
+        SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: true
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+        INFOPLIST_KEY_CFBundleDisplayName: "Request Share Extension"
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+      configs:
+        Release:
+          DEVELOPMENT_TEAM: 92V374HC38
+        TestFlight:
+          DEVELOPMENT_TEAM: P8QACM85EZ
+    dependencies:
+      - package: MusicShareKit
+      - package: PostHog
+      - package: ObfuscateMacro
+
+  WXYCTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.6"
+    sources:
+      - path: WXYC/iOS/Tests/WXYCTests
+        type: syncedFolder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.funlandresearch.WXYCTests
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/WXYC.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WXYC"
+        SWIFT_VERSION: "5.0"
+        SWIFT_APPROACHABLE_CONCURRENCY: true
+        SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: true
+        STRING_CATALOG_GENERATE_SYMBOLS: false
+    dependencies:
+      - target: WXYC
+
+schemes:
+  WXYC:
+    build:
+      targets:
+        WXYC: all
+        WatchXYC: all
+        NowPlayingWidget: all
+        Request Share Extension: all
+    run:
+      config: Debug
+      executable: WXYC
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - WXYCTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  WatchXYC:
+    build:
+      targets:
+        WatchXYC: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  WXYC TV:
+    build:
+      targets:
+        WXYC TV: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  NowPlayingWidget:
+    build:
+      targets:
+        NowPlayingWidget: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
