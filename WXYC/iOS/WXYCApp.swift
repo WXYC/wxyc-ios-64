@@ -24,6 +24,7 @@ import Secrets
 import SwiftUI
 import WidgetKit
 import WXUI
+import Noise
 
 
 // Shared app state for cross-scene access (main UI and CarPlay)
@@ -34,6 +35,9 @@ class Singletonia: ObservableObject {
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
+    
+    @Published var noiseIntensity: Float = 0.5
+    @Published var frequency: Float = 10.0
     
     private var playlistObservationTask: Task<Void, Never>?
     private var isForegrounded = false
@@ -104,6 +108,12 @@ struct WXYCApp: App {
         // UIKit appearance setup
         #if os(iOS)
         UINavigationBar.appearance().barStyle = .black
+        
+        // Force light status bar style
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
+        }
         #endif
 
         // Widget reload
@@ -129,19 +139,29 @@ struct WXYCApp: App {
                 Rectangle()
                     .fill(WXYCBackground())
                     .ignoresSafeArea()
+                    .noise(intensity: appState.noiseIntensity, frequency: appState.frequency)
 
                 RootTabView()
                     .frame(maxWidth: 440)
-                    .background(WXYCBackground())
                     .environmentObject(appState)
                     .environment(\.playlistService, appState.playlistService)
                     .environment(\.artworkService, appState.artworkService)
                     .environment(\.playbackController, AudioPlayerController.shared)
+                    .preferredColorScheme(.dark)
+                    .forceLightStatusBar()
                     .onAppear {
                         setUpNowPlayingInfoCenter()
                         setUpQuickActions()
                         appState.setForegrounded(true)
                         appState.startObservingPlaylistUpdates()
+                        
+                        // Force status bar to be light
+                        #if os(iOS)
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let window = windowScene.windows.first {
+                            window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
+                        }
+                        #endif
                     }
                     .onOpenURL { url in
                         handleURL(url)

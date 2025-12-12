@@ -15,6 +15,7 @@
 		1A7F58FD9BFA74F3CC74938E /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = 719F0D3AB83311F4652E5030 /* Metadata */; };
 		1F3D795595990939AC76274D /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = D1362165656CBF5DDD9E5DDA /* Playlist */; };
 		1F511646EB98B7621319A1DA /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = EE16E35E8F1311399E5AD843 /* AppServices */; };
+		23C986732EECD6000001ADE1 /* Noise in Frameworks */ = {isa = PBXBuildFile; productRef = 23C986722EECD6000001ADE1 /* Noise */; };
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
 		3168A48CA317F321E3B1BB95 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = F06268AE9022F6AE22B608E2 /* Secrets */; };
@@ -216,6 +217,7 @@
 				Logger,
 				Metadata,
 				MusicShareKit,
+				Noise/Package.swift,
 				OpenNSFW,
 				PartyHorn,
 				Playback,
@@ -290,6 +292,7 @@
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
 				1F3D795595990939AC76274D /* Playlist in Frameworks */,
+				23C986732EECD6000001ADE1 /* Noise in Frameworks */,
 				62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */,
 				A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */,
 				1F511646EB98B7621319A1DA /* AppServices in Frameworks */,
@@ -399,8 +402,8 @@
 		C57C4FD34139E637E6F7B435 = {
 			isa = PBXGroup;
 			children = (
-				23FB1ECA2EEA84410064E6FD /* Shared */,
 				23FB1F2F2EEA84410064E6FD /* WXYC */,
+				23FB1ECA2EEA84410064E6FD /* Shared */,
 				876A8759303710E358EDC5AF /* Packages */,
 				6393B8DD84BA2FE9EA639E2D /* Products */,
 				23FB21C52EEA866C0064E6FD /* Frameworks */,
@@ -581,6 +584,7 @@
 				9B98AA54A13E060E6806108D /* ObfuscateMacro */,
 				02278730EBAF8961A683F35F /* Vortex */,
 				5DF3CD28508F5193B79C212A /* ObservableDefaults */,
+				23C986722EECD6000001ADE1 /* Noise */,
 			);
 			productName = WXYC;
 			productReference = 87ED2724FB87B5D288BBFFFB /* WXYC.app */;
@@ -646,6 +650,7 @@
 				D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */,
 				4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */,
 				ABCDCE57E9505C547B8FE732 /* XCLocalSwiftPackageReference "Shared/WXUI" */,
+				23C986712EECD6000001ADE1 /* XCLocalSwiftPackageReference "Shared/Noise" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 6393B8DD84BA2FE9EA639E2D /* Products */;
@@ -1613,6 +1618,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/AppServices;
 		};
+		23C986712EECD6000001ADE1 /* XCLocalSwiftPackageReference "Shared/Noise" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/Noise;
+		};
 		4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Secrets;
@@ -1749,6 +1758,10 @@
 		1BA0AE183AD2E87521D599AA /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
+		};
+		23C986722EECD6000001ADE1 /* Noise */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Noise;
 		};
 		23FB21C62EEA867C0064E6FD /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
