@@ -114,6 +114,7 @@ struct PlaybackButton: View {
     @Environment(\.colorScheme) private var colorScheme
     
     @State private var isPlaying: Bool = AudioPlayerController.shared.isPlaying
+    @State private var isLoading: Bool = AudioPlayerController.shared.isLoading
     @State private var isExpanded = false
 
     var animationDuration: Double
@@ -141,43 +142,21 @@ struct PlaybackButton: View {
         }) {
             PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
                 .fill(buttonColor())
+                .scaleEffect(isLoading ? 0.8 : 1.0)
+                .animation(isLoading ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: isLoading)
         }
         .buttonStyle(NoHighlightButtonStyle())
         .animation(.spring(), value: isExpanded)
         .task {
-            if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-                let observation = Observations {
-                    AudioPlayerController.shared.isPlaying
+            let observation = Observations {
+                (AudioPlayerController.shared.isPlaying, AudioPlayerController.shared.isLoading)
+            }
+            
+            for await (newIsPlaying, newIsLoading) in observation {
+                withAnimation(.easeInOut(duration: animationDuration)) {
+                    isPlaying = newIsPlaying
+                    isLoading = newIsLoading
                 }
-                
-                for await newIsPlaying in observation {
-                    withAnimation(.easeInOut(duration: animationDuration)) {
-                        isPlaying = newIsPlaying
-                    }
-                }
-            } else {
-                // Keep the entire legacy observation path on the main actor.
-                @Sendable func observe() {
-                    Task { @MainActor in
-                        let currentState = withObservationTracking {
-                            AudioPlayerController.shared.isPlaying
-                        } onChange: {
-                            Task { @MainActor in
-                                let newState = AudioPlayerController.shared.isPlaying
-                                withAnimation(.easeInOut(duration: animationDuration)) {
-                                    isPlaying = newState
-                                }
-                                // Re-arm observation
-                                observe()
-                            }
-                        }
-                        // Update initial state
-                        withAnimation(.easeInOut(duration: animationDuration)) {
-                            isPlaying = currentState
-                        }
-                    }
-                }
-                observe()
             }
         }
     }
