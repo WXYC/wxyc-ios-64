@@ -9,6 +9,7 @@
 import SwiftUI
 import WXUI
 import AppIntents
+import Noise
 import PlayerHeaderView
 import PartyHorn
 import Playlist
@@ -24,6 +25,8 @@ struct PlaylistView: View {
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     
+    @EnvironmentObject var appState: Singletonia
+
     var body: some View {
         ZStack {
             Color.clear
@@ -75,6 +78,7 @@ struct PlaylistView: View {
             .padding(.horizontal, 12)
             .coordinateSpace(name: "scroll")
         }
+
         .fullScreenCover(isPresented: $showingPartyHorn) {
             PartyHornSwiftUIView()
                 .onAppear {
@@ -85,7 +89,9 @@ struct PlaylistView: View {
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(
                 visualizer: visualizer,
-                selectedPlayerType: $selectedPlayerType
+                selectedPlayerType: $selectedPlayerType,
+                noiseIntensity: $appState.noiseIntensity,
+                frequency: $appState.frequency
             )
             .presentationDetents([.fraction(0.75)])
         }

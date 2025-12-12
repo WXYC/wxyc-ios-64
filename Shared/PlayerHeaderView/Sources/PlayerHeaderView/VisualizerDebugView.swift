@@ -12,16 +12,22 @@ import Playback
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
+    @Binding var noiseIntensity: Float
+    @Binding var frequency: Float
     var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
     @Environment(\.dismiss) private var dismiss
     
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
+        noiseIntensity: Binding<Float>,
+        frequency: Binding<Float>,
         onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
+        self._noiseIntensity = noiseIntensity
+        self._frequency = frequency
         self.onPlayerTypeChanged = onPlayerTypeChanged
     }
     
@@ -157,6 +163,25 @@ public struct VisualizerDebugView: View {
                         visualizer.reset()
                     }
                     .foregroundStyle(.red)
+                }
+                
+                // Noise Settings
+                Section("Noise Settings") {
+                    HStack {
+                        Text("Intensity")
+                        Spacer()
+                        Text(String(format: "%.2f", noiseIntensity))
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $noiseIntensity, in: 0.0...10.0)
+                    
+                    HStack {
+                        Text("Frequency")
+                        Spacer()
+                        Text(String(format: "%.1f", frequency))
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $frequency, in: 0.0...100.0)
                 }
             }
             .listRowSeparator(.hidden)
