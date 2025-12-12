@@ -29,6 +29,8 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
     var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
     var onMetadata: (([String: String]) -> Void)?
+    var onStall: (() -> Void)?
+    var onRecovery: (() -> Void)?
     
     init() {}
     

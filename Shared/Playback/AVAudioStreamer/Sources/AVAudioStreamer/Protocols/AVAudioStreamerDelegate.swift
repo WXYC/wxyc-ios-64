@@ -15,6 +15,12 @@ public protocol AVAudioStreamerDelegate: AnyObject, Sendable {
     /// Called when an error occurs
     /// - Parameter error: The error that occurred
     func audioStreamer(didEncounterError error: Error)
+
+    /// Called when playback stalls
+    func audioStreamerDidStall(_ streamer: AVAudioStreamer)
+    
+    /// Called when playback recovers from a stall
+    func audioStreamerDidRecover(_ streamer: AVAudioStreamer)
 }
 
 /// Optional delegate methods
@@ -22,4 +28,6 @@ public extension AVAudioStreamerDelegate {
     func audioStreamer(didOutput buffer: AVAudioPCMBuffer, at time: AVAudioTime?) {}
     func audioStreamer(didChangeState state: StreamingAudioState) {}
     func audioStreamer(didEncounterError error: Error) {}
+    func audioStreamerDidStall(_ streamer: AVAudioStreamer) {}
+    func audioStreamerDidRecover(_ streamer: AVAudioStreamer) {}
 }

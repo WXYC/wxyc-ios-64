@@ -17,6 +17,12 @@ public enum StreamingAudioState: Sendable, Equatable {
     /// Playback paused (buffering continues)
     case paused
 
+    /// Was playing, but buffer underrun occurred
+    case stalled
+    
+    /// Attempting to reconnect after disconnect
+    case reconnecting
+
     /// An error occurred
     case error(Error)
 
@@ -25,6 +31,8 @@ public enum StreamingAudioState: Sendable, Equatable {
         case (.idle, .idle),
              (.connecting, .connecting),
              (.playing, .playing),
+             (.stalled, .stalled),
+             (.reconnecting, .reconnecting),
              (.paused, .paused):
             return true
         case let (.buffering(lCount, lRequired), .buffering(rCount, rRequired)):
@@ -48,6 +56,10 @@ extension StreamingAudioState: CustomStringConvertible {
             return "buffering(\(buffered)/\(required))"
         case .playing:
             return "playing"
+        case .stalled:
+            return "stalled"
+        case .reconnecting:
+            return "reconnecting"
         case .paused:
             return "paused"
         case .error(let error):

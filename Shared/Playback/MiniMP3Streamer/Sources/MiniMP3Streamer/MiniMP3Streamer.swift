@@ -245,6 +245,20 @@ public final class MiniMP3Streamer {
             }
         }
     }
+
+    fileprivate func handleStall() {
+        if case .playing = state {
+            state = .stalled
+            delegate?.miniMP3StreamerDidStall(self)
+        }
+    }
+
+    fileprivate func handleRecovery() {
+        if case .stalled = state {
+            state = .playing
+            delegate?.miniMP3StreamerDidRecover(self)
+        }
+    }
 }
 
 // MARK: - Delegate Adapters
@@ -317,6 +331,18 @@ private final class AudioPlayerDelegateAdapter: AudioPlayerDelegate, @unchecked 
     func audioPlayerNeedsMoreBuffers(_ player: AudioEnginePlayer) {
         Task { @MainActor in
             streamer?.scheduleBuffers()
+        }
+    }
+
+    func audioPlayerDidStall(_ player: AudioEnginePlayer) {
+        Task { @MainActor in
+            streamer?.handleStall()
+        }
+    }
+
+    func audioPlayerDidRecoverFromStall(_ player: AudioEnginePlayer) {
+        Task { @MainActor in
+            streamer?.handleRecovery()
         }
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import PostHog
 
 /// Available PlaybackController implementations
 public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, Sendable {
@@ -20,27 +21,44 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     // MARK: - Persistence
     
     private static let userDefaultsKey = "debug.selectedPlayerControllerType"
+    private static let manualSelectionKey = "debug.isPlayerControllerManuallySelected"
+    
+    // Feature Flag / Experiment Key
+    private static let experimentKey = "experiment_player_controller"
     
     /// The default player controller type
     public static let defaultType: PlayerControllerType = .audioPlayer
     
     /// Loads the persisted player controller type, or returns default
     public static func loadPersisted() -> PlayerControllerType {
-        guard let rawValue = UserDefaults.standard.string(forKey: userDefaultsKey),
-              let type = PlayerControllerType(rawValue: rawValue) else {
-            return defaultType
+        // 1. Check if user manually selected a player in Debug View
+        if UserDefaults.standard.bool(forKey: manualSelectionKey),
+           let rawValue = UserDefaults.standard.string(forKey: userDefaultsKey),
+           let type = PlayerControllerType(rawValue: rawValue) {
+            return type
         }
-        return type
+        
+        // 2. Check PostHog Experiment (Feature Flag)
+        // This returns the Variant Key (e.g. "radioPlayer", "avAudioStreamer")
+        if let variant = PostHogSDK.shared.getFeatureFlag(experimentKey) as? String,
+           let type = PlayerControllerType(rawValue: variant) {
+            return type
+        }
+        
+        // 3. Fallback to default
+        return defaultType
     }
     
     /// Persists the selected player controller type
     public func persist() {
         UserDefaults.standard.set(rawValue, forKey: Self.userDefaultsKey)
+        UserDefaults.standard.set(true, forKey: Self.manualSelectionKey)
     }
     
     /// Clears the persisted player controller type
     public static func clearPersisted() {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        UserDefaults.standard.removeObject(forKey: manualSelectionKey)
     }
     
     // MARK: - Identifiable
@@ -59,8 +77,10 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             return "AVAudioStreamer (NIO + AudioToolbox)"
         case .miniMP3Streamer:
             return "MiniMP3Streamer (NIO + MiniMP3)"
+        #if os(iOS) || os(watchOS)
         case .ffmpegAudio:
             return "FFmpeg (FFmpegAudio)"
+        #endif
         }
     }
     
@@ -74,8 +94,10 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             return "Uses Swift NIO + AudioToolbox for MP3 decoding"
         case .miniMP3Streamer:
             return "Uses Swift NIO + MiniMP3 (pure C decoder, works on watchOS)"
+        #if os(iOS) || os(watchOS)
         case .ffmpegAudio:
             return "Uses FFmpeg-based decoder with AVAudioEngine output"
+        #endif
         }
     }
 }

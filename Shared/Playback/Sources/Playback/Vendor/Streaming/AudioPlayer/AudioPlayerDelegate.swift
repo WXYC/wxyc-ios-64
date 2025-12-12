@@ -32,5 +32,11 @@ public protocol AudioPlayerDelegate: AnyObject {
 
     /// Tells the delegate when a metadata read occurred from the stream.
     func audioPlayerDidReadMetadata(player: AudioPlayer, metadata: [String: String])
+
+    /// Tells the delegate when the player has stalled due to buffer underrun.
+    func audioPlayerDidStall(player: AudioPlayer)
+    
+    /// Tells the delegate when the player has recovered from a stall.
+    func audioPlayerDidRecoverFromStall(player: AudioPlayer)
 }
 #endif

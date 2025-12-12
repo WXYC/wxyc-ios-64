@@ -244,6 +244,20 @@ public final class AVAudioStreamer {
             }
         }
     }
+
+    fileprivate func handleStall() {
+        if case .playing = state {
+            state = .stalled
+            delegate?.audioStreamerDidStall(self)
+        }
+    }
+
+    fileprivate func handleRecovery() {
+        if case .stalled = state {
+            state = .playing
+            delegate?.audioStreamerDidRecover(self)
+        }
+    }
 }
 
 // MARK: - Delegate Adapters
@@ -316,6 +330,18 @@ private final class AudioPlayerDelegateAdapter: AudioPlayerDelegate, @unchecked 
     func audioPlayerNeedsMoreBuffers(_ player: AudioEnginePlayer) {
         Task { @MainActor in
             streamer?.scheduleBuffers()
+        }
+    }
+
+    func audioPlayerDidStall(_ player: AudioEnginePlayer) {
+        Task { @MainActor in
+            streamer?.handleStall()
+        }
+    }
+
+    func audioPlayerDidRecoverFromStall(_ player: AudioEnginePlayer) {
+        Task { @MainActor in
+            streamer?.handleRecovery()
         }
     }
 }

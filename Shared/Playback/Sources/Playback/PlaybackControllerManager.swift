@@ -9,6 +9,7 @@
 import Foundation
 import AVFoundation
 import Core
+import PostHog
 
 #if !os(watchOS)
 import AVAudioStreamer
@@ -46,6 +47,10 @@ public final class PlaybackControllerManager {
     private var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
     private var metadataHandler: (([String: String]) -> Void)?
     private let controllerFactory: PlaybackControllerFactory
+    private let metricsAdapter = StreamerMetricsAdapter()
+    
+    // CPU Monitoring
+    private var cpuMonitor: CPUMonitor! // Use implicit unwrapped optional or separate init logic, but since we are in singleton init...
     
     // MARK: - Initialization
     
@@ -54,7 +59,29 @@ public final class PlaybackControllerManager {
         let type = PlayerControllerType.loadPersisted()
         self.currentType = type
         self.controllerFactory = Self.defaultFactory
-        self.current = Self.defaultFactory(type)
+        let controller = Self.defaultFactory(type)
+        self.current = controller
+        
+        // Initialize CPU Monitor
+        // We configure it here to safely capture 'self' after super.init if it was a subclass, 
+        // but this is a final class with no superclass init to call (implied NSObject? No, no subclass).
+        // Since it's a class passing 'self' to closure in init corresponds to phase 2 initialization.
+        // But we can assign it after main properties.
+        self.cpuMonitor = nil // Temporary
+        
+        wireUpMetricsAdapter(for: controller)
+        
+        // Setup CPU Monitor
+        self.cpuMonitor = CPUMonitor { [weak self] usage in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let event = CPUUsageEvent(
+                    playerType: self.currentType,
+                    cpuUsage: usage
+                )
+                PostHogSDK.shared.reportCPUUsage(event)
+            }
+        }
     }
     
     /// Internal initializer for testing with dependency injection
@@ -64,7 +91,10 @@ public final class PlaybackControllerManager {
     internal init(initialType: PlayerControllerType, factory: @escaping PlaybackControllerFactory) {
         self.currentType = initialType
         self.controllerFactory = factory
-        self.current = factory(initialType)
+        let controller = factory(initialType)
+        self.current = controller
+        
+        wireUpMetricsAdapter(for: controller)
     }
     
     // MARK: - Controller Factory
@@ -113,6 +143,8 @@ public final class PlaybackControllerManager {
             newController.setMetadataHandler(handler)
         }
         
+        wireUpMetricsAdapter(for: newController)
+        
         // Update state
         current = newController
         currentType = type
@@ -130,16 +162,19 @@ public final class PlaybackControllerManager {
     
     /// Start playback
     public func play() {
+        cpuMonitor.start()
         try? current.play(reason: "user_play")
     }
     
     /// Pause playback
     public func pause() {
+        cpuMonitor.stop()
         current.pause()
     }
     
     /// Stop playback
     public func stop() {
+        cpuMonitor.stop()
         current.stop()
     }
     
@@ -168,6 +203,14 @@ public final class PlaybackControllerManager {
         current.handleAppWillEnterForeground()
     }
     #endif
+
+    private func wireUpMetricsAdapter(for controller: any PlaybackController) {
+        if let streamer = controller as? AVAudioStreamer {
+            streamer.delegate = metricsAdapter
+        } else if let streamer = controller as? MiniMP3Streamer {
+            streamer.delegate = metricsAdapter
+        }
+    }
 }
 
 #endif // !os(watchOS)
