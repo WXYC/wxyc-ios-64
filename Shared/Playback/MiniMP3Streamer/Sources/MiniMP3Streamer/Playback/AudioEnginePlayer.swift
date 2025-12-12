@@ -110,12 +110,30 @@ final class AudioEnginePlayer: @unchecked Sendable {
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
         schedulingQueue.async { [weak self] in
             guard let self = self else { return }
+            
+            // If we were stalled and now have a buffer, we're recovering
+            if self.stateBox.isStalled {
+                self.stateBox.isStalled = false
+                self.notifyDelegate { [weak self] in
+                    guard let self = self else { return }
+                    self.delegate?.audioPlayerDidRecoverFromStall(self)
+                }
+            }
 
             self.playerNode.scheduleBuffer(buffer) { [weak self] in
                 guard let self = self else { return }
 
                 // Buffer finished playing
                 self.scheduledBufferCount.decrement()
+                
+                // Detect stall: count hit zero while we were playing
+                if self.scheduledBufferCount.count == 0 && self.stateBox.isPlaying {
+                    self.stateBox.isStalled = true
+                    self.notifyDelegate { [weak self] in
+                        guard let self = self else { return }
+                        self.delegate?.audioPlayerDidStall(self)
+                    }
+                }
 
                 // Request more buffers if running low
                 if self.scheduledBufferCount.count < 3 && self.stateBox.isPlaying {
@@ -155,6 +173,21 @@ private final class PlayerStateBox: @unchecked Sendable {
             _isPlaying = newValue
         }
     }
+
+    var isStalled: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _isStalled
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _isStalled = newValue
+        }
+    }
+    
+    private var _isStalled = false
 }
 
 private final class ScheduledBufferCount: @unchecked Sendable {

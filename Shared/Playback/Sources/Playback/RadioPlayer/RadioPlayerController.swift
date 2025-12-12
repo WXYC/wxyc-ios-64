@@ -44,6 +44,7 @@ public final class RadioPlayerController: PlaybackController {
         self.init(
             radioPlayer: RadioPlayer(),
             notificationCenter: .default,
+            metricsReporter: PostHogSDK.shared,
             remoteCommandCenter: .shared()
         )
     }
@@ -52,6 +53,7 @@ public final class RadioPlayerController: PlaybackController {
     init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
+        metricsReporter: PlaybackMetricsReporter = PostHogSDK.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
     ) {
         func notificationObserver(
@@ -68,7 +70,9 @@ public final class RadioPlayerController: PlaybackController {
             remoteCommandCenter[keyPath: command].addTarget(handler: handler)
         }
         
+        
         self.radioPlayer = radioPlayer
+        self.metricsReporter = metricsReporter
 
         var observations: [Any] = []
 
@@ -175,6 +179,9 @@ public final class RadioPlayerController: PlaybackController {
     
     private var playbackTimer = Timer.start()
     private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
+    
+    private let metricsReporter: PlaybackMetricsReporter
+    private var stallStartTime: Date?
 }
 
 private extension RadioPlayerController {
@@ -184,6 +191,15 @@ private extension RadioPlayerController {
         Log(.error, "Playback stalled: \(notification)")
         
         Task { @MainActor in
+            let event = StallEvent(
+                playerType: .radioPlayer,
+                timestamp: Date(),
+                playbackDuration: playbackTimer.duration(),
+                reason: .bufferUnderrun
+            )
+            metricsReporter.reportStall(event)
+            self.stallStartTime = Date()
+            
             PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "playback stalled")
             self.radioPlayer.pause()
             self.attemptReconnectWithExponentialBackoff()
@@ -234,6 +250,18 @@ private extension RadioPlayerController {
         Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
         Task {
             if self.radioPlayer.isPlaying {
+                if let stallStart = self.stallStartTime {
+                    let event = RecoveryEvent(
+                        playerType: .radioPlayer,
+                        successful: true,
+                        attemptCount: 1, 
+                        stallDuration: Date().timeIntervalSince(stallStart),
+                        recoveryMethod: .retryWithBackoff
+                    )
+                    metricsReporter.reportRecovery(event)
+                    self.stallStartTime = nil
+                }
+                
                 self.backoffTimer.reset()
                 return
             }

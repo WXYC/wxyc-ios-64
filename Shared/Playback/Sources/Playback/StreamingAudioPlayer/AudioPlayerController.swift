@@ -53,11 +53,13 @@ public final class AudioPlayerController {
     @MainActor
     public static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
         switch type {
-        case .audioPlayer, .radioPlayer, .avAudioStreamer, .miniMP3Streamer, .ffmpegAudio:
-            // For now, all types use StreamingAudioPlayer since it's the only
-            // implementation that conforms to AudioPlayerProtocol
-            // TODO: Create adapters for other player types if needed
+        case .audioPlayer, .radioPlayer, .avAudioStreamer, .miniMP3Streamer:
             return StreamingAudioPlayer()
+            
+        #if os(iOS) || os(watchOS)
+        case .ffmpegAudio:
+            return StreamingAudioPlayer()
+        #endif
         }
     }
     
@@ -65,12 +67,12 @@ public final class AudioPlayerController {
     
     /// Whether audio is currently playing
     public var isPlaying: Bool {
-        player.isPlaying
+        state == .playing || state == .buffering
     }
     
     /// Whether playback is loading (play initiated but not yet playing)
     public var isLoading: Bool {
-        playbackIntended && player.state == .buffering
+        playbackIntended && state == .buffering
     }
     
     /// The current stream URL
@@ -95,11 +97,13 @@ public final class AudioPlayerController {
     
     // MARK: - State
     
+    private var state: AudioPlayerPlaybackState = .stopped
     private var wasPlayingBeforeInterruption = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
     /// Tracks when playback started for analytics duration reporting
     private var playbackStartTime: Date?
+    private var stallStartTime: Date?
     @ObservationIgnored private nonisolated(unsafe) var notificationObservers: [Any] = []
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
     
@@ -123,6 +127,7 @@ public final class AudioPlayerController {
         setupAudioSession()
         setupRemoteCommandCenter()
         setupNotifications()
+        setupPlayerCallbacks()
     }
     #else
     /// Creates a controller with injected dependencies (macOS)
@@ -134,6 +139,8 @@ public final class AudioPlayerController {
         self.player = player
         self.notificationCenter = notificationCenter
         self.analytics = analytics
+        
+        setupPlayerCallbacks()
     }
     #endif
     
@@ -173,6 +180,7 @@ public final class AudioPlayerController {
         
         // Replace player
         player = newPlayer
+        setupPlayerCallbacks()
         
         // Restore playback state if it was playing
         if wasPlaying, let url = currentURL {
@@ -474,6 +482,57 @@ extension AudioPlayerController {
     /// Provides access to the underlying player's metadata callback
     public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
         player.onMetadata = handler
+    }
+
+    private func setupPlayerCallbacks() {
+        // Sync initial state
+        state = player.state
+        
+        player.onStateChange = { [weak self] oldState, newState in
+            Task { @MainActor [weak self] in
+                self?.state = newState
+            }
+        }
+        
+        player.onStall = { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.handleStall()
+            }
+        }
+        
+        player.onRecovery = { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.handleRecovery()
+            }
+        }
+    }
+    
+    private func handleStall() {
+        guard let reporter = analytics as? PlaybackMetricsReporter else { return }
+        stallStartTime = Date()
+        
+        let event = StallEvent(
+            playerType: .audioPlayer, // Using .audioPlayer as this controller is type .audioPlayer typically
+            timestamp: Date(),
+            playbackDuration: playbackDuration,
+            reason: .bufferUnderrun
+        )
+        reporter.reportStall(event)
+    }
+    
+    private func handleRecovery() {
+        guard let reporter = analytics as? PlaybackMetricsReporter,
+              let stallStart = stallStartTime else { return }
+        
+        let event = RecoveryEvent(
+            playerType: .audioPlayer,
+            successful: true,
+            attemptCount: 1,
+            stallDuration: Date().timeIntervalSince(stallStart),
+            recoveryMethod: .bufferRefill
+        )
+        reporter.reportRecovery(event)
+        stallStartTime = nil
     }
 }
 

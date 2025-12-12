@@ -15,6 +15,12 @@ public protocol MiniMP3StreamerDelegate: AnyObject, Sendable {
     /// Called when an error occurs
     /// - Parameter error: The error that occurred
     func miniMP3Streamer(didEncounterError error: Error)
+
+    /// Called when playback stalls
+    func miniMP3StreamerDidStall(_ streamer: MiniMP3Streamer)
+    
+    /// Called when playback recovers from a stall
+    func miniMP3StreamerDidRecover(_ streamer: MiniMP3Streamer)
 }
 
 /// Optional delegate methods
@@ -22,4 +28,6 @@ public extension MiniMP3StreamerDelegate {
     func miniMP3Streamer(didOutput buffer: AVAudioPCMBuffer, at time: AVAudioTime?) {}
     func miniMP3Streamer(didChangeState state: StreamingAudioState) {}
     func miniMP3Streamer(didEncounterError error: Error) {}
+    func miniMP3StreamerDidStall(_ streamer: MiniMP3Streamer) {}
+    func miniMP3StreamerDidRecover(_ streamer: MiniMP3Streamer) {}
 }

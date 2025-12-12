@@ -35,6 +35,8 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     }
     var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
     var onMetadata: (([String: String]) -> Void)?
+    var onStall: (() -> Void)?
+    var onRecovery: (() -> Void)?
     
     // MARK: - Private Properties
     
@@ -103,6 +105,8 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     nonisolated private func mapPlayerState(_ playerState: AudioPlayerState) -> AudioPlayerPlaybackState {
         switch playerState {
+        case .stalled, .reconnecting:
+            return .buffering
         case .ready, .stopped:
             return .stopped
         case .running, .playing:
@@ -159,6 +163,18 @@ extension StreamingAudioPlayer: AudioPlayerDelegate {
     nonisolated public func audioPlayerDidReadMetadata(player: AudioPlayer, metadata: [String: String]) {
         Task { @MainActor [weak self] in
             self?.onMetadata?(metadata)
+        }
+    }
+
+    nonisolated public func audioPlayerDidStall(player: AudioPlayer) {
+        Task { @MainActor [weak self] in
+            self?.onStall?()
+        }
+    }
+    
+    nonisolated public func audioPlayerDidRecoverFromStall(player: AudioPlayer) {
+        Task { @MainActor [weak self] in
+            self?.onRecovery?()
         }
     }
 }

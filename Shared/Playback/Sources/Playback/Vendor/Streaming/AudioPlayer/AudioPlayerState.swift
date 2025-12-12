@@ -39,8 +39,10 @@ func playerStateAndStopReason(
         return (.ready, AudioPlayerStopReason.none)
     case .running, .playing, .waitingForDataAfterSeek:
         return (.playing, AudioPlayerStopReason.none)
-    case .pendingNext, .rebuffering, .waitingForData:
+    case .pendingNext, .waitingForData:
         return (.bufferring, AudioPlayerStopReason.none)
+    case .rebuffering:
+        return (.stalled, AudioPlayerStopReason.none)
     case .stopped:
         return (.stopped, nil)
     case .paused:
@@ -65,6 +67,8 @@ public enum AudioPlayerState: Equatable, Sendable {
     case stopped
     case error
     case disposed
+    case stalled
+    case reconnecting
 }
 
 public enum AudioPlayerStopReason: Equatable, Sendable {

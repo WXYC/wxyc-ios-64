@@ -16,4 +16,10 @@ protocol AudioPlayerDelegate: AnyObject, Sendable {
 
     /// Called when the player needs more buffers
     func audioPlayerNeedsMoreBuffers(_ player: AudioEnginePlayer)
+
+    /// Called when playback stalls due to buffer underrun
+    func audioPlayerDidStall(_ player: AudioEnginePlayer)
+    
+    /// Called when playback resumes after a stall
+    func audioPlayerDidRecoverFromStall(_ player: AudioEnginePlayer)
 }

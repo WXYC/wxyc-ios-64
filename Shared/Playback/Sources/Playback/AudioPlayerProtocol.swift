@@ -45,8 +45,15 @@ public protocol AudioPlayerProtocol: AnyObject {
     var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)? { get set }
     
     /// Called when player state changes
+    var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)? { get set }
     
     /// Called when stream metadata is received
     var onMetadata: (([String: String]) -> Void)? { get set }
+    
+    /// Called when playback stalls
+    var onStall: (() -> Void)? { get set }
+    
+    /// Called when playback recovers
+    var onRecovery: (() -> Void)? { get set }
 }
 

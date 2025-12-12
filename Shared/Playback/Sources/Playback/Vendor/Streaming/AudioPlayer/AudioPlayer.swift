@@ -587,6 +587,12 @@ open class AudioPlayer: @unchecked Sendable {
             guard let self = self else { return }
             asyncOnMain {
                 self.delegate?.audioPlayerStateChanged(player: self, with: newValue, previous: oldValue)
+                
+                if newValue == .stalled {
+                    self.delegate?.audioPlayerDidStall(player: self)
+                } else if oldValue == .stalled && newValue == .playing {
+                    self.delegate?.audioPlayerDidRecoverFromStall(player: self)
+                }
             }
         }
 
