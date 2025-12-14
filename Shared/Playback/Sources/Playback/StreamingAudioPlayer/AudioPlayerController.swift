@@ -67,12 +67,13 @@ public final class AudioPlayerController {
     
     /// Whether audio is currently playing
     public var isPlaying: Bool {
-        state == .playing || state == .buffering
+        player.isPlaying
     }
     
-    /// Whether playback is loading (play initiated but not yet playing)
+    /// Whether playback is loading (play initiated but not yet playing, or buffering)
+    /// Excludes error and stopped states to prevent infinite loading
     public var isLoading: Bool {
-        playbackIntended && state == .buffering
+        playbackIntended && (!isPlaying || player.state == .buffering) && player.state != .error
     }
     
     /// The current stream URL
@@ -97,7 +98,6 @@ public final class AudioPlayerController {
     
     // MARK: - State
     
-    private var state: AudioPlayerPlaybackState = .stopped
     private var wasPlayingBeforeInterruption = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
@@ -139,8 +139,6 @@ public final class AudioPlayerController {
         self.player = player
         self.notificationCenter = notificationCenter
         self.analytics = analytics
-        
-        setupPlayerCallbacks()
     }
     #endif
     
@@ -217,11 +215,8 @@ public final class AudioPlayerController {
         activateAudioSession()
         #endif
         
-        if player.state == .paused {
-            player.resume()
-        } else {
-            player.play(url: url)
-        }
+        // Always play fresh for live streaming (don't resume paused state)
+        player.play(url: url)
     }
     
     /// Start playback with a specific URL
@@ -239,7 +234,9 @@ public final class AudioPlayerController {
     public func pause(reason: String? = nil) {
         playbackIntended = false
         let duration = playbackDuration
-        player.pause()
+        // For live streaming, stop completely to clear buffers
+        // This ensures that resuming playback connects to the live stream
+        player.stop()
         if let reason {
             analytics?.pause(source: #function, duration: duration, reason: reason)
         } else {
@@ -485,15 +482,6 @@ extension AudioPlayerController {
     }
 
     private func setupPlayerCallbacks() {
-        // Sync initial state
-        state = player.state
-        
-        player.onStateChange = { [weak self] oldState, newState in
-            Task { @MainActor [weak self] in
-                self?.state = newState
-            }
-        }
-        
         player.onStall = { [weak self] in
             Task { @MainActor [weak self] in
                 self?.handleStall()
