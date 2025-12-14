@@ -114,7 +114,6 @@ struct PlaybackButton: View {
     @Environment(\.colorScheme) private var colorScheme
     
     @State private var isPlaying: Bool = AudioPlayerController.shared.isPlaying
-    @State private var isLoading: Bool = AudioPlayerController.shared.isLoading
     @State private var isExpanded = false
 
     var animationDuration: Double
@@ -142,20 +141,17 @@ struct PlaybackButton: View {
         }) {
             PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
                 .fill(buttonColor())
-                .scaleEffect(isLoading ? 0.8 : 1.0)
-                .animation(isLoading ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: isLoading)
         }
         .buttonStyle(NoHighlightButtonStyle())
         .animation(.spring(), value: isExpanded)
         .task {
             let observation = Observations {
-                (AudioPlayerController.shared.isPlaying, AudioPlayerController.shared.isLoading)
+                AudioPlayerController.shared.isPlaying
             }
             
-            for await (newIsPlaying, newIsLoading) in observation {
+            for await newIsPlaying in observation {
                 withAnimation(.easeInOut(duration: animationDuration)) {
                     isPlaying = newIsPlaying
-                    isLoading = newIsLoading
                 }
             }
         }
