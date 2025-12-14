@@ -25,9 +25,11 @@ struct PlaylistView: View {
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     
-    @EnvironmentObject var appState: Singletonia
+    @Environment(Singletonia.self) var appState
 
     var body: some View {
+        @Bindable var appState = appState
+        
         ZStack {
             Color.clear
             
@@ -129,6 +131,7 @@ struct PlaylistView: View {
 
 #Preview {
     PlaylistView()
+        .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
         .background(WXYCBackground())
 }

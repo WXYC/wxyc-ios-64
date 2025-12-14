@@ -20,9 +20,11 @@ static inline float noise_rand(float2 co) {
     // Smooth interpolation
     float f = fract(t);
     
-    float n = mix(n1, n2, f);
-    half alpha = half(n * noiseIntensity);
+    // Center noise around 0 (ranges from -0.5 to +0.5 instead of 0 to 1)
+    // This prevents the noise from adding overall brightness
+    float n = mix(n1, n2, f) - 0.5;
+    half value = half(n * noiseIntensity);
     
     // Return premultiplied alpha for correct blending in SwiftUI
-    return half4(alpha, alpha, alpha, alpha);
+    return half4(value, value, value, value);
 }
