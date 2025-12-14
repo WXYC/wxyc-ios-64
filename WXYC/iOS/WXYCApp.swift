@@ -25,19 +25,30 @@ import SwiftUI
 import WidgetKit
 import WXUI
 import Noise
+import Observation
 
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
-class Singletonia: ObservableObject {
+@Observable
+final class Singletonia {
     static let shared = Singletonia()
 
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
     
-    @Published var noiseIntensity: Float = 0.5
-    @Published var frequency: Float = 10.0
+    var noiseIntensity: Float = UserDefaults.standard.object(forKey: "app.noiseIntensity") as? Float ?? 0.5 {
+        didSet {
+            UserDefaults.standard.set(noiseIntensity, forKey: "app.noiseIntensity")
+        }
+    }
+    
+    var frequency: Float = UserDefaults.standard.object(forKey: "app.frequency") as? Float ?? 10.0 {
+        didSet {
+            UserDefaults.standard.set(frequency, forKey: "app.frequency")
+        }
+    }
     
     private var playlistObservationTask: Task<Void, Never>?
     private var isForegrounded = false
@@ -69,14 +80,12 @@ class Singletonia: ObservableObject {
         }
     }
     
-    deinit {
-        playlistObservationTask?.cancel()
-    }
+
 }
 
 @main
 struct WXYCApp: App {
-    @StateObject private var appState = Singletonia.shared
+    @State private var appState = Singletonia.shared
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -138,12 +147,12 @@ struct WXYCApp: App {
             ZStack {
                 Rectangle()
                     .fill(WXYCBackground())
-                    .ignoresSafeArea()
                     .noise(intensity: appState.noiseIntensity, frequency: appState.frequency)
+                    .ignoresSafeArea()
 
                 RootTabView()
                     .frame(maxWidth: 440)
-                    .environmentObject(appState)
+                    .environment(appState)
                     .environment(\.playlistService, appState.playlistService)
                     .environment(\.artworkService, appState.artworkService)
                     .environment(\.playbackController, AudioPlayerController.shared)
