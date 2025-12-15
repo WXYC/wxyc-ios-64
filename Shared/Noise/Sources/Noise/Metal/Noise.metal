@@ -26,5 +26,6 @@ static inline float noise_rand(float2 co) {
     half value = half(n * noiseIntensity);
     
     // Return premultiplied alpha for correct blending in SwiftUI
-    return half4(value, value, value, value);
+    // Use abs(value) for alpha to avoid negative alpha causing flicker
+    return half4(value, value, value, abs(value));
 }
