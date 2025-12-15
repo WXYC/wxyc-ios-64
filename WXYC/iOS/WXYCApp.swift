@@ -164,6 +164,18 @@ struct WXYCApp: App {
                         appState.setForegrounded(true)
                         appState.startObservingPlaylistUpdates()
                         
+                        // Listen for app termination to clear playing state
+                        #if os(iOS)
+                        NotificationCenter.default.addObserver(
+                            forName: UIApplication.willTerminateNotification,
+                            object: nil,
+                            queue: .main
+                        ) { _ in
+                            // Clear the playing state so widget doesn't show "Pause" after termination
+                            UserDefaults.wxyc.set(false, forKey: "isPlaying")
+                        }
+                        #endif
+                        
                         // Force status bar to be light
                         #if os(iOS)
                         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
