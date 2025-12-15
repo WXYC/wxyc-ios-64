@@ -14,6 +14,9 @@ import PostHog
 import UIKit
 #endif
 import Core
+import Caching
+import WidgetKit
+
 
 // AudioPlayerController is not available on watchOS.
 // Use RadioPlayerController from the Core module on watchOS instead.
@@ -228,6 +231,7 @@ public final class AudioPlayerController {
         #endif
         player.play(url: url)
         analytics?.play(source: #function, reason: reason)
+        updateWidgetState()
     }
     
     /// Pause playback
@@ -242,6 +246,7 @@ public final class AudioPlayerController {
         } else {
             analytics?.pause(source: #function, duration: duration)
         }
+        updateWidgetState()
     }
     
     /// Calculate how long playback has been active
@@ -264,6 +269,7 @@ public final class AudioPlayerController {
         #if os(iOS) || os(tvOS)
         deactivateAudioSession()
         #endif
+        updateWidgetState()
     }
     
     // MARK: - Audio Session (iOS/tvOS only)
@@ -465,6 +471,11 @@ public final class AudioPlayerController {
         }
     }
     #endif
+    
+    private func updateWidgetState() {
+        UserDefaults.wxyc.set(isPlaying, forKey: "isPlaying")
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 }
 
 // MARK: - Convenience for views
