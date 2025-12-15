@@ -38,7 +38,7 @@ final class Singletonia {
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
     
-    var noiseIntensity: Float = UserDefaults.standard.object(forKey: "app.noiseIntensity") as? Float ?? 0.5 {
+    var noiseIntensity: Float = UserDefaults.standard.object(forKey: "app.noiseIntensity") as? Float ?? 0 {
         didSet {
             UserDefaults.standard.set(noiseIntensity, forKey: "app.noiseIntensity")
         }
