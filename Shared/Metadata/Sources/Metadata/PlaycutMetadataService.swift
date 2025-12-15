@@ -103,11 +103,15 @@ extension PlaycutMetadataService {
     private func fetchDiscogsMetadata(for playcut: Playcut) async -> DiscogsMetadata {
         do {
             // First, search for the release
+            Log(.info, "Fetching Discogs metadata for: \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
             let searchResult = try await searchDiscogs(for: playcut)
             
             guard let result = searchResult else {
+                Log(.warning, "No Discogs search results found for: \(playcut.artistName)")
                 return DiscogsMetadata(label: nil, releaseYear: nil, discogsURL: nil, artistBio: nil, wikipediaURL: nil)
             }
+            
+            Log(.info, "Found Discogs result: type=\(result.type), id=\(result.id), discogsURL=\(result.discogsWebURL?.absoluteString ?? "nil")")
             
             // Try to fetch artist info for bio and Wikipedia link
             var artistBio: String?

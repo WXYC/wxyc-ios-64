@@ -130,10 +130,31 @@ public struct Discogs {
             case resourceUrl = "resource_url"
         }
         
-        /// Constructs the full Discogs web URL from the uri field
+        /// Constructs the full Discogs web URL from the uri field or id/type
         public var discogsWebURL: URL? {
-            guard let uri = uri else { return nil }
-            return URL(string: "https://www.discogs.com\(uri)")
+            // Prefer uri if available
+            if let uri = uri {
+                return URL(string: "https://www.discogs.com\(uri)")
+            }
+            
+            // Fallback: construct URL from type and id
+            // Examples: /release/12345, /master/67890, /artist/123
+            let path: String
+            switch type {
+            case "release":
+                path = "/release/\(id)"
+            case "master":
+                path = "/master/\(id)"
+            case "artist":
+                path = "/artist/\(id)"
+            case "label":
+                path = "/label/\(id)"
+            default:
+                // For unknown types, try a generic approach
+                path = "/\(type)/\(id)"
+            }
+            
+            return URL(string: "https://www.discogs.com\(path)")
         }
         
         /// Parsed release year as Int
