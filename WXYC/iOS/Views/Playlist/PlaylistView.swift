@@ -9,7 +9,6 @@
 import SwiftUI
 import WXUI
 import AppIntents
-import Noise
 import PlayerHeaderView
 import PartyHorn
 import Playlist
@@ -92,8 +91,7 @@ struct PlaylistView: View {
             VisualizerDebugView(
                 visualizer: visualizer,
                 selectedPlayerType: $selectedPlayerType,
-                noiseIntensity: $appState.noiseIntensity,
-                frequency: $appState.frequency
+                wallpaperConfiguration: appState.wallpaperConfiguration
             )
             .presentationDetents([.fraction(0.75)])
         }

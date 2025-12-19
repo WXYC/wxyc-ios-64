@@ -19,6 +19,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "Playback", path: "../Playback"),
+        .package(name: "Wallpaper", path: "../Wallpaper"),
         .package(url: "https://github.com/fatbobman/ObservableDefaults", from: "1.7.0")
     ],
     targets: [
@@ -26,6 +27,7 @@ let package = Package(
             name: "PlayerHeaderView",
             dependencies: [
                 "Playback",
+                "Wallpaper",
                 .product(name: "ObservableDefaults", package: "ObservableDefaults")
             ]
         ),
