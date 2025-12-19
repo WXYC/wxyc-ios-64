@@ -32,7 +32,3 @@ public struct WallpaperView: View {
         }
     }
 }
-
-#Preview {
-    WallpaperView(configuration: WallpaperConfiguration())
-}
