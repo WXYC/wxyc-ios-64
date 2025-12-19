@@ -110,6 +110,8 @@ public final class AudioPlayerController {
     @ObservationIgnored private nonisolated(unsafe) var notificationObservers: [Any] = []
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
     
+    @ObservationIgnored private var eventTask: Task<Void, Never>?
+    
     // MARK: - Initialization
     
     #if os(iOS) || os(tvOS)
@@ -130,7 +132,7 @@ public final class AudioPlayerController {
         setupAudioSession()
         setupRemoteCommandCenter()
         setupNotifications()
-        setupPlayerCallbacks()
+        setupPlayerObservation()
     }
     #else
     /// Creates a controller with injected dependencies (macOS)
@@ -147,6 +149,7 @@ public final class AudioPlayerController {
     
     @MainActor
     deinit {
+        eventTask?.cancel()
         for observer in notificationObservers {
             notificationCenter.removeObserver(observer)
         }
@@ -169,19 +172,16 @@ public final class AudioPlayerController {
             player.stop()
         }
         
-        // Transfer audio buffer handler if set
-        if let handler = player.onAudioBuffer {
-            newPlayer.onAudioBuffer = handler
-        }
+        // Transfer audio buffer handler if set (deprecated)
+        // No-op for streams as consumers should just subscribe to the new player's stream
         
-        // Transfer metadata handler if set
-        if let handler = player.onMetadata {
-            newPlayer.onMetadata = handler
-        }
+        // Transfer metadata handler if set (removed)
+        
         
         // Replace player
         player = newPlayer
-        setupPlayerCallbacks()
+        setupPlayerObservation()
+        
         
         // Restore playback state if it was playing
         if wasPlaying, let url = currentURL {
@@ -481,27 +481,25 @@ public final class AudioPlayerController {
 // MARK: - Convenience for views
 
 extension AudioPlayerController {
-    /// Provides access to the underlying player's audio buffer callback
-    /// Used for visualization
-    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
-        player.onAudioBuffer = handler
-    }
-    
-    /// Provides access to the underlying player's metadata callback
-    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        player.onMetadata = handler
+    /// Stream of audio buffers for visualization
+    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+        player.audioBufferStream
     }
 
-    private func setupPlayerCallbacks() {
-        player.onStall = { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.handleStall()
-            }
-        }
-        
-        player.onRecovery = { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.handleRecovery()
+    private func setupPlayerObservation() {
+        eventTask?.cancel()
+        eventTask = Task { [weak self] in
+            guard let self else { return }
+            for await event in player.eventStream {
+                switch event {
+                case .stall:
+                    handleStall()
+                case .recovery:
+                    handleRecovery()
+                case .error(let error):
+                    // Log error but don't crash
+                    print("AudioPlayerController received error: \(error)")
+                }
             }
         }
     }

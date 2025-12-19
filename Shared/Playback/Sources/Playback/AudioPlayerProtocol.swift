@@ -41,19 +41,28 @@ public protocol AudioPlayerProtocol: AnyObject {
     /// Stop playback completely
     func stop()
     
-    /// Called when audio buffers are available for processing (visualization)
-    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)? { get set }
+    /// Stream of playback state changes
+    var stateStream: AsyncStream<AudioPlayerPlaybackState> { get }
     
-    /// Called when player state changes
-    var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)? { get set }
+    /// Stream of audio buffers for visualization
+    /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread
+    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> { get }
     
-    /// Called when stream metadata is received
-    var onMetadata: (([String: String]) -> Void)? { get set }
-    
-    /// Called when playback stalls
-    var onStall: (() -> Void)? { get set }
-    
-    /// Called when playback recovers
-    var onRecovery: (() -> Void)? { get set }
+    /// Stream of internal player events (errors, stalls, recovery)
+    var eventStream: AsyncStream<AudioPlayerInternalEvent> { get }
 }
+
+/// Internal events that can occur during playback
+public enum AudioPlayerInternalEvent: Sendable {
+    case error(Error)
+    case stall
+    case recovery
+}
+
+// MARK: - Concurrency
+
+// AVAudioPCMBuffer is not Sendable by default, but we need to pass it through AsyncStream
+// for visualization. We treat it as Sendable since we transfer ownership to the stream
+// and don't mutate it after yielding.
+extension AVAudioPCMBuffer: @unchecked Sendable {}
 

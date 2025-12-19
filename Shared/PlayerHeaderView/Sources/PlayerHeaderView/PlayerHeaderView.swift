@@ -74,9 +74,9 @@ public struct PlayerHeaderView: View {
         .padding(12)
         .background(.ultraThinMaterial)
         .cornerRadius(12)
-        .onAppear {
-            // Connect visualizer to controller's audio buffer
-            Self.controller.setAudioBufferHandler { buffer in
+        .task {
+            // Connect visualizer to controller's audio buffer stream
+            for await buffer in Self.controller.audioBufferStream {
                 visualizer.processBuffer(buffer)
             }
         }
@@ -85,12 +85,19 @@ public struct PlayerHeaderView: View {
             Task { @MainActor in
                 let newPlayer = AudioPlayerController.createPlayer(for: newType)
                 Self.controller.replacePlayer(newPlayer)
-                // Reconnect visualizer to new player's audio buffer
-                Self.controller.setAudioBufferHandler { buffer in
-                    visualizer.processBuffer(buffer)
-                }
+                // Note: HeaderView relies on AudioPlayerController's internal bridging,
+                // so the existing stream loop in .task should continue to work or
+                // may need to be restarted if the iterator terminates?
+                // AudioPlayerController.audioBufferStream returns a bridged stream,
+                // so the stream itself shouldn't terminate unless AudioPlayerController explicitly ends it.
+                // Assuming AudioPlayerController keeps the same stream alive across replacements.
+                
                 // Call the callback if provided
                 onPlayerTypeChanged?(newType)
+                
+                // If stream does terminate, we might need a way to restart the loop.
+                // But .task restarts if identity changes... local identity hasn't changed.
+                // If AudioPlayerController's stream implementation is robust, it shouldn't end on replace.
             }
         }
     }

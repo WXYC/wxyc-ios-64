@@ -240,7 +240,8 @@ final class AudioPlayerTestHarness: UnifiedPlayerControllerTestHarness {
     var playCallCount: Int { mockPlayer.playCallCount }
     var resumeCallCount: Int { mockPlayer.resumeCallCount }
     var playbackAttemptCount: Int { playCallCount + resumeCallCount }
-    var pauseCallCount: Int { mockPlayer.pauseCallCount }
+    // AudioPlayerController.pause() calls stop() for live streams, so we count both
+    var pauseCallCount: Int { mockPlayer.pauseCallCount + mockPlayer.stopCallCount }
     var sessionDeactivationCount: Int { mockSession.deactivationCount }
     
     init() {
@@ -309,57 +310,89 @@ final class MockStreamingAudioPlayer: AudioPlayerProtocol, @unchecked Sendable {
     var isPlaying: Bool = false
     var state: AudioPlayerPlaybackState = .stopped
     var currentURL: URL?
-    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
-    var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
-    var onMetadata: (([String: String]) -> Void)?
+    
+    let stateStream: AsyncStream<AudioPlayerPlaybackState>
+    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    let eventStream: AsyncStream<AudioPlayerInternalEvent>
+    
+    private var stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation!
+    private var audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
+    private var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
     
     var playCallCount = 0
     var pauseCallCount = 0
     var stopCallCount = 0
     var resumeCallCount = 0
     
+    init() {
+        var sC: AsyncStream<AudioPlayerPlaybackState>.Continuation!
+        self.stateStream = AsyncStream { sC = $0 }
+        self.stateContinuation = sC
+        
+        var aC: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        self.audioBufferStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { aC = $0 }
+        self.audioBufferContinuation = aC
+        
+        var eC: AsyncStream<AudioPlayerInternalEvent>.Continuation!
+        self.eventStream = AsyncStream { eC = $0 }
+        self.eventContinuation = eC
+    }
+    
     func play(url: URL) {
         playCallCount += 1
         currentURL = url
         isPlaying = true
-        state = .playing
+        updateState(.playing)
     }
     
     func pause() {
         pauseCallCount += 1
         isPlaying = false
-        state = .paused
+        updateState(.paused)
     }
     
     func stop() {
         stopCallCount += 1
         isPlaying = false
-        state = .stopped
+        updateState(.stopped)
     }
     
     func resume() {
         resumeCallCount += 1
         isPlaying = true
-        state = .playing
+        updateState(.playing)
     }
     
     func simulatePlaybackStarted() {
         isPlaying = true
-        state = .playing
+        updateState(.playing)
     }
     
     func simulatePlaybackStopped() {
         isPlaying = false
-        state = .paused
+        updateState(.paused)
+    }
+    
+    func simulateStall() {
+        eventContinuation.yield(.stall)
+    }
+    
+    func simulateRecovery() {
+        eventContinuation.yield(.recovery)
     }
     
     func reset() {
         isPlaying = false
-        state = .stopped
+        updateState(.stopped)
         playCallCount = 0
         pauseCallCount = 0
         stopCallCount = 0
         resumeCallCount = 0
+    }
+    
+    private func updateState(_ newState: AudioPlayerPlaybackState) {
+        self.state = newState
+        stateContinuation.yield(newState)
     }
 }
 

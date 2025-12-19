@@ -152,14 +152,12 @@ public final class RadioPlayerController: PlaybackController {
         self.pause()
     }
     
-    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
+    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
         // RadioPlayerController uses AVPlayer which doesn't provide raw audio buffers
-        // No-op implementation
-    }
-    
-    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        // RadioPlayerController doesn't currently expose stream metadata
-        // No-op implementation
+        // Return empty stream that finishes immediately
+        AsyncStream { continuation in
+            continuation.finish()
+        }
     }
     
     #if os(iOS)

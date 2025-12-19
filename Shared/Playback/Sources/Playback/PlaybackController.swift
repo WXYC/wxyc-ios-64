@@ -50,13 +50,10 @@ public protocol PlaybackController: AnyObject, Observable {
     /// Controllers without a distinct stop state should treat this as pause
     func stop()
     
-    /// Sets a callback for receiving audio buffer data (for visualization)
-    /// Controllers without audio buffer access should implement this as a no-op
-    func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void)
-    
-    /// Sets a callback for receiving stream metadata updates
-    /// Controllers without metadata access should implement this as a no-op
-    func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void)
+    /// Stream of audio buffers for visualization
+    /// Controllers without audio buffer access should return an empty stream
+    /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread
+    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> { get }
     
     #if os(iOS)
     /// Called when the app enters the background
