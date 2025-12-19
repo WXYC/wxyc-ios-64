@@ -1,0 +1,23 @@
+{
+  "pins" : [
+    {
+      "identity" : "observabledefaults",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/fatbobman/ObservableDefaults",
+      "state" : {
+        "revision" : "e47f77885e2adcf5682dad77d98e0bb2c787a609",
+        "version" : "1.7.2"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax",
+      "state" : {
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
+      }
+    }
+  ],
+  "version" : 2
+}

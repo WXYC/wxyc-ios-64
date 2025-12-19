@@ -16,12 +16,11 @@
 		1F3D795595990939AC76274D /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = D1362165656CBF5DDD9E5DDA /* Playlist */; };
 		1F511646EB98B7621319A1DA /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = EE16E35E8F1311399E5AD843 /* AppServices */; };
 		235BFA092EF0984A0003A0B4 /* ProgressiveBlur in Frameworks */ = {isa = PBXBuildFile; productRef = 235BFA082EF0984A0003A0B4 /* ProgressiveBlur */; };
-		23C986732EECD6000001ADE1 /* Noise in Frameworks */ = {isa = PBXBuildFile; productRef = 23C986722EECD6000001ADE1 /* Noise */; };
+		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
 		3168A48CA317F321E3B1BB95 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = F06268AE9022F6AE22B608E2 /* Secrets */; };
 		37327445A68BBA56C392BEF7 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 01163D6D065337EB60F79C5B /* WXUI */; };
-		3A5FF2B96BC33F537FCF94DC /* LaminatedGlass in Frameworks */ = {isa = PBXBuildFile; productRef = 12B466740D23DEA4BFD50EDC /* LaminatedGlass */; };
 		3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 01BA6F026317213ACE8EE228 /* PostHog */; };
 		426249645642062E961658BD /* ObservableDefaults in Frameworks */ = {isa = PBXBuildFile; productRef = 5DF3CD28508F5193B79C212A /* ObservableDefaults */; };
 		4FB3F65AF65A0BBE835C5448 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = 6E6C024BC7EDD997551D5B01 /* Secrets */; };
@@ -142,7 +141,6 @@
 		8ED0B718BCDD0CEC55372A30 /* Caching */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Caching; path = Shared/Caching; sourceTree = SOURCE_ROOT; };
 		B2F0564846267151FC3EC76A /* NowPlayingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = NowPlayingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAB44EBC8F31C69863D71146 /* Analytics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Analytics; path = Shared/Analytics; sourceTree = SOURCE_ROOT; };
-		E482D96694E2784BE2CC6F24 /* LaminatedGlass */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LaminatedGlass; path = ../LaminatedGlass; sourceTree = SOURCE_ROOT; };
 		E790F2E8AAE12A20CB303818 /* WatchXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
@@ -174,7 +172,6 @@
 				iOS/Tests/WXYC.xctestplan,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
-				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
 				iOS/Tests/WXYCUITests/README.md,
@@ -263,7 +260,7 @@
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
 				1F3D795595990939AC76274D /* Playlist in Frameworks */,
-				23C986732EECD6000001ADE1 /* Noise in Frameworks */,
+				23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */,
 				62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */,
 				A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */,
 				1F511646EB98B7621319A1DA /* AppServices in Frameworks */,
@@ -271,7 +268,6 @@
 				7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */,
 				235BFA092EF0984A0003A0B4 /* ProgressiveBlur in Frameworks */,
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
-				3A5FF2B96BC33F537FCF94DC /* LaminatedGlass in Frameworks */,
 				C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */,
 				6401428DBE5C4D95901BE5A9 /* ObfuscateMacro in Frameworks */,
 				E711EE26BBFE816CC3A6738F /* Vortex in Frameworks */,
@@ -356,7 +352,6 @@
 				23FD1F9E3836A69490D508B9 /* Artwork */,
 				8ED0B718BCDD0CEC55372A30 /* Caching */,
 				05E8AA4420F87C191FBB0E08 /* Core */,
-				E482D96694E2784BE2CC6F24 /* LaminatedGlass */,
 				21C88FF06CCC47E090003EAD /* Logger */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
@@ -549,12 +544,11 @@
 				01163D6D065337EB60F79C5B /* WXUI */,
 				3DF76684E122C2FAD4F26E27 /* PartyHorn */,
 				35DC07836DEEE44F7B819265 /* PlayerHeaderView */,
-				12B466740D23DEA4BFD50EDC /* LaminatedGlass */,
 				51D35AECC049A83AE7575477 /* PostHog */,
 				9B98AA54A13E060E6806108D /* ObfuscateMacro */,
 				02278730EBAF8961A683F35F /* Vortex */,
 				5DF3CD28508F5193B79C212A /* ObservableDefaults */,
-				23C986722EECD6000001ADE1 /* Noise */,
+				23D418172EF2C80000WALLPA /* Wallpaper */,
 				235BFA082EF0984A0003A0B4 /* ProgressiveBlur */,
 			);
 			productName = WXYC;
@@ -610,7 +604,6 @@
 				07287EE5CF49EAC7250A8938 /* XCLocalSwiftPackageReference "Shared/Artwork" */,
 				D69C03CC025D00453589D28C /* XCLocalSwiftPackageReference "Shared/Caching" */,
 				FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */,
-				8A5A7C2695CC7C346A75F123 /* XCLocalSwiftPackageReference "../LaminatedGlass" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
 				61539220C8BCCFF9AC473AD9 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */,
@@ -621,7 +614,7 @@
 				D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */,
 				4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */,
 				ABCDCE57E9505C547B8FE732 /* XCLocalSwiftPackageReference "Shared/WXUI" */,
-				23C986712EECD6000001ADE1 /* XCLocalSwiftPackageReference "Shared/Noise" */,
+				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
 				235BFA072EF0984A0003A0B4 /* XCLocalSwiftPackageReference "Shared/ProgressiveBlur" */,
 			);
 			preferredProjectObjectVersion = 90;
@@ -1594,9 +1587,9 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/ProgressiveBlur;
 		};
-		23C986712EECD6000001ADE1 /* XCLocalSwiftPackageReference "Shared/Noise" */ = {
+		23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = Shared/Noise;
+			relativePath = Shared/Wallpaper;
 		};
 		4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -1621,10 +1614,6 @@
 		8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Metadata;
-		};
-		8A5A7C2695CC7C346A75F123 /* XCLocalSwiftPackageReference "../LaminatedGlass" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../LaminatedGlass;
 		};
 		9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -1718,10 +1707,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Playback;
 		};
-		12B466740D23DEA4BFD50EDC /* LaminatedGlass */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = LaminatedGlass;
-		};
 		14F61C96EE25983A17B215F3 /* ObfuscateMacro */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */;
@@ -1739,9 +1724,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = ProgressiveBlur;
 		};
-		23C986722EECD6000001ADE1 /* Noise */ = {
+		23D418172EF2C80000WALLPA /* Wallpaper */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = Noise;
+			productName = Wallpaper;
 		};
 		23FB21C62EEA867C0064E6FD /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;

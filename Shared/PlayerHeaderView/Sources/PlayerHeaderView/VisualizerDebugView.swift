@@ -7,27 +7,25 @@
 
 import SwiftUI
 import Playback
+import Wallpaper
 
 #if DEBUG
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
-    @Binding var noiseIntensity: Float
-    @Binding var frequency: Float
+    @Bindable var wallpaperConfiguration: WallpaperConfiguration
     var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
     @Environment(\.dismiss) private var dismiss
-    
+
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
-        noiseIntensity: Binding<Float>,
-        frequency: Binding<Float>,
+        wallpaperConfiguration: WallpaperConfiguration,
         onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
-        self._noiseIntensity = noiseIntensity
-        self._frequency = frequency
+        self.wallpaperConfiguration = wallpaperConfiguration
         self.onPlayerTypeChanged = onPlayerTypeChanged
     }
     
@@ -157,31 +155,17 @@ public struct VisualizerDebugView: View {
                     Text("Controls the brightness gradient of LCD segments. Min is applied to top segments, max to bottom.")
                 }
                 
+                // Wallpaper
+                WallpaperDebugControls(
+                    configuration: wallpaperConfiguration
+                )
+
                 // Actions
                 Section("Actions") {
                     Button("Reset All Settings") {
                         visualizer.reset()
                     }
                     .foregroundStyle(.red)
-                }
-                
-                // Noise Settings
-                Section("Noise Settings") {
-                    HStack {
-                        Text("Intensity")
-                        Spacer()
-                        Text(String(format: "%.2f", noiseIntensity))
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $noiseIntensity, in: 0.0...10.0)
-                    
-                    HStack {
-                        Text("Frequency")
-                        Spacer()
-                        Text(String(format: "%.1f", frequency))
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $frequency, in: 0.0...100.0)
                 }
             }
             .listRowSeparator(.hidden)

@@ -24,7 +24,7 @@ import Secrets
 import SwiftUI
 import WidgetKit
 import WXUI
-import Noise
+import Wallpaper
 import Observation
 
 
@@ -37,19 +37,10 @@ final class Singletonia {
     var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
-    
-    var noiseIntensity: Float = UserDefaults.standard.object(forKey: "app.noiseIntensity") as? Float ?? 0 {
-        didSet {
-            UserDefaults.standard.set(noiseIntensity, forKey: "app.noiseIntensity")
-        }
-    }
-    
-    var frequency: Float = UserDefaults.standard.object(forKey: "app.frequency") as? Float ?? 10.0 {
-        didSet {
-            UserDefaults.standard.set(frequency, forKey: "app.frequency")
-        }
-    }
-    
+
+    // Wallpaper configurations (persisted via @ObservableDefaults)
+    let wallpaperConfiguration = WallpaperConfiguration()
+
     private var playlistObservationTask: Task<Void, Never>?
     private var isForegrounded = false
 
@@ -145,10 +136,9 @@ struct WXYCApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                Rectangle()
-                    .fill(WXYCBackground())
-                    .noise(intensity: appState.noiseIntensity, frequency: appState.frequency)
-                    .ignoresSafeArea()
+                WallpaperView(
+                    configuration: appState.wallpaperConfiguration
+                )
 
                 RootTabView()
                     .frame(maxWidth: 440)
@@ -417,10 +407,10 @@ struct WXYCApp: App {
 
 #Preview {
     ZStack {
-        Rectangle()
-            .fill(WXYCBackground())
-            .ignoresSafeArea()
-        
+        WallpaperView(
+            configuration: WallpaperConfiguration()
+        )
+
         RootTabView()
             .environment(\.playlistService, PlaylistService())
             .environment(\.artworkService, MultisourceArtworkService())
