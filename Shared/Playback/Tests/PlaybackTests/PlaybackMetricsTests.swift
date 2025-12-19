@@ -23,13 +23,14 @@ struct PlaybackMetricsTests {
         
         switch type {
         case .radioPlayer:
+            let nc = NotificationCenter()
             let mockPlayer = MockPlayer()
             // Make sure to use the init that injects dependencies including the mock reporter
-            let radioPlayer = RadioPlayer(player: mockPlayer, userDefaults: .test, analytics: nil, notificationCenter: NotificationCenter.default)
-            let _ = RadioPlayerController(radioPlayer: radioPlayer, notificationCenter: .default, metricsReporter: reporter)
+            let radioPlayer = RadioPlayer(player: mockPlayer, userDefaults: .test, analytics: nil, notificationCenter: nc)
+            let _ = RadioPlayerController(radioPlayer: radioPlayer, notificationCenter: nc, metricsReporter: reporter)
             
             // RadioPlayerController listens for AVPlayerItemPlaybackStalled
-            NotificationCenter.default.post(name: .AVPlayerItemPlaybackStalled, object: nil)
+            nc.post(name: .AVPlayerItemPlaybackStalled, object: nil)
             
             // Yield to allow async event handling
             try await Task.sleep(for: .milliseconds(100))

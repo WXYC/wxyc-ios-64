@@ -10,8 +10,20 @@ public final class AVAudioStreamer {
 
     public weak var delegate: (any AVAudioStreamerDelegate)?
     
-    /// Handler called when audio buffers are decoded (for visualization)
-    public var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
+    // MARK: - Streams
+    
+    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+        audioBufferStreamContinuation.0
+    }
+    
+    // Use .bufferingNewest(1) to avoid blocking decoding thread
+    private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation) = {
+        var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { c in
+            continuation = c
+        }
+        return (stream, continuation)
+    }()
 
     public private(set) var state: StreamingAudioState = .idle {
         didSet {
@@ -160,9 +172,9 @@ public final class AVAudioStreamer {
         // Add to queue
         bufferQueue.enqueue(buffer)
 
-        // Notify delegate and handler
+        // Notify delegate and stream
         delegate?.audioStreamer(didOutput: buffer, at: nil)
-        audioBufferHandler?(buffer)
+        audioBufferStreamContinuation.1.yield(buffer)
 
         // Check if we should start playing
         if case .buffering = state, bufferQueue.hasMinimumBuffers {

@@ -32,15 +32,30 @@ final class FfmpegAudioController: PlaybackController {
     // MARK: - Private Properties
     
     private let player = StreamPlayer()
-    private var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
+    // MARK: - Streams
+    
+    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+        audioBufferStreamContinuation.0
+    }
+    
+    private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation) = {
+        var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { c in
+            continuation = c
+        }
+        return (stream, continuation)
+    }()
     
     // MARK: - Init
     
     init(streamURL: URL) {
         self.streamURL = streamURL
-        player.analysisHandler = { [weak self] buffer, _ in
-            guard let handler = self?.audioBufferHandler else { return }
-            handler(buffer)
+        // Capture continuation to avoid retaining self strongly in closure if possible,
+        // though analysisHandler probably retains self anyway.
+        // Actually, we can just use the continuation directly.
+        let continuation = audioBufferStreamContinuation.1
+        player.analysisHandler = { buffer, _ in
+            continuation.yield(buffer)
         }
     }
     
@@ -64,14 +79,6 @@ final class FfmpegAudioController: PlaybackController {
     
     func stop() {
         player.stop()
-    }
-    
-    func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
-        audioBufferHandler = handler
-    }
-    
-    func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        // FFmpeg path does not currently surface metadata.
     }
     
     #if os(iOS)

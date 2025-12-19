@@ -42,15 +42,28 @@ public final class PlaybackControllerManager {
     /// Convenience: whether playback is loading
     public var isLoading: Bool { current.isLoading }
     
+    /// Stream of audio buffers for visualization
+    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+        audioBufferStreamContinuation.0
+    }
+    
     // MARK: - Private Properties
     
-    private var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
-    private var metadataHandler: (([String: String]) -> Void)?
     private let controllerFactory: PlaybackControllerFactory
     private let metricsAdapter = StreamerMetricsAdapter()
     
+    private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation) = {
+        var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { c in
+            continuation = c
+        }
+        return (stream, continuation)
+    }()
+    
+    private var bufferConsumptionTask: Task<Void, Never>?
+    
     // CPU Monitoring
-    private var cpuMonitor: CPUMonitor! // Use implicit unwrapped optional or separate init logic, but since we are in singleton init...
+    private var cpuMonitor: CPUMonitor?
     
     // MARK: - Initialization
     
@@ -62,14 +75,8 @@ public final class PlaybackControllerManager {
         let controller = Self.defaultFactory(type)
         self.current = controller
         
-        // Initialize CPU Monitor
-        // We configure it here to safely capture 'self' after super.init if it was a subclass, 
-        // but this is a final class with no superclass init to call (implied NSObject? No, no subclass).
-        // Since it's a class passing 'self' to closure in init corresponds to phase 2 initialization.
-        // But we can assign it after main properties.
-        self.cpuMonitor = nil // Temporary
-        
         wireUpMetricsAdapter(for: controller)
+        startConsumingBuffers(from: controller)
         
         // Setup CPU Monitor
         self.cpuMonitor = CPUMonitor { [weak self] usage in
@@ -95,6 +102,7 @@ public final class PlaybackControllerManager {
         self.current = controller
         
         wireUpMetricsAdapter(for: controller)
+        startConsumingBuffers(from: controller)
     }
     
     // MARK: - Controller Factory
@@ -135,19 +143,14 @@ public final class PlaybackControllerManager {
         // Create new controller using the factory
         let newController = controllerFactory(type)
         
-        // Transfer handlers to new controller
-        if let handler = audioBufferHandler {
-            newController.setAudioBufferHandler(handler)
-        }
-        if let handler = metadataHandler {
-            newController.setMetadataHandler(handler)
-        }
-        
         wireUpMetricsAdapter(for: newController)
         
         // Update state
         current = newController
         currentType = type
+        
+        // Switch stream consumption
+        startConsumingBuffers(from: newController)
         
         // Resume playback if it was playing
         if wasPlaying {
@@ -162,34 +165,20 @@ public final class PlaybackControllerManager {
     
     /// Start playback
     public func play() {
-        cpuMonitor.start()
+        cpuMonitor?.start()
         try? current.play(reason: "user_play")
     }
     
     /// Pause playback
     public func pause() {
-        cpuMonitor.stop()
+        cpuMonitor?.stop()
         current.pause()
     }
     
     /// Stop playback
     public func stop() {
-        cpuMonitor.stop()
+        cpuMonitor?.stop()
         current.stop()
-    }
-    
-    /// Set the audio buffer handler (for visualization)
-    /// This handler is preserved across controller switches
-    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
-        audioBufferHandler = handler
-        current.setAudioBufferHandler(handler)
-    }
-    
-    /// Set the metadata handler
-    /// This handler is preserved across controller switches
-    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        metadataHandler = handler
-        current.setMetadataHandler(handler)
     }
     
     #if os(iOS)
@@ -209,6 +198,19 @@ public final class PlaybackControllerManager {
             streamer.delegate = metricsAdapter
         } else if let streamer = controller as? MiniMP3Streamer {
             streamer.delegate = metricsAdapter
+        }
+    }
+    
+    private func startConsumingBuffers(from controller: any PlaybackController) {
+        bufferConsumptionTask?.cancel()
+        bufferConsumptionTask = Task { [weak self] in
+            guard let self else { return }
+            let continuation = audioBufferStreamContinuation.1
+            // Use the stream from the controller
+            // Note: If controller changes, this task is cancelled by new call.
+            for await buffer in controller.audioBufferStream {
+                continuation.yield(buffer)
+            }
         }
     }
 }

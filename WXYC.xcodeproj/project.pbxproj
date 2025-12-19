@@ -147,6 +147,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
+			);
+			target = A3EC40619289B0065648A53C /* WXYCTests */;
+		};
 		23FB1F662EEA847B0064E6FD /* Exceptions for "WXYC" folder in "WXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -172,6 +179,7 @@
 				iOS/Tests/WXYC.xctestplan,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
+				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
 				iOS/Tests/WXYCUITests/README.md,
@@ -240,6 +248,7 @@
 				23FB1F662EEA847B0064E6FD /* Exceptions for "WXYC" folder in "WXYC" target */,
 				23FB21C32EEA860A0064E6FD /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */,
 				23FB21C12EEA85F20064E6FD /* Exceptions for "WXYC" folder in "WXYC TV" target */,
+				23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */,
 				23FB1F6D2EEA847F0064E6FD /* Exceptions for "WXYC" folder in "WatchXYC" target */,
 			);
 			path = WXYC;

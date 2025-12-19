@@ -20,6 +20,8 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var stopCallCount = 0
     var lastPlayedURL: URL?
     
+    var shouldAutoUpdateState = true
+    
     // MARK: - AudioPlayerProtocol
     
     var isPlaying: Bool = false
@@ -38,35 +40,47 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         playCallCount += 1
         lastPlayedURL = url
         currentURL = url
-        let oldState = state
-        state = .playing
-        isPlaying = true
-        onStateChange?(oldState, .playing)
+        
+        if shouldAutoUpdateState {
+            let oldState = state
+            state = .playing
+            isPlaying = true
+            onStateChange?(oldState, .playing)
+        }
     }
     
     func pause() {
         pauseCallCount += 1
-        let oldState = state
-        state = .paused
-        isPlaying = false
-        onStateChange?(oldState, .paused)
+        
+        if shouldAutoUpdateState {
+            let oldState = state
+            state = .paused
+            isPlaying = false
+            onStateChange?(oldState, .paused)
+        }
     }
     
     func resume() {
         resumeCallCount += 1
-        let oldState = state
-        state = .playing
-        isPlaying = true
-        onStateChange?(oldState, .playing)
+        
+        if shouldAutoUpdateState {
+            let oldState = state
+            state = .playing
+            isPlaying = true
+            onStateChange?(oldState, .playing)
+        }
     }
     
     func stop() {
         stopCallCount += 1
-        let oldState = state
-        state = .stopped
-        isPlaying = false
-        currentURL = nil
-        onStateChange?(oldState, .stopped)
+        
+        if shouldAutoUpdateState {
+            let oldState = state
+            state = .stopped
+            isPlaying = false
+            currentURL = nil
+            onStateChange?(oldState, .stopped)
+        }
     }
     
     // MARK: - Test Helpers

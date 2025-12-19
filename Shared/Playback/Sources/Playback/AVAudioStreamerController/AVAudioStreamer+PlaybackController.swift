@@ -53,14 +53,7 @@ extension AVAudioStreamer: PlaybackController {
         }
     }
     
-    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
-        audioBufferHandler = handler
-    }
-    
-    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        // AVAudioStreamer doesn't currently support metadata extraction
-        // No-op implementation
-    }
+    // audioBufferStream is defined in AVAudioStreamer class
     
     #if os(iOS)
     public func handleAppDidEnterBackground() {

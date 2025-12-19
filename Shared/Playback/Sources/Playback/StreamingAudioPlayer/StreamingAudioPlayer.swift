@@ -9,11 +9,6 @@
 import Foundation
 import AVFoundation
 
-/// Holds audio buffer callback in a non-actor-isolated way for realtime audio thread access
-private final class AudioBufferCallbackHolder: @unchecked Sendable {
-    var callback: ((AVAudioPCMBuffer) -> Void)?
-}
-
 /// Low-level audio player that wraps the AudioStreaming package
 /// Handles basic playback control and state management
 @MainActor
@@ -26,28 +21,45 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     private(set) var state: AudioPlayerPlaybackState = .stopped
     private(set) var currentURL: URL?
     
-    // MARK: - Callbacks
+    // MARK: - Streams
     
-    /// Callback for audio buffer data. Called from realtime audio thread.
-    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)? {
-        get { audioBufferCallbackHolder.callback }
-        set { audioBufferCallbackHolder.callback = newValue }
-    }
-    var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
-    var onMetadata: (([String: String]) -> Void)?
-    var onStall: (() -> Void)?
-    var onRecovery: (() -> Void)?
+    let stateStream: AsyncStream<AudioPlayerPlaybackState>
+    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    let eventStream: AsyncStream<AudioPlayerInternalEvent>
     
     // MARK: - Private Properties
     
-    /// Must be nonisolated so setupFrameFilter can access it without inheriting MainActor isolation
-    @ObservationIgnored nonisolated private let audioBufferCallbackHolder = AudioBufferCallbackHolder()
+    @ObservationIgnored private let stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation
+    @ObservationIgnored private let audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+    @ObservationIgnored private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
+    
     @ObservationIgnored private let player: AudioPlayer
     
     // MARK: - Initialization
     
     init() {
         self.player = AudioPlayer()
+        
+        // Initialize Streams
+        var stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation!
+        self.stateStream = AsyncStream { continuation in
+            stateContinuation = continuation
+        }
+        self.stateContinuation = stateContinuation
+        
+        // Audio Buffer Stream: bufferingNewest(1) to avoid blocking audio thread
+        var audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        self.audioBufferStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            audioBufferContinuation = continuation
+        }
+        self.audioBufferContinuation = audioBufferContinuation
+        
+        var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
+        self.eventStream = AsyncStream { continuation in
+            eventContinuation = continuation
+        }
+        self.eventContinuation = eventContinuation
+        
         setupFrameFilter()
         setupDelegate()
     }
@@ -59,9 +71,9 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     /// Must be nonisolated so the closure passed to FilterEntry doesn't inherit MainActor isolation.
     /// This closure is called from a realtime audio thread and cannot have actor isolation requirements.
     nonisolated private func setupFrameFilter() {
-        let holder = audioBufferCallbackHolder
+        let continuation = audioBufferContinuation
         let filter = FilterEntry(name: "audio-buffer-callback") { buffer, _ in
-            holder.callback?(buffer)
+            continuation.yield(buffer)
         }
         player.frameFiltering.add(entry: filter)
     }
@@ -97,10 +109,9 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     // MARK: - Private Methods
     
     private func updateState(_ newState: AudioPlayerPlaybackState) {
-        let oldState = state
         state = newState
         isPlaying = (newState == .playing || newState == .buffering)
-        onStateChange?(oldState, newState)
+        stateContinuation.yield(newState)
     }
     
     nonisolated private func mapPlayerState(_ playerState: AudioPlayerState) -> AudioPlayerPlaybackState {
@@ -153,6 +164,7 @@ extension StreamingAudioPlayer: AudioPlayerDelegate {
         print("StreamingAudioPlayer error: \(error)")
         Task { @MainActor [weak self] in
             self?.updateState(.error)
+            self?.eventContinuation.yield(.error(error))
         }
     }
     
@@ -161,20 +173,18 @@ extension StreamingAudioPlayer: AudioPlayerDelegate {
     }
     
     nonisolated public func audioPlayerDidReadMetadata(player: AudioPlayer, metadata: [String: String]) {
-        Task { @MainActor [weak self] in
-            self?.onMetadata?(metadata)
-        }
+        // Metadata removed
     }
 
     nonisolated public func audioPlayerDidStall(player: AudioPlayer) {
         Task { @MainActor [weak self] in
-            self?.onStall?()
+            self?.eventContinuation.yield(.stall)
         }
     }
     
     nonisolated public func audioPlayerDidRecoverFromStall(player: AudioPlayer) {
         Task { @MainActor [weak self] in
-            self?.onRecovery?()
+            self?.eventContinuation.yield(.recovery)
         }
     }
 }

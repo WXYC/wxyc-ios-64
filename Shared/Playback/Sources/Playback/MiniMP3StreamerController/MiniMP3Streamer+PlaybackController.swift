@@ -50,14 +50,7 @@ extension MiniMP3Streamer: PlaybackController {
         }
     }
     
-    public func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
-        audioBufferHandler = handler
-    }
-    
-    public func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        // MiniMP3Streamer doesn't currently support metadata extraction
-        // No-op implementation
-    }
+    // audioBufferStream is defined in MiniMP3Streamer class
     
     #if os(iOS)
     public func handleAppDidEnterBackground() {
