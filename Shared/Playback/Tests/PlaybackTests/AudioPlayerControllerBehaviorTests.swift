@@ -230,9 +230,7 @@ final class AnyPlayerControllerTestHarness {
 /// Adapter to make AudioPlayerController conform to PlayerControllerBehavior
 extension AudioPlayerController: PlayerControllerBehavior {
     public func play() {
-        if let url = currentURL {
-            play(url: url)
-        }
+        play(reason: "test")
     }
 }
 
@@ -257,22 +255,21 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
     var lastAnalyticsPauseDuration: TimeInterval? { mockAnalytics.lastPauseDuration }
     
     init() {
-        mockPlayer = MockAudioPlayer()
+        let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
+        mockPlayer = MockAudioPlayer(url: streamURL)
         mockSession = MockAudioSession()
         mockCommandCenter = MockRemoteCommandCenter()
         mockAnalytics = MockAudioAnalytics()
         notificationCenter = NotificationCenter()
         
         controller = AudioPlayerController(
+            streamURL: streamURL,
             player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: notificationCenter,
             analytics: mockAnalytics
         )
-        
-        // Set a default URL so play() works
-        mockPlayer.currentURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
     }
     
     func simulatePlaybackStarted() {
@@ -293,7 +290,6 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
         mockSession.reset()
         mockCommandCenter.reset()
         mockAnalytics.reset()
-        mockPlayer.currentURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
     }
     
     #if os(iOS)

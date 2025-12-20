@@ -23,9 +23,6 @@ import SwiftUI
 /// the expected contract that conforming implementations must match.
 @MainActor
 public protocol PlaybackController: AnyObject, Observable {
-    /// The stream URL this controller is configured to play
-    var streamURL: URL { get }
-    
     /// Whether audio is currently playing
     var isPlaying: Bool { get }
     

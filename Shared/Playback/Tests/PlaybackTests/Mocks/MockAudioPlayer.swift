@@ -18,7 +18,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var pauseCallCount = 0
     var resumeCallCount = 0
     var stopCallCount = 0
-    var lastPlayedURL: URL?
     
     var shouldAutoUpdateState = true
     
@@ -26,7 +25,10 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     
     var isPlaying: Bool = false
     var state: AudioPlayerPlaybackState = .stopped
-    var currentURL: URL?
+    
+    let stateStream: AsyncStream<AudioPlayerPlaybackState>
+    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    let eventStream: AsyncStream<AudioPlayerInternalEvent>
     
     var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
     var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
@@ -34,12 +36,28 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var onStall: (() -> Void)?
     var onRecovery: (() -> Void)?
     
-    init() {}
+    // MARK: - Private Properties
     
-    func play(url: URL) {
+    private let url: URL
+    private var stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation?
+    private var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation?
+    
+    init(url: URL = URL(string: "https://example.com/stream")!) {
+        self.url = url
+        
+        var sC: AsyncStream<AudioPlayerPlaybackState>.Continuation!
+        self.stateStream = AsyncStream { sC = $0 }
+        self.stateContinuation = sC
+        
+        self.audioBufferStream = AsyncStream { $0.finish() }
+        
+        var eC: AsyncStream<AudioPlayerInternalEvent>.Continuation!
+        self.eventStream = AsyncStream { eC = $0 }
+        self.eventContinuation = eC
+    }
+    
+    func play() {
         playCallCount += 1
-        lastPlayedURL = url
-        currentURL = url
         
         if shouldAutoUpdateState {
             let oldState = state
@@ -78,7 +96,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
             let oldState = state
             state = .stopped
             isPlaying = false
-            currentURL = nil
             onStateChange?(oldState, .stopped)
         }
     }
@@ -90,10 +107,8 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         pauseCallCount = 0
         resumeCallCount = 0
         stopCallCount = 0
-        lastPlayedURL = nil
         isPlaying = false
         state = .stopped
-        currentURL = nil
     }
     
     /// Simulate receiving an audio buffer
