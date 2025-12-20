@@ -13,10 +13,10 @@ struct StreamingAudioPlayerTests {
     @Test("Initial state is stopped")
     @MainActor
     func initialState() {
-        let player = StreamingAudioPlayer()
+        let url = URL(string: "https://example.com/stream")!
+        let player = StreamingAudioPlayer(url: url)
         #expect(player.isPlaying == false)
         #expect(player.state == .stopped)
-        #expect(player.currentURL == nil)
     }
     
     @Test("AudioPlayerPlaybackState has all expected cases")
@@ -37,7 +37,6 @@ struct StreamingAudioPlayerTests {
         let player: AudioPlayerProtocol = MockAudioPlayer()
         #expect(player.isPlaying == false)
         #expect(player.state == .stopped)
-        #expect(player.currentURL == nil)
     }
 }
 

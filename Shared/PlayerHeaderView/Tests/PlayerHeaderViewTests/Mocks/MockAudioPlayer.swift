@@ -18,24 +18,33 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     var pauseCallCount = 0
     var resumeCallCount = 0
     var stopCallCount = 0
-    var lastPlayedURL: URL?
     
     // MARK: - AudioPlayerProtocol
     
     var isPlaying: Bool = false
     var state: AudioPlayerPlaybackState = .stopped
-    var currentURL: URL?
+    
+    let stateStream: AsyncStream<AudioPlayerPlaybackState>
+    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    let eventStream: AsyncStream<AudioPlayerInternalEvent>
     
     var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
     var onStateChange: ((AudioPlayerPlaybackState, AudioPlayerPlaybackState) -> Void)?
     var onMetadata: (([String: String]) -> Void)?
     
-    init() {}
+    // MARK: - Private Properties
     
-    func play(url: URL) {
+    private let url: URL
+    
+    init(url: URL = URL(string: "https://example.com/stream")!) {
+        self.url = url
+        self.stateStream = AsyncStream { $0.finish() }
+        self.audioBufferStream = AsyncStream { $0.finish() }
+        self.eventStream = AsyncStream { $0.finish() }
+    }
+    
+    func play() {
         playCallCount += 1
-        lastPlayedURL = url
-        currentURL = url
         let oldState = state
         state = .playing
         isPlaying = true
@@ -63,7 +72,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         let oldState = state
         state = .stopped
         isPlaying = false
-        currentURL = nil
         onStateChange?(oldState, .stopped)
     }
     

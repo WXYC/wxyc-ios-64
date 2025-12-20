@@ -19,7 +19,6 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     private(set) var isPlaying: Bool = false
     private(set) var state: AudioPlayerPlaybackState = .stopped
-    private(set) var currentURL: URL?
     
     // MARK: - Streams
     
@@ -29,6 +28,7 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Private Properties
     
+    private let url: URL
     @ObservationIgnored private let stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation
     @ObservationIgnored private let audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
     @ObservationIgnored private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
@@ -37,7 +37,8 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - Initialization
     
-    init() {
+    init(url: URL) {
+        self.url = url
         self.player = AudioPlayer()
         
         // Initialize Streams
@@ -84,8 +85,7 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     // MARK: - AudioPlayerProtocol
     
-    func play(url: URL) {
-        currentURL = url
+    func play() {
         player.play(url: url)
         updateState(.buffering)
     }
@@ -102,7 +102,6 @@ final class StreamingAudioPlayer: AudioPlayerProtocol {
     
     func stop() {
         player.stop()
-        currentURL = nil
         updateState(.stopped)
     }
     

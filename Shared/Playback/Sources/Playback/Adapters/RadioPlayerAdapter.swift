@@ -19,7 +19,6 @@ final class RadioPlayerAdapter: AudioPlayerProtocol {
     }
     
     private(set) var state: AudioPlayerPlaybackState = .stopped
-    private(set) var currentURL: URL?
     
     let stateStream: AsyncStream<AudioPlayerPlaybackState>
     let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
@@ -27,6 +26,7 @@ final class RadioPlayerAdapter: AudioPlayerProtocol {
     
     // MARK: - Private Properties
     
+    private let url: URL
     private let radioPlayer: RadioPlayer
     private let stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation
     private let audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
@@ -34,7 +34,8 @@ final class RadioPlayerAdapter: AudioPlayerProtocol {
     
     // MARK: - Initialization
     
-    init() {
+    init(url: URL) {
+        self.url = url
         self.radioPlayer = RadioPlayer()
         
         // Initialize streams
@@ -59,8 +60,7 @@ final class RadioPlayerAdapter: AudioPlayerProtocol {
     
     // MARK: - AudioPlayerProtocol Methods
     
-    func play(url: URL) {
-        currentURL = url
+    func play() {
         radioPlayer.play()
         updateState(.playing)
     }
@@ -77,7 +77,6 @@ final class RadioPlayerAdapter: AudioPlayerProtocol {
     
     func stop() {
         radioPlayer.pause()
-        currentURL = nil
         updateState(.stopped)
     }
     

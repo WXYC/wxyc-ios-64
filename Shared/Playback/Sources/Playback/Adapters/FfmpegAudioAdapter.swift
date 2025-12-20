@@ -25,8 +25,6 @@ final class FfmpegAudioAdapter: AudioPlayerProtocol {
         mapState(player.state)
     }
     
-    private(set) var currentURL: URL?
-    
     var stateStream: AsyncStream<AudioPlayerPlaybackState> {
         AsyncStream { [weak self] continuation in
             continuation.finish()
@@ -41,13 +39,16 @@ final class FfmpegAudioAdapter: AudioPlayerProtocol {
     
     // MARK: - Private Properties
     
+    private let url: URL
     private let player = StreamPlayer()
     private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
     private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation)
     
     // MARK: - Initialization
     
-    init() {
+    init(url: URL) {
+        self.url = url
+        
         // Setup event stream
         var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
         self.eventStream = AsyncStream { continuation in
@@ -70,8 +71,7 @@ final class FfmpegAudioAdapter: AudioPlayerProtocol {
     
     // MARK: - AudioPlayerProtocol Methods
     
-    func play(url: URL) {
-        currentURL = url
+    func play() {
         player.start(url: url)
     }
     
@@ -80,13 +80,11 @@ final class FfmpegAudioAdapter: AudioPlayerProtocol {
     }
     
     func resume() {
-        guard let url = currentURL else { return }
         player.start(url: url)
     }
     
     func stop() {
         player.stop()
-        currentURL = nil
     }
     
     // MARK: - Private Methods

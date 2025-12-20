@@ -33,7 +33,6 @@ public final class AudioPlayerController {
     #if os(iOS) || os(tvOS)
     /// Shared singleton instance for app-wide usage (iOS/tvOS)
     public static let shared = AudioPlayerController(
-        player: StreamingAudioPlayer(),
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
@@ -42,7 +41,6 @@ public final class AudioPlayerController {
     #else
     /// Shared singleton instance for app-wide usage (macOS)
     public static let shared = AudioPlayerController(
-        player: StreamingAudioPlayer(),
         notificationCenter: .default,
         analytics: PostHogSDK.shared
     )
@@ -51,33 +49,35 @@ public final class AudioPlayerController {
     // MARK: - Player Factory
     
     /// Creates an audio player instance based on the controller type
-    /// Note: Currently only StreamingAudioPlayer (audioPlayer type) is supported
-    /// Other types would require adapters to conform to AudioPlayerProtocol
-    @MainActor
-    public static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
+    private static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
+        let url: URL = RadioStation.WXYC.streamURL
         switch type {
         case .audioPlayer:
-            return StreamingAudioPlayer()
+            return StreamingAudioPlayer(url: url)
             
         case .radioPlayer:
-            return RadioPlayerAdapter()
+            return RadioPlayerAdapter(url: url)
             
-        #if !os(watchOS)
         case .avAudioStreamer:
-            return AVAudioStreamerAdapter()
-        #endif
+            return AVAudioStreamerAdapter(url: url)
             
         case .miniMP3Streamer:
-            return MiniMP3StreamerAdapter()
+            return MiniMP3StreamerAdapter(url: url)
             
-        #if os(iOS)
+        #if os(iOS) || os(watchOS)
         case .ffmpegAudio:
-            return FfmpegAudioAdapter()
+            return FfmpegAudioAdapter(url: url)
         #endif
         }
     }
     
     // MARK: - Public Properties
+    
+    public var playerType: PlayerControllerType = .audioPlayer {
+        didSet {
+            replacePlayer(Self.createPlayer(for: playerType))
+        }
+    }
     
     /// Whether audio is currently playing
     public var isPlaying: Bool {
@@ -89,14 +89,6 @@ public final class AudioPlayerController {
     public var isLoading: Bool {
         playbackIntended && (!isPlaying || player.state == .buffering) && player.state != .error
     }
-    
-    /// The current stream URL
-    public var currentURL: URL? {
-        player.currentURL
-    }
-    
-    /// Default stream URL used by toggle() when no URL is currently set
-    public var defaultStreamURL: URL?
     
     // MARK: - Dependencies
     // These are nonisolated(unsafe) to allow cleanup in deinit
@@ -127,32 +119,34 @@ public final class AudioPlayerController {
     
     #if os(iOS) || os(tvOS)
     /// Creates a controller with injected dependencies (iOS/tvOS)
+    /// - Parameter player: Optional player to use. If nil, creates default player using AudioPlayerProtocol.create(for:)
     public init(
-        player: AudioPlayerProtocol,
+        player: AudioPlayerProtocol? = nil,
         audioSession: AudioSessionProtocol?,
         remoteCommandCenter: RemoteCommandCenterProtocol?,
         notificationCenter: NotificationCenter = .default,
         analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
     ) {
-        self.player = player
+        self.player = player ?? Self.createPlayer(for: .audioPlayer)
         self.audioSession = audioSession
         self.remoteCommandCenter = remoteCommandCenter
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         
-        setupAudioSession()
-        setupRemoteCommandCenter()
-        setupNotifications()
-        setupPlayerObservation()
+        setUpAudioSession()
+        setUpRemoteCommandCenter()
+        setUpNotifications()
+        setUpPlayerObservation()
     }
     #else
     /// Creates a controller with injected dependencies (macOS)
+    /// - Parameter player: Optional player to use. If nil, creates default player using AudioPlayerProtocol.create(for:)
     public init(
-        player: AudioPlayerProtocol,
+        player: AudioPlayerProtocol? = nil,
         notificationCenter: NotificationCenter = .default,
         analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
     ) {
-        self.player = player
+        self.player = player ?? Self.createPlayer(for: .audioPlayer)
         self.notificationCenter = notificationCenter
         self.analytics = analytics
     }
@@ -172,57 +166,41 @@ public final class AudioPlayerController {
     // MARK: - Public Methods
     
     /// Replace the underlying audio player with a new instance
-    /// Preserves current playback state and URL if playing
-    @MainActor
-    public func replacePlayer(_ newPlayer: AudioPlayerProtocol) {
+    /// The new player must be created with the same streamURL
+    private func replacePlayer(_ newPlayer: AudioPlayerProtocol) {
         let wasPlaying = isPlaying
-        let currentURL = player.currentURL
         
         // Stop current player
         if wasPlaying {
             player.stop()
         }
         
-        // Transfer audio buffer handler if set (deprecated)
-        // No-op for streams as consumers should just subscribe to the new player's stream
-        
-        // Transfer metadata handler if set (removed)
-        
-        
         // Replace player
         player = newPlayer
-        setupPlayerObservation()
-        
+        setUpPlayerObservation()
         
         // Restore playback state if it was playing
-        if wasPlaying, let url = currentURL {
+        if wasPlaying {
             playbackIntended = true
             playbackStartTime = playbackStartTime ?? Date()
             #if os(iOS) || os(tvOS)
             activateAudioSession()
             #endif
-            player.play(url: url)
+            player.play()
         }
     }
     
     /// Toggle playback state
-    /// If no URL is currently set, uses `defaultStreamURL` if available
     public func toggle() {
         if isPlaying {
             pause()
         } else {
-            // If no current URL, try defaultStreamURL
-            if player.currentURL == nil, let defaultURL = defaultStreamURL {
-                play(url: defaultURL)
-            } else {
-                play()
-            }
+            play()
         }
     }
     
-    /// Start or resume playback
-    public func play() {
-        guard let url = player.currentURL else { return }
+    /// Start playback
+    public func play(reason: String = "play") {
         playbackIntended = true
         playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS)
@@ -230,17 +208,7 @@ public final class AudioPlayerController {
         #endif
         
         // Always play fresh for live streaming (don't resume paused state)
-        player.play(url: url)
-    }
-    
-    /// Start playback with a specific URL
-    public func play(url: URL, reason: String = "play") {
-        playbackIntended = true
-        playbackStartTime = Date()
-        #if os(iOS) || os(tvOS)
-        activateAudioSession()
-        #endif
-        player.play(url: url)
+        player.play()
         analytics?.play(source: #function, reason: reason)
         updateWidgetState()
     }
@@ -286,7 +254,7 @@ public final class AudioPlayerController {
     // MARK: - Audio Session (iOS/tvOS only)
     
     #if os(iOS) || os(tvOS)
-    private func setupAudioSession() {
+    private func setUpAudioSession() {
         guard let session = audioSession else { return }
         do {
             try session.setCategory(.playback, mode: .default, options: [])
@@ -317,7 +285,7 @@ public final class AudioPlayerController {
     // MARK: - Remote Command Center (iOS/tvOS only)
     
     #if os(iOS) || os(tvOS)
-    private func setupRemoteCommandCenter() {
+    private func setUpRemoteCommandCenter() {
         guard let commandCenter = remoteCommandCenter else { return }
         
         // Play command
@@ -379,7 +347,7 @@ public final class AudioPlayerController {
     // MARK: - Notifications (iOS/tvOS only)
     
     #if os(iOS) || os(tvOS)
-    private func setupNotifications() {
+    private func setUpNotifications() {
         // Handle audio interruptions
         let interruptionObserver = notificationCenter.addObserver(
             forName: AVAudioSession.interruptionNotification,
@@ -497,7 +465,7 @@ extension AudioPlayerController {
         player.audioBufferStream
     }
 
-    private func setupPlayerObservation() {
+    private func setUpPlayerObservation() {
         eventTask?.cancel()
         eventTask = Task { [weak self] in
             guard let self else { return }
@@ -545,16 +513,6 @@ extension AudioPlayerController {
 }
 
 extension AudioPlayerController: PlaybackController {
-    
-    public var streamURL: URL {
-        // Return the current URL or the default stream URL
-        currentURL ?? defaultStreamURL ?? RadioStation.WXYC.streamURL
-    }
-    
-    public func play(reason: String) throws {
-        // AudioPlayerController uses the streamURL directly
-        play(url: streamURL, reason: reason)
-    }
     
     public func toggle(reason: String) throws {
         // AudioPlayerController's toggle doesn't take a reason,

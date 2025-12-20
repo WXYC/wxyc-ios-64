@@ -245,7 +245,8 @@ final class AudioPlayerTestHarness: UnifiedPlayerControllerTestHarness {
     var sessionDeactivationCount: Int { mockSession.deactivationCount }
     
     init() {
-        mockPlayer = MockStreamingAudioPlayer()
+        let url = URL(string: "https://example.com/stream")!
+        mockPlayer = MockStreamingAudioPlayer(url: url)
         mockSession = MockAudioSessionForUnifiedTests()
         mockCommandCenter = MockRemoteCommandCenterForUnifiedTests()
         notificationCenter = NotificationCenter()
@@ -257,13 +258,10 @@ final class AudioPlayerTestHarness: UnifiedPlayerControllerTestHarness {
             notificationCenter: notificationCenter,
             analytics: nil
         )
-        
-        // Set the default URL
-        mockPlayer.currentURL = streamURL
     }
     
     func play(reason: String) throws {
-        controller.play(url: streamURL, reason: reason)
+        controller.play(reason: reason)
     }
     
     func pause() {
@@ -295,7 +293,6 @@ final class AudioPlayerTestHarness: UnifiedPlayerControllerTestHarness {
     func reset() {
         mockPlayer.reset()
         mockSession.reset()
-        mockPlayer.currentURL = streamURL
     }
     
     func resetSessionCounters() {
@@ -309,7 +306,6 @@ final class AudioPlayerTestHarness: UnifiedPlayerControllerTestHarness {
 final class MockStreamingAudioPlayer: AudioPlayerProtocol, @unchecked Sendable {
     var isPlaying: Bool = false
     var state: AudioPlayerPlaybackState = .stopped
-    var currentURL: URL?
     
     let stateStream: AsyncStream<AudioPlayerPlaybackState>
     let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
@@ -319,12 +315,15 @@ final class MockStreamingAudioPlayer: AudioPlayerProtocol, @unchecked Sendable {
     private var audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
     private var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
     
+    private let url: URL
     var playCallCount = 0
     var pauseCallCount = 0
     var stopCallCount = 0
     var resumeCallCount = 0
     
-    init() {
+    init(url: URL = URL(string: "https://example.com/stream")!) {
+        self.url = url
+        
         var sC: AsyncStream<AudioPlayerPlaybackState>.Continuation!
         self.stateStream = AsyncStream { sC = $0 }
         self.stateContinuation = sC
@@ -338,9 +337,8 @@ final class MockStreamingAudioPlayer: AudioPlayerProtocol, @unchecked Sendable {
         self.eventContinuation = eC
     }
     
-    func play(url: URL) {
+    func play() {
         playCallCount += 1
-        currentURL = url
         isPlaying = true
         updateState(.playing)
     }

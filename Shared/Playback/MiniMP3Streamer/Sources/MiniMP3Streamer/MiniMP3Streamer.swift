@@ -40,9 +40,7 @@ public final class MiniMP3Streamer {
     }
     
     /// The stream URL this streamer is configured for
-    public var streamURL: URL {
-        configuration.url
-    }
+    public var streamURL: URL
 
     // MARK: - Private Properties
 
@@ -107,6 +105,8 @@ public final class MiniMP3Streamer {
             configuration: configuration,
             delegate: httpAdapter
         )
+        
+        self.streamURL = configuration.url
 
         // Connect adapters back to self
         httpAdapter.streamer = self

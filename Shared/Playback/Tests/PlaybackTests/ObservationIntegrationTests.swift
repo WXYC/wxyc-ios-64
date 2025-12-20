@@ -35,15 +35,14 @@ struct ObservationIntegrationTests {
         // Give observation time to set up
         try await Task.sleep(for: .milliseconds(100))
 
-        // Trigger state changes with a URL
-        let testURL = URL(string: "https://example.com/stream")!
-        AudioPlayerController.shared.play(url: testURL)
+        // Trigger state changes (AudioPlayerController already has a streamURL)
+        AudioPlayerController.shared.play()
         try await Task.sleep(for: .milliseconds(200))
 
         AudioPlayerController.shared.pause()
         try await Task.sleep(for: .milliseconds(200))
 
-        AudioPlayerController.shared.play(url: testURL)
+        AudioPlayerController.shared.play()
         try await Task.sleep(for: .milliseconds(200))
 
         observationTask.cancel()
@@ -98,11 +97,9 @@ struct ObservationIntegrationTests {
             }
         }
 
-        let testURL = URL(string: "https://example.com/stream")!
-
-        // Rapid changes
+        // Rapid changes (AudioPlayerController already has a streamURL)
         for _ in 0..<5 {
-            AudioPlayerController.shared.play(url: testURL)
+            AudioPlayerController.shared.play()
             try await Task.sleep(for: .milliseconds(50))
             AudioPlayerController.shared.pause()
             try await Task.sleep(for: .milliseconds(50))
@@ -153,10 +150,8 @@ struct ObservationIntegrationTests {
             }
         }
 
-        let testURL = URL(string: "https://example.com/stream")!
-
-        // Trigger one change
-        AudioPlayerController.shared.play(url: testURL)
+        // Trigger one change (AudioPlayerController already has a streamURL)
+        AudioPlayerController.shared.play()
         try await Task.sleep(for: .milliseconds(200))
 
         let countBeforeCancel = changeCount
@@ -168,7 +163,7 @@ struct ObservationIntegrationTests {
         // Trigger more changes after cancellation
         AudioPlayerController.shared.pause()
         try await Task.sleep(for: .milliseconds(200))
-        AudioPlayerController.shared.play(url: testURL)
+        AudioPlayerController.shared.play()
         try await Task.sleep(for: .milliseconds(200))
 
         // Count should not increase (allow +1 for race condition)

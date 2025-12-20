@@ -19,7 +19,7 @@ final class FfmpegAudioController: PlaybackController {
     
     // MARK: - Public Properties
     
-    let streamURL: URL
+    private let streamURL: URL
     
     var isPlaying: Bool {
         player.state == .playing

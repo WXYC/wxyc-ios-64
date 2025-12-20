@@ -93,9 +93,6 @@ struct WXYCApp: App {
         setUpAnalytics()
         PostHogSDK.shared.capture("app launch")
 
-        // Configure shared AudioPlayerController with StreamingAudioPlayer
-        AudioPlayerController.shared.defaultStreamURL = RadioStation.WXYC.streamURL
-
         // AVAudioSession setup
         do {
             try AVAudioSession.sharedInstance()

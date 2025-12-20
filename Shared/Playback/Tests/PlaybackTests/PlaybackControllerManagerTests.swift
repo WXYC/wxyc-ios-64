@@ -24,13 +24,13 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
     var isPlaying: Bool { _isPlaying }
     var isLoading: Bool { _isLoading }
     
+    let audioBufferStream: AsyncStream<AVAudioPCMBuffer> = AsyncStream { $0.finish() }
+    
     // Tracking
     var playCallCount = 0
     var pauseCallCount = 0
     var stopCallCount = 0
     var toggleCallCount = 0
-    var audioBufferHandler: ((AVAudioPCMBuffer) -> Void)?
-    var metadataHandler: (([String: String]) -> Void)?
     var lastPlayReason: String?
     
     #if os(iOS)
@@ -67,14 +67,6 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
         _isPlaying = false
     }
     
-    func setAudioBufferHandler(_ handler: @escaping (AVAudioPCMBuffer) -> Void) {
-        audioBufferHandler = handler
-    }
-    
-    func setMetadataHandler(_ handler: @escaping ([String: String]) -> Void) {
-        metadataHandler = handler
-    }
-    
     #if os(iOS)
     func handleAppDidEnterBackground() {
         backgroundCallCount += 1
@@ -100,8 +92,6 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
         stopCallCount = 0
         toggleCallCount = 0
         lastPlayReason = nil
-        audioBufferHandler = nil
-        metadataHandler = nil
         _isPlaying = false
         _isLoading = false
         #if os(iOS)
@@ -292,55 +282,6 @@ struct PlaybackControllerManagerTests {
         #expect(newController.playCallCount == 0, "Should not resume if wasn't playing")
     }
     
-    // MARK: - Handler Transfer Tests
-    
-    @Test("switchTo transfers audio buffer handler to new controller")
-    func switchToTransfersAudioBufferHandler() {
-        let newController = MockPlaybackController()
-        
-        var isFirstCall = true
-        let factory: PlaybackControllerFactory = { _ in
-            if isFirstCall {
-                isFirstCall = false
-                return MockPlaybackController()
-            }
-            return newController
-        }
-        
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        var handlerCalled = false
-        manager.setAudioBufferHandler { _ in
-            handlerCalled = true
-        }
-        
-        manager.switchTo(.avAudioStreamer)
-        
-        #expect(newController.audioBufferHandler != nil, "Handler should be transferred")
-    }
-    
-    @Test("switchTo transfers metadata handler to new controller")
-    func switchToTransfersMetadataHandler() {
-        let newController = MockPlaybackController()
-        
-        var isFirstCall = true
-        let factory: PlaybackControllerFactory = { _ in
-            if isFirstCall {
-                isFirstCall = false
-                return MockPlaybackController()
-            }
-            return newController
-        }
-        
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        manager.setMetadataHandler { _ in }
-        
-        manager.switchTo(.avAudioStreamer)
-        
-        #expect(newController.metadataHandler != nil, "Handler should be transferred")
-    }
-    
     // MARK: - Playback Control Tests
     
     @Test("toggle delegates to current controller")
@@ -416,30 +357,6 @@ struct PlaybackControllerManagerTests {
         #expect(manager.isLoading)
     }
     
-    // MARK: - Handler Tests
-    
-    @Test("setAudioBufferHandler sets on current controller")
-    func setAudioBufferHandlerSetsOnController() {
-        let mockController = MockPlaybackController()
-        let factory: PlaybackControllerFactory = { _ in mockController }
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        manager.setAudioBufferHandler { _ in }
-        
-        #expect(mockController.audioBufferHandler != nil)
-    }
-    
-    @Test("setMetadataHandler sets on current controller")
-    func setMetadataHandlerSetsOnController() {
-        let mockController = MockPlaybackController()
-        let factory: PlaybackControllerFactory = { _ in mockController }
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        manager.setMetadataHandler { _ in }
-        
-        #expect(mockController.metadataHandler != nil)
-    }
-    
     // MARK: - Background/Foreground Tests (iOS)
     
     #if os(iOS)
@@ -487,34 +404,6 @@ struct PlaybackControllerManagerTests {
         manager.switchTo(.radioPlayer)
         #expect(manager.currentType == .radioPlayer)
     }
-    
-    @Test("Handlers persist across multiple switches")
-    func handlersPersistAcrossSwitches() {
-        var createdControllers: [MockPlaybackController] = []
-        
-        let factory: PlaybackControllerFactory = { _ in
-            let controller = MockPlaybackController()
-            createdControllers.append(controller)
-            return controller
-        }
-        
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        var bufferHandlerCallCount = 0
-        manager.setAudioBufferHandler { _ in
-            bufferHandlerCallCount += 1
-        }
-        
-        // Switch multiple times
-        manager.switchTo(.avAudioStreamer)
-        manager.switchTo(.miniMP3Streamer)
-        manager.switchTo(.audioPlayer)
-        
-        // All controllers should have received the handler
-        for controller in createdControllers {
-            #expect(controller.audioBufferHandler != nil, "Each controller should receive the handler")
-        }
-    }
 }
 
 // MARK: - Integration Tests
@@ -549,36 +438,6 @@ struct PlaybackControllerManagerIntegrationTests {
         
         // New controller should be playing
         #expect(controller2.playCallCount == 1)
-    }
-    
-    @Test("Real-world scenario: visualizer handler persists through switches")
-    func visualizerHandlerPersistsThroughSwitches() {
-        var receivedBuffers: [String] = []
-        
-        let controllers = [
-            PlayerControllerType.radioPlayer: MockPlaybackController(),
-            PlayerControllerType.avAudioStreamer: MockPlaybackController(),
-        ]
-        
-        let factory: PlaybackControllerFactory = { type in
-            controllers[type]!
-        }
-        
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        // Set up visualizer handler
-        manager.setAudioBufferHandler { _ in
-            receivedBuffers.append("buffer")
-        }
-        
-        // Verify handler on first controller
-        #expect(controllers[.radioPlayer]!.audioBufferHandler != nil)
-        
-        // Switch controller
-        manager.switchTo(.avAudioStreamer)
-        
-        // Verify handler transferred to new controller
-        #expect(controllers[.avAudioStreamer]!.audioBufferHandler != nil)
     }
 }
 

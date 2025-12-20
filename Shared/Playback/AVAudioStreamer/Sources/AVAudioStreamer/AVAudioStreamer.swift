@@ -39,9 +39,7 @@ public final class AVAudioStreamer {
     }
     
     /// The stream URL this streamer is configured for
-    public var streamURL: URL {
-        configuration.url
-    }
+    private let streamURL: URL
 
     // MARK: - Private Properties
 
@@ -106,6 +104,8 @@ public final class AVAudioStreamer {
             configuration: configuration,
             delegate: httpAdapter
         )
+        
+        self.streamURL = configuration.url
 
         // Connect adapters back to self
         httpAdapter.streamer = self

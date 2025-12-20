@@ -24,9 +24,7 @@ public final class RadioPlayerController: PlaybackController {
     
     // MARK: - PlaybackController Protocol
     
-    public var streamURL: URL {
-        RadioStation.WXYC.streamURL
-    }
+    private let streamURL = RadioStation.WXYC.streamURL
     
     public var isPlaying: Bool {
         self.radioPlayer.isPlaying

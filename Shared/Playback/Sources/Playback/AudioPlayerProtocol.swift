@@ -26,11 +26,8 @@ public protocol AudioPlayerProtocol: AnyObject {
     /// The current playback state
     var state: AudioPlayerPlaybackState { get }
     
-    /// The current stream URL being played
-    var currentURL: URL? { get }
-    
-    /// Start playing audio from the given URL
-    func play(url: URL)
+    /// Start playing audio
+    func play()
     
     /// Pause playback (can be resumed)
     func pause()
