@@ -25,9 +25,6 @@ public struct PlayerHeaderView: View {
     /// Selected player controller type for debug switching
     @Binding var selectedPlayerType: PlayerControllerType
     
-    /// Callback when player type is changed
-    var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
-    
     /// Callback when debug tap occurs (DEBUG only)
     var onDebugTapped: (() -> Void)?
     
@@ -35,12 +32,10 @@ public struct PlayerHeaderView: View {
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
         previewValues: [Float]? = nil,
-        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil,
         onDebugTapped: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
-        self.onPlayerTypeChanged = onPlayerTypeChanged
         self.onDebugTapped = onDebugTapped
         if let values = previewValues {
             _barHistory = State(initialValue: values.map { value in
@@ -83,17 +78,13 @@ public struct PlayerHeaderView: View {
         .onChange(of: selectedPlayerType) { _, newType in
             // Switch the player when type changes
             Task { @MainActor in
-                let newPlayer = AudioPlayerController.createPlayer(for: newType)
-                Self.controller.replacePlayer(newPlayer)
+                Self.controller.playerType = newType
                 // Note: HeaderView relies on AudioPlayerController's internal bridging,
                 // so the existing stream loop in .task should continue to work or
                 // may need to be restarted if the iterator terminates?
                 // AudioPlayerController.audioBufferStream returns a bridged stream,
                 // so the stream itself shouldn't terminate unless AudioPlayerController explicitly ends it.
                 // Assuming AudioPlayerController keeps the same stream alive across replacements.
-                
-                // Call the callback if provided
-                onPlayerTypeChanged?(newType)
                 
                 // If stream does terminate, we might need a way to restart the loop.
                 // But .task restarts if identity changes... local identity hasn't changed.

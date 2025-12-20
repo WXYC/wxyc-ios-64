@@ -14,19 +14,16 @@ public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
     @Bindable var wallpaperConfiguration: WallpaperConfiguration
-    var onPlayerTypeChanged: ((PlayerControllerType) -> Void)?
     @Environment(\.dismiss) private var dismiss
 
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
-        wallpaperConfiguration: WallpaperConfiguration,
-        onPlayerTypeChanged: ((PlayerControllerType) -> Void)? = nil
+        wallpaperConfiguration: WallpaperConfiguration
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
         self.wallpaperConfiguration = wallpaperConfiguration
-        self.onPlayerTypeChanged = onPlayerTypeChanged
     }
     
     public var body: some View {
@@ -41,7 +38,6 @@ public struct VisualizerDebugView: View {
                     }
                     .onChange(of: selectedPlayerType) { _, newValue in
                         newValue.persist()
-                        onPlayerTypeChanged?(newValue)
                     }
                 } header: {
                     Text("Player Controller")
