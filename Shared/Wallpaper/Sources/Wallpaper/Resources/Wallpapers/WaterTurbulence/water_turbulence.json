@@ -1,0 +1,133 @@
+{
+  "id": "water_turbulence",
+  "displayName": "Water Turbulence",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "stitchable",
+    "shaderFile": "WaterTurbulence.metal",
+    "functionName": "waterTurbulence"
+  },
+  "parameters": [
+    {
+      "id": "tilesAcross",
+      "type": "float",
+      "label": "Tiles Across",
+      "group": "Tiling",
+      "default": 1.0,
+      "range": { "min": 0.25, "max": 6.0 },
+      "userDefaultsKey": "wallpaper.turbulence.tilesAcross"
+    },
+    {
+      "id": "iterBaseSpeed",
+      "type": "float",
+      "label": "Base Speed",
+      "group": "Iteration Speed",
+      "default": 0.04,
+      "range": { "min": 0.0, "max": 4.0 },
+      "userDefaultsKey": "wallpaper.turbulence.iterBaseSpeed"
+    },
+    {
+      "id": "iterSpread",
+      "type": "float",
+      "label": "Spread",
+      "group": "Iteration Speed",
+      "default": 38.0,
+      "range": { "min": 0.0, "max": 64.0 },
+      "userDefaultsKey": "wallpaper.turbulence.iterSpread"
+    },
+    {
+      "id": "iterExponent",
+      "type": "float",
+      "label": "Exponent",
+      "group": "Iteration Speed",
+      "default": 4.0,
+      "range": { "min": 0.25, "max": 4.0 },
+      "userDefaultsKey": "wallpaper.turbulence.iterExponent"
+    },
+    {
+      "id": "contrastExponent",
+      "type": "float",
+      "label": "Contrast Exponent",
+      "group": "Contrast + Tone",
+      "default": 8.0,
+      "range": { "min": 0.5, "max": 16.0 },
+      "userDefaultsKey": "wallpaper.turbulence.contrastExponent"
+    },
+    {
+      "id": "rampPower",
+      "type": "float",
+      "label": "Ramp Power",
+      "group": "Color Ramp",
+      "default": 1.8,
+      "range": { "min": 0.25, "max": 6.0 },
+      "userDefaultsKey": "wallpaper.turbulence.rampPower"
+    },
+    {
+      "id": "toneMapStrength",
+      "type": "float",
+      "label": "Tone Map Strength",
+      "group": "Contrast + Tone",
+      "default": 1.0,
+      "range": { "min": 0.0, "max": 1.0 },
+      "userDefaultsKey": "wallpaper.turbulence.toneMapStrength"
+    },
+    {
+      "id": "maxBrightness",
+      "type": "float",
+      "label": "Max Brightness",
+      "group": "Contrast + Tone",
+      "default": 0.92,
+      "range": { "min": 0.1, "max": 1.0 },
+      "userDefaultsKey": "wallpaper.turbulence.maxBrightness"
+    },
+    {
+      "id": "gamma",
+      "type": "float",
+      "label": "Gamma",
+      "group": "Contrast + Tone",
+      "default": 2.2,
+      "range": { "min": 1.0, "max": 3.0 },
+      "userDefaultsKey": "wallpaper.turbulence.gamma"
+    },
+    {
+      "id": "lowColor",
+      "type": "color",
+      "label": "Low Color",
+      "group": "Color Ramp",
+      "default": [0.0, 0.35, 0.5],
+      "components": [
+        { "id": "r", "label": "Red", "default": 0.0, "userDefaultsKey": "wallpaper.turbulence.lowR" },
+        { "id": "g", "label": "Green", "default": 0.35, "userDefaultsKey": "wallpaper.turbulence.lowG" },
+        { "id": "b", "label": "Blue", "default": 0.5, "userDefaultsKey": "wallpaper.turbulence.lowB" }
+      ]
+    },
+    {
+      "id": "highColor",
+      "type": "color",
+      "label": "High Color",
+      "group": "Color Ramp",
+      "default": [0.95, 0.98, 1.0],
+      "components": [
+        { "id": "r", "label": "Red", "default": 0.95, "userDefaultsKey": "wallpaper.turbulence.highR" },
+        { "id": "g", "label": "Green", "default": 0.98, "userDefaultsKey": "wallpaper.turbulence.highG" },
+        { "id": "b", "label": "Blue", "default": 1.0, "userDefaultsKey": "wallpaper.turbulence.highB" }
+      ]
+    }
+  ],
+  "shaderArguments": [
+    { "source": "time" },
+    { "source": "viewSize" },
+    { "source": "displayScale" },
+    { "source": "parameter", "id": "tilesAcross" },
+    { "source": "parameter", "id": "contrastExponent" },
+    { "source": "parameter", "id": "rampPower" },
+    { "source": "color", "id": "lowColor" },
+    { "source": "color", "id": "highColor" },
+    { "source": "parameter", "id": "toneMapStrength" },
+    { "source": "parameter", "id": "maxBrightness" },
+    { "source": "parameter", "id": "gamma" },
+    { "source": "parameter", "id": "iterBaseSpeed" },
+    { "source": "parameter", "id": "iterSpread" },
+    { "source": "parameter", "id": "iterExponent" }
+  ]
+}

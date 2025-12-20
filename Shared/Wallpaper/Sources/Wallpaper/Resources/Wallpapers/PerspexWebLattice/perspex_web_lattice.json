@@ -1,0 +1,14 @@
+{
+  "id": "perspex_web_lattice",
+  "displayName": "Lattice",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "shaderFile": "PerspexWebLattice.metal",
+    "vertexFunction": "vertexMain",
+    "fragmentFunction": "fragmentMain",
+    "timeScale": 0.3
+  },
+  "parameters": [],
+  "shaderArguments": []
+}

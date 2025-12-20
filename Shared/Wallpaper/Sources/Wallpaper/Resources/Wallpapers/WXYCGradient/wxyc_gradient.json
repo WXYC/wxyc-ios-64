@@ -1,0 +1,10 @@
+{
+  "id": "wxyc_gradient",
+  "displayName": "WXYC Gradient",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "swiftUI"
+  },
+  "parameters": [],
+  "shaderArguments": []
+}

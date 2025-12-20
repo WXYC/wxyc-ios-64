@@ -1,0 +1,35 @@
+{
+  "id": "wxyc_gradient_noise",
+  "displayName": "WXYC Gradient + Noise",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "composite",
+    "layers": [
+      { "type": "wxycGradient" },
+      { "type": "shader", "ref": "noiseFragment" }
+    ]
+  },
+  "parameters": [
+    {
+      "id": "intensity",
+      "type": "float",
+      "label": "Intensity",
+      "default": 0.5,
+      "range": { "min": 0.0, "max": 10.0 },
+      "userDefaultsKey": "wallpaper.noise.intensity"
+    },
+    {
+      "id": "frequency",
+      "type": "float",
+      "label": "Frequency",
+      "default": 10.0,
+      "range": { "min": 0.0, "max": 100.0 },
+      "userDefaultsKey": "wallpaper.noise.frequency"
+    }
+  ],
+  "shaderArguments": [
+    { "source": "time" },
+    { "source": "parameter", "id": "intensity" },
+    { "source": "parameter", "id": "frequency" }
+  ]
+}

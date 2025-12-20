@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Debug controls for wallpaper settings, intended for use in a Form
+/// Debug controls for wallpaper settings, intended for use in a Form.
 public struct WallpaperDebugControls: View {
     @Bindable var configuration: WallpaperConfiguration
 
@@ -18,15 +18,15 @@ public struct WallpaperDebugControls: View {
     public var body: some View {
         Section {
             Picker("Wallpaper", selection: $configuration.selectedWallpaperID) {
-                ForEach(WallpaperProvider.shared.wallpapers, id: \.id) { wallpaper in
+                ForEach(WallpaperRegistry.shared.wallpapers) { wallpaper in
                     Text(wallpaper.displayName).tag(wallpaper.id)
                 }
             }
 
-            if let wallpaper = WallpaperProvider.shared.wallpaper(for: configuration.selectedWallpaperID),
-               let controls = wallpaper.makeDebugControls() {
+            if let wallpaper = WallpaperRegistry.shared.wallpaper(for: configuration.selectedWallpaperID),
+               !wallpaper.manifest.parameters.isEmpty {
                 DisclosureGroup("Parameters") {
-                    AnyView(controls)
+                    WallpaperDebugControlsGenerator(wallpaper: wallpaper)
                 }
             }
 

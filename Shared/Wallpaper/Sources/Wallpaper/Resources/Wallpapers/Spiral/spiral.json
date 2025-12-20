@@ -1,0 +1,15 @@
+{
+  "id": "spiral",
+  "displayName": "Spiral",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "stitchable",
+    "shaderFile": "Spiral.metal",
+    "functionName": "spiral"
+  },
+  "parameters": [],
+  "shaderArguments": [
+    { "source": "viewSize" },
+    { "source": "time" }
+  ]
+}

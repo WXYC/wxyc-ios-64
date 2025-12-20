@@ -1,35 +1,14 @@
 //
-//  WXYCGradientWallpaper.swift
+//  WXYCGradient.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/18/25.
 //
 
 import SwiftUI
-import Observation
-import WallpaperMacros
 
-@Wallpaper
-@Observable
-public final class WXYCGradientWallpaperImplementation: WallpaperProtocol {
-    public let displayName = "WXYC Gradient"
-
-    public func configure() {}
-
-    public func makeView() -> some View {
-        Rectangle().fill(WXYCGradientWallpaper())
-            .ignoresSafeArea()
-    }
-
-    public func makeDebugControls() -> EmptyView? {
-        nil
-    }
-
-    public func reset() {}
-}
-
-/// WXYC branded gradient background
-public struct WXYCGradientWallpaper: ShapeStyle {
+/// WXYC branded gradient background shape style.
+public struct WXYCGradient: ShapeStyle {
     public init() {}
 
     public func resolve(in environment: EnvironmentValues) -> Gradient {

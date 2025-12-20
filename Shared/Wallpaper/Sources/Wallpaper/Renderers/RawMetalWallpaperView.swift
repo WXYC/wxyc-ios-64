@@ -1,5 +1,5 @@
 //
-//  PerspexWebLatticeView.swift
+//  RawMetalWallpaperView.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/19/25.
@@ -8,33 +8,24 @@
 import SwiftUI
 import MetalKit
 import simd
-import WallpaperMacros
-
-@Wallpaper
-public final class PerspexWebLatticeWallpaper: WallpaperProtocol {
-    public let displayName = "Lattice"
-
-    public func configure() {}
-
-    public func makeView() -> PerspexWebLatticeView {
-        PerspexWebLatticeView()
-    }
-
-    public func makeDebugControls() -> EmptyView? {
-        nil
-    }
-
-    public func reset() {}
-}
 
 #if os(macOS)
-typealias ViewRepresentable = NSViewRepresentable
+private typealias ViewRepresentable = NSViewRepresentable
 #else
-typealias ViewRepresentable = UIViewRepresentable
+private typealias ViewRepresentable = UIViewRepresentable
 #endif
 
-public struct PerspexWebLatticeView: ViewRepresentable {
-    public func makeCoordinator() -> Renderer { Renderer() }
+/// Generic view for wallpapers that use raw Metal rendering with vertex/fragment shaders.
+public struct RawMetalWallpaperView: ViewRepresentable {
+    let wallpaper: LoadedWallpaper
+
+    public init(wallpaper: LoadedWallpaper) {
+        self.wallpaper = wallpaper
+    }
+
+    public func makeCoordinator() -> RawMetalRenderer {
+        RawMetalRenderer(wallpaper: wallpaper)
+    }
 
 #if os(macOS)
     public func makeNSView(context: Context) -> MTKView { makeView(context: context) }
@@ -45,29 +36,27 @@ public struct PerspexWebLatticeView: ViewRepresentable {
 #endif
 
     private func makeView(context: Context) -> MTKView {
-        let view = makeCommonMTKView()
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            return MTKView()
+        }
+
+        let view = MTKView(frame: .zero, device: device)
+        view.colorPixelFormat = .bgra8Unorm
+        view.framebufferOnly = false
+        view.isPaused = false
+        view.enableSetNeedsDisplay = false
+        view.preferredFramesPerSecond = 60
+
         context.coordinator.configure(view: view)
         view.delegate = context.coordinator
+
         return view
     }
 }
 
-fileprivate func makeCommonMTKView() -> MTKView {
-    guard let device = MTLCreateSystemDefaultDevice() else {
-        return MTKView()
-    }
-
-    let view = MTKView(frame: .zero, device: device)
-    view.colorPixelFormat = .bgra8Unorm
-    view.framebufferOnly = false
-    view.isPaused = false
-    view.enableSetNeedsDisplay = false
-    view.preferredFramesPerSecond = 60
-    return view
-}
-
 // MARK: - Renderer
-public final class Renderer: NSObject, MTKViewDelegate {
+
+public final class RawMetalRenderer: NSObject, MTKViewDelegate {
     struct Uniforms {
         var resolution: SIMD2<Float>
         var time: Float
@@ -81,16 +70,26 @@ public final class Renderer: NSObject, MTKViewDelegate {
     private var noiseTex: MTLTexture!
 
     private var startTime = CACurrentMediaTime()
+    private let wallpaper: LoadedWallpaper
+
+    init(wallpaper: LoadedWallpaper) {
+        self.wallpaper = wallpaper
+        super.init()
+    }
 
     func configure(view: MTKView) {
         guard let device = view.device else { return }
         self.device = device
         self.queue = device.makeCommandQueue()
 
-        // Pipeline
-        let library = device.makeDefaultLibrary()
-        let vfn = library?.makeFunction(name: "vertexMain")
-        let ffn = library?.makeFunction(name: "fragmentMain")
+        let renderer = wallpaper.manifest.renderer
+        let vertexFn = renderer.vertexFunction ?? "vertexMain"
+        let fragmentFn = renderer.fragmentFunction ?? "fragmentMain"
+
+        // Pipeline - load from package bundle, not main app bundle
+        let library = try? device.makeDefaultLibrary(bundle: Bundle.module)
+        let vfn = library?.makeFunction(name: vertexFn)
+        let ffn = library?.makeFunction(name: fragmentFn)
 
         let desc = MTLRenderPipelineDescriptor()
         desc.vertexFunction = vfn
@@ -107,7 +106,7 @@ public final class Renderer: NSObject, MTKViewDelegate {
         sDesc.tAddressMode = .repeat
         self.sampler = device.makeSamplerState(descriptor: sDesc)
 
-        // iChannel0 stand-in: procedurally generated noise texture
+        // Noise texture for shaders that need it
         self.noiseTex = makeNoiseTexture(device: device, size: 256)
     }
 
@@ -122,7 +121,8 @@ public final class Renderer: NSObject, MTKViewDelegate {
         else { return }
 
         let now = CACurrentMediaTime()
-        let t = Float(now - startTime)
+        let timeScale = wallpaper.manifest.renderer.timeScale ?? 1.0
+        let t = Float(now - startTime) * timeScale
 
         var uniforms = Uniforms(
             resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),

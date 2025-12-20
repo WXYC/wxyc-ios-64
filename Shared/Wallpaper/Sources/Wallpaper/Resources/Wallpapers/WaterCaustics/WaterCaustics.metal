@@ -88,11 +88,8 @@ half4 waterCaustics(float2 position,
                     float  timeSeconds,
                     float2 normalizedOffset) // Range [0, 1]
 {
-    // Shadertoy fragCoord is pixels. We pass resolution in pixels too.
     float2 fragCoord = position;
 
-    // If your SwiftUI coordinate system is top-left origin, Shadertoy is effectively bottom-left.
-    // Flip Y to match the original look:
     fragCoord.y = resolutionPx.y - fragCoord.y;
 
     float2 p = (-resolutionPx + 2.0f * fragCoord) / resolutionPx.y;

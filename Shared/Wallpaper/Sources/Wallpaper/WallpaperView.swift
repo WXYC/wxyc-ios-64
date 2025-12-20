@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Main wallpaper view that switches between different wallpaper types
+/// Main wallpaper view that switches between different wallpaper types.
 public struct WallpaperView: View {
     @Bindable var configuration: WallpaperConfiguration
 
@@ -16,19 +16,15 @@ public struct WallpaperView: View {
     }
 
     public var body: some View {
-        let _ = print("WallpaperView body: selectedWallpaperID = \(configuration.selectedWallpaperID)")
-
         Group {
-            if let wallpaper = WallpaperProvider.shared.wallpaper(for: configuration.selectedWallpaperID) {
-                AnyView(wallpaper.makeView())
+            if let wallpaper = WallpaperRegistry.shared.wallpaper(for: configuration.selectedWallpaperID) {
+                WallpaperRendererFactory.makeView(for: wallpaper)
+            } else if let first = WallpaperRegistry.shared.wallpapers.first {
+                WallpaperRendererFactory.makeView(for: first)
             } else {
-                // Fallback to first available or empty
-                if let first = WallpaperProvider.shared.wallpapers.first {
-                    AnyView(first.makeView())
-                } else {
-                    AnyView(Color.black.ignoresSafeArea())
-                }
+                Color.black.ignoresSafeArea()
             }
         }
+        .ignoresSafeArea()
     }
 }

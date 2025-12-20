@@ -40,7 +40,7 @@ inline float3 sat(float3 x) { return clamp(x, 0.0, 1.0); }
 inline float3 mix3(float3 a, float3 b, float3 t) { return a + (b - a) * t; }
 inline float3 mix3(float3 a, float3 b, float  t) { return a + (b - a) * t; }
 
-// Tri-planar blend (Shadertoy expects repeat sampling)
+// Tri-planar blend
 float3 tex3D(texture2d<float> tex, sampler smp, float3 p, float3 n) {
     n = max((abs(n) - 0.2), 0.001);
     n /= (n.x + n.y + n.z);
