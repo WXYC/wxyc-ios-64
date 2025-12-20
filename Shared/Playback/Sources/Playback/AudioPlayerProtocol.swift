@@ -65,4 +65,3 @@ public enum AudioPlayerInternalEvent: Sendable {
 // for visualization. We treat it as Sendable since we transfer ownership to the stream
 // and don't mutate it after yielding.
 extension AVAudioPCMBuffer: @unchecked Sendable {}
-

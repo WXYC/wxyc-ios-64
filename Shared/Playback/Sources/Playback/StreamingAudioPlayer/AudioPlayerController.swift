@@ -56,12 +56,23 @@ public final class AudioPlayerController {
     @MainActor
     public static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
         switch type {
-        case .audioPlayer, .radioPlayer, .avAudioStreamer, .miniMP3Streamer:
+        case .audioPlayer:
             return StreamingAudioPlayer()
             
-        #if os(iOS) || os(watchOS)
+        case .radioPlayer:
+            return RadioPlayerAdapter()
+            
+        #if !os(watchOS)
+        case .avAudioStreamer:
+            return AVAudioStreamerAdapter()
+        #endif
+            
+        case .miniMP3Streamer:
+            return MiniMP3StreamerAdapter()
+            
+        #if os(iOS)
         case .ffmpegAudio:
-            return StreamingAudioPlayer()
+            return FfmpegAudioAdapter()
         #endif
         }
     }
