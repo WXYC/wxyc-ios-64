@@ -9,26 +9,16 @@
   },
   "parameters": [
     {
-      "id": "offsetX",
-      "type": "float",
-      "label": "X Offset",
-      "default": 0.5,
-      "range": { "min": 0.0, "max": 1.0 },
-      "userDefaultsKey": "wallpaper.caustics.offsetX"
-    },
-    {
-      "id": "offsetY",
-      "type": "float",
-      "label": "Y Offset",
-      "default": 0.5,
-      "range": { "min": 0.0, "max": 1.0 },
-      "userDefaultsKey": "wallpaper.caustics.offsetY"
+      "id": "normalizedOffset",
+      "type": "float2",
+      "label": "Offset",
+      "default": [0.5, 0.5],
+      "userDefaultsKey": "wallpaper.caustics.offset"
     }
   ],
   "shaderArguments": [
     { "source": "viewSize" },
     { "source": "time" },
-    { "source": "parameter", "id": "offsetX" },
-    { "source": "parameter", "id": "offsetY" }
+    { "source": "parameter", "id": "normalizedOffset" }
   ]
 }

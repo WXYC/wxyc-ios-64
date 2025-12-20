@@ -9,11 +9,11 @@
 using namespace metal;
 
 #define TAU 6.28318530718
-#define MAX_ITER 5
+#define MAX_ITER 3  // Reduced from 5 for performance
 
+// Branchless safe division
 static inline float safeDiv(float a, float b) {
-    float bb = (fabs(b) < 1e-6) ? (b < 0.0 ? -1e-6 : 1e-6) : b;
-    return a / bb;
+    return a / (abs(b) + 1e-6);
 }
 
 static inline float luminance(float3 c) {
@@ -24,19 +24,15 @@ static inline float3 reinhard(float3 x) {
     return x / (1.0 + x);
 }
 
-// Energy-conserving ramp: ramp color is scaled so its luminance equals 'intensity'.
 static inline float3 energyConservingRamp(float intensity,
                                           float3 rampLow,
                                           float3 rampHigh,
                                           float rampPower)
 {
-    float t = pow(clamp(intensity, 0.0, 1.0), max(rampPower, 1e-3));
+    float t = powr(saturate(intensity), rampPower);
     float3 ramp = mix(rampLow, rampHigh, t);
-
-    float l = max(luminance(ramp), 1e-4);
-    float3 scaled = ramp * (intensity / l);
-
-    return max(scaled, float3(0.0));
+    float l = fmax(luminance(ramp), 1e-4);
+    return fmax(ramp * (intensity / l), float3(0.0));
 }
 
 [[stitchable]]
@@ -45,93 +41,69 @@ half4 waterTurbulence(float2 position,
                       float time,
                       float2 viewSizePoints,
                       float scale,
-                      float tilesAcross,       // 1.0 = one tile across width
-                      float contrastExponent,  // intensity shaping
-                      float rampPower,         // ramp curve
-                      float3 rampLow,          // ramp low RGB
-                      float3 rampHigh,         // ramp high RGB
-                      float toneMapStrength,   // 0..1
-                      float maxBrightness,     // 0..1 hard ceiling
-                      float gamma,             // e.g. 2.2
-                      float iterBaseSpeed,     // new: base iteration speed
-                      float iterSpread,        // new: speed divergence
-                      float iterExponent)      // new: divergence curve
+                      float tilesAcross,
+                      float contrastExponent,
+                      float rampPower,
+                      float3 rampLow,
+                      float3 rampHigh,
+                      float toneMapStrength,
+                      float maxBrightness,
+                      float gamma,
+                      float iterBaseSpeed,
+                      float iterSpread,
+                      float iterExponent)
 {
-    // Keep time in a sane range.
-    time = fmod(time, 1000.0);
+    // Use fmod with smaller range to avoid precision issues
+    float t0 = fmod(time, 100.0) * 0.5 + 23.0;
 
     float2 fragCoord = position * scale;
-    float2 iResolution = max(viewSizePoints * scale, float2(1.0));
+    float2 iResolution = fmax(viewSizePoints * scale, float2(1.0));
 
-    // 0..1 over whole view
     float2 uvView = fragCoord / iResolution;
-
-    // Aspect-correct tiling: square tiles
     float aspect = iResolution.y / iResolution.x;
-    float ta = max(tilesAcross, 1e-3);
-    float2 uvTileSpace = float2(uvView.x * ta,
-                                uvView.y * ta * aspect);
-
-    // Repeat to fill view
-    float2 uv = fract(uvTileSpace);
-
-    // --- Core turbulence math ---
-    float t0 = time * 0.5 + 23.0;
+    float ta = fmax(tilesAcross, 1e-3);
+    float2 uv = fract(float2(uvView.x * ta, uvView.y * ta * aspect));
 
     float2 p = fmod(uv * TAU, TAU) - 250.0;
     float2 i = p;
 
     float c = 1.0;
-    float inten = 0.005;
+    constexpr float inten = 0.005;
 
-    float base = max(iterBaseSpeed, 0.0);
-    float spread = max(iterSpread, 0.0);
-    float expo = max(iterExponent, 1e-3);
+    // Precompute iteration constants
+    float base = fmax(iterBaseSpeed, 0.0);
+    float spread = fmax(iterSpread, 0.0);
+    constexpr float iterStep = 1.0 / float(MAX_ITER - 1);
 
+    // Loop with fast trig
     for (int n = 0; n < MAX_ITER; n++) {
-        // New: per-iteration speed curve (0..1 across iterations)
-        float u = (MAX_ITER > 1) ? (float(n) / float(MAX_ITER - 1)) : 0.0;
-        float speed = base * (1.0 + spread * pow(u, expo));
-
-        // Use the shaped speed here
+        float u = float(n) * iterStep;
+        float speed = base * (1.0 + spread * powr(u, iterExponent));
         float t = t0 * speed;
 
-        i = p + float2(cos(t - i.x) + sin(t + i.y),
-                       sin(t - i.y) + cos(t + i.x));
+        // Use fast:: versions for approximate but faster trig
+        i = p + float2(fast::cos(t - i.x) + fast::sin(t + i.y),
+                       fast::sin(t - i.y) + fast::cos(t + i.x));
 
-        float sx = sin(i.x + t) / inten;
-        float cy = cos(i.y + t) / inten;
+        float sx = fast::sin(i.x + t) / inten;
+        float cy = fast::cos(i.y + t) / inten;
 
         float2 v = float2(safeDiv(p.x, sx), safeDiv(p.y, cy));
-        float lenv = max(length(v), 1e-6);
-        c += 1.0 / lenv;
+        c += fast::rsqrt(dot(v, v) + 1e-6);  // rsqrt is faster than 1/length
     }
 
     c /= float(MAX_ITER);
-    c = 1.17 - pow(c, 1.4);
+    c = 1.17 - powr(fabs(c), 1.4);
 
-    // Contrast shaping
-    float intensity = pow(fabs(c), max(contrastExponent, 1e-3));
-    intensity = clamp(intensity, 0.0, 1.0);
-
-    // Energy-conserving color ramp
+    float intensity = saturate(powr(fabs(c), contrastExponent));
     float3 colour = energyConservingRamp(intensity, rampLow, rampHigh, rampPower);
 
-    // Soft tone mapping (blend)
-    float tms = clamp(toneMapStrength, 0.0, 1.0);
-    float3 tm = reinhard(colour);
-    colour = mix(colour, tm, tms);
+    // Tone mapping
+    colour = mix(colour, reinhard(colour), saturate(toneMapStrength));
+    colour = fmin(colour, float3(saturate(maxBrightness)));
 
-    // Explicit brightness cap
-    float cap = clamp(maxBrightness, 0.0, 1.0);
-    colour = min(colour, float3(cap));
+    // Gamma - use powr for positive values
+    colour = powr(fmax(colour, float3(0.0)), float3(1.0 / fmax(gamma, 1.0)));
 
-    // Gamma correction
-    float g = max(gamma, 1e-3);
-    colour = pow(max(colour, float3(0.0)), float3(1.0 / g));
-
-    // Final clamp
-    colour = clamp(colour, 0.0, 1.0);
-
-    return half4(half(colour.r), half(colour.g), half(colour.b), half(1.0));
+    return half4(half3(saturate(colour)), 1.0h);
 }

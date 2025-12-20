@@ -33,6 +33,34 @@ public final class ParameterStore {
         saveToDefaults(parameterId: parameterId, value: value)
     }
 
+    // MARK: - Float2 Values
+
+    public func float2Value(for parameterId: String) -> (Float, Float) {
+        if let tuple = values[parameterId] as? (Float, Float) {
+            return tuple
+        }
+        return defaultFloat2Value(for: parameterId)
+    }
+
+    public func setFloat2(_ value: (Float, Float), for parameterId: String) {
+        values[parameterId] = value
+        // UserDefaults persistence for float2 would need special handling
+    }
+
+    // MARK: - Float3 Values
+
+    public func float3Value(for parameterId: String) -> (Float, Float, Float) {
+        if let tuple = values[parameterId] as? (Float, Float, Float) {
+            return tuple
+        }
+        return defaultFloat3Value(for: parameterId)
+    }
+
+    public func setFloat3(_ value: (Float, Float, Float), for parameterId: String) {
+        values[parameterId] = value
+        // UserDefaults persistence for float3 would need special handling
+    }
+
     // MARK: - Bool Values
 
     public func boolValue(for parameterId: String) -> Bool {
@@ -99,8 +127,27 @@ public final class ParameterStore {
             case .displayScale:
                 return .float(displayScale)
             case .parameter:
-                guard let id = arg.id else { return .float(0) }
-                return .float(floatValue(for: id))
+                guard let id = arg.id,
+                      let param = manifest.parameters.first(where: { $0.id == id }) else {
+                    return .float(0)
+                }
+                switch param.type {
+                case .float:
+                    return .float(floatValue(for: id))
+                case .float2:
+                    let (x, y) = float2Value(for: id)
+                    return .float2(x, y)
+                case .float3:
+                    let (x, y, z) = float3Value(for: id)
+                    return .float3(x, y, z)
+                case .bool:
+                    return .float(boolValue(for: id) ? 1.0 : 0.0)
+                case .color:
+                    let r = colorComponent("r", for: id)
+                    let g = colorComponent("g", for: id)
+                    let b = colorComponent("b", for: id)
+                    return .float3(r, g, b)
+                }
             case .color:
                 guard let id = arg.id else { return .float3(0, 0, 0) }
                 let r = colorComponent("r", for: id)
@@ -163,6 +210,22 @@ public final class ParameterStore {
         manifest.parameters
             .first(where: { $0.id == parameterId })?
             .defaultValue.floatValue ?? 0
+    }
+
+    private func defaultFloat2Value(for parameterId: String) -> (Float, Float) {
+        guard let param = manifest.parameters.first(where: { $0.id == parameterId }),
+              case .float2(let x, let y) = param.defaultValue else {
+            return (0, 0)
+        }
+        return (x, y)
+    }
+
+    private func defaultFloat3Value(for parameterId: String) -> (Float, Float, Float) {
+        guard let param = manifest.parameters.first(where: { $0.id == parameterId }),
+              case .float3(let x, let y, let z) = param.defaultValue else {
+            return (0, 0, 0)
+        }
+        return (x, y, z)
     }
 
     private func defaultBoolValue(for parameterId: String) -> Bool {
