@@ -7,27 +7,34 @@
 
 import SwiftUI
 import Observation
+import WallpaperMacros
 
+@Wallpaper
 @Observable
-public final class WaterCausticsWallpaper: Wallpaper {
+public final class WaterCausticsWallpaper: WallpaperProtocol {
     public let displayName = "Water Caustics"
-    
-    public var offsetX: Float { didSet { UserDefaults.standard.set(offsetX, forKey: "wallpaper.caustics.offsetX") } }
-    public var offsetY: Float { didSet { UserDefaults.standard.set(offsetY, forKey: "wallpaper.caustics.offsetY") } }
 
-    public init() {
-        self.offsetX = UserDefaults.standard.object(forKey: "wallpaper.caustics.offsetX") == nil ? 0.5 : UserDefaults.standard.float(forKey: "wallpaper.caustics.offsetX")
-        self.offsetY = UserDefaults.standard.object(forKey: "wallpaper.caustics.offsetY") == nil ? 0.5 : UserDefaults.standard.float(forKey: "wallpaper.caustics.offsetY")
+    public var offsetX: Float = 0.5 { didSet { UserDefaults.standard.set(offsetX, forKey: "wallpaper.caustics.offsetX") } }
+    public var offsetY: Float = 0.5 { didSet { UserDefaults.standard.set(offsetY, forKey: "wallpaper.caustics.offsetY") } }
+
+    public func configure() {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: "wallpaper.caustics.offsetX") != nil {
+            self.offsetX = defaults.float(forKey: "wallpaper.caustics.offsetX")
+        }
+        if defaults.object(forKey: "wallpaper.caustics.offsetY") != nil {
+            self.offsetY = defaults.float(forKey: "wallpaper.caustics.offsetY")
+        }
     }
-    
+
     public func makeView() -> WaterCausticsView {
         WaterCausticsView(configuration: self)
     }
-    
+
     public func makeDebugControls() -> WaterCausticsDebugControls? {
         WaterCausticsDebugControls(configuration: self)
     }
-    
+
     public func reset() {
         offsetX = 0.5
         offsetY = 0.5

@@ -7,45 +7,78 @@
 
 import SwiftUI
 import ObservableDefaults
-
 import Observation
+import WallpaperMacros
 
+@Wallpaper
 @Observable
-public final class WaterTurbulenceWallpaper: Wallpaper {
+public final class WaterTurbulenceWallpaper: WallpaperProtocol {
     public let displayName = "Water Turbulence"
 
-    public var tilesAcross: Float { didSet { UserDefaults.standard.set(tilesAcross, forKey: "wallpaper.turbulence.tilesAcross") } }
-    public var iterBaseSpeed: Float { didSet { UserDefaults.standard.set(iterBaseSpeed, forKey: "wallpaper.turbulence.iterBaseSpeed") } }
-    public var iterSpread: Float { didSet { UserDefaults.standard.set(iterSpread, forKey: "wallpaper.turbulence.iterSpread") } }
-    public var iterExponent: Float { didSet { UserDefaults.standard.set(iterExponent, forKey: "wallpaper.turbulence.iterExponent") } }
-    public var contrastExponent: Float { didSet { UserDefaults.standard.set(contrastExponent, forKey: "wallpaper.turbulence.contrastExponent") } }
-    public var rampPower: Float { didSet { UserDefaults.standard.set(rampPower, forKey: "wallpaper.turbulence.rampPower") } }
-    public var lowR: Float { didSet { UserDefaults.standard.set(lowR, forKey: "wallpaper.turbulence.lowR") } }
-    public var lowG: Float { didSet { UserDefaults.standard.set(lowG, forKey: "wallpaper.turbulence.lowG") } }
-    public var lowB: Float { didSet { UserDefaults.standard.set(lowB, forKey: "wallpaper.turbulence.lowB") } }
-    public var highR: Float { didSet { UserDefaults.standard.set(highR, forKey: "wallpaper.turbulence.highR") } }
-    public var highG: Float { didSet { UserDefaults.standard.set(highG, forKey: "wallpaper.turbulence.highG") } }
-    public var highB: Float { didSet { UserDefaults.standard.set(highB, forKey: "wallpaper.turbulence.highB") } }
-    public var toneMapStrength: Float { didSet { UserDefaults.standard.set(toneMapStrength, forKey: "wallpaper.turbulence.toneMapStrength") } }
-    public var maxBrightness: Float { didSet { UserDefaults.standard.set(maxBrightness, forKey: "wallpaper.turbulence.maxBrightness") } }
-    public var gamma: Float { didSet { UserDefaults.standard.set(gamma, forKey: "wallpaper.turbulence.gamma") } }
+    public var tilesAcross: Float = 1.0 { didSet { UserDefaults.standard.set(tilesAcross, forKey: "wallpaper.turbulence.tilesAcross") } }
+    public var iterBaseSpeed: Float = 0.04 { didSet { UserDefaults.standard.set(iterBaseSpeed, forKey: "wallpaper.turbulence.iterBaseSpeed") } }
+    public var iterSpread: Float = 38.0 { didSet { UserDefaults.standard.set(iterSpread, forKey: "wallpaper.turbulence.iterSpread") } }
+    public var iterExponent: Float = 4.0 { didSet { UserDefaults.standard.set(iterExponent, forKey: "wallpaper.turbulence.iterExponent") } }
+    public var contrastExponent: Float = 8.0 { didSet { UserDefaults.standard.set(contrastExponent, forKey: "wallpaper.turbulence.contrastExponent") } }
+    public var rampPower: Float = 1.8 { didSet { UserDefaults.standard.set(rampPower, forKey: "wallpaper.turbulence.rampPower") } }
+    public var lowR: Float = 0.0 { didSet { UserDefaults.standard.set(lowR, forKey: "wallpaper.turbulence.lowR") } }
+    public var lowG: Float = 0.35 { didSet { UserDefaults.standard.set(lowG, forKey: "wallpaper.turbulence.lowG") } }
+    public var lowB: Float = 0.50 { didSet { UserDefaults.standard.set(lowB, forKey: "wallpaper.turbulence.lowB") } }
+    public var highR: Float = 0.95 { didSet { UserDefaults.standard.set(highR, forKey: "wallpaper.turbulence.highR") } }
+    public var highG: Float = 0.98 { didSet { UserDefaults.standard.set(highG, forKey: "wallpaper.turbulence.highG") } }
+    public var highB: Float = 1.00 { didSet { UserDefaults.standard.set(highB, forKey: "wallpaper.turbulence.highB") } }
+    public var toneMapStrength: Float = 1.0 { didSet { UserDefaults.standard.set(toneMapStrength, forKey: "wallpaper.turbulence.toneMapStrength") } }
+    public var maxBrightness: Float = 0.92 { didSet { UserDefaults.standard.set(maxBrightness, forKey: "wallpaper.turbulence.maxBrightness") } }
+    public var gamma: Float = 2.2 { didSet { UserDefaults.standard.set(gamma, forKey: "wallpaper.turbulence.gamma") } }
 
-    public init() {
-        self.tilesAcross = UserDefaults.standard.float(forKey: "wallpaper.turbulence.tilesAcross") == 0 ? 1.0 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.tilesAcross")
-        self.iterBaseSpeed = UserDefaults.standard.object(forKey: "wallpaper.turbulence.iterBaseSpeed") == nil ? 0.04 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.iterBaseSpeed")
-        self.iterSpread = UserDefaults.standard.object(forKey: "wallpaper.turbulence.iterSpread") == nil ? 38.0 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.iterSpread")
-        self.iterExponent = UserDefaults.standard.object(forKey: "wallpaper.turbulence.iterExponent") == nil ? 4.0 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.iterExponent")
-        self.contrastExponent = UserDefaults.standard.object(forKey: "wallpaper.turbulence.contrastExponent") == nil ? 8.0 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.contrastExponent")
-        self.rampPower = UserDefaults.standard.object(forKey: "wallpaper.turbulence.rampPower") == nil ? 1.8 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.rampPower")
-        self.lowR = UserDefaults.standard.float(forKey: "wallpaper.turbulence.lowR")
-        self.lowG = UserDefaults.standard.object(forKey: "wallpaper.turbulence.lowG") == nil ? 0.35 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.lowG")
-        self.lowB = UserDefaults.standard.object(forKey: "wallpaper.turbulence.lowB") == nil ? 0.50 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.lowB")
-        self.highR = UserDefaults.standard.object(forKey: "wallpaper.turbulence.highR") == nil ? 0.95 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.highR")
-        self.highG = UserDefaults.standard.object(forKey: "wallpaper.turbulence.highG") == nil ? 0.98 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.highG")
-        self.highB = UserDefaults.standard.object(forKey: "wallpaper.turbulence.highB") == nil ? 1.00 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.highB")
-        self.toneMapStrength = UserDefaults.standard.object(forKey: "wallpaper.turbulence.toneMapStrength") == nil ? 1.0 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.toneMapStrength")
-        self.maxBrightness = UserDefaults.standard.object(forKey: "wallpaper.turbulence.maxBrightness") == nil ? 0.92 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.maxBrightness")
-        self.gamma = UserDefaults.standard.object(forKey: "wallpaper.turbulence.gamma") == nil ? 2.2 : UserDefaults.standard.float(forKey: "wallpaper.turbulence.gamma")
+    public func configure() {
+        let defaults = UserDefaults.standard
+
+        if defaults.object(forKey: "wallpaper.turbulence.tilesAcross") != nil {
+            self.tilesAcross = defaults.float(forKey: "wallpaper.turbulence.tilesAcross")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.iterBaseSpeed") != nil {
+            self.iterBaseSpeed = defaults.float(forKey: "wallpaper.turbulence.iterBaseSpeed")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.iterSpread") != nil {
+            self.iterSpread = defaults.float(forKey: "wallpaper.turbulence.iterSpread")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.iterExponent") != nil {
+            self.iterExponent = defaults.float(forKey: "wallpaper.turbulence.iterExponent")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.contrastExponent") != nil {
+            self.contrastExponent = defaults.float(forKey: "wallpaper.turbulence.contrastExponent")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.rampPower") != nil {
+            self.rampPower = defaults.float(forKey: "wallpaper.turbulence.rampPower")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.lowR") != nil {
+            self.lowR = defaults.float(forKey: "wallpaper.turbulence.lowR")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.lowG") != nil {
+            self.lowG = defaults.float(forKey: "wallpaper.turbulence.lowG")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.lowB") != nil {
+            self.lowB = defaults.float(forKey: "wallpaper.turbulence.lowB")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.highR") != nil {
+            self.highR = defaults.float(forKey: "wallpaper.turbulence.highR")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.highG") != nil {
+            self.highG = defaults.float(forKey: "wallpaper.turbulence.highG")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.highB") != nil {
+            self.highB = defaults.float(forKey: "wallpaper.turbulence.highB")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.toneMapStrength") != nil {
+            self.toneMapStrength = defaults.float(forKey: "wallpaper.turbulence.toneMapStrength")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.maxBrightness") != nil {
+            self.maxBrightness = defaults.float(forKey: "wallpaper.turbulence.maxBrightness")
+        }
+        if defaults.object(forKey: "wallpaper.turbulence.gamma") != nil {
+            self.gamma = defaults.float(forKey: "wallpaper.turbulence.gamma")
+        }
     }
 
     public func makeView() -> some View {

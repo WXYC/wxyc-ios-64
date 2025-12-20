@@ -7,22 +7,24 @@
 
 import SwiftUI
 import Observation
+import WallpaperMacros
 
+@Wallpaper
 @Observable
-public final class WXYCGradientWallpaperImplementation: Wallpaper {
+public final class WXYCGradientWallpaperImplementation: WallpaperProtocol {
     public let displayName = "WXYC Gradient"
-    
-    public init() {}
-    
+
+    public func configure() {}
+
     public func makeView() -> some View {
         Rectangle().fill(WXYCGradientWallpaper())
             .ignoresSafeArea()
     }
-    
+
     public func makeDebugControls() -> EmptyView? {
         nil
     }
-    
+
     public func reset() {}
 }
 

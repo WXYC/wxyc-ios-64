@@ -7,21 +7,23 @@
 
 import SwiftUI
 import Observation
+import WallpaperMacros
 
+@Wallpaper
 @Observable
-public final class SpiralWallpaper: Wallpaper {
+public final class SpiralWallpaper: WallpaperProtocol {
     public let displayName = "Spiral"
-    
-    public init() {}
-    
+
+    public func configure() {}
+
     public func makeView() -> SpiralView {
         SpiralView()
     }
-    
+
     public func makeDebugControls() -> EmptyView? {
         nil
     }
-    
+
     public func reset() {}
 }
 
