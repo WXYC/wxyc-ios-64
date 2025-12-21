@@ -13,9 +13,11 @@ public struct StitchableWallpaperView: View {
     @State private var startTime = Date()
 
     let wallpaper: LoadedWallpaper
+    var audioData: AudioData?
 
-    public init(wallpaper: LoadedWallpaper) {
+    public init(wallpaper: LoadedWallpaper, audioData: AudioData? = nil) {
         self.wallpaper = wallpaper
+        self.audioData = audioData
     }
 
     public var body: some View {
@@ -26,10 +28,19 @@ public struct StitchableWallpaperView: View {
                 let height = Float(geometry.size.height)
                 let scale = Float(displayScale)
 
+                let audio = ParameterStore.AudioValues(
+                    level: audioData?.level ?? 0,
+                    bass: audioData?.bass ?? 0,
+                    mid: audioData?.mid ?? 0,
+                    high: audioData?.high ?? 0,
+                    beat: audioData?.beat ?? 0
+                )
+
                 let arguments = wallpaper.parameterStore.buildShaderArguments(
                     time: time,
                     viewSize: (width, height),
-                    displayScale: scale
+                    displayScale: scale,
+                    audio: audio
                 )
 
                 Rectangle()

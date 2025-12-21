@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "neon_topology",
+  "displayName": "Neon Topology",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "NeonTopology.metal",
+    "functionName": "neonTopology",
+    "fragmentFunction": "neonTopologyFrag"
   },
   "parameters": [],
   "shaderArguments": [

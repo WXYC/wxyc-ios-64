@@ -47,12 +47,33 @@ public final class WallpaperRegistry {
 
     /// Known manifest file names (SPM flattens resources, so we look for them by name)
     private static let manifestNames = [
+        // Original wallpapers
         "water_turbulence",
         "water_caustics",
         "wxyc_gradient_noise",
         "spiral",
         "perspex_web_lattice",
-        "wxyc_gradient"
+        "wxyc_gradient",
+        // Procedural shaders
+        "plasma",
+        "twinkling_tunnel",
+        "fractal_66",
+        "torus_rings",
+        "self_reconfiguring_circuit",
+        "turbulence",
+        "trans_clouds",
+        "chroma_wave",
+        "monolith_2001",
+        "neon_topology",
+        "lamp_4d",
+        // Audio-reactive
+        "eurotechno",
+        // WXYC glyph-based
+        "drifting_wxyc",
+        "glyph_spinner",
+        "drifting_characters",
+        // Multi-pass
+        "vaporwave_fern"
     ]
 
     private func loadAllWallpapers() {

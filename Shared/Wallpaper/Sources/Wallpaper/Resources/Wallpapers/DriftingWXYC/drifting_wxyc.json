@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "drifting_wxyc",
+  "displayName": "Drifting WXYC",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "DriftingWXYC.metal",
+    "functionName": "driftingWXYC",
+    "fragmentFunction": "driftingWXYCFrag"
   },
   "parameters": [],
   "shaderArguments": [

@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "torus_rings",
+  "displayName": "Torus Rings",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "TorusRings.metal",
+    "functionName": "torusRings",
+    "fragmentFunction": "torusRingsFrag"
   },
   "parameters": [],
   "shaderArguments": [

@@ -116,16 +116,54 @@ public final class ParameterStore {
 
     // MARK: - Shader Argument Building
 
+    /// Audio data for audio-reactive shaders
+    public struct AudioValues {
+        public var level: Float = 0
+        public var bass: Float = 0
+        public var mid: Float = 0
+        public var high: Float = 0
+        public var beat: Float = 0
+
+        public init() {}
+
+        public init(level: Float, bass: Float, mid: Float, high: Float, beat: Float) {
+            self.level = level
+            self.bass = bass
+            self.mid = mid
+            self.high = high
+            self.beat = beat
+        }
+    }
+
     /// Builds shader arguments based on the manifest's shaderArguments configuration.
-    public func buildShaderArguments(time: Float, viewSize: (Float, Float), displayScale: Float) -> [ShaderArgumentValue] {
+    public func buildShaderArguments(
+        time: Float,
+        viewSize: (Float, Float),
+        displayScale: Float,
+        audio: AudioValues = AudioValues()
+    ) -> [ShaderArgumentValue] {
         manifest.shaderArguments.map { arg in
             switch arg.source {
             case .time:
                 return .float(time)
             case .viewSize:
                 return .float2(viewSize.0, viewSize.1)
+            case .viewWidth:
+                return .float(viewSize.0)
+            case .viewHeight:
+                return .float(viewSize.1)
             case .displayScale:
                 return .float(displayScale)
+            case .audioLevel:
+                return .float(audio.level)
+            case .audioBass:
+                return .float(audio.bass)
+            case .audioMid:
+                return .float(audio.mid)
+            case .audioHigh:
+                return .float(audio.high)
+            case .audioBeat:
+                return .float(audio.beat)
             case .parameter:
                 guard let id = arg.id,
                       let param = manifest.parameters.first(where: { $0.id == id }) else {

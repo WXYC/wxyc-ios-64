@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "lamp_4d",
+  "displayName": "4D Lamp",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "Lamp4D.metal",
+    "functionName": "lamp4D",
+    "fragmentFunction": "lamp4DFrag"
   },
   "parameters": [],
   "shaderArguments": [

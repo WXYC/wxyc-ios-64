@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "drifting_characters",
+  "displayName": "Drifting Characters",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "DriftingCharacters.metal",
+    "functionName": "driftingCharacters",
+    "fragmentFunction": "driftingCharactersFrag"
   },
   "parameters": [],
   "shaderArguments": [

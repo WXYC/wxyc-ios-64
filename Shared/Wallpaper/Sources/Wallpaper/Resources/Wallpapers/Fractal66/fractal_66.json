@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "fractal_66",
+  "displayName": "Fractal 66",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "Fractal66.metal",
+    "functionName": "fractal66",
+    "fragmentFunction": "fractal66Frag"
   },
   "parameters": [],
   "shaderArguments": [

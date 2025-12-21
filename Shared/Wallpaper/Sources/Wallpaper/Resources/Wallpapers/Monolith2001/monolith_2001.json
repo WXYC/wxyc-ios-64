@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "monolith_2001",
+  "displayName": "Monolith 2001",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "Monolith2001.metal",
+    "functionName": "monolith2001",
+    "fragmentFunction": "monolith2001Frag"
   },
   "parameters": [],
   "shaderArguments": [

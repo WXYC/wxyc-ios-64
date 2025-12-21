@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "glyph_spinner",
+  "displayName": "Glyph Spinner",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "GlyphSpinner.metal",
+    "functionName": "glyphSpinner",
+    "fragmentFunction": "glyphSpinnerFrag"
   },
   "parameters": [],
   "shaderArguments": [

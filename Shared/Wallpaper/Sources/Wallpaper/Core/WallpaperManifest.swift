@@ -43,6 +43,7 @@ public struct RendererConfiguration: Codable, Sendable {
     public let fragmentFunction: String?
     public let layers: [LayerConfiguration]?
     public let timeScale: Float?
+    public let passes: [PassConfiguration]?
 
     public init(
         type: RendererType,
@@ -51,7 +52,8 @@ public struct RendererConfiguration: Codable, Sendable {
         vertexFunction: String? = nil,
         fragmentFunction: String? = nil,
         layers: [LayerConfiguration]? = nil,
-        timeScale: Float? = nil
+        timeScale: Float? = nil,
+        passes: [PassConfiguration]? = nil
     ) {
         self.type = type
         self.shaderFile = shaderFile
@@ -60,7 +62,50 @@ public struct RendererConfiguration: Codable, Sendable {
         self.fragmentFunction = fragmentFunction
         self.layers = layers
         self.timeScale = timeScale
+        self.passes = passes
     }
+}
+
+// MARK: - Multi-Pass Configuration
+
+/// Configuration for a single render pass in a multi-pass shader.
+public struct PassConfiguration: Codable, Sendable {
+    public let name: String
+    public let fragmentFunction: String
+    public let scale: Float?
+    public let inputs: [PassInput]?
+
+    public init(
+        name: String,
+        fragmentFunction: String,
+        scale: Float? = nil,
+        inputs: [PassInput]? = nil
+    ) {
+        self.name = name
+        self.fragmentFunction = fragmentFunction
+        self.scale = scale
+        self.inputs = inputs
+    }
+
+    /// Effective scale factor (defaults to 1.0)
+    public var effectiveScale: Float {
+        scale ?? 1.0
+    }
+}
+
+/// Input texture binding for a render pass.
+public struct PassInput: Codable, Sendable {
+    public let channel: Int
+    public let source: String
+
+    public init(channel: Int, source: String) {
+        self.channel = channel
+        self.source = source
+    }
+
+    /// Known special source values
+    public static let previousFrame = "previousFrame"
+    public static let noise = "noise"
 }
 
 public enum RendererType: String, Codable, Sendable {
@@ -68,6 +113,7 @@ public enum RendererType: String, Codable, Sendable {
     case rawMetal
     case composite
     case swiftUI
+    case multipass
 }
 
 /// Configuration for a layer in a composite wallpaper.
@@ -100,10 +146,18 @@ public struct ShaderArgument: Codable, Sendable {
 
 public enum ShaderArgumentSource: String, Codable, Sendable {
     case time
-    case viewSize
+    case viewSize        // float2(width, height) - for shaders expecting float2
+    case viewWidth       // float width - for shaders expecting separate floats
+    case viewHeight      // float height - for shaders expecting separate floats
     case displayScale
     case parameter
     case color
+    // Audio-reactive sources
+    case audioLevel      // Overall audio amplitude (0.0 - 1.0)
+    case audioBass       // Low frequency energy (0.0 - 1.0)
+    case audioMid        // Mid frequency energy (0.0 - 1.0)
+    case audioHigh       // High frequency energy (0.0 - 1.0)
+    case audioBeat       // Beat intensity (0.0 - 1.0, pulses on beats)
 }
 
 // MARK: - Parameter Definitions

@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "turbulence",
+  "displayName": "Turbulence",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "Turbulence.metal",
+    "functionName": "turbulence",
+    "fragmentFunction": "turbulenceFrag"
   },
   "parameters": [],
   "shaderArguments": [

@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "plasma",
+  "displayName": "Plasma",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "Plasma.metal",
+    "functionName": "plasma",
+    "fragmentFunction": "plasmaFrag"
   },
   "parameters": [],
   "shaderArguments": [

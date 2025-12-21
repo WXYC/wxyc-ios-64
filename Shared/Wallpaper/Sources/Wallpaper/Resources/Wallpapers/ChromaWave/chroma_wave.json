@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "chroma_wave",
+  "displayName": "Chroma Wave",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "ChromaWave.metal",
+    "functionName": "chromaWave",
+    "fragmentFunction": "chromaWaveFrag"
   },
   "parameters": [],
   "shaderArguments": [

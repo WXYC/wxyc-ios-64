@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "twinkling_tunnel",
+  "displayName": "Twinkling Tunnel",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "TwinklingTunnel.metal",
+    "functionName": "twinklingTunnel",
+    "fragmentFunction": "twinklingTunnelFrag"
   },
   "parameters": [],
   "shaderArguments": [

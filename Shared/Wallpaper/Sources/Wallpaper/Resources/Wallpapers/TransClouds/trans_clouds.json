@@ -1,12 +1,12 @@
 {
-  "id": "spiral",
-  "displayName": "Spiral",
+  "id": "trans_clouds",
+  "displayName": "Trans Clouds",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "Spiral.metal",
-    "functionName": "spiral",
-    "fragmentFunction": "spiralFrag"
+    "shaderFile": "TransClouds.metal",
+    "functionName": "transClouds",
+    "fragmentFunction": "transCloudsFrag"
   },
   "parameters": [],
   "shaderArguments": [

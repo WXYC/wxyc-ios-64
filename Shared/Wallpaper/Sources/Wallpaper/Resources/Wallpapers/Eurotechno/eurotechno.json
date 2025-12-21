@@ -1,0 +1,22 @@
+{
+  "id": "eurotechno",
+  "displayName": "Eurotechno",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "stitchable",
+    "shaderFile": "Eurotechno.metal",
+    "functionName": "eurotechno",
+    "fragmentFunction": "eurotechnoFrag"
+  },
+  "parameters": [],
+  "shaderArguments": [
+    { "source": "viewWidth" },
+    { "source": "viewHeight" },
+    { "source": "time" },
+    { "source": "audioLevel" },
+    { "source": "audioBass" },
+    { "source": "audioMid" },
+    { "source": "audioHigh" },
+    { "source": "audioBeat" }
+  ]
+}

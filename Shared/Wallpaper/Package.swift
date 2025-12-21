@@ -23,7 +23,8 @@ let package = Package(
                 "ObservableDefaults",
             ],
             resources: [
-                .process("Resources/Wallpapers")
+                .process("Resources/Wallpapers"),
+                .process("Resources/Shaders")
             ]
         ),
     ]
