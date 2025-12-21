@@ -29,6 +29,11 @@ public struct VisualizerDebugView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                // Wallpaper
+                WallpaperDebugControls(
+                    configuration: wallpaperConfiguration
+                )
+                
                 // Player Controller Selection
                 Section {
                     Picker("Player Controller", selection: $selectedPlayerType) {
@@ -52,6 +57,7 @@ public struct VisualizerDebugView: View {
                             Text(type.displayName).tag(type)
                         }
                     }
+                    
                     Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
                     
                     // FFT Settings (shown for FFT or Both)
@@ -150,11 +156,6 @@ public struct VisualizerDebugView: View {
                 } footer: {
                     Text("Controls the brightness gradient of LCD segments. Min is applied to top segments, max to bottom.")
                 }
-                
-                // Wallpaper
-                WallpaperDebugControls(
-                    configuration: wallpaperConfiguration
-                )
 
                 // Actions
                 Section("Actions") {
