@@ -21,9 +21,14 @@ public final class WallpaperConfiguration {
     }
 
     public init() {
+        #if DEBUG
+        // Always start with default wallpaper in debug builds
+        self.selectedWallpaperID = defaultWallpaperID
+        #else
         let storedID = UserDefaults.standard.string(forKey: storageKey)
         // Map legacy IDs to new IDs
         self.selectedWallpaperID = Self.mapLegacyID(storedID) ?? defaultWallpaperID
+        #endif
     }
 
     public func reset() {
