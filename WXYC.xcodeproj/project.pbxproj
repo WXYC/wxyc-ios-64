@@ -61,6 +61,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		1CCADA733C3A4E1891A2F6B5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F429A81322FD76A4BCD7F9EF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CB30AABA6C3A478076794CBD;
+			remoteInfo = WXYC;
+		};
 		4728FA31FC65EE1B7D86049D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F429A81322FD76A4BCD7F9EF /* Project object */;
@@ -109,7 +116,6 @@
 				DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 1;
 		};
 		F801C85D5BDA674A19D07E71 /* Embed ExtensionKit Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -137,6 +143,7 @@
 		6D8ECE997571529CE8187362 /* WXYC TV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DEA10C351FEB7C3DEBD1E89 /* WXUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WXUI; path = Shared/WXUI; sourceTree = SOURCE_ROOT; };
 		87ED2724FB87B5D288BBFFFB /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BACFC9947E84949B746EE60 /* WXYCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D0C09BCD2BFEC26D122542E /* OpenNSFW */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenNSFW; path = Shared/OpenNSFW; sourceTree = SOURCE_ROOT; };
 		8ED0B718BCDD0CEC55372A30 /* Caching */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Caching; path = Shared/Caching; sourceTree = SOURCE_ROOT; };
 		B2F0564846267151FC3EC76A /* NowPlayingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = NowPlayingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -150,9 +157,21 @@
 		23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
+				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
+				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
 			target = A3EC40619289B0065648A53C /* WXYCTests */;
+		};
+		23A10B252EF5F166001EF137 /* Exceptions for "WXYC" folder in "WXYCUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
+				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
+				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
+			);
+			target = 6DEE556479EB425A885731F3 /* WXYCUITests */;
 		};
 		23FB1F662EEA847B0064E6FD /* Exceptions for "WXYC" folder in "WXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -180,9 +199,11 @@
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
+				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
 				iOS/Tests/WXYCUITests/README.md,
+				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
 				WatchXYC/PlayerPage.swift,
@@ -249,6 +270,7 @@
 				23FB21C32EEA860A0064E6FD /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */,
 				23FB21C12EEA85F20064E6FD /* Exceptions for "WXYC" folder in "WXYC TV" target */,
 				23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */,
+				23A10B252EF5F166001EF137 /* Exceptions for "WXYC" folder in "WXYCUITests" target */,
 				23FB1F6D2EEA847F0064E6FD /* Exceptions for "WXYC" folder in "WatchXYC" target */,
 			);
 			path = WXYC;
@@ -349,6 +371,7 @@
 				6D8ECE997571529CE8187362 /* WXYC TV.app */,
 				87ED2724FB87B5D288BBFFFB /* WXYC.app */,
 				09FC6D530E7D389518140201 /* WXYCTests.xctest */,
+				8BACFC9947E84949B746EE60 /* WXYCUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -438,6 +461,22 @@
 			productName = "Request Share Extension";
 			productReference = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		6DEE556479EB425A885731F3 /* WXYCUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 365F0B82182D4FD5B9DECBF7 /* Build configuration list for PBXNativeTarget "WXYCUITests" */;
+			buildPhases = (
+				7ADAC2D828C540BD937275CB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FED45E97D0F64E1AA54472E5 /* PBXTargetDependency */,
+			);
+			name = WXYCUITests;
+			productName = WXYCUITests;
+			productReference = 8BACFC9947E84949B746EE60 /* WXYCUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		7D10437EC0EA6CBA5D9C60D0 /* WatchXYC */ = {
 			isa = PBXNativeTarget;
@@ -636,6 +675,7 @@
 				622FA860996235B58BA37A32 /* Request Share Extension */,
 				9BCD7F5ECE0107BFED8218E5 /* WXYC TV */,
 				A3EC40619289B0065648A53C /* WXYCTests */,
+				6DEE556479EB425A885731F3 /* WXYCUITests */,
 				7D10437EC0EA6CBA5D9C60D0 /* WatchXYC */,
 			);
 		};
@@ -691,6 +731,11 @@
 			);
 		};
 		6AF4C1FE1EAD852AFDE5A6DC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		7ADAC2D828C540BD937275CB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -762,6 +807,11 @@
 			isa = PBXTargetDependency;
 			target = 06A8104BBEC623A14D7D631F /* NowPlayingWidget */;
 			targetProxy = 51697501EC283C747E076013 /* PBXContainerItemProxy */;
+		};
+		FED45E97D0F64E1AA54472E5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CB30AABA6C3A478076794CBD /* WXYC */;
+			targetProxy = 1CCADA733C3A4E1891A2F6B5 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1040,6 +1090,30 @@
 				WATCHOS_DEPLOYMENT_TARGET = 11.5;
 			};
 			name = TestFlight;
+		};
+		3CF9F94AC2074E9181E9CFCF /* Release configuration for PBXNativeTarget "WXYCUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.funlandresearch.WXYCUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WXYC;
+			};
+			name = Release;
 		};
 		409B7C07F5738FBAD96A1EEC /* Release configuration for PBXNativeTarget "WatchXYC" */ = {
 			isa = XCBuildConfiguration;
@@ -1328,6 +1402,30 @@
 			};
 			name = TestFlight;
 		};
+		82BDED8110FE450183F8350D /* TestFlight configuration for PBXNativeTarget "WXYCUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.funlandresearch.WXYCUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WXYC;
+			};
+			name = TestFlight;
+		};
 		A05F5FBC502F3303868C4F20 /* TestFlight configuration for PBXNativeTarget "WXYC" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1387,7 +1485,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -1434,6 +1532,30 @@
 				TVOS_DEPLOYMENT_TARGET = 18.6;
 			};
 			name = TestFlight;
+		};
+		EED1C454CB3F4A83837CC685 /* Debug configuration for PBXNativeTarget "WXYCUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.funlandresearch.WXYCUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WXYC;
+			};
+			name = Debug;
 		};
 		EF4A8A33351CE5958109D5C9 /* Release configuration for PBXNativeTarget "WXYC" */ = {
 			isa = XCBuildConfiguration;
@@ -1536,6 +1658,15 @@
 				0DD9DF80692E6A1FCAF7F576 /* Debug configuration for PBXNativeTarget "WatchXYC" */,
 				409B7C07F5738FBAD96A1EEC /* Release configuration for PBXNativeTarget "WatchXYC" */,
 				3A7F918E4291B572B36BE857 /* TestFlight configuration for PBXNativeTarget "WatchXYC" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		365F0B82182D4FD5B9DECBF7 /* Build configuration list for PBXNativeTarget "WXYCUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EED1C454CB3F4A83837CC685 /* Debug configuration for PBXNativeTarget "WXYCUITests" */,
+				3CF9F94AC2074E9181E9CFCF /* Release configuration for PBXNativeTarget "WXYCUITests" */,
+				82BDED8110FE450183F8350D /* TestFlight configuration for PBXNativeTarget "WXYCUITests" */,
 			);
 			defaultConfigurationName = Release;
 		};
