@@ -273,12 +273,57 @@ struct ArtworkServiceTests {
 
         _ = try await [result1, result2]
 
-        // Then - Should deduplicate because same release title
+        // Then - Should deduplicate because same artist and same release title
         #expect(fetcher.fetchCount == 1)
     }
 
-    @Test("Uses song title as fallback key when no release title")
-    func usesSongTitleAsFallbackKey() async throws {
+    @Test("Different artists with same release title are NOT deduplicated")
+    func differentArtistsSameReleaseTitleNotDeduplicated() async throws {
+        // Given
+        let fetcher = MockArtworkService()
+        let artwork = Image.testImageWithColor(.red)
+        fetcher.artworkToReturn = artwork
+        fetcher.delaySeconds = 0.05
+
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator.AlbumArt
+        )
+
+        // Two playcuts with same release title but DIFFERENT artists
+        // This can happen with compilation albums or common album names like "Greatest Hits"
+        let playcut1 = Playcut(
+            id: 1,
+            hour: 1000,
+            chronOrderID: 1,
+            songTitle: "Song A",
+            labelName: nil,
+            artistName: "Artist A",
+            releaseTitle: "Greatest Hits"
+        )
+
+        let playcut2 = Playcut(
+            id: 2,
+            hour: 2000,
+            chronOrderID: 2,
+            songTitle: "Song B",
+            labelName: nil,
+            artistName: "Artist B", // Different artist
+            releaseTitle: "Greatest Hits" // Same release title
+        )
+
+        // When - Request both concurrently
+        async let result1 = service.fetchArtwork(for: playcut1)
+        async let result2 = service.fetchArtwork(for: playcut2)
+
+        _ = try await [result1, result2]
+
+        // Then - Should NOT deduplicate because different artists
+        #expect(fetcher.fetchCount == 2)
+    }
+
+    @Test("Different artists with same song title are NOT deduplicated")
+    func differentArtistsSameSongTitleNotDeduplicated() async throws {
         // Given
         let fetcher = MockArtworkService()
         let artwork = Image.testImageWithColor(.yellow)
@@ -290,7 +335,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        // Two playcuts with same song title, no release title
+        // Two playcuts with same song title but DIFFERENT artists, no release title
         let playcut1 = Playcut(
             id: 1,
             hour: 1000,
@@ -317,7 +362,51 @@ struct ArtworkServiceTests {
 
         _ = try await [result1, result2]
 
-        // Then - Should deduplicate because same song title
+        // Then - Should NOT deduplicate because different artists
+        #expect(fetcher.fetchCount == 2)
+    }
+
+    @Test("Same artist with same song title and no release title IS deduplicated")
+    func sameArtistSameSongTitleDeduplicated() async throws {
+        // Given
+        let fetcher = MockArtworkService()
+        let artwork = Image.testImageWithColor(.yellow)
+        fetcher.artworkToReturn = artwork
+        fetcher.delaySeconds = 0.05
+
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator.AlbumArt
+        )
+
+        // Two playcuts with same song title AND same artist, no release title
+        let playcut1 = Playcut(
+            id: 1,
+            hour: 1000,
+            chronOrderID: 1,
+            songTitle: "Unique Song",
+            labelName: nil,
+            artistName: "Same Artist",
+            releaseTitle: nil
+        )
+
+        let playcut2 = Playcut(
+            id: 2,
+            hour: 2000,
+            chronOrderID: 2,
+            songTitle: "Unique Song",
+            labelName: nil,
+            artistName: "Same Artist", // Same artist
+            releaseTitle: nil
+        )
+
+        // When - Request both concurrently
+        async let result1 = service.fetchArtwork(for: playcut1)
+        async let result2 = service.fetchArtwork(for: playcut2)
+
+        _ = try await [result1, result2]
+
+        // Then - Should deduplicate because same artist and same song title
         #expect(fetcher.fetchCount == 1)
     }
 
@@ -395,7 +484,7 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 1)
 
         // Manually cache the artwork in our mock
-        let cacheKey = "Test Album"
+        let cacheKey = "Test Artist-Test Album"
         await mockCache.set(artwork: artwork, for: cacheKey)
 
         // Verify it's cached
