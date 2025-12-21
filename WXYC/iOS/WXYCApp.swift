@@ -41,10 +41,19 @@ final class Singletonia {
     // Wallpaper configurations (persisted via @ObservableDefaults)
     let wallpaperConfiguration = WallpaperConfiguration()
 
+    // Wallpaper picker state
+    let wallpaperPickerState = WallpaperPickerState()
+
+    // Audio-reactive wallpaper support
+    let audioDataProvider = AudioDataProvider()
+
     private var playlistObservationTask: Task<Void, Never>?
     private var isForegrounded = false
 
-    private init() {}
+    private init() {
+        // Start processing audio for reactive wallpapers
+        audioDataProvider.startProcessing(stream: AudioPlayerController.shared.audioBufferStream)
+    }
     
     /// Update the foreground state (called when scene phase changes)
     func setForegrounded(_ foregrounded: Bool) {
@@ -132,11 +141,11 @@ struct WXYCApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                WallpaperView(
-                    configuration: appState.wallpaperConfiguration
-                )
-
+            WallpaperPickerContainer(
+                configuration: appState.wallpaperConfiguration,
+                pickerState: appState.wallpaperPickerState,
+                audioData: appState.audioDataProvider.audioData
+            ) {
                 RootTabView()
                     .frame(maxWidth: 440)
                     .environment(appState)
@@ -150,7 +159,7 @@ struct WXYCApp: App {
                         setUpQuickActions()
                         appState.setForegrounded(true)
                         appState.startObservingPlaylistUpdates()
-                        
+
                         // Listen for app termination to clear playing state
                         #if os(iOS)
                         NotificationCenter.default.addObserver(
@@ -162,7 +171,7 @@ struct WXYCApp: App {
                             UserDefaults.wxyc.set(false, forKey: "isPlaying")
                         }
                         #endif
-                        
+
                         // Force status bar to be light
                         #if os(iOS)
                         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -403,11 +412,10 @@ struct WXYCApp: App {
 }
 
 #Preview {
-    ZStack {
-        WallpaperView(
-            configuration: WallpaperConfiguration()
-        )
-
+    WallpaperPickerContainer(
+        configuration: WallpaperConfiguration(),
+        pickerState: WallpaperPickerState()
+    ) {
         RootTabView()
             .environment(\.playlistService, PlaylistService())
             .environment(\.artworkService, MultisourceArtworkService())

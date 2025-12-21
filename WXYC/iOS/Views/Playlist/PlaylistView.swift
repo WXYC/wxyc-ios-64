@@ -13,6 +13,7 @@ import PlayerHeaderView
 import PartyHorn
 import Playlist
 import PostHog
+import Wallpaper
 
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
@@ -23,7 +24,8 @@ struct PlaylistView: View {
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
-    
+    @State private var longPressActive = false
+
     @Environment(Singletonia.self) var appState
 
     var body: some View {
@@ -106,6 +108,38 @@ struct PlaylistView: View {
                     self.playlistEntries = playlist.entries
                 }
             }
+        }
+        .onLongPressGesture(minimumDuration: 0.5, pressing: { isPressing in
+            if isPressing {
+                // Mark press as active and schedule action
+                longPressActive = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    // Only fire if press is still active (not cancelled by drag or lift)
+                    if longPressActive {
+                        longPressActive = false
+                        enterWallpaperPicker()
+                    }
+                }
+            } else {
+                // Press ended (finger lifted or drag cancelled gesture)
+                longPressActive = false
+            }
+        }, perform: {
+            // This fires on successful long press completion
+            // Action already handled in pressing closure, so no-op here
+        })
+        .accessibilityIdentifier("playlistView")
+    }
+
+    private func enterWallpaperPicker() {
+        // Haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+
+        withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
+            appState.wallpaperPickerState.enter(
+                currentWallpaperID: appState.wallpaperConfiguration.selectedWallpaperID
+            )
         }
     }
     
