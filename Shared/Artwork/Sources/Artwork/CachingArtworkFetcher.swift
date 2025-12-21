@@ -19,14 +19,7 @@ extension CacheCoordinator: ArtworkService {
     }
     
     public func fetchArtwork(for playcut: Playcut) async throws -> Image {
-        let cacheKey: String
-        
-        if let releaseTitle = playcut.releaseTitle,
-           !releaseTitle.isEmpty {
-            cacheKey = releaseTitle
-        } else {
-            cacheKey = playcut.songTitle + playcut.artistName
-        }
+        let cacheKey = "\(playcut.artistName)-\(playcut.releaseTitle ?? playcut.songTitle)"
         
         let cachedData: Data = try self.data(for: cacheKey)
         guard let artwork = Image(compatibilityData: cachedData) else {

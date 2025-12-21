@@ -52,7 +52,7 @@ public final actor MultisourceArtworkService: ArtworkService {
     }
 
     public func fetchArtwork(for playcut: Playcut) async throws -> Image {
-        let id = playcut.releaseTitle ?? playcut.songTitle
+        let id = "\(playcut.artistName)-\(playcut.releaseTitle ?? playcut.songTitle)"
         
         if let existingTask = inflightTasks[id],
            let value = await existingTask.value {
@@ -76,8 +76,8 @@ public final actor MultisourceArtworkService: ArtworkService {
     // MARK: - Private
     
     private func scanFetchers(for playcut: Playcut) async -> Image? {
-        let cacheKeyId = "\(playcut.releaseTitle ?? playcut.songTitle)"
-        let errorCacheKeyId = "error_\(playcut.releaseTitle ?? playcut.songTitle)"
+        let cacheKeyId = "\(playcut.artistName)-\(playcut.releaseTitle ?? playcut.songTitle)"
+        let errorCacheKeyId = "error_\(playcut.artistName)-\(playcut.releaseTitle ?? playcut.songTitle)"
 
         if let error: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKeyId),
            Error.allCases.contains(error) {
