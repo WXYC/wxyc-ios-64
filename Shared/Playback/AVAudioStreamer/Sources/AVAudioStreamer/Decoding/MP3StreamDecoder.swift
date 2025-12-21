@@ -12,11 +12,20 @@ enum MP3DecoderError: Error {
 
 /// Decodes streaming MP3 data to PCM buffers using AudioToolbox
 final class MP3StreamDecoder: @unchecked Sendable {
-    private weak var delegate: (any MP3DecoderDelegate)?
+    private weak var delegate: MP3DecoderDelegate?
     private let decoderQueue: DispatchQueue
-    private let converterBox: AudioConverterBox
-    private let bufferBox: DataBufferBox
-    private let formatBox: FormatBox
+
+    /// The AudioConverter instance for MP3 to PCM conversion.
+    /// Thread-safety: All access must be on `decoderQueue`.
+    private var converter: AudioConverterRef?
+
+    /// Accumulated MP3 data waiting to be decoded.
+    /// Thread-safety: All access must be on `decoderQueue`.
+    private var buffer = Data()
+
+    /// The input audio format parsed from MP3 headers.
+    /// Thread-safety: All access must be on `decoderQueue`.
+    private var inputFormat: AudioStreamBasicDescription?
 
     // Output format: 44.1kHz, stereo, Float32
     private let outputFormat: AVAudioFormat
@@ -24,9 +33,6 @@ final class MP3StreamDecoder: @unchecked Sendable {
     init(delegate: any MP3DecoderDelegate) {
         self.delegate = delegate
         self.decoderQueue = DispatchQueue(label: "com.avaudiostreamer.mp3decoder", qos: .userInitiated)
-        self.converterBox = AudioConverterBox()
-        self.bufferBox = DataBufferBox()
-        self.formatBox = FormatBox()
 
         // Standard output format for decoded audio
         guard let format = AVAudioFormat(
@@ -50,24 +56,24 @@ final class MP3StreamDecoder: @unchecked Sendable {
     func reset() {
         decoderQueue.async { [weak self] in
             guard let self = self else { return }
-            self.bufferBox.clear()
-            self.formatBox.clear()
-            if let converter = self.converterBox.converter {
+            self.buffer.removeAll()
+            self.inputFormat = nil
+            if let converter = self.converter {
                 AudioConverterDispose(converter)
-                self.converterBox.converter = nil
+                self.converter = nil
             }
         }
     }
 
     private func processMP3Data(_ newData: Data) {
         // Append new data to buffer
-        bufferBox.append(newData)
+        buffer.append(newData)
 
         // Try to parse audio format if we haven't yet
-        if formatBox.inputFormat == nil {
-            if let format = parseMP3Format(from: bufferBox.data) {
-                formatBox.inputFormat = format
-                setupConverter(inputFormat: format)
+        if inputFormat == nil {
+            if let format = parseMP3Format(from: buffer) {
+                inputFormat = format
+                setUpConverter(inputFormat: format)
             } else {
                 // Not enough data yet to determine format
                 return
@@ -136,24 +142,24 @@ final class MP3StreamDecoder: @unchecked Sendable {
         return format
     }
 
-    private func setupConverter(inputFormat: AudioStreamBasicDescription) {
+    private func setUpConverter(inputFormat: AudioStreamBasicDescription) {
         var inputFormatCopy = inputFormat
         var outputFormatCopy = outputFormat.streamDescription.pointee
 
-        var converter: AudioConverterRef?
-        let status = AudioConverterNew(&inputFormatCopy, &outputFormatCopy, &converter)
+        var newConverter: AudioConverterRef?
+        let status = AudioConverterNew(&inputFormatCopy, &outputFormatCopy, &newConverter)
 
-        guard status == noErr, let audioConverter = converter else {
+        guard status == noErr, let audioConverter = newConverter else {
             notifyError(MP3DecoderError.converterCreationFailed(status))
             return
         }
 
-        converterBox.converter = audioConverter
+        converter = audioConverter
     }
 
     private func convertToPCM() {
-        guard let converter = converterBox.converter else { return }
-        guard bufferBox.data.count > 0 else { return }
+        guard let converter = converter else { return }
+        guard buffer.count > 0 else { return }
 
         // Create output buffer
         let frameCapacity = AVAudioFrameCount(4096)
@@ -163,7 +169,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
         }
 
         // Prepare for conversion
-        let context = ConversionContext(inputData: bufferBox.data, inputOffset: 0)
+        let context = ConversionContext(inputData: buffer, inputOffset: 0)
         let contextPointer = Unmanaged.passUnretained(context).toOpaque()
 
         var outputBufferList = pcmBuffer.mutableAudioBufferList.pointee
@@ -188,9 +194,9 @@ final class MP3StreamDecoder: @unchecked Sendable {
                     return noErr
                 }
 
-                // Provide input data
+                // Provide input data using pre-allocated buffer
                 let bytesToCopy = min(remainingBytes, Int(ioNumberDataPackets.pointee) * 1024)
-                let bufferPointer = UnsafeMutablePointer<UInt8>.allocate(capacity: bytesToCopy)
+                let bufferPointer = context.getBuffer(capacity: bytesToCopy)
 
                 context.inputData.copyBytes(
                     to: bufferPointer,
@@ -218,7 +224,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
             // Remove processed data from buffer
             let bytesConsumed = context.inputOffset
             if bytesConsumed > 0 {
-                bufferBox.removePrefix(bytesConsumed)
+                buffer.removeFirst(bytesConsumed)
             }
 
             // Notify delegate
@@ -228,8 +234,8 @@ final class MP3StreamDecoder: @unchecked Sendable {
             }
         } else if status != noErr {
             // Clear some data to avoid getting stuck
-            let clearAmount = min(1024, bufferBox.data.count)
-            bufferBox.removePrefix(clearAmount)
+            let clearAmount = min(1024, buffer.count)
+            buffer.removeFirst(clearAmount)
         }
     }
 
@@ -253,83 +259,36 @@ private final class ConversionContext {
     let inputData: Data
     var inputOffset: Int
 
+    /// Pre-allocated buffer for AudioConverter input data.
+    /// Sized for typical MP3 frame sizes (max ~1440 bytes for 320kbps).
+    /// Will grow if needed but avoids repeated allocations.
+    private var buffer: UnsafeMutablePointer<UInt8>?
+    private var bufferCapacity: Int = 0
+
+    /// Default buffer size - covers most MP3 frames
+    private static let defaultBufferSize = 4096
+
     init(inputData: Data, inputOffset: Int) {
         self.inputData = inputData
         self.inputOffset = inputOffset
+        // Pre-allocate buffer
+        self.bufferCapacity = Self.defaultBufferSize
+        self.buffer = .allocate(capacity: bufferCapacity)
+    }
+
+    deinit {
+        buffer?.deallocate()
+    }
+
+    /// Returns a buffer pointer with at least the requested capacity.
+    /// Reuses existing buffer if large enough, otherwise reallocates.
+    func getBuffer(capacity: Int) -> UnsafeMutablePointer<UInt8> {
+        if capacity > bufferCapacity {
+            buffer?.deallocate()
+            bufferCapacity = capacity
+            buffer = .allocate(capacity: capacity)
+        }
+        return buffer!
     }
 }
 
-private final class AudioConverterBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _converter: AudioConverterRef?
-
-    var converter: AudioConverterRef? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _converter
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _converter = newValue
-        }
-    }
-}
-
-private final class DataBufferBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _data = Data()
-
-    var data: Data {
-        lock.lock()
-        defer { lock.unlock() }
-        return _data
-    }
-
-    func append(_ newData: Data) {
-        lock.lock()
-        defer { lock.unlock() }
-        _data.append(newData)
-    }
-
-    func removePrefix(_ count: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        if count >= _data.count {
-            _data.removeAll()
-        } else {
-            _data = _data.advanced(by: count)
-        }
-    }
-
-    func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        _data.removeAll()
-    }
-}
-
-private final class FormatBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _inputFormat: AudioStreamBasicDescription?
-
-    var inputFormat: AudioStreamBasicDescription? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _inputFormat
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _inputFormat = newValue
-        }
-    }
-
-    func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        _inputFormat = nil
-    }
-}

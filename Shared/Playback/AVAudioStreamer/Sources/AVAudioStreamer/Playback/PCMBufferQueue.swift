@@ -1,4 +1,5 @@
 @preconcurrency import AVFoundation
+import DequeModule
 
 /// Delegate for buffer queue events
 protocol PCMBufferQueueDelegate: AnyObject, Sendable {
@@ -17,7 +18,7 @@ final class PCMBufferQueue: @unchecked Sendable {
     private let capacity: Int
     private let minimumBuffersBeforePlayback: Int
     private let lock = NSLock()
-    private var buffers: [AVAudioPCMBuffer] = []
+    private var buffers: Deque<AVAudioPCMBuffer> = []
     private weak var delegate: (any PCMBufferQueueDelegate)?
 
     var count: Int {
