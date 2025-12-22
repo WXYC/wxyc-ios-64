@@ -8,8 +8,8 @@
 #if canImport(UIKit)
 import SwiftUI
 import UIKit
-import Secrets
 import WXUI
+import Logger
 
 public struct ShareExtensionView: View {
     @State private var viewModel: ShareExtensionViewModel
@@ -336,26 +336,36 @@ class ShareExtensionViewModel {
     // MARK: - URL Processing
     
     func extractAndProcessURL() async {
+        Log(.info, "extractAndProcessURL started")
+
         // Configure Spotify credentials
+        let config = MusicShareKit.configuration
         await SpotifyService.configure(credentials: SpotifyCredentials(
-            clientId: Secrets.spotifyClientId,
-            clientSecret: Secrets.spotifyClientSecret
+            clientId: config.spotifyClientId,
+            clientSecret: config.spotifyClientSecret
         ))
-        
+        Log(.info, "Spotify credentials configured")
+
         // For URL-based previews, process the stored URL
         if let previewURL = previewURL {
+            Log(.info, "Processing preview URL: \(previewURL)")
             await processURL(previewURL)
             return
         }
-        
+
         // Skip URL extraction for state-based preview mode
-        guard !isPreview else { return }
-        
+        guard !isPreview else {
+            Log(.info, "Skipping - isPreview mode")
+            return
+        }
+
         guard let extensionContext = extensionContext,
               let inputItems = extensionContext.inputItems as? [NSExtensionItem] else {
+            Log(.error, "extensionContext or inputItems is nil")
             state = .error
             return
         }
+        Log(.info, "Found \(inputItems.count) input items")
         
         for item in inputItems {
             if let attachments = item.attachments {
