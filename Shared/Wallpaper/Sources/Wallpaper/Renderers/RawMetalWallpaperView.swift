@@ -238,11 +238,11 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
 
         var bytes = [UInt8](repeating: 0, count: size * size * 4)
         for i in stride(from: 0, to: bytes.count, by: 4) {
-            let v = UInt8.random(in: 0...255)
-            bytes[i + 0] = v
-            bytes[i + 1] = v
-            bytes[i + 2] = v
-            bytes[i + 3] = 255
+            // Independent random values per channel (needed for shaders like LavaLite)
+            bytes[i + 0] = UInt8.random(in: 0...255)  // R
+            bytes[i + 1] = UInt8.random(in: 0...255)  // G
+            bytes[i + 2] = UInt8.random(in: 0...255)  // B
+            bytes[i + 3] = UInt8.random(in: 0...255)  // A
         }
 
         bytes.withUnsafeBytes { ptr in
