@@ -21,7 +21,7 @@ public enum WallpaperRendererFactory {
             }
 
         case .rawMetal:
-            RawMetalWallpaperView(wallpaper: wallpaper)
+            RawMetalWallpaperView(wallpaper: wallpaper, directiveStore: wallpaper.directiveStore)
 
         case .composite:
             CompositeWallpaperView(wallpaper: wallpaper)

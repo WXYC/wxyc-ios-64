@@ -12,6 +12,7 @@ import Foundation
 public final class LoadedWallpaper: Identifiable {
     public let manifest: WallpaperManifest
     public let parameterStore: ParameterStore
+    public let directiveStore: ShaderDirectiveStore
 
     public var id: String { manifest.id }
     public var displayName: String { manifest.displayName }
@@ -19,6 +20,7 @@ public final class LoadedWallpaper: Identifiable {
     init(manifest: WallpaperManifest) {
         self.manifest = manifest
         self.parameterStore = ParameterStore(manifest: manifest)
+        self.directiveStore = ShaderDirectiveStore()
     }
 }
 

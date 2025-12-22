@@ -3,15 +3,12 @@
   "displayName": "4D Lamp",
   "version": "1.0.0",
   "renderer": {
-    "type": "stitchable",
+    "type": "rawMetal",
     "shaderFile": "Lamp4D.metal",
-    "functionName": "lamp4D",
-    "fragmentFunction": "lamp4DFrag"
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "lamp4DFrag",
+    "timeScale": 1.0
   },
   "parameters": [],
-  "shaderArguments": [
-    { "source": "viewWidth" },
-    { "source": "viewHeight" },
-    { "source": "time" }
-  ]
+  "shaderArguments": []
 }

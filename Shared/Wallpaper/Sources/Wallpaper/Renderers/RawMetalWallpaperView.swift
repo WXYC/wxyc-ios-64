@@ -18,13 +18,15 @@ private typealias ViewRepresentable = UIViewRepresentable
 /// Generic view for wallpapers that use raw Metal rendering with vertex/fragment shaders.
 public struct RawMetalWallpaperView: ViewRepresentable {
     let wallpaper: LoadedWallpaper
+    let directiveStore: ShaderDirectiveStore?
 
-    public init(wallpaper: LoadedWallpaper) {
+    public init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
         self.wallpaper = wallpaper
+        self.directiveStore = directiveStore
     }
 
     public func makeCoordinator() -> RawMetalRenderer {
-        RawMetalRenderer(wallpaper: wallpaper)
+        RawMetalRenderer(wallpaper: wallpaper, directiveStore: directiveStore)
     }
 
 #if os(macOS)
@@ -71,9 +73,13 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
 
     private var startTime = CACurrentMediaTime()
     private let wallpaper: LoadedWallpaper
+    private let directiveStore: ShaderDirectiveStore?
+    private var runtimeCompiler: RuntimeShaderCompiler?
+    private var pixelFormat: MTLPixelFormat = .bgra8Unorm
 
-    init(wallpaper: LoadedWallpaper) {
+    init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
         self.wallpaper = wallpaper
+        self.directiveStore = directiveStore
         super.init()
     }
 
@@ -81,22 +87,20 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
         guard let device = view.device else { return }
         self.device = device
         self.queue = device.makeCommandQueue()
+        self.pixelFormat = view.colorPixelFormat
 
         let renderer = wallpaper.manifest.renderer
-        let vertexFn = renderer.vertexFunction ?? "vertexMain"
-        let fragmentFn = renderer.fragmentFunction ?? "fragmentMain"
 
-        // Pipeline - load from package bundle, not main app bundle
-        let library = try? device.makeDefaultLibrary(bundle: Bundle.module)
-        let vfn = library?.makeFunction(name: vertexFn)
-        let ffn = library?.makeFunction(name: fragmentFn)
-
-        let desc = MTLRenderPipelineDescriptor()
-        desc.vertexFunction = vfn
-        desc.fragmentFunction = ffn
-        desc.colorAttachments[0].pixelFormat = view.colorPixelFormat
-
-        self.pipeline = try? device.makeRenderPipelineState(descriptor: desc)
+        // Check if we should use runtime compilation (shader source available)
+        if let shaderFile = renderer.shaderFile,
+           let shaderURL = Bundle.module.url(forResource: shaderFile.replacingOccurrences(of: ".metal", with: ""), withExtension: "metal"),
+           let shaderSource = try? String(contentsOf: shaderURL, encoding: .utf8) {
+            // Use runtime compilation
+            setUpRuntimeCompilation(device: device, shaderSource: shaderSource, renderer: renderer, pixelFormat: view.colorPixelFormat)
+        } else {
+            // Use precompiled library
+            setUpPrecompiledPipeline(device: device, renderer: renderer, pixelFormat: view.colorPixelFormat)
+        }
 
         // Sampler: repeat + linear
         let sDesc = MTLSamplerDescriptor()
@@ -108,6 +112,81 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
 
         // Noise texture for shaders that need it
         self.noiseTex = makeNoiseTexture(device: device, size: 256)
+    }
+
+    private func setUpRuntimeCompilation(device: MTLDevice, shaderSource: String, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
+        runtimeCompiler = RuntimeShaderCompiler(device: device, shaderSource: shaderSource)
+
+        // Configure directive store with available directives
+        if let store = directiveStore, let compiler = runtimeCompiler {
+            store.configure(with: compiler.availableDirectives)
+
+            // Apply saved states to compiler
+            for directive in compiler.availableDirectives {
+                compiler.setDirective(directive, enabled: store.isEnabled(directive))
+            }
+
+            // Set up callback for recompilation
+            store.onDirectivesChanged = { [weak self] in
+                self?.recompileShader()
+            }
+        }
+
+        // Build initial pipeline
+        buildRuntimePipeline(renderer: renderer, pixelFormat: pixelFormat)
+    }
+
+    private func setUpPrecompiledPipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
+        let vertexFn = renderer.vertexFunction ?? "vertexMain"
+        let fragmentFn = renderer.fragmentFunction ?? "fragmentMain"
+
+        let library = try? device.makeDefaultLibrary(bundle: Bundle.module)
+        let vfn = library?.makeFunction(name: vertexFn)
+        let ffn = library?.makeFunction(name: fragmentFn)
+
+        let desc = MTLRenderPipelineDescriptor()
+        desc.vertexFunction = vfn
+        desc.fragmentFunction = ffn
+        desc.colorAttachments[0].pixelFormat = pixelFormat
+
+        self.pipeline = try? device.makeRenderPipelineState(descriptor: desc)
+    }
+
+    private func buildRuntimePipeline(renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
+        guard let compiler = runtimeCompiler else { return }
+
+        let vertexFn = renderer.vertexFunction ?? "fullscreenVertex"
+        let fragmentFn = renderer.fragmentFunction ?? "fragmentMain"
+
+        do {
+            // Load vertex function from precompiled library (shared vertex shader)
+            let precompiledLib = try? device.makeDefaultLibrary(bundle: Bundle.module)
+            let vfn = precompiledLib?.makeFunction(name: vertexFn)
+
+            // Load fragment function from runtime-compiled library
+            let ffn = try compiler.makeFunction(name: fragmentFn)
+
+            let desc = MTLRenderPipelineDescriptor()
+            desc.vertexFunction = vfn
+            desc.fragmentFunction = ffn
+            desc.colorAttachments[0].pixelFormat = pixelFormat
+
+            self.pipeline = try device.makeRenderPipelineState(descriptor: desc)
+        } catch {
+            print("RuntimeShaderCompiler: Failed to build pipeline: \(error)")
+        }
+    }
+
+    private func recompileShader() {
+        guard let compiler = runtimeCompiler, let store = directiveStore else { return }
+
+        // Apply current directive states to compiler
+        for directive in compiler.availableDirectives {
+            compiler.setDirective(directive, enabled: store.isEnabled(directive))
+        }
+
+        // Rebuild pipeline
+        buildRuntimePipeline(renderer: wallpaper.manifest.renderer, pixelFormat: pixelFormat)
     }
 
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
