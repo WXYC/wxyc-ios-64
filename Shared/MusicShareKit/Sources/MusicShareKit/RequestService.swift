@@ -6,16 +6,14 @@
 //
 
 import Foundation
-import Secrets
 import Logger
-import PostHog
 
 /// A service for sending song requests to WXYC
 public struct RequestService: Sendable {
     public static let shared = RequestService()
-    
+
     private init() {}
-    
+
     /// Sends a request message to the WXYC request service
     /// - Parameter message: The request message (e.g., "Song Title by Artist Name")
     /// - Throws: RequestServiceError if the request fails
@@ -23,34 +21,34 @@ public struct RequestService: Sendable {
         guard !message.isEmpty else {
             throw RequestServiceError.emptyMessage
         }
-        
-        let url = URL(string: Secrets.requestOMatic)!
+
+        let url = URL(string: MusicShareKit.configuration.requestOMaticURL)!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-type")
-        
+
         let json: [String: Any] = ["message": message]
         guard let jsonData = try? JSONSerialization.data(withJSONObject: json) else {
             throw RequestServiceError.encodingFailed
         }
         request.httpBody = jsonData
-        
-        PostHogSDK.shared.capture(
+
+        MusicShareKit.trackEvent(
             "Request sent",
             properties: [
                 "context": "RequestService",
                 "message": message
             ]
         )
-        
+
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            
+
             guard let httpResponse = response as? HTTPURLResponse else {
                 Log(.error, "No response object from request service")
                 throw RequestServiceError.invalidResponse
             }
-            
+
             if httpResponse.statusCode == 200 {
                 Log(.info, "Request sent successfully. Status code: \(httpResponse.statusCode)")
             } else {
@@ -62,7 +60,7 @@ public struct RequestService: Sendable {
             throw error
         } catch {
             Log(.error, "Error sending request: \(error)")
-            PostHogSDK.shared.capture(
+            MusicShareKit.trackEvent(
                 "$exception",
                 properties: [
                     "context": "RequestService",

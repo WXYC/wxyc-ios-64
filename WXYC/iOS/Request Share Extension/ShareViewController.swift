@@ -8,16 +8,28 @@
 import UIKit
 import SwiftUI
 import MusicShareKit
+import Logger
+import Secrets
 
 @objc(ShareViewController)
 class ShareViewController: UIViewController {
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        Log(.info, "ShareViewController viewDidLoad started")
+
+        // Configure MusicShareKit with secrets
+        MusicShareKit.configure(MusicShareKitConfiguration(
+            requestOMaticURL: Secrets.requestOMatic,
+            spotifyClientId: Secrets.spotifyClientId,
+            spotifyClientSecret: Secrets.spotifyClientSecret
+        ))
+
         // Create SwiftUI view with extension context
+        Log(.info, "extensionContext: \(String(describing: extensionContext))")
         let shareView = ShareExtensionView(extensionContext: extensionContext)
         let hostingController = UIHostingController(rootView: shareView)
+        Log(.info, "Created UIHostingController")
         
         // Embed the hosting controller
         addChild(hostingController)
