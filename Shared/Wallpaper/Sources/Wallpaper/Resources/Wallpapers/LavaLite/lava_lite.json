@@ -1,0 +1,13 @@
+{
+  "id": "lava_lite",
+  "displayName": "Lava Lite",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "lavaLiteFragment",
+    "timeScale": 0.5
+  },
+  "parameters": [],
+  "shaderArguments": []
+}
