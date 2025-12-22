@@ -1,0 +1,13 @@
+{
+  "id": "windowlight",
+  "displayName": "Windowlight",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "windowlightFragment",
+    "timeScale": 1.0
+  },
+  "parameters": [],
+  "shaderArguments": []
+}
