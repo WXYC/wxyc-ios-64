@@ -1,0 +1,123 @@
+{
+  "id": "pool_tiles_gradient",
+  "displayName": "Pool Tiles (Gradient)",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "stitchable",
+    "shaderFile": "PoolTilesGradient.metal",
+    "functionName": "poolTilesGradient"
+  },
+  "parameters": [
+    {
+      "id": "tilesAcross",
+      "type": "float",
+      "label": "Caustic Tiles",
+      "group": "Wave Pattern",
+      "default": 1.0,
+      "range": { "min": 0.25, "max": 6.0 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.tilesAcross"
+    },
+    {
+      "id": "iterBaseSpeed",
+      "type": "float",
+      "label": "Base Speed",
+      "group": "Wave Pattern",
+      "default": 0.04,
+      "range": { "min": 0.0, "max": 4.0 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.iterBaseSpeed"
+    },
+    {
+      "id": "iterSpread",
+      "type": "float",
+      "label": "Spread",
+      "group": "Wave Pattern",
+      "default": 38.0,
+      "range": { "min": 0.0, "max": 64.0 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.iterSpread"
+    },
+    {
+      "id": "iterExponent",
+      "type": "float",
+      "label": "Exponent",
+      "group": "Wave Pattern",
+      "default": 4.0,
+      "range": { "min": 0.25, "max": 4.0 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.iterExponent"
+    },
+    {
+      "id": "contrastExponent",
+      "type": "float",
+      "label": "Caustic Contrast",
+      "group": "Wave Pattern",
+      "default": 8.0,
+      "range": { "min": 0.5, "max": 16.0 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.contrastExponent"
+    },
+    {
+      "id": "refractionStrength",
+      "type": "float",
+      "label": "Refraction Strength",
+      "group": "Refraction",
+      "default": 0.008,
+      "range": { "min": 0.0, "max": 0.05 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.refractionStrength"
+    },
+    {
+      "id": "gridTiles",
+      "type": "float",
+      "label": "Grid Tiles",
+      "group": "Grid",
+      "default": 8.0,
+      "range": { "min": 2.0, "max": 20.0 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.gridTiles"
+    },
+    {
+      "id": "lineWidth",
+      "type": "float",
+      "label": "Line Width",
+      "group": "Grid",
+      "default": 0.04,
+      "range": { "min": 0.01, "max": 0.15 },
+      "userDefaultsKey": "wallpaper.poolTilesGradient.lineWidth"
+    },
+    {
+      "id": "tileColor",
+      "type": "color",
+      "label": "Tile Color",
+      "group": "Colors",
+      "default": [0.15, 0.55, 0.75],
+      "components": [
+        { "id": "r", "label": "Red", "default": 0.15, "userDefaultsKey": "wallpaper.poolTilesGradient.tileR" },
+        { "id": "g", "label": "Green", "default": 0.55, "userDefaultsKey": "wallpaper.poolTilesGradient.tileG" },
+        { "id": "b", "label": "Blue", "default": 0.75, "userDefaultsKey": "wallpaper.poolTilesGradient.tileB" }
+      ]
+    },
+    {
+      "id": "groutColor",
+      "type": "color",
+      "label": "Grout Color",
+      "group": "Colors",
+      "default": [0.85, 0.85, 0.82],
+      "components": [
+        { "id": "r", "label": "Red", "default": 0.85, "userDefaultsKey": "wallpaper.poolTilesGradient.groutR" },
+        { "id": "g", "label": "Green", "default": 0.85, "userDefaultsKey": "wallpaper.poolTilesGradient.groutG" },
+        { "id": "b", "label": "Blue", "default": 0.82, "userDefaultsKey": "wallpaper.poolTilesGradient.groutB" }
+      ]
+    }
+  ],
+  "shaderArguments": [
+    { "source": "time" },
+    { "source": "viewSize" },
+    { "source": "displayScale" },
+    { "source": "parameter", "id": "tilesAcross" },
+    { "source": "parameter", "id": "contrastExponent" },
+    { "source": "parameter", "id": "refractionStrength" },
+    { "source": "parameter", "id": "gridTiles" },
+    { "source": "parameter", "id": "lineWidth" },
+    { "source": "color", "id": "tileColor" },
+    { "source": "color", "id": "groutColor" },
+    { "source": "parameter", "id": "iterBaseSpeed" },
+    { "source": "parameter", "id": "iterSpread" },
+    { "source": "parameter", "id": "iterExponent" }
+  ]
+}
