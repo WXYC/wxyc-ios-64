@@ -13,84 +13,129 @@ import Wallpaper
 //
 // This view modifier provides the long press gesture to enter wallpaper picker mode.
 //
-// Behavior:
-// - After holding for 1 second without moving, the wallpaper picker opens
-// - The action triggers while the finger is still down (not on release)
-// - Moving the finger more than 10 points cancels the gesture
-// - Horizontal swipes for TabView navigation work normally
-// - Vertical scrolling in ScrollView works normally
+// Requirements:
+// 1. Long pressing (1 second) triggers wallpaper picker while finger is still down
+// 2. Vertical dragging cancels the gesture and allows ScrollView scrolling
+// 3. Horizontal dragging cancels the gesture and allows TabView swiping
 //
-// Implementation Notes:
-// - Uses a short minimumDuration (0.01s) to detect touch start immediately
-// - The `pressing` callback starts a 1-second Task timer
-// - The gesture's built-in `maximumDistance` cancels if user drags
-// - When the gesture ends (drag or lift), `pressing(false)` cancels the timer
+// Implementation:
+// Uses an introspection technique to find the underlying UIScrollView and attach
+// a UILongPressGestureRecognizer directly to it. This ensures proper gesture
+// coordination because the recognizer is part of the same UIKit gesture system
+// as the scroll view's pan gesture.
 
 /// View modifier that adds long press gesture to enter wallpaper picker mode.
 struct WallpaperPickerGestureModifier: ViewModifier {
     @Environment(Singletonia.self) private var appState
-    @State private var longPressTask: Task<Void, Never>?
-
-    /// Duration in seconds before the wallpaper picker activates.
-    private let pressDuration: TimeInterval = 1.0
-
-    /// Maximum distance in points the finger can move before the gesture cancels.
-    private let maximumDistance: CGFloat = 10
 
     func body(content: Content) -> some View {
         content
-            .onLongPressGesture(
-                minimumDuration: 0.01,
-                maximumDistance: maximumDistance,
-                pressing: { isPressing in
-                    if isPressing {
-                        startLongPressTimer()
-                    } else {
-                        cancelLongPressTimer()
-                    }
-                },
-                perform: {
-                    // This fires on release after minimumDuration (0.01s).
-                    // We handle the action in the timer instead, so nothing to do here.
+            .background {
+                JsonTreeNode_introspectScrollView { scrollView in
+                    addLongPressGesture(to: scrollView)
                 }
-            )
+            }
     }
 
-    /// Starts a timer that triggers wallpaper picker mode after the press duration.
-    private func startLongPressTimer() {
-        longPressTask = Task { @MainActor in
-            do {
-                // Wait for the press duration (minus the small minimumDuration)
-                try await Task.sleep(for: .seconds(pressDuration))
+    private func addLongPressGesture(to scrollView: UIScrollView) {
+        // Check if we already added our gesture recognizer
+        let existingRecognizer = scrollView.gestureRecognizers?.first {
+            $0 is WallpaperPickerLongPressGesture
+        }
+        guard existingRecognizer == nil else { return }
 
-                // If we get here, the task wasn't cancelled (finger didn't move/lift)
-                enterWallpaperPicker()
-            } catch {
-                // Task was cancelled (finger moved or lifted) - do nothing
+        let recognizer = WallpaperPickerLongPressGesture { [appState] in
+            // Haptic feedback
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+
+            // Enter wallpaper picker mode
+            withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
+                appState.wallpaperPickerState.enter(
+                    currentWallpaperID: appState.wallpaperConfiguration.selectedWallpaperID
+                )
             }
+        }
+        scrollView.addGestureRecognizer(recognizer)
+    }
+}
+
+// MARK: - Custom Long Press Gesture Recognizer
+
+/// A long press gesture recognizer configured for wallpaper picker activation.
+private class WallpaperPickerLongPressGesture: UILongPressGestureRecognizer, UIGestureRecognizerDelegate {
+    private let onLongPress: () -> Void
+
+    init(onLongPress: @escaping () -> Void) {
+        self.onLongPress = onLongPress
+        super.init(target: nil, action: nil)
+
+        minimumPressDuration = 1.0
+        allowableMovement = 10
+        delegate = self
+
+        // Don't interfere with scroll/swipe
+        cancelsTouchesInView = false
+        delaysTouchesBegan = false
+        delaysTouchesEnded = false
+
+        addTarget(self, action: #selector(handleGesture(_:)))
+    }
+
+    @objc private func handleGesture(_ recognizer: UILongPressGestureRecognizer) {
+        if recognizer.state == .began {
+            onLongPress()
         }
     }
 
-    /// Cancels the pending long press timer.
-    private func cancelLongPressTimer() {
-        longPressTask?.cancel()
-        longPressTask = nil
+    // MARK: - UIGestureRecognizerDelegate
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        return true
+    }
+}
+
+// MARK: - ScrollView Introspection
+
+/// A helper view that finds the underlying UIScrollView and calls a callback.
+private struct JsonTreeNode_introspectScrollView: UIViewRepresentable {
+    let callback: (UIScrollView) -> Void
+
+    func makeUIView(context: Context) -> IntrospectionView {
+        let view = IntrospectionView()
+        view.callback = callback
+        return view
     }
 
-    /// Enters wallpaper picker mode with haptic feedback.
-    private func enterWallpaperPicker() {
-        // Cancel the task reference since we're done
-        longPressTask = nil
+    func updateUIView(_ uiView: IntrospectionView, context: Context) {
+        uiView.callback = callback
+    }
+}
 
-        // Haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+private class IntrospectionView: UIView {
+    var callback: ((UIScrollView) -> Void)?
 
-        // Enter wallpaper picker mode
-        withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
-            appState.wallpaperPickerState.enter(
-                currentWallpaperID: appState.wallpaperConfiguration.selectedWallpaperID
-            )
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+
+        // Defer to allow SwiftUI to finish layout
+        DispatchQueue.main.async { [weak self] in
+            self?.findScrollView()
+        }
+    }
+
+    private func findScrollView() {
+        // Walk up the view hierarchy to find a UIScrollView
+        var current: UIView? = self
+        while let view = current {
+            if let scrollView = view as? UIScrollView {
+                callback?(scrollView)
+                return
+            }
+            current = view.superview
         }
     }
 }
