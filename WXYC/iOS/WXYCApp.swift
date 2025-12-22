@@ -38,22 +38,13 @@ final class Singletonia {
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
 
-    // Wallpaper configurations (persisted via @ObservableDefaults)
     let wallpaperConfiguration = WallpaperConfiguration()
-
-    // Wallpaper picker state
     let wallpaperPickerState = WallpaperPickerState()
-
-    // Audio-reactive wallpaper support
-    let audioDataProvider = AudioDataProvider()
 
     private var playlistObservationTask: Task<Void, Never>?
     private var isForegrounded = false
 
-    private init() {
-        // Start processing audio for reactive wallpapers
-        audioDataProvider.startProcessing(stream: AudioPlayerController.shared.audioBufferStream)
-    }
+    private init() { }
     
     /// Update the foreground state (called when scene phase changes)
     func setForegrounded(_ foregrounded: Bool) {
@@ -143,8 +134,7 @@ struct WXYCApp: App {
         WindowGroup {
             WallpaperPickerContainer(
                 configuration: appState.wallpaperConfiguration,
-                pickerState: appState.wallpaperPickerState,
-                audioData: appState.audioDataProvider.audioData
+                pickerState: appState.wallpaperPickerState
             ) {
                 RootTabView()
                     .frame(maxWidth: 440)
