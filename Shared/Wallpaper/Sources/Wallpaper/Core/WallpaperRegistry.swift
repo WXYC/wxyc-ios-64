@@ -45,45 +45,37 @@ public final class WallpaperRegistry {
 
     // MARK: - Discovery
 
-    /// Known manifest file names (SPM flattens resources, so we look for them by name)
-    private static let manifestNames = [
-        "water_turbulence",
-        "water_caustics",
-        "wxyc_gradient",
-        "plasma",
-        "twinkling_tunnel",
-        "turbulence",
-        "chroma_wave",
-        "neon_topology",
-        "lamp_4d",
-        "glyph_spinner",
-        "vaporwave_fern"
-    ]
-
     private func loadAllWallpapers() {
         let bundle = Bundle.module
         print("WallpaperRegistry: Loading wallpapers from bundle: \(bundle.bundlePath)")
 
-        for name in Self.manifestNames {
-            guard let url = bundle.url(forResource: name, withExtension: "json") else {
-                print("WallpaperRegistry: Could not find \(name).json in bundle")
-                continue
-            }
-            print("WallpaperRegistry: Found \(name).json at \(url.path)")
+        // Discover all JSON files in the bundle
+        guard let jsonURLs = bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else {
+            print("WallpaperRegistry: No JSON files found in bundle")
+            return
+        }
 
+        print("WallpaperRegistry: Found \(jsonURLs.count) JSON files")
+
+        let decoder = JSONDecoder()
+
+        for url in jsonURLs {
             do {
                 let data = try Data(contentsOf: url)
-                let manifest = try JSONDecoder().decode(WallpaperManifest.self, from: data)
+                let manifest = try decoder.decode(WallpaperManifest.self, from: data)
                 let wallpaper = LoadedWallpaper(manifest: manifest)
                 loadedWallpapers.append(wallpaper)
                 wallpapersByID[manifest.id] = wallpaper
+                print("WallpaperRegistry: Loaded wallpaper '\(manifest.displayName)' from \(url.lastPathComponent)")
             } catch {
-                print("WallpaperRegistry: Failed to load \(url.path): \(error)")
+                // Not a valid wallpaper manifest - skip silently
+                // (could be other JSON files in the bundle)
             }
         }
 
         // Sort by display name for consistent ordering
         loadedWallpapers.sort { $0.displayName < $1.displayName }
+
         print("WallpaperRegistry: Loaded \(loadedWallpapers.count) wallpapers: \(loadedWallpapers.map(\.id))")
     }
 
