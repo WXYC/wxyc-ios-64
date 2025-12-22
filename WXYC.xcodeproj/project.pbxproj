@@ -300,31 +300,23 @@
 				235BFA092EF0984A0003A0B4 /* ProgressiveBlur in Frameworks */,
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
 				C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */,
-				6401428DBE5C4D95901BE5A9 /* ObfuscateMacro in Frameworks */,
-				E711EE26BBFE816CC3A6738F /* Vortex in Frameworks */,
-				426249645642062E961658BD /* ObservableDefaults in Frameworks */,
 			);
 		};
 		37A11C8FAFBB9AA3BECA0B97 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				B4A508E1C799716A95186017 /* Core in Frameworks */,
-				7423C242318A6C17DFB52A6C /* Logger in Frameworks */,
 				9ADBCA016AC42BC21420535A /* AppServices in Frameworks */,
 				03F575A649200B4896CF0CF6 /* Playlist in Frameworks */,
 				4FB3F65AF65A0BBE835C5448 /* Secrets in Frameworks */,
 				CF6E50FA859149D75647ED8E /* Analytics in Frameworks */,
 				E6BC58BE7A782A85F288E119 /* Artwork in Frameworks */,
 				9EF7E075F1DE6E6A39F1551F /* PostHog in Frameworks */,
-				FA912C13783EABDDD697C4AB /* ObfuscateMacro in Frameworks */,
 			);
 		};
 		5282D69CBC6C3EAF27DE8CBE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */,
-				D34D606EBDB71B930F1FC3B7 /* PostHog in Frameworks */,
-				DF23FB1D4A5B3A4DC7FBDF3E /* ObfuscateMacro in Frameworks */,
 			);
 		};
 		64915BA4D2117A923D5E4476 /* Frameworks */ = {
@@ -332,16 +324,11 @@
 			files = (
 				0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */,
 				2AD59B02211E454634324EEB /* Logger in Frameworks */,
-				9EAD622453C709B996F7A5F0 /* OpenNSFW in Frameworks */,
-				B0730FC4FC339E2391B048DF /* WXUI in Frameworks */,
 				03D120972D0E10C76131AFB8 /* Playback in Frameworks */,
-				6C64F275BAE3323182F31FD1 /* Caching in Frameworks */,
 				7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */,
-				1A7F58FD9BFA74F3CC74938E /* Metadata in Frameworks */,
 				B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */,
 				B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */,
 				3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */,
-				B72A39DEA48C59E011DE1B88 /* ObfuscateMacro in Frameworks */,
 			);
 		};
 		6EEDCD01D3747AC2DCAEBCFF /* Frameworks */ = {
