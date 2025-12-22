@@ -130,6 +130,9 @@ public final class WallpaperSnapshotService {
 
         let image: PlatformImage?
 
+        // Determine if we can render via Metal (has fragmentFunction)
+        let hasFragmentFunction = wallpaper.manifest.renderer.fragmentFunction != nil
+
         switch wallpaper.manifest.renderer.type {
         case .rawMetal:
             // Raw Metal shaders have a fragmentFunction we can use directly
@@ -139,9 +142,25 @@ public final class WallpaperSnapshotService {
                 scale: scale,
                 time: captureTime
             )
-        case .stitchable, .multipass, .swiftUI, .composite:
-            // Stitchable/multipass use SwiftUI shader system, composite/swiftUI are SwiftUI views
-            // All can be rendered via SwiftUI ImageRenderer
+        case .stitchable:
+            // Stitchable shaders with fragmentFunction can be rendered via Metal
+            // SwiftUI ImageRenderer doesn't properly render Metal shader effects
+            if hasFragmentFunction {
+                image = await renderMetalSnapshot(
+                    for: wallpaper,
+                    size: size,
+                    scale: scale,
+                    time: captureTime
+                )
+            } else {
+                image = await renderSwiftUISnapshot(
+                    for: wallpaper,
+                    size: size,
+                    scale: scale
+                )
+            }
+        case .multipass, .swiftUI, .composite:
+            // Composite/swiftUI are SwiftUI views, can be rendered via ImageRenderer
             image = await renderSwiftUISnapshot(
                 for: wallpaper,
                 size: size,
