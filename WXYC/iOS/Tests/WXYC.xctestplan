@@ -18,17 +18,36 @@
   },
   "testTargets" : [
     {
-      "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:WXYC.xcodeproj",
-        "identifier" : "23EC619E2ED810EB001C27E9",
-        "name" : "WXYCTests"
+        "containerPath" : "container:Shared\/Playback",
+        "identifier" : "PlaybackTests",
+        "name" : "PlaybackTests"
       }
     },
     {
-      "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:WXYC\/Shared\/AppServices",
+        "containerPath" : "container:Shared\/PlayerHeaderView",
+        "identifier" : "PlayerHeaderViewTests",
+        "name" : "PlayerHeaderViewTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Metadata",
+        "identifier" : "MetadataTests",
+        "name" : "MetadataTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Playlist",
+        "identifier" : "PlaylistTests",
+        "name" : "PlaylistTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/AppServices",
         "identifier" : "AppServicesTests",
         "name" : "AppServicesTests"
       }
@@ -36,57 +55,30 @@
     {
       "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:WXYC\/Shared\/Artwork",
+        "containerPath" : "container:WXYC.xcodeproj",
+        "identifier" : "A3EC40619289B0065648A53C",
+        "name" : "WXYCTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Artwork",
         "identifier" : "ArtworkTests",
         "name" : "ArtworkTests"
       }
     },
     {
-      "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:WXYC\/Shared\/Caching",
-        "identifier" : "CachingTests",
-        "name" : "CachingTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:WXYC\/Shared\/Metadata",
-        "identifier" : "MetadataTests",
-        "name" : "MetadataTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:WXYC\/Shared\/MusicShareKit",
+        "containerPath" : "container:Shared\/MusicShareKit",
         "identifier" : "MusicShareKitTests",
         "name" : "MusicShareKitTests"
       }
     },
     {
-      "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:WXYC\/Shared\/Playback",
-        "identifier" : "PlaybackTests",
-        "name" : "PlaybackTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:WXYC\/Shared\/PlayerHeaderView",
-        "identifier" : "PlayerHeaderViewTests",
-        "name" : "PlayerHeaderViewTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
-        "containerPath" : "container:WXYC\/Shared\/Playlist",
-        "identifier" : "PlaylistTests",
-        "name" : "PlaylistTests"
+        "containerPath" : "container:Shared\/Caching",
+        "identifier" : "CachingTests",
+        "name" : "CachingTests"
       }
     }
   ],
