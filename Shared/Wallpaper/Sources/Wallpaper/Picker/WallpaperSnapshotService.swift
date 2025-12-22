@@ -131,14 +131,17 @@ public final class WallpaperSnapshotService {
         let image: PlatformImage?
 
         switch wallpaper.manifest.renderer.type {
-        case .stitchable, .rawMetal, .multipass:
+        case .rawMetal:
+            // Raw Metal shaders have a fragmentFunction we can use directly
             image = await renderMetalSnapshot(
                 for: wallpaper,
                 size: size,
                 scale: scale,
                 time: captureTime
             )
-        case .swiftUI, .composite:
+        case .stitchable, .multipass, .swiftUI, .composite:
+            // Stitchable/multipass use SwiftUI shader system, composite/swiftUI are SwiftUI views
+            // All can be rendered via SwiftUI ImageRenderer
             image = await renderSwiftUISnapshot(
                 for: wallpaper,
                 size: size,
