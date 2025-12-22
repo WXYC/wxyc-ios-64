@@ -131,7 +131,7 @@
 /* Begin PBXFileReference section */
 		05E8AA4420F87C191FBB0E08 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = Shared/Core; sourceTree = SOURCE_ROOT; };
 		0768EDED2F37ADBE14D485A2 /* Playlist */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Playlist; path = Shared/Playlist; sourceTree = SOURCE_ROOT; };
-		09FC6D530E7D389518140201 /* WXYCTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WXYCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		09FC6D530E7D389518140201 /* WXYCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MusicShareKit; path = Shared/MusicShareKit; sourceTree = SOURCE_ROOT; };
 		21C88FF06CCC47E090003EAD /* Logger */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logger; path = Shared/Logger; sourceTree = SOURCE_ROOT; };
@@ -140,7 +140,7 @@
 		408862FFDA682059B46DBE38 /* PlayerHeaderView */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PlayerHeaderView; path = Shared/PlayerHeaderView; sourceTree = SOURCE_ROOT; };
 		4FA5098D4C45B1A40664F383 /* Playback */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Playback; path = Shared/Playback; sourceTree = SOURCE_ROOT; };
 		65DE92962FCB03D68F79A895 /* Secrets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Secrets; path = Shared/Secrets; sourceTree = SOURCE_ROOT; };
-		6D8ECE997571529CE8187362 /* WXYC TV.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6D8ECE997571529CE8187362 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DEA10C351FEB7C3DEBD1E89 /* WXUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WXUI; path = Shared/WXUI; sourceTree = SOURCE_ROOT; };
 		87ED2724FB87B5D288BBFFFB /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8BACFC9947E84949B746EE60 /* WXYCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1475,6 +1475,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_DEBUG_DYLIB = NO;
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";

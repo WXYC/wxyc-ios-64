@@ -24,8 +24,6 @@ struct PlaylistView: View {
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
-    @State private var longPressTask: Task<Void, Never>?
-    @State private var isVerticalScrolling = false
 
     @Environment(Singletonia.self) var appState
 
@@ -110,55 +108,10 @@ struct PlaylistView: View {
                 }
             }
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 10)
-                .onChanged { value in
-                    // Only track vertical drag (scrolling) to cancel long press
-                    // Horizontal drags are for tab swiping - ignore them
-                    let verticalDistance = abs(value.translation.height)
-                    let horizontalDistance = abs(value.translation.width)
-
-                    if verticalDistance > horizontalDistance {
-                        isVerticalScrolling = true
-                        longPressTask?.cancel()
-                        longPressTask = nil
-                    }
-                }
-                .onEnded { _ in
-                    isVerticalScrolling = false
-                }
-        )
-        .onLongPressGesture(minimumDuration: 1.0, pressing: { isPressing in
-            if isPressing && !isVerticalScrolling {
-                // Start long press timer
-                longPressTask = Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(1))
-                    guard !Task.isCancelled else { return }
-                    enterWallpaperPicker()
-                }
-            } else {
-                // Finger lifted - cancel pending action
-                longPressTask?.cancel()
-                longPressTask = nil
-            }
-        }, perform: {
-            // Action handled in pressing callback via Task
-        })
+        .wallpaperPickerGesture()
         .accessibilityIdentifier("playlistView")
     }
 
-    private func enterWallpaperPicker() {
-        // Haptic feedback
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-
-        withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
-            appState.wallpaperPickerState.enter(
-                currentWallpaperID: appState.wallpaperConfiguration.selectedWallpaperID
-            )
-        }
-    }
-    
     @ViewBuilder
     private func playlistRow(for entry: any PlaylistEntry) -> some View {
         switch entry {

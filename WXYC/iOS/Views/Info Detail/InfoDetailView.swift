@@ -15,6 +15,7 @@ import PostHog
 import Analytics
 import MusicShareKit
 import WXUI
+import Wallpaper
 
 struct InfoDetailView: View {
     @State private var showingLogPrompt = false
@@ -99,6 +100,7 @@ struct InfoDetailView: View {
         .sheet(isPresented: $showingMailComposer) {
             MailComposerView(attachLogs: attachLogsToEmail)
         }
+        .wallpaperPickerGesture()
     }
 
     private func sendRequest(message: String) async {
@@ -209,5 +211,6 @@ struct FittingText: View {
 
 #Preview {
     InfoDetailView()
+        .environment(Singletonia.shared)
         .background(WXYCBackground())
 }
