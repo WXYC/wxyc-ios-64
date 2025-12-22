@@ -13,14 +13,6 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float displayScale;
-    int frame;
-    int passIndex;
-    float audioLevel;
-    float audioBass;
-    float audioMid;
-    float audioHigh;
-    float audioBeat;
     float pad;
 };
 

@@ -10,16 +10,19 @@
 using namespace metal;
 #include <SwiftUI/SwiftUI_Metal.h>
 
+// === Feature Toggles (comment/uncomment to test performance) ===
+#define ENABLE_UV_ROTATION        // Main UV space rotation
+#define ENABLE_NOISE_OFFSET_ROTATION  // Rotation in noise4 loop
+#define ENABLE_CYAN_ROTATION      // Cyan layer rotation
+#define ENABLE_MAGENTA_ROTATION   // Magenta layer rotation
+
+// Noise quality (reduce for performance)
+#define NOISE_OCTAVES 4  // Original: 7, try 3-4 for better perf
+
 // === MTKView Support ===
 struct Uniforms {
     float2 resolution;
     float time;
-    float displayScale;
-    float audioLevel;
-    float audioBass;
-    float audioMid;
-    float audioHigh;
-    float audioBeat;
     float pad;
 };
 
@@ -30,7 +33,7 @@ struct VertexOut {
 
 static inline float2 hash2D(float2 p) {
     p = float2(dot(p, float2(127.1f, 311.7f)), dot(p, float2(269.5f, 183.3f)));
-    return -1.0f + 2.0f * fract(sin(p) * 43758.5453123f);
+    return -1.0f + 2.0f * fract(fast::sin(p) * 43758.5453123f);
 }
 
 static inline float simplexNoise(float2 p) {
@@ -65,19 +68,18 @@ static inline float3 normalize2(float3 grosscolor) {
     return grosscolor / (maxVal + minVal);
 }
 
-static inline float2 rotate(float2 oldpoint, float angle) {
-    float left = cos(angle) * oldpoint.x - sin(angle) * oldpoint.y;
-    float right = sin(angle) * oldpoint.x + cos(angle) * oldpoint.y;
+static inline float2 rotate(float2 oldpoint, float s, float c) {
+    float left = c * oldpoint.x - s * oldpoint.y;
+    float right = s * oldpoint.x + c * oldpoint.y;
     return float2(left, right);
 }
 
-static inline float noise4(float2 uv, float time) {
+static inline float noise4(float2 uv, float time, float2 offset) {
     float f = 0.5f;
     float frequency = 1.75f;
     float amplitude = 0.5f;
 
-    for (int i = 0; i < 7; i++) {
-        float2 offset = rotate(float2(log(time + 3.0f), log(time + 3.0f) / 999.0f), time / 9999.0f);
+    for (int i = 0; i < NOISE_OCTAVES; i++) {
         f += amplitude * simplexNoise(frequency * uv - offset);
         frequency *= 2.0f;
         amplitude *= 0.5f;
@@ -90,7 +92,41 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time) 
     float2 iResolution = float2(width, height);
     float2 p = position / iResolution;
     float2 uv = p * float2(iResolution.x / iResolution.y, 0.8f);
-    uv = rotate(uv, log(time) / -7.0f);
+
+    // Precompute all trig and log values
+    float logTime = fast::log(time + 3.0f);
+    float logTimePlus1 = fast::log(time + 1.0f);
+
+    // Precompute noise offset (moved out of loop)
+#ifdef ENABLE_NOISE_OFFSET_ROTATION
+    float offsetAngle = time / 9999.0f;
+    float offsetS = fast::sin(offsetAngle);
+    float offsetC = fast::cos(offsetAngle);
+    float2 baseOffset = float2(logTime, logTime / 999.0f);
+    float2 noiseOffset = rotate(baseOffset, offsetS, offsetC);
+#else
+    float2 noiseOffset = float2(logTime, logTime / 999.0f);
+#endif
+
+#ifdef ENABLE_UV_ROTATION
+    float uvAngle = fast::log(time) / -7.0f;
+    float uvS = fast::sin(uvAngle);
+    float uvC = fast::cos(uvAngle);
+    uv = rotate(uv, uvS, uvC);
+#endif
+
+    // Precompute rotation values for cyan and magenta
+#ifdef ENABLE_CYAN_ROTATION
+    float cyanAngle = fast::sin(time / 11.0f);
+    float cyanS = fast::sin(cyanAngle);
+    float cyanC = fast::cos(cyanAngle);
+#endif
+
+#ifdef ENABLE_MAGENTA_ROTATION
+    float magentaAngle = time / 7.0f;
+    float magentaS = fast::sin(magentaAngle);
+    float magentaC = fast::cos(magentaAngle);
+#endif
 
     float interval = 10.0f;
     float3 dblue = interval * float3(1.8f, 2.6f, 2.6f);
@@ -99,13 +135,31 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time) 
 
     float3 color = float3(0.75f);
 
-    float f = noise4(uv + noise4(uv, time) * (log(time + 1.0f) + (time / 60.0f)), time);
+    // Cache frequently used noise values
+    float noiseUV = noise4(uv, time, noiseOffset);
+
+    // Blue layer
+    float f = noise4(uv + noiseUV * (logTimePlus1 + (time / 60.0f)), time, noiseOffset);
     color += f * normalize2(dblue);
 
-    f = noise4(f * rotate(uv, sin(time / 11.0f)) + f * noise4(f * uv, time), time);
+    // Cyan layer
+#ifdef ENABLE_CYAN_ROTATION
+    float2 cyanUV = rotate(uv, cyanS, cyanC);
+#else
+    float2 cyanUV = uv;
+#endif
+    float noiseFUV = noise4(f * uv, time, noiseOffset);
+    f = noise4(f * cyanUV + f * noiseFUV, time, noiseOffset);
     color += f * normalize2(cyan);
 
-    f = noise4(f * rotate(uv, time / 7.0f) + f * noise4(uv, time) * noise4(uv, time), time);
+    // Magenta layer
+#ifdef ENABLE_MAGENTA_ROTATION
+    float2 magentaUV = rotate(uv, magentaS, magentaC);
+#else
+    float2 magentaUV = uv;
+#endif
+    // Reuse cached noiseUV instead of computing noise4(uv, time) twice
+    f = noise4(f * magentaUV + f * noiseUV * noiseUV, time, noiseOffset);
     color += f * normalize2(magenta);
 
     color = normalize2(color);

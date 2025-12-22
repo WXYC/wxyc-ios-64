@@ -2,6 +2,7 @@
 //  Windowlight.metal
 //  Wallpaper
 //
+//  Created by Jake Bromberg on 12/18/25.
 //  Rain on window effect - translated from Shadertoy.
 //
 
@@ -20,9 +21,8 @@ struct VertexOut {
 };
 
 // Precomputed constants
-constant float SIN_1_75_HALF = 0.4794255386;  // sin(1.75) * 0.5
-constant float3 COLOR_SHIFT = float3(0.8, 0.9, 1.3);
-constant float3 COLOR_SHIFT_MIXED = mix(float3(1.0), COLOR_SHIFT, SIN_1_75_HALF);
+// COLOR_SHIFT_MIXED = mix(float3(1.0), float3(0.8, 0.9, 1.3), sin(1.75) * 0.5)
+constant float3 COLOR_SHIFT_MIXED = float3(0.9041149, 0.9520574, 1.1438277);
 
 // Grid constants for DropLayer2
 constant float2 DROP_GRID = float2(12.0, 2.0);  // a * 2.0 where a = (6, 1)

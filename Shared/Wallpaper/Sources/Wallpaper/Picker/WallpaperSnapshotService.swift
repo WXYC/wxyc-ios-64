@@ -223,16 +223,10 @@ public final class WallpaperSnapshotService {
             return nil
         }
 
-        // Set up uniforms
+        // Set up uniforms (minimal 16-byte struct compatible with all shaders)
         var uniforms = SnapshotUniforms(
             resolution: SIMD2(Float(pixelWidth), Float(pixelHeight)),
             time: time * (renderer.timeScale ?? 1.0),
-            displayScale: Float(scale),
-            audioLevel: 0,
-            audioBass: 0,
-            audioMid: 0,
-            audioHigh: 0,
-            audioBeat: 0,
             pad: 0
         )
 
@@ -252,17 +246,13 @@ public final class WallpaperSnapshotService {
         return extractImage(from: texture, size: size, scale: scale)
     }
 
-    /// Uniforms struct for snapshot rendering (matches shader expectations)
+    /// Uniforms struct for snapshot rendering.
+    /// Uses the minimal 16-byte struct that all shaders support.
+    /// Shaders with larger Uniforms will just ignore the extra fields they expect.
     private struct SnapshotUniforms {
-        var resolution: SIMD2<Float>
-        var time: Float
-        var displayScale: Float
-        var audioLevel: Float
-        var audioBass: Float
-        var audioMid: Float
-        var audioHigh: Float
-        var audioBeat: Float
-        var pad: Float
+        var resolution: SIMD2<Float>  // 8 bytes
+        var time: Float               // 4 bytes
+        var pad: Float                // 4 bytes
     }
 
     private func extractImage(from texture: MTLTexture, size: CGSize, scale: CGFloat) -> PlatformImage? {
