@@ -143,8 +143,8 @@ static inline float2 Drops(float2 uv, float t, float l0, float l1, float l2) {
 // Procedural window light background - unrolled loop with precomputed positions
 static inline float3 windowBackground(float2 uv, float time) {
     // Warm ambient light gradient (simulating city lights through rainy window)
-    constant float3 warmLight = float3(1.0, 0.85, 0.6);
-    constant float3 coolShadow = float3(0.15, 0.2, 0.35);
+    const float3 warmLight = float3(1.0, 0.85, 0.6);
+    const float3 coolShadow = float3(0.15, 0.2, 0.35);
 
     // Vertical gradient - lighter at top (sky/lights)
     float grad = smoothstep(-0.3, 0.8, uv.y);
