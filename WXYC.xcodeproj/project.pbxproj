@@ -415,15 +415,12 @@
 			);
 			name = NowPlayingWidget;
 			packageProductDependencies = (
-				1BA0AE183AD2E87521D599AA /* Core */,
-				2D5CCEAD13535D18B1710505 /* Logger */,
 				B3D66CF425A1A072D8B4714A /* AppServices */,
 				0178D4DADF9DE7AD061172F2 /* Playlist */,
 				6E6C024BC7EDD997551D5B01 /* Secrets */,
 				F93BAC1EF82FF6A17F716A7B /* Analytics */,
 				96986B04F3E2111CAF6F15B2 /* Artwork */,
 				D13403E501A5B625600115A2 /* PostHog */,
-				EA863BECCACD3D7A2BF5D847 /* ObfuscateMacro */,
 			);
 			productName = NowPlayingWidget;
 			productReference = B2F0564846267151FC3EC76A /* NowPlayingWidget.appex */;
@@ -442,8 +439,6 @@
 			name = "Request Share Extension";
 			packageProductDependencies = (
 				B1E128B6E39E90EA57C68C69 /* MusicShareKit */,
-				4AD8A4D0FA7324708FA3B7C1 /* PostHog */,
-				BE37F6E844A66CB7A1DB7C87 /* ObfuscateMacro */,
 			);
 			productName = "Request Share Extension";
 			productReference = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */;
@@ -485,16 +480,11 @@
 			packageProductDependencies = (
 				79AE74A2A92779E80E688376 /* Core */,
 				47B1D80EB160884F8DC37B6A /* Logger */,
-				C576DD64227828ED5B5FAEC7 /* OpenNSFW */,
-				86FA5B6D90EC56D323B8ABD0 /* WXUI */,
 				0A258CACF43A597C88DB075C /* Playback */,
-				E346218A097BAD5F8CA3F68A /* Caching */,
 				0852AD2E14147E5B270AD1F1 /* Playlist */,
-				719F0D3AB83311F4652E5030 /* Metadata */,
 				3776C2184A667CCB7B4E0B67 /* Artwork */,
 				932CA5D4CF336582845E6C75 /* AppServices */,
 				01BA6F026317213ACE8EE228 /* PostHog */,
-				14F61C96EE25983A17B215F3 /* ObfuscateMacro */,
 			);
 			productName = WatchXYC;
 			productReference = E790F2E8AAE12A20CB303818 /* WatchXYC.app */;
@@ -518,8 +508,6 @@
 			name = "WXYC TV";
 			packageProductDependencies = (
 				3CABF5AF82DAA2E0D9877A07 /* Core */,
-				B5DEC242C4D59E9B40D0E365 /* Logger */,
-				B2494B4F186A5F3B593EF021 /* OpenNSFW */,
 			);
 			productName = "WXYC TV";
 			productReference = 6D8ECE997571529CE8187362 /* WXYC TV.app */;
@@ -580,9 +568,6 @@
 				3DF76684E122C2FAD4F26E27 /* PartyHorn */,
 				35DC07836DEEE44F7B819265 /* PlayerHeaderView */,
 				51D35AECC049A83AE7575477 /* PostHog */,
-				9B98AA54A13E060E6806108D /* ObfuscateMacro */,
-				02278730EBAF8961A683F35F /* Vortex */,
-				5DF3CD28508F5193B79C212A /* ObservableDefaults */,
 				23D418172EF2C80000WALLPA /* Wallpaper */,
 				235BFA082EF0984A0003A0B4 /* ProgressiveBlur */,
 			);
@@ -604,6 +589,7 @@
 						ProvisioningStyle = Automatic;
 					};
 					622FA860996235B58BA37A32 = {
+						DevelopmentTeam = 92V374HC38;
 						ProvisioningStyle = Automatic;
 					};
 					7D10437EC0EA6CBA5D9C60D0 = {
@@ -1462,7 +1448,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
-				ENABLE_DEBUG_DYLIB = NO;
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
