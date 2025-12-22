@@ -24,7 +24,8 @@ struct PlaylistView: View {
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
-    @State private var longPressActive = false
+    @State private var longPressTask: Task<Void, Never>?
+    @State private var isVerticalScrolling = false
 
     @Environment(Singletonia.self) var appState
 
@@ -109,24 +110,39 @@ struct PlaylistView: View {
                 }
             }
         }
-        .onLongPressGesture(minimumDuration: 0.5, pressing: { isPressing in
-            if isPressing {
-                // Mark press as active and schedule action
-                longPressActive = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    // Only fire if press is still active (not cancelled by drag or lift)
-                    if longPressActive {
-                        longPressActive = false
-                        enterWallpaperPicker()
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { value in
+                    // Only track vertical drag (scrolling) to cancel long press
+                    // Horizontal drags are for tab swiping - ignore them
+                    let verticalDistance = abs(value.translation.height)
+                    let horizontalDistance = abs(value.translation.width)
+
+                    if verticalDistance > horizontalDistance {
+                        isVerticalScrolling = true
+                        longPressTask?.cancel()
+                        longPressTask = nil
                     }
                 }
+                .onEnded { _ in
+                    isVerticalScrolling = false
+                }
+        )
+        .onLongPressGesture(minimumDuration: 1.0, pressing: { isPressing in
+            if isPressing && !isVerticalScrolling {
+                // Start long press timer
+                longPressTask = Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1))
+                    guard !Task.isCancelled else { return }
+                    enterWallpaperPicker()
+                }
             } else {
-                // Press ended (finger lifted or drag cancelled gesture)
-                longPressActive = false
+                // Finger lifted - cancel pending action
+                longPressTask?.cancel()
+                longPressTask = nil
             }
         }, perform: {
-            // This fires on successful long press completion
-            // Action already handled in pressing closure, so no-op here
+            // Action handled in pressing callback via Task
         })
         .accessibilityIdentifier("playlistView")
     }
