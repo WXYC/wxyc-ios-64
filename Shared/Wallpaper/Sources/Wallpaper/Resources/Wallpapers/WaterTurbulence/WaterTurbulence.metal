@@ -16,23 +16,18 @@ static inline float safeDiv(float a, float b) {
     return a / (abs(b) + 1e-6);
 }
 
-static inline float luminance(float3 c) {
-    return dot(c, float3(0.2126, 0.7152, 0.0722));
-}
+// Generate pool tile grid pattern
+// Returns 1.0 for grout lines, 0.0 for tile surface
+static inline float poolGrid(float2 uv, float gridSize, float lineWidth) {
+    float2 tileUV = fract(uv * gridSize);
+    float halfLine = lineWidth * 0.5;
 
-static inline float3 reinhard(float3 x) {
-    return x / (1.0 + x);
-}
+    // Distance from edge of tile (grout lines at edges)
+    float2 distFromEdge = min(tileUV, 1.0 - tileUV);
+    float minDist = min(distFromEdge.x, distFromEdge.y);
 
-static inline float3 energyConservingRamp(float intensity,
-                                          float3 rampLow,
-                                          float3 rampHigh,
-                                          float rampPower)
-{
-    float t = powr(saturate(intensity), rampPower);
-    float3 ramp = mix(rampLow, rampHigh, t);
-    float l = fmax(luminance(ramp), 1e-4);
-    return fmax(ramp * (intensity / l), float3(0.0));
+    // Smooth antialiased line
+    return 1.0 - smoothstep(0.0, halfLine, minDist);
 }
 
 [[stitchable]]
@@ -96,10 +91,50 @@ half4 waterTurbulence(float2 position,
     c = 1.17 - powr(fabs(c), 1.4);
 
     float intensity = saturate(powr(fabs(c), contrastExponent));
-    float3 colour = energyConservingRamp(intensity, rampLow, rampHigh, rampPower);
+
+    // === Pool tile grid with refraction ===
+
+    // Grid parameters
+    float gridTiles = 8.0;      // Number of tiles across screen
+    float lineWidth = 0.04;     // Line thickness relative to tile size
+
+    // Compute grid UV with aspect correction
+    float2 gridUV = float2(uvView.x, uvView.y * aspect);
+
+    // Simple approximation: use a wave function in grid space that roughly
+    // matches the caustic frequency. This won't be perfect but will correlate.
+    float waveFreq = ta * TAU;  // Match the caustic tiling frequency
+    float2 wavePos = gridUV * waveFreq;
+    float2 simpleRefraction = float2(
+        fast::sin(wavePos.x + t0 * 0.7) * fast::cos(wavePos.y + t0 * 0.5),
+        fast::cos(wavePos.x + t0 * 0.6) * fast::sin(wavePos.y + t0 * 0.8)
+    );
+
+    // Modulate refraction strength by caustic intensity for correlation
+    float refractionStrength = 0.015 * (0.5 + intensity * 0.5);
+    float2 distortedGridUV = gridUV + simpleRefraction * refractionStrength;
+
+    // Sample the grid pattern at distorted coordinates
+    float gridLine = poolGrid(distortedGridUV, gridTiles, lineWidth);
+
+    // Pool tile colors
+    float3 tileColor = float3(0.15, 0.55, 0.75);   // Light pool blue
+    float3 groutColor = float3(0.85, 0.85, 0.82);  // Off-white grout
+
+    // Blend tile and grout
+    float3 poolBase = mix(tileColor, groutColor, gridLine);
+
+    // Apply caustic lighting from wave calculation
+    // Brighter caustics add light, darker areas are shadowed
+    float causticLight = mix(0.6, 1.4, intensity);
+    float3 colour = poolBase * causticLight;
+
+    // Add subtle color variation from ramp for caustic highlights
+    float3 causticTint = mix(rampLow, rampHigh, intensity);
+    colour = mix(colour, colour + causticTint * 0.3, intensity);
 
     // Tone mapping
-    colour = mix(colour, reinhard(colour), saturate(toneMapStrength));
+    colour = mix(colour, colour / (1.0 + colour), saturate(toneMapStrength));
     colour = fmin(colour, float3(saturate(maxBrightness)));
 
     // Gamma - use powr for positive values
