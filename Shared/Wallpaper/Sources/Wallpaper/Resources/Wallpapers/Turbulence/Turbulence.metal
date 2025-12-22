@@ -21,6 +21,11 @@ struct VertexOut {
     float2 uv;
 };
 
+// Fast tanh approximation: tanh(x) ≈ x / (1 + |x|) for small x
+static inline float fast_tanh(float x) {
+    return x / (1.0f + abs(x));
+}
+
 // Core implementation
 static half4 turbulenceImpl(float2 position, float width, float height, float time) {
     float2 r = float2(width, height);
@@ -28,15 +33,16 @@ static half4 turbulenceImpl(float2 position, float width, float height, float ti
     float t = 0.1f * time;
 
     // Per-pixel noise to reduce banding
-    float z = 0.1f * fract(dot(C, sin(C)));
+    float z = 0.1f * fract(dot(C, fast::sin(C)));
 
     float4 o = float4(0.0f);
 
     // Precompute ray direction (moved outside loop)
-    float3 rayDir = normalize(float3(C - 0.5f * r, r.y));
+    float3 rayDir = fast::normalize(float3(C - 0.5f * r, r.y));
     float t06 = 0.6f * t;
 
-    for (int i = 0; i < 30; i++) {
+    // Reduced iterations: 20 instead of 30 (33% faster)
+    for (int i = 0; i < 20; i++) {
         // Convert 2D screen coordinate to 3D ray direction
         float4 p = float4(z * rayDir, 0.0f);
 
@@ -47,20 +53,24 @@ static half4 turbulenceImpl(float2 position, float width, float height, float ti
         // Save original position
         float4 P = p;
 
-        // Turbulence generation - unrolled loop (was while d < 7.0)
-        // d = 4.0, 5.0, 6.25 (3 iterations)
-        p += cos(float4(p.z, p.x, p.y, p.w) * 4.0f + t06) * 0.25f;
-        p += cos(float4(p.z, p.x, p.y, p.w) * 5.0f + t06) * 0.2f;
-        p += cos(float4(p.z, p.x, p.y, p.w) * 6.25f + t06) * 0.16f;
+        // Turbulence generation using fast trig
+        float4 swiz = float4(p.z, p.x, p.y, p.w);
+        p += fast::cos(swiz * 4.0f + t06) * 0.25f;
+        p += fast::cos(swiz * 5.0f + t06) * 0.2f;
+        p += fast::cos(swiz * 6.25f + t06) * 0.16f;
 
         // Lighting/color calculation
-        P = 1.2f + sin(float4(0.0f, 1.0f, 2.0f, 0.0f) + 9.0f * length(P - p));
+        float diff = fast::length(P.xyz - p.xyz);
+        P = 1.2f + fast::sin(float4(0.0f, 1.0f, 2.0f, 0.0f) + 9.0f * diff);
 
         // Distance field - create 3D grid/lattice pattern
         p -= round(p);
 
-        // Cross distance field - use single min chain
-        float d = abs(min(length(p.yz), min(length(p.xy), length(p.xz))) - 0.1f * tanh(z) + 2e-2f);
+        // Cross distance field using fast length
+        float dxy = fast::length(p.xy);
+        float dxz = fast::length(float2(p.x, p.z));
+        float dyz = fast::length(p.yz);
+        float d = abs(min(dyz, min(dxy, dxz)) - 0.1f * fast_tanh(z) + 2e-2f);
 
         // Accumulate lighting
         o += P.w / max(d, 1e-3f) * P;
@@ -70,7 +80,9 @@ static half4 turbulenceImpl(float2 position, float width, float height, float ti
     }
 
     // Tone mapping - adjusted for fewer iterations
-    float4 result = tanh(o / 1.2e4f);
+    float4 result = fast_tanh(o.x / 8e3f);
+    result.y = fast_tanh(o.y / 8e3f);
+    result.z = fast_tanh(o.z / 8e3f);
 
     return half4(half3(result.xyz), 1.0h);
 }
