@@ -43,6 +43,11 @@ public struct WallpaperPickerContainer<Content: View>: View {
 
     public var body: some View {
         GeometryReader { geometry in
+            let safeAreaTop = geometry.safeAreaInsets.top
+            let safeAreaBottom = geometry.safeAreaInsets.bottom
+            // When scaled, offset to center the content area (excluding safe areas) rather than the full frame
+            let verticalOffset = pickerState.isActive ? (safeAreaTop - safeAreaBottom) * 0.5 * (1 - activeScale) : 0
+
             ZStack {
                 // Background layer - either single wallpaper or carousel
                 if pickerState.isActive {
@@ -65,6 +70,7 @@ public struct WallpaperPickerContainer<Content: View>: View {
                 content()
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)
+                    .offset(y: verticalOffset)
                     .allowsHitTesting(!pickerState.isActive)
                     .animation(pickerAnimation, value: pickerState.isActive)
             }
