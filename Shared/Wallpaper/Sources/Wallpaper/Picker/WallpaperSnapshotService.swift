@@ -330,7 +330,7 @@ public final class WallpaperSnapshotService {
         size: CGSize,
         scale: CGFloat
     ) async -> PlatformImage? {
-        let view = WallpaperRendererFactory.makeView(for: wallpaper, audioData: nil)
+        let view = WallpaperRendererFactory.makeView(for: wallpaper)
             .frame(width: size.width, height: size.height)
 
         let renderer = ImageRenderer(content: view)

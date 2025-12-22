@@ -18,13 +18,7 @@ public final class MultiPassMetalRenderer: NSObject, MTKViewDelegate {
         var displayScale: Float
         var frame: Int32
         var passIndex: Int32
-        // Audio data
-        var audioLevel: Float
-        var audioBass: Float
-        var audioMid: Float
-        var audioHigh: Float
-        var audioBeat: Float
-        var pad: Float = 0
+        var pad: Float = 0  // Alignment padding
     }
 
     private var device: MTLDevice!
@@ -37,15 +31,10 @@ public final class MultiPassMetalRenderer: NSObject, MTKViewDelegate {
     private var startTime = CACurrentMediaTime()
     private var frameCount: Int32 = 0
     private let wallpaper: LoadedWallpaper
-    private var audioData: AudioData?
 
     init(wallpaper: LoadedWallpaper) {
         self.wallpaper = wallpaper
         super.init()
-    }
-
-    func updateAudioData(_ audioData: AudioData?) {
-        self.audioData = audioData
     }
 
     func configure(view: MTKView) {
@@ -181,12 +170,7 @@ public final class MultiPassMetalRenderer: NSObject, MTKViewDelegate {
                 time: t,
                 displayScale: scale,
                 frame: frameCount,
-                passIndex: Int32(index),
-                audioLevel: audioData?.level ?? 0,
-                audioBass: audioData?.bass ?? 0,
-                audioMid: audioData?.mid ?? 0,
-                audioHigh: audioData?.high ?? 0,
-                audioBeat: audioData?.beat ?? 0
+                passIndex: Int32(index)
             )
 
             guard let enc = cmd.makeRenderCommandEncoder(descriptor: descriptor) else { continue }

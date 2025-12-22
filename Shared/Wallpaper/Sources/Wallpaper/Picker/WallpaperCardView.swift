@@ -30,7 +30,6 @@ struct WallpaperCardView: View {
     let wallpaper: LoadedWallpaper
     let isLive: Bool
     let snapshot: WallpaperSnapshot?
-    var audioData: AudioData?
     let cardSize: CGSize
     let cornerRadius: CGFloat
 
@@ -53,7 +52,7 @@ struct WallpaperCardView: View {
             ZStack {
                 if isLive {
                     // Live wallpaper renderer
-                    WallpaperRendererFactory.makeView(for: wallpaper, audioData: audioData)
+                    WallpaperRendererFactory.makeView(for: wallpaper)
 
                     // Crossfade overlay: show snapshot briefly when transitioning to live
                     if let snapshot, snapshotOverlayOpacity > 0 {

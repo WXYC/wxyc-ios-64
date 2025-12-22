@@ -35,7 +35,7 @@ half4 waterTurbulence(float2 position,
                       half4 currentColor,
                       float time,
                       float2 viewSizePoints,
-                      float scale,
+                      float displayScale,
                       float tilesAcross,
                       float contrastExponent,
                       float rampPower,
@@ -51,8 +51,8 @@ half4 waterTurbulence(float2 position,
     // Use fmod with smaller range to avoid precision issues
     float t0 = fmod(time, 100.0) * 0.5 + 23.0;
 
-    float2 fragCoord = position * scale;
-    float2 iResolution = fmax(viewSizePoints * scale, float2(1.0));
+    float2 fragCoord = position * displayScale;
+    float2 iResolution = fmax(viewSizePoints * displayScale, float2(1.0));
 
     float2 uvView = fragCoord / iResolution;
     float aspect = iResolution.y / iResolution.x;

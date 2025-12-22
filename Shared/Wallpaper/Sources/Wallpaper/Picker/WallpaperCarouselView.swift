@@ -16,7 +16,6 @@ import UIKit
 struct WallpaperCarouselView: View {
     @Bindable var configuration: WallpaperConfiguration
     @Bindable var pickerState: WallpaperPickerState
-    var audioData: AudioData?
     let screenSize: CGSize
 
     /// Scale factor for wallpaper cards relative to screen size.
@@ -47,7 +46,6 @@ struct WallpaperCarouselView: View {
                         wallpaper: wallpaper,
                         isLive: pickerState.centeredWallpaperID == wallpaper.id,
                         snapshot: pickerState.snapshot(for: wallpaper.id),
-                        audioData: audioData,
                         cardSize: cardSize,
                         cornerRadius: cardCornerRadius
                     )

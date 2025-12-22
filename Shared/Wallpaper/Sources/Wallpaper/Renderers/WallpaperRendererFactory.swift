@@ -10,14 +10,14 @@ import SwiftUI
 /// Factory for creating the appropriate view for a wallpaper based on its renderer type.
 public enum WallpaperRendererFactory {
     @ViewBuilder
-    public static func makeView(for wallpaper: LoadedWallpaper, audioData: AudioData? = nil) -> some View {
+    public static func makeView(for wallpaper: LoadedWallpaper) -> some View {
         switch wallpaper.manifest.renderer.type {
         case .stitchable:
             // Use MTKView-based renderer if fragmentFunction is specified (eliminates CPU overhead)
             if wallpaper.manifest.renderer.fragmentFunction != nil {
-                StitchableMetalView(wallpaper: wallpaper, audioData: audioData)
+                StitchableMetalView(wallpaper: wallpaper)
             } else {
-                StitchableWallpaperView(wallpaper: wallpaper, audioData: audioData)
+                StitchableWallpaperView(wallpaper: wallpaper)
             }
 
         case .rawMetal:
@@ -30,7 +30,7 @@ public enum WallpaperRendererFactory {
             SwiftUIWallpaperView(wallpaper: wallpaper)
 
         case .multipass:
-            MultiPassMetalView(wallpaper: wallpaper, audioData: audioData)
+            MultiPassMetalView(wallpaper: wallpaper)
         }
     }
 }

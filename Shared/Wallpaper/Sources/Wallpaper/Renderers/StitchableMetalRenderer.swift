@@ -12,18 +12,10 @@ import simd
 /// Eliminates CPU overhead from SwiftUI's TimelineView by rendering directly.
 public final class StitchableMetalRenderer: NSObject, MTKViewDelegate {
     /// Uniforms struct matching the Metal side.
-    /// This is a superset of all possible shader arguments.
     struct Uniforms {
         var resolution: SIMD2<Float>
         var time: Float
         var displayScale: Float
-        // Audio data
-        var audioLevel: Float
-        var audioBass: Float
-        var audioMid: Float
-        var audioHigh: Float
-        var audioBeat: Float
-        var pad: Float = 0  // Alignment padding
     }
 
     private var device: MTLDevice!
@@ -32,15 +24,10 @@ public final class StitchableMetalRenderer: NSObject, MTKViewDelegate {
 
     private var startTime = CACurrentMediaTime()
     private let wallpaper: LoadedWallpaper
-    private var audioData: AudioData?
 
     init(wallpaper: LoadedWallpaper) {
         self.wallpaper = wallpaper
         super.init()
-    }
-
-    func updateAudioData(_ audioData: AudioData?) {
-        self.audioData = audioData
     }
 
     func configure(view: MTKView) {
@@ -111,12 +98,7 @@ public final class StitchableMetalRenderer: NSObject, MTKViewDelegate {
         var uniforms = Uniforms(
             resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
             time: t,
-            displayScale: scale,
-            audioLevel: audioData?.level ?? 0,
-            audioBass: audioData?.bass ?? 0,
-            audioMid: audioData?.mid ?? 0,
-            audioHigh: audioData?.high ?? 0,
-            audioBeat: audioData?.beat ?? 0
+            displayScale: scale
         )
 
         guard let cmd = queue.makeCommandBuffer(),

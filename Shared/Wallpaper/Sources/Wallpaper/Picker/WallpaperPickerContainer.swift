@@ -17,7 +17,6 @@ import UIKit
 public struct WallpaperPickerContainer<Content: View>: View {
     @Bindable var configuration: WallpaperConfiguration
     @Bindable var pickerState: WallpaperPickerState
-    var audioData: AudioData?
     @ViewBuilder var content: () -> Content
 
     /// Scale factor for content when picker is active.
@@ -32,12 +31,10 @@ public struct WallpaperPickerContainer<Content: View>: View {
     public init(
         configuration: WallpaperConfiguration,
         pickerState: WallpaperPickerState,
-        audioData: AudioData? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.configuration = configuration
         self.pickerState = pickerState
-        self.audioData = audioData
         self.content = content
     }
 
@@ -54,16 +51,12 @@ public struct WallpaperPickerContainer<Content: View>: View {
                     WallpaperCarouselView(
                         configuration: configuration,
                         pickerState: pickerState,
-                        audioData: audioData,
                         screenSize: geometry.size
                     )
                     .transition(.opacity)
                 } else {
-                    WallpaperView(
-                        configuration: configuration,
-                        audioData: audioData
-                    )
-                    .transition(.opacity)
+                    WallpaperView(configuration: configuration)
+                        .transition(.opacity)
                 }
 
                 // Content overlay - scales and clips when picker is active

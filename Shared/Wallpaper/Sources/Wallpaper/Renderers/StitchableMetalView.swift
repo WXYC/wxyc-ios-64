@@ -18,11 +18,9 @@ private typealias ViewRepresentable = UIViewRepresentable
 /// Uses Metal rendering directly to eliminate SwiftUI TimelineView CPU overhead.
 public struct StitchableMetalView: ViewRepresentable {
     let wallpaper: LoadedWallpaper
-    var audioData: AudioData?
 
-    public init(wallpaper: LoadedWallpaper, audioData: AudioData? = nil) {
+    public init(wallpaper: LoadedWallpaper) {
         self.wallpaper = wallpaper
-        self.audioData = audioData
     }
 
     public func makeCoordinator() -> StitchableMetalRenderer {
@@ -31,16 +29,10 @@ public struct StitchableMetalView: ViewRepresentable {
 
 #if os(macOS)
     public func makeNSView(context: Context) -> MTKView { makeView(context: context) }
-
-    public func updateNSView(_ nsView: MTKView, context: Context) {
-        context.coordinator.updateAudioData(audioData)
-    }
+    public func updateNSView(_ nsView: MTKView, context: Context) { }
 #else
     public func makeUIView(context: Context) -> MTKView { makeView(context: context) }
-
-    public func updateUIView(_ uiView: MTKView, context: Context) {
-        context.coordinator.updateAudioData(audioData)
-    }
+    public func updateUIView(_ uiView: MTKView, context: Context) { }
 #endif
 
     private func makeView(context: Context) -> MTKView {
@@ -56,7 +48,6 @@ public struct StitchableMetalView: ViewRepresentable {
         view.preferredFramesPerSecond = 60
 
         context.coordinator.configure(view: view)
-        context.coordinator.updateAudioData(audioData)
         view.delegate = context.coordinator
 
         return view
