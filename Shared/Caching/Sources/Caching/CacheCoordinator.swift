@@ -48,7 +48,6 @@ public final actor CacheCoordinator {
             throw Error.noCachedResult
         }
         
-        Log(.info, "cache hit!", key, "\(data.count) bytes")
         return data
     }
     
@@ -90,9 +89,7 @@ public final actor CacheCoordinator {
         }
         
         do {
-            let value = try Self.decoder.decode(Value.self, from: data)
-            Log(.info, "cache hit!", key, value)
-            return value
+            return try Self.decoder.decode(Value.self, from: data)
         } catch {
             Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
             PostHogSDK.shared.capture(
