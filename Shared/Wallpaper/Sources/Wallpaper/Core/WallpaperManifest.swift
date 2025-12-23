@@ -113,7 +113,6 @@ public enum RendererType: String, Codable, Sendable {
     case rawMetal
     case composite
     case swiftUI
-    case multipass
 }
 
 /// Configuration for a layer in a composite wallpaper.

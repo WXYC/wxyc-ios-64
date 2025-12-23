@@ -1,65 +1,23 @@
 //
-//  RawMetalWallpaperView.swift
+//  MetalWallpaperRenderer.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/19/25.
+//  Created by Jake Bromberg on 12/22/25.
 //
 
-import SwiftUI
 import MetalKit
 import simd
 
-#if os(macOS)
-private typealias ViewRepresentable = NSViewRepresentable
-#else
-private typealias ViewRepresentable = UIViewRepresentable
-#endif
-
-/// Generic view for wallpapers that use raw Metal rendering with vertex/fragment shaders.
-public struct RawMetalWallpaperView: ViewRepresentable {
-    let wallpaper: LoadedWallpaper
-    let directiveStore: ShaderDirectiveStore?
-
-    public init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
-        self.wallpaper = wallpaper
-        self.directiveStore = directiveStore
+public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
+    /// Uniforms for stitchable shaders (resolution, time, displayScale).
+    struct StitchableUniforms {
+        var resolution: SIMD2<Float>
+        var time: Float
+        var displayScale: Float
     }
 
-    public func makeCoordinator() -> RawMetalRenderer {
-        RawMetalRenderer(wallpaper: wallpaper, directiveStore: directiveStore)
-    }
-
-#if os(macOS)
-    public func makeNSView(context: Context) -> MTKView { makeView(context: context) }
-    public func updateNSView(_ nsView: MTKView, context: Context) { }
-#else
-    public func makeUIView(context: Context) -> MTKView { makeView(context: context) }
-    public func updateUIView(_ uiView: MTKView, context: Context) { }
-#endif
-
-    private func makeView(context: Context) -> MTKView {
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            return MTKView()
-        }
-
-        let view = MTKView(frame: .zero, device: device)
-        view.colorPixelFormat = .bgra8Unorm
-        view.framebufferOnly = false
-        view.isPaused = false
-        view.enableSetNeedsDisplay = false
-        view.preferredFramesPerSecond = 60
-
-        context.coordinator.configure(view: view)
-        view.delegate = context.coordinator
-
-        return view
-    }
-}
-
-// MARK: - Renderer
-
-public final class RawMetalRenderer: NSObject, MTKViewDelegate {
-    struct Uniforms {
+    /// Uniforms for rawMetal shaders (resolution, time, pad).
+    struct RawMetalUniforms {
         var resolution: SIMD2<Float>
         var time: Float
         var pad: Float = 0
@@ -68,14 +26,19 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
     private var device: MTLDevice!
     private var queue: MTLCommandQueue!
     private var pipeline: MTLRenderPipelineState!
-    private var sampler: MTLSamplerState!
-    private var noiseTex: MTLTexture!
+    private var sampler: MTLSamplerState?
+    private var noiseTex: MTLTexture?
 
     private var startTime = CACurrentMediaTime()
     private let wallpaper: LoadedWallpaper
     private let directiveStore: ShaderDirectiveStore?
     private var runtimeCompiler: RuntimeShaderCompiler?
     private var pixelFormat: MTLPixelFormat = .bgra8Unorm
+
+    /// Whether this renderer uses rawMetal mode (noise texture, sampler, rawMetal uniforms).
+    private var usesRawMetalMode: Bool {
+        wallpaper.manifest.renderer.type == .rawMetal
+    }
 
     init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
         self.wallpaper = wallpaper
@@ -91,27 +54,67 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
 
         let renderer = wallpaper.manifest.renderer
 
-        // Check if we should use runtime compilation (shader source available)
-        if let shaderFile = renderer.shaderFile,
-           let shaderURL = Bundle.module.url(forResource: shaderFile.replacingOccurrences(of: ".metal", with: ""), withExtension: "metal"),
-           let shaderSource = try? String(contentsOf: shaderURL, encoding: .utf8) {
-            // Use runtime compilation
-            setUpRuntimeCompilation(device: device, shaderSource: shaderSource, renderer: renderer, pixelFormat: view.colorPixelFormat)
+        if usesRawMetalMode {
+            // RawMetal mode: check for runtime compilation, set up noise texture and sampler
+            if let shaderFile = renderer.shaderFile,
+               let shaderURL = Bundle.module.url(forResource: shaderFile.replacing(".metal", with: ""), withExtension: "metal"),
+               let shaderSource = try? String(contentsOf: shaderURL, encoding: .utf8) {
+                setUpRuntimeCompilation(device: device, shaderSource: shaderSource, renderer: renderer, pixelFormat: view.colorPixelFormat)
+            } else {
+                setUpPrecompiledPipeline(device: device, renderer: renderer, pixelFormat: view.colorPixelFormat)
+            }
+
+            // Sampler: repeat + linear (for noise texture sampling)
+            let sDesc = MTLSamplerDescriptor()
+            sDesc.minFilter = .linear
+            sDesc.magFilter = .linear
+            sDesc.sAddressMode = .repeat
+            sDesc.tAddressMode = .repeat
+            self.sampler = device.makeSamplerState(descriptor: sDesc)
+
+            // Noise texture for shaders that need it
+            self.noiseTex = makeNoiseTexture(device: device, size: 256)
         } else {
-            // Use precompiled library
-            setUpPrecompiledPipeline(device: device, renderer: renderer, pixelFormat: view.colorPixelFormat)
+            // Stitchable mode: simple precompiled pipeline, no textures
+            setUpStitchablePipeline(device: device, renderer: renderer, pixelFormat: view.colorPixelFormat)
+        }
+    }
+
+    // MARK: - Pipeline Setup
+
+    private func setUpStitchablePipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
+        guard let fragmentFn = renderer.fragmentFunction else {
+            print("MetalWallpaperRenderer: No fragmentFunction specified in manifest")
+            return
         }
 
-        // Sampler: repeat + linear
-        let sDesc = MTLSamplerDescriptor()
-        sDesc.minFilter = .linear
-        sDesc.magFilter = .linear
-        sDesc.sAddressMode = .repeat
-        sDesc.tAddressMode = .repeat
-        self.sampler = device.makeSamplerState(descriptor: sDesc)
+        let vertexFn = "fullscreenVertex"
 
-        // Noise texture for shaders that need it
-        self.noiseTex = makeNoiseTexture(device: device, size: 256)
+        guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else {
+            print("MetalWallpaperRenderer: Failed to load Metal library from bundle")
+            return
+        }
+
+        guard let vfn = library.makeFunction(name: vertexFn) else {
+            print("MetalWallpaperRenderer: Vertex function '\(vertexFn)' not found")
+            return
+        }
+
+        guard let ffn = library.makeFunction(name: fragmentFn) else {
+            print("MetalWallpaperRenderer: Fragment function '\(fragmentFn)' not found")
+            return
+        }
+
+        let desc = MTLRenderPipelineDescriptor()
+        desc.vertexFunction = vfn
+        desc.fragmentFunction = ffn
+        desc.colorAttachments[0].pixelFormat = pixelFormat
+
+        do {
+            self.pipeline = try device.makeRenderPipelineState(descriptor: desc)
+        } catch {
+            print("MetalWallpaperRenderer: Failed to create pipeline: \(error)")
+        }
     }
 
     private func setUpRuntimeCompilation(device: MTLDevice, shaderSource: String, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
@@ -173,7 +176,7 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
 
             self.pipeline = try device.makeRenderPipelineState(descriptor: desc)
         } catch {
-            print("RuntimeShaderCompiler: Failed to build pipeline: \(error)")
+            print("MetalWallpaperRenderer: Failed to build runtime pipeline: \(error)")
         }
     }
 
@@ -189,6 +192,8 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
         buildRuntimePipeline(renderer: wallpaper.manifest.renderer, pixelFormat: pixelFormat)
     }
 
+    // MARK: - MTKViewDelegate
+
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
 
     public func draw(in view: MTKView) {
@@ -203,19 +208,36 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
         let timeScale = wallpaper.manifest.renderer.timeScale ?? 1.0
         let t = Float(now - startTime) * timeScale
 
-        var uniforms = Uniforms(
-            resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
-            time: t
-        )
-
         guard let cmd = queue.makeCommandBuffer(),
               let enc = cmd.makeRenderCommandEncoder(descriptor: rpd)
         else { return }
 
         enc.setRenderPipelineState(pipeline)
-        enc.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 0)
-        enc.setFragmentTexture(noiseTex, index: 0)
-        enc.setFragmentSamplerState(sampler, index: 0)
+
+        if usesRawMetalMode {
+            // RawMetal uniforms and textures
+            var uniforms = RawMetalUniforms(
+                resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
+                time: t
+            )
+            enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
+            enc.setFragmentTexture(noiseTex, index: 0)
+            enc.setFragmentSamplerState(sampler, index: 0)
+        } else {
+            // Stitchable uniforms (no textures)
+            #if os(iOS) || os(tvOS)
+            let scale = Float(view.contentScaleFactor)
+            #else
+            let scale = Float(view.drawableSize.width / max(view.bounds.width, 1))
+            #endif
+
+            var uniforms = StitchableUniforms(
+                resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
+                time: t,
+                displayScale: scale
+            )
+            enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
+        }
 
         // Fullscreen triangle
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -224,6 +246,8 @@ public final class RawMetalRenderer: NSObject, MTKViewDelegate {
         cmd.present(drawable)
         cmd.commit()
     }
+
+    // MARK: - Noise Texture
 
     private func makeNoiseTexture(device: MTLDevice, size: Int) -> MTLTexture {
         let desc = MTLTextureDescriptor.texture2DDescriptor(

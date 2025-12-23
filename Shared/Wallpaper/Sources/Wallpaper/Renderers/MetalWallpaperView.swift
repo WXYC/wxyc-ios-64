@@ -1,8 +1,8 @@
 //
-//  MultiPassMetalView.swift
+//  MetalWallpaperView.swift
 //  Wallpaper
 //
-//  Created by Claude on 12/20/25.
+//  Created by Jake Bromberg on 12/22/25.
 //
 
 import SwiftUI
@@ -14,17 +14,19 @@ private typealias ViewRepresentable = NSViewRepresentable
 private typealias ViewRepresentable = UIViewRepresentable
 #endif
 
-/// SwiftUI wrapper for multi-pass shaders rendered via MTKView.
-/// Supports intermediate render targets, feedback loops, and post-processing chains.
-public struct MultiPassMetalView: ViewRepresentable {
+/// Unified SwiftUI wrapper for Metal-based wallpaper rendering.
+/// Supports both simple precompiled shaders and runtime-compiled shaders with directive stores.
+public struct MetalWallpaperView: ViewRepresentable {
     let wallpaper: LoadedWallpaper
+    let directiveStore: ShaderDirectiveStore?
 
-    public init(wallpaper: LoadedWallpaper) {
+    public init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
         self.wallpaper = wallpaper
+        self.directiveStore = directiveStore
     }
 
-    public func makeCoordinator() -> MultiPassMetalRenderer {
-        MultiPassMetalRenderer(wallpaper: wallpaper)
+    public func makeCoordinator() -> MetalWallpaperRenderer {
+        MetalWallpaperRenderer(wallpaper: wallpaper, directiveStore: directiveStore)
     }
 
 #if os(macOS)
