@@ -42,8 +42,9 @@ public struct WallpaperPickerContainer<Content: View>: View {
         GeometryReader { geometry in
             let safeAreaTop = geometry.safeAreaInsets.top
             let safeAreaBottom = geometry.safeAreaInsets.bottom
-            // When scaled, offset to center the content area (excluding safe areas) rather than the full frame
-            let verticalOffset = pickerState.isActive ? (safeAreaTop - safeAreaBottom) * 0.5 * (1 - activeScale) : 0
+            // Calculate the content center as a unit point (0-1 range) accounting for asymmetric safe areas.
+            // This ensures scaleEffect scales from the content's visual center rather than the frame center.
+            let contentCenterY = (safeAreaTop + (geometry.size.height - safeAreaBottom)) / 2 / geometry.size.height
 
             ZStack {
                 // Background layer - either single wallpaper or carousel
@@ -61,9 +62,12 @@ public struct WallpaperPickerContainer<Content: View>: View {
 
                 // Content overlay - scales and clips when picker is active
                 content()
+                    .environment(\.isWallpaperPickerActive, pickerState.isActive)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
-                    .scaleEffect(pickerState.isActive ? activeScale : 1.0)
-                    .offset(y: verticalOffset)
+                    .scaleEffect(
+                        pickerState.isActive ? activeScale : 1.0,
+                        anchor: pickerState.isActive ? UnitPoint(x: 0.5, y: contentCenterY) : .center
+                    )
                     .allowsHitTesting(!pickerState.isActive)
                     .animation(pickerAnimation, value: pickerState.isActive)
             }
