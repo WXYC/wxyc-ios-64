@@ -1,0 +1,12 @@
+{
+  "id": "neon_topology_c",
+  "displayName": "Neon Topology C",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "neonTopologyCFrag"
+  },
+  "parameters": [],
+  "shaderArguments": []
+}

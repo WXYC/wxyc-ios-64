@@ -1,0 +1,17 @@
+{
+  "id": "neon_topology_a",
+  "displayName": "Neon Topology A",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "stitchable",
+    "shaderFile": "NeonTopologyA.metal",
+    "functionName": "neonTopologyA",
+    "fragmentFunction": "neonTopologyAFrag"
+  },
+  "parameters": [],
+  "shaderArguments": [
+    { "source": "viewWidth" },
+    { "source": "viewHeight" },
+    { "source": "time" }
+  ]
+}
