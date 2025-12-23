@@ -14,7 +14,7 @@ struct RootTabView: View {
         case playlist
         case infoDetail
     }
-    
+
     @State private var selectedPage = Page.playlist
     @Environment(\.colorScheme) private var colorScheme
 
@@ -22,13 +22,14 @@ struct RootTabView: View {
         TabView(selection: $selectedPage) {
             PlaylistView()
                 .tag(Page.playlist)
-            
+
             InfoDetailView()
                 .tag(Page.infoDetail)
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
         .ignoresSafeArea(edges: .vertical)
+        .safeAreaPadding([.top, .bottom])
     }
 }
 
