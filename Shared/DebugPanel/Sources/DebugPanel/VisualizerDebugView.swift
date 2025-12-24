@@ -16,6 +16,7 @@ public struct VisualizerDebugView: View {
     @Binding var selectedPlayerType: PlayerControllerType
     @Bindable var wallpaperConfiguration: WallpaperConfiguration
     @Environment(\.dismiss) private var dismiss
+    private var hudState = DebugHUDState.shared
 
     public init(
         visualizer: VisualizerDataSource,
@@ -30,11 +31,23 @@ public struct VisualizerDebugView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                // Performance HUD
+                Section {
+                    Toggle("Show Performance HUD", isOn: Binding(
+                        get: { hudState.isVisible },
+                        set: { hudState.isVisible = $0 }
+                    ))
+                } header: {
+                    Text("Performance")
+                } footer: {
+                    Text("Displays FPS, CPU, GPU memory, RAM, and thermal state.")
+                }
+
                 // Wallpaper
                 WallpaperDebugControls(
                     configuration: wallpaperConfiguration
                 )
-                
+
                 // Player Controller Selection
                 Section {
                     Picker("Player Controller", selection: $selectedPlayerType) {
