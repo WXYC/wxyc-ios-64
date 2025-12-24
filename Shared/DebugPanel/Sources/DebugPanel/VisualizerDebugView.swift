@@ -1,12 +1,13 @@
 //
 //  VisualizerDebugView.swift
-//  PlayerHeaderView
+//  DebugPanel
 //
 //  Debug interface for toggling processors and normalization modes
 //
 
 import SwiftUI
 import Playback
+import PlayerHeaderView
 import Wallpaper
 
 #if DEBUG

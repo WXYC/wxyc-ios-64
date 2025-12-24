@@ -12,52 +12,42 @@
 		062417DC96252E36AE65C585 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = E150313F784CF272A32EA642 /* Playback */; };
 		0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 79AE74A2A92779E80E688376 /* Core */; };
 		160F5276C232F51B9ABD41FA /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCE16D2F8F98E766EFCFFDF /* Caching */; };
-		1A7F58FD9BFA74F3CC74938E /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = 719F0D3AB83311F4652E5030 /* Metadata */; };
 		1F3D795595990939AC76274D /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = D1362165656CBF5DDD9E5DDA /* Playlist */; };
 		1F511646EB98B7621319A1DA /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = EE16E35E8F1311399E5AD843 /* AppServices */; };
-		235BFA092EF0984A0003A0B4 /* ProgressiveBlur in Frameworks */ = {isa = PBXBuildFile; productRef = 235BFA082EF0984A0003A0B4 /* ProgressiveBlur */; };
 		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
+		23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */ = {isa = PBXBuildFile; productRef = 23D4181A2EF2C8000DBGPNL /* DebugPanel */; };
+		23DD3EBF2EFA090B0090636B /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = B0C1D2E3F4050617081910B2 /* Secrets */; };
+		23DD3EC02EFA090B0090636B /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = A0B1C2D3E4F506070809A0B1 /* Secrets */; };
+		23DD3EC12EFA090B0090636B /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = C0D1E2F30405162718192AC3 /* PostHog */; };
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
 		3168A48CA317F321E3B1BB95 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = F06268AE9022F6AE22B608E2 /* Secrets */; };
 		37327445A68BBA56C392BEF7 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 01163D6D065337EB60F79C5B /* WXUI */; };
 		3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 01BA6F026317213ACE8EE228 /* PostHog */; };
-		426249645642062E961658BD /* ObservableDefaults in Frameworks */ = {isa = PBXBuildFile; productRef = 5DF3CD28508F5193B79C212A /* ObservableDefaults */; };
 		4FB3F65AF65A0BBE835C5448 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = 6E6C024BC7EDD997551D5B01 /* Secrets */; };
 		524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 35DC07836DEEE44F7B819265 /* PlayerHeaderView */; };
 		62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = BE7D47372C4F1F83B0F271DE /* Metadata */; };
-		6401428DBE5C4D95901BE5A9 /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 9B98AA54A13E060E6806108D /* ObfuscateMacro */; };
 		6ACBB75F551DD2BCAEC927FE /* NowPlayingWidget.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = B2F0564846267151FC3EC76A /* NowPlayingWidget.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		6C64F275BAE3323182F31FD1 /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = E346218A097BAD5F8CA3F68A /* Caching */; };
-		7423C242318A6C17DFB52A6C /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 2D5CCEAD13535D18B1710505 /* Logger */; };
 		7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 0852AD2E14147E5B270AD1F1 /* Playlist */; };
 		78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9AA59EC6C2A143F5728D04F9 /* Analytics */; };
 		7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */ = {isa = PBXBuildFile; productRef = 3DF76684E122C2FAD4F26E27 /* PartyHorn */; };
 		9A3DDC2D5E4C3B61FAF462E1 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = B2494B4F186A5F3B593EF021 /* OpenNSFW */; };
 		9ADBCA016AC42BC21420535A /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = B3D66CF425A1A072D8B4714A /* AppServices */; };
 		9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0E4513BB04D21BB582E4B0 /* MusicShareKit */; };
-		9EAD622453C709B996F7A5F0 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = C576DD64227828ED5B5FAEC7 /* OpenNSFW */; };
 		9EF7E075F1DE6E6A39F1551F /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = D13403E501A5B625600115A2 /* PostHog */; };
 		A17CCEC28257E400D4B99AFF /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 8ED7023BC91B73A942BF53C7 /* Core */; };
 		A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 3CABF5AF82DAA2E0D9877A07 /* Core */; };
 		A5D120B4FBE72D5CA761A231 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = E790F2E8AAE12A20CB303818 /* WatchXYC.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 196F9D43ACA1827478F32D5D /* Artwork */; };
 		ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1E128B6E39E90EA57C68C69 /* MusicShareKit */; };
-		B0730FC4FC339E2391B048DF /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 86FA5B6D90EC56D323B8ABD0 /* WXUI */; };
 		B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 3776C2184A667CCB7B4E0B67 /* Artwork */; };
 		B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 932CA5D4CF336582845E6C75 /* AppServices */; };
-		B4A508E1C799716A95186017 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 1BA0AE183AD2E87521D599AA /* Core */; };
-		B72A39DEA48C59E011DE1B88 /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = 14F61C96EE25983A17B215F3 /* ObfuscateMacro */; };
 		B78B37108DAAACABF26EB624 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */; };
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
 		CF6E50FA859149D75647ED8E /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = F93BAC1EF82FF6A17F716A7B /* Analytics */; };
-		D34D606EBDB71B930F1FC3B7 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 4AD8A4D0FA7324708FA3B7C1 /* PostHog */; };
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
-		DF23FB1D4A5B3A4DC7FBDF3E /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = BE37F6E844A66CB7A1DB7C87 /* ObfuscateMacro */; };
 		E6BC58BE7A782A85F288E119 /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 96986B04F3E2111CAF6F15B2 /* Artwork */; };
-		E711EE26BBFE816CC3A6738F /* Vortex in Frameworks */ = {isa = PBXBuildFile; productRef = 02278730EBAF8961A683F35F /* Vortex */; };
-		FA912C13783EABDDD697C4AB /* ObfuscateMacro in Frameworks */ = {isa = PBXBuildFile; productRef = EA863BECCACD3D7A2BF5D847 /* ObfuscateMacro */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -292,12 +282,12 @@
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
 				1F3D795595990939AC76274D /* Playlist in Frameworks */,
 				23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */,
+				23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */,
 				62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */,
 				A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */,
 				1F511646EB98B7621319A1DA /* AppServices in Frameworks */,
 				37327445A68BBA56C392BEF7 /* WXUI in Frameworks */,
 				7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */,
-				235BFA092EF0984A0003A0B4 /* ProgressiveBlur in Frameworks */,
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
 				C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */,
 			);
@@ -316,12 +306,14 @@
 		5282D69CBC6C3EAF27DE8CBE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				23DD3EC02EFA090B0090636B /* Secrets in Frameworks */,
 				ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */,
 			);
 		};
 		64915BA4D2117A923D5E4476 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				23DD3EBF2EFA090B0090636B /* Secrets in Frameworks */,
 				0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */,
 				2AD59B02211E454634324EEB /* Logger in Frameworks */,
 				03D120972D0E10C76131AFB8 /* Playback in Frameworks */,
@@ -334,6 +326,7 @@
 		6EEDCD01D3747AC2DCAEBCFF /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				23DD3EC12EFA090B0090636B /* PostHog in Frameworks */,
 				A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */,
 				DCF27381E7D5EC54633BE58E /* Logger in Frameworks */,
 				9A3DDC2D5E4C3B61FAF462E1 /* OpenNSFW in Frameworks */,
@@ -439,6 +432,7 @@
 			name = "Request Share Extension";
 			packageProductDependencies = (
 				B1E128B6E39E90EA57C68C69 /* MusicShareKit */,
+				A0B1C2D3E4F506070809A0B1 /* Secrets */,
 			);
 			productName = "Request Share Extension";
 			productReference = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */;
@@ -485,6 +479,7 @@
 				3776C2184A667CCB7B4E0B67 /* Artwork */,
 				932CA5D4CF336582845E6C75 /* AppServices */,
 				01BA6F026317213ACE8EE228 /* PostHog */,
+				B0C1D2E3F4050617081910B2 /* Secrets */,
 			);
 			productName = WatchXYC;
 			productReference = E790F2E8AAE12A20CB303818 /* WatchXYC.app */;
@@ -508,6 +503,7 @@
 			name = "WXYC TV";
 			packageProductDependencies = (
 				3CABF5AF82DAA2E0D9877A07 /* Core */,
+				C0D1E2F30405162718192AC3 /* PostHog */,
 			);
 			productName = "WXYC TV";
 			productReference = 6D8ECE997571529CE8187362 /* WXYC TV.app */;
@@ -569,7 +565,7 @@
 				35DC07836DEEE44F7B819265 /* PlayerHeaderView */,
 				51D35AECC049A83AE7575477 /* PostHog */,
 				23D418172EF2C80000WALLPA /* Wallpaper */,
-				235BFA082EF0984A0003A0B4 /* ProgressiveBlur */,
+				23D4181A2EF2C8000DBGPNL /* DebugPanel */,
 			);
 			productName = WXYC;
 			productReference = 87ED2724FB87B5D288BBFFFB /* WXYC.app */;
@@ -625,6 +621,7 @@
 				07287EE5CF49EAC7250A8938 /* XCLocalSwiftPackageReference "Shared/Artwork" */,
 				D69C03CC025D00453589D28C /* XCLocalSwiftPackageReference "Shared/Caching" */,
 				FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */,
+				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
 				61539220C8BCCFF9AC473AD9 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */,
@@ -636,7 +633,6 @@
 				4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */,
 				ABCDCE57E9505C547B8FE732 /* XCLocalSwiftPackageReference "Shared/WXUI" */,
 				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
-				235BFA072EF0984A0003A0B4 /* XCLocalSwiftPackageReference "Shared/ProgressiveBlur" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 6393B8DD84BA2FE9EA639E2D /* Products */;
@@ -865,7 +861,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -1031,6 +1026,270 @@
 			};
 			name = Release;
 		};
+		237AD1F92EFB330B00D423EC /* Release (Active Arch) configuration for PBXProject "WXYC" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 3.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TVOS_DEPLOYMENT_TARGET = 18.6;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 11.5;
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD1FA2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYC" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYC.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					"**/PostHogExample*/*.storyboard",
+					"**/PostHogObjCExample/*.storyboard",
+					"**/PostHogExampleStoryboard/*.storyboard",
+					"**/PostHogExampleAutocapture/*/*.storyboard",
+					"**/PostHogExampleExternalSDK/**",
+					"**/PostHogExample*/**",
+					"**/PostHogExampleExternalSDK/Package.swift",
+					"**/.build/**",
+					"**/.build/*",
+				);
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
+				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = armv7;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 3.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp;
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD1FB2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "NowPlayingWidget" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/NowPlayingWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = "WXYC/iOS/NowPlayingWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = NowPlayingWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.now-playing-widget";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD1FC2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "Request Share Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "org.wxyc.iphoneapp.Request-Share-Extension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD1FD2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYC TV" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = "WXYC/WXYC TV/WXYC-TV-Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.tv;
+				SDKROOT = appletvos;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 18.6;
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD1FE2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYCTests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.funlandresearch.WXYCTests;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WXYC.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WXYC";
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD1FF2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYCUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.funlandresearch.WXYCUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = WXYC;
+			};
+			name = "Release (Active Arch)";
+		};
+		237AD2002EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WatchXYC" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = "WXYC/WatchXYC/WatchXYC-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = WatchXYC;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = org.wxyc.iphoneapp;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 3.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.iphoneapp.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.5;
+			};
+			name = "Release (Active Arch)";
+		};
 		3A7F918E4291B572B36BE857 /* TestFlight configuration for PBXNativeTarget "WatchXYC" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1158,8 +1417,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYCDebug.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_APP_SANDBOX = YES;
@@ -1391,8 +1648,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYC.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1444,7 +1699,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -1519,8 +1773,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WXYC/Entitlements/WXYC.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1572,7 +1824,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -1603,6 +1854,7 @@
 			buildConfigurations = (
 				15D5F7276B93052B1FD478B2 /* Debug configuration for PBXNativeTarget "WXYCTests" */,
 				1E2BE19A9D88DFCC44061AC2 /* Release configuration for PBXNativeTarget "WXYCTests" */,
+				237AD1FE2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYCTests" */,
 				4CB966BA913250A152C24DC6 /* TestFlight configuration for PBXNativeTarget "WXYCTests" */,
 			);
 			defaultConfigurationName = Release;
@@ -1612,6 +1864,7 @@
 			buildConfigurations = (
 				0DD9DF80692E6A1FCAF7F576 /* Debug configuration for PBXNativeTarget "WatchXYC" */,
 				409B7C07F5738FBAD96A1EEC /* Release configuration for PBXNativeTarget "WatchXYC" */,
+				237AD2002EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WatchXYC" */,
 				3A7F918E4291B572B36BE857 /* TestFlight configuration for PBXNativeTarget "WatchXYC" */,
 			);
 			defaultConfigurationName = Release;
@@ -1621,6 +1874,7 @@
 			buildConfigurations = (
 				EED1C454CB3F4A83837CC685 /* Debug configuration for PBXNativeTarget "WXYCUITests" */,
 				3CF9F94AC2074E9181E9CFCF /* Release configuration for PBXNativeTarget "WXYCUITests" */,
+				237AD1FF2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYCUITests" */,
 				82BDED8110FE450183F8350D /* TestFlight configuration for PBXNativeTarget "WXYCUITests" */,
 			);
 			defaultConfigurationName = Release;
@@ -1630,6 +1884,7 @@
 			buildConfigurations = (
 				5033CCD990E5B7E2B488A1E4 /* Debug configuration for PBXNativeTarget "WXYC" */,
 				EF4A8A33351CE5958109D5C9 /* Release configuration for PBXNativeTarget "WXYC" */,
+				237AD1FA2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYC" */,
 				A05F5FBC502F3303868C4F20 /* TestFlight configuration for PBXNativeTarget "WXYC" */,
 			);
 			defaultConfigurationName = Release;
@@ -1639,6 +1894,7 @@
 			buildConfigurations = (
 				6BAF6907EEED5ED6965FF62B /* Debug configuration for PBXNativeTarget "NowPlayingWidget" */,
 				0AE7BBAB98E2B1AAFDE1A68A /* Release configuration for PBXNativeTarget "NowPlayingWidget" */,
+				237AD1FB2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "NowPlayingWidget" */,
 				418C03EECB4E7299C43551E0 /* TestFlight configuration for PBXNativeTarget "NowPlayingWidget" */,
 			);
 			defaultConfigurationName = Release;
@@ -1648,6 +1904,7 @@
 			buildConfigurations = (
 				B77E6346D4CE82059C2D31C5 /* Debug configuration for PBXNativeTarget "Request Share Extension" */,
 				F06112E2911F17D9EC66C13A /* Release configuration for PBXNativeTarget "Request Share Extension" */,
+				237AD1FC2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "Request Share Extension" */,
 				0521EE5973C14CD8DCFC3440 /* TestFlight configuration for PBXNativeTarget "Request Share Extension" */,
 			);
 			defaultConfigurationName = Release;
@@ -1657,6 +1914,7 @@
 			buildConfigurations = (
 				038798A661CB96BA90DA5E4B /* Debug configuration for PBXProject "WXYC" */,
 				75E57A2EC087AD8AFB227C43 /* Release configuration for PBXProject "WXYC" */,
+				237AD1F92EFB330B00D423EC /* Release (Active Arch) configuration for PBXProject "WXYC" */,
 				78DC95CD9849352D7F97FBAD /* TestFlight configuration for PBXProject "WXYC" */,
 			);
 			defaultConfigurationName = Release;
@@ -1666,6 +1924,7 @@
 			buildConfigurations = (
 				139D31EF5897D4B0740A8A99 /* Debug configuration for PBXNativeTarget "WXYC TV" */,
 				21A208C397EAF6069A2100DD /* Release configuration for PBXNativeTarget "WXYC TV" */,
+				237AD1FD2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYC TV" */,
 				D7DD3314155D35B2040C7BB3 /* TestFlight configuration for PBXNativeTarget "WXYC TV" */,
 			);
 			defaultConfigurationName = Release;
@@ -1681,13 +1940,13 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/AppServices;
 		};
-		235BFA072EF0984A0003A0B4 /* XCLocalSwiftPackageReference "Shared/ProgressiveBlur" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Shared/ProgressiveBlur;
-		};
 		23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Wallpaper;
+		};
+		23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/DebugPanel;
 		};
 		4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -1792,11 +2051,6 @@
 			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
 			productName = PostHog;
 		};
-		02278730EBAF8961A683F35F /* Vortex */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 17F14B03423533C80A6A4E69 /* XCRemoteSwiftPackageReference "Vortex" */;
-			productName = Vortex;
-		};
 		0852AD2E14147E5B270AD1F1 /* Playlist */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Playlist;
@@ -1805,26 +2059,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Playback;
 		};
-		14F61C96EE25983A17B215F3 /* ObfuscateMacro */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */;
-			productName = ObfuscateMacro;
-		};
 		196F9D43ACA1827478F32D5D /* Artwork */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Artwork;
 		};
-		1BA0AE183AD2E87521D599AA /* Core */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Core;
-		};
-		235BFA082EF0984A0003A0B4 /* ProgressiveBlur */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ProgressiveBlur;
-		};
 		23D418172EF2C80000WALLPA /* Wallpaper */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Wallpaper;
+		};
+		23D4181A2EF2C8000DBGPNL /* DebugPanel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DebugPanel;
 		};
 		23FB21C62EEA867C0064E6FD /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1876,10 +2121,6 @@
 			package = 6797FDE9A6390018099531DF /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
 			productName = OpenNSFW;
 		};
-		2D5CCEAD13535D18B1710505 /* Logger */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Logger;
-		};
 		33A31E91AA56954894130F50 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Logger;
@@ -1904,11 +2145,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Logger;
 		};
-		4AD8A4D0FA7324708FA3B7C1 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
-		};
 		4E0E4513BB04D21BB582E4B0 /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MusicShareKit;
@@ -1918,11 +2154,6 @@
 			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
 			productName = PostHog;
 		};
-		5DF3CD28508F5193B79C212A /* ObservableDefaults */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 07A737447BF4EACF39918E99 /* XCRemoteSwiftPackageReference "ObservableDefaults" */;
-			productName = ObservableDefaults;
-		};
 		6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenNSFW;
@@ -1931,17 +2162,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Secrets;
 		};
-		719F0D3AB83311F4652E5030 /* Metadata */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Metadata;
-		};
 		79AE74A2A92779E80E688376 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
-		};
-		86FA5B6D90EC56D323B8ABD0 /* WXUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = WXUI;
 		};
 		8ED7023BC91B73A942BF53C7 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1963,10 +2186,13 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Analytics;
 		};
-		9B98AA54A13E060E6806108D /* ObfuscateMacro */ = {
+		A0B1C2D3E4F506070809A0B1 /* Secrets */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */;
-			productName = ObfuscateMacro;
+			productName = Secrets;
+		};
+		B0C1D2E3F4050617081910B2 /* Secrets */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Secrets;
 		};
 		B1E128B6E39E90EA57C68C69 /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1984,18 +2210,14 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Logger;
 		};
-		BE37F6E844A66CB7A1DB7C87 /* ObfuscateMacro */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */;
-			productName = ObfuscateMacro;
-		};
 		BE7D47372C4F1F83B0F271DE /* Metadata */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Metadata;
 		};
-		C576DD64227828ED5B5FAEC7 /* OpenNSFW */ = {
+		C0D1E2F30405162718192AC3 /* PostHog */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = OpenNSFW;
+			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 		D13403E501A5B625600115A2 /* PostHog */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2009,15 +2231,6 @@
 		E150313F784CF272A32EA642 /* Playback */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Playback;
-		};
-		E346218A097BAD5F8CA3F68A /* Caching */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Caching;
-		};
-		EA863BECCACD3D7A2BF5D847 /* ObfuscateMacro */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */;
-			productName = ObfuscateMacro;
 		};
 		EE16E35E8F1311399E5AD843 /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;

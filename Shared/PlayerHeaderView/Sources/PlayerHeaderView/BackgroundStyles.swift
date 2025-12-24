@@ -6,12 +6,6 @@
 //
 
 import SwiftUI
-import Wallpaper
-
-// MARK: - WXYC Background
-
-/// Type alias to the canonical WXYCGradient from Wallpaper package
-typealias WXYCBackground = WXYCGradient
 
 // MARK: - Header Item Background Style
 
