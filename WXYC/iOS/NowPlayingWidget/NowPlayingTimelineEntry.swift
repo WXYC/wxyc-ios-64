@@ -5,9 +5,10 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
-import WidgetKit
-import SwiftUI
 import AppServices
+import Playlist
+import SwiftUI
+import WidgetKit
 
 struct NowPlayingTimelineEntry: TimelineEntry {
     let date: Date = Date(timeIntervalSinceNow: 1)

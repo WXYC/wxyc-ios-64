@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AppIntents
+import Caching
 
 struct PlayButton: View {
     @AppStorage("isPlaying", store: .wxyc)

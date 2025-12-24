@@ -5,8 +5,9 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
-import SwiftUI
 import AppServices
+import Playlist
+import SwiftUI
 
 struct RecentlyPlayedRow: View {
     let nowPlayingItem: NowPlayingItem
