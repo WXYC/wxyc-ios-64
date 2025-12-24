@@ -26,6 +26,9 @@ import WidgetKit
 import WXUI
 import Wallpaper
 import Observation
+#if DEBUG
+import DebugPanel
+#endif
 
 
 // Shared app state for cross-scene access (main UI and CarPlay)
@@ -136,7 +139,8 @@ struct WXYCApp: App {
                 configuration: appState.wallpaperConfiguration,
                 pickerState: appState.wallpaperPickerState
             ) {
-                RootTabView()
+                ZStack {
+                    RootTabView()
                     .frame(maxWidth: 440)
                     .environment(appState)
                     .environment(\.playlistService, appState.playlistService)
@@ -179,7 +183,11 @@ struct WXYCApp: App {
                     .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                         handleUserActivity(userActivity)
                     }
-                    .safeAreaPadding([.top, .bottom])
+
+                    #if DEBUG
+                    DebugHUD()
+                    #endif
+                }
             }
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
