@@ -36,5 +36,3 @@ public protocol AudioSessionProtocol: AnyObject {
 
 /// A no-op audio session for platforms that don't support AVAudioSession or for testing
 
-
-

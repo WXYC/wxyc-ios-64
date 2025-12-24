@@ -92,4 +92,3 @@ public enum ModelSeeder {
     }
 }
 
-

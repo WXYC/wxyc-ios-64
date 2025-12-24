@@ -124,5 +124,3 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     }
 }
 
-
-

@@ -52,3 +52,4 @@ git push "$remote" "$tag"
 
 echo
 echo "Done. Tag '$tag' now points to '$commit' locally and on '$remote'."
+
