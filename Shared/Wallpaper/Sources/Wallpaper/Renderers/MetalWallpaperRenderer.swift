@@ -5,6 +5,7 @@
 //  Created by Jake Bromberg on 12/22/25.
 //
 
+import Core
 import MetalKit
 import simd
 

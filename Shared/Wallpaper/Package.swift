@@ -15,12 +15,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/fatbobman/ObservableDefaults", from: "1.7.0"),
+        .package(name: "Core", path: "../Core"),
         .package(name: "WXUI", path: "../WXUI"),
     ],
     targets: [
         .target(
             name: "Wallpaper",
             dependencies: [
+                "Core",
                 "ObservableDefaults",
                 "WXUI",
             ],

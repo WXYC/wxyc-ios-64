@@ -8,6 +8,7 @@
 
 import SwiftUI
 import CoreGraphics
+import Core
 import WXUI
 import PlayerHeaderView
 import Playback
