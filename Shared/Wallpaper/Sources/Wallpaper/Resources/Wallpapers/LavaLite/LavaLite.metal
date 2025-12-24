@@ -69,5 +69,5 @@ fragment float4 lavaLiteFragment(
     float3 col2 = powr(ink2, float3(exp2));
 
     // Combine and apply gamma correction (powr safe since col values are positive)
-    return float4(powr(col1 * col2, float3(INV_GAMMA)), 1.0f);
+    return float4(powr(1.0f - col1 * col2, float3(INV_GAMMA)), 1.0f);
 }
