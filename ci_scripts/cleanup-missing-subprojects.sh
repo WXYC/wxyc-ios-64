@@ -55,3 +55,4 @@ done
 echo
 echo "Cleanup complete. Removed $REMOVED missing subprojects."
 echo "Project file updated: $PBX"
+

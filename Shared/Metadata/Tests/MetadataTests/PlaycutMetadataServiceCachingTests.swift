@@ -246,5 +246,3 @@ struct PlaycutMetadataServiceCachingTests {
     }
 }
 
-
-

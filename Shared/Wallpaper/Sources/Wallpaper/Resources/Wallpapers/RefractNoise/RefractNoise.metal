@@ -290,4 +290,3 @@ fragment half4 refractNoiseFrag(
     return half4(half3(totalColor), 1.0h);
 }
 
-

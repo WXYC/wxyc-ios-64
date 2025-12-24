@@ -102,5 +102,3 @@ final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     }
 }
 
-
-

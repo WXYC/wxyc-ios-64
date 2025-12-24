@@ -190,6 +190,3 @@ fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]], constant Uniforms&
     return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time);
 }
 
-
-
-
