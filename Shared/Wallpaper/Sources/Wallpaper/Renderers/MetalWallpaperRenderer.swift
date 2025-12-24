@@ -31,7 +31,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var sampler: MTLSamplerState?
     private var noiseTex: MTLTexture?
 
-    private var startTime = CACurrentMediaTime()
+    private var startTime: CFTimeInterval = CACurrentMediaTime()
+    private let startTimeOffset = CFTimeInterval.random(in: 0.0...10.0)
     private let wallpaper: LoadedWallpaper
     private let directiveStore: ShaderDirectiveStore?
     private var runtimeCompiler: RuntimeShaderCompiler?
@@ -215,7 +216,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         let now = CACurrentMediaTime()
         let timeScale = wallpaper.manifest.renderer.timeScale ?? 1.0
-        let t = Float(now - startTime) * timeScale
+        let t = Float(now - startTime + startTimeOffset) * timeScale
 
         guard let cmd = queue.makeCommandBuffer(),
               let enc = cmd.makeRenderCommandEncoder(descriptor: rpd)
