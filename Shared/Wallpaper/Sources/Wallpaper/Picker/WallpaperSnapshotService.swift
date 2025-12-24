@@ -258,11 +258,11 @@ public final class WallpaperSnapshotService {
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
 
-        commandBuffer.commit()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             commandBuffer.addCompletedHandler { _ in
                 continuation.resume()
             }
+            commandBuffer.commit()
         }
 
         // Extract image from texture
