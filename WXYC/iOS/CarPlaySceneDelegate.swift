@@ -7,6 +7,7 @@
 
 import Foundation
 @preconcurrency import CarPlay
+import Core
 import Logger
 import PostHog
 import Intents
