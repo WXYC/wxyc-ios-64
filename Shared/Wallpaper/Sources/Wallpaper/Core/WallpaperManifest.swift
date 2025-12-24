@@ -8,6 +8,7 @@
 import Foundation
 
 /// Codable representation of a wallpaper manifest (wallpaper.json).
+@MainActor
 public struct WallpaperManifest: Codable, Sendable {
     public let id: String
     public let displayName: String

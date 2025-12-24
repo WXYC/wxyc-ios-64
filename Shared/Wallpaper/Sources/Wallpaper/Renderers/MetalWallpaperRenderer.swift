@@ -8,6 +8,7 @@
 import MetalKit
 import simd
 
+@MainActor
 public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Uniforms for stitchable shaders (resolution, time, displayScale).
     struct StitchableUniforms {
@@ -34,6 +35,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private let directiveStore: ShaderDirectiveStore?
     private var runtimeCompiler: RuntimeShaderCompiler?
     private var pixelFormat: MTLPixelFormat = .bgra8Unorm
+    private var directiveObservationTask: Task<Void, Never>?
 
     /// Whether this renderer uses rawMetal mode (noise texture, sampler, rawMetal uniforms).
     private var usesRawMetalMode: Bool {
@@ -44,6 +46,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         self.wallpaper = wallpaper
         self.directiveStore = directiveStore
         super.init()
+    }
+
+    deinit {
+        directiveObservationTask?.cancel()
     }
 
     func configure(view: MTKView) {
@@ -129,9 +135,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 compiler.setDirective(directive, enabled: store.isEnabled(directive))
             }
 
-            // Set up callback for recompilation
-            store.onDirectivesChanged = { [weak self] in
-                self?.recompileShader()
+            // Observe directive changes for recompilation
+            directiveObservationTask = Task { @MainActor [weak self] in
+                for await _ in Observations({ store.availableDirectives }) {
+                    self?.recompileShader()
+                }
             }
         }
 

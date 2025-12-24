@@ -10,9 +10,10 @@ import Observation
 
 /// Main wallpaper configuration - holds the selected wallpaper ID.
 @Observable
+@MainActor
 public final class WallpaperConfiguration {
     private let storageKey = "wallpaper.selectedType.v3"
-    private let defaultWallpaperID = "wxyc_gradient_noise"
+    private let defaultWallpaperID = "wxyc_gradient"
 
     public var selectedWallpaperID: String {
         didSet {

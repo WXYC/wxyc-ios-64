@@ -159,7 +159,7 @@ public final class WallpaperSnapshotService {
                     scale: scale
                 )
             }
-        case .multipass, .swiftUI, .composite:
+        case .swiftUI, .composite:
             // Composite/swiftUI are SwiftUI views, can be rendered via ImageRenderer
             image = await renderSwiftUISnapshot(
                 for: wallpaper,
@@ -259,7 +259,11 @@ public final class WallpaperSnapshotService {
         encoder.endEncoding()
 
         commandBuffer.commit()
-        await commandBuffer.completed()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            commandBuffer.addCompletedHandler { _ in
+                continuation.resume()
+            }
+        }
 
         // Extract image from texture
         return extractImage(from: texture, size: size, scale: scale)

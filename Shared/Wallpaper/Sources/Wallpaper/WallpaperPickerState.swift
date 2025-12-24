@@ -9,6 +9,21 @@ import Foundation
 import Observation
 import SwiftUI
 
+// MARK: - Environment Key
+
+/// Environment key to indicate whether the wallpaper picker is active.
+/// Content can use this to adjust layout (e.g., disable safe area padding when scaled).
+private struct WallpaperPickerActiveKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+public extension EnvironmentValues {
+    var isWallpaperPickerActive: Bool {
+        get { self[WallpaperPickerActiveKey.self] }
+        set { self[WallpaperPickerActiveKey.self] = newValue }
+    }
+}
+
 #if canImport(UIKit)
 import UIKit
 public typealias PlatformImage = UIImage
@@ -18,7 +33,7 @@ public typealias PlatformImage = NSImage
 #endif
 
 /// Represents a captured snapshot of a wallpaper at a specific animation time.
-public struct WallpaperSnapshot {
+public struct WallpaperSnapshot: Sendable {
     public let wallpaperID: String
     public let image: PlatformImage
     /// The animation time offset when this snapshot was captured.

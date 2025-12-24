@@ -9,12 +9,13 @@ import Foundation
 
 /// A loaded wallpaper with its manifest and parameter store.
 @Observable
-public final class LoadedWallpaper: Identifiable {
+@MainActor
+public final class LoadedWallpaper: Identifiable, Sendable {
     public let manifest: WallpaperManifest
     public let parameterStore: ParameterStore
     public let directiveStore: ShaderDirectiveStore
 
-    public var id: String { manifest.id }
+    public nonisolated var id: String { manifest.id }
     public var displayName: String { manifest.displayName }
 
     init(manifest: WallpaperManifest) {
@@ -25,14 +26,17 @@ public final class LoadedWallpaper: Identifiable {
 }
 
 /// Central registry for discovering and loading wallpapers from bundle resources.
-public final class WallpaperRegistry {
+@MainActor
+public final class WallpaperRegistry: Sendable {
     public static let shared = WallpaperRegistry()
 
-    private var loadedWallpapers: [LoadedWallpaper] = []
-    private var wallpapersByID: [String: LoadedWallpaper] = [:]
+    private let loadedWallpapers: [LoadedWallpaper]
+    private let wallpapersByID: [String: LoadedWallpaper]
 
     private init() {
-        loadAllWallpapers()
+        let result = Self.loadAllWallpapers()
+        loadedWallpapers = result.wallpapers
+        wallpapersByID = result.byID
     }
 
     /// Returns all available wallpapers.
@@ -47,19 +51,21 @@ public final class WallpaperRegistry {
 
     // MARK: - Discovery
 
-    private func loadAllWallpapers() {
+    private static func loadAllWallpapers() -> (wallpapers: [LoadedWallpaper], byID: [String: LoadedWallpaper]) {
         let bundle = Bundle.module
         print("WallpaperRegistry: Loading wallpapers from bundle: \(bundle.bundlePath)")
 
         // Discover all JSON files in the bundle
         guard let jsonURLs = bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else {
             print("WallpaperRegistry: No JSON files found in bundle")
-            return
+            return (wallpapers: [], byID: [:])
         }
 
         print("WallpaperRegistry: Found \(jsonURLs.count) JSON files")
 
         let decoder = JSONDecoder()
+        var loadedWallpapers = [LoadedWallpaper]()
+        var byID: [String: LoadedWallpaper] = [:]
 
         for url in jsonURLs {
             do {
@@ -67,9 +73,10 @@ public final class WallpaperRegistry {
                 let manifest = try decoder.decode(WallpaperManifest.self, from: data)
                 let wallpaper = LoadedWallpaper(manifest: manifest)
                 loadedWallpapers.append(wallpaper)
-                wallpapersByID[manifest.id] = wallpaper
+                byID[manifest.id] = wallpaper
                 print("WallpaperRegistry: Loaded wallpaper '\(manifest.displayName)' from \(url.lastPathComponent)")
             } catch {
+                continue
                 // Not a valid wallpaper manifest - skip silently
                 // (could be other JSON files in the bundle)
             }
@@ -79,12 +86,7 @@ public final class WallpaperRegistry {
         loadedWallpapers.sort { $0.displayName < $1.displayName }
 
         print("WallpaperRegistry: Loaded \(loadedWallpapers.count) wallpapers: \(loadedWallpapers.map(\.id))")
-    }
-
-    /// Reloads all wallpapers from disk. Useful for development.
-    public func reload() {
-        loadedWallpapers.removeAll()
-        wallpapersByID.removeAll()
-        loadAllWallpapers()
+        
+        return (wallpapers: loadedWallpapers, byID: byID)
     }
 }

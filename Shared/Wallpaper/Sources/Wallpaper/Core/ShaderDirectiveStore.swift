@@ -11,17 +11,12 @@ import Observation
 /// Observable storage for shader compiler directive states.
 ///
 /// Used to communicate directive toggle states between debug UI and the shader renderer.
-/// Changes to directives trigger shader recompilation.
+/// Changes to directives trigger shader recompilation via `Observations`.
 @Observable
+@MainActor
 public final class ShaderDirectiveStore {
-    /// The directives available for this shader
-    public private(set) var availableDirectives: [DirectiveInfo] = []
-
-    /// Callback invoked when directives change (triggers recompilation)
-    public var onDirectivesChanged: (() -> Void)?
-
     /// Information about a single directive
-    public struct DirectiveInfo: Identifiable {
+    public struct DirectiveInfo: Identifiable, Sendable {
         public let id: String
         public let displayName: String
         public var isEnabled: Bool
@@ -33,7 +28,10 @@ public final class ShaderDirectiveStore {
         }
     }
 
-    public init() {}
+    /// The directives available for this shader
+    public private(set) var availableDirectives: [DirectiveInfo] = []
+
+    public nonisolated init() {}
 
     /// Configures the store with available directives from the shader.
     public func configure(with directiveNames: [String]) {
@@ -53,11 +51,11 @@ public final class ShaderDirectiveStore {
 
     /// Sets whether a directive is enabled.
     public func setEnabled(_ enabled: Bool, for directiveId: String) {
-        guard let index = availableDirectives.firstIndex(where: { $0.id == directiveId }) else { return }
-
+        guard let index = availableDirectives.firstIndex(where: { $0.id == directiveId }) else {
+            return
+        }
         availableDirectives[index].isEnabled = enabled
         saveState(enabled, for: directiveId)
-        onDirectivesChanged?()
     }
 
     /// All currently enabled directive names.
@@ -85,11 +83,11 @@ public final class ShaderDirectiveStore {
             .capitalized
     }
 
-    private func userDefaultsKey(for directiveId: String) -> String {
+    private nonisolated func userDefaultsKey(for directiveId: String) -> String {
         "ShaderDirective.\(directiveId)"
     }
 
-    private func loadSavedState(for directiveId: String) -> Bool {
+    private nonisolated func loadSavedState(for directiveId: String) -> Bool {
         let key = userDefaultsKey(for: directiveId)
         // Default to true if not saved
         if UserDefaults.standard.object(forKey: key) == nil {
@@ -98,7 +96,7 @@ public final class ShaderDirectiveStore {
         return UserDefaults.standard.bool(forKey: key)
     }
 
-    private func saveState(_ enabled: Bool, for directiveId: String) {
+    private nonisolated func saveState(_ enabled: Bool, for directiveId: String) {
         let key = userDefaultsKey(for: directiveId)
         UserDefaults.standard.set(enabled, forKey: key)
     }

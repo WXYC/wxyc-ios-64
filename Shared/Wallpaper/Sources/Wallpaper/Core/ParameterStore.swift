@@ -13,7 +13,8 @@ import Observation
 /// Stores current parameter values at runtime and syncs with UserDefaults
 /// for persistence. The store is keyed by wallpaper ID.
 @Observable
-public final class ParameterStore {
+@MainActor
+public final class ParameterStore: Sendable {
     private var values: [String: Any] = [:]
     private let manifest: WallpaperManifest
 
