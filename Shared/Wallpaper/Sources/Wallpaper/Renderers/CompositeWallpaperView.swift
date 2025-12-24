@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WXUI
 
 /// View for composite wallpapers that layer multiple elements (e.g., gradient + shader overlay).
 public struct CompositeWallpaperView: View {

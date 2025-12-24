@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Playback
+import WXUI
 
 // MARK: - Player Header View
 
@@ -92,8 +93,6 @@ public struct PlayerHeaderView: View {
             }
         }
     }
-    
-    /// Configures the signal boost for the audio visualizer
 }
 
 // MARK: - Helper Functions
@@ -121,7 +120,7 @@ func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
     
     ZStack {
         Rectangle()
-            .foregroundStyle(WXYCBackground())
+            .foregroundStyle(WXYCGradient())
         PlayerHeaderView(
             visualizer: VisualizerDataSource(),
             selectedPlayerType: $selectedPlayerType

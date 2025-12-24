@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WXUI
 
 /// View for pure SwiftUI wallpapers (no shaders).
 public struct SwiftUIWallpaperView: View {

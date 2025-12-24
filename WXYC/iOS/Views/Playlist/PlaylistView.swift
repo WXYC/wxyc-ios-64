@@ -9,6 +9,7 @@
 import SwiftUI
 import WXUI
 import AppIntents
+import DebugPanel
 import PlayerHeaderView
 import PartyHorn
 import Playlist

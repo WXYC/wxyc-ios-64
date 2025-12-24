@@ -1,6 +1,6 @@
 //
 //  WXYCGradient.swift
-//  Wallpaper
+//  WXUI
 //
 //  Created by Jake Bromberg on 12/18/25.
 //

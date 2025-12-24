@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "PlayerHeaderView",
+    name: "DebugPanel",
     platforms: [
         .iOS("18.4"),
         .macOS(.v15),
@@ -13,27 +13,23 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "PlayerHeaderView",
-            targets: ["PlayerHeaderView"]
+            name: "DebugPanel",
+            targets: ["DebugPanel"]
         ),
     ],
     dependencies: [
         .package(name: "Playback", path: "../Playback"),
-        .package(name: "WXUI", path: "../WXUI"),
-        .package(url: "https://github.com/fatbobman/ObservableDefaults", from: "1.7.0")
+        .package(name: "Wallpaper", path: "../Wallpaper"),
+        .package(name: "PlayerHeaderView", path: "../PlayerHeaderView"),
     ],
     targets: [
         .target(
-            name: "PlayerHeaderView",
+            name: "DebugPanel",
             dependencies: [
                 "Playback",
-                "WXUI",
-                .product(name: "ObservableDefaults", package: "ObservableDefaults")
+                "Wallpaper",
+                "PlayerHeaderView",
             ]
-        ),
-        .testTarget(
-            name: "PlayerHeaderViewTests",
-            dependencies: ["PlayerHeaderView", "Playback"]
         ),
     ]
 )
