@@ -1,12 +1,12 @@
 {
-  "id": "neon_topology",
-  "displayName": "Neon Topology",
+  "id": "neon_topology_iso",
+  "displayName": "Neon Topology (Isolines)",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
-    "shaderFile": "NeonTopology.metal",
-    "functionName": "neonTopology",
-    "fragmentFunction": "neonTopologyFrag"
+    "shaderFile": "NeonTopologyIso.metal",
+    "functionName": "neonTopologyIso",
+    "fragmentFunction": "neonTopologyIsoFrag"
   },
   "parameters": [],
   "shaderArguments": [
@@ -15,3 +15,7 @@
     { "source": "time" }
   ]
 }
+
+
+
+

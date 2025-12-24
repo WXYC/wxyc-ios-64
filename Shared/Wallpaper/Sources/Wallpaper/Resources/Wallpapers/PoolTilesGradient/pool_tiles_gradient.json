@@ -1,6 +1,6 @@
 {
   "id": "pool_tiles_gradient",
-  "displayName": "Pool Suite",
+  "displayName": "Pool Suite (Backup)",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",

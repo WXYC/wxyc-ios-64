@@ -1,11 +1,10 @@
 //
-//  NeonTopologyA.metal
+//  NeonTopologyIso.metal
 //  Wallpaper
 //
-//  Option A: Algorithmic optimizations
-//  - Reduced octaves (3 -> 2)
-//  - Reduced edge samples (4 -> 2 diagonal)
-//  - Reused center noise for background blend
+//  Strategy: single-sample isolines (no neighbor-based edge detection)
+//  - 1 noise eval per pixel (perlinNoiseOctaves at center)
+//  - Derivative-based AA width for stable, even strokes
 //
 
 #include <metal_stdlib>
@@ -16,7 +15,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float displayScale;
 };
 
 struct VertexOut {
@@ -138,65 +137,59 @@ static inline float perlinNoiseOctaves(float3 position, int freq, int octaves,
     return value;
 }
 
-// Fast quantize helper
-static inline float quantize10(float v) {
-    return floor((v + 1.0f) * 5.0f) * 0.1f;
-}
-
-// Core implementation - optimized for performance
-static half4 neonTopologyAImpl(float2 position, float width, float height, float time) {
+// Core implementation - isoline-based "topology" strokes (no neighbor samples)
+static half4 neonTopologyIsoImpl(float2 position, float width, float height, float time) {
     float aspect = width / height;
     float invWidth = 1.0f / width;
     float invHeight = 1.0f / height;
 
-    // Precompute scaled position
     float2 pos = float2(position.x * invWidth * aspect, position.y * invHeight);
-
-    // Neighbor offsets (scaled)
-    float dx = invWidth * aspect;
-    float dy = invHeight;
 
     uint seed = 0x578437adU;
     float z = time * 0.01f;
     int freq = 5;
-    int octave = 2;  // Reduced from 3 to 2
+    int octave = 2;
     float persistence = 0.5f;
     float lacunarity = 2.0f;
 
-    // Center noise - compute once, reuse for background blend and edge detection
-    float rawValue = perlinNoiseOctaves(float3(pos, z), freq, octave, persistence, lacunarity, seed);
-    float valueback = (rawValue + 1.0f) * 0.5f;
-    float value = floor(valueback * 10.0f) * 0.1f;
+    float raw = perlinNoiseOctaves(float3(pos, z), freq, octave, persistence, lacunarity, seed);
+    float valueback = (raw + 1.0f) * 0.5f; // [0,1]
 
-    // Edge detection with 2-sample diagonal (cheaper than 4-sample Laplacian)
-    float2 posTR = pos + float2(dx, -dy);
-    float2 posBL = pos + float2(-dx, dy);
+    // 10 bands -> draw strokes along band boundaries.
+    float t = valueback * 10.0f;
+    float ft = fract(t);
+    float d = min(ft, 1.0f - ft); // distance to nearest boundary in "t-space"
 
-    float valueTR = quantize10(perlinNoiseOctaves(float3(posTR, z), freq, octave, persistence, lacunarity, seed));
-    float valueBL = quantize10(perlinNoiseOctaves(float3(posBL, z), freq, octave, persistence, lacunarity, seed));
+    // Derivative-based AA / thickness in t-space.
+    // (use abs(dfdx)+abs(dfdy) for compatibility; fwidth(t) would also work)
+    float w = abs(dfdx(t)) + abs(dfdy(t));
+    w = clamp(w * 1.25f, 0.0025f, 0.05f);
 
-    // Simple edge detection: difference from neighbors
-    float edge = abs(value - valueTR) + abs(value - valueBL);
-    edge = step(0.01f, edge);  // Binary threshold
+    float edge = 1.0f - smoothstep(0.0f, w, d);
 
-    // Color blending with half precision
     half3 purple = half3(1.0h, 0.0h, 1.0h);
     half3 cyan = half3(0.0h, 1.0h, 1.0h);
     half blend = half(valueback);
 
     half3 edgeColor = mix(cyan, purple, blend) * half(edge);
-    half3 baseColor = half3(0.0h, 0.0h, half(value) * 0.2h);
+
+    float q = floor(valueback * 10.0f) * 0.1f;
+    half3 baseColor = half3(0.0h, 0.0h, half(q) * 0.2h);
 
     return half4(edgeColor + baseColor, 1.0h);
 }
 
 [[ stitchable ]]
-half4 neonTopologyA(float2 position, half4 inColor, float width, float height, float time) {
-    return neonTopologyAImpl(position, width, height, time);
+half4 neonTopologyIso(float2 position, half4 inColor, float width, float height, float time) {
+    return neonTopologyIsoImpl(position, width, height, time);
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 neonTopologyAFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
+fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
     float2 pos = in.uv * u.resolution;
-    return neonTopologyAImpl(pos, u.resolution.x, u.resolution.y, u.time);
+    return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time);
 }
+
+
+
+

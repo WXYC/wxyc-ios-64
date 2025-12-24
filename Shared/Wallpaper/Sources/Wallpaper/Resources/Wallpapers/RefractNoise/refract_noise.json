@@ -1,12 +1,15 @@
 {
-  "id": "neon_topology_c",
-  "displayName": "Neon Topology C",
+  "id": "refract_noise",
+  "displayName": "Pool Suite",
   "version": "1.0.0",
   "renderer": {
     "type": "rawMetal",
     "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "neonTopologyCFrag"
+    "fragmentFunction": "refractNoiseFrag",
+    "timeScale": 1.0
   },
   "parameters": [],
   "shaderArguments": []
 }
+
+
