@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1620"
+   LastUpgradeVersion = "2620"
    wasCreatedForAppExtension = "YES"
-   version = "1.7">
+   version = "2.0">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
-      runPostActionsOnFailure = "NO">
+      buildArchitectures = "Automatic">
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -16,9 +16,23 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "06A8104BBEC623A14D7D631F"
+               BlueprintIdentifier = "236B51CD2EFC651A0058AD01"
                BuildableName = "NowPlayingWidget.appex"
                BlueprintName = "NowPlayingWidget"
+               ReferencedContainer = "container:WXYC.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "CB30AABA6C3A478076794CBD"
+               BuildableName = "WXYC.app"
+               BlueprintName = "WXYC"
                ReferencedContainer = "container:WXYC.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -29,26 +43,14 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      onlyGenerateCoverageForSpecifiedTargets = "NO">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "06A8104BBEC623A14D7D631F"
-            BuildableName = "NowPlayingWidget.appex"
-            BlueprintName = "NowPlayingWidget"
-            ReferencedContainer = "container:WXYC.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
-      <Testables>
-      </Testables>
-      <CommandLineArguments>
-      </CommandLineArguments>
+      shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = ""
       selectedLauncherIdentifier = "Xcode.IDEFoundation.Launcher.PosixSpawn"
       launchStyle = "0"
+      askForAppToLaunch = "Yes"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
@@ -59,33 +61,48 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "06A8104BBEC623A14D7D631F"
-            BuildableName = "NowPlayingWidget.appex"
-            BlueprintName = "NowPlayingWidget"
+            BlueprintIdentifier = "CB30AABA6C3A478076794CBD"
+            BuildableName = "WXYC.app"
+            BlueprintName = "WXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-      </CommandLineArguments>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "_XCWidgetKind"
+            value = ""
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "_XCWidgetDefaultView"
+            value = "timeline"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "_XCWidgetFamily"
+            value = "systemMedium"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
       shouldUseLaunchSchemeArgsEnv = "YES"
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
-      debugDocumentVersioning = "YES">
+      debugDocumentVersioning = "YES"
+      askForAppToLaunch = "Yes"
+      launchAutomaticallySubstyle = "2">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "06A8104BBEC623A14D7D631F"
-            BuildableName = "NowPlayingWidget.appex"
-            BlueprintName = "NowPlayingWidget"
+            BlueprintIdentifier = "CB30AABA6C3A478076794CBD"
+            BuildableName = "WXYC.app"
+            BlueprintName = "WXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-      </CommandLineArguments>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
