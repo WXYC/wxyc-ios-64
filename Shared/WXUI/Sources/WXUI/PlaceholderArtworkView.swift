@@ -73,12 +73,3 @@ public struct PlaceholderArtworkView: View {
         }
     }
 }
-
-#Preview {
-    PlaceholderArtworkView(
-        cornerRadius: 12,
-        shadowYOffset: 2,
-        meshGradient: WXYCMeshAnimation().meshGradient
-    )
-    .background(WXYCBackground())
-}
