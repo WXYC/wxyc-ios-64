@@ -12,7 +12,6 @@ import PostHog
 public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, Sendable {
     case radioPlayer = "RadioPlayer"
     case avAudioStreamer = "AVAudioStreamer"
-    case miniMP3Streamer = "MiniMP3Streamer"
     
     // MARK: - Persistence
     
@@ -69,8 +68,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             return "RadioPlayer (AVPlayer)"
         case .avAudioStreamer:
             return "AVAudioStreamer (AudioToolbox)"
-        case .miniMP3Streamer:
-            return "MiniMP3Streamer (MiniMP3)"
         }
     }
     
@@ -80,8 +77,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             return "Uses AVPlayer for simple HTTP streaming"
         case .avAudioStreamer:
             return "Uses URLSession + AudioToolbox for MP3 decoding"
-        case .miniMP3Streamer:
-            return "Uses URLSession + MiniMP3 (pure C decoder, works on watchOS)"
         }
     }
 }

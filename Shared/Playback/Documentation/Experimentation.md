@@ -13,8 +13,7 @@ The experiment returns a **String** value (the variant key). This is mapped to t
 | Variant Key (PostHog) | PlayerControllerType (Swift) | Description |
 | :--- | :--- | :--- |
 | `radioPlayer` | `.radioPlayer` | Uses `AVPlayer` with custom buffering logic. |
-| `avAudioStreamer` | `.avAudioStreamer` | Uses `AVAudioStreamer` library (Current Default). |
-| `miniMP3Streamer` | `.miniMP3Streamer` | Uses `MiniMP3` based streamer. |
+| `avAudioStreamer` | `.avAudioStreamer` | Uses URLSession + AudioToolbox for MP3 decoding (Current Default). |
 
 *Note: If the flag returns a value not listed here, or is missing, the app falls back to `.avAudioStreamer`.*
 
