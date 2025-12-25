@@ -11,7 +11,6 @@ import PostHog
 /// Available PlaybackController implementations
 public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, Sendable {
     case radioPlayer = "RadioPlayer"
-    case audioPlayer = "AudioPlayer"
     case avAudioStreamer = "AVAudioStreamer"
     case miniMP3Streamer = "MiniMP3Streamer"
     
@@ -24,7 +23,7 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     private static let experimentKey = "experiment_player_controller"
     
     /// The default player controller type
-    public static let defaultType: PlayerControllerType = .audioPlayer
+    public static let defaultType: PlayerControllerType = .avAudioStreamer
     
     /// Loads the persisted player controller type, or returns default
     public static func loadPersisted() -> PlayerControllerType {
@@ -68,8 +67,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
         switch self {
         case .radioPlayer:
             return "RadioPlayer (AVPlayer)"
-        case .audioPlayer:
-            return "AudioPlayer (AudioStreaming)"
         case .avAudioStreamer:
             return "AVAudioStreamer (AudioToolbox)"
         case .miniMP3Streamer:
@@ -81,8 +78,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
         switch self {
         case .radioPlayer:
             return "Uses AVPlayer for simple HTTP streaming"
-        case .audioPlayer:
-            return "Uses AudioStreaming library with custom buffering"
         case .avAudioStreamer:
             return "Uses URLSession + AudioToolbox for MP3 decoding"
         case .miniMP3Streamer:

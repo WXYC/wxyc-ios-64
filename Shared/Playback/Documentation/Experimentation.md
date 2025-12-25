@@ -13,11 +13,10 @@ The experiment returns a **String** value (the variant key). This is mapped to t
 | Variant Key (PostHog) | PlayerControllerType (Swift) | Description |
 | :--- | :--- | :--- |
 | `radioPlayer` | `.radioPlayer` | Uses `AVPlayer` with custom buffering logic. |
-| `audioPlayer` | `.audioPlayer` | Uses `AudioStreaming` library (Current Default). |
-| `avAudioStreamer` | `.avAudioStreamer` | Uses `AVAudioStreamer` library. |
+| `avAudioStreamer` | `.avAudioStreamer` | Uses `AVAudioStreamer` library (Current Default). |
 | `miniMP3Streamer` | `.miniMP3Streamer` | Uses `MiniMP3` based streamer. |
 
-*Note: If the flag returns a value not listed here, or is missing, the app falls back to `.audioPlayer`.*
+*Note: If the flag returns a value not listed here, or is missing, the app falls back to `.avAudioStreamer`.*
 
 ### 2. Logic & Priority
 
@@ -35,7 +34,7 @@ The selection logic is strictly defined in `PlayerControllerType.loadPersisted()
 
 3.  **Local Default** (`Fallback`)
     *   **Source:** `PlayerControllerType.defaultType`.
-    *   **Value:** `.audioPlayer`.
+    *   **Value:** `.avAudioStreamer`.
     *   **Purpose:** Safety fallback if network fails, flag is missing, or experiment is turned off.
 
 ### 3. Lifecycle & Timing

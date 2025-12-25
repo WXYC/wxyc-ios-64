@@ -52,15 +52,12 @@ public final class AudioPlayerController {
     private static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
         let url: URL = RadioStation.WXYC.streamURL
         switch type {
-        case .audioPlayer:
-            return StreamingAudioPlayer(url: url)
-            
         case .radioPlayer:
             return RadioPlayerAdapter(url: url)
-            
+
         case .avAudioStreamer:
             return AVAudioStreamerAdapter(url: url)
-            
+
         case .miniMP3Streamer:
             return MiniMP3StreamerAdapter(url: url)
         }
@@ -68,7 +65,7 @@ public final class AudioPlayerController {
     
     // MARK: - Public Properties
     
-    public var playerType: PlayerControllerType = .audioPlayer {
+    public var playerType: PlayerControllerType = .avAudioStreamer {
         didSet {
             replacePlayer(Self.createPlayer(for: playerType))
         }
@@ -122,7 +119,7 @@ public final class AudioPlayerController {
         notificationCenter: NotificationCenter = .default,
         analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
     ) {
-        self.player = player ?? Self.createPlayer(for: .audioPlayer)
+        self.player = player ?? Self.createPlayer(for: .avAudioStreamer)
         self.audioSession = audioSession
         self.remoteCommandCenter = remoteCommandCenter
         self.notificationCenter = notificationCenter
@@ -141,7 +138,7 @@ public final class AudioPlayerController {
         notificationCenter: NotificationCenter = .default,
         analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
     ) {
-        self.player = player ?? Self.createPlayer(for: .audioPlayer)
+        self.player = player ?? Self.createPlayer(for: .avAudioStreamer)
         self.notificationCenter = notificationCenter
         self.analytics = analytics
     }
@@ -483,7 +480,7 @@ extension AudioPlayerController {
         stallStartTime = Date()
         
         let event = StallEvent(
-            playerType: .audioPlayer, // Using .audioPlayer as this controller is type .audioPlayer typically
+            playerType: .avAudioStreamer, // Using .avAudioStreamer as this controller is type .avAudioStreamer typically
             timestamp: Date(),
             playbackDuration: playbackDuration,
             reason: .bufferUnderrun
@@ -496,7 +493,7 @@ extension AudioPlayerController {
               let stallStart = stallStartTime else { return }
         
         let event = RecoveryEvent(
-            playerType: .audioPlayer,
+            playerType: .avAudioStreamer,
             successful: true,
             attemptCount: 1,
             stallDuration: Date().timeIntervalSince(stallStart),

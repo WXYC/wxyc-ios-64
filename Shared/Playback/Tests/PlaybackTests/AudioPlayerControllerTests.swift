@@ -51,8 +51,8 @@ struct AudioPlayerControllerTests {
             analytics: nil
         )
         
-        // Default is audioPlayer
-        #expect(controller.playerType == .audioPlayer)
+        // Default is avAudioStreamer
+        #expect(controller.playerType == .avAudioStreamer)
         
         // Change to radioPlayer
         controller.playerType = .radioPlayer

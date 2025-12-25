@@ -397,10 +397,7 @@ struct PlaybackControllerManagerTests {
         
         manager.switchTo(.miniMP3Streamer)
         #expect(manager.currentType == .miniMP3Streamer)
-        
-        manager.switchTo(.audioPlayer)
-        #expect(manager.currentType == .audioPlayer)
-        
+
         manager.switchTo(.radioPlayer)
         #expect(manager.currentType == .radioPlayer)
     }
