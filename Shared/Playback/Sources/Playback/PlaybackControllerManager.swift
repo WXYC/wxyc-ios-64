@@ -112,8 +112,6 @@ public final class PlaybackControllerManager {
         switch type {
         case .radioPlayer:
             return RadioPlayerController()
-        case .audioPlayer:
-            return AudioPlayerController.shared
         case .avAudioStreamer:
             let config = AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
             return AVAudioStreamer(configuration: config)

@@ -12,7 +12,6 @@ struct PlaybackMetricsTests {
     
     @Test("All players report correct stall metrics", arguments: [
         PlayerControllerType.radioPlayer,
-        PlayerControllerType.audioPlayer,
         PlayerControllerType.avAudioStreamer,
         PlayerControllerType.miniMP3Streamer
     ])
@@ -34,29 +33,7 @@ struct PlaybackMetricsTests {
             
             // Yield to allow async event handling
             try await Task.sleep(for: .milliseconds(100))
-            
-        case .audioPlayer:
-            let mockPlayer = MockAudioPlayer()
-            // Use Dependency Injection to verify reporter
-            // Ideally AudioPlayerController would take a reporter in init, but it uses PostHogSDK.shared internally
-            // For now, we verify AudioPlayerController by unit testing it separately or updating it to be testable.
-            // Wait, AudioPlayerController uses `analytics` property which is PlaybackMetricsReporter.
-            // But checking its init... it takes `analytics` of type `AudioAnalytics`.
-            // Let's assume for this high-level test we need to mock it.
-            // Actually, AudioPlayerController's `analytics` property is `AudioAnalytics` protocol but handled as `PlaybackMetricsReporter` in code.
-            // We need to refactor AudioPlayerController to fully support this test, OR simpler:
-            
-            // Let's rely on the previous work where we verified StreamerMetricsAdapter separately.
-            // This test suite aims to UNIFY them.
-            
-            // TODO: Ideally we instantiate AudioPlayerController with the mock reporter.
-            // But AudioPlayerController is complex. Let's look at `AudioPlayerController.swift` again if needed.
-            // For now, I will skip .audioPlayer execution in this single block if it's too hard to instantiate cleanly without mocks.
-            // But we can test `StreamerMetricsAdapter` logic here.
-            
-            // Actually, let's keep the adapters separate logic for now, and focus on consistent EVENT OUTPUT.
-            break
-            
+
         case .avAudioStreamer:
             let adapter = StreamerMetricsAdapter(reporter: reporter)
             let config = AVAudioStreamerConfiguration(url: url)
@@ -69,12 +46,7 @@ struct PlaybackMetricsTests {
             let streamer = MiniMP3Streamer(configuration: config)
             adapter.miniMP3StreamerDidStall(streamer)
         }
-        
-        if type == .audioPlayer {
-            // Skip assertion for AudioPlayer until we wire up its DI properly in the test
-            return
-        }
-        
+
         #expect(reporter.reportedStalls.count == 1, "Player type \(type) did not report exactly one stall")
         #expect(reporter.reportedStalls.first?.playerType == type)
         #expect(reporter.reportedStalls.first?.reason == .bufferUnderrun)
@@ -84,7 +56,6 @@ struct PlaybackMetricsTests {
     
     @Test("All players report correct recovery metrics", arguments: [
         PlayerControllerType.radioPlayer,
-        // PlayerControllerType.audioPlayer, // TODO: Add once DI is ready
         PlayerControllerType.avAudioStreamer,
         PlayerControllerType.miniMP3Streamer
     ])
