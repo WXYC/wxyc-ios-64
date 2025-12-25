@@ -14,9 +14,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     case audioPlayer = "AudioPlayer"
     case avAudioStreamer = "AVAudioStreamer"
     case miniMP3Streamer = "MiniMP3Streamer"
-    #if os(iOS) || os(watchOS)
-    case ffmpegAudio = "FFmpegAudio"
-    #endif
     
     // MARK: - Persistence
     
@@ -77,10 +74,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             return "AVAudioStreamer (NIO + AudioToolbox)"
         case .miniMP3Streamer:
             return "MiniMP3Streamer (NIO + MiniMP3)"
-        #if os(iOS) || os(watchOS)
-        case .ffmpegAudio:
-            return "FFmpeg (FFmpegAudio)"
-        #endif
         }
     }
     
@@ -94,10 +87,6 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             return "Uses Swift NIO + AudioToolbox for MP3 decoding"
         case .miniMP3Streamer:
             return "Uses Swift NIO + MiniMP3 (pure C decoder, works on watchOS)"
-        #if os(iOS) || os(watchOS)
-        case .ffmpegAudio:
-            return "Uses FFmpeg-based decoder with AVAudioEngine output"
-        #endif
         }
     }
 }

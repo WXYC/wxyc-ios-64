@@ -1,5 +1,0 @@
----
-triple:          'arm64_32-apple-darwin'
-binary-path:     '/Users/jake/Developer/libFfmpegAudio/build/DerivedData/Build/Intermediates.noindex/ArchiveIntermediates/FfmpegAudio-watchOS/InstallationBuildProductsLocation/Library/Frameworks/FfmpegAudio.framework/FfmpegAudio'
-relocations:     []
-...

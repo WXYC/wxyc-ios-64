@@ -63,11 +63,6 @@ public final class AudioPlayerController {
             
         case .miniMP3Streamer:
             return MiniMP3StreamerAdapter(url: url)
-            
-        #if os(iOS) || os(watchOS)
-        case .ffmpegAudio:
-            return FfmpegAudioAdapter(url: url)
-        #endif
         }
     }
     

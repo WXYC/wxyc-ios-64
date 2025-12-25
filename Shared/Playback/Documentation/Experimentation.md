@@ -16,7 +16,6 @@ The experiment returns a **String** value (the variant key). This is mapped to t
 | `audioPlayer` | `.audioPlayer` | Uses `AudioStreaming` library (Current Default). |
 | `avAudioStreamer` | `.avAudioStreamer` | Uses `AVAudioStreamer` library. |
 | `miniMP3Streamer` | `.miniMP3Streamer` | Uses `MiniMP3` based streamer. |
-| `ffmpegAudio` | `.ffmpegAudio` | Uses `FfmpegAudio` library (iOS only). |
 
 *Note: If the flag returns a value not listed here, or is missing, the app falls back to `.audioPlayer`.*
 
