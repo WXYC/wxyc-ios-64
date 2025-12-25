@@ -27,8 +27,3 @@ public struct WXYCLogo: View {
             )
     }
 }
-
-#Preview {
-    WXYCLogo()
-        .background(WXYCBackground())
-}
