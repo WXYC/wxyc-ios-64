@@ -68,12 +68,6 @@ struct PlaybackMetricsTests {
             let config = MiniMP3StreamerConfiguration(url: url)
             let streamer = MiniMP3Streamer(configuration: config)
             adapter.miniMP3StreamerDidStall(streamer)
-            
-        #if os(iOS) || os(watchOS)
-        case .ffmpegAudio:
-            // Skipped as per plan
-            break
-        #endif
         }
         
         if type == .audioPlayer {

@@ -120,10 +120,6 @@ public final class PlaybackControllerManager {
         case .miniMP3Streamer:
             let config = MiniMP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
             return MiniMP3Streamer(configuration: config)
-        #if canImport(FfmpegAudio)
-        case .ffmpegAudio:
-            return FfmpegAudioController(streamURL: RadioStation.WXYC.streamURL)
-        #endif
         }
     }
     
