@@ -170,9 +170,9 @@ struct PlaybackControllerManagerTests {
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
         factoryCalls.removeAll() // Clear initialization call
         
-        manager.switchTo(.miniMP3Streamer)
-        
-        #expect(factoryCalls == [.miniMP3Streamer])
+        manager.switchTo(.avAudioStreamer)
+
+        #expect(factoryCalls == [.avAudioStreamer])
     }
     
     @Test("switchTo is no-op when switching to same type")
@@ -394,12 +394,12 @@ struct PlaybackControllerManagerTests {
         
         manager.switchTo(.avAudioStreamer)
         #expect(manager.currentType == .avAudioStreamer)
-        
-        manager.switchTo(.miniMP3Streamer)
-        #expect(manager.currentType == .miniMP3Streamer)
 
         manager.switchTo(.radioPlayer)
         #expect(manager.currentType == .radioPlayer)
+
+        manager.switchTo(.avAudioStreamer)
+        #expect(manager.currentType == .avAudioStreamer)
     }
 }
 

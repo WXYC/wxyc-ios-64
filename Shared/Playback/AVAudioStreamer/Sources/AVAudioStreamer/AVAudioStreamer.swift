@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 @preconcurrency import AVFoundation
+import Core
 
 /// Main audio streaming player that coordinates all components
 @MainActor
@@ -55,7 +56,7 @@ public final class AVAudioStreamer {
     private let audioPlayer: AudioEnginePlayer
 
     @ObservationIgnored
-    private var reconnectAttempts = 0
+    internal var backoffTimer: ExponentialBackoff
     @ObservationIgnored
     private var reconnectTask: Task<Void, Never>?
 
@@ -74,8 +75,12 @@ public final class AVAudioStreamer {
 
     // MARK: - Initialization
 
-    public init(configuration: AVAudioStreamerConfiguration) {
+    public init(
+        configuration: AVAudioStreamerConfiguration,
+        backoffTimer: ExponentialBackoff = .default
+    ) {
         self.configuration = configuration
+        self.backoffTimer = backoffTimer
 
         // Create delegate adapters
         let httpAdapter = HTTPStreamClientDelegateAdapter()
@@ -128,7 +133,7 @@ public final class AVAudioStreamer {
 
         // Otherwise, connect and start streaming
         state = .connecting
-        reconnectAttempts = 0
+        backoffTimer.reset()
 
         do {
             try await httpClient.connect()
@@ -140,12 +145,23 @@ public final class AVAudioStreamer {
         }
     }
 
-    /// Pause playback (buffering continues)
+    /// Pause playback and reset stream for live playback.
+    /// Unlike stop(), pause() preserves backoff state for consistent retry behavior.
+    /// For live streaming, we disconnect completely so resume connects to live audio,
+    /// not stale buffered audio.
     public func pause() {
         guard case .playing = state else { return }
 
-        audioPlayer.pause()
+        reconnectTask?.cancel()
+        reconnectTask = nil
+
+        httpClient.disconnect()
+        audioPlayer.stop()
+        bufferQueue.clear()
+        mp3Decoder.reset()
+
         state = .paused
+        // Note: Don't reset backoffTimer - preserve retry state for session continuity
     }
 
     /// Stop playback and disconnect
@@ -159,7 +175,7 @@ public final class AVAudioStreamer {
         mp3Decoder.reset()
 
         state = .idle
-        reconnectAttempts = 0
+        backoffTimer.reset()
     }
 
     // MARK: - Private Methods
@@ -217,54 +233,42 @@ public final class AVAudioStreamer {
         // Only handle if we're not intentionally stopping
         guard state != .idle else { return }
 
-        // Attempt reconnection if configured
-        if configuration.autoReconnect && reconnectAttempts < configuration.maxReconnectAttempts {
-            attemptReconnect()
-        } else {
-            let error = NSError(
-                domain: "AVAudioStreamer",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Connection lost"]
-            )
-            state = .error(error)
-            delegate?.audioStreamer(didEncounterError: error)
-        }
+        attemptReconnect()
     }
 
     fileprivate func handleError(_ error: Error) {
         state = .error(error)
         delegate?.audioStreamer(didEncounterError: error)
 
-        // Attempt reconnection if configured
-        if configuration.autoReconnect && reconnectAttempts < configuration.maxReconnectAttempts {
-            attemptReconnect()
-        }
+        attemptReconnect()
     }
 
     fileprivate func attemptReconnect() {
-        reconnectAttempts += 1
+        let waitTime = backoffTimer.nextWaitTime()
 
         reconnectTask = Task {
-            try? await Task.sleep(nanoseconds: UInt64(configuration.reconnectDelay * 1_000_000_000))
+            try? await Task.sleep(for: .seconds(waitTime))
 
             guard !Task.isCancelled else { return }
 
             do {
                 try await httpClient.connect()
+                // Reset backoff on successful connection
+                backoffTimer.reset()
             } catch {
                 handleError(error)
             }
         }
     }
 
-    fileprivate func handleStall() {
+    internal func handleStall() {
         if case .playing = state {
             state = .stalled
             delegate?.audioStreamerDidStall(self)
         }
     }
 
-    fileprivate func handleRecovery() {
+    internal func handleRecovery() {
         if case .stalled = state {
             state = .playing
             delegate?.audioStreamerDidRecover(self)

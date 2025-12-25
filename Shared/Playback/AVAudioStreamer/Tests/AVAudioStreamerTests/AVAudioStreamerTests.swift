@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import AVFoundation
 @testable import AVAudioStreamer
+import Core
 
 @Suite("AVAudioStreamer Tests")
 struct AVAudioStreamerTests {
@@ -10,29 +11,26 @@ struct AVAudioStreamerTests {
 
     @Test("Configuration initialization")
     func testConfigurationInitialization() {
-        let config = StreamingAudioConfiguration(url: Self.testStreamURL)
+        let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
 
         #expect(config.url == Self.testStreamURL)
-        #expect(config.autoReconnect == true)
-        #expect(config.maxReconnectAttempts == 3)
         #expect(config.bufferQueueSize == 20)
         #expect(config.minimumBuffersBeforePlayback == 5)
+        #expect(config.connectionTimeout == 10.0)
     }
 
     @Test("Custom configuration")
     func testCustomConfiguration() {
-        let config = StreamingAudioConfiguration(
+        let config = AVAudioStreamerConfiguration(
             url: Self.testStreamURL,
-            autoReconnect: false,
-            maxReconnectAttempts: 5,
             bufferQueueSize: 30,
-            minimumBuffersBeforePlayback: 10
+            minimumBuffersBeforePlayback: 10,
+            connectionTimeout: 15.0
         )
 
-        #expect(config.autoReconnect == false)
-        #expect(config.maxReconnectAttempts == 5)
         #expect(config.bufferQueueSize == 30)
         #expect(config.minimumBuffersBeforePlayback == 10)
+        #expect(config.connectionTimeout == 15.0)
     }
 
     @Test("State equality")
@@ -53,7 +51,7 @@ struct AVAudioStreamerTests {
     @Test("Streamer initialization", .tags(.initialization))
     func testStreamerInitialization() async {
         await MainActor.run {
-            let config = StreamingAudioConfiguration(url: Self.testStreamURL)
+            let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
             let streamer = AVAudioStreamer(configuration: config)
 
             #expect(streamer.state == .idle)
@@ -64,10 +62,7 @@ struct AVAudioStreamerTests {
     @Test("Connect to live stream", .tags(.integration, .network))
     func testConnectToLiveStream() async throws {
         try await MainActor.run {
-            let config = StreamingAudioConfiguration(
-                url: Self.testStreamURL,
-                autoReconnect: false
-            )
+            let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
             let streamer = AVAudioStreamer(configuration: config)
             let delegate = TestDelegate()
             streamer.delegate = delegate
@@ -92,7 +87,7 @@ struct AVAudioStreamerTests {
     @Test("Receive PCM buffers from live stream", .tags(.integration, .network))
     func testReceivePCMBuffers() async throws {
         try await MainActor.run {
-            let config = StreamingAudioConfiguration(url: Self.testStreamURL)
+            let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
             let streamer = AVAudioStreamer(configuration: config)
             let delegate = TestDelegate()
             streamer.delegate = delegate
@@ -120,7 +115,7 @@ struct AVAudioStreamerTests {
     @Test("State transitions", .tags(.integration, .network))
     func testStateTransitions() async throws {
         try await MainActor.run {
-            let config = StreamingAudioConfiguration(url: Self.testStreamURL)
+            let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
             let streamer = AVAudioStreamer(configuration: config)
             let delegate = TestDelegate()
             streamer.delegate = delegate
@@ -155,7 +150,7 @@ struct AVAudioStreamerTests {
     @Test("Pause and resume", .tags(.integration, .network))
     func testPauseAndResume() async throws {
         try await MainActor.run {
-            let config = StreamingAudioConfiguration(url: Self.testStreamURL)
+            let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
             let streamer = AVAudioStreamer(configuration: config)
 
             // Start streaming
@@ -191,7 +186,7 @@ struct AVAudioStreamerTests {
     @Test("Volume control")
     func testVolumeControl() async {
         await MainActor.run {
-            let config = StreamingAudioConfiguration(url: Self.testStreamURL)
+            let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
             let streamer = AVAudioStreamer(configuration: config)
 
             // Default volume should be 1.0

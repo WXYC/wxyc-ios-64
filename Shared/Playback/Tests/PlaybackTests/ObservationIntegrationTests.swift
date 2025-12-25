@@ -8,6 +8,7 @@
 import Testing
 import Foundation
 @testable import Playback
+import Core
 
 @Suite("Observation Integration Tests", .serialized)
 @MainActor
