@@ -11,8 +11,7 @@ import XCTest
 
 // MARK: - WallpaperPickerState Tests
 
-@MainActor
-final class WallpaperPickerStateTests: XCTestCase {
+nonisolated final class WallpaperPickerStateTests: XCTestCase {
 
     func testInitialStateIsInactive() {
         let state = WallpaperPickerState()
@@ -130,7 +129,7 @@ final class WallpaperPickerStateTests: XCTestCase {
 
 // MARK: - WallpaperRegistry Tests
 
-final class WallpaperRegistryTests: XCTestCase {
+nonisolated final class WallpaperRegistryTests: XCTestCase {
 
     func testRegistryContainsWallpapers() {
         let wallpapers = WallpaperRegistry.shared.wallpapers
@@ -154,7 +153,7 @@ final class WallpaperRegistryTests: XCTestCase {
 
 // MARK: - WallpaperSnapshot Tests
 
-final class WallpaperSnapshotTests: XCTestCase {
+nonisolated final class WallpaperSnapshotTests: XCTestCase {
 
     func testSnapshotStoresData() {
         let image = UIImage()
