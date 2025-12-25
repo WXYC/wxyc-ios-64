@@ -3,9 +3,8 @@ import AVFoundation
 import PostHog
 #if !os(watchOS)
 import AVAudioStreamer
-import MiniMP3Streamer
 
-final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate, MiniMP3StreamerDelegate {
+final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate {
     private let reporter: PlaybackMetricsReporter
     private var stallStartTime: Date?
     
@@ -26,21 +25,7 @@ final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate
     func audioStreamer(didEncounterError error: Error) {
         handleError(playerType: .avAudioStreamer, error: error)
     }
-    
-    // MARK: - MiniMP3StreamerDelegate
-    
-    func miniMP3StreamerDidStall(_ streamer: MiniMP3Streamer) {
-        handleStall(playerType: .miniMP3Streamer)
-    }
-    
-    func miniMP3StreamerDidRecover(_ streamer: MiniMP3Streamer) {
-        handleRecovery(playerType: .miniMP3Streamer)
-    }
-    
-    func miniMP3Streamer(didEncounterError error: Error) {
-        handleError(playerType: .miniMP3Streamer, error: error)
-    }
-    
+
     // MARK: - Helpers
     
     private func handleStall(playerType: PlayerControllerType) {

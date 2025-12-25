@@ -57,9 +57,6 @@ public final class AudioPlayerController {
 
         case .avAudioStreamer:
             return AVAudioStreamerAdapter(url: url)
-
-        case .miniMP3Streamer:
-            return MiniMP3StreamerAdapter(url: url)
         }
     }
     

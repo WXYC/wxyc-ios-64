@@ -3,7 +3,6 @@ import Foundation
 import AVFoundation
 @testable import Playback
 import AVAudioStreamer
-import MiniMP3Streamer
 
 @Suite("PlaybackMetrics Tests")
 struct PlaybackMetricsTests {
@@ -12,8 +11,7 @@ struct PlaybackMetricsTests {
     
     @Test("All players report correct stall metrics", arguments: [
         PlayerControllerType.radioPlayer,
-        PlayerControllerType.avAudioStreamer,
-        PlayerControllerType.miniMP3Streamer
+        PlayerControllerType.avAudioStreamer
     ])
     @MainActor
     func stallReporting(type: PlayerControllerType) async throws {
@@ -39,12 +37,6 @@ struct PlaybackMetricsTests {
             let config = AVAudioStreamerConfiguration(url: url)
             let streamer = AVAudioStreamer(configuration: config)
             adapter.audioStreamerDidStall(streamer)
-
-        case .miniMP3Streamer:
-            let adapter = StreamerMetricsAdapter(reporter: reporter)
-            let config = MiniMP3StreamerConfiguration(url: url)
-            let streamer = MiniMP3Streamer(configuration: config)
-            adapter.miniMP3StreamerDidStall(streamer)
         }
 
         #expect(reporter.reportedStalls.count == 1, "Player type \(type) did not report exactly one stall")
@@ -56,8 +48,7 @@ struct PlaybackMetricsTests {
     
     @Test("All players report correct recovery metrics", arguments: [
         PlayerControllerType.radioPlayer,
-        PlayerControllerType.avAudioStreamer,
-        PlayerControllerType.miniMP3Streamer
+        PlayerControllerType.avAudioStreamer
     ])
     @MainActor
     func recoveryReporting(type: PlayerControllerType) async throws {
@@ -96,16 +87,6 @@ struct PlaybackMetricsTests {
             let streamer = AVAudioStreamer(configuration: config)
             adapter.audioStreamerDidStall(streamer)
             adapter.audioStreamerDidRecover(streamer)
-            
-        case .miniMP3Streamer:
-            let adapter = StreamerMetricsAdapter(reporter: reporter)
-            let config = MiniMP3StreamerConfiguration(url: url)
-            let streamer = MiniMP3Streamer(configuration: config)
-            adapter.miniMP3StreamerDidStall(streamer)
-            adapter.miniMP3StreamerDidRecover(streamer)
-            
-        default:
-            break
         }
         
         if type == .radioPlayer { return }

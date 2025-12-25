@@ -13,7 +13,6 @@ import PostHog
 
 #if !os(watchOS)
 import AVAudioStreamer
-import MiniMP3Streamer
 
 /// Factory closure type for creating PlaybackController instances
 public typealias PlaybackControllerFactory = @MainActor (PlayerControllerType) -> any PlaybackController
@@ -115,9 +114,6 @@ public final class PlaybackControllerManager {
         case .avAudioStreamer:
             let config = AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
             return AVAudioStreamer(configuration: config)
-        case .miniMP3Streamer:
-            let config = MiniMP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
-            return MiniMP3Streamer(configuration: config)
         }
     }
     
@@ -189,8 +185,6 @@ public final class PlaybackControllerManager {
 
     private func wireUpMetricsAdapter(for controller: any PlaybackController) {
         if let streamer = controller as? AVAudioStreamer {
-            streamer.delegate = metricsAdapter
-        } else if let streamer = controller as? MiniMP3Streamer {
             streamer.delegate = metricsAdapter
         }
     }
