@@ -17,7 +17,7 @@ import UIKit
 import MediaPlayer
 @testable import Playback
 #if !os(watchOS)
-import AVAudioStreamer
+@testable import AVAudioStreamer
 #endif
 
 // MARK: - Player Controller Behavior Protocol
@@ -554,6 +554,10 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
 
 /// Adapter to make AVAudioStreamer conform to PlayerControllerBehavior
 extension AVAudioStreamer: PlayerControllerBehavior {
+    public var isPlaying: Bool {
+        state == .playing
+    }
+
     public func play() {
         Task {
             try? await self.play()
