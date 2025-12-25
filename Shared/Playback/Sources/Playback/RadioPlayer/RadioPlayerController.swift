@@ -52,7 +52,8 @@ public final class RadioPlayerController: PlaybackController {
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
         metricsReporter: PlaybackMetricsReporter = PostHogSDK.shared,
-        remoteCommandCenter: MPRemoteCommandCenter = .shared()
+        remoteCommandCenter: MPRemoteCommandCenter = .shared(),
+        backoffTimer: ExponentialBackoff = .default
     ) {
         func notificationObserver(
             for name: Notification.Name,
@@ -60,17 +61,18 @@ public final class RadioPlayerController: PlaybackController {
         ) -> Any {
             notificationCenter.addObserver(forName: name, object: nil, queue: nil, using: sink)
         }
-        
+
         func remoteCommandObserver(
             for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
             handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
         ) -> Any {
             remoteCommandCenter[keyPath: command].addTarget(handler: handler)
         }
-        
-        
+
+
         self.radioPlayer = radioPlayer
         self.metricsReporter = metricsReporter
+        self.backoffTimer = backoffTimer
 
         var observations: [Any] = []
 
@@ -174,7 +176,7 @@ public final class RadioPlayerController: PlaybackController {
     private var inputObservations: [Any] = []
     
     private var playbackTimer = Timer.start()
-    private var backoffTimer = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
+    internal var backoffTimer: ExponentialBackoff
     
     private let metricsReporter: PlaybackMetricsReporter
     private var stallStartTime: Date?

@@ -7,14 +7,17 @@
 
 import Foundation
 
-public struct ExponentialBackoff: CustomStringConvertible {
+public struct ExponentialBackoff: CustomStringConvertible, Sendable {
+    /// Default backoff configuration: 0.5s initial wait, 10s maximum
+    public static let `default` = ExponentialBackoff(initialWaitTime: 0.5, maximumWaitTime: 10.0)
+
     // Tracks the number of connection attempts.
     public private(set) var numberOfAttempts: UInt = 0
     public private(set) var totalWaitTime: TimeInterval = 0.0
-    
+
     public let initialWaitTime: TimeInterval
     public let maximumWaitTime: TimeInterval
-    
+
     public init(initialWaitTime: TimeInterval = 0.25, maximumWaitTime: TimeInterval = 10.0) {
         self.initialWaitTime = initialWaitTime
         self.maximumWaitTime = maximumWaitTime

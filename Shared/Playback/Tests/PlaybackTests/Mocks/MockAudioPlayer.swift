@@ -122,5 +122,17 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         isPlaying = (newState == .playing || newState == .buffering)
         onStateChange?(oldState, newState)
     }
+
+    /// Simulate a playback stall
+    func simulateStall() {
+        onStall?()
+        eventContinuation?.yield(.stall)
+    }
+
+    /// Simulate recovery from stall
+    func simulateRecovery() {
+        onRecovery?()
+        eventContinuation?.yield(.recovery)
+    }
 }
 

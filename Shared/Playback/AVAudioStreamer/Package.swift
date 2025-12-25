@@ -17,12 +17,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.0"),
+        .package(name: "Core", path: "../../Core"),
     ],
     targets: [
         .target(
             name: "AVAudioStreamer",
             dependencies: [
                 .product(name: "DequeModule", package: "swift-collections"),
+                "Core",
             ]),
         .testTarget(
             name: "AVAudioStreamerTests",

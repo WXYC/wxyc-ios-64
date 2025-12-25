@@ -24,5 +24,9 @@ let package = Package(
                 "Logger",
             ]
         ),
+        .testTarget(
+            name: "CoreTests",
+            dependencies: ["Core"]
+        ),
     ]
 )
