@@ -71,9 +71,9 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
         case .audioPlayer:
             return "AudioPlayer (AudioStreaming)"
         case .avAudioStreamer:
-            return "AVAudioStreamer (NIO + AudioToolbox)"
+            return "AVAudioStreamer (AudioToolbox)"
         case .miniMP3Streamer:
-            return "MiniMP3Streamer (NIO + MiniMP3)"
+            return "MiniMP3Streamer (MiniMP3)"
         }
     }
     
@@ -84,9 +84,9 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
         case .audioPlayer:
             return "Uses AudioStreaming library with custom buffering"
         case .avAudioStreamer:
-            return "Uses Swift NIO + AudioToolbox for MP3 decoding"
+            return "Uses URLSession + AudioToolbox for MP3 decoding"
         case .miniMP3Streamer:
-            return "Uses Swift NIO + MiniMP3 (pure C decoder, works on watchOS)"
+            return "Uses URLSession + MiniMP3 (pure C decoder, works on watchOS)"
         }
     }
 }
