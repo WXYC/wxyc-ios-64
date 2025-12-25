@@ -112,19 +112,3 @@ func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
         )
     }
 }
-
-// MARK: - Preview
-
-#Preview {
-    @Previewable @State var selectedPlayerType = PlayerControllerType.loadPersisted()
-    
-    ZStack {
-        Rectangle()
-            .foregroundStyle(WXYCGradient())
-        PlayerHeaderView(
-            visualizer: VisualizerDataSource(),
-            selectedPlayerType: $selectedPlayerType
-        )
-        .padding()
-    }
-}
