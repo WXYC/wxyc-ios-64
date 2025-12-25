@@ -20,7 +20,6 @@ let package = Package(
     dependencies: [
         .package(name: "Playback", path: "../Playback"),
         .package(name: "WXUI", path: "../WXUI"),
-        .package(url: "https://github.com/fatbobman/ObservableDefaults", from: "1.7.0")
     ],
     targets: [
         .target(
@@ -28,7 +27,6 @@ let package = Package(
             dependencies: [
                 "Playback",
                 "WXUI",
-                .product(name: "ObservableDefaults", package: "ObservableDefaults")
             ]
         ),
         .testTarget(

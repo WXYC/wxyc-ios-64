@@ -14,7 +14,6 @@ let package = Package(
             targets: ["Wallpaper"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/fatbobman/ObservableDefaults", from: "1.7.0"),
         .package(name: "Core", path: "../Core"),
         .package(name: "WXUI", path: "../WXUI"),
     ],
@@ -23,7 +22,6 @@ let package = Package(
             name: "Wallpaper",
             dependencies: [
                 "Core",
-                "ObservableDefaults",
                 "WXUI",
             ],
             resources: [
