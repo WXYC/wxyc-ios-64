@@ -10,7 +10,6 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Logger
-import PostHog
 import SwiftUI
 import Core
 #if os(iOS)
@@ -45,16 +44,15 @@ public final class RadioPlayerController: PlaybackController {
         self.init(
             radioPlayer: RadioPlayer(),
             notificationCenter: .default,
-            metricsReporter: PostHogSDK.shared,
+            analytics: PostHogPlaybackAnalytics.shared,
             remoteCommandCenter: .shared()
         )
     }
     
-
     init(
         radioPlayer: RadioPlayer = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
-        metricsReporter: PlaybackMetricsReporter = PostHogSDK.shared,
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared(),
         backoffTimer: ExponentialBackoff = .default
     ) {
@@ -74,7 +72,7 @@ public final class RadioPlayerController: PlaybackController {
 
 
         self.radioPlayer = radioPlayer
-        self.metricsReporter = metricsReporter
+        self.analytics = analytics
         self.backoffTimer = backoffTimer
 
         var observations: [Any] = []
@@ -121,13 +119,13 @@ public final class RadioPlayerController: PlaybackController {
     
     public func toggle(reason: String) throws {
         if self.isPlaying {
-            PostHogSDK.shared.pause(duration: playbackTimer.duration())
+            analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
             self.pause()
         } else {
             try self.play(reason: reason)
         }
     }
-    
+
     public func play(reason: String) throws {
         Task {
             do {
@@ -141,20 +139,19 @@ public final class RadioPlayerController: PlaybackController {
 #endif
 
                 if activated {
-                    PostHogSDK.shared.play(reason: reason)
+                    analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
                     self.radioPlayer.play()
                     // State transitions to .playing when radioPlayer.isPlaying becomes true
                 } else {
-                    let failedToActivateReason = "AVAudioSession.sharedInstance().activate() returned false, but no error was thrown. Original reason: \(reason)"
-                    PostHogSDK.shared.play(reason: failedToActivateReason)
+                    // Still capture the play attempt even if activation failed
+                    analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
                 }
             } catch {
                 self.state = .error(.audioSessionActivationFailed(error.localizedDescription))
-                PostHogSDK.shared.capture(
-                    error: error,
-                    context: "RadioPlayerController could not start playback",
-                    additionalData: ["reason" : reason]
-                )
+                analytics.capture(PlaybackStoppedEvent(
+                    reason: .error(.audioSessionActivationFailed(error.localizedDescription)),
+                    duration: 0
+                ))
 
                 Log(.error, "RadioPlayerController could not start playback: \(error)")
             }
@@ -197,7 +194,7 @@ public final class RadioPlayerController: PlaybackController {
     private var playbackTimer = Timer.start()
     internal var backoffTimer: ExponentialBackoff
     
-    private let metricsReporter: PlaybackMetricsReporter
+    private let analytics: PlaybackAnalytics
     private var stallStartTime: Date?
 }
 
@@ -206,19 +203,12 @@ private extension RadioPlayerController {
     
     nonisolated func playbackStalled(_ notification: Notification) {
         Log(.error, "Playback stalled: \(notification)")
-        
+
         Task { @MainActor in
             self.state = .stalled
-            let event = StallEvent(
-                playerType: .radioPlayer,
-                timestamp: Date(),
-                playbackDuration: playbackTimer.duration(),
-                reason: .bufferUnderrun
-            )
-            metricsReporter.reportStall(event)
             self.stallStartTime = Date()
-            
-            PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "playback stalled")
+
+            analytics.capture(PlaybackStoppedEvent(reason: .stall, duration: playbackTimer.duration()))
             self.radioPlayer.pause()
             self.attemptReconnectWithExponentialBackoff()
         }
@@ -239,14 +229,15 @@ private extension RadioPlayerController {
             switch interruptionType {
             case .began:
                 self.state = .interrupted
+                analytics.capture(InterruptionEvent(type: .began))
                 // `.routeDisconnected` types are not balanced by a `.ended` notification.
                 if interruptionReason == .routeDisconnected {
-                    PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "route disconnected")
+                    analytics.capture(PlaybackStoppedEvent(reason: .interruptionBegan, duration: playbackTimer.duration()))
                 } else if let options = iterruptionOptions,
                           options.contains(.shouldResume) {
-                    PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "should resume")
+                    analytics.capture(PlaybackStoppedEvent(reason: .interruptionBegan, duration: playbackTimer.duration()))
                 } else {
-                    PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "no reason")
+                    analytics.capture(PlaybackStoppedEvent(reason: .interruptionBegan, duration: playbackTimer.duration()))
                     self.pause()
                 }
             case .shouldResume, .ended:
@@ -273,37 +264,35 @@ private extension RadioPlayerController {
         Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
         Task {
             if self.radioPlayer.isPlaying {
-                if let stallStart = self.stallStartTime {
-                    let event = RecoveryEvent(
-                        playerType: .radioPlayer,
-                        successful: true,
-                        attemptCount: 1, 
-                        stallDuration: Date().timeIntervalSince(stallStart),
-                        recoveryMethod: .retryWithBackoff
-                    )
-                    metricsReporter.reportRecovery(event)
-                    self.stallStartTime = nil
-                }
-    
+                captureRecoveryIfNeeded()
                 self.backoffTimer.reset()
                 return
             }
-            
+
             do {
                 self.radioPlayer.play()
                 try await Task.sleep(nanoseconds: waitTime.nanoseconds)
-                
+
                 if !radioPlayer.isPlaying {
                     attemptReconnectWithExponentialBackoff()
                 } else {
+                    captureRecoveryIfNeeded()
                     self.backoffTimer.reset()
                 }
             } catch {
                 self.backoffTimer.reset()
-                
                 return
             }
         }
+    }
+
+    private func captureRecoveryIfNeeded() {
+        guard let stallStart = self.stallStartTime else { return }
+        analytics.capture(StallRecoveryEvent(
+            attempts: Int(self.backoffTimer.numberOfAttempts),
+            stallDuration: Date().timeIntervalSince(stallStart)
+        ))
+        self.stallStartTime = nil
     }
     
     // MARK: External playback command handlers
@@ -317,8 +306,8 @@ private extension RadioPlayerController {
     
             do {
                 try AVAudioSession.shared.deactivate()
-            } catch let error as NSError {
-                PostHogSDK.shared.capture(error: error, context: "RadioPlayerController could not deactivate")
+            } catch {
+                analytics.capture(ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
                 Log(.error, "RadioPlayerController could not deactivate: \(error)")
             }
         }
@@ -330,7 +319,7 @@ private extension RadioPlayerController {
             if self.radioPlayer.isPlaying {
                 try self.play(reason: "foreground toggle")
             } else {
-                PostHogSDK.shared.pause(duration: playbackTimer.duration())
+                analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
                 self.pause()
             }
         }
@@ -346,7 +335,7 @@ private extension RadioPlayerController {
     }
     
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        PostHogSDK.shared.pause(duration: playbackTimer.duration())
+        analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
         self.pause()
         
         return .success
@@ -359,7 +348,7 @@ private extension RadioPlayerController {
             } else {
                 try self.play(reason: "remote toggle play/pause")
             }
-            
+        
             return .success
         } catch {
             return .commandFailed

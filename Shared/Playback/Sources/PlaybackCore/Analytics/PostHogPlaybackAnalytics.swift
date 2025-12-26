@@ -68,4 +68,14 @@ public final class PostHogPlaybackAnalytics: PlaybackAnalytics {
             ]
         )
     }
+
+    public func capture(_ event: ErrorEvent) {
+        PostHogSDK.shared.capture(
+            "error",
+            properties: [
+                "error": event.error,
+                "context": event.context
+            ]
+        )
+    }
 }

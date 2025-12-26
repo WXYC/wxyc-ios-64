@@ -20,6 +20,20 @@ public enum PlaybackStartReason: Sendable, Equatable {
     case interruptionEnded
     /// Remote command (CarPlay, headphones, Control Center)
     case remoteCommand
+
+    /// Creates a PlaybackStartReason from a legacy string reason.
+    public init(fromLegacyReason reason: String) {
+        switch reason.lowercased() {
+        case let r where r.contains("remote"):
+            self = .remoteCommand
+        case let r where r.contains("resume") || r.contains("interruption"):
+            self = .interruptionEnded
+        case let r where r.contains("reconnect") || r.contains("backoff"):
+            self = .autoReconnect
+        default:
+            self = .userInitiated
+        }
+    }
 }
 
 /// Reason why playback was stopped.
@@ -97,6 +111,24 @@ public struct InterruptionEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Event capturing an error during playback.
+public struct ErrorEvent: PlaybackAnalyticsEvent {
+    /// Description of the error
+    public let error: String
+    /// Context where the error occurred
+    public let context: String
+
+    public init(error: Error, context: String) {
+        self.error = error.localizedDescription
+        self.context = context
+    }
+
+    public init(error: String, context: String) {
+        self.error = error
+        self.context = context
+    }
+}
+
 // MARK: - PlaybackAnalytics Protocol
 
 /// Protocol for capturing playback analytics events.
@@ -116,4 +148,7 @@ public protocol PlaybackAnalytics: AnyObject {
 
     /// Capture an audio session interruption.
     func capture(_ event: InterruptionEvent)
+
+    /// Capture an error that occurred during playback.
+    func capture(_ event: ErrorEvent)
 }
