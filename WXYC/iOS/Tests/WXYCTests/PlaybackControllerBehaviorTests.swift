@@ -257,7 +257,7 @@ final class AudioPlayerTestHarness: UnifiedPlayerControllerTestHarness {
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: notificationCenter,
-            analytics: nil
+            analytics: MockPlaybackAnalytics()
         )
     }
     

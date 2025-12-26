@@ -8,8 +8,6 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-import Analytics
-import PostHog
 #if os(iOS)
 import UIKit
 #endif
@@ -37,13 +35,13 @@ public final class AudioPlayerController {
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
-        analytics: PostHogSDK.shared
+        analytics: PostHogPlaybackAnalytics.shared
     )
     #else
     /// Shared singleton instance for app-wide usage (macOS)
     public static let shared = AudioPlayerController(
         notificationCenter: .default,
-        analytics: PostHogSDK.shared
+        analytics: PostHogPlaybackAnalytics.shared
     )
     #endif
     
@@ -85,7 +83,7 @@ public final class AudioPlayerController {
     
     @ObservationIgnored private nonisolated(unsafe) var player: AudioPlayerProtocol
     @ObservationIgnored private nonisolated(unsafe) var notificationCenter: NotificationCenter
-    @ObservationIgnored private nonisolated(unsafe) var analytics: AudioAnalyticsProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var analytics: PlaybackAnalytics
     
     #if os(iOS) || os(tvOS)
     @ObservationIgnored private nonisolated(unsafe) var audioSession: AudioSessionProtocol?
@@ -115,14 +113,14 @@ public final class AudioPlayerController {
         audioSession: AudioSessionProtocol?,
         remoteCommandCenter: RemoteCommandCenterProtocol?,
         notificationCenter: NotificationCenter = .default,
-        analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared
     ) {
         self.player = player ?? Self.createPlayer(for: .avAudioStreamer)
         self.audioSession = audioSession
         self.remoteCommandCenter = remoteCommandCenter
         self.notificationCenter = notificationCenter
         self.analytics = analytics
-        
+
         setUpAudioSession()
         setUpRemoteCommandCenter()
         setUpNotifications()
@@ -134,7 +132,7 @@ public final class AudioPlayerController {
     public init(
         player: AudioPlayerProtocol? = nil,
         notificationCenter: NotificationCenter = .default,
-        analytics: AudioAnalyticsProtocol? = PostHogSDK.shared
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared
     ) {
         self.player = player ?? Self.createPlayer(for: .avAudioStreamer)
         self.notificationCenter = notificationCenter
@@ -196,10 +194,10 @@ public final class AudioPlayerController {
         #if os(iOS) || os(tvOS)
         activateAudioSession()
         #endif
-        
+
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
-        analytics?.play(source: #function, reason: reason)
+        analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
         updateWidgetState()
     }
     
@@ -210,11 +208,7 @@ public final class AudioPlayerController {
         // For live streaming, stop completely to clear buffers
         // This ensures that resuming playback connects to the live stream
         player.stop()
-        if let reason {
-            analytics?.pause(source: #function, duration: duration, reason: reason)
-        } else {
-            analytics?.pause(source: #function, duration: duration)
-        }
+        analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: duration))
         updateWidgetState()
     }
     
@@ -229,11 +223,7 @@ public final class AudioPlayerController {
         playbackIntended = false
         let duration = playbackDuration
         player.stop()
-        if let reason {
-            analytics?.pause(source: #function, duration: duration, reason: reason)
-        } else {
-            analytics?.pause(source: #function, duration: duration)
-        }
+        analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: duration))
         playbackStartTime = nil
         #if os(iOS) || os(tvOS)
         deactivateAudioSession()
@@ -417,7 +407,7 @@ public final class AudioPlayerController {
             break
         }
     }
-    
+            
     private func handleRouteChange(reasonValue: UInt?) {
         guard let reasonValue = reasonValue,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
@@ -440,7 +430,7 @@ public final class AudioPlayerController {
         }
     }
     #endif
-    
+            
     private func updateWidgetState() {
         UserDefaults.wxyc.set(isPlaying, forKey: "isPlaying")
         WidgetCenter.shared.reloadAllTimelines()
@@ -474,30 +464,16 @@ extension AudioPlayerController {
     }
     
     private func handleStall() {
-        guard let reporter = analytics as? PlaybackMetricsReporter else { return }
         stallStartTime = Date()
-        
-        let event = StallEvent(
-            playerType: .avAudioStreamer, // Using .avAudioStreamer as this controller is type .avAudioStreamer typically
-            timestamp: Date(),
-            playbackDuration: playbackDuration,
-            reason: .bufferUnderrun
-        )
-        reporter.reportStall(event)
+        analytics.capture(PlaybackStoppedEvent(reason: .stall, duration: playbackDuration))
     }
-    
+
     private func handleRecovery() {
-        guard let reporter = analytics as? PlaybackMetricsReporter,
-              let stallStart = stallStartTime else { return }
-        
-        let event = RecoveryEvent(
-            playerType: .avAudioStreamer,
-            successful: true,
-            attemptCount: 1,
-            stallDuration: Date().timeIntervalSince(stallStart),
-            recoveryMethod: .bufferRefill
-        )
-        reporter.reportRecovery(event)
+        guard let stallStart = stallStartTime else { return }
+        analytics.capture(StallRecoveryEvent(
+            attempts: 1,
+            stallDuration: Date().timeIntervalSince(stallStart)
+        ))
         stallStartTime = nil
     }
 }
@@ -533,7 +509,7 @@ extension AudioPlayerController: PlaybackController {
     public func stop() {
         stop(reason: nil)
     }
-
+    
     // Explicit pause() to satisfy protocol (AudioPlayerController has pause(reason:))
     public func pause() {
         pause(reason: nil)

@@ -8,6 +8,7 @@
 import Testing
 import Foundation
 @testable import Playback
+@testable import PlaybackCore
 import Core
 
 @Suite("Observation Integration Tests", .serialized)
@@ -120,7 +121,7 @@ struct ObservationIntegrationTests {
         // Create a fresh controller to isolate from other tests
         let controller = AudioPlayerController(
             notificationCenter: NotificationCenter(),
-            analytics: nil
+            analytics: MockPlaybackAnalytics()
         )
 
         // Ensure we start paused

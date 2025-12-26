@@ -8,6 +8,7 @@
 import Testing
 import AVFoundation
 @testable import Playback
+@testable import PlaybackCore
 
 @Suite("AudioPlayerController Tests")
 @MainActor
@@ -67,9 +68,9 @@ struct AudioPlayerControllerTests {
     func controllerInitializesMacOS() {
         let controller = AudioPlayerController(
             notificationCenter: .default,
-            analytics: nil
+            analytics: MockPlaybackAnalytics()
         )
-        
+
         // Initial state should be not playing
         #expect(controller.isPlaying == false)
         #expect(controller.isLoading == false)
