@@ -26,6 +26,7 @@ import Testing
 import Foundation
 import AVFoundation
 import MediaPlayer
+import Core
 @testable import Playback
 @testable import PlaybackCore
 
@@ -766,5 +767,143 @@ struct RadioPlayerControllerTests {
         // Then - Should handle all operations without crashing
         #expect(mockPlayer.playCallCount >= 2)
         #expect(mockPlayer.pauseCallCount >= 2)
+    }
+}
+
+// MARK: - Analytics Tests
+
+@Suite("RadioPlayerController Analytics Tests")
+@MainActor
+struct RadioPlayerControllerAnalyticsTests {
+
+    @Test("Toggle from playing captures PlaybackStoppedEvent")
+    func toggleFromPlayingCapturesStoppedEvent() async throws {
+        // Given
+        let mockPlayer = MockPlayer()
+        let notificationCenter = NotificationCenter()
+        let radioPlayer = RadioPlayer(
+            player: mockPlayer,
+            userDefaults: .test,
+            analytics: nil,
+            notificationCenter: notificationCenter
+        )
+        let mockAnalytics = MockPlaybackAnalytics()
+        let controller = RadioPlayerController(
+            radioPlayer: radioPlayer,
+            notificationCenter: notificationCenter,
+            analytics: mockAnalytics,
+            remoteCommandCenter: .shared()
+        )
+
+        // Start playing
+        radioPlayer.play()
+        mockPlayer.rate = 1.0
+        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(controller.isPlaying == true)
+        mockAnalytics.reset()
+
+        // When - Toggle to pause
+        try controller.toggle(reason: "user tapped")
+
+        // Then - Should capture stopped event
+        #expect(mockAnalytics.stoppedEvents.count == 1)
+        #expect(mockAnalytics.stoppedEvents[0].reason == .userInitiated)
+    }
+
+    @Test("Stall captures PlaybackStoppedEvent with stall reason")
+    func stallCapturesStoppedEvent() async throws {
+        // Given
+        let mockPlayer = MockPlayer()
+        let notificationCenter = NotificationCenter()
+        let radioPlayer = RadioPlayer(
+            player: mockPlayer,
+            userDefaults: .test,
+            analytics: nil,
+            notificationCenter: notificationCenter
+        )
+        let mockAnalytics = MockPlaybackAnalytics()
+        let controller = RadioPlayerController(
+            radioPlayer: radioPlayer,
+            notificationCenter: notificationCenter,
+            analytics: mockAnalytics,
+            remoteCommandCenter: .shared()
+        )
+
+        // Start playing
+        radioPlayer.play()
+        mockPlayer.rate = 1.0
+        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(controller.isPlaying == true)
+        mockAnalytics.reset()
+
+        // When - Stall occurs
+        // The stall handler calls pause() which sets rate to 0, so we need to post
+        // the rate notification to properly update isPlaying
+        notificationCenter.post(name: .AVPlayerItemPlaybackStalled, object: nil)
+        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+        try await Task.sleep(for: .milliseconds(50))
+
+        // Then - Should capture stopped event with stall reason
+        #expect(mockAnalytics.stoppedEvents.count >= 1)
+        #expect(mockAnalytics.stoppedEvents.first?.reason == .stall)
+    }
+
+    @Test("Recovery from stall captures StallRecoveryEvent")
+    func recoveryCapturesStallRecoveryEvent() async throws {
+        // Given
+        let mockPlayer = MockPlayer()
+        let notificationCenter = NotificationCenter()
+        let radioPlayer = RadioPlayer(
+            player: mockPlayer,
+            userDefaults: .test,
+            analytics: nil,
+            notificationCenter: notificationCenter
+        )
+        let mockAnalytics = MockPlaybackAnalytics()
+        _ = RadioPlayerController(
+            radioPlayer: radioPlayer,
+            notificationCenter: notificationCenter,
+            analytics: mockAnalytics,
+            remoteCommandCenter: .shared(),
+            backoffTimer: ExponentialBackoff(
+                initialWaitTime: 0.01,
+                maximumWaitTime: 0.1,
+                maximumAttempts: 5
+            )
+        )
+
+        // Start playing
+        radioPlayer.play()
+        mockPlayer.rate = 1.0
+        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(radioPlayer.isPlaying == true)
+
+        // Stall happens - need to also notify that rate is now 0
+        notificationCenter.post(name: .AVPlayerItemPlaybackStalled, object: nil)
+        // playbackStalled() calls pause() which sets rate to 0
+        // We need to notify so isPlaying becomes false
+        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(radioPlayer.isPlaying == false)
+
+        mockAnalytics.reset()
+
+        // When - Recovery happens (simulate by marking as playing again)
+        // The backoff timer should call play(), which will be checked
+        mockPlayer.rate = 1.0
+        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+
+        // Wait for backoff timer to detect recovery
+        try await Task.sleep(for: .milliseconds(150))
+
+        // Then - Should capture recovery event
+        #expect(mockAnalytics.stallRecoveryEvents.count >= 1)
     }
 }
