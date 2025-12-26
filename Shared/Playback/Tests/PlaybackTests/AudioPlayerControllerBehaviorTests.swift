@@ -16,6 +16,7 @@ import UIKit
 #endif
 import MediaPlayer
 @testable import Playback
+@testable import PlaybackCore
 
 // MARK: - Player Controller Behavior Protocol
 
@@ -290,7 +291,7 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
     let mockPlayer: MockAudioPlayer
     let mockSession: MockAudioSession
     let mockCommandCenter: MockRemoteCommandCenter
-    let mockAnalytics: MockAudioAnalytics
+    let mockAnalytics: MockPlaybackAnalytics
     let notificationCenter: NotificationCenter
 
     /// Tracks stop count at start of last play to detect stream reset
@@ -305,19 +306,23 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
     var pauseActionCount: Int { mockPlayer.pauseCallCount + mockPlayer.stopCallCount }
     var sessionActivated: Bool { mockSession.lastActiveState == true }
     var sessionDeactivated: Bool { mockSession.lastActiveState == false }
-    var analyticsPlayCallCount: Int { mockAnalytics.playCallCount }
-    var analyticsPauseCallCount: Int { mockAnalytics.pauseCallCount }
-    var lastAnalyticsPlayReason: String? { mockAnalytics.lastPlayReason }
-    var lastAnalyticsPauseDuration: TimeInterval? { mockAnalytics.lastPauseDuration }
-    
+    var analyticsPlayCallCount: Int { mockAnalytics.startedEvents.count }
+    var analyticsPauseCallCount: Int { mockAnalytics.stoppedEvents.count }
+    var lastAnalyticsPlayReason: String? {
+        mockAnalytics.startedEvents.last.map { String(describing: $0.reason) }
+    }
+    var lastAnalyticsPauseDuration: TimeInterval? {
+        mockAnalytics.stoppedEvents.last?.duration
+    }
+
     init() {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         mockPlayer = MockAudioPlayer(url: streamURL)
         mockSession = MockAudioSession()
         mockCommandCenter = MockRemoteCommandCenter()
-        mockAnalytics = MockAudioAnalytics()
+        mockAnalytics = MockPlaybackAnalytics()
         notificationCenter = NotificationCenter()
-        
+
         controller = AudioPlayerController(
             player: mockPlayer,
             audioSession: mockSession,
@@ -326,7 +331,7 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
             analytics: mockAnalytics
         )
     }
-    
+
     func simulatePlaybackStarted() {
         // Track stop count so we can detect if pause() resets the stream
         stopCountAtLastPlay = mockPlayer.stopCallCount
@@ -365,7 +370,7 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
 
     /// AudioPlayerController doesn't use ExponentialBackoff for reconnection.
     func getBackoffAttempts() -> UInt? { nil }
-
+    
     #if os(iOS)
     func postBackgroundNotification() {
         notificationCenter.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -448,7 +453,7 @@ extension RadioPlayerController: PlayerControllerBehavior {
     public func play() {
         try? play(reason: "test")
     }
-    
+
     public func toggle() {
         try? toggle(reason: "test")
     }
@@ -479,7 +484,7 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
     var analyticsPauseCallCount: Int { 0 } // Not trackable without PostHog mock
     var lastAnalyticsPlayReason: String? { nil }
     var lastAnalyticsPauseDuration: TimeInterval? { nil }
-    
+        
     init() {
         mockPlayer = MockRadioPlayer()
         notificationCenter = NotificationCenter()
@@ -544,7 +549,7 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
 
     /// Returns the number of backoff attempts from the controller's internal backoff timer.
     func getBackoffAttempts() -> UInt? { controller.backoffTimer.numberOfAttempts }
-
+    
     #if os(iOS)
     func postBackgroundNotification() {
         notificationCenter.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -688,7 +693,7 @@ final class AVAudioStreamerTestHarness: PlayerControllerTestHarness {
 
     /// Returns the number of backoff attempts from the streamer's internal backoff timer.
     func getBackoffAttempts() -> UInt? { controller.backoffTimer.numberOfAttempts }
-
+    
     #if os(iOS)
     func postBackgroundNotification() {
         notificationCenter.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -792,7 +797,7 @@ struct PlayerControllerBehaviorTests {
         
         #expect(!harness.controller.isPlaying, "toggle() while playing should pause")
     }
-    
+        
     @Test("toggle() while paused starts playback", arguments: PlayerControllerTestCase.mockedCases)
     func toggleWhilePausedStartsPlayback(testCase: PlayerControllerTestCase) async {
         let harness = testCase.makeHarness()
@@ -893,7 +898,7 @@ struct PlayerControllerBehaviorTests {
 }
 
 // MARK: - Background/Foreground Behavior Tests (iOS)
-
+    
 #if os(iOS)
 @Suite("Background/Foreground Behavior Tests")
 @MainActor
@@ -911,12 +916,12 @@ struct BackgroundForegroundBehaviorTests {
         let pauseCountBefore = harness.pauseCallCount
         harness.postBackgroundNotification()
         await harness.waitForAsync()
-        
+    
         // Should NOT have paused
         #expect(harness.pauseCallCount == pauseCountBefore,
                "Background while playing should not pause")
     }
-    
+        
     @Test("Background while not playing is handled gracefully", arguments: PlayerControllerTestCase.mockedCases)
     func backgroundWhileNotPlayingIsHandled(testCase: PlayerControllerTestCase) async {
         let harness = testCase.makeHarness()
@@ -948,7 +953,7 @@ struct BackgroundForegroundBehaviorTests {
         // Should still be playing or have reactivated
         // (specific behavior varies by controller implementation)
     }
-    
+        
     @Test("Foreground while not playing does not start playback", arguments: PlayerControllerTestCase.mockedCases)
     func foregroundWhileNotPlayingDoesNotStartPlayback(testCase: PlayerControllerTestCase) async {
         let harness = testCase.makeHarness()
@@ -968,7 +973,7 @@ struct BackgroundForegroundBehaviorTests {
 #endif
 
 // MARK: - Interruption Handling Tests (iOS)
-
+    
 #if os(iOS)
 @Suite("Interruption Handling Tests")
 @MainActor
@@ -986,7 +991,7 @@ struct InterruptionHandlingTests {
         let pauseCountBefore = harness.pauseActionCount
         harness.postInterruptionBegan(shouldResume: false)
         await harness.waitForAsync()
-
+    
         // Note: AudioPlayerController calls stop() instead of pause() for live streaming
         #expect(harness.pauseActionCount > pauseCountBefore,
                "Interruption began should pause playback")
@@ -1001,12 +1006,12 @@ struct InterruptionHandlingTests {
         harness.controller.play()
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
-        
+
         let pauseCountBefore = harness.pauseActionCount
         // AudioPlayerController should pause even with shouldResume: true
         harness.postInterruptionBegan(shouldResume: true)
         await harness.waitForAsync()
-
+    
         // Note: AudioPlayerController calls stop() instead of pause() for live streaming
         #expect(harness.pauseActionCount > pauseCountBefore,
                "AudioPlayerController should pause on interruption began regardless of shouldResume")
@@ -1051,7 +1056,7 @@ struct InterruptionHandlingTests {
         // Now post interruption ended with shouldResume
         harness.postInterruptionEnded(shouldResume: true)
         await harness.waitForAsync()
-        
+    
         // AudioPlayerController.play() may call resume() when paused, so check playbackAttemptCount
         #expect(harness.playbackAttemptCount > attemptCountBefore,
                "Interruption ended with shouldResume should resume playback")
@@ -1081,7 +1086,7 @@ struct InterruptionHandlingTests {
         // so we just verify the notification was received without asserting play count
         harness.postInterruptionEnded(shouldResume: true)
         await harness.waitForAsync()
-        
+
         // The test passes if no crash occurred - the controller handled the notification
     }
 }
@@ -1109,45 +1114,46 @@ struct AudioPlayerControllerAnalyticsTests {
         
         // Small delay to ensure non-zero duration
         try? await Task.sleep(for: .milliseconds(10))
-        
+    
         harness.controller.pause()
         #expect(harness.analyticsPauseCallCount > 0, "pause() should call analytics")
         #expect(harness.lastAnalyticsPauseDuration != nil, "pause() should report duration")
     }
-    
+
     @Test("Analytics receives play reason")
     func analyticsReceivesPlayReason() async {
         let harness = AudioPlayerControllerTestHarness()
         harness.controller.play(reason: "user tapped play")
 
-        #expect(harness.mockAnalytics.lastPlayReason == "user tapped play")
+        #expect(harness.mockAnalytics.startedEvents.count == 1)
+        #expect(harness.mockAnalytics.startedEvents.first?.reason == .userInitiated)
     }
     
     @Test("Analytics receives pause duration")
     func analyticsReceivesPauseDuration() async {
         let harness = AudioPlayerControllerTestHarness()
         harness.controller.play()
-        
+
         // Wait a bit to accumulate duration
         try? await Task.sleep(for: .milliseconds(50))
-        
+
         harness.controller.pause()
-        
-        #expect(harness.mockAnalytics.pauseCallCount == 1)
-        if let duration = harness.mockAnalytics.lastPauseDuration {
+
+        #expect(harness.mockAnalytics.stoppedEvents.count == 1)
+        if let duration = harness.mockAnalytics.stoppedEvents.first?.duration {
             #expect(duration >= 0.04, "Duration should be at least 40ms")
         } else {
             Issue.record("Expected pause duration to be recorded")
         }
     }
-    
+        
     @Test("stop() also reports analytics pause")
     func stopReportsAnalyticsPause() async {
         let harness = AudioPlayerControllerTestHarness()
         harness.controller.play()
         harness.controller.stop()
-        
-        #expect(harness.mockAnalytics.pauseCallCount == 1, "stop() should report analytics pause")
+
+        #expect(harness.mockAnalytics.stoppedEvents.count == 1, "stop() should report analytics stopped event")
     }
 }
 
@@ -1175,7 +1181,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     @Test("pause() clears playbackIntended - background DOES deactivate session")
     func pauseClearsPlaybackIntended() async {
         let harness = AudioPlayerControllerTestHarness()
-
+        
         harness.controller.play(reason: "test")
         harness.controller.pause()
         
@@ -1224,13 +1230,13 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     @Test("foreground while playbackIntended reactivates session")
     func foregroundWhilePlaybackIntendedReactivates() async {
         let harness = AudioPlayerControllerTestHarness()
-
+        
         harness.controller.play(reason: "test")
         harness.controller.handleAppDidEnterBackground()  // No deactivation (playing)
         
         harness.mockSession.reset()
         harness.controller.handleAppWillEnterForeground()
-        
+    
         #expect(harness.mockSession.setActiveCallCount == 1,
                "Foreground while playing should activate session")
         #expect(harness.mockSession.lastActiveState == true,
@@ -1270,7 +1276,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     }
 }
 #endif
-
+    
 // MARK: - RadioPlayer Direct Tests
 
 @Suite("RadioPlayer Behavior Tests")
@@ -1303,7 +1309,7 @@ struct RadioPlayerBehaviorTests {
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
-        
+    
         radioPlayer.play()
         radioPlayer.pause()
         
@@ -1320,7 +1326,7 @@ struct RadioPlayerBehaviorTests {
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
-        
+    
         radioPlayer.play()
         radioPlayer.pause()
         
@@ -1346,7 +1352,7 @@ struct RadioPlayerBehaviorTests {
         mockPlayer.rate = 1.0
         notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: nil)
         try await Task.sleep(for: .milliseconds(100))
-        
+    
         #expect(radioPlayer.isPlaying, "isPlaying should be true after notification")
         
         radioPlayer.play()
@@ -1363,7 +1369,7 @@ struct RadioPlayerBehaviorTests {
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
-        
+
         #expect(!radioPlayer.isPlaying)
     }
 }
