@@ -16,19 +16,15 @@
 		236B51D02EFC651A0058AD01 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236B51CF2EFC651A0058AD01 /* WidgetKit.framework */; };
 		236B51D22EFC651A0058AD01 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236B51D12EFC651A0058AD01 /* SwiftUI.framework */; };
 		236B51DD2EFC651C0058AD01 /* NowPlayingWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 236B51CE2EFC651A0058AD01 /* NowPlayingWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		236B51F62EFC67470058AD01 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = 236B51F52EFC67470058AD01 /* Secrets */; };
 		236B51FA2EFC674F0058AD01 /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = 236B51F92EFC674F0058AD01 /* Caching */; };
 		236B51FE2EFC675B0058AD01 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 236B51FD2EFC675B0058AD01 /* Playlist */; };
 		236B52022EFC67630058AD01 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52012EFC67630058AD01 /* Analytics */; };
 		236B52062EFC67750058AD01 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52052EFC67750058AD01 /* AppServices */; };
 		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
 		23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */ = {isa = PBXBuildFile; productRef = 23D4181A2EF2C8000DBGPNL /* DebugPanel */; };
-		23DD3EBF2EFA090B0090636B /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = B0C1D2E3F4050617081910B2 /* Secrets */; };
-		23DD3EC02EFA090B0090636B /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = A0B1C2D3E4F506070809A0B1 /* Secrets */; };
 		23DD3EC12EFA090B0090636B /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = C0D1E2F30405162718192AC3 /* PostHog */; };
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
-		3168A48CA317F321E3B1BB95 /* Secrets in Frameworks */ = {isa = PBXBuildFile; productRef = F06268AE9022F6AE22B608E2 /* Secrets */; };
 		37327445A68BBA56C392BEF7 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 01163D6D065337EB60F79C5B /* WXUI */; };
 		3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 01BA6F026317213ACE8EE228 /* PostHog */; };
 		524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 35DC07836DEEE44F7B819265 /* PlayerHeaderView */; };
@@ -49,6 +45,10 @@
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
+		SEC00001XCFR0001WXYC0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
+		SEC00001XCFR0002WDGT0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
+		SEC00001XCFR0003SHAR0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
+		SEC00001XCFR0004WTCH0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -133,7 +133,6 @@
 		2E2DA266F8734B81F467E9C3 /* Metadata */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Metadata; path = Shared/Metadata; sourceTree = SOURCE_ROOT; };
 		408862FFDA682059B46DBE38 /* PlayerHeaderView */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PlayerHeaderView; path = Shared/PlayerHeaderView; sourceTree = SOURCE_ROOT; };
 		4FA5098D4C45B1A40664F383 /* Playback */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Playback; path = Shared/Playback; sourceTree = SOURCE_ROOT; };
-		65DE92962FCB03D68F79A895 /* Secrets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Secrets; path = Shared/Secrets; sourceTree = SOURCE_ROOT; };
 		6D8ECE997571529CE8187362 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DEA10C351FEB7C3DEBD1E89 /* WXUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WXUI; path = Shared/WXUI; sourceTree = SOURCE_ROOT; };
 		87ED2724FB87B5D288BBFFFB /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -144,6 +143,7 @@
 		E790F2E8AAE12A20CB303818 /* WatchXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
+		SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Secrets.xcframework; path = Shared/Secrets/Secrets.xcframework; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -277,7 +277,7 @@
 			files = (
 				236B52062EFC67750058AD01 /* AppServices in Frameworks */,
 				236B51FA2EFC674F0058AD01 /* Caching in Frameworks */,
-				236B51F62EFC67470058AD01 /* Secrets in Frameworks */,
+				SEC00001XCFR0002WDGT0001 /* Secrets.xcframework in Frameworks */,
 				236B51D22EFC651A0058AD01 /* SwiftUI.framework in Frameworks */,
 				236B52022EFC67630058AD01 /* Analytics in Frameworks */,
 				236B51D02EFC651A0058AD01 /* WidgetKit.framework in Frameworks */,
@@ -291,7 +291,7 @@
 				2C25163B4CC5F775E9F8409E /* Logger in Frameworks */,
 				B78B37108DAAACABF26EB624 /* OpenNSFW in Frameworks */,
 				78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */,
-				3168A48CA317F321E3B1BB95 /* Secrets in Frameworks */,
+				SEC00001XCFR0001WXYC0001 /* Secrets.xcframework in Frameworks */,
 				9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */,
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
@@ -310,14 +310,14 @@
 		5282D69CBC6C3EAF27DE8CBE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				23DD3EC02EFA090B0090636B /* Secrets in Frameworks */,
+				SEC00001XCFR0003SHAR0001 /* Secrets.xcframework in Frameworks */,
 				ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */,
 			);
 		};
 		64915BA4D2117A923D5E4476 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-				23DD3EBF2EFA090B0090636B /* Secrets in Frameworks */,
+				SEC00001XCFR0004WTCH0001 /* Secrets.xcframework in Frameworks */,
 				0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */,
 				2AD59B02211E454634324EEB /* Logger in Frameworks */,
 				03D120972D0E10C76131AFB8 /* Playback in Frameworks */,
@@ -342,6 +342,7 @@
 		23FB21C52EEA866C0064E6FD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */,
 				236B51CF2EFC651A0058AD01 /* WidgetKit.framework */,
 				236B51D12EFC651A0058AD01 /* SwiftUI.framework */,
 			);
@@ -378,7 +379,6 @@
 				4FA5098D4C45B1A40664F383 /* Playback */,
 				408862FFDA682059B46DBE38 /* PlayerHeaderView */,
 				0768EDED2F37ADBE14D485A2 /* Playlist */,
-				65DE92962FCB03D68F79A895 /* Secrets */,
 				7DEA10C351FEB7C3DEBD1E89 /* WXUI */,
 			);
 			name = Packages;
@@ -412,11 +412,9 @@
 				236B52002EFC67600058AD01 /* PBXTargetDependency */,
 				236B51FC2EFC67570058AD01 /* PBXTargetDependency */,
 				236B51F82EFC674C0058AD01 /* PBXTargetDependency */,
-				236B51F42EFC67430058AD01 /* PBXTargetDependency */,
 			);
 			name = NowPlayingWidget;
 			packageProductDependencies = (
-				236B51F52EFC67470058AD01 /* Secrets */,
 				236B51F92EFC674F0058AD01 /* Caching */,
 				236B51FD2EFC675B0058AD01 /* Playlist */,
 				236B52012EFC67630058AD01 /* Analytics */,
@@ -439,7 +437,6 @@
 			name = "Request Share Extension";
 			packageProductDependencies = (
 				B1E128B6E39E90EA57C68C69 /* MusicShareKit */,
-				A0B1C2D3E4F506070809A0B1 /* Secrets */,
 			);
 			productName = "Request Share Extension";
 			productReference = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */;
@@ -486,7 +483,6 @@
 				3776C2184A667CCB7B4E0B67 /* Artwork */,
 				932CA5D4CF336582845E6C75 /* AppServices */,
 				01BA6F026317213ACE8EE228 /* PostHog */,
-				B0C1D2E3F4050617081910B2 /* Secrets */,
 			);
 			productName = WatchXYC;
 			productReference = E790F2E8AAE12A20CB303818 /* WatchXYC.app */;
@@ -559,7 +555,6 @@
 				33A31E91AA56954894130F50 /* Logger */,
 				6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */,
 				9AA59EC6C2A143F5728D04F9 /* Analytics */,
-				F06268AE9022F6AE22B608E2 /* Secrets */,
 				4E0E4513BB04D21BB582E4B0 /* MusicShareKit */,
 				E150313F784CF272A32EA642 /* Playback */,
 				8FCE16D2F8F98E766EFCFFDF /* Caching */,
@@ -619,8 +614,6 @@
 			mainGroup = C57C4FD34139E637E6F7B435;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */,
-				07A737447BF4EACF39918E99 /* XCRemoteSwiftPackageReference "ObservableDefaults" */,
 				999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				17F14B03423533C80A6A4E69 /* XCRemoteSwiftPackageReference "Vortex" */,
 				6414443EB40D8B806FA6BAAA /* XCLocalSwiftPackageReference "Shared/Analytics" */,
@@ -637,7 +630,6 @@
 				F312D55190C505B9EE16903A /* XCLocalSwiftPackageReference "Shared/Playback" */,
 				6220DC310DFF2FC4A929FDB0 /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */,
 				D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */,
-				4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */,
 				ABCDCE57E9505C547B8FE732 /* XCLocalSwiftPackageReference "Shared/WXUI" */,
 				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
 			);
@@ -728,10 +720,6 @@
 			isa = PBXTargetDependency;
 			target = 236B51CD2EFC651A0058AD01 /* NowPlayingWidget */;
 			targetProxy = 236B51DB2EFC651C0058AD01 /* PBXContainerItemProxy */;
-		};
-		236B51F42EFC67430058AD01 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = 236B51F32EFC67430058AD01 /* Secrets */;
 		};
 		236B51F82EFC674C0058AD01 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -2032,10 +2020,6 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/DebugPanel;
 		};
-		4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Shared/Secrets;
-		};
 		61539220C8BCCFF9AC473AD9 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/MusicShareKit;
@@ -2087,28 +2071,12 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		07A737447BF4EACF39918E99 /* XCRemoteSwiftPackageReference "ObservableDefaults" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/fatbobman/ObservableDefaults";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.7.2;
-			};
-		};
 		17F14B03423533C80A6A4E69 /* XCRemoteSwiftPackageReference "Vortex" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/twostraws/Vortex.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.0.4;
-			};
-		};
-		50639A8D01C110E035503C59 /* XCRemoteSwiftPackageReference "ObfuscateMacro" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/p-x9/ObfuscateMacro.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.12.0;
 			};
 		};
 		999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
@@ -2142,15 +2110,6 @@
 		196F9D43ACA1827478F32D5D /* Artwork */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Artwork;
-		};
-		236B51F32EFC67430058AD01 /* Secrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4D9C5A693E866D1F342BB7D6 /* XCLocalSwiftPackageReference "Shared/Secrets" */;
-			productName = Secrets;
-		};
-		236B51F52EFC67470058AD01 /* Secrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Secrets;
 		};
 		236B51F72EFC674C0058AD01 /* Caching */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2288,14 +2247,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Analytics;
 		};
-		A0B1C2D3E4F506070809A0B1 /* Secrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Secrets;
-		};
-		B0C1D2E3F4050617081910B2 /* Secrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Secrets;
-		};
 		B1E128B6E39E90EA57C68C69 /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MusicShareKit;
@@ -2328,10 +2279,6 @@
 		EE16E35E8F1311399E5AD843 /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AppServices;
-		};
-		F06268AE9022F6AE22B608E2 /* Secrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Secrets;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
