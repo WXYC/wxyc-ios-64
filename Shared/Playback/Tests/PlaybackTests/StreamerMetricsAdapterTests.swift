@@ -1,7 +1,6 @@
 import Testing
 import Foundation
 @testable import Playback
-import AVAudioStreamer
 
 @Suite("StreamerMetricsAdapter Tests")
 struct StreamerMetricsAdapterTests {

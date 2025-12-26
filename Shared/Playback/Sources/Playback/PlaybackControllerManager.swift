@@ -12,7 +12,6 @@ import Core
 import PostHog
 
 #if !os(watchOS)
-import AVAudioStreamer
 
 /// Factory closure type for creating PlaybackController instances
 public typealias PlaybackControllerFactory = @MainActor (PlayerControllerType) -> any PlaybackController

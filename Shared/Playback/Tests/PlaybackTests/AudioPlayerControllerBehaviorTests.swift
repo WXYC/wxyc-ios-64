@@ -16,9 +16,6 @@ import UIKit
 #endif
 import MediaPlayer
 @testable import Playback
-#if !os(watchOS)
-@testable import AVAudioStreamer
-#endif
 
 // MARK: - Player Controller Behavior Protocol
 

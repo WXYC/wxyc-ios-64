@@ -2,7 +2,6 @@ import Testing
 import Foundation
 import AVFoundation
 @testable import Playback
-import AVAudioStreamer
 
 @Suite("PlaybackMetrics Tests")
 struct PlaybackMetricsTests {
@@ -13,6 +12,7 @@ struct PlaybackMetricsTests {
         PlayerControllerType.radioPlayer,
         PlayerControllerType.avAudioStreamer
     ])
+    
     @MainActor
     func stallReporting(type: PlayerControllerType) async throws {
         let reporter = MockMetricsReporter()

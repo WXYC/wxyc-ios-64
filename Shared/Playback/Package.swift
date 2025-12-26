@@ -11,7 +11,7 @@ let package = Package(
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
         .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
-        .package(name: "AVAudioStreamer", path: "AVAudioStreamer"),
+        .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.0"),
     ],
     targets: [
         .target(
@@ -22,7 +22,7 @@ let package = Package(
                 "Analytics",
                 "Logger",
                 .product(name: "PostHog", package: "posthog-ios"),
-                .product(name: "AVAudioStreamer", package: "AVAudioStreamer", condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
+                .product(name: "DequeModule", package: "swift-collections", condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
             ]
         ),
         .testTarget(

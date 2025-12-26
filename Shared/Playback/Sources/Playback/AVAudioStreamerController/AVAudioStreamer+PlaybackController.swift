@@ -14,7 +14,6 @@ import UIKit
 
 // AVAudioStreamer is not available on watchOS (AudioToolbox dependency)
 #if !os(watchOS)
-import AVAudioStreamer
 
 // MARK: - PlaybackController Conformance
 
