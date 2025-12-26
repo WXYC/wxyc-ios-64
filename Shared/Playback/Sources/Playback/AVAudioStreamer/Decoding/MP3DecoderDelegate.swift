@@ -1,3 +1,5 @@
+#if !os(watchOS)
+
 @preconcurrency import AVFoundation
 
 /// Delegate for MP3 decoder events
@@ -8,3 +10,5 @@ protocol MP3DecoderDelegate: AnyObject, Sendable {
     /// Called when an error occurs during decoding
     func mp3Decoder(_ decoder: MP3StreamDecoder, didEncounterError error: Error)
 }
+
+#endif

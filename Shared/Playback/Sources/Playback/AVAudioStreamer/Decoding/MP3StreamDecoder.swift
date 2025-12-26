@@ -1,3 +1,5 @@
+#if !os(watchOS)
+
 import Foundation
 @preconcurrency import AVFoundation
 import AudioToolbox
@@ -8,31 +10,50 @@ enum MP3DecoderError: Error {
     case conversionFailed(OSStatus)
     case invalidFormat
     case bufferAllocationFailed
+    case audioFileStreamError(OSStatus)
 }
 
-/// Decodes streaming MP3 data to PCM buffers using AudioToolbox
+/// Context for C callbacks that safely holds a weak reference to the decoder
+private final class AudioStreamContext {
+    weak var decoder: MP3StreamDecoder?
+
+    init(decoder: MP3StreamDecoder) {
+        self.decoder = decoder
+    }
+}
+
+/// Decodes streaming MP3 data to PCM buffers using AudioToolbox's AudioFileStream
 final class MP3StreamDecoder: @unchecked Sendable {
+    private nonisolated(unsafe) static var nextInstanceID = 0
+    private let instanceID: Int
+
     private weak var delegate: MP3DecoderDelegate?
     private let decoderQueue: DispatchQueue
 
-    /// The AudioConverter instance for MP3 to PCM conversion.
-    /// Thread-safety: All access must be on `decoderQueue`.
+    /// The AudioFileStream for parsing MP3 packets
+    private var audioFileStream: AudioFileStreamID?
+
+    /// The AudioConverter for MP3 to PCM conversion
     private var converter: AudioConverterRef?
 
-    /// Accumulated MP3 data waiting to be decoded.
-    /// Thread-safety: All access must be on `decoderQueue`.
-    private var buffer = Data()
-
-    /// The input audio format parsed from MP3 headers.
-    /// Thread-safety: All access must be on `decoderQueue`.
+    /// Parsed input format from the MP3 stream
     private var inputFormat: AudioStreamBasicDescription?
+
+    /// Accumulated packets waiting to be decoded
+    private var packetData = Data()
+    private var packetDescriptions: [AudioStreamPacketDescription] = []
 
     // Output format: 44.1kHz, stereo, Float32
     private let outputFormat: AVAudioFormat
 
+    /// Context for C callbacks - retained to prevent deallocation
+    private var callbackContext: AudioStreamContext?
+
     init(delegate: any MP3DecoderDelegate) {
+        self.instanceID = Self.nextInstanceID
+        Self.nextInstanceID += 1
         self.delegate = delegate
-        self.decoderQueue = DispatchQueue(label: "com.avaudiostreamer.mp3decoder", qos: .userInitiated)
+        self.decoderQueue = DispatchQueue(label: "com.avaudiostreamer.mp3decoder.\(instanceID)", qos: .userInitiated)
 
         // Standard output format for decoded audio
         guard let format = AVAudioFormat(
@@ -46,6 +67,21 @@ final class MP3StreamDecoder: @unchecked Sendable {
         self.outputFormat = format
     }
 
+    deinit {
+        if let stream = audioFileStream {
+            AudioFileStreamClose(stream)
+        }
+        if let conv = converter {
+            AudioConverterDispose(conv)
+        }
+        // Release the retained context
+        if callbackContext != nil {
+            // The context was retained when passed to AudioFileStreamOpen
+            // Release that retain count here
+            Unmanaged.passUnretained(callbackContext!).release()
+        }
+    }
+
     func decode(data: Data) {
         decoderQueue.async { [weak self] in
             guard let self = self else { return }
@@ -56,90 +92,123 @@ final class MP3StreamDecoder: @unchecked Sendable {
     func reset() {
         decoderQueue.async { [weak self] in
             guard let self = self else { return }
-            self.buffer.removeAll()
+            self.packetData.removeAll()
+            self.packetDescriptions.removeAll()
             self.inputFormat = nil
-            if let converter = self.converter {
-                AudioConverterDispose(converter)
+
+            if let stream = self.audioFileStream {
+                AudioFileStreamClose(stream)
+                self.audioFileStream = nil
+            }
+            if let conv = self.converter {
+                AudioConverterDispose(conv)
                 self.converter = nil
             }
         }
     }
 
     private func processMP3Data(_ newData: Data) {
-        // Append new data to buffer
-        buffer.append(newData)
+        // Set up AudioFileStream if needed
+        if audioFileStream == nil {
+            var stream: AudioFileStreamID?
 
-        // Try to parse audio format if we haven't yet
-        if inputFormat == nil {
-            if let format = parseMP3Format(from: buffer) {
-                inputFormat = format
-                setUpConverter(inputFormat: format)
-            } else {
-                // Not enough data yet to determine format
+            // Create context with weak reference to self
+            let context = AudioStreamContext(decoder: self)
+            self.callbackContext = context
+            let contextPtr = Unmanaged.passRetained(context).toOpaque()
+
+            let status = AudioFileStreamOpen(
+                contextPtr,
+                { (inClientData, inAudioFileStream, inPropertyID, ioFlags) in
+                    let context = Unmanaged<AudioStreamContext>.fromOpaque(inClientData).takeUnretainedValue()
+                    guard let decoder = context.decoder else { return }
+                    decoder.handlePropertyChange(propertyID: inPropertyID)
+                },
+                { (inClientData, inNumberBytes, inNumberPackets, inInputData, inPacketDescriptions) in
+                    let context = Unmanaged<AudioStreamContext>.fromOpaque(inClientData).takeUnretainedValue()
+                    guard let decoder = context.decoder else { return }
+                    decoder.handlePackets(
+                        numberBytes: inNumberBytes,
+                        numberPackets: inNumberPackets,
+                        inputData: inInputData,
+                        packetDescriptions: inPacketDescriptions
+                    )
+                },
+                kAudioFileMP3Type,
+                &stream
+            )
+
+            guard status == noErr, let fileStream = stream else {
+                notifyError(MP3DecoderError.audioFileStreamError(status))
                 return
             }
+
+            audioFileStream = fileStream
         }
 
-        // Convert MP3 data to PCM
-        convertToPCM()
+        // Parse the MP3 data
+        guard let stream = audioFileStream else { return }
+
+        newData.withUnsafeBytes { rawBufferPointer in
+            guard let bytes = rawBufferPointer.baseAddress else { return }
+            let status = AudioFileStreamParseBytes(
+                stream,
+                UInt32(newData.count),
+                bytes,
+                []
+            )
+            if status != noErr && status != kAudioFileStreamError_NotOptimized {
+                // NotOptimized is not fatal for streaming
+            }
+        }
     }
 
-    private func parseMP3Format(from data: Data) -> AudioStreamBasicDescription? {
-        // Look for MP3 sync word (0xFFE or 0xFFF in the first 12 bits)
-        guard data.count >= 4 else { return nil }
+    private func handlePropertyChange(propertyID: AudioFileStreamPropertyID) {
+        guard propertyID == kAudioFileStreamProperty_DataFormat else { return }
+        guard let stream = audioFileStream else { return }
 
-        var bytes = [UInt8](repeating: 0, count: min(data.count, 1024))
-        data.copyBytes(to: &bytes, count: bytes.count)
+        var format = AudioStreamBasicDescription()
+        var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
 
-        // Find MP3 frame header
-        for i in 0..<(bytes.count - 4) {
-            if (bytes[i] == 0xFF) && ((bytes[i + 1] & 0xE0) == 0xE0) {
-                // Found sync word, parse MP3 header
-                return parseMP3Header(bytes: Array(bytes[i..<min(i + 4, bytes.count)]))
+        let status = AudioFileStreamGetProperty(
+            stream,
+            kAudioFileStreamProperty_DataFormat,
+            &formatSize,
+            &format
+        )
+
+        guard status == noErr else { return }
+
+        inputFormat = format
+        setUpConverter(inputFormat: format)
+    }
+
+    private func handlePackets(
+        numberBytes: UInt32,
+        numberPackets: UInt32,
+        inputData: UnsafeRawPointer,
+        packetDescriptions: UnsafePointer<AudioStreamPacketDescription>?
+    ) {
+        guard numberPackets > 0 else { return }
+
+        // Accumulate packet data
+        let data = Data(bytes: inputData, count: Int(numberBytes))
+        packetData.append(data)
+
+        // Accumulate packet descriptions (adjusting offsets)
+        if let descriptions = packetDescriptions {
+            let currentOffset = Int64(packetData.count) - Int64(numberBytes)
+            for i in 0..<Int(numberPackets) {
+                var desc = descriptions[i]
+                desc.mStartOffset += currentOffset
+                self.packetDescriptions.append(desc)
             }
         }
 
-        return nil
-    }
-
-    private func parseMP3Header(bytes: [UInt8]) -> AudioStreamBasicDescription? {
-        guard bytes.count >= 4 else { return nil }
-
-        // Parse MP3 frame header
-        let byte1 = bytes[1]
-
-        // Version (bits 3-4)
-        let version = (byte1 >> 3) & 0x03
-
-        // Layer (bits 1-2)
-        _ = (byte1 >> 1) & 0x03  // Layer not currently used
-
-        // Sample rate
-        let sampleRates: [[Double]] = [
-            [11025, 12000, 8000, 0],    // MPEG 2.5
-            [0, 0, 0, 0],                // Reserved
-            [22050, 24000, 16000, 0],   // MPEG 2
-            [44100, 48000, 32000, 0]    // MPEG 1
-        ]
-
-        let byte2 = bytes[2]
-        let sampleRateIndex = (byte2 >> 2) & 0x03
-        let sampleRate = sampleRates[Int(version)][Int(sampleRateIndex)]
-
-        guard sampleRate > 0 else { return nil }
-
-        // Channel mode (bits 6-7 of byte 3)
-        let byte3 = bytes[3]
-        let channelMode = (byte3 >> 6) & 0x03
-        let channels: UInt32 = (channelMode == 3) ? 1 : 2  // 3 = mono, others = stereo
-
-        var format = AudioStreamBasicDescription()
-        format.mFormatID = kAudioFormatMPEGLayer3
-        format.mSampleRate = sampleRate
-        format.mChannelsPerFrame = channels
-        format.mFormatFlags = 0
-
-        return format
+        // Try to decode if we have enough packets
+        if self.packetDescriptions.count >= 10 {
+            convertToPCM()
+        }
     }
 
     private func setUpConverter(inputFormat: AudioStreamBasicDescription) {
@@ -159,7 +228,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
 
     private func convertToPCM() {
         guard let converter = converter else { return }
-        guard buffer.count > 0 else { return }
+        guard !packetDescriptions.isEmpty else { return }
 
         // Create output buffer
         let frameCapacity = AVAudioFrameCount(4096)
@@ -168,11 +237,21 @@ final class MP3StreamDecoder: @unchecked Sendable {
             return
         }
 
-        // Prepare for conversion
-        let context = ConversionContext(inputData: buffer, inputOffset: 0)
+        // Set up output buffer sizes
+        let bytesPerChannel = UInt32(frameCapacity) * UInt32(MemoryLayout<Float>.size)
+        let audioBufferList = pcmBuffer.mutableAudioBufferList
+        let bufferListPtr = UnsafeMutableAudioBufferListPointer(audioBufferList)
+        for i in 0..<Int(audioBufferList.pointee.mNumberBuffers) {
+            bufferListPtr[i].mDataByteSize = bytesPerChannel
+        }
+
+        // Create context for the callback
+        let context = ConversionContext(
+            packetData: packetData,
+            packetDescriptions: packetDescriptions
+        )
         let contextPointer = Unmanaged.passUnretained(context).toOpaque()
 
-        var outputBufferList = pcmBuffer.mutableAudioBufferList.pointee
         var ioOutputDataPacketSize = frameCapacity
 
         let status = AudioConverterFillComplexBuffer(
@@ -184,47 +263,90 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 outDataPacketDescription: UnsafeMutablePointer<UnsafeMutablePointer<AudioStreamPacketDescription>?>?,
                 inUserData: UnsafeMutableRawPointer?
             ) -> OSStatus in
-                guard let userData = inUserData else { return kAudioConverterErr_InvalidInputSize }
+                guard let userData = inUserData else {
+                    ioNumberDataPackets.pointee = 0
+                    return kAudioConverterErr_InvalidInputSize
+                }
 
                 let context = Unmanaged<ConversionContext>.fromOpaque(userData).takeUnretainedValue()
-                let remainingBytes = context.inputData.count - context.inputOffset
 
-                guard remainingBytes > 0 else {
+                guard context.packetIndex < context.packetDescriptions.count else {
                     ioNumberDataPackets.pointee = 0
                     return noErr
                 }
 
-                // Provide input data using pre-allocated buffer
-                let bytesToCopy = min(remainingBytes, Int(ioNumberDataPackets.pointee) * 1024)
-                let bufferPointer = context.getBuffer(capacity: bytesToCopy)
+                // Provide one packet at a time
+                let desc = context.packetDescriptions[context.packetIndex]
+                let packetSize = Int(desc.mDataByteSize)
+                let packetOffset = Int(desc.mStartOffset)
+                let dataCount = context.packetData.count
 
-                context.inputData.copyBytes(
-                    to: bufferPointer,
-                    from: context.inputOffset..<(context.inputOffset + bytesToCopy)
-                )
+                // Validate bounds carefully to avoid overflow
+                guard packetSize > 0,
+                      packetOffset >= 0,
+                      packetOffset < dataCount,
+                      dataCount - packetOffset >= packetSize else {
+                    ioNumberDataPackets.pointee = 0
+                    return noErr
+                }
 
-                ioData.pointee.mBuffers.mData = UnsafeMutableRawPointer(bufferPointer)
-                ioData.pointee.mBuffers.mDataByteSize = UInt32(bytesToCopy)
+                // Double-check: verify that the end of range <= count
+                let endIndex = packetOffset + packetSize
+                precondition(endIndex <= context.packetData.count,
+                       "Range end \(endIndex) exceeds data count \(context.packetData.count)")
+
+                // Copy packet data to our buffer using memcpy to avoid Data.copyBytes issues
+                let bufferPointer = context.getBuffer(capacity: packetSize)
+                context.packetData.withUnsafeBytes { rawBuffer in
+                    guard let baseAddress = rawBuffer.baseAddress else { return }
+                    memcpy(bufferPointer, baseAddress.advanced(by: packetOffset), packetSize)
+                }
+
                 ioData.pointee.mNumberBuffers = 1
+                ioData.pointee.mBuffers.mData = UnsafeMutableRawPointer(bufferPointer)
+                ioData.pointee.mBuffers.mDataByteSize = UInt32(packetSize)
+                ioData.pointee.mBuffers.mNumberChannels = 0
 
-                ioNumberDataPackets.pointee = UInt32(bytesToCopy)
-                context.inputOffset += bytesToCopy
+                // Provide packet description
+                if let outDesc = outDataPacketDescription {
+                    let packetDesc = AudioStreamPacketDescription(
+                        mStartOffset: 0,
+                        mVariableFramesInPacket: desc.mVariableFramesInPacket,
+                        mDataByteSize: desc.mDataByteSize
+                    )
+                    outDesc.pointee = context.setCurrentPacketDescription(packetDesc)
+                }
+
+                ioNumberDataPackets.pointee = 1
+                context.packetIndex += 1
 
                 return noErr
             },
             contextPointer,
             &ioOutputDataPacketSize,
-            &outputBufferList,
+            audioBufferList,
             nil
         )
 
         if status == noErr && ioOutputDataPacketSize > 0 {
             pcmBuffer.frameLength = ioOutputDataPacketSize
 
-            // Remove processed data from buffer
-            let bytesConsumed = context.inputOffset
-            if bytesConsumed > 0 {
-                buffer.removeFirst(bytesConsumed)
+            // Clear consumed packets
+            let consumedPackets = context.packetIndex
+            if consumedPackets > 0 && consumedPackets <= packetDescriptions.count {
+                // Find the end offset of consumed data
+                let lastConsumedDesc = packetDescriptions[consumedPackets - 1]
+                let consumedBytes = Int(lastConsumedDesc.mStartOffset + Int64(lastConsumedDesc.mDataByteSize))
+
+                if consumedBytes > 0 && consumedBytes <= packetData.count {
+                    packetData.removeFirst(consumedBytes)
+
+                    // Adjust remaining packet descriptions
+                    packetDescriptions.removeFirst(consumedPackets)
+                    for i in 0..<packetDescriptions.count {
+                        packetDescriptions[i].mStartOffset -= Int64(consumedBytes)
+                    }
+                }
             }
 
             // Notify delegate
@@ -232,10 +354,10 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 guard let self = self else { return }
                 self.delegate?.mp3Decoder(self, didDecode: pcmBuffer)
             }
-        } else if status != noErr {
-            // Clear some data to avoid getting stuck
-            let clearAmount = min(1024, buffer.count)
-            buffer.removeFirst(clearAmount)
+        } else if status != noErr && status != kAudioConverterErr_InvalidInputSize {
+            // Only clear on non-recoverable errors
+            packetDescriptions.removeAll()
+            packetData.removeAll()
         }
     }
 
@@ -256,39 +378,40 @@ final class MP3StreamDecoder: @unchecked Sendable {
 // MARK: - Supporting Types
 
 private final class ConversionContext {
-    let inputData: Data
-    var inputOffset: Int
+    let packetData: Data
+    let packetDescriptions: [AudioStreamPacketDescription]
+    var packetIndex: Int = 0
 
-    /// Pre-allocated buffer for AudioConverter input data.
-    /// Sized for typical MP3 frame sizes (max ~1440 bytes for 320kbps).
-    /// Will grow if needed but avoids repeated allocations.
+    /// Storage for current packet description - must remain valid between callback invocations
+    private var packetDescriptionStorage: UnsafeMutablePointer<AudioStreamPacketDescription>
+
     private var buffer: UnsafeMutablePointer<UInt8>?
     private var bufferCapacity: Int = 0
 
-    /// Default buffer size - covers most MP3 frames
-    private static let defaultBufferSize = 4096
-
-    init(inputData: Data, inputOffset: Int) {
-        self.inputData = inputData
-        self.inputOffset = inputOffset
-        // Pre-allocate buffer
-        self.bufferCapacity = Self.defaultBufferSize
-        self.buffer = .allocate(capacity: bufferCapacity)
+    init(packetData: Data, packetDescriptions: [AudioStreamPacketDescription]) {
+        self.packetData = packetData
+        self.packetDescriptions = packetDescriptions
+        self.packetDescriptionStorage = .allocate(capacity: 1)
     }
 
     deinit {
         buffer?.deallocate()
+        packetDescriptionStorage.deallocate()
     }
 
-    /// Returns a buffer pointer with at least the requested capacity.
-    /// Reuses existing buffer if large enough, otherwise reallocates.
     func getBuffer(capacity: Int) -> UnsafeMutablePointer<UInt8> {
         if capacity > bufferCapacity {
             buffer?.deallocate()
-            bufferCapacity = capacity
-            buffer = .allocate(capacity: capacity)
+            bufferCapacity = max(capacity, 4096)
+            buffer = .allocate(capacity: bufferCapacity)
         }
         return buffer!
     }
+
+    func setCurrentPacketDescription(_ desc: AudioStreamPacketDescription) -> UnsafeMutablePointer<AudioStreamPacketDescription> {
+        packetDescriptionStorage.pointee = desc
+        return packetDescriptionStorage
+    }
 }
 
+#endif

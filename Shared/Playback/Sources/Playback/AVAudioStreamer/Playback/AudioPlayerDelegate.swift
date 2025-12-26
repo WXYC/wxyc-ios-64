@@ -1,3 +1,5 @@
+#if !os(watchOS)
+
 import Foundation
 
 /// Delegate for audio player events
@@ -23,3 +25,5 @@ protocol AudioPlayerDelegate: AnyObject, Sendable {
     /// Called when playback resumes after a stall
     func audioPlayerDidRecoverFromStall(_ player: AudioEnginePlayer)
 }
+
+#endif
