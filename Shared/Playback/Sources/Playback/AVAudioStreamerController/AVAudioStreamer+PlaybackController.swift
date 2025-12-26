@@ -22,11 +22,11 @@ extension AVAudioStreamer: PlaybackController {
     // streamURL is already defined in AVAudioStreamer
     
     public var isPlaying: Bool {
-        state == .playing
+        streamingState == .playing
     }
     
     public var isLoading: Bool {
-        switch state {
+        switch streamingState {
         case .connecting, .buffering:
             return true
         default:
@@ -73,4 +73,3 @@ extension AVAudioStreamer: PlaybackController {
 }
 
 #endif // !os(watchOS)
-

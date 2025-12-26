@@ -23,11 +23,19 @@ import SwiftUI
 /// the expected contract that conforming implementations must match.
 @MainActor
 public protocol PlaybackController: AnyObject, Observable {
+    /// The current playback state
+    ///
+    /// This is the single source of truth for playback state.
+    /// Use convenience properties like `state.isPlaying` for boolean checks.
+    var state: PlaybackState { get }
+
     /// Whether audio is currently playing
+    @available(*, deprecated, message: "Use state.isPlaying instead")
     var isPlaying: Bool { get }
-    
+
     /// Whether playback is loading (play initiated but not yet playing)
     /// Controllers without loading state should return `false`
+    @available(*, deprecated, message: "Use state.isLoading instead")
     var isLoading: Bool { get }
     
     /// Starts playback with the given reason for analytics
@@ -56,7 +64,7 @@ public protocol PlaybackController: AnyObject, Observable {
     /// Called when the app enters the background
     /// Should deactivate audio session if not playing
     func handleAppDidEnterBackground()
-    
+
     /// Called when the app returns to the foreground
     /// Should reactivate audio session if playback is intended
     func handleAppWillEnterForeground()
@@ -78,4 +86,3 @@ public extension EnvironmentValues {
         set { self[PlaybackControllerKey.self] = newValue }
     }
 }
-

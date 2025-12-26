@@ -24,6 +24,12 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
     var isPlaying: Bool { _isPlaying }
     var isLoading: Bool { _isLoading }
     
+    var state: PlaybackState {
+        if _isLoading { return .loading }
+        if _isPlaying { return .playing }
+        return .idle
+    }
+
     let audioBufferStream: AsyncStream<AVAudioPCMBuffer> = AsyncStream { $0.finish() }
     
     // Tracking
@@ -110,9 +116,9 @@ func createMockFactory(controllers: [PlayerControllerType: MockPlaybackControlle
         controllers[type] ?? MockPlaybackController()
     }
 }
-
+    
 // MARK: - PlaybackControllerManager Tests
-
+    
 @Suite("PlaybackControllerManager Tests")
 @MainActor
 struct PlaybackControllerManagerTests {
@@ -139,9 +145,9 @@ struct PlaybackControllerManagerTests {
             factoryCalledWithType = type
             return MockPlaybackController()
         }
-        
+    
         _ = PlaybackControllerManager(initialType: .avAudioStreamer, factory: factory)
-        
+    
         #expect(factoryCallCount == 1)
         #expect(factoryCalledWithType == .avAudioStreamer)
     }
@@ -186,7 +192,7 @@ struct PlaybackControllerManagerTests {
         
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
         factoryCallCount = 0 // Reset after init
-        
+    
         manager.switchTo(.radioPlayer)
         
         #expect(factoryCallCount == 0, "Should not create new controller when type unchanged")
@@ -254,7 +260,7 @@ struct PlaybackControllerManagerTests {
         
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
         #expect(manager.isPlaying)
-        
+    
         manager.switchTo(.avAudioStreamer)
         
         #expect(newController.playCallCount == 1, "Should resume playback on new controller")
@@ -283,7 +289,7 @@ struct PlaybackControllerManagerTests {
     }
     
     // MARK: - Playback Control Tests
-    
+        
     @Test("toggle delegates to current controller")
     func toggleDelegatesToController() {
         let mockController = MockPlaybackController()
@@ -294,7 +300,7 @@ struct PlaybackControllerManagerTests {
         
         #expect(mockController.toggleCallCount == 1)
     }
-    
+        
     @Test("play delegates to current controller")
     func playDelegatesToController() {
         let mockController = MockPlaybackController()
@@ -305,7 +311,7 @@ struct PlaybackControllerManagerTests {
         
         #expect(mockController.playCallCount == 1)
     }
-    
+        
     @Test("pause delegates to current controller")
     func pauseDelegatesToController() {
         let mockController = MockPlaybackController()
@@ -316,7 +322,7 @@ struct PlaybackControllerManagerTests {
         
         #expect(mockController.pauseCallCount == 1)
     }
-    
+        
     @Test("stop delegates to current controller")
     func stopDelegatesToController() {
         let mockController = MockPlaybackController()
@@ -329,7 +335,7 @@ struct PlaybackControllerManagerTests {
     }
     
     // MARK: - State Passthrough Tests
-    
+        
     @Test("isPlaying reflects current controller state")
     func isPlayingReflectsControllerState() {
         let mockController = MockPlaybackController()
@@ -344,15 +350,15 @@ struct PlaybackControllerManagerTests {
         mockController.simulatePlaybackStopped()
         #expect(!manager.isPlaying)
     }
-    
+        
     @Test("isLoading reflects current controller state")
     func isLoadingReflectsControllerState() {
         let mockController = MockPlaybackController()
         let factory: PlaybackControllerFactory = { _ in mockController }
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
+    
         #expect(!manager.isLoading)
-        
+    
         mockController._isLoading = true
         #expect(manager.isLoading)
     }
@@ -370,15 +376,15 @@ struct PlaybackControllerManagerTests {
         
         #expect(mockController.backgroundCallCount == 1)
     }
-    
+        
     @Test("handleAppWillEnterForeground delegates to current controller")
     func handleForegroundDelegatesToController() {
         let mockController = MockPlaybackController()
         let factory: PlaybackControllerFactory = { _ in mockController }
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
+    
         manager.handleAppWillEnterForeground()
-        
+    
         #expect(mockController.foregroundCallCount == 1)
     }
     #endif
@@ -391,7 +397,7 @@ struct PlaybackControllerManagerTests {
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
         
         #expect(manager.currentType == .radioPlayer)
-        
+
         manager.switchTo(.avAudioStreamer)
         #expect(manager.currentType == .avAudioStreamer)
 
@@ -402,7 +408,7 @@ struct PlaybackControllerManagerTests {
         #expect(manager.currentType == .avAudioStreamer)
     }
 }
-
+    
 // MARK: - Integration Tests
 
 @Suite("PlaybackControllerManager Integration Tests")

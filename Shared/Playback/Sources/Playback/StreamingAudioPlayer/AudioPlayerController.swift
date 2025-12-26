@@ -504,17 +504,36 @@ extension AudioPlayerController {
 
 extension AudioPlayerController: PlaybackController {
     
+    public var state: PlaybackState {
+        // If there's a stall in progress, return stalled
+        if stallStartTime != nil {
+            return .stalled
+        }
+    
+        // Map from player state
+        switch player.state {
+        case .stopped, .paused:
+            return .idle
+        case .buffering:
+            return .loading
+        case .playing:
+            return .playing
+        case .error:
+            return .error(.unknown(""))
+        }
+    }
+
     public func toggle(reason: String) throws {
         // AudioPlayerController's toggle doesn't take a reason,
         // but we match the protocol signature
         toggle()
     }
-    
+
     // Explicit stop() to satisfy protocol (AudioPlayerController has stop(reason:))
     public func stop() {
         stop(reason: nil)
     }
-    
+
     // Explicit pause() to satisfy protocol (AudioPlayerController has pause(reason:))
     public func pause() {
         pause(reason: nil)

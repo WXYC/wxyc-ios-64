@@ -26,6 +26,9 @@ public final class RadioPlayerController: PlaybackController {
     
     private let streamURL = RadioStation.WXYC.streamURL
     
+    /// The current playback state
+    public private(set) var state: PlaybackState = .idle
+
     public var isPlaying: Bool {
         self.radioPlayer.isPlaying
     }
@@ -98,10 +101,22 @@ public final class RadioPlayerController: PlaybackController {
             remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
             remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
         ]
-
-        self.inputObservations = observations
-    }
     
+        self.inputObservations = observations
+    
+        // Observe radioPlayer.isPlaying to update state
+        Task { [weak self] in
+            guard let self else { return }
+            for await isPlaying in Observations({ self.radioPlayer.isPlaying }) {
+                if isPlaying && self.state == .loading {
+                    self.state = .playing
+                } else if isPlaying && self.state == .stalled {
+                    self.state = .playing
+                }
+            }
+        }
+    }
+
     // MARK: Public methods
     
     public func toggle(reason: String) throws {
@@ -116,6 +131,7 @@ public final class RadioPlayerController: PlaybackController {
     public func play(reason: String) throws {
         Task {
             do {
+                self.state = .loading
                 self.playbackTimer = Timer.start()
 
 #if !os(macOS)
@@ -127,11 +143,13 @@ public final class RadioPlayerController: PlaybackController {
                 if activated {
                     PostHogSDK.shared.play(reason: reason)
                     self.radioPlayer.play()
+                    // State transitions to .playing when radioPlayer.isPlaying becomes true
                 } else {
                     let failedToActivateReason = "AVAudioSession.sharedInstance().activate() returned false, but no error was thrown. Original reason: \(reason)"
                     PostHogSDK.shared.play(reason: failedToActivateReason)
                 }
             } catch {
+                self.state = .error(.audioSessionActivationFailed(error.localizedDescription))
                 PostHogSDK.shared.capture(
                     error: error,
                     context: "RadioPlayerController could not start playback",
@@ -145,6 +163,7 @@ public final class RadioPlayerController: PlaybackController {
     
     public func pause() {
         self.radioPlayer.pause()
+        self.state = .idle
     }
     
     public func stop() {
@@ -189,6 +208,7 @@ private extension RadioPlayerController {
         Log(.error, "Playback stalled: \(notification)")
         
         Task { @MainActor in
+            self.state = .stalled
             let event = StallEvent(
                 playerType: .radioPlayer,
                 timestamp: Date(),
@@ -218,6 +238,7 @@ private extension RadioPlayerController {
 
             switch interruptionType {
             case .began:
+                self.state = .interrupted
                 // `.routeDisconnected` types are not balanced by a `.ended` notification.
                 if interruptionReason == .routeDisconnected {
                     PostHogSDK.shared.pause(duration: playbackTimer.duration(), reason: "route disconnected")
@@ -242,7 +263,7 @@ private extension RadioPlayerController {
         Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
 #endif
     }
-    
+                
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
             Log(.info, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
@@ -263,7 +284,7 @@ private extension RadioPlayerController {
                     metricsReporter.reportRecovery(event)
                     self.stallStartTime = nil
                 }
-                
+    
                 self.backoffTimer.reset()
                 return
             }
@@ -293,7 +314,7 @@ private extension RadioPlayerController {
             guard !self.radioPlayer.isPlaying else {
                 return
             }
-
+    
             do {
                 try AVAudioSession.shared.deactivate()
             } catch let error as NSError {

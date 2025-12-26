@@ -58,7 +58,7 @@ struct AVAudioStreamerTests {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
         let streamer = AVAudioStreamer(configuration: config)
 
-        #expect(streamer.state == .idle)
+        #expect(streamer.streamingState == .idle)
         #expect(streamer.volume == 1.0)
     }
 
@@ -92,7 +92,7 @@ struct AVAudioStreamerTests {
         #expect(state != .idle, "Stream should transition from idle state")
 
         streamer.stop()
-        #expect(streamer.state == .idle)
+        #expect(streamer.streamingState == .idle)
     }
 
     @Test("Receive PCM buffers from live stream", .tags(.integration, .network))
@@ -118,7 +118,7 @@ struct AVAudioStreamerTests {
         let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        #expect(streamer.state == .idle)
+        #expect(streamer.streamingState == .idle)
 
         try await streamer.play()
 
@@ -126,7 +126,7 @@ struct AVAudioStreamerTests {
         #expect(state == .playing)
 
         streamer.stop()
-        #expect(streamer.state == .idle)
+        #expect(streamer.streamingState == .idle)
     }
 
     @Test("Pause and resume", .tags(.integration, .network))
@@ -141,7 +141,7 @@ struct AVAudioStreamerTests {
         _ = try await delegate.stateStream.first(timeout: 2) { $0 == .playing }
 
         streamer.pause()
-        #expect(streamer.state == .paused)
+        #expect(streamer.streamingState == .paused)
 
         try await streamer.play()
 
