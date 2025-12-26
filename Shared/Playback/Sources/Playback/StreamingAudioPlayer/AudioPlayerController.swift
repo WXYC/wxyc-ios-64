@@ -16,6 +16,7 @@ import UIKit
 import Core
 import Caching
 import WidgetKit
+import PlaybackCore
 
 
 // AudioPlayerController is not available on watchOS.

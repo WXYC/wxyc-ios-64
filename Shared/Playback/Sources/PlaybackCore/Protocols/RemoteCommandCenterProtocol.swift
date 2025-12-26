@@ -37,24 +37,24 @@ public protocol RemoteCommandCenterProtocol: AnyObject {
 extension MPRemoteCommand: RemoteCommandProtocol { }
 
 /// Wrapper to make MPRemoteCommandCenter conform to RemoteCommandCenterProtocol
-final class SystemRemoteCommandCenter: RemoteCommandCenterProtocol {
+public final class SystemRemoteCommandCenter: RemoteCommandCenterProtocol {
     private let commandCenter: MPRemoteCommandCenter
-    
-    init(commandCenter: MPRemoteCommandCenter = .shared()) {
+
+    public init(commandCenter: MPRemoteCommandCenter = .shared()) {
         self.commandCenter = commandCenter
     }
     
-    var playCommand: RemoteCommandProtocol { commandCenter.playCommand }
-    var pauseCommand: RemoteCommandProtocol { commandCenter.pauseCommand }
-    var stopCommand: RemoteCommandProtocol { commandCenter.stopCommand }
-    var togglePlayPauseCommand: RemoteCommandProtocol { commandCenter.togglePlayPauseCommand }
-    var skipForwardCommand: RemoteCommandProtocol { commandCenter.skipForwardCommand }
-    var skipBackwardCommand: RemoteCommandProtocol { commandCenter.skipBackwardCommand }
-    var nextTrackCommand: RemoteCommandProtocol { commandCenter.nextTrackCommand }
-    var previousTrackCommand: RemoteCommandProtocol { commandCenter.previousTrackCommand }
-    var seekForwardCommand: RemoteCommandProtocol { commandCenter.seekForwardCommand }
-    var seekBackwardCommand: RemoteCommandProtocol { commandCenter.seekBackwardCommand }
-    var changePlaybackPositionCommand: RemoteCommandProtocol { commandCenter.changePlaybackPositionCommand }
+    public var playCommand: RemoteCommandProtocol { commandCenter.playCommand }
+    public var pauseCommand: RemoteCommandProtocol { commandCenter.pauseCommand }
+    public var stopCommand: RemoteCommandProtocol { commandCenter.stopCommand }
+    public var togglePlayPauseCommand: RemoteCommandProtocol { commandCenter.togglePlayPauseCommand }
+    public var skipForwardCommand: RemoteCommandProtocol { commandCenter.skipForwardCommand }
+    public var skipBackwardCommand: RemoteCommandProtocol { commandCenter.skipBackwardCommand }
+    public var nextTrackCommand: RemoteCommandProtocol { commandCenter.nextTrackCommand }
+    public var previousTrackCommand: RemoteCommandProtocol { commandCenter.previousTrackCommand }
+    public var seekForwardCommand: RemoteCommandProtocol { commandCenter.seekForwardCommand }
+    public var seekBackwardCommand: RemoteCommandProtocol { commandCenter.seekBackwardCommand }
+    public var changePlaybackPositionCommand: RemoteCommandProtocol { commandCenter.changePlaybackPositionCommand }
 }
 #endif
 

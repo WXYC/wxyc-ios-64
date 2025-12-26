@@ -10,7 +10,7 @@ import AVFoundation
 
 // MARK: - Player Protocol
 
-protocol PlayerProtocol: Sendable {
+public protocol PlayerProtocol: Sendable {
     var rate: Float { get }
     func play()
     func pause()

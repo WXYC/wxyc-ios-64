@@ -53,6 +53,12 @@ public final class AVAudioStreamer {
     @ObservationIgnored
     private let bufferQueue: PCMBufferQueue
     @ObservationIgnored
+    private let httpAdapter: HTTPStreamClientDelegateAdapter
+    @ObservationIgnored
+    private let decoderAdapter: MP3DecoderDelegateAdapter
+    @ObservationIgnored
+    private let playerAdapter: AudioPlayerDelegateAdapter
+    @ObservationIgnored
     private let audioPlayer: AudioEnginePlayer
 
     @ObservationIgnored
@@ -82,10 +88,10 @@ public final class AVAudioStreamer {
         self.configuration = configuration
         self.backoffTimer = backoffTimer
 
-        // Create delegate adapters
-        let httpAdapter = HTTPStreamClientDelegateAdapter()
-        let decoderAdapter = MP3DecoderDelegateAdapter()
-        let playerAdapter = AudioPlayerDelegateAdapter()
+        // Create delegate adapters (stored as properties to prevent deallocation)
+        self.httpAdapter = HTTPStreamClientDelegateAdapter()
+        self.decoderAdapter = MP3DecoderDelegateAdapter()
+        self.playerAdapter = AudioPlayerDelegateAdapter()
 
         // Create buffer queue
         self.bufferQueue = PCMBufferQueue(
@@ -103,7 +109,7 @@ public final class AVAudioStreamer {
         self.mp3Decoder = MP3StreamDecoder(
             delegate: decoderAdapter
         )
-
+        
         self.httpClient = HTTPStreamClient(
             url: configuration.url,
             configuration: configuration,
@@ -244,7 +250,12 @@ public final class AVAudioStreamer {
     }
 
     fileprivate func attemptReconnect() {
-        let waitTime = backoffTimer.nextWaitTime()
+        guard let waitTime = backoffTimer.nextWaitTime() else {
+            // Backoff exhausted - give up and transition to error state
+            state = .error(HTTPStreamError.connectionFailed)
+            backoffTimer.reset()
+            return
+        }
 
         reconnectTask = Task {
             try? await Task.sleep(for: .seconds(waitTime))
