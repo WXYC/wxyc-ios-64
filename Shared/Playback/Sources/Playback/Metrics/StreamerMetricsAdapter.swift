@@ -2,7 +2,6 @@ import Foundation
 import AVFoundation
 import PostHog
 #if !os(watchOS)
-import AVAudioStreamer
 
 final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate {
     private let reporter: PlaybackMetricsReporter

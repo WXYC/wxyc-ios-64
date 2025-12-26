@@ -10,7 +10,6 @@ import AVFoundation
 
 // AVAudioStreamer is not available on watchOS
 #if !os(watchOS)
-import AVAudioStreamer
 
 /// Adapter that wraps AVAudioStreamer to conform to AudioPlayerProtocol
 @MainActor
