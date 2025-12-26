@@ -12,7 +12,7 @@ import Logger
 import PostHog
 import Secrets
 import Playlist
-import Playback
+import PlaybackCore
 
 @main
 struct WatchXYC: App {

@@ -8,7 +8,7 @@
 
 import SwiftUI
 import Playlist
-import Playback
+import PlaybackCore
 import AppServices
 
 struct RootTabView: View {

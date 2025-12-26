@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import AVFoundation
 @testable import Playback
+@testable import PlaybackCore
 
 @Suite("PlaybackMetrics Tests")
 struct PlaybackMetricsTests {
@@ -113,6 +114,6 @@ struct PlaybackMetricsTests {
         #expect(reporter.reportedCPUUsages.first?.cpuUsage == 12.5)
         #expect(reporter.reportedCPUUsages.first?.properties["cpu_usage"] as? Double == 12.5)
     }
-    
+
 
 }

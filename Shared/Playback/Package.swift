@@ -4,7 +4,10 @@ import PackageDescription
 let package = Package(
     name: "Playback",
     platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15), .tvOS(.v18)],
-    products: [.library(name: "Playback", targets: ["Playback"])],
+    products: [
+        .library(name: "Playback", targets: ["Playback"]),
+        .library(name: "PlaybackCore", targets: ["PlaybackCore"]),
+    ],
     dependencies: [
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Core", path: "../Core"),
@@ -15,13 +18,19 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Playback",
+            name: "PlaybackCore",
             dependencies: [
                 "Caching",
                 "Core",
                 "Analytics",
                 "Logger",
                 .product(name: "PostHog", package: "posthog-ios"),
+            ]
+        ),
+        .target(
+            name: "Playback",
+            dependencies: [
+                "PlaybackCore",
                 .product(name: "DequeModule", package: "swift-collections", condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
             ]
         ),
@@ -29,6 +38,6 @@ let package = Package(
             name: "PlaybackTests",
             dependencies: ["Playback"],
             resources: [.process("Resources")]
-        )
+        ),
     ]
 )

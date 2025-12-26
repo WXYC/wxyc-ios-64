@@ -244,7 +244,11 @@ private extension RadioPlayerController {
     }
     
     private func attemptReconnectWithExponentialBackoff() {
-        let waitTime = self.backoffTimer.nextWaitTime()
+        guard let waitTime = self.backoffTimer.nextWaitTime() else {
+            Log(.info, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
+            self.backoffTimer.reset()
+            return
+        }
         Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
         Task {
             if self.radioPlayer.isPlaying {

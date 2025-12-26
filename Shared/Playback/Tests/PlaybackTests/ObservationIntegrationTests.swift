@@ -117,12 +117,18 @@ struct ObservationIntegrationTests {
     func noStateChangeNoNotification() async throws {
         var changeCount = 0
 
+        // Create a fresh controller to isolate from other tests
+        let controller = AudioPlayerController(
+            notificationCenter: NotificationCenter(),
+            analytics: nil
+        )
+
         // Ensure we start paused
-        AudioPlayerController.shared.pause()
+        controller.pause()
         try await Task.sleep(for: .milliseconds(100))
 
         let observations = Observations {
-            AudioPlayerController.shared.isPlaying
+            controller.isPlaying
         }
 
         let observationTask = Task {

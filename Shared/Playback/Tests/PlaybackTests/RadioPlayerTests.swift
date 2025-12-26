@@ -3,6 +3,7 @@ import Foundation
 import AVFoundation
 import Analytics
 @testable import Playback
+@testable import PlaybackCore
 
 // MARK: - Mock Player
 
