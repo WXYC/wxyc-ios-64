@@ -12,6 +12,8 @@ struct AVAudioStreamerTests {
     // Test stream URL
     static let testStreamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
 
+    // MARK: - Unit Tests (no network required)
+
     @Test("Configuration initialization")
     func testConfigurationInitialization() {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
@@ -52,7 +54,7 @@ struct AVAudioStreamerTests {
     }
 
     @Test("Streamer initialization", .tags(.initialization))
-    func testStreamerInitialization() async {
+    func testStreamerInitialization() {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
         let streamer = AVAudioStreamer(configuration: config)
 
@@ -60,26 +62,36 @@ struct AVAudioStreamerTests {
         #expect(streamer.volume == 1.0)
     }
 
+    @Test("Volume control")
+    func testVolumeControl() {
+        let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
+        let streamer = AVAudioStreamer(configuration: config)
+
+        #expect(streamer.volume == 1.0)
+        streamer.volume = 0.5
+        #expect(streamer.volume == 0.5)
+        streamer.volume = 0.0
+        #expect(streamer.volume == 0.0)
+        streamer.volume = 1.0
+        #expect(streamer.volume == 1.0)
+    }
+
+    // MARK: - Integration Tests (require network)
+
     @Test("Connect to live stream", .tags(.integration, .network))
     func testConnectToLiveStream() async throws {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
         let streamer = AVAudioStreamer(configuration: config)
-        let delegate = TestDelegate()
+        let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        // Start streaming
         try await streamer.play()
 
-        // Wait for buffering to start
-        try await Task.sleep(for: .seconds(2))
+        // Wait for any state change
+        let state = try await delegate.stateStream.first(timeout: 4)
+        #expect(state != .idle, "Stream should transition from idle state")
 
-        // Verify state changed from idle
-        #expect(streamer.state != .idle)
-
-        // Stop streaming
         streamer.stop()
-
-        // Verify we returned to idle
         #expect(streamer.state == .idle)
     }
 
@@ -87,57 +99,32 @@ struct AVAudioStreamerTests {
     func testReceivePCMBuffers() async throws {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
         let streamer = AVAudioStreamer(configuration: config)
-        let delegate = TestDelegate()
+        let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        // Start streaming
         try await streamer.play()
 
-        // Wait for buffers to arrive
-        try await Task.sleep(for: .seconds(5))
+        let buffer = try await delegate.bufferStream.first(timeout: 4)
+        #expect(buffer.format.channelCount > 0)
+        #expect(buffer.frameLength > 0)
 
-        // Verify we received buffers
-        #expect(delegate.receivedBuffers.count > 0)
-
-        // Verify buffer properties
-        if let buffer = delegate.receivedBuffers.first {
-            #expect(buffer.format.channelCount > 0)
-            #expect(buffer.frameLength > 0)
-        }
-
-        // Stop streaming
         streamer.stop()
     }
 
-    @Test("State transitions", .tags(.integration, .network))
+    @Test("State transitions to playing", .tags(.integration, .network))
     func testStateTransitions() async throws {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
         let streamer = AVAudioStreamer(configuration: config)
-        let delegate = TestDelegate()
+        let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        // Initial state should be idle
         #expect(streamer.state == .idle)
 
-        // Start streaming
         try await streamer.play()
 
-        // Should transition through connecting -> buffering -> playing
-        try await Task.sleep(for: .seconds(5))
+        let state = try await delegate.stateStream.first(timeout: 4) { $0 == .playing }
+        #expect(state == .playing)
 
-        // Should eventually reach playing state
-        if case .playing = streamer.state {
-            // Success
-        } else if case .buffering = streamer.state {
-            // Still buffering, acceptable
-        } else {
-            Issue.record("Unexpected state: \(streamer.state)")
-        }
-
-        // Verify we saw state changes
-        #expect(delegate.stateChanges.count > 0)
-
-        // Stop streaming
         streamer.stop()
         #expect(streamer.state == .idle)
     }
@@ -146,83 +133,101 @@ struct AVAudioStreamerTests {
     func testPauseAndResume() async throws {
         let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
         let streamer = AVAudioStreamer(configuration: config)
+        let delegate = StreamDelegate()
+        streamer.delegate = delegate
 
-        // Start streaming
         try await streamer.play()
 
-        // Wait for playback to start
-        try await Task.sleep(for: .seconds(5))
+        _ = try await delegate.stateStream.first(timeout: 2) { $0 == .playing }
 
-        // Pause
         streamer.pause()
         #expect(streamer.state == .paused)
 
-        // Wait a bit
-        try await Task.sleep(for: .seconds(1))
-
-        // Resume
         try await streamer.play()
 
-        // Should transition back to playing
-        try await Task.sleep(for: .seconds(2))
+        let state = try await delegate.stateStream.first(timeout: 2) { $0 == .playing }
+        #expect(state == .playing)
 
-        if case .playing = streamer.state {
-            // Success
-        } else {
-            Issue.record("Expected playing state after resume, got: \(streamer.state)")
-        }
-
-        // Stop streaming
         streamer.stop()
-    }
-
-    @Test("Volume control")
-    func testVolumeControl() {
-        let config = AVAudioStreamerConfiguration(url: Self.testStreamURL)
-        let streamer = AVAudioStreamer(configuration: config)
-
-        // Default volume should be 1.0
-        #expect(streamer.volume == 1.0)
-
-        // Change volume
-        streamer.volume = 0.5
-        #expect(streamer.volume == 0.5)
-
-        // Set to minimum
-        streamer.volume = 0.0
-        #expect(streamer.volume == 0.0)
-
-        // Set to maximum
-        streamer.volume = 1.0
-        #expect(streamer.volume == 1.0)
     }
 }
 
-// MARK: - Test Helpers
+// MARK: - Stream-based Test Delegate
 
+/// A delegate that exposes callbacks as AsyncStreams for easy testing.
 @MainActor
-final class TestDelegate: @preconcurrency AVAudioStreamerDelegate {
-    var receivedBuffers: [AVAudioPCMBuffer] = []
-    var stateChanges: [StreamingAudioState] = []
-    var errors: [Error] = []
+final class StreamDelegate: @preconcurrency AVAudioStreamerDelegate {
+    private let stateContinuation: AsyncStream<StreamingAudioState>.Continuation
+    private let bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+
+    let stateStream: AsyncStream<StreamingAudioState>
+    let bufferStream: AsyncStream<AVAudioPCMBuffer>
+
+    init() {
+        var stateCont: AsyncStream<StreamingAudioState>.Continuation!
+        stateStream = AsyncStream { stateCont = $0 }
+        stateContinuation = stateCont
+
+        var bufferCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        bufferStream = AsyncStream { bufferCont = $0 }
+        bufferContinuation = bufferCont
+    }
+
+    deinit {
+        stateContinuation.finish()
+        bufferContinuation.finish()
+    }
 
     nonisolated func audioStreamer(didOutput buffer: AVAudioPCMBuffer, at time: AVAudioTime?) {
-        Task { @MainActor in
-            receivedBuffers.append(buffer)
-        }
+        bufferContinuation.yield(buffer)
     }
 
     nonisolated func audioStreamer(didChangeState state: StreamingAudioState) {
-        Task { @MainActor in
-            stateChanges.append(state)
-        }
+        stateContinuation.yield(state)
     }
 
     nonisolated func audioStreamer(didEncounterError error: Error) {
-        Task { @MainActor in
-            errors.append(error)
+        stateContinuation.finish()
+        bufferContinuation.finish()
+    }
+}
+
+// MARK: - AsyncStream Extensions
+
+extension AsyncStream where Element: Sendable {
+    /// Returns the first element, or throws TimeoutError if timeout is reached.
+    func first(timeout: TimeInterval) async throws -> Element {
+        try await first(timeout: timeout) { _ in true }
+    }
+
+    /// Returns the first element matching the predicate, or throws TimeoutError.
+    func first(timeout: TimeInterval, where predicate: @escaping @Sendable (Element) -> Bool) async throws -> Element {
+        try await withThrowingTaskGroup(of: Element.self) { group in
+            group.addTask {
+                for await element in self {
+                    if predicate(element) {
+                        return element
+                    }
+                }
+                throw CancellationError()
+            }
+
+            group.addTask {
+                try await Task.sleep(for: .seconds(timeout))
+                throw TimeoutError()
+            }
+
+            guard let result = try await group.next() else {
+                throw TimeoutError()
+            }
+            group.cancelAll()
+            return result
         }
     }
+}
+
+struct TimeoutError: Error, CustomStringConvertible {
+    var description: String { "Operation timed out" }
 }
 
 // MARK: - Test Tags
