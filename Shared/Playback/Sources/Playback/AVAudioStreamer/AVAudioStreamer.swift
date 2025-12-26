@@ -26,11 +26,27 @@ public final class AVAudioStreamer {
         return (stream, continuation)
     }()
 
-    public private(set) var state: StreamingAudioState = .idle {
+    public private(set) var streamingState: StreamingAudioState = .idle {
         didSet {
-            if state != oldValue {
-                delegate?.audioStreamer(didChangeState: state)
+            if streamingState != oldValue {
+                delegate?.audioStreamer(didChangeState: streamingState)
             }
+        }
+    }
+
+    /// The current playback state (PlaybackController protocol)
+    public var state: PlaybackState {
+        switch streamingState {
+        case .idle, .paused:
+            return .idle
+        case .connecting, .buffering, .reconnecting:
+            return .loading
+        case .playing:
+            return .playing
+        case .stalled:
+            return .stalled
+        case .error(let error):
+            return .error(.unknown(error.localizedDescription))
         }
     }
 
@@ -99,7 +115,7 @@ public final class AVAudioStreamer {
             minimumBuffersBeforePlayback: configuration.minimumBuffersBeforePlayback,
             delegate: nil
         )
-
+        
         // Create components with their adapters
         self.audioPlayer = AudioEnginePlayer(
             format: Self.outputFormat,
@@ -109,7 +125,7 @@ public final class AVAudioStreamer {
         self.mp3Decoder = MP3StreamDecoder(
             delegate: decoderAdapter
         )
-        
+
         self.httpClient = HTTPStreamClient(
             url: configuration.url,
             configuration: configuration,
@@ -128,24 +144,24 @@ public final class AVAudioStreamer {
 
     /// Start streaming and playing audio
     public func play() async throws {
-        guard state == .idle || state == .paused else { return }
+        guard streamingState == .idle || streamingState == .paused else { return }
 
         // If paused, just resume playback
-        if case .paused = state {
+        if case .paused = streamingState {
             try audioPlayer.play()
-            state = .playing
+            streamingState = .playing
             return
         }
 
         // Otherwise, connect and start streaming
-        state = .connecting
+        streamingState = .connecting
         backoffTimer.reset()
 
         do {
             try await httpClient.connect()
             // State will transition to buffering as data arrives
         } catch {
-            state = .error(error)
+            streamingState = .error(error)
             delegate?.audioStreamer(didEncounterError: error)
             throw error
         }
@@ -156,7 +172,7 @@ public final class AVAudioStreamer {
     /// For live streaming, we disconnect completely so resume connects to live audio,
     /// not stale buffered audio.
     public func pause() {
-        guard case .playing = state else { return }
+        guard case .playing = streamingState else { return }
 
         reconnectTask?.cancel()
         reconnectTask = nil
@@ -166,7 +182,7 @@ public final class AVAudioStreamer {
         bufferQueue.clear()
         mp3Decoder.reset()
 
-        state = .paused
+        streamingState = .paused
         // Note: Don't reset backoffTimer - preserve retry state for session continuity
     }
 
@@ -180,7 +196,7 @@ public final class AVAudioStreamer {
         bufferQueue.clear()
         mp3Decoder.reset()
 
-        state = .idle
+        streamingState = .idle
         backoffTimer.reset()
     }
 
@@ -199,25 +215,25 @@ public final class AVAudioStreamer {
         audioBufferStreamContinuation.1.yield(buffer)
 
         // Check if we should start playing
-        if case .buffering = state, bufferQueue.hasMinimumBuffers {
+        if case .buffering = streamingState, bufferQueue.hasMinimumBuffers {
             do {
                 try audioPlayer.play()
-                state = .playing
+                streamingState = .playing
                 scheduleBuffers()
             } catch {
-                state = .error(error)
+                streamingState = .error(error)
                 delegate?.audioStreamer(didEncounterError: error)
             }
         }
 
         // If already playing, schedule this buffer
-        if case .playing = state {
+        if case .playing = streamingState {
             scheduleBuffers()
         }
 
         // Update buffering state
-        if case .buffering = state {
-            state = .buffering(
+        if case .buffering = streamingState {
+            streamingState = .buffering(
                 bufferedCount: bufferQueue.count,
                 requiredCount: configuration.minimumBuffersBeforePlayback
             )
@@ -232,18 +248,18 @@ public final class AVAudioStreamer {
     }
 
     fileprivate func handleHTTPConnected() {
-        state = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
+        streamingState = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
     }
 
     fileprivate func handleHTTPDisconnected() {
         // Only handle if we're not intentionally stopping
-        guard state != .idle else { return }
+        guard streamingState != .idle else { return }
 
         attemptReconnect()
     }
 
     fileprivate func handleError(_ error: Error) {
-        state = .error(error)
+        streamingState = .error(error)
         delegate?.audioStreamer(didEncounterError: error)
 
         attemptReconnect()
@@ -252,7 +268,7 @@ public final class AVAudioStreamer {
     fileprivate func attemptReconnect() {
         guard let waitTime = backoffTimer.nextWaitTime() else {
             // Backoff exhausted - give up and transition to error state
-            state = .error(HTTPStreamError.connectionFailed)
+            streamingState = .error(HTTPStreamError.connectionFailed)
             backoffTimer.reset()
             return
         }
@@ -273,15 +289,15 @@ public final class AVAudioStreamer {
     }
 
     internal func handleStall() {
-        if case .playing = state {
-            state = .stalled
+        if case .playing = streamingState {
+            streamingState = .stalled
             delegate?.audioStreamerDidStall(self)
         }
     }
 
     internal func handleRecovery() {
-        if case .stalled = state {
-            state = .playing
+        if case .stalled = streamingState {
+            streamingState = .playing
             delegate?.audioStreamerDidRecover(self)
         }
     }

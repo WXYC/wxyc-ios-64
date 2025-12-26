@@ -18,11 +18,11 @@ final class AVAudioStreamerAdapter: AudioPlayerProtocol {
     // MARK: - AudioPlayerProtocol
     
     var isPlaying: Bool {
-        streamer.state == .playing
+        streamer.streamingState == .playing
     }
     
     var state: AudioPlayerPlaybackState {
-        mapState(streamer.state)
+        mapState(streamer.streamingState)
     }
     
     var stateStream: AsyncStream<AudioPlayerPlaybackState> {
