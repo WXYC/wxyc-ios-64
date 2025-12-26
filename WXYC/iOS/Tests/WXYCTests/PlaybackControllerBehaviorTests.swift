@@ -15,6 +15,7 @@ import MediaPlayer
 import UIKit
 @testable import Core
 @testable import Playback
+@testable import PlaybackCore
 
 // MARK: - Mock Player for RadioPlayer
 
