@@ -103,34 +103,6 @@ public extension PostHogSDK {
             properties: defaultProperties as [String : Any]
         )
     }
-    
-    func play(_ source: Any = #function, reason: String) {
-        PostHogSDK.shared.capture(
-            "play",
-            properties: [
-                "source": source,
-                "reason": reason,
-            ])
-    }
-    
-    func pause(_ source: Any = #function, duration: TimeInterval) {
-        PostHogSDK.shared.capture(
-            "pause",
-            properties: [
-                "source": source,
-                "duration": duration,
-            ])
-    }
-    
-    func pause(_ source: Any = #function, duration: TimeInterval, reason: String) {
-        PostHogSDK.shared.capture(
-            "pause",
-            properties: [
-                "source": source,
-                "duration": duration,
-                "reason": reason,
-            ])
-    }
 }
 
 extension Dictionary {
