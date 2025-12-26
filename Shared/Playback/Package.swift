@@ -27,7 +27,8 @@ let package = Package(
         ),
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback"]
+            dependencies: ["Playback"],
+            resources: [.process("Resources")]
         )
     ]
 )

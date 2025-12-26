@@ -1,6 +1,8 @@
+#if !os(watchOS)
+
 @preconcurrency import AVFoundation
 
-#if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+#if os(iOS) || os(tvOS) || os(visionOS)
 import UIKit
 #endif
 
@@ -42,10 +44,10 @@ final class AudioEnginePlayer: @unchecked Sendable {
         self.scheduledBufferCount = ScheduledBufferCount()
         self.schedulingQueue = DispatchQueue(label: "com.avaudiostreamer.scheduling", qos: .userInitiated)
 
-        setupAudioEngine()
+        setUpAudioEngine()
     }
 
-    private func setupAudioEngine() {
+    private func setUpAudioEngine() {
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
         engine.prepare()
@@ -218,3 +220,5 @@ private final class ScheduledBufferCount: @unchecked Sendable {
         _count = 0
     }
 }
+
+#endif
