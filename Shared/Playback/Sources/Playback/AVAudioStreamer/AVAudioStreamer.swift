@@ -162,7 +162,6 @@ public final class AVAudioStreamer {
             // State will transition to buffering as data arrives
         } catch {
             streamingState = .error(error)
-            delegate?.audioStreamer(didEncounterError: error)
             throw error
         }
     }
@@ -222,7 +221,6 @@ public final class AVAudioStreamer {
                 scheduleBuffers()
             } catch {
                 streamingState = .error(error)
-                delegate?.audioStreamer(didEncounterError: error)
             }
         }
 
@@ -260,8 +258,6 @@ public final class AVAudioStreamer {
 
     fileprivate func handleError(_ error: Error) {
         streamingState = .error(error)
-        delegate?.audioStreamer(didEncounterError: error)
-
         attemptReconnect()
     }
 

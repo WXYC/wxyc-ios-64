@@ -185,11 +185,6 @@ final class StreamDelegate: @preconcurrency AVAudioStreamerDelegate {
     nonisolated func audioStreamer(didChangeState state: StreamingAudioState) {
         stateContinuation.yield(state)
     }
-
-    nonisolated func audioStreamer(didEncounterError error: Error) {
-        stateContinuation.finish()
-        bufferContinuation.finish()
-    }
 }
 
 // MARK: - AsyncStream Extensions

@@ -21,10 +21,6 @@ final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate
         handleRecovery(playerType: .avAudioStreamer)
     }
     
-    func audioStreamer(didEncounterError error: Error) {
-        handleError(playerType: .avAudioStreamer, error: error)
-    }
-
     // MARK: - Helpers
     
     private func handleStall(playerType: PlayerControllerType) {
@@ -50,17 +46,6 @@ final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate
         )
         reporter.reportRecovery(event)
         stallStartTime = nil
-    }
-    
-    private func handleError(playerType: PlayerControllerType, error: Error) {
-        let event = PlaybackErrorEvent(
-            playerType: playerType,
-            errorType: .unknown,
-            errorDescription: error.localizedDescription,
-            context: "streamer_delegate",
-            isRecoverable: false
-        )
-        reporter.reportError(event)
     }
 }
 #endif
