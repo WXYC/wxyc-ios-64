@@ -43,16 +43,13 @@ public protocol PlaybackController: AnyObject, Observable {
     /// - Throws: If playback cannot be started
     func play(reason: String) throws
     
-    /// Pauses playback
-    func pause()
-    
-    /// Toggles between playing and paused states
+    /// Toggles between playing and stopped states
     /// - Parameter reason: A description of why playback was toggled (for analytics)
-    /// - Throws: If playback cannot be started when toggling from paused to playing
+    /// - Throws: If playback cannot be started when toggling from stopped to playing
     func toggle(reason: String) throws
-    
-    /// Stops playback completely
-    /// Controllers without a distinct stop state should treat this as pause
+
+    /// Stops playback and disconnects from stream
+    /// For live streaming, this resets the connection so resume plays live audio
     func stop()
     
     /// Stream of audio buffers for visualization

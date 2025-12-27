@@ -16,8 +16,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     // MARK: - State Tracking
 
     var playCallCount = 0
-    var pauseCallCount = 0
-    var resumeCallCount = 0
     var stopCallCount = 0
 
     var shouldAutoUpdateState = true
@@ -68,28 +66,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         }
     }
 
-    func pause() {
-        pauseCallCount += 1
-
-        if shouldAutoUpdateState {
-            let oldState = state
-            state = .idle
-            isPlaying = false
-            onStateChange?(oldState, .idle)
-        }
-    }
-
-    func resume() {
-        resumeCallCount += 1
-
-        if shouldAutoUpdateState {
-            let oldState = state
-            state = .playing
-            isPlaying = true
-            onStateChange?(oldState, .playing)
-        }
-    }
-
     func stop() {
         stopCallCount += 1
 
@@ -105,8 +81,6 @@ final class MockAudioPlayer: AudioPlayerProtocol {
 
     func reset() {
         playCallCount = 0
-        pauseCallCount = 0
-        resumeCallCount = 0
         stopCallCount = 0
         isPlaying = false
         state = .idle

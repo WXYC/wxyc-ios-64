@@ -34,7 +34,6 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
     
     // Tracking
     var playCallCount = 0
-    var pauseCallCount = 0
     var stopCallCount = 0
     var toggleCallCount = 0
     var lastPlayReason: String?
@@ -53,21 +52,16 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
         lastPlayReason = reason
         _isPlaying = true
     }
-    
-    func pause() {
-        pauseCallCount += 1
-        _isPlaying = false
-    }
-    
+
     func toggle(reason: String) throws {
         toggleCallCount += 1
         if _isPlaying {
-            pause()
+            stop()
         } else {
             try play(reason: reason)
         }
     }
-    
+
     func stop() {
         stopCallCount += 1
         _isPlaying = false
@@ -94,7 +88,6 @@ final class MockPlaybackController: PlaybackController, @unchecked Sendable {
     
     func reset() {
         playCallCount = 0
-        pauseCallCount = 0
         stopCallCount = 0
         toggleCallCount = 0
         lastPlayReason = nil
@@ -129,9 +122,9 @@ struct PlaybackControllerManagerTests {
     func managerInitializesWithProvidedType() {
         let mockController = MockPlaybackController()
         let factory: PlaybackControllerFactory = { _ in mockController }
-        
+    
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
+    
         #expect(manager.currentType == .radioPlayer)
     }
     
@@ -158,9 +151,9 @@ struct PlaybackControllerManagerTests {
     func switchToChangesCurrentType() {
         let factory: PlaybackControllerFactory = { _ in MockPlaybackController() }
         let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
+    
         manager.switchTo(.avAudioStreamer)
-        
+    
         #expect(manager.currentType == .avAudioStreamer)
     }
     
@@ -184,7 +177,7 @@ struct PlaybackControllerManagerTests {
     @Test("switchTo is no-op when switching to same type")
     func switchToSameTypeIsNoOp() {
         var factoryCallCount = 0
-        
+
         let factory: PlaybackControllerFactory = { _ in
             factoryCallCount += 1
             return MockPlaybackController()
@@ -248,7 +241,7 @@ struct PlaybackControllerManagerTests {
         initialController.simulatePlaybackStarted()
         
         let newController = MockPlaybackController()
-        
+    
         var isFirstCall = true
         let factory: PlaybackControllerFactory = { _ in
             if isFirstCall {
@@ -312,17 +305,6 @@ struct PlaybackControllerManagerTests {
         #expect(mockController.playCallCount == 1)
     }
         
-    @Test("pause delegates to current controller")
-    func pauseDelegatesToController() {
-        let mockController = MockPlaybackController()
-        let factory: PlaybackControllerFactory = { _ in mockController }
-        let manager = PlaybackControllerManager(initialType: .radioPlayer, factory: factory)
-        
-        manager.pause()
-        
-        #expect(mockController.pauseCallCount == 1)
-    }
-        
     @Test("stop delegates to current controller")
     func stopDelegatesToController() {
         let mockController = MockPlaybackController()
@@ -364,7 +346,7 @@ struct PlaybackControllerManagerTests {
     }
     
     // MARK: - Background/Foreground Tests (iOS)
-    
+        
     #if os(iOS)
     @Test("handleAppDidEnterBackground delegates to current controller")
     func handleBackgroundDelegatesToController() {
@@ -376,7 +358,7 @@ struct PlaybackControllerManagerTests {
         
         #expect(mockController.backgroundCallCount == 1)
     }
-        
+    
     @Test("handleAppWillEnterForeground delegates to current controller")
     func handleForegroundDelegatesToController() {
         let mockController = MockPlaybackController()
@@ -400,7 +382,7 @@ struct PlaybackControllerManagerTests {
 
         manager.switchTo(.avAudioStreamer)
         #expect(manager.currentType == .avAudioStreamer)
-
+    
         manager.switchTo(.radioPlayer)
         #expect(manager.currentType == .radioPlayer)
 
@@ -432,7 +414,7 @@ struct PlaybackControllerManagerIntegrationTests {
         manager.play()
         controller1.simulatePlaybackStarted()
         #expect(manager.isPlaying)
-        
+    
         // Switch controllers
         manager.switchTo(.avAudioStreamer)
         
@@ -443,5 +425,5 @@ struct PlaybackControllerManagerIntegrationTests {
         #expect(controller2.playCallCount == 1)
     }
 }
-
+        
 #endif // !os(watchOS)

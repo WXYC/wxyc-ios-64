@@ -222,12 +222,12 @@ struct AudioPlayerControllerTests {
         )
 
         controller.play()
-        controller.pause()
+        controller.stop()
         mockSession.reset()
 
         controller.handleAppDidEnterBackground()
 
-        // Session should be deactivated after pause + background
+        // Session should be deactivated after stop + background
         #expect(mockSession.lastActiveState == false)
     }
 

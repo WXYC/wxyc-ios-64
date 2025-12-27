@@ -8,7 +8,7 @@
 
 import SwiftUI
 import Playlist
-import PlaybackCore
+import PlaybackWatchOS
 import AppServices
 import UIKit
 import AVKit

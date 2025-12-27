@@ -10,6 +10,8 @@ import Foundation
 import AVFoundation
 import Core
 import PlaybackCore
+import RadioPlayer
+import AVAudioStreamer
 
 #if !os(watchOS)
 
@@ -63,7 +65,7 @@ public final class PlaybackControllerManager {
     
     // CPU Monitoring
     private var cpuMonitor: CPUMonitor?
-    
+
     // MARK: - Initialization
 
     /// Private initializer for singleton
@@ -129,7 +131,7 @@ public final class PlaybackControllerManager {
             return AVAudioStreamer(configuration: config)
         }
     }
-    
+        
     // MARK: - Public Methods
         
     /// Switch to a different controller type
@@ -171,13 +173,7 @@ public final class PlaybackControllerManager {
         cpuMonitor?.start()
         try? current.play(reason: "user_play")
     }
-    
-    /// Pause playback
-    public func pause() {
-        cpuMonitor?.stop()
-        current.pause()
-    }
-    
+
     /// Stop playback
     public func stop() {
         cpuMonitor?.stop()
