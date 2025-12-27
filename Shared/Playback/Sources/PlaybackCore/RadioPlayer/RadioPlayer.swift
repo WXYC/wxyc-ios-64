@@ -19,11 +19,43 @@ import Analytics
 @Observable
 internal final class RadioPlayer: Sendable {
     private let streamURL: URL
-    private var playerObservation: (any NSObjectProtocol)?
+    private var rateObservation: (any NSObjectProtocol)?
+    private var stallObservation: (any NSObjectProtocol)?
     private var timer: Core.Timer = Core.Timer.start()
     private let userDefaults: UserDefaults
     private let analytics: AnalyticsService?
     private let notificationCenter: NotificationCenter
+
+    // MARK: - State
+
+    /// The current playback state
+    private(set) var state: PlaybackState = .idle {
+        didSet {
+            if state != oldValue {
+                stateContinuation.yield(state)
+            }
+        }
+    }
+
+    /// Whether audio is currently playing
+    var isPlaying: Bool {
+        state == .playing
+    }
+
+    // MARK: - Streams
+
+    /// Stream of playback state changes
+    let stateStream: AsyncStream<PlaybackState>
+    private let stateContinuation: AsyncStream<PlaybackState>.Continuation
+        
+    /// Stream of audio buffers (not supported by AVPlayer-based RadioPlayer)
+    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+
+    /// Stream of internal player events (stalls, recovery, errors)
+    let eventStream: AsyncStream<AudioPlayerInternalEvent>
+    private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
+
+    // MARK: - Initialization
 
     convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
         self.init(
@@ -47,56 +79,103 @@ internal final class RadioPlayer: Sendable {
         self.userDefaults = userDefaults
         self.analytics = analytics
         self.notificationCenter = notificationCenter
-        
-        self.playerObservation =
-        notificationCenter.addObserver(
+
+        // Initialize state stream
+        var stateContinuation: AsyncStream<PlaybackState>.Continuation!
+        self.stateStream = AsyncStream { continuation in
+            stateContinuation = continuation
+        }
+        self.stateContinuation = stateContinuation
+
+        // Initialize audio buffer stream (empty - AVPlayer doesn't expose PCM buffers)
+        self.audioBufferStream = AsyncStream { continuation in
+            continuation.finish()
+        }
+
+        // Initialize event stream
+        var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
+        self.eventStream = AsyncStream { continuation in
+            eventContinuation = continuation
+        }
+        self.eventContinuation = eventContinuation
+
+        // Observe rate changes to track playing state
+        self.rateObservation = notificationCenter.addObserver(
             forName: AVPlayer.rateDidChangeNotification,
             object: player as? AVPlayer,
             queue: nil
         ) { [weak self] notification in
             guard let self else { return }
-            Log(.info, "RadioPlayer did receive notification", notification)
+            Log(.info, "RadioPlayer did receive rate change notification", notification)
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.isPlaying = self.player.rate > 0
-                if self.isPlaying {
+                let isPlaying = self.player.rate > 0
+                if isPlaying {
+                    // Transition from loading/stalled to playing
+                    if self.state == .loading || self.state == .stalled {
+                        if self.state == .stalled {
+                            self.eventContinuation.yield(.recovery)
+                        }
+                        self.state = .playing
+                    }
                     let timeToAudio = self.timer.duration()
                     self.analytics?.capture("Time to first Audio", properties: [
                         "timeToAudio": timeToAudio
                     ])
+                } else if self.state == .playing {
+                    // Stopped playing but we didn't request it - could be a stall
+                    // Don't transition here; wait for stall notification or explicit pause
+                }
+            }
+        }
+
+        // Observe playback stalls
+        self.stallObservation = notificationCenter.addObserver(
+            forName: .AVPlayerItemPlaybackStalled,
+            object: nil,
+            queue: nil
+        ) { [weak self] notification in
+            guard let self else { return }
+            Log(.error, "RadioPlayer playback stalled", notification)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if self.state == .playing || self.state == .loading {
+                    self.state = .stalled
+                    self.eventContinuation.yield(.stall)
                 }
             }
         }
     }
 
-    private(set) var isPlaying = false
-    
+    // MARK: - Playback Control
+
     func play() {
-        if self.isPlaying {
+        if state == .playing {
             analytics?.capture("already playing (local)")
             return
         }
-        
+
         // Mark as playing in shared UserDefaults
         userDefaults.set(true, forKey: "isPlaying")
 
         analytics?.capture("radioPlayer play")
         timer = Timer.start()
+        state = .loading
         self.player.play()
     }
 
     func pause() {
         userDefaults.set(false, forKey: "isPlaying")
-        
-        // Notify other processes that we're stopping playback
+
+        state = .idle
         self.player.pause()
         self.resetStream()
     }
 
-    // MARK: Private
+    // MARK: - Private
 
     private let player: PlayerProtocol
-    
+
     private func resetStream() {
         let asset = AVURLAsset(url: self.streamURL)
         let playerItem = AVPlayerItem(asset: asset)

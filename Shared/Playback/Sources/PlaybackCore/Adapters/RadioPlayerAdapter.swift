@@ -18,9 +18,9 @@ public final class RadioPlayerAdapter: AudioPlayerProtocol {
         radioPlayer.isPlaying
     }
 
-    public private(set) var state: AudioPlayerPlaybackState = .stopped
+    public private(set) var state: PlaybackState = .idle
 
-    public let stateStream: AsyncStream<AudioPlayerPlaybackState>
+    public let stateStream: AsyncStream<PlaybackState>
     public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
     public let eventStream: AsyncStream<AudioPlayerInternalEvent>
 
@@ -28,7 +28,7 @@ public final class RadioPlayerAdapter: AudioPlayerProtocol {
 
     private let url: URL
     private let radioPlayer: RadioPlayer
-    private let stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation
+    private let stateContinuation: AsyncStream<PlaybackState>.Continuation
     private let audioBufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
     private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
 
@@ -39,7 +39,7 @@ public final class RadioPlayerAdapter: AudioPlayerProtocol {
         self.radioPlayer = RadioPlayer()
 
         // Initialize streams
-        var stateContinuation: AsyncStream<AudioPlayerPlaybackState>.Continuation!
+        var stateContinuation: AsyncStream<PlaybackState>.Continuation!
         self.stateStream = AsyncStream { continuation in
             stateContinuation = continuation
         }
@@ -67,7 +67,7 @@ public final class RadioPlayerAdapter: AudioPlayerProtocol {
 
     public func pause() {
         radioPlayer.pause()
-        updateState(.paused)
+        updateState(.idle)
     }
 
     public func resume() {
@@ -77,12 +77,12 @@ public final class RadioPlayerAdapter: AudioPlayerProtocol {
 
     public func stop() {
         radioPlayer.pause()
-        updateState(.stopped)
+        updateState(.idle)
     }
 
     // MARK: - Private Methods
 
-    private func updateState(_ newState: AudioPlayerPlaybackState) {
+    private func updateState(_ newState: PlaybackState) {
         state = newState
         stateContinuation.yield(newState)
     }
