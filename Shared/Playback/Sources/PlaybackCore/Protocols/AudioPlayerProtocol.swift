@@ -20,13 +20,7 @@ public protocol AudioPlayerProtocol: AnyObject {
     /// Start playing audio
     func play()
 
-    /// Pause playback (can be resumed)
-    func pause()
-    
-    /// Resume playback after pause
-    func resume()
-    
-    /// Stop playback completely
+    /// Stop playback and reset stream
     func stop()
     
     /// Stream of playback state changes

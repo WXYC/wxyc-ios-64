@@ -44,7 +44,7 @@
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
-		PLAYBACKC0REBUILDFILE001 /* PlaybackCore in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKC0RE000000000001 /* PlaybackCore */; };
+		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
 		SEC00001XCFR0001WXYC0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		SEC00001XCFR0002WDGT0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		SEC00001XCFR0003SHAR0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
@@ -172,7 +172,6 @@
 			membershipExceptions = (
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
-				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
 			target = A3EC40619289B0065648A53C /* WXYCTests */;
@@ -211,7 +210,6 @@
 				iOS/Tests/WXYC.xctestplan,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
-				iOS/Tests/WXYCTests/PlaybackControllerBehaviorTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
@@ -320,7 +318,7 @@
 				SEC00001XCFR0004WTCH0001 /* Secrets.xcframework in Frameworks */,
 				0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */,
 				2AD59B02211E454634324EEB /* Logger in Frameworks */,
-				PLAYBACKC0REBUILDFILE001 /* PlaybackCore in Frameworks */,
+				PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */,
 				7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */,
 				B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */,
 				B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */,
@@ -478,7 +476,7 @@
 			packageProductDependencies = (
 				79AE74A2A92779E80E688376 /* Core */,
 				47B1D80EB160884F8DC37B6A /* Logger */,
-				PLAYBACKC0RE000000000001 /* PlaybackCore */,
+				PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */,
 				0852AD2E14147E5B270AD1F1 /* Playlist */,
 				3776C2184A667CCB7B4E0B67 /* Artwork */,
 				932CA5D4CF336582845E6C75 /* AppServices */,
@@ -2277,9 +2275,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = AppServices;
 		};
-		PLAYBACKC0RE000000000001 /* PlaybackCore */ = {
+		PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = PlaybackCore;
+			productName = PlaybackWatchOS;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

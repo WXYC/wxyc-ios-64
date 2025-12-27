@@ -15,6 +15,8 @@ import Core
 import Caching
 import WidgetKit
 import PlaybackCore
+import RadioPlayer
+import AVAudioStreamer
 
 
 // AudioPlayerController is not available on watchOS.
@@ -201,24 +203,13 @@ public final class AudioPlayerController {
         updateWidgetState()
     }
     
-    /// Pause playback
-    public func pause(reason: String? = nil) {
-        playbackIntended = false
-        let duration = playbackDuration
-        // For live streaming, stop completely to clear buffers
-        // This ensures that resuming playback connects to the live stream
-        player.stop()
-        analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: duration))
-        updateWidgetState()
-    }
-    
     /// Calculate how long playback has been active
     private var playbackDuration: TimeInterval {
         guard let startTime = playbackStartTime else { return 0 }
         return Date().timeIntervalSince(startTime)
     }
-    
-    /// Stop playback completely
+
+    /// Stop playback and disconnect from stream
     public func stop(reason: String? = nil) {
         playbackIntended = false
         let duration = playbackDuration
@@ -284,7 +275,7 @@ public final class AudioPlayerController {
         let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
-                self.pause()
+                self.stop()
             }
             return .success
         }
@@ -323,7 +314,7 @@ public final class AudioPlayerController {
         commandTargets.removeAll()
     }
     #endif
-    
+        
     // MARK: - Notifications (iOS/tvOS only)
     
     #if os(iOS) || os(tvOS)
@@ -503,11 +494,6 @@ extension AudioPlayerController: PlaybackController {
     // Explicit stop() to satisfy protocol (AudioPlayerController has stop(reason:))
     public func stop() {
         stop(reason: nil)
-    }
-
-    // Explicit pause() to satisfy protocol (AudioPlayerController has pause(reason:))
-    public func pause() {
-        pause(reason: nil)
     }
 }
 

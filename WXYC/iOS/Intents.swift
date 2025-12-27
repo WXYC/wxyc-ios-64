@@ -90,7 +90,7 @@ struct PauseWXYC: AudioPlaybackIntent {
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         await MainActor.run {
-            playbackController.pause()
+            playbackController.stop()
         }
         await syncWidgetPlaybackState()
         return .result(value: "Now pausing WXYC")

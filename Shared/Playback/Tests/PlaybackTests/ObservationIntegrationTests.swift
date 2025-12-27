@@ -43,7 +43,7 @@ struct ObservationIntegrationTests {
         AudioPlayerController.shared.play()
         try await Task.sleep(for: .milliseconds(200))
 
-        AudioPlayerController.shared.pause()
+        AudioPlayerController.shared.stop()
         try await Task.sleep(for: .milliseconds(200))
 
         AudioPlayerController.shared.play()
@@ -53,15 +53,15 @@ struct ObservationIntegrationTests {
 
         #expect(observedStates.count >= 2, "Should observe at least 2 state changes")
         #expect(observedStates.contains { $0.0 == true }, "Should observe playing state")
-        #expect(observedStates.contains { $0.0 == false }, "Should observe paused state")
+        #expect(observedStates.contains { $0.0 == false }, "Should observe stopped state")
     }
 
     @Test("Initial state is captured")
     func observationsAPIInitialState() async throws {
         var firstState: Bool?
 
-        // Ensure we start paused
-        AudioPlayerController.shared.pause()
+        // Ensure we start stopped
+        AudioPlayerController.shared.stop()
         try await Task.sleep(for: .milliseconds(100))
 
         let observations = Observations {
@@ -81,7 +81,7 @@ struct ObservationIntegrationTests {
         observationTask.cancel()
 
         #expect(firstState != nil, "Should capture initial state")
-        #expect(firstState == false, "Initial state should be paused")
+        #expect(firstState == false, "Initial state should be stopped")
     }
 
     @Test("Rapid state changes handled")
@@ -105,7 +105,7 @@ struct ObservationIntegrationTests {
         for _ in 0..<5 {
             AudioPlayerController.shared.play()
             try await Task.sleep(for: .milliseconds(50))
-            AudioPlayerController.shared.pause()
+            AudioPlayerController.shared.stop()
             try await Task.sleep(for: .milliseconds(50))
         }
 
@@ -133,8 +133,8 @@ struct ObservationIntegrationTests {
         )
         #endif
 
-        // Ensure we start paused
-        controller.pause()
+        // Ensure we start stopped
+        controller.stop()
         try await Task.sleep(for: .milliseconds(100))
 
         let observations = Observations {
@@ -180,7 +180,7 @@ struct ObservationIntegrationTests {
         try await Task.sleep(for: .milliseconds(100))
 
         // Trigger more changes after cancellation
-        AudioPlayerController.shared.pause()
+        AudioPlayerController.shared.stop()
         try await Task.sleep(for: .milliseconds(200))
         AudioPlayerController.shared.play()
         try await Task.sleep(for: .milliseconds(200))
