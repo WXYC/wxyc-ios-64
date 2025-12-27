@@ -1,51 +1,42 @@
 import Foundation
 import AVFoundation
-import PostHog
+import PlaybackCore
 #if !os(watchOS)
 
 final class StreamerMetricsAdapter: @unchecked Sendable, AVAudioStreamerDelegate {
-    private let reporter: PlaybackMetricsReporter
+    private let analytics: PlaybackAnalytics
     private var stallStartTime: Date?
-    
-    init(reporter: PlaybackMetricsReporter? = nil) {
-        self.reporter = reporter ?? PostHogSDK.shared
+    private var attemptCount: Int = 0
+
+    init(analytics: PlaybackAnalytics) {
+        self.analytics = analytics
     }
-    
+
     // MARK: - AVAudioStreamerDelegate
-    
+
     func audioStreamerDidStall(_ streamer: AVAudioStreamer) {
-        handleStall(playerType: .avAudioStreamer)
-    }
-    
-    func audioStreamerDidRecover(_ streamer: AVAudioStreamer) {
-        handleRecovery(playerType: .avAudioStreamer)
-    }
-    
-    // MARK: - Helpers
-    
-    private func handleStall(playerType: PlayerControllerType) {
         stallStartTime = Date()
-        let event = StallEvent(
-            playerType: playerType,
-            timestamp: Date(),
-            playbackDuration: 0, // We don't have easy access to duration here without access to the streamer's currentTime
-            reason: .bufferUnderrun
-        )
-        reporter.reportStall(event)
+        attemptCount += 1
     }
-    
-    private func handleRecovery(playerType: PlayerControllerType) {
+
+    func audioStreamerDidRecover(_ streamer: AVAudioStreamer) {
         guard let stallStart = stallStartTime else { return }
-        
-        let event = RecoveryEvent(
-            playerType: playerType,
+
+        let event = StallRecoveryEvent(
+            playerType: .avAudioStreamer,
             successful: true,
-            attemptCount: 1,
+            attempts: attemptCount,
             stallDuration: Date().timeIntervalSince(stallStart),
+            reason: .bufferUnderrun,
             recoveryMethod: .bufferRefill
         )
-        reporter.reportRecovery(event)
+
+        Task { @MainActor [analytics] in
+            analytics.capture(event)
+        }
+
         stallStartTime = nil
+        attemptCount = 0
     }
 }
 #endif

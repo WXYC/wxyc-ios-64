@@ -54,8 +54,12 @@ public final class PostHogPlaybackAnalytics: PlaybackAnalytics {
         PostHogSDK.shared.capture(
             "stall_recovery",
             properties: [
+                "player_type": event.playerType.rawValue,
+                "successful": event.successful,
                 "attempts": event.attempts,
-                "stall_duration": event.stallDuration
+                "stall_duration": event.stallDuration,
+                "reason": event.reason.rawValue,
+                "recovery_method": event.recoveryMethod.rawValue
             ]
         )
     }
@@ -75,6 +79,16 @@ public final class PostHogPlaybackAnalytics: PlaybackAnalytics {
             properties: [
                 "error": event.error,
                 "context": event.context
+            ]
+        )
+    }
+
+    public func capture(_ event: CPUUsageEvent) {
+        PostHogSDK.shared.capture(
+            "cpu_usage",
+            properties: [
+                "player_type": event.playerType.rawValue,
+                "cpu_usage": event.cpuUsage
             ]
         )
     }

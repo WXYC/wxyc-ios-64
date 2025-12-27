@@ -471,8 +471,12 @@ extension AudioPlayerController {
     private func handleRecovery() {
         guard let stallStart = stallStartTime else { return }
         analytics.capture(StallRecoveryEvent(
+            playerType: playerType,
+            successful: true,
             attempts: 1,
-            stallDuration: Date().timeIntervalSince(stallStart)
+            stallDuration: Date().timeIntervalSince(stallStart),
+            reason: .bufferUnderrun,
+            recoveryMethod: .automaticReconnect
         ))
         stallStartTime = nil
     }
