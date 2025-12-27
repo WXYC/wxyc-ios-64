@@ -289,8 +289,12 @@ private extension RadioPlayerController {
     private func captureRecoveryIfNeeded() {
         guard let stallStart = self.stallStartTime else { return }
         analytics.capture(StallRecoveryEvent(
+            playerType: .radioPlayer,
+            successful: true,
             attempts: Int(self.backoffTimer.numberOfAttempts),
-            stallDuration: Date().timeIntervalSince(stallStart)
+            stallDuration: Date().timeIntervalSince(stallStart),
+            reason: .bufferUnderrun,
+            recoveryMethod: .retryWithBackoff
         ))
         self.stallStartTime = nil
     }
@@ -333,7 +337,7 @@ private extension RadioPlayerController {
             return .commandFailed
         }
     }
-    
+        
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
         self.pause()

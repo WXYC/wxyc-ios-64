@@ -88,16 +88,51 @@ public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Reason why playback stalled.
+public enum StallReason: String, Sendable, Equatable {
+    case bufferUnderrun = "buffer_underrun"
+    case networkError = "network_error"
+    case unknown = "unknown"
+}
+
+/// Method used to recover from a stall.
+public enum RecoveryMethod: String, Sendable, Equatable {
+    case automaticReconnect = "automatic_reconnect"
+    case retryWithBackoff = "retry_with_backoff"
+    case bufferRefill = "buffer_refill"
+    case streamRestart = "stream_restart"
+    case userInitiated = "user_initiated"
+}
+
 /// Event capturing recovery from a stall.
 public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
+    /// The type of player that recovered
+    public let playerType: PlayerControllerType
+    /// Whether recovery was successful
+    public let successful: Bool
     /// Number of reconnection attempts before recovery
     public let attempts: Int
     /// How long the stall lasted in seconds
     public let stallDuration: TimeInterval
+    /// Why the stall occurred
+    public let reason: StallReason
+    /// How recovery was achieved
+    public let recoveryMethod: RecoveryMethod
 
-    public init(attempts: Int, stallDuration: TimeInterval) {
+    public init(
+        playerType: PlayerControllerType,
+        successful: Bool = true,
+        attempts: Int,
+        stallDuration: TimeInterval,
+        reason: StallReason = .bufferUnderrun,
+        recoveryMethod: RecoveryMethod = .bufferRefill
+    ) {
+        self.playerType = playerType
+        self.successful = successful
         self.attempts = attempts
         self.stallDuration = stallDuration
+        self.reason = reason
+        self.recoveryMethod = recoveryMethod
     }
 }
 
@@ -129,6 +164,19 @@ public struct ErrorEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Event capturing CPU usage during playback.
+public struct CPUUsageEvent: PlaybackAnalyticsEvent {
+    /// The type of player being monitored
+    public let playerType: PlayerControllerType
+    /// CPU usage as a percentage (0.0 - 100.0)
+    public let cpuUsage: Double
+
+    public init(playerType: PlayerControllerType, cpuUsage: Double) {
+        self.playerType = playerType
+        self.cpuUsage = cpuUsage
+    }
+}
+
 // MARK: - PlaybackAnalytics Protocol
 
 /// Protocol for capturing playback analytics events.
@@ -151,4 +199,7 @@ public protocol PlaybackAnalytics: AnyObject {
 
     /// Capture an error that occurred during playback.
     func capture(_ event: ErrorEvent)
+
+    /// Capture CPU usage during playback.
+    func capture(_ event: CPUUsageEvent)
 }

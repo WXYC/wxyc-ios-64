@@ -9,7 +9,7 @@
 import Foundation
 import AVFoundation
 import Core
-import PostHog
+import PlaybackCore
 
 #if !os(watchOS)
 
@@ -48,7 +48,8 @@ public final class PlaybackControllerManager {
     // MARK: - Private Properties
     
     private let controllerFactory: PlaybackControllerFactory
-    private let metricsAdapter = StreamerMetricsAdapter()
+    private let analytics: PlaybackAnalytics
+    private let metricsAdapter: StreamerMetricsAdapter
     
     private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation) = {
         var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
@@ -64,18 +65,23 @@ public final class PlaybackControllerManager {
     private var cpuMonitor: CPUMonitor?
     
     // MARK: - Initialization
-    
+
     /// Private initializer for singleton
     private init() {
         let type = PlayerControllerType.loadPersisted()
+        let analytics = PostHogPlaybackAnalytics.shared
+
         self.currentType = type
         self.controllerFactory = Self.defaultFactory
+        self.analytics = analytics
+        self.metricsAdapter = StreamerMetricsAdapter(analytics: analytics)
+        
         let controller = Self.defaultFactory(type)
         self.current = controller
-        
+
         wireUpMetricsAdapter(for: controller)
         startConsumingBuffers(from: controller)
-        
+
         // Setup CPU Monitor
         self.cpuMonitor = CPUMonitor { [weak self] usage in
             Task { @MainActor [weak self] in
@@ -84,21 +90,29 @@ public final class PlaybackControllerManager {
                     playerType: self.currentType,
                     cpuUsage: usage
                 )
-                PostHogSDK.shared.reportCPUUsage(event)
+                self.analytics.capture(event)
             }
         }
     }
-    
+
     /// Internal initializer for testing with dependency injection
     /// - Parameters:
     ///   - initialType: The initial controller type
     ///   - factory: Factory closure to create controllers
-    internal init(initialType: PlayerControllerType, factory: @escaping PlaybackControllerFactory) {
+    ///   - analytics: Analytics instance to use
+    internal init(
+        initialType: PlayerControllerType,
+        factory: @escaping PlaybackControllerFactory,
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared
+    ) {
         self.currentType = initialType
         self.controllerFactory = factory
+        self.analytics = analytics
+        self.metricsAdapter = StreamerMetricsAdapter(analytics: analytics)
+
         let controller = factory(initialType)
         self.current = controller
-        
+
         wireUpMetricsAdapter(for: controller)
         startConsumingBuffers(from: controller)
     }
@@ -117,7 +131,7 @@ public final class PlaybackControllerManager {
     }
     
     // MARK: - Public Methods
-    
+        
     /// Switch to a different controller type
     /// - Parameter type: The new controller type to use
     public func switchTo(_ type: PlayerControllerType) {
@@ -137,7 +151,7 @@ public final class PlaybackControllerManager {
         // Update state
         current = newController
         currentType = type
-        
+    
         // Switch stream consumption
         startConsumingBuffers(from: newController)
         
@@ -187,7 +201,7 @@ public final class PlaybackControllerManager {
             streamer.delegate = metricsAdapter
         }
     }
-    
+
     private func startConsumingBuffers(from controller: any PlaybackController) {
         bufferConsumptionTask?.cancel()
         bufferConsumptionTask = Task { [weak self] in

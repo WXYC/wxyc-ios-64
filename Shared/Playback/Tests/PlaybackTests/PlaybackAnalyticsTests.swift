@@ -47,9 +47,14 @@ struct PlaybackAnalyticsTests {
     func mockCapturesStallRecovery() {
         let mock = MockPlaybackAnalytics()
 
-        mock.capture(StallRecoveryEvent(attempts: 3, stallDuration: 5.2))
+        mock.capture(StallRecoveryEvent(
+            playerType: .radioPlayer,
+            attempts: 3,
+            stallDuration: 5.2
+        ))
 
         #expect(mock.stallRecoveryEvents.count == 1)
+        #expect(mock.stallRecoveryEvents[0].playerType == .radioPlayer)
         #expect(mock.stallRecoveryEvents[0].attempts == 3)
         #expect(mock.stallRecoveryEvents[0].stallDuration == 5.2)
     }
@@ -74,7 +79,7 @@ struct PlaybackAnalyticsTests {
 
         mock.capture(PlaybackStartedEvent(reason: .userInitiated))
         mock.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: 100))
-        mock.capture(StallRecoveryEvent(attempts: 1, stallDuration: 2.0))
+        mock.capture(StallRecoveryEvent(playerType: .radioPlayer, attempts: 1, stallDuration: 2.0))
         mock.capture(InterruptionEvent(type: .began))
 
         mock.reset()
@@ -108,8 +113,8 @@ struct PlaybackAnalyticsTests {
     }
 
     @Test("Stall recovery events are Sendable", arguments: [
-        StallRecoveryEvent(attempts: 1, stallDuration: 1.0),
-        StallRecoveryEvent(attempts: 5, stallDuration: 10.0)
+        StallRecoveryEvent(playerType: .radioPlayer, attempts: 1, stallDuration: 1.0),
+        StallRecoveryEvent(playerType: .avAudioStreamer, attempts: 5, stallDuration: 10.0)
     ])
     func stallRecoveryEventsAreSendable(event: StallRecoveryEvent) async {
         await Task { @Sendable in _ = event }.value
