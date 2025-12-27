@@ -675,12 +675,12 @@ final class AVAudioStreamerTestHarness: PlayerControllerTestHarness {
     }
 
     /// Returns true if pause() disconnected and reset the stream.
-    /// After the fix, pause() properly disconnects HTTP, clears buffers, and sets state to .paused.
+    /// After the fix, pause() properly disconnects HTTP, clears buffers, and sets state to .idle.
     /// For live streaming, this ensures resume will connect to live audio, not stale buffers.
+    /// Note: There is no .paused state because live streaming pause = stop semantically.
     func isStreamReset() -> Bool {
-        // After pause(), state should be .paused (or .idle if stop() was called).
-        // Both states indicate the stream is reset and ready for fresh connection.
-        return controller.state == .idle || controller.state == .paused
+        // After pause(), state should be .idle since pause = stop for live streaming.
+        return controller.state == .idle
     }
 
     /// Simulates a playback stall by calling the internal handleStall() method.

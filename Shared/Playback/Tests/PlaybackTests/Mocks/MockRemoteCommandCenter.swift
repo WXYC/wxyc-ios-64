@@ -86,7 +86,14 @@ final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     
     // MARK: - Test Helpers
     
-    
+    /// Access to concrete mock commands for assertions
+    var mockPlayCommand: MockRemoteCommand { _playCommand }
+    var mockPauseCommand: MockRemoteCommand { _pauseCommand }
+    var mockStopCommand: MockRemoteCommand { _stopCommand }
+    var mockTogglePlayPauseCommand: MockRemoteCommand { _togglePlayPauseCommand }
+    var mockSkipForwardCommand: MockRemoteCommand { _skipForwardCommand }
+    var mockSkipBackwardCommand: MockRemoteCommand { _skipBackwardCommand }
+
     func reset() {
         _playCommand.reset()
         _pauseCommand.reset()
@@ -101,4 +108,3 @@ final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
         _changePlaybackPositionCommand.reset()
     }
 }
-

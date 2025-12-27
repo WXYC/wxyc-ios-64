@@ -79,19 +79,12 @@
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
-      <Testables>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A3EC40619289B0065648A53C"
-               BuildableName = "WXYCTests.xctest"
-               BlueprintName = "WXYCTests"
-               ReferencedContainer = "container:WXYC.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-      </Testables>
+      <TestPlans>
+         <TestPlanReference
+            reference = "container:WXYC/iOS/Tests/WXYC.xctestplan"
+            default = "YES">
+         </TestPlanReference>
+      </TestPlans>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

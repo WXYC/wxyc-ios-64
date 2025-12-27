@@ -119,10 +119,19 @@ struct ObservationIntegrationTests {
         var changeCount = 0
 
         // Create a fresh controller to isolate from other tests
+        #if os(iOS) || os(tvOS)
+        let controller = AudioPlayerController(
+            audioSession: MockAudioSession(),
+            remoteCommandCenter: MockRemoteCommandCenter(),
+            notificationCenter: NotificationCenter(),
+            analytics: MockPlaybackAnalytics()
+        )
+        #else
         let controller = AudioPlayerController(
             notificationCenter: NotificationCenter(),
             analytics: MockPlaybackAnalytics()
         )
+        #endif
 
         // Ensure we start paused
         controller.pause()
