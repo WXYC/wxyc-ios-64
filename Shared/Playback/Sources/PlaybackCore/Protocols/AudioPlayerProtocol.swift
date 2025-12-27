@@ -8,27 +8,18 @@
 import Foundation
 import AVFoundation
 
-/// Represents the state of an audio player
-public enum AudioPlayerPlaybackState: Sendable {
-    case stopped
-    case playing
-    case paused
-    case buffering
-    case error
-}
-
 /// Protocol defining the low-level audio player interface
 @MainActor
 public protocol AudioPlayerProtocol: AnyObject {
     /// Whether the player is currently playing audio
     var isPlaying: Bool { get }
-    
+
     /// The current playback state
-    var state: AudioPlayerPlaybackState { get }
-    
+    var state: PlaybackState { get }
+
     /// Start playing audio
     func play()
-    
+
     /// Pause playback (can be resumed)
     func pause()
     
@@ -39,12 +30,12 @@ public protocol AudioPlayerProtocol: AnyObject {
     func stop()
     
     /// Stream of playback state changes
-    var stateStream: AsyncStream<AudioPlayerPlaybackState> { get }
+    var stateStream: AsyncStream<PlaybackState> { get }
     
     /// Stream of audio buffers for visualization
     /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread
     var audioBufferStream: AsyncStream<AVAudioPCMBuffer> { get }
-    
+
     /// Stream of internal player events (errors, stalls, recovery)
     var eventStream: AsyncStream<AudioPlayerInternalEvent> { get }
 }

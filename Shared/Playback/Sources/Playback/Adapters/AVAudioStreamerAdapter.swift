@@ -21,11 +21,11 @@ final class AVAudioStreamerAdapter: AudioPlayerProtocol {
         streamer.streamingState == .playing
     }
     
-    var state: AudioPlayerPlaybackState {
-        mapState(streamer.streamingState)
+    var state: PlaybackState {
+        streamer.state
     }
     
-    var stateStream: AsyncStream<AudioPlayerPlaybackState> {
+    var stateStream: AsyncStream<PlaybackState> {
         AsyncStream { continuation in
             continuation.finish()
         }
@@ -75,25 +75,6 @@ final class AVAudioStreamerAdapter: AudioPlayerProtocol {
     
     func stop() {
         streamer.stop()
-    }
-    
-    // MARK: - Private Methods
-    
-    private func mapState(_ streamerState: StreamingAudioState) -> AudioPlayerPlaybackState {
-        switch streamerState {
-        case .idle:
-            return .stopped
-        case .connecting, .buffering:
-            return .buffering
-        case .playing:
-            return .playing
-        case .paused:
-            return .paused
-        case .stalled, .reconnecting:
-            return .buffering
-        case .error:
-            return .error
-        }
     }
 }
 

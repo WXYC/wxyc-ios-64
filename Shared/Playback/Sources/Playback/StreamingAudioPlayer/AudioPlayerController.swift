@@ -75,7 +75,7 @@ public final class AudioPlayerController {
     /// Whether playback is loading (play initiated but not yet playing, or buffering)
     /// Excludes error and stopped states to prevent infinite loading
     public var isLoading: Bool {
-        playbackIntended && (!isPlaying || player.state == .buffering) && player.state != .error
+        playbackIntended && (!isPlaying || player.state == .loading) && !player.state.isError
     }
     
     // MARK: - Dependencies
@@ -490,17 +490,8 @@ extension AudioPlayerController: PlaybackController {
             return .stalled
         }
     
-        // Map from player state
-        switch player.state {
-        case .stopped, .paused:
-            return .idle
-        case .buffering:
-            return .loading
-        case .playing:
-            return .playing
-        case .error:
-            return .error(.unknown(""))
-        }
+        // Player now uses PlaybackState directly
+        return player.state
     }
 
     public func toggle(reason: String) throws {
@@ -513,7 +504,7 @@ extension AudioPlayerController: PlaybackController {
     public func stop() {
         stop(reason: nil)
     }
-    
+
     // Explicit pause() to satisfy protocol (AudioPlayerController has pause(reason:))
     public func pause() {
         pause(reason: nil)
