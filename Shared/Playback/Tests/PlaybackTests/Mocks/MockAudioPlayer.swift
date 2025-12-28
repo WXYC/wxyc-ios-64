@@ -63,6 +63,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
             state = .playing
             isPlaying = true
             onStateChange?(oldState, .playing)
+            stateContinuation?.yield(.playing)
         }
     }
 
@@ -74,6 +75,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
             state = .idle
             isPlaying = false
             onStateChange?(oldState, .idle)
+            stateContinuation?.yield(.idle)
         }
     }
 
@@ -86,12 +88,13 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         state = .idle
     }
 
-    /// Simulate a state change
+    /// Simulate a state change and notify observers via stateStream
     func simulateStateChange(to newState: PlaybackState) {
         let oldState = state
         state = newState
         isPlaying = (newState == .playing || newState == .loading)
         onStateChange?(oldState, newState)
+        stateContinuation?.yield(newState)
     }
 
     /// Simulate a playback stall

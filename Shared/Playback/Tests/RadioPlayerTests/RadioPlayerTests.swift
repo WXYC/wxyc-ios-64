@@ -2,7 +2,7 @@ import Testing
 import Foundation
 import AVFoundation
 import Analytics
-@testable import RadioPlayer
+@testable import RadioPlayerModule
 @testable import PlaybackCore
 
 // MARK: - Mock Player

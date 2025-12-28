@@ -36,18 +36,20 @@ let package = Package(
 
         // AVPlayer-based player (watchOS-compatible)
         .target(
-            name: "RadioPlayer",
+            name: "RadioPlayerModule",
             dependencies: [
                 "PlaybackCore",
-            ]
+            ],
+            path: "Sources/RadioPlayer"
         ),
 
         // AudioToolbox-based player (iOS/macOS/tvOS only, not watchOS)
         .target(
-            name: "AVAudioStreamer",
+            name: "AVAudioStreamerModule",
             dependencies: [
                 "PlaybackCore",
-            ]
+            ],
+            path: "Sources/AVAudioStreamer"
         ),
 
         // MARK: - Public-Facing Targets
@@ -57,9 +59,13 @@ let package = Package(
             name: "Playback",
             dependencies: [
                 "PlaybackCore",
-                "RadioPlayer",
-                "AVAudioStreamer",
-                .product(name: "DequeModule", package: "swift-collections", condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])),
+                "RadioPlayerModule",
+                "AVAudioStreamerModule",
+                .product(
+                    name: "DequeModule",
+                    package: "swift-collections",
+                    condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])
+                ),
             ]
         ),
 
@@ -68,7 +74,7 @@ let package = Package(
             name: "PlaybackWatchOS",
             dependencies: [
                 "PlaybackCore",
-                "RadioPlayer",
+                "RadioPlayerModule",
             ]
         ),
 
@@ -76,16 +82,16 @@ let package = Package(
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback"],
+            dependencies: ["Playback", "RadioPlayerModule", "AVAudioStreamerModule"],
             resources: [.process("Resources")]
         ),
         .testTarget(
             name: "RadioPlayerTests",
-            dependencies: ["RadioPlayer", "PlaybackCore", "Analytics", "Core"]
+            dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core"]
         ),
         .testTarget(
             name: "AVAudioStreamerTests",
-            dependencies: ["AVAudioStreamer", "PlaybackCore", "Core"],
+            dependencies: ["AVAudioStreamerModule", "PlaybackCore", "Core"],
             resources: [.process("Resources")]
         ),
     ]

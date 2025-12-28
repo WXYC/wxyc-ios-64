@@ -1,0 +1,36 @@
+//
+//  AVAudioStreamer+AudioPlayerProtocol.swift
+//  AVAudioStreamer
+//
+//  Extension to conform AVAudioStreamer to AudioPlayerProtocol
+//
+
+import Foundation
+import AVFoundation
+import PlaybackCore
+
+#if !os(watchOS)
+
+// MARK: - AudioPlayerProtocol Conformance
+
+extension AVAudioStreamer: AudioPlayerProtocol {
+
+    /// Whether audio is currently playing
+    public var isPlaying: Bool {
+        streamingState == .playing
+    }
+
+    /// Stream of playback state changes
+    public var stateStream: AsyncStream<PlaybackState> {
+        stateStreamInternal
+    }
+
+    /// Stream of internal player events
+    public var eventStream: AsyncStream<AudioPlayerInternalEvent> {
+        eventStreamInternal
+    }
+
+    // play() and stop() are already implemented directly in AVAudioStreamer
+}
+
+#endif // !os(watchOS)

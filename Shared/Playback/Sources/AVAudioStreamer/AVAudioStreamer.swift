@@ -27,10 +27,22 @@ public final class AVAudioStreamer {
         return (stream, continuation)
     }()
 
+    // MARK: - AudioPlayerProtocol Streams
+
+    /// Internal state stream for AudioPlayerProtocol conformance
+    internal let stateStreamInternal: AsyncStream<PlaybackState>
+    private let stateContinuationInternal: AsyncStream<PlaybackState>.Continuation
+
+    /// Internal event stream for AudioPlayerProtocol conformance
+    internal let eventStreamInternal: AsyncStream<AudioPlayerInternalEvent>
+    internal let eventContinuationInternal: AsyncStream<AudioPlayerInternalEvent>.Continuation
+
     public private(set) var streamingState: StreamingAudioState = .idle {
         didSet {
             if streamingState != oldValue {
                 delegate?.audioStreamer(didChangeState: streamingState)
+                // Yield to AudioPlayerProtocol stateStream
+                stateContinuationInternal.yield(state)
             }
         }
     }
@@ -104,6 +116,20 @@ public final class AVAudioStreamer {
     ) {
         self.configuration = configuration
         self.backoffTimer = backoffTimer
+        
+        // Initialize state stream for AudioPlayerProtocol
+        var stateContinuation: AsyncStream<PlaybackState>.Continuation!
+        self.stateStreamInternal = AsyncStream { continuation in
+            stateContinuation = continuation
+        }
+        self.stateContinuationInternal = stateContinuation
+
+        // Initialize event stream for AudioPlayerProtocol
+        var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
+        self.eventStreamInternal = AsyncStream { continuation in
+            eventContinuation = continuation
+        }
+        self.eventContinuationInternal = eventContinuation
 
         // Create delegate adapters (stored as properties to prevent deallocation)
         self.httpAdapter = HTTPStreamClientDelegateAdapter()
@@ -116,7 +142,7 @@ public final class AVAudioStreamer {
             minimumBuffersBeforePlayback: configuration.minimumBuffersBeforePlayback,
             delegate: nil
         )
-        
+
         // Create components with their adapters
         self.audioPlayer = AudioEnginePlayer(
             format: Self.outputFormat,
@@ -144,13 +170,18 @@ public final class AVAudioStreamer {
     // MARK: - Public Methods
 
     /// Start streaming and playing audio
-    public func play() async throws {
+    public func play() {
         guard streamingState == .idle || streamingState == .paused else { return }
 
         // If paused, just resume playback
         if case .paused = streamingState {
-            try audioPlayer.play()
-            streamingState = .playing
+            do {
+                try audioPlayer.play()
+                streamingState = .playing
+            } catch {
+                streamingState = .error(error)
+                eventContinuationInternal.yield(.error(error))
+            }
             return
         }
 
@@ -158,12 +189,15 @@ public final class AVAudioStreamer {
         streamingState = .connecting
         backoffTimer.reset()
 
-        do {
-            try await httpClient.connect()
-            // State will transition to buffering as data arrives
-        } catch {
-            streamingState = .error(error)
-            throw error
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await httpClient.connect()
+                // State will transition to buffering as data arrives
+            } catch {
+                streamingState = .error(error)
+                eventContinuationInternal.yield(.error(error))
+            }
         }
     }
 
@@ -270,6 +304,7 @@ public final class AVAudioStreamer {
         if case .playing = streamingState {
             streamingState = .stalled
             delegate?.audioStreamerDidStall(self)
+            eventContinuationInternal.yield(.stall)
         }
     }
 
@@ -277,6 +312,7 @@ public final class AVAudioStreamer {
         if case .stalled = streamingState {
             streamingState = .playing
             delegate?.audioStreamerDidRecover(self)
+            eventContinuationInternal.yield(.recovery)
         }
     }
 }

@@ -1,7 +1,7 @@
 import Testing
 import Foundation
 import AVFoundation
-@testable import AVAudioStreamer
+@testable import AVAudioStreamerModule
 import Core
 
 #if !os(watchOS)
@@ -85,7 +85,7 @@ struct AVAudioStreamerTests {
         let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        try await streamer.play()
+        streamer.play()
 
         // Wait for any state change
         let state = try await delegate.stateStream.first(timeout: 4)
@@ -102,7 +102,7 @@ struct AVAudioStreamerTests {
         let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        try await streamer.play()
+        streamer.play()
 
         let buffer = try await delegate.bufferStream.first(timeout: 4)
         #expect(buffer.format.channelCount > 0)
@@ -120,7 +120,7 @@ struct AVAudioStreamerTests {
 
         #expect(streamer.streamingState == .idle)
 
-        try await streamer.play()
+        streamer.play()
 
         let state = try await delegate.stateStream.first(timeout: 4) { $0 == .playing }
         #expect(state == .playing)
@@ -136,14 +136,14 @@ struct AVAudioStreamerTests {
         let delegate = StreamDelegate()
         streamer.delegate = delegate
 
-        try await streamer.play()
+        streamer.play()
 
         _ = try await delegate.stateStream.first(timeout: 2) { $0 == .playing }
 
         streamer.stop()
         #expect(streamer.streamingState == .idle)
 
-        try await streamer.play()
+        streamer.play()
 
         let state = try await delegate.stateStream.first(timeout: 2) { $0 == .playing }
         #expect(state == .playing)

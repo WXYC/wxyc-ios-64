@@ -18,7 +18,7 @@ import PlaybackCore
 
 @MainActor
 @Observable
-internal final class RadioPlayer: Sendable {
+public final class RadioPlayer: Sendable {
     private let streamURL: URL
     private var rateObservation: (any NSObjectProtocol)?
     private var stallObservation: (any NSObjectProtocol)?
@@ -30,7 +30,7 @@ internal final class RadioPlayer: Sendable {
     // MARK: - State
 
     /// The current playback state
-    private(set) var state: PlaybackState = .idle {
+    public private(set) var state: PlaybackState = .idle {
         didSet {
             if state != oldValue {
                 stateContinuation.yield(state)
@@ -39,26 +39,26 @@ internal final class RadioPlayer: Sendable {
     }
 
     /// Whether audio is currently playing
-    var isPlaying: Bool {
+    public var isPlaying: Bool {
         state == .playing
     }
 
     // MARK: - Streams
 
     /// Stream of playback state changes
-    let stateStream: AsyncStream<PlaybackState>
+    public let stateStream: AsyncStream<PlaybackState>
     private let stateContinuation: AsyncStream<PlaybackState>.Continuation
         
     /// Stream of audio buffers (not supported by AVPlayer-based RadioPlayer)
-    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
 
     /// Stream of internal player events (stalls, recovery, errors)
-    let eventStream: AsyncStream<AudioPlayerInternalEvent>
+    public let eventStream: AsyncStream<AudioPlayerInternalEvent>
     private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
 
     // MARK: - Initialization
 
-    convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
+    public convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
         self.init(
             streamURL: streamURL,
             player: AVPlayer(url: streamURL),
@@ -150,7 +150,7 @@ internal final class RadioPlayer: Sendable {
 
     // MARK: - Playback Control
 
-    func play() {
+    public func play() {
         if state == .playing {
             analytics?.capture("already playing (local)")
             return
