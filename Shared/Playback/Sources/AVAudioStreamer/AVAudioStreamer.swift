@@ -14,18 +14,10 @@ public final class AVAudioStreamer {
     
     // MARK: - Streams
     
+    /// Stream of audio buffers for visualization - yields at render rate (~60 times/sec)
     public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
-        audioBufferStreamContinuation.0
+        audioPlayer.renderTapStream
     }
-    
-    // Use .bufferingNewest(1) to avoid blocking decoding thread
-    private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation) = {
-        var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { c in
-            continuation = c
-        }
-        return (stream, continuation)
-    }()
 
     // MARK: - AudioPlayerProtocol Streams
 
@@ -166,7 +158,7 @@ public final class AVAudioStreamer {
         decoderAdapter.streamer = self
         playerAdapter.streamer = self
     }
-
+        
     // MARK: - Public Methods
 
     /// Start streaming and playing audio
@@ -225,9 +217,8 @@ public final class AVAudioStreamer {
         // Add to queue
         bufferQueue.enqueue(buffer)
 
-        // Notify delegate and stream
+        // Notify delegate
         delegate?.audioStreamer(didOutput: buffer, at: nil)
-        audioBufferStreamContinuation.1.yield(buffer)
 
         // Check if we should start playing
         if case .buffering = streamingState, bufferQueue.hasMinimumBuffers {
