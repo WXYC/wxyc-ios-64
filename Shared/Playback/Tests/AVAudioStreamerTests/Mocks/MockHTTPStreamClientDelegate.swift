@@ -1,5 +1,5 @@
 import Foundation
-@testable import AVAudioStreamer
+@testable import AVAudioStreamerModule
 
 #if !os(watchOS)
 

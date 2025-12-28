@@ -17,9 +17,9 @@ import UIKit
 import MediaPlayer
 @testable import Playback
 @testable import PlaybackCore
-@testable import RadioPlayer
+@testable import RadioPlayerModule
 #if !os(watchOS)
-@testable import AVAudioStreamer
+@testable import AVAudioStreamerModule
 #endif
 
 // MARK: - PlaybackController Test Convenience Extensions
@@ -300,59 +300,53 @@ final class AudioPlayerControllerTestHarness: PlayerControllerTestHarness {
     #endif
 }
 
-// MARK: - Mock Player for RadioPlayer
+// MARK: - Mock Player for RadioPlayer Unit Tests
 
+/// Mock for PlayerProtocol (AVPlayer abstraction) - used for testing RadioPlayer internals
 final class MockRadioPlayer: PlayerProtocol, @unchecked Sendable {
     nonisolated(unsafe) var rate: Float = 0
     nonisolated(unsafe) var playCallCount = 0
     nonisolated(unsafe) var pauseCallCount = 0
     nonisolated(unsafe) var replaceCurrentItemCallCount = 0
-    
-    /// Simulates whether the player is in a "playing" state
-    nonisolated(unsafe) var simulatedIsPlaying = false
-    
+
     nonisolated func play() {
         playCallCount += 1
         rate = 1.0
-        simulatedIsPlaying = true
     }
-    
+
     nonisolated func pause() {
         pauseCallCount += 1
         rate = 0
-        simulatedIsPlaying = false
     }
 
     nonisolated func replaceCurrentItem(with item: AVPlayerItem?) {
         replaceCurrentItemCallCount += 1
     }
-    
+
     func reset() {
         rate = 0
         playCallCount = 0
         pauseCallCount = 0
         replaceCurrentItemCallCount = 0
-        simulatedIsPlaying = false
     }
 }
 
 // MARK: - RadioPlayerController Test Harness
 
-/// Comprehensive test harness for RadioPlayerController with mocked dependencies
+/// Comprehensive test harness for RadioPlayerController with mocked dependencies.
+/// Now uses MockAudioPlayer (AudioPlayerProtocol) for consistent abstraction level.
 @MainActor
 final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
     private let radioPlayerController: RadioPlayerController
     var controller: any PlaybackController { radioPlayerController }
-    let mockPlayer: MockRadioPlayer
+    let mockPlayer: MockAudioPlayer
     let notificationCenter: NotificationCenter
-    let testUserDefaults: UserDefaults
-    let radioPlayer: RadioPlayer
 
-    /// Tracks replaceCurrentItem count at start of last play to detect stream reset
-    private var replaceCountAtLastPlay = 0
+    /// Tracks stop count at start of last play to detect stream reset
+    private var stopCountAtLastPlay = 0
 
     var playCallCount: Int { mockPlayer.playCallCount }
-    var stopCallCount: Int { mockPlayer.pauseCallCount } // RadioPlayer uses pause() as stop
+    var stopCallCount: Int { mockPlayer.stopCallCount }
     var sessionActivated: Bool { controller.isPlaying }
     var sessionDeactivated: Bool { !controller.isPlaying }
     var analyticsPlayCallCount: Int { 0 } // Not trackable without PostHog mock
@@ -361,41 +355,26 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
     var lastAnalyticsStopDuration: TimeInterval? { nil }
 
     init() {
-        mockPlayer = MockRadioPlayer()
+        let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
+        mockPlayer = MockAudioPlayer(url: streamURL)
         notificationCenter = NotificationCenter()
-        testUserDefaults = UserDefaults(suiteName: "test-\(UUID().uuidString)")!
-
-        radioPlayer = RadioPlayer(
-            streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
-            player: mockPlayer,
-            userDefaults: testUserDefaults,
-            analytics: nil,
-            notificationCenter: notificationCenter
-        )
 
         radioPlayerController = RadioPlayerController(
-            radioPlayer: radioPlayer,
+            radioPlayer: mockPlayer,
             notificationCenter: notificationCenter,
             remoteCommandCenter: .shared()
         )
     }
-    
+
     func simulatePlaybackStarted() {
-        // Track replaceCurrentItem count so we can detect if stop() resets the stream
-        replaceCountAtLastPlay = mockPlayer.replaceCurrentItemCallCount
-        // Directly call radioPlayer.play() to bypass AVAudioSession activation
-        // which would fail in test environment. This simulates the state after
-        // successful audio session activation.
-        radioPlayer.play()
-        mockPlayer.rate = 1.0
-        mockPlayer.simulatedIsPlaying = true
-        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: nil)
+        // Track stop count so we can detect if stop() resets the stream
+        stopCountAtLastPlay = mockPlayer.stopCallCount
+        // Simulate the mock player transitioning to playing state
+        mockPlayer.simulateStateChange(to: .playing)
     }
 
     func simulatePlaybackStopped() {
-        mockPlayer.rate = 0
-        mockPlayer.simulatedIsPlaying = false
-        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: nil)
+        mockPlayer.simulateStateChange(to: .idle)
     }
 
     func waitForAsync() async {
@@ -405,17 +384,16 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
     func reset() {
         controller.stop()
         mockPlayer.reset()
-        replaceCountAtLastPlay = 0
+        stopCountAtLastPlay = 0
     }
 
-    /// Returns true if stop() called resetStream() (which calls replaceCurrentItem).
-    /// RadioPlayer correctly resets the stream on stop for live streaming.
+    /// Returns true if stop() was called to reset the stream.
     func isStreamReset() -> Bool {
-        mockPlayer.replaceCurrentItemCallCount > replaceCountAtLastPlay
+        mockPlayer.stopCallCount > stopCountAtLastPlay
     }
 
     /// Simulates a playback stall by posting AVPlayerItemPlaybackStalled notification.
-    /// RadioPlayerController handles stalls through the RadioPlayer's notification handling.
+    /// RadioPlayerController handles stalls through notification handling.
     func simulateStall() {
         notificationCenter.post(name: NSNotification.Name.AVPlayerItemPlaybackStalled, object: nil)
     }
@@ -429,7 +407,7 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
     func postBackgroundNotification() {
         notificationCenter.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
-    
+
     func postForegroundNotification() {
         notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
     }
@@ -468,15 +446,15 @@ final class RadioPlayerControllerTestHarness: PlayerControllerTestHarness {
 
 #if !os(watchOS)
 
-/// Test harness for AVAudioStreamer using state-based tracking
-/// Note: AVAudioStreamer uses real networking/audio components internally,
-/// so we track behavior through state transitions rather than mocked dependencies
+/// Test harness for AVAudioStreamer wrapped in AudioPlayerController.
+/// Uses real AVAudioStreamer internally for integration testing.
 @MainActor
 final class AVAudioStreamerTestHarness: PlayerControllerTestHarness {
     private let streamer: AVAudioStreamer
-    var controller: any PlaybackController { streamer }
+    private let audioPlayerController: AudioPlayerController
+    var controller: any PlaybackController { audioPlayerController }
     let notificationCenter: NotificationCenter
-    
+
     // Track calls through state observations
     private var _playCallCount = 0
     private var _stopCallCount = 0
@@ -490,35 +468,40 @@ final class AVAudioStreamerTestHarness: PlayerControllerTestHarness {
     var analyticsStopCallCount: Int { 0 }
     var lastAnalyticsPlayReason: String? { nil }
     var lastAnalyticsStopDuration: TimeInterval? { nil }
-    
+
     init() {
         notificationCenter = NotificationCenter()
         let config = AVAudioStreamerConfiguration(
-            url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3.mp3")!
+            url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         )
         streamer = AVAudioStreamer(configuration: config)
+        audioPlayerController = AudioPlayerController(
+            player: streamer,
+            audioSession: MockAudioSession(),
+            remoteCommandCenter: MockRemoteCommandCenter(),
+            notificationCenter: notificationCenter,
+            analytics: MockPlaybackAnalytics()
+        )
     }
-    
+
     func simulatePlaybackStarted() {
-        // AVAudioStreamer manages its own state; we track via observation
         _playCallCount += 1
         wasPlaying = true
     }
-    
+
     func simulatePlaybackStopped() {
-        // AVAudioStreamer manages its own state
         if wasPlaying {
             _stopCallCount += 1
             wasPlaying = false
         }
     }
-    
+
     func waitForAsync() async {
         try? await Task.sleep(for: .milliseconds(100))
     }
 
     func reset() {
-        streamer.stop()
+        controller.stop()
         _playCallCount = 0
         _stopCallCount = 0
         wasPlaying = false
@@ -582,7 +565,7 @@ final class AVAudioStreamerTestHarness: PlayerControllerTestHarness {
     #endif
 }
 #endif
-
+    
 // MARK: - Harness Factory
 
 extension PlayerControllerTestCase {
@@ -617,7 +600,7 @@ struct PlayerControllerBehaviorTests {
         await harness.waitForAsync()
         #expect(harness.controller.isPlaying, "play() should set isPlaying to true")
     }
-    
+
     @Test("stop() sets isPlaying to false", arguments: PlayerControllerTestCase.mockedCases)
     func stopSetsIsPlayingFalse(testCase: PlayerControllerTestCase) async {
         let harness = testCase.makeHarness()
@@ -702,7 +685,7 @@ struct PlayerControllerBehaviorTests {
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
         #expect(harness.controller.isPlaying)
-    
+
         // Play again while already playing
         harness.controller.play()
         await harness.waitForAsync()
@@ -942,7 +925,7 @@ struct InterruptionHandlingTests {
 @Suite("AudioPlayerController Analytics Tests")
 @MainActor
 struct AudioPlayerControllerAnalyticsTests {
-    
+
     @Test("play() calls analytics")
     func playCallsAnalytics() async {
         let harness = AudioPlayerControllerTestHarness()
@@ -959,7 +942,7 @@ struct AudioPlayerControllerAnalyticsTests {
 
         // Small delay to ensure non-zero duration
         try? await Task.sleep(for: .milliseconds(10))
-
+    
         harness.controller.stop()
         #expect(harness.analyticsStopCallCount > 0, "stop() should call analytics")
         #expect(harness.lastAnalyticsStopDuration != nil, "stop() should report duration")
@@ -973,7 +956,7 @@ struct AudioPlayerControllerAnalyticsTests {
         #expect(harness.mockAnalytics.startedEvents.count == 1)
         #expect(harness.mockAnalytics.startedEvents.first?.reason == .userInitiated)
     }
-    
+
     @Test("Analytics receives stop duration")
     func analyticsReceivesStopDuration() async {
         let harness = AudioPlayerControllerTestHarness()
@@ -1032,14 +1015,14 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
 
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
-
+        
         // SHOULD have deactivated (playbackIntended is false)
         #expect(harness.mockSession.setActiveCallCount == 1,
                "Background after stop should deactivate session")
         #expect(harness.mockSession.lastActiveState == false,
                "Session should be set to inactive")
     }
-
+        
     @Test("stop then play() keeps playbackIntended true")
     func stopThenPlayKeepsPlaybackIntended() async throws {
         let harness = AudioPlayerControllerTestHarness()
@@ -1081,7 +1064,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
         
         harness.mockSession.reset()
         harness.controller.handleAppWillEnterForeground()
-    
+        
         #expect(harness.mockSession.setActiveCallCount == 1,
                "Foreground while playing should activate session")
         #expect(harness.mockSession.lastActiveState == true,
@@ -1138,9 +1121,9 @@ struct RadioPlayerBehaviorTests {
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
-
+    
         radioPlayer.play()
-        
+
         #expect(mockPlayer.playCallCount == 1, "play() should call underlying player")
     }
     
@@ -1157,10 +1140,10 @@ struct RadioPlayerBehaviorTests {
 
         radioPlayer.play()
         radioPlayer.stop()
-
+        
         #expect(mockPlayer.pauseCallCount == 1, "RadioPlayer.stop() should call underlying player pause")
     }
-
+    
     @Test("RadioPlayer.stop() resets stream")
     func radioPlayerStopResetsStream() async {
         let mockPlayer = MockRadioPlayer()
@@ -1177,7 +1160,7 @@ struct RadioPlayerBehaviorTests {
 
         #expect(mockPlayer.replaceCurrentItemCallCount == 1, "RadioPlayer.stop() should reset stream")
     }
-    
+
     @Test("play() while playing is idempotent")
     func playWhilePlayingIsIdempotent() async throws {
         let mockPlayer = MockRadioPlayer()
@@ -1214,13 +1197,13 @@ struct RadioPlayerBehaviorTests {
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
-
+    
         #expect(!radioPlayer.isPlaying)
     }
 }
 
 // MARK: - PlaybackController Protocol Conformance Tests
-
+        
 @Suite("PlaybackController Protocol Conformance Tests")
 @MainActor
 struct PlaybackControllerProtocolTests {

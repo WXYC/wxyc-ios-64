@@ -51,7 +51,7 @@ public final class RadioPlayerController: PlaybackController {
     }
     
     init(
-        radioPlayer: RadioPlayer = RadioPlayer(),
+        radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
         analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared(),
@@ -103,14 +103,28 @@ public final class RadioPlayerController: PlaybackController {
     
         self.inputObservations = observations
     
-        // Observe radioPlayer.isPlaying to update state
+        // Observe radioPlayer state and derive controller state
         Task { [weak self] in
             guard let self else { return }
-            for await isPlaying in Observations({ self.radioPlayer.isPlaying }) {
-                if isPlaying && self.state == .loading {
+            for await playerState in self.radioPlayer.stateStream {
+                // Don't overwrite controller-specific states like .interrupted
+                guard self.state != .interrupted else { continue }
+
+                switch playerState {
+                case .idle:
+                    self.state = .idle
+                case .loading:
+                    self.state = .loading
+                case .playing:
                     self.state = .playing
-                } else if isPlaying && self.state == .stalled {
-                    self.state = .playing
+                case .stalled:
+                    self.state = .stalled
+                case .error(let error):
+                    self.state = .error(error)
+                case .interrupted:
+                    // Player should never emit .interrupted (controller-level concern)
+                    // This case exists because they share an enum - Phase 5 will fix this
+                    break
                 }
             }
         }
@@ -139,6 +153,9 @@ public final class RadioPlayerController: PlaybackController {
                 let activated = true
 #endif
 
+                // Check if stop() was called while awaiting audio session activation
+                guard self.state == .loading else { return }
+
                 if activated {
                     analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
                     self.radioPlayer.play()
@@ -160,7 +177,7 @@ public final class RadioPlayerController: PlaybackController {
     }
     
     public func stop() {
-        self.radioPlayer.pause()
+        self.radioPlayer.stop()
         self.state = .idle
     }
     
@@ -176,7 +193,7 @@ public final class RadioPlayerController: PlaybackController {
     public func handleAppDidEnterBackground() {
         applicationDidEnterBackground(Notification(name: UIApplication.didEnterBackgroundNotification))
     }
-    
+
     public func handleAppWillEnterForeground() {
         applicationWillEnterForeground(Notification(name: UIApplication.willEnterForegroundNotification))
     }
@@ -184,9 +201,9 @@ public final class RadioPlayerController: PlaybackController {
     
     // MARK: Private
     
-    private let radioPlayer: RadioPlayer
+    private let radioPlayer: any AudioPlayerProtocol
     private var inputObservations: [Any] = []
-    
+
     private var playbackTimer = Timer.start()
     internal var backoffTimer: ExponentialBackoff
     
@@ -205,7 +222,7 @@ private extension RadioPlayerController {
             self.stallStartTime = Date()
 
             analytics.capture(PlaybackStoppedEvent(reason: .stall, duration: playbackTimer.duration()))
-            self.radioPlayer.pause()
+            self.radioPlayer.stop()
             self.attemptReconnectWithExponentialBackoff()
         }
     }

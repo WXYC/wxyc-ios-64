@@ -3,6 +3,7 @@ import Foundation
 import AVFoundation
 @testable import Playback
 @testable import PlaybackCore
+@testable import AVAudioStreamerModule
 
 @Suite("PlaybackMetrics Tests")
 struct PlaybackMetricsTests {

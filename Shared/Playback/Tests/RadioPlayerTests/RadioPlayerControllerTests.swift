@@ -27,7 +27,7 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Core
-@testable import RadioPlayer
+@testable import RadioPlayerModule
 @testable import PlaybackCore
 
 // MARK: - Mock PostHog

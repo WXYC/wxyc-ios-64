@@ -1,6 +1,6 @@
 import Foundation
 @preconcurrency import AVFoundation
-@testable import AVAudioStreamer
+@testable import AVAudioStreamerModule
 
 #if !os(watchOS)
 

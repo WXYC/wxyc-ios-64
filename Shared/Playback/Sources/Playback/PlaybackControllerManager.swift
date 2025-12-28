@@ -10,8 +10,8 @@ import Foundation
 import AVFoundation
 import Core
 import PlaybackCore
-import RadioPlayer
-import AVAudioStreamer
+import RadioPlayerModule
+import AVAudioStreamerModule
 
 #if !os(watchOS)
 
@@ -122,13 +122,15 @@ public final class PlaybackControllerManager {
     // MARK: - Controller Factory
     
     /// Default factory that creates real PlaybackController instances
+    /// Both types use AudioPlayerController, which handles audio session, remote commands, etc.
+    /// The playerType property on AudioPlayerController determines which underlying player is used.
     public static let defaultFactory: PlaybackControllerFactory = { type in
         switch type {
         case .radioPlayer:
             return RadioPlayerController()
         case .avAudioStreamer:
-            let config = AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
-            return AVAudioStreamer(configuration: config)
+            // AudioPlayerController wraps AVAudioStreamer and handles system integration
+            return AudioPlayerController.shared
         }
     }
         
@@ -193,9 +195,8 @@ public final class PlaybackControllerManager {
     #endif
 
     private func wireUpMetricsAdapter(for controller: any PlaybackController) {
-        if let streamer = controller as? AVAudioStreamer {
-            streamer.delegate = metricsAdapter
-        }
+        // Metrics are now handled within AudioPlayerController via its internal player
+        // The AVAudioStreamer delegate is set up within AudioPlayerController
     }
 
     private func startConsumingBuffers(from controller: any PlaybackController) {

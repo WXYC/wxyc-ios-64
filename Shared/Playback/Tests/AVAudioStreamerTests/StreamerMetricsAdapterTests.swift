@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import AVAudioStreamer
+@testable import AVAudioStreamerModule
 @testable import PlaybackCore
 
 @Suite("StreamerMetricsAdapter Tests")

@@ -15,8 +15,8 @@ import Core
 import Caching
 import WidgetKit
 import PlaybackCore
-import RadioPlayer
-import AVAudioStreamer
+import RadioPlayerModule
+import AVAudioStreamerModule
 
 
 // AudioPlayerController is not available on watchOS.
@@ -51,13 +51,15 @@ public final class AudioPlayerController {
     
     /// Creates an audio player instance based on the controller type
     private static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
-        let url: URL = RadioStation.WXYC.streamURL
         switch type {
         case .radioPlayer:
-            return RadioPlayerAdapter(url: url)
+            // RadioPlayer conforms to AudioPlayerProtocol directly
+            return RadioPlayer()
 
         case .avAudioStreamer:
-            return AVAudioStreamerAdapter(url: url)
+            // AVAudioStreamer conforms to AudioPlayerProtocol directly
+            let config = AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
+            return AVAudioStreamer(configuration: config)
         }
     }
     
@@ -183,7 +185,7 @@ public final class AudioPlayerController {
     /// Toggle playback state
     public func toggle() {
         if isPlaying {
-            pause()
+            stop()
         } else {
             play()
         }
@@ -314,7 +316,7 @@ public final class AudioPlayerController {
         commandTargets.removeAll()
     }
     #endif
-        
+    
     // MARK: - Notifications (iOS/tvOS only)
     
     #if os(iOS) || os(tvOS)
@@ -382,7 +384,7 @@ public final class AudioPlayerController {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
-                pause()
+                stop()
             }
             
         case .ended:
@@ -407,9 +409,9 @@ public final class AudioPlayerController {
         
         switch reason {
         case .oldDeviceUnavailable:
-            // Headphones unplugged - pause playback
+            // Headphones unplugged - stop playback
             if isPlaying {
-                pause()
+                stop()
             }
             
         case .newDeviceAvailable:
@@ -472,7 +474,7 @@ extension AudioPlayerController {
         stallStartTime = nil
     }
 }
-
+    
 extension AudioPlayerController: PlaybackController {
     
     public var state: PlaybackState {
