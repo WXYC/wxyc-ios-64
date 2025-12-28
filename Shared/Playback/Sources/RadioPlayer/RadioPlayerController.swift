@@ -20,10 +20,17 @@ import UIKit
 @MainActor
 @Observable
 public final class RadioPlayerController: PlaybackController {
+    #if os(iOS) || os(tvOS)
+    public static let shared = RadioPlayerController(
+        audioSession: AVAudioSession.sharedInstance(),
+        remoteCommandCenter: .shared()
+    )
+    #else
     public static let shared = RadioPlayerController()
-    
+    #endif
+
     // MARK: - PlaybackController Protocol
-    
+
     private let streamURL = RadioStation.WXYC.streamURL
     
     /// The current playback state
@@ -32,30 +39,78 @@ public final class RadioPlayerController: PlaybackController {
     public var isPlaying: Bool {
         self.radioPlayer.isPlaying
     }
-    
+
     public var isLoading: Bool {
         // RadioPlayerController doesn't track loading state separately
         false
     }
-    
+
+    #if os(iOS) || os(tvOS)
     public convenience init(
+        audioSession: AudioSessionProtocol = AVAudioSession.sharedInstance(),
         notificationCenter: NotificationCenter = .default,
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
     ) {
         self.init(
             radioPlayer: RadioPlayer(),
-            notificationCenter: .default,
+            audioSession: audioSession,
+            notificationCenter: notificationCenter,
             analytics: PostHogPlaybackAnalytics.shared,
-            remoteCommandCenter: .shared()
+            remoteCommandCenter: remoteCommandCenter
         )
     }
-    
+    #else
+    public convenience init(
+        notificationCenter: NotificationCenter = .default
+    ) {
+        self.init(
+            radioPlayer: RadioPlayer(),
+            notificationCenter: notificationCenter,
+            analytics: PostHogPlaybackAnalytics.shared
+        )
+    }
+    #endif
+
+    #if os(iOS) || os(tvOS)
     init(
         radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
+        audioSession: AudioSessionProtocol = AVAudioSession.sharedInstance(),
         notificationCenter: NotificationCenter = .default,
         analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared(),
         backoffTimer: ExponentialBackoff = .default
+    ) {
+        self.radioPlayer = radioPlayer
+        self.audioSession = audioSession
+        self.notificationCenter = notificationCenter
+        self.analytics = analytics
+        self.backoffTimer = backoffTimer
+
+        self.inputObservations = []
+        setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: remoteCommandCenter)
+        setUpPlayerStateObservation()
+    }
+    #else
+    init(
+        radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
+        notificationCenter: NotificationCenter = .default,
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        backoffTimer: ExponentialBackoff = .default
+    ) {
+        self.radioPlayer = radioPlayer
+        self.notificationCenter = notificationCenter
+        self.analytics = analytics
+        self.backoffTimer = backoffTimer
+
+        self.inputObservations = []
+        setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: nil)
+        setUpPlayerStateObservation()
+    }
+    #endif
+
+    private func setUpObservations(
+        notificationCenter: NotificationCenter,
+        remoteCommandCenter: MPRemoteCommandCenter?
     ) {
         func notificationObserver(
             for name: Notification.Name,
@@ -63,18 +118,6 @@ public final class RadioPlayerController: PlaybackController {
         ) -> Any {
             notificationCenter.addObserver(forName: name, object: nil, queue: nil, using: sink)
         }
-
-        func remoteCommandObserver(
-            for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
-            handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
-        ) -> Any {
-            remoteCommandCenter[keyPath: command].addTarget(handler: handler)
-        }
-
-
-        self.radioPlayer = radioPlayer
-        self.analytics = analytics
-        self.backoffTimer = backoffTimer
 
         var observations: [Any] = []
 
@@ -85,7 +128,7 @@ public final class RadioPlayerController: PlaybackController {
         ]
 #endif
 
-#if !os(macOS)
+#if os(iOS) || os(tvOS)
         observations += [
             notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
             notificationObserver(for: AVAudioSession.routeChangeNotification, sink: self.routeChanged),
@@ -94,15 +137,29 @@ public final class RadioPlayerController: PlaybackController {
 
         observations += [
             notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
-
-            remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
-            remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
-            remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
-            remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
         ]
-    
+
+        // Set up remote command handlers if a command center was provided
+        if let remoteCommandCenter {
+            func remoteCommandObserver(
+                for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
+                handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
+            ) -> Any {
+                remoteCommandCenter[keyPath: command].addTarget(handler: handler)
+            }
+
+            observations += [
+                remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
+                remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
+                remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
+                remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
+            ]
+        }
+
         self.inputObservations = observations
-    
+    }
+
+    private func setUpPlayerStateObservation() {
         // Observe radioPlayer state and derive controller state
         Task { [weak self] in
             guard let self else { return }
@@ -134,7 +191,7 @@ public final class RadioPlayerController: PlaybackController {
     
     public func toggle(reason: String) throws {
         if self.isPlaying {
-            analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
+            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
             self.stop()
         } else {
             try self.play(reason: reason)
@@ -142,40 +199,30 @@ public final class RadioPlayerController: PlaybackController {
     }
 
     public func play(reason: String) throws {
-        Task {
-            do {
-                self.state = .loading
-                self.playbackTimer = Timer.start()
+        self.state = .loading
+        self.playbackTimer = Timer.start()
 
-#if !os(macOS)
-                let activated = try await AVAudioSession.sharedInstance().activate()
-#else
-                let activated = true
-#endif
-
-                // Check if stop() was called while awaiting audio session activation
-                guard self.state == .loading else { return }
-
-                if activated {
-                    analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
-                    self.radioPlayer.play()
-                    // State transitions to .playing when radioPlayer.isPlaying becomes true
-                } else {
-                    // Still capture the play attempt even if activation failed
-                    analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
-                }
-            } catch {
-                self.state = .error(.audioSessionActivationFailed(error.localizedDescription))
-                analytics.capture(PlaybackStoppedEvent(
-                    reason: .error(.audioSessionActivationFailed(error.localizedDescription)),
-                    duration: 0
-                ))
-
-                Log(.error, "RadioPlayerController could not start playback: \(error)")
-            }
+        #if os(iOS) || os(tvOS)
+        do {
+            try audioSession.setActive(true, options: [])
+        } catch {
+            self.state = .error(.audioSessionActivationFailed(error.localizedDescription))
+            analytics.capture(PlaybackStoppedEvent(
+                reason: "audio session activation failed",
+                duration: 0
+            ))
+            Log(.error, "RadioPlayerController could not start playback: \(error)")
+            return
         }
+        #endif
+
+        analytics.capture(PlaybackStartedEvent(reason: reason))
+        self.radioPlayer.play()
+        // State transitions to .playing when radioPlayer.isPlaying becomes true
     }
-    
+
+    /// Stops playback without capturing analytics.
+    /// Call sites should capture analytics BEFORE calling this method.
     public func stop() {
         self.radioPlayer.stop()
         self.state = .idle
@@ -200,15 +247,21 @@ public final class RadioPlayerController: PlaybackController {
     #endif
     
     // MARK: Private
-    
+
     private let radioPlayer: any AudioPlayerProtocol
+    private let notificationCenter: NotificationCenter
     private var inputObservations: [Any] = []
+
+    #if os(iOS) || os(tvOS)
+    private let audioSession: AudioSessionProtocol
+    #endif
 
     private var playbackTimer = Timer.start()
     internal var backoffTimer: ExponentialBackoff
-    
+
     private let analytics: PlaybackAnalytics
     private var stallStartTime: Date?
+    private var wasPlayingBeforeInterruption = false
 }
 
 private extension RadioPlayerController {
@@ -221,50 +274,58 @@ private extension RadioPlayerController {
             self.state = .stalled
             self.stallStartTime = Date()
 
-            analytics.capture(PlaybackStoppedEvent(reason: .stall, duration: playbackTimer.duration()))
+            analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackTimer.duration()))
             self.radioPlayer.stop()
             self.attemptReconnectWithExponentialBackoff()
         }
     }
     
     nonisolated func sessionInterrupted(notification: Notification) {
-#if !os(macOS)
+#if os(iOS) || os(tvOS)
         Log(.info, "Session interrupted: \(notification)")
-        guard let interruptionType = notification.interruptionType else {
-            return
-        }
 
-        let interruptionReason = notification.interruptionReason
-        let iterruptionOptions = notification.interruptionOptions
+        let userInfo = notification.userInfo
+        let typeValue = userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+        let optionsValue = userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
 
         Task { @MainActor in
+            guard let typeValue,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+                return
+            }
 
-            switch interruptionType {
+            switch type {
             case .began:
-                self.state = .interrupted
-                analytics.capture(InterruptionEvent(type: .began))
-                // `.routeDisconnected` types are not balanced by a `.ended` notification.
-                if interruptionReason == .routeDisconnected {
-                    analytics.capture(PlaybackStoppedEvent(reason: .interruptionBegan, duration: playbackTimer.duration()))
-                } else if let options = iterruptionOptions,
-                          options.contains(.shouldResume) {
-                    analytics.capture(PlaybackStoppedEvent(reason: .interruptionBegan, duration: playbackTimer.duration()))
-                } else {
-                    analytics.capture(PlaybackStoppedEvent(reason: .interruptionBegan, duration: playbackTimer.duration()))
+                // Per Apple's guidance: always stop on interruption began
+                wasPlayingBeforeInterruption = isPlaying
+                if isPlaying {
+                    analytics.capture(InterruptionEvent(type: .began))
+                    // Use specific reason strings matching original pattern
+                    analytics.capture(PlaybackStoppedEvent(reason: "interruption began", duration: playbackTimer.duration()))
                     self.stop()
                 }
-            case .shouldResume, .ended:
-                try self.play(reason: "Resume AVAudioSession playback")
+                self.state = .interrupted
+
+            case .ended:
+                // Check shouldResume option to decide whether to resume
+                guard let optionsValue else { return }
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+
+                if options.contains(.shouldResume) && wasPlayingBeforeInterruption {
+                    try self.play(reason: "Resume after interruption ended")
+                }
+                wasPlayingBeforeInterruption = false
+
+            @unknown default:
+                break
             }
         }
 #endif
     }
     
-    nonisolated func routeChanged(_: Notification) {
-#if !os(macOS)
-        // Use AVAudioSession.shared.currentRoute since the notification only provides the previous
-        // audio output.
-        Log(.info, "Session route changed: \(AVAudioSession.shared.currentRoute)")
+    nonisolated func routeChanged(_ notification: Notification) {
+#if os(iOS) || os(tvOS)
+        Log(.info, "Session route changed: \(notification)")
 #endif
     }
                 
@@ -311,18 +372,18 @@ private extension RadioPlayerController {
         ))
         self.stallStartTime = nil
     }
-    
+
     // MARK: External playback command handlers
     
     nonisolated func applicationDidEnterBackground(_: Notification) {
-#if !os(macOS)
+#if os(iOS) || os(tvOS)
         Task { @MainActor in
             guard !self.radioPlayer.isPlaying else {
                 return
             }
-    
+
             do {
-                try AVAudioSession.shared.deactivate()
+                try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
             } catch {
                 analytics.capture(ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
                 Log(.error, "RadioPlayerController could not deactivate: \(error)")
@@ -336,12 +397,12 @@ private extension RadioPlayerController {
             if self.radioPlayer.isPlaying {
                 try self.play(reason: "foreground toggle")
             } else {
-                analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
+                analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
                 self.stop()
             }
         }
     }
-    
+
     func remotePlayCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
             try self.play(reason: "remotePlayCommand")
@@ -352,20 +413,21 @@ private extension RadioPlayerController {
     }
         
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: playbackTimer.duration()))
+        analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
         self.stop()
-        
+
         return .success
     }
     
     func remoteTogglePlayPauseCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
             if self.radioPlayer.isPlaying {
+                analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
                 self.stop()
             } else {
                 try self.play(reason: "remote toggle play/pause")
             }
-        
+
             return .success
         } catch {
             return .commandFailed
@@ -373,101 +435,14 @@ private extension RadioPlayerController {
     }
 }
 
-fileprivate extension Notification {
-    enum InterruptionType {
-        case began
-        case ended
-        case shouldResume
-    }
-    
-    var interruptionType: InterruptionType? {
-#if os(macOS)
-        return nil
-#else
-        guard let typeValue = self.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber else {
-            Log(.error, "Could not extract interruption type from notification \(self)")
-            return nil
-        }
+// MARK: - AVAudioSession Convenience
 
-        guard let type = AVAudioSession.InterruptionType(rawValue: typeValue.uintValue) else {
-            Log(.error, "Could not convert interruption type to AVAudioSession.InterruptionType \(typeValue)")
-            return nil
-        }
-
-        if type == .began {
-            return .began
-        }
-
-        guard let optionsValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt else {
-            Log(.error, "Could not extract interruption options from notification \(self)")
-            return nil
-        }
-
-        let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-        if options.contains(.shouldResume) {
-            return .shouldResume
-        }
-
-        Log(.error, "Unsupported interruption type: \(type) with options: \(options)")
-        return nil
-#endif
-    }
-
-#if !os(macOS)
-    var interruptionReason: AVAudioSession.InterruptionReason? {
-#if os(tvOS)
-        return nil
-#else
-        guard let typeValue = self.userInfo?[AVAudioSessionInterruptionReasonKey] as? NSNumber else {
-            Log(.error, "Could not extract interruption reason from notification: \(self)")
-            return nil
-        }
-
-        guard let type = AVAudioSession.InterruptionReason(rawValue: typeValue.uintValue) else {
-            Log(.error, "Could not convert interruption reason value to AVAudioSession.InterruptionReason: \(typeValue)")
-            return nil
-        }
-
-        return type
-#endif
-    }
-
-    var interruptionOptions: AVAudioSession.InterruptionOptions? {
-#if os(tvOS)
-        return nil
-#else
-        guard let typeValue = self.userInfo?[AVAudioSessionInterruptionOptionKey] as? NSNumber else {
-            Log(.error, "Could not extract interruption reason from notification: \(self)")
-            return nil
-        }
-
-        return AVAudioSession.InterruptionOptions(rawValue: typeValue.uintValue)
-#endif
-    }
-#endif
-}
-
-#if !os(macOS)
-extension AVAudioSession {
-    static var shared: AVAudioSession {
-        return AVAudioSession.sharedInstance()
-    }
-
-    func activate() async throws -> Bool {
 #if os(watchOS)
+extension AVAudioSession {
+    func activate() async throws -> Bool {
         let activated = try await AVAudioSession.sharedInstance().activate(options: [])
-#else
-        let activated = true
-        try setActive(true)
-#endif
-
-        Log(.info, "Session activated, current route: \(AVAudioSession.shared.currentRoute)")
-
+        Log(.info, "Session activated, current route: \(AVAudioSession.sharedInstance().currentRoute)")
         return activated
-    }
-
-    func deactivate() throws {
-        try setActive(false)
     }
 }
 #endif

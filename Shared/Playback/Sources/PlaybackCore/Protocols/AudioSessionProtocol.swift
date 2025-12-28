@@ -17,6 +17,9 @@ public protocol AudioSessionProtocol: AnyObject {
     
     /// Activate or deactivate the audio session
     func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws
+
+    /// The current audio route
+    var currentRoute: AVAudioSessionRouteDescription { get }
 }
 
 /// Default implementation that wraps AVAudioSession.sharedInstance()
@@ -35,4 +38,3 @@ public protocol AudioSessionProtocol: AnyObject {
 #endif
 
 /// A no-op audio session for platforms that don't support AVAudioSession or for testing
-

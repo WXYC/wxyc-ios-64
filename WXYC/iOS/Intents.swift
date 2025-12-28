@@ -89,6 +89,7 @@ struct PauseWXYC: AudioPlaybackIntent {
 
     public init() { }
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        PostHogSDK.shared.capture("PauseWXYC intent")
         await MainActor.run {
             playbackController.stop()
         }

@@ -25,29 +25,20 @@ public final class PostHogPlaybackAnalytics: PlaybackAnalytics {
     // MARK: - PlaybackAnalytics
 
     public func capture(_ event: PlaybackStartedEvent) {
-        PostHogSDK.shared.capture(
-            "playback_started",
-            properties: [
-                "reason": String(describing: event.reason)
-            ]
-        )
+        var properties: [String: Any] = ["source": "RadioPlayerController"]
+        properties["reason"] = event.reason
+        PostHogSDK.shared.capture("play", properties: properties)
     }
 
     public func capture(_ event: PlaybackStoppedEvent) {
         var properties: [String: Any] = [
-            "reason": String(describing: event.reason),
+            "source": "RadioPlayerController",
             "duration": event.duration
         ]
-
-        // Extract error details if present
-        if case .error(let playbackError) = event.reason {
-            properties["error"] = String(describing: playbackError)
+        if let reason = event.reason {
+            properties["reason"] = reason
         }
-
-        PostHogSDK.shared.capture(
-            "playback_stopped",
-            properties: properties
-        )
+        PostHogSDK.shared.capture("pause", properties: properties)
     }
 
     public func capture(_ event: StallRecoveryEvent) {

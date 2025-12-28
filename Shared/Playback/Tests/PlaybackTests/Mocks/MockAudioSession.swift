@@ -53,6 +53,12 @@ final class MockAudioSession: AudioSessionProtocol {
         }
     }
     
+    var currentRoute: AVAudioSessionRouteDescription {
+        // Return the shared instance's route for basic compatibility
+        // In tests, we typically don't care about the actual route
+        AVAudioSession.sharedInstance().currentRoute
+    }
+
     // MARK: - Test Helpers
     
     func reset() {
@@ -80,7 +86,7 @@ public final class MockAudioSession: AudioSessionProtocol {
     public var shouldThrowOnSetActive = false
     
     public init() {}
-    
+        
     // MARK: - AudioSessionProtocol
     
     public func setActive(_ active: Bool) throws {
@@ -107,4 +113,3 @@ enum MockAudioSessionError: Error {
     case setCategoryFailed
     case setActiveFailed
 }
-

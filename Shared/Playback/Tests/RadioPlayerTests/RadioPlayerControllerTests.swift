@@ -33,10 +33,10 @@ import Core
 // MARK: - Mock PostHog
 
 final class MockPostHog: @unchecked Sendable {
-    private let capturedEvents = NSMutableArray()
+    nonisolated(unsafe) private var capturedEvents: [EventCapture] = []
 
     func capture(_ event: String, properties: [String: Any]? = nil) {
-        capturedEvents.add(EventCapture(event: event, properties: properties))
+        capturedEvents.append(EventCapture(event: event, properties: properties))
     }
 
     func play(reason: String) {
@@ -45,26 +45,26 @@ final class MockPostHog: @unchecked Sendable {
 
     func pause(duration: TimeInterval, reason: String? = nil) {
         var props: [String: Any] = ["duration": duration]
-        if let reason = reason {
+        if let reason {
             props["reason"] = reason
         }
         capture("pause", properties: props)
     }
 
     func reset() {
-        capturedEvents.removeAllObjects()
+        capturedEvents.removeAll()
     }
 
     func capturedEventNames() -> [String] {
-        return capturedEvents.compactMap { ($0 as? EventCapture)?.event }
+        capturedEvents.map(\.event)
     }
 
     func capturedEvent(named: String) -> EventCapture? {
-        return capturedEvents.compactMap { $0 as? EventCapture }.first { $0.event == named }
+        capturedEvents.first { $0.event == named }
     }
 
     func allCapturedEvents() -> [EventCapture] {
-        return capturedEvents.compactMap { $0 as? EventCapture }
+        capturedEvents
     }
 
     struct EventCapture {
@@ -78,32 +78,77 @@ final class MockPostHog: @unchecked Sendable {
 // 2. The remote command handlers are tested indirectly through the notification and lifecycle tests
 // 3. We focus on testing the core logic paths rather than the MediaPlayer integration
 
+// MARK: - Mock Audio Session
+
+#if os(iOS) || os(tvOS)
+final class MockAudioSession: AudioSessionProtocol {
+    var setActiveCallCount = 0
+    var lastActiveState: Bool?
+
+    func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {}
+
+    func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
+        setActiveCallCount += 1
+        lastActiveState = active
+    }
+
+    var currentRoute: AVAudioSessionRouteDescription {
+        AVAudioSession.sharedInstance().currentRoute
+    }
+}
+#endif
+
+// MARK: - RadioPlayerController Test Factory
+
+extension RadioPlayerController {
+    /// Creates a RadioPlayerController configured for testing with platform-appropriate mocks
+    @MainActor
+    static func makeForTesting(
+        radioPlayer: any AudioPlayerProtocol = RadioPlayer(
+            player: MockPlayer(),
+            userDefaults: .test,
+            analytics: nil
+        ),
+        notificationCenter: NotificationCenter = NotificationCenter(),
+        analytics: PlaybackAnalytics = MockPlaybackAnalytics(),
+        backoffTimer: ExponentialBackoff = .default
+    ) -> RadioPlayerController {
+        #if os(iOS) || os(tvOS)
+        RadioPlayerController(
+            radioPlayer: radioPlayer,
+            audioSession: MockAudioSession(),
+            notificationCenter: notificationCenter,
+            analytics: analytics,
+            remoteCommandCenter: .shared(),
+            backoffTimer: backoffTimer
+        )
+        #else
+        RadioPlayerController(
+            radioPlayer: radioPlayer,
+            notificationCenter: notificationCenter,
+            analytics: analytics,
+            backoffTimer: backoffTimer
+        )
+        #endif
+    }
+}
+
 // MARK: - RadioPlayerController Tests
 
 @Suite("RadioPlayerController Tests")
 @MainActor
 struct RadioPlayerControllerTests {
 
+    let controller: RadioPlayerController
+
+    init() {
+        controller = RadioPlayerController.makeForTesting()
+    }
+
     // MARK: - Initialization Tests
 
     @Test("Initializes with default values")
     func initializesWithDefaults() async throws {
-        // Given
-        let mockPlayer = MockPlayer()
-        let radioPlayer = RadioPlayer(
-            player: mockPlayer,
-            userDefaults: .test,
-            analytics: nil
-        )
-        let notificationCenter = NotificationCenter()
-
-        // When
-        let controller = RadioPlayerController(
-            radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
-        )
-
         // Give async observations time to set up
         try await Task.sleep(for: .milliseconds(50))
 
@@ -123,10 +168,9 @@ struct RadioPlayerControllerTests {
             notificationCenter: notificationCenter
         )
 
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         // Give async observations time to set up
@@ -161,10 +205,9 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -195,11 +238,7 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
-        let controller = RadioPlayerController(
-            radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
-        )
+        let controller = RadioPlayerController.makeForTesting(radioPlayer: radioPlayer)
 
         try await Task.sleep(for: .milliseconds(50))
 
@@ -223,10 +262,8 @@ struct RadioPlayerControllerTests {
             userDefaults: .test,
             analytics: nil
         )
-        let controller = RadioPlayerController(
-            radioPlayer: radioPlayer,
-            notificationCenter: .default,
-            remoteCommandCenter: .shared()
+        let controller = RadioPlayerController.makeForTesting(
+            radioPlayer: radioPlayer
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -252,10 +289,8 @@ struct RadioPlayerControllerTests {
             userDefaults: .test,
             analytics: nil
         )
-        let controller = RadioPlayerController(
-            radioPlayer: radioPlayer,
-            notificationCenter: .default,
-            remoteCommandCenter: .shared()
+        let controller = RadioPlayerController.makeForTesting(
+            radioPlayer: radioPlayer
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -282,10 +317,9 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -315,10 +349,9 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -358,10 +391,9 @@ struct RadioPlayerControllerTests {
             notificationCenter: notificationCenter
         )
         // Controller subscribes to notifications on init; must exist during test to handle them
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -398,10 +430,9 @@ struct RadioPlayerControllerTests {
             notificationCenter: notificationCenter
         )
         // Controller subscribes to notifications on init; must exist during test to handle them
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -442,10 +473,9 @@ struct RadioPlayerControllerTests {
             notificationCenter: notificationCenter
         )
         // Controller subscribes to notifications on init; must exist during test to handle them
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -482,10 +512,9 @@ struct RadioPlayerControllerTests {
         )
         let notificationCenter = NotificationCenter()
         // Controller subscribes to notifications on init; must exist during test to handle them
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -513,10 +542,9 @@ struct RadioPlayerControllerTests {
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -542,10 +570,9 @@ struct RadioPlayerControllerTests {
         )
         let notificationCenter = NotificationCenter()
         // Controller subscribes to notifications on init; must exist during test to handle them
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -579,10 +606,9 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -609,7 +635,7 @@ struct RadioPlayerControllerTests {
     #endif
 
     // MARK: - Integration Tests
-
+        
     @Test("Full play-pause-toggle cycle")
     func fullPlayPauseToggleCycle() async throws {
         // Given
@@ -622,10 +648,9 @@ struct RadioPlayerControllerTests {
             analytics: nil,
             notificationCenter: notificationCenter
         )
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -679,10 +704,9 @@ struct RadioPlayerControllerTests {
         )
         let notificationCenter = NotificationCenter()
         // Controller subscribes to notifications on init; must exist during test to handle them
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -714,10 +738,8 @@ struct RadioPlayerControllerTests {
             userDefaults: .test,
             analytics: nil
         )
-        let controller = RadioPlayerController(
-            radioPlayer: radioPlayer,
-            notificationCenter: .default,
-            remoteCommandCenter: .shared()
+        let controller = RadioPlayerController.makeForTesting(
+            radioPlayer: radioPlayer
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -743,10 +765,9 @@ struct RadioPlayerControllerTests {
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
-            notificationCenter: notificationCenter,
-            remoteCommandCenter: .shared()
+            notificationCenter: notificationCenter
         )
 
         try await Task.sleep(for: .milliseconds(50))
@@ -788,11 +809,10 @@ struct RadioPlayerControllerAnalyticsTests {
             notificationCenter: notificationCenter
         )
         let mockAnalytics = MockPlaybackAnalytics()
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
-            analytics: mockAnalytics,
-            remoteCommandCenter: .shared()
+            analytics: mockAnalytics
         )
 
         // Start playing
@@ -807,9 +827,9 @@ struct RadioPlayerControllerAnalyticsTests {
         // When - Toggle to pause
         try controller.toggle(reason: "user tapped")
 
-        // Then - Should capture stopped event
+        // Then - Should capture stopped event (reason is nil for user-initiated toggle)
         #expect(mockAnalytics.stoppedEvents.count == 1)
-        #expect(mockAnalytics.stoppedEvents[0].reason == .userInitiated)
+        #expect(mockAnalytics.stoppedEvents[0].reason == nil)
     }
 
     @Test("Stall captures PlaybackStoppedEvent with stall reason")
@@ -824,11 +844,10 @@ struct RadioPlayerControllerAnalyticsTests {
             notificationCenter: notificationCenter
         )
         let mockAnalytics = MockPlaybackAnalytics()
-        let controller = RadioPlayerController(
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
-            analytics: mockAnalytics,
-            remoteCommandCenter: .shared()
+            analytics: mockAnalytics
         )
 
         // Start playing
@@ -849,7 +868,7 @@ struct RadioPlayerControllerAnalyticsTests {
 
         // Then - Should capture stopped event with stall reason
         #expect(mockAnalytics.stoppedEvents.count >= 1)
-        #expect(mockAnalytics.stoppedEvents.first?.reason == .stall)
+        #expect(mockAnalytics.stoppedEvents.first?.reason == "stalled")
     }
 
     @Test("Recovery from stall captures StallRecoveryEvent")
@@ -864,11 +883,10 @@ struct RadioPlayerControllerAnalyticsTests {
             notificationCenter: notificationCenter
         )
         let mockAnalytics = MockPlaybackAnalytics()
-        _ = RadioPlayerController(
+        _ = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter,
             analytics: mockAnalytics,
-            remoteCommandCenter: .shared(),
             backoffTimer: ExponentialBackoff(
                 initialWaitTime: 0.01,
                 maximumWaitTime: 0.1,
