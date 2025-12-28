@@ -245,6 +245,12 @@ public final class AVAudioStreamer {
             scheduleBuffers()
         }
 
+        // Handle stall recovery - wait for minimum buffers then resume
+        if case .stalled = streamingState, bufferQueue.hasMinimumBuffers {
+            scheduleBuffers()
+            streamingState = .playing
+        }
+
         // Update buffering state
         if case .buffering = streamingState {
             streamingState = .buffering(

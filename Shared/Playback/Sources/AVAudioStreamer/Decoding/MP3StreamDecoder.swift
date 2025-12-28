@@ -205,8 +205,9 @@ final class MP3StreamDecoder: @unchecked Sendable {
             }
         }
 
-        // Try to decode if we have enough packets
-        if self.packetDescriptions.count >= 10 {
+        // Decode all available packets into PCM buffers
+        // Use a small threshold to minimize latency while ensuring enough data for conversion
+        while self.packetDescriptions.count >= 4 {
             convertToPCM()
         }
     }
