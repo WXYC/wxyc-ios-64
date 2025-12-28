@@ -71,10 +71,16 @@ public struct PlayerHeaderView: View {
         .background(.ultraThinMaterial)
         .cornerRadius(12)
         .task {
-            // Connect visualizer to controller's audio buffer stream
-            for await buffer in Self.controller.audioBufferStream {
-                visualizer.processBuffer(buffer)
-            }
+            // Get stream reference on MainActor, then process on background thread
+            let stream = Self.controller.audioBufferStream
+            let viz = visualizer
+
+            // Detach to process FFT/RMS off MainActor
+            await Task.detached(priority: .userInitiated) {
+                for await buffer in stream {
+                    viz.processBuffer(buffer)
+                }
+            }.value
         }
         .onChange(of: selectedPlayerType) { _, newType in
             // Switch the player when type changes

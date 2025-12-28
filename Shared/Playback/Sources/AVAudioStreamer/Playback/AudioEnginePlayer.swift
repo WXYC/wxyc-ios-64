@@ -26,6 +26,10 @@ final class AudioEnginePlayer: @unchecked Sendable {
     // Track scheduled buffers to know when to request more
     private let scheduledBufferCount: ScheduledBufferCount
 
+    /// Stream of audio buffers from the render tap - yields at render rate (~60 times/sec)
+    let renderTapStream: AsyncStream<AVAudioPCMBuffer>
+    private let renderTapContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+
     var isPlaying: Bool {
         stateBox.isPlaying
     }
@@ -44,12 +48,27 @@ final class AudioEnginePlayer: @unchecked Sendable {
         self.scheduledBufferCount = ScheduledBufferCount()
         self.schedulingQueue = DispatchQueue(label: "com.avaudiostreamer.scheduling", qos: .userInitiated)
 
+        // Initialize render tap stream
+        var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { c in
+            continuation = c
+        }
+        self.renderTapContinuation = continuation
+
         setUpAudioEngine()
     }
 
     private func setUpAudioEngine() {
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+
+        // Install tap on main mixer to capture audio at render rate
+        // Use the player's format (44.1kHz) to match FFT processor expectations
+        let continuation = renderTapContinuation
+        playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
+            continuation.yield(buffer)
+        }
+
         engine.prepare()
     }
 
