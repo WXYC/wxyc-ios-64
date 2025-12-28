@@ -29,8 +29,8 @@ public final class RadioPlayer: Sendable {
 
     // MARK: - State
 
-    /// The current playback state
-    public private(set) var state: PlaybackState = .idle {
+    /// The current player state
+    public private(set) var state: PlayerState = .idle {
         didSet {
             if state != oldValue {
                 stateContinuation.yield(state)
@@ -45,9 +45,9 @@ public final class RadioPlayer: Sendable {
 
     // MARK: - Streams
 
-    /// Stream of playback state changes
-    public let stateStream: AsyncStream<PlaybackState>
-    private let stateContinuation: AsyncStream<PlaybackState>.Continuation
+    /// Stream of player state changes
+    public let stateStream: AsyncStream<PlayerState>
+    private let stateContinuation: AsyncStream<PlayerState>.Continuation
         
     /// Stream of audio buffers (not supported by AVPlayer-based RadioPlayer)
     public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
@@ -82,7 +82,7 @@ public final class RadioPlayer: Sendable {
         self.notificationCenter = notificationCenter
 
         // Initialize state stream
-        var stateContinuation: AsyncStream<PlaybackState>.Continuation!
+        var stateContinuation: AsyncStream<PlayerState>.Continuation!
         self.stateStream = AsyncStream { continuation in
             stateContinuation = continuation
         }

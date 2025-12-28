@@ -167,22 +167,9 @@ public final class RadioPlayerController: PlaybackController {
                 // Don't overwrite controller-specific states like .interrupted
                 guard self.state != .interrupted else { continue }
 
-                switch playerState {
-                case .idle:
-                    self.state = .idle
-                case .loading:
-                    self.state = .loading
-                case .playing:
-                    self.state = .playing
-                case .stalled:
-                    self.state = .stalled
-                case .error(let error):
-                    self.state = .error(error)
-                case .interrupted:
-                    // Player should never emit .interrupted (controller-level concern)
-                    // This case exists because they share an enum - Phase 5 will fix this
-                    break
-                }
+                // Map PlayerState to PlaybackState
+                // PlayerState doesn't include .interrupted (controller-level concern)
+                self.state = playerState.asPlaybackState
             }
         }
     }
@@ -201,7 +188,7 @@ public final class RadioPlayerController: PlaybackController {
     public func play(reason: String) throws {
         self.state = .loading
         self.playbackTimer = Timer.start()
-
+    
         #if os(iOS) || os(tvOS)
         do {
             try audioSession.setActive(true, options: [])
@@ -240,7 +227,7 @@ public final class RadioPlayerController: PlaybackController {
     public func handleAppDidEnterBackground() {
         applicationDidEnterBackground(Notification(name: UIApplication.didEnterBackgroundNotification))
     }
-
+    
     public func handleAppWillEnterForeground() {
         applicationWillEnterForeground(Notification(name: UIApplication.willEnterForegroundNotification))
     }
@@ -258,7 +245,7 @@ public final class RadioPlayerController: PlaybackController {
 
     private var playbackTimer = Timer.start()
     internal var backoffTimer: ExponentialBackoff
-
+    
     private let analytics: PlaybackAnalytics
     private var stallStartTime: Date?
     private var wasPlayingBeforeInterruption = false
@@ -328,7 +315,7 @@ private extension RadioPlayerController {
         Log(.info, "Session route changed: \(notification)")
 #endif
     }
-                
+
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
             Log(.info, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")

@@ -30,8 +30,8 @@ public final class AVAudioStreamer {
     // MARK: - AudioPlayerProtocol Streams
 
     /// Internal state stream for AudioPlayerProtocol conformance
-    internal let stateStreamInternal: AsyncStream<PlaybackState>
-    private let stateContinuationInternal: AsyncStream<PlaybackState>.Continuation
+    internal let stateStreamInternal: AsyncStream<PlayerState>
+    private let stateContinuationInternal: AsyncStream<PlayerState>.Continuation
 
     /// Internal event stream for AudioPlayerProtocol conformance
     internal let eventStreamInternal: AsyncStream<AudioPlayerInternalEvent>
@@ -47,8 +47,8 @@ public final class AVAudioStreamer {
         }
     }
 
-    /// The current playback state (PlaybackController protocol)
-    public var state: PlaybackState {
+    /// The current player state (AudioPlayerProtocol)
+    public var state: PlayerState {
         switch streamingState {
         case .idle, .paused:
             return .idle
@@ -118,7 +118,7 @@ public final class AVAudioStreamer {
         self.backoffTimer = backoffTimer
         
         // Initialize state stream for AudioPlayerProtocol
-        var stateContinuation: AsyncStream<PlaybackState>.Continuation!
+        var stateContinuation: AsyncStream<PlayerState>.Continuation!
         self.stateStreamInternal = AsyncStream { continuation in
             stateContinuation = continuation
         }

@@ -486,8 +486,9 @@ extension AudioPlayerController: PlaybackController {
             return .stalled
         }
     
-        // Player now uses PlaybackState directly
-        return player.state
+        // Convert PlayerState to PlaybackState
+        // PlayerState doesn't include .interrupted (controller-level concern)
+        return player.state.asPlaybackState
     }
 
     public func toggle(reason: String) throws {
