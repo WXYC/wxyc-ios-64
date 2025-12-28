@@ -30,12 +30,10 @@ public protocol PlaybackController: AnyObject, Observable {
     var state: PlaybackState { get }
 
     /// Whether audio is currently playing
-    @available(*, deprecated, message: "Use state.isPlaying instead")
     var isPlaying: Bool { get }
 
     /// Whether playback is loading (play initiated but not yet playing)
     /// Controllers without loading state should return `false`
-    @available(*, deprecated, message: "Use state.isLoading instead")
     var isLoading: Bool { get }
     
     /// Starts playback with the given reason for analytics

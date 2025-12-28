@@ -67,22 +67,22 @@ public protocol PlaybackAnalyticsEvent: Sendable, Equatable {}
 
 /// Event capturing that playback started.
 public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
-    /// Why playback was initiated
-    public let reason: PlaybackStartReason
+    /// Why playback was initiated (freeform string for PostHog compatibility)
+    public let reason: String
 
-    public init(reason: PlaybackStartReason) {
+    public init(reason: String) {
         self.reason = reason
     }
 }
 
 /// Event capturing that playback stopped.
 public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
-    /// Why playback was stopped
-    public let reason: PlaybackStopReason
+    /// Why playback was stopped (optional freeform string for PostHog compatibility)
+    public let reason: String?
     /// How long playback lasted in seconds
     public let duration: TimeInterval
 
-    public init(reason: PlaybackStopReason, duration: TimeInterval) {
+    public init(reason: String? = nil, duration: TimeInterval) {
         self.reason = reason
         self.duration = duration
     }

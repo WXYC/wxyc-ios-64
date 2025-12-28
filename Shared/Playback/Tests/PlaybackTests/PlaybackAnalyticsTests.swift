@@ -19,12 +19,12 @@ struct PlaybackAnalyticsTests {
     func mockCapturesStarted() {
         let mock = MockPlaybackAnalytics()
 
-        mock.capture(PlaybackStartedEvent(reason: .userInitiated))
-        mock.capture(PlaybackStartedEvent(reason: .autoReconnect))
+        mock.capture(PlaybackStartedEvent(reason: "user initiated"))
+        mock.capture(PlaybackStartedEvent(reason: "auto reconnect"))
 
         #expect(mock.startedEvents.count == 2)
-        #expect(mock.startedEvents[0].reason == .userInitiated)
-        #expect(mock.startedEvents[1].reason == .autoReconnect)
+        #expect(mock.startedEvents[0].reason == "user initiated")
+        #expect(mock.startedEvents[1].reason == "auto reconnect")
     }
 
     @Test("Mock captures playback stopped events")
@@ -32,13 +32,13 @@ struct PlaybackAnalyticsTests {
     func mockCapturesStopped() {
         let mock = MockPlaybackAnalytics()
 
-        mock.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: 120.5))
-        mock.capture(PlaybackStoppedEvent(reason: .stall, duration: 60.0))
+        mock.capture(PlaybackStoppedEvent(duration: 120.5))
+        mock.capture(PlaybackStoppedEvent(reason: "stall", duration: 60.0))
 
         #expect(mock.stoppedEvents.count == 2)
-        #expect(mock.stoppedEvents[0].reason == .userInitiated)
+        #expect(mock.stoppedEvents[0].reason == nil)
         #expect(mock.stoppedEvents[0].duration == 120.5)
-        #expect(mock.stoppedEvents[1].reason == .stall)
+        #expect(mock.stoppedEvents[1].reason == "stall")
         #expect(mock.stoppedEvents[1].duration == 60.0)
     }
 
@@ -77,8 +77,8 @@ struct PlaybackAnalyticsTests {
     func mockResetClearsEvents() {
         let mock = MockPlaybackAnalytics()
 
-        mock.capture(PlaybackStartedEvent(reason: .userInitiated))
-        mock.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: 100))
+        mock.capture(PlaybackStartedEvent(reason: "user initiated"))
+        mock.capture(PlaybackStoppedEvent(duration: 100))
         mock.capture(StallRecoveryEvent(playerType: .radioPlayer, attempts: 1, stallDuration: 2.0))
         mock.capture(InterruptionEvent(type: .began))
 
@@ -93,20 +93,20 @@ struct PlaybackAnalyticsTests {
     // MARK: - Sendable Tests
 
     @Test("Event types are Sendable", arguments: [
-        PlaybackStartedEvent(reason: .userInitiated),
-        PlaybackStartedEvent(reason: .autoReconnect),
-        PlaybackStartedEvent(reason: .interruptionEnded),
-        PlaybackStartedEvent(reason: .remoteCommand)
+        PlaybackStartedEvent(reason: "user initiated"),
+        PlaybackStartedEvent(reason: "auto reconnect"),
+        PlaybackStartedEvent(reason: "interruption ended"),
+        PlaybackStartedEvent(reason: "remote command")
     ])
     func startedEventsAreSendable(event: PlaybackStartedEvent) async {
         await Task { @Sendable in _ = event }.value
     }
 
     @Test("Stopped events are Sendable", arguments: [
-        PlaybackStoppedEvent(reason: .userInitiated, duration: 10.0),
-        PlaybackStoppedEvent(reason: .stall, duration: 5.0),
-        PlaybackStoppedEvent(reason: .interruptionBegan, duration: 100.0),
-        PlaybackStoppedEvent(reason: .error(.unknown("test")), duration: 1.0)
+        PlaybackStoppedEvent(duration: 10.0),
+        PlaybackStoppedEvent(reason: "stall", duration: 5.0),
+        PlaybackStoppedEvent(reason: "interruption began", duration: 100.0),
+        PlaybackStoppedEvent(reason: "error", duration: 1.0)
     ])
     func stoppedEventsAreSendable(event: PlaybackStoppedEvent) async {
         await Task { @Sendable in _ = event }.value

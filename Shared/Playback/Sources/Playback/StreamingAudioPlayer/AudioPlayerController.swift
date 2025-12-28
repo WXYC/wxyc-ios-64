@@ -185,6 +185,7 @@ public final class AudioPlayerController {
     /// Toggle playback state
     public func toggle() {
         if isPlaying {
+            analytics.capture(PlaybackStoppedEvent(duration: playbackDuration))
             stop()
         } else {
             play()
@@ -201,7 +202,7 @@ public final class AudioPlayerController {
 
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
-        analytics.capture(PlaybackStartedEvent(reason: PlaybackStartReason(fromLegacyReason: reason)))
+        analytics.capture(PlaybackStartedEvent(reason: reason))
         updateWidgetState()
     }
     
@@ -212,11 +213,10 @@ public final class AudioPlayerController {
     }
 
     /// Stop playback and disconnect from stream
+    /// Note: Analytics should be captured at call sites BEFORE calling this method
     public func stop(reason: String? = nil) {
         playbackIntended = false
-        let duration = playbackDuration
         player.stop()
-        analytics.capture(PlaybackStoppedEvent(reason: .userInitiated, duration: duration))
         playbackStartTime = nil
         #if os(iOS) || os(tvOS)
         deactivateAudioSession()
@@ -277,6 +277,7 @@ public final class AudioPlayerController {
         let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
+                self.analytics.capture(PlaybackStoppedEvent(duration: self.playbackDuration))
                 self.stop()
             }
             return .success
@@ -384,6 +385,7 @@ public final class AudioPlayerController {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
+                analytics.capture(PlaybackStoppedEvent(reason: "interruption began", duration: playbackDuration))
                 stop()
             }
             
@@ -411,6 +413,7 @@ public final class AudioPlayerController {
         case .oldDeviceUnavailable:
             // Headphones unplugged - stop playback
             if isPlaying {
+                analytics.capture(PlaybackStoppedEvent(reason: "route disconnected", duration: playbackDuration))
                 stop()
             }
             
@@ -458,7 +461,7 @@ extension AudioPlayerController {
     
     private func handleStall() {
         stallStartTime = Date()
-        analytics.capture(PlaybackStoppedEvent(reason: .stall, duration: playbackDuration))
+        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration))
     }
 
     private func handleRecovery() {
