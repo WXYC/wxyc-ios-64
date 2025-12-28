@@ -9,6 +9,9 @@
 import Foundation
 import AVFoundation
 import Core
+#if canImport(Intents)
+import Intents
+#endif
 import PlaybackCore
 import RadioPlayerModule
 import AVAudioStreamerModule
@@ -62,7 +65,7 @@ public final class PlaybackControllerManager {
     }()
     
     private var bufferConsumptionTask: Task<Void, Never>?
-    
+
     // CPU Monitoring
     private var cpuMonitor: CPUMonitor?
 
@@ -77,7 +80,7 @@ public final class PlaybackControllerManager {
         self.controllerFactory = Self.defaultFactory
         self.analytics = analytics
         self.metricsAdapter = StreamerMetricsAdapter(analytics: analytics)
-        
+
         let controller = Self.defaultFactory(type)
         self.current = controller
 
@@ -155,7 +158,7 @@ public final class PlaybackControllerManager {
         // Update state
         current = newController
         currentType = type
-    
+        
         // Switch stream consumption
         startConsumingBuffers(from: newController)
         
@@ -174,6 +177,7 @@ public final class PlaybackControllerManager {
     public func play() {
         cpuMonitor?.start()
         try? current.play(reason: "user_play")
+        donatePlayIntent()
     }
 
     /// Stop playback
@@ -210,6 +214,31 @@ public final class PlaybackControllerManager {
                 continuation.yield(buffer)
             }
         }
+    }
+
+    /// Donates an INPlayMediaIntent to Siri so WXYC appears in Lock Screen suggestions.
+    /// iOS learns from these donations to surface the app based on user listening patterns.
+    private func donatePlayIntent() {
+        #if !os(macOS)
+        let mediaItem = INMediaItem(
+            identifier: RadioStation.WXYC.name,
+            title: "WXYC 89.3 FM",
+            type: .radioStation,
+            artwork: nil
+        )
+
+        let intent = INPlayMediaIntent(
+            mediaItems: [mediaItem],
+            mediaContainer: nil,
+            playShuffled: nil,
+            resumePlayback: true,
+            playbackQueueLocation: .now,
+            playbackSpeed: nil
+        )
+
+        let interaction = INInteraction(intent: intent, response: nil)
+        Task { try? await interaction.donate() }
+        #endif
     }
 }
 
