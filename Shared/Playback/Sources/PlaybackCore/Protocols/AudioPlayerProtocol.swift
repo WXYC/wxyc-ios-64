@@ -9,22 +9,29 @@ import Foundation
 import AVFoundation
 
 /// Protocol defining the low-level audio player interface
+///
+/// Players (RadioPlayer, AVAudioStreamer) implement this protocol.
+/// They use `PlayerState` which does not include `.interrupted`
+/// since that is a controller-level concern.
 @MainActor
 public protocol AudioPlayerProtocol: AnyObject {
     /// Whether the player is currently playing audio
     var isPlaying: Bool { get }
 
-    /// The current playback state
-    var state: PlaybackState { get }
+    /// The current player state
+    ///
+    /// Note: Uses `PlayerState` (not `PlaybackState`) because players
+    /// don't handle system interruptions - that's a controller concern.
+    var state: PlayerState { get }
 
     /// Start playing audio
     func play()
 
     /// Stop playback and reset stream
     func stop()
-    
-    /// Stream of playback state changes
-    var stateStream: AsyncStream<PlaybackState> { get }
+
+    /// Stream of player state changes
+    var stateStream: AsyncStream<PlayerState> { get }
     
     /// Stream of audio buffers for visualization
     /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread

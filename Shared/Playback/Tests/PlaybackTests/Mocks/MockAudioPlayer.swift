@@ -23,14 +23,14 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     // MARK: - AudioPlayerProtocol
 
     var isPlaying: Bool = false
-    var state: PlaybackState = .idle
+    var state: PlayerState = .idle
 
-    let stateStream: AsyncStream<PlaybackState>
+    let stateStream: AsyncStream<PlayerState>
     let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
     let eventStream: AsyncStream<AudioPlayerInternalEvent>
 
     var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
-    var onStateChange: ((PlaybackState, PlaybackState) -> Void)?
+    var onStateChange: ((PlayerState, PlayerState) -> Void)?
     var onMetadata: (([String: String]) -> Void)?
     var onStall: (() -> Void)?
     var onRecovery: (() -> Void)?
@@ -38,13 +38,13 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     // MARK: - Private Properties
 
     private let url: URL
-    private var stateContinuation: AsyncStream<PlaybackState>.Continuation?
+    private var stateContinuation: AsyncStream<PlayerState>.Continuation?
     private var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation?
 
     init(url: URL = URL(string: "https://example.com/stream")!) {
         self.url = url
 
-        var sC: AsyncStream<PlaybackState>.Continuation!
+        var sC: AsyncStream<PlayerState>.Continuation!
         self.stateStream = AsyncStream { sC = $0 }
         self.stateContinuation = sC
 
@@ -89,7 +89,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     }
 
     /// Simulate a state change and notify observers via stateStream
-    func simulateStateChange(to newState: PlaybackState) {
+    func simulateStateChange(to newState: PlayerState) {
         let oldState = state
         state = newState
         isPlaying = (newState == .playing || newState == .loading)

@@ -20,8 +20,8 @@ extension AVAudioStreamer: AudioPlayerProtocol {
         streamingState == .playing
     }
 
-    /// Stream of playback state changes
-    public var stateStream: AsyncStream<PlaybackState> {
+    /// Stream of player state changes
+    public var stateStream: AsyncStream<PlayerState> {
         stateStreamInternal
     }
 
