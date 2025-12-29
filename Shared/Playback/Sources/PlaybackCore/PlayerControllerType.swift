@@ -65,19 +65,18 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     public var displayName: String {
         switch self {
         case .radioPlayer:
-            return "RadioPlayer (AVPlayer)"
+            "RadioPlayer (AVPlayer)"
         case .avAudioStreamer:
-            return "AVAudioStreamer (AudioToolbox)"
+            "AVAudioStreamer (AudioToolbox)"
         }
     }
     
     public var shortDescription: String {
         switch self {
         case .radioPlayer:
-            return "Uses AVPlayer for simple HTTP streaming"
+            "Uses AVPlayer for simple HTTP streaming"
         case .avAudioStreamer:
-            return "Uses URLSession + AudioToolbox for MP3 decoding"
+            "Uses URLSession + AudioToolbox for MP3 decoding"
         }
     }
 }
-
