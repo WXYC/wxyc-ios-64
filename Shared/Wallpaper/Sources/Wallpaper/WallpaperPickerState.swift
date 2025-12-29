@@ -152,73 +152,47 @@ public final class WallpaperPickerState {
         isGeneratingSnapshots = generating
     }
 
-    /// Starts generating snapshots for all wallpapers.
-    /// Snapshots are generated asynchronously and stored as they complete.
+    /// Preloads snapshots in the background at low priority using parallel tasks.
+    /// Call this at app launch to have snapshots ready before the user enters picker mode.
     /// - Parameters:
     ///   - size: The size to render snapshots at.
     ///   - scale: The display scale factor.
-    public func startGeneratingSnapshots(size: CGSize, scale: CGFloat) {
+    public func preloadSnapshotsInBackground(size: CGSize, scale: CGFloat) {
+        // Skip if already generating or if we have all snapshots
         guard !isGeneratingSnapshots else { return }
 
-        Task { @MainActor in
-            isGeneratingSnapshots = true
-            defer { isGeneratingSnapshots = false }
+        let wallpaperCount = WallpaperRegistry.shared.wallpapers.count
+        guard snapshots.count < wallpaperCount else { return }
 
-            guard let service = WallpaperSnapshotService() else { return }
+        isGeneratingSnapshots = true
 
-            // Generate snapshots prioritizing wallpapers near the current selection
-            let wallpapers = WallpaperRegistry.shared.wallpapers
-            let prioritizedWallpapers = prioritizeWallpapers(wallpapers, aroundIndex: carouselIndex)
+        // Run at low priority to avoid impacting UI
+        Task.detached(priority: .utility) { [weak self] in
+            guard let service = await WallpaperSnapshotService() else {
+                await self?.setGeneratingSnapshots(false)
+                return
+            }
 
-            for wallpaper in prioritizedWallpapers {
-                // Stop if picker is no longer active
-                guard isActive else { break }
+            let wallpapers = await WallpaperRegistry.shared.wallpapers
 
-                // Skip if we already have a snapshot for this wallpaper
-                if snapshots[wallpaper.id] != nil { continue }
+            // Generate all snapshots in parallel
+            await withTaskGroup(of: WallpaperSnapshot?.self) { group in
+                for wallpaper in wallpapers {
+                    group.addTask {
+                        await service.generateSnapshot(for: wallpaper, size: size, scale: scale)
+                    }
+                }
 
-                if let snapshot = await service.generateSnapshot(
-                    for: wallpaper,
-                    size: size,
-                    scale: scale
-                ) {
-                    storeSnapshot(snapshot)
+                // Store results as they complete
+                for await snapshot in group {
+                    if let snapshot {
+                        await self?.storeSnapshot(snapshot)
+                    }
                 }
             }
+
+            await self?.setGeneratingSnapshots(false)
         }
-    }
-
-    /// Prioritizes wallpapers for snapshot generation.
-    /// Order: current, neighbors, then outward from center.
-    private func prioritizeWallpapers(_ wallpapers: [LoadedWallpaper], aroundIndex centerIndex: Int) -> [LoadedWallpaper] {
-        guard !wallpapers.isEmpty else { return [] }
-
-        var result: [LoadedWallpaper] = []
-        var visited = Set<Int>()
-
-        // Start with center
-        if centerIndex >= 0 && centerIndex < wallpapers.count {
-            result.append(wallpapers[centerIndex])
-            visited.insert(centerIndex)
-        }
-
-        // Expand outward from center
-        for offset in 1..<wallpapers.count {
-            let leftIndex = centerIndex - offset
-            let rightIndex = centerIndex + offset
-
-            if leftIndex >= 0 && !visited.contains(leftIndex) {
-                result.append(wallpapers[leftIndex])
-                visited.insert(leftIndex)
-            }
-
-            if rightIndex < wallpapers.count && !visited.contains(rightIndex) {
-                result.append(wallpapers[rightIndex])
-                visited.insert(rightIndex)
-            }
-        }
-
-        return result
     }
 
     // MARK: - Private

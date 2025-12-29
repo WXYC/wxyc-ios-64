@@ -71,21 +71,19 @@ public struct WallpaperPickerContainer<Content: View>: View {
                     .allowsHitTesting(!pickerState.isActive)
                     .animation(pickerAnimation, value: pickerState.isActive)
             }
-            .onChange(of: pickerState.isActive) { wasActive, isNowActive in
-                if isNowActive && !wasActive {
-                    // Start generating snapshots when entering picker mode
-                    // Use half resolution to reduce memory and speed up generation
-                    let snapshotSize = CGSize(
-                        width: geometry.size.width * 0.5,
-                        height: geometry.size.height * 0.5
-                    )
-                    #if os(iOS)
-                    let scale = UIScreen.main.scale
-                    #else
-                    let scale: CGFloat = 2.0
-                    #endif
-                    pickerState.startGeneratingSnapshots(size: snapshotSize, scale: scale)
-                }
+            .onAppear {
+                // Preload snapshots in background so they're ready when user enters picker
+                // Use half resolution to reduce memory and speed up generation
+                let snapshotSize = CGSize(
+                    width: geometry.size.width * 0.5,
+                    height: geometry.size.height * 0.5
+                )
+                #if os(iOS)
+                let scale = UIScreen.main.scale
+                #else
+                let scale: CGFloat = 2.0
+                #endif
+                pickerState.preloadSnapshotsInBackground(size: snapshotSize, scale: scale)
             }
         }
         .ignoresSafeArea()
