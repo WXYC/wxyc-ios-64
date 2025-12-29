@@ -1,6 +1,6 @@
 {
   "id": "neon_topology_iso",
-  "displayName": "Neon Topology (Isolines)",
+  "displayName": "Space Mountain",
   "version": "1.0.0",
   "renderer": {
     "type": "stitchable",
@@ -15,4 +15,5 @@
     { "source": "time" }
   ]
 }
+
 
