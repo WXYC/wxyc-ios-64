@@ -108,7 +108,10 @@ struct PlaylistView: View {
                 }
             }
         }
-        .wallpaperPickerGesture()
+        .wallpaperPickerGesture(
+            pickerState: appState.wallpaperPickerState,
+            configuration: appState.wallpaperConfiguration
+        )
         .accessibilityIdentifier("playlistView")
     }
 

@@ -1,20 +1,20 @@
 //
 //  WallpaperPickerGesture.swift
-//  WXYC
+//  Wallpaper
 //
-//  Created by Jake Bromberg on 12/22/25.
-//  Copyright © 2025 WXYC. All rights reserved.
+//  Long press gesture to enter wallpaper picker mode.
 //
 
+#if os(iOS)
 import SwiftUI
-import Wallpaper
+import UIKit
 
 // MARK: - Long Press Gesture Behavior
 //
 // This view modifier provides the long press gesture to enter wallpaper picker mode.
 //
 // Requirements:
-// 1. Long pressing (1 second) triggers wallpaper picker while finger is still down
+// 1. Long pressing (0.5 seconds) triggers wallpaper picker while finger is still down
 // 2. Vertical dragging cancels the gesture and allows ScrollView scrolling
 // 3. Horizontal dragging cancels the gesture and allows TabView swiping
 //
@@ -26,12 +26,13 @@ import Wallpaper
 
 /// View modifier that adds long press gesture to enter wallpaper picker mode.
 struct WallpaperPickerGestureModifier: ViewModifier {
-    @Environment(Singletonia.self) private var appState
+    @Bindable var pickerState: WallpaperPickerState
+    @Bindable var configuration: WallpaperConfiguration
 
     func body(content: Content) -> some View {
         content
             .background {
-                JsonTreeNode_introspectScrollView { scrollView in
+                ScrollViewIntrospector { scrollView in
                     addLongPressGesture(to: scrollView)
                 }
             }
@@ -44,15 +45,15 @@ struct WallpaperPickerGestureModifier: ViewModifier {
         }
         guard existingRecognizer == nil else { return }
 
-        let recognizer = WallpaperPickerLongPressGesture { [appState] in
+        let recognizer = WallpaperPickerLongPressGesture { [pickerState, configuration] in
             // Haptic feedback
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
 
             // Enter wallpaper picker mode
             withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
-                appState.wallpaperPickerState.enter(
-                    currentWallpaperID: appState.wallpaperConfiguration.selectedWallpaperID
+                pickerState.enter(
+                    currentWallpaperID: configuration.selectedWallpaperID
                 )
             }
         }
@@ -70,7 +71,7 @@ private class WallpaperPickerLongPressGesture: UILongPressGestureRecognizer, UIG
         self.onLongPress = onLongPress
         super.init(target: nil, action: nil)
 
-        minimumPressDuration = 1.0
+        minimumPressDuration = 0.5
         allowableMovement = 10
         delegate = self
 
@@ -94,14 +95,14 @@ private class WallpaperPickerLongPressGesture: UILongPressGestureRecognizer, UIG
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool {
-        return true
+        true
     }
 }
 
 // MARK: - ScrollView Introspection
 
 /// A helper view that finds the underlying UIScrollView and calls a callback.
-private struct JsonTreeNode_introspectScrollView: UIViewRepresentable {
+private struct ScrollViewIntrospector: UIViewRepresentable {
     let callback: (UIScrollView) -> Void
 
     func makeUIView(context: Context) -> IntrospectionView {
@@ -145,10 +146,21 @@ private class IntrospectionView: UIView {
 extension View {
     /// Adds a long press gesture that enters wallpaper picker mode.
     ///
-    /// The gesture triggers after 1 second while the finger is still down.
+    /// The gesture triggers after 0.5 seconds while the finger is still down.
     /// Moving more than 10 points cancels the gesture, allowing normal
     /// scrolling and horizontal swiping for tab navigation.
-    func wallpaperPickerGesture() -> some View {
-        modifier(WallpaperPickerGestureModifier())
+    ///
+    /// - Parameters:
+    ///   - pickerState: The wallpaper picker state to enter picker mode
+    ///   - configuration: The wallpaper configuration to get the current wallpaper ID
+    public func wallpaperPickerGesture(
+        pickerState: WallpaperPickerState,
+        configuration: WallpaperConfiguration
+    ) -> some View {
+        modifier(WallpaperPickerGestureModifier(
+            pickerState: pickerState,
+            configuration: configuration
+        ))
     }
 }
+#endif
