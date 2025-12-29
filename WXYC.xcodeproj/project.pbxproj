@@ -19,6 +19,7 @@
 		236B51FE2EFC675B0058AD01 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 236B51FD2EFC675B0058AD01 /* Playlist */; };
 		236B52022EFC67630058AD01 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52012EFC67630058AD01 /* Analytics */; };
 		236B52062EFC67750058AD01 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52052EFC67750058AD01 /* AppServices */; };
+		23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 23B42F962F0209CB007351F1 /* ColorPalette */; };
 		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
 		23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */ = {isa = PBXBuildFile; productRef = 23D4181A2EF2C8000DBGPNL /* DebugPanel */; };
 		23DD3EC12EFA090B0090636B /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = C0D1E2F30405162718192AC3 /* PostHog */; };
@@ -302,6 +303,7 @@
 				37327445A68BBA56C392BEF7 /* WXUI in Frameworks */,
 				7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */,
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
+				23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */,
 				C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */,
 			);
 		};
@@ -566,6 +568,7 @@
 				51D35AECC049A83AE7575477 /* PostHog */,
 				23D418172EF2C80000WALLPA /* Wallpaper */,
 				23D4181A2EF2C8000DBGPNL /* DebugPanel */,
+				23B42F962F0209CB007351F1 /* ColorPalette */,
 			);
 			productName = WXYC;
 			productReference = 87ED2724FB87B5D288BBFFFB /* WXYC.app */;
@@ -630,6 +633,7 @@
 				D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */,
 				ABCDCE57E9505C547B8FE732 /* XCLocalSwiftPackageReference "Shared/WXUI" */,
 				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
+				23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 6393B8DD84BA2FE9EA639E2D /* Products */;
@@ -2011,6 +2015,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/AppServices;
 		};
+		23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/ColorPalette;
+		};
 		23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Wallpaper;
@@ -2141,6 +2149,10 @@
 		236B52052EFC67750058AD01 /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AppServices;
+		};
+		23B42F962F0209CB007351F1 /* ColorPalette */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ColorPalette;
 		};
 		23D418172EF2C80000WALLPA /* Wallpaper */ = {
 			isa = XCSwiftPackageProductDependency;
