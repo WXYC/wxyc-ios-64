@@ -92,8 +92,7 @@ struct PlaylistView: View {
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(
                 visualizer: visualizer,
-                selectedPlayerType: $selectedPlayerType,
-                wallpaperConfiguration: appState.wallpaperConfiguration
+                selectedPlayerType: $selectedPlayerType
             )
             .presentationDetents([.fraction(0.75)])
         }

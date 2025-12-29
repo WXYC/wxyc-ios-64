@@ -14,18 +14,16 @@ import Wallpaper
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
-    @Bindable var wallpaperConfiguration: WallpaperConfiguration
     @Environment(\.dismiss) private var dismiss
     private var hudState = DebugHUDState.shared
+    private var wallpaperDebugState = WallpaperDebugState.shared
 
     public init(
         visualizer: VisualizerDataSource,
-        selectedPlayerType: Binding<PlayerControllerType>,
-        wallpaperConfiguration: WallpaperConfiguration
+        selectedPlayerType: Binding<PlayerControllerType>
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
-        self.wallpaperConfiguration = wallpaperConfiguration
     }
     
     public var body: some View {
@@ -43,10 +41,17 @@ public struct VisualizerDebugView: View {
                     Text("Displays FPS, CPU, GPU memory, RAM, and thermal state.")
                 }
 
-                // Wallpaper
-                WallpaperDebugControls(
-                    configuration: wallpaperConfiguration
-                )
+                // Wallpaper Debug Overlay
+                Section {
+                    Toggle("Show Wallpaper Debug Button", isOn: Binding(
+                        get: { wallpaperDebugState.showOverlay },
+                        set: { wallpaperDebugState.showOverlay = $0 }
+                    ))
+                } header: {
+                    Text("Wallpaper")
+                } footer: {
+                    Text("Shows a floating button to access wallpaper picker and parameter controls.")
+                }
 
                 // Player Controller Selection
                 Section {

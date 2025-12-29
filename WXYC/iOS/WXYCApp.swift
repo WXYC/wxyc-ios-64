@@ -186,6 +186,10 @@ struct WXYCApp: App {
 
                     #if DEBUG
                     DebugHUD()
+
+                    if WallpaperDebugState.shared.showOverlay {
+                        WallpaperDebugOverlay(configuration: appState.wallpaperConfiguration)
+                    }
                     #endif
                 }
             }
@@ -332,7 +336,7 @@ struct WXYCApp: App {
     }
 
     // MARK: - Background Refresh
-
+        
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.wxyc.refresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
