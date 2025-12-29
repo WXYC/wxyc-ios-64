@@ -156,12 +156,12 @@ struct LCDSpectrumAnalyzerView: View {
     }
     
     private func glowColor(for segmentIndex: Int, isActive: Bool) -> Color {
+        guard isActive else { return .clear }
+        
         let multiplier = brightnessMultiplier(for: segmentIndex)
         let baseBrightness = 1.5 * multiplier
         
-        let opacity: Double = isActive ? 0.6 : 0.6
-        
-        return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness).opacity(opacity)
+        return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness).opacity(0.6)
     }
 }
 
