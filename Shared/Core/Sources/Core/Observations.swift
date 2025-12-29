@@ -10,7 +10,7 @@ import Observation
 
 /// A backport of the `Observations` struct for older OS versions.
 /// It provides an `AsyncSequence` interface for observing changes to `@Observable` properties.
-public struct Observations<Element: Sendable>: AsyncSequence {
+public struct Observations<Element: Sendable>: AsyncSequence, Sendable {
     public typealias Iterator = AsyncStream<Element>.Iterator
     
     private let stream: AsyncStream<Element>?
