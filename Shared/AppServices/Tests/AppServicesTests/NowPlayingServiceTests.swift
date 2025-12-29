@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import Artwork
+import Core
 @testable import Playlist
 @testable import AppServices
 @testable import Caching
