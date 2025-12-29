@@ -23,6 +23,7 @@ struct InfoDetailView: View {
     @State private var showingMailComposer = false
     @State private var attachLogsToEmail = false
     @State private var requestText = ""
+    @Environment(Singletonia.self) private var appState
 
     var body: some View {
         VStack(alignment: .center) {
@@ -100,7 +101,10 @@ struct InfoDetailView: View {
         .sheet(isPresented: $showingMailComposer) {
             MailComposerView(attachLogs: attachLogsToEmail)
         }
-        .wallpaperPickerGesture()
+        .wallpaperPickerGesture(
+            pickerState: appState.wallpaperPickerState,
+            configuration: appState.wallpaperConfiguration
+        )
     }
 
     private func sendRequest(message: String) async {
