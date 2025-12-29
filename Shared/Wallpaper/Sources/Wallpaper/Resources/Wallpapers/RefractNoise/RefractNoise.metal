@@ -163,7 +163,7 @@ static inline float3 poolFloorBaseColor(float3 worldPos, float time, texture2d<f
     float2 uv = worldPos.xy;
 
     // Tile frequency and grout thickness in tile UV space.
-    constexpr float tilesPerUnit = 0.9f;
+    constexpr float tilesPerUnit = 0.75f;
     constexpr float lineWidth = 0.07f;
 
     float g = groutMask(uv, tilesPerUnit, lineWidth);
@@ -203,6 +203,8 @@ static inline float3 skyColor(float3 dir, float time, texture2d<float> noiseTex,
 }
 
 static inline float3 render(float3 rayOri, float3 rayDir, float cubeHalfSize, float floorZ, float time, texture2d<float> noiseTex, sampler s) {
+    time /= 2.0;
+    
     // Match Shadertoy's "sample then pow(2.2)" workflow (treat skyColor as sRGB-ish).
     float3 color = powr(skyColor(rayDir, time, noiseTex, s), float3(2.2f));
 
