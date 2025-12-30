@@ -7,14 +7,17 @@
 
 import Foundation
 import PostHog
+import Caching
 
 /// Available PlaybackController implementations
 public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, Sendable {
     case radioPlayer = "RadioPlayer"
     case avAudioStreamer = "AVAudioStreamer"
-    
+
     // MARK: - Persistence
-    
+
+    /// Uses app group UserDefaults so widget/intents can read the selected player type
+    private static var defaults: UserDefaults { .wxyc }
     private static let userDefaultsKey = "debug.selectedPlayerControllerType"
     private static let manualSelectionKey = "debug.isPlayerControllerManuallySelected"
     
@@ -27,8 +30,8 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     /// Loads the persisted player controller type, or returns default
     public static func loadPersisted() -> PlayerControllerType {
         // 1. Check if user manually selected a player in Debug View
-        if UserDefaults.standard.bool(forKey: manualSelectionKey),
-           let rawValue = UserDefaults.standard.string(forKey: userDefaultsKey),
+        if defaults.bool(forKey: manualSelectionKey),
+           let rawValue = defaults.string(forKey: userDefaultsKey),
            let type = PlayerControllerType(rawValue: rawValue) {
             return type
         }
@@ -46,14 +49,14 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     
     /// Persists the selected player controller type
     public func persist() {
-        UserDefaults.standard.set(rawValue, forKey: Self.userDefaultsKey)
-        UserDefaults.standard.set(true, forKey: Self.manualSelectionKey)
+        Self.defaults.set(rawValue, forKey: Self.userDefaultsKey)
+        Self.defaults.set(true, forKey: Self.manualSelectionKey)
     }
-    
+
     /// Clears the persisted player controller type
     public static func clearPersisted() {
-        UserDefaults.standard.removeObject(forKey: userDefaultsKey)
-        UserDefaults.standard.removeObject(forKey: manualSelectionKey)
+        defaults.removeObject(forKey: userDefaultsKey)
+        defaults.removeObject(forKey: manualSelectionKey)
     }
     
     // MARK: - Identifiable
