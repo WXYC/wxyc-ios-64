@@ -9,6 +9,7 @@ import SwiftUI
 import Playback
 import PlayerHeaderView
 import Wallpaper
+import WXUI
 
 #if DEBUG
 public struct VisualizerDebugView: View {
@@ -51,6 +52,18 @@ public struct VisualizerDebugView: View {
                     Text("Wallpaper")
                 } footer: {
                     Text("Shows a floating button to access wallpaper picker and parameter controls.")
+                }
+
+                // Tip Views
+                Section {
+                    Button("Reset Tip Views") {
+                        SiriTipView.resetState()
+                        WallpaperTipView.resetState()
+                    }
+                } header: {
+                    Text("Tips")
+                } footer: {
+                    Text("Resets Siri and Wallpaper tip dismissal state so they appear again on next launch.")
                 }
 
                 // Player Controller Selection
