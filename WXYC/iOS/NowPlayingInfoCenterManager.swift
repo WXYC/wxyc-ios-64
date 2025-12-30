@@ -15,16 +15,58 @@ import Playback
 import Playlist
 import AppServices
 
+// MARK: - NowPlayingInfoCenter Protocol
+
+/// Protocol abstracting MPNowPlayingInfoCenter for testability.
+@MainActor
+protocol NowPlayingInfoCenterProtocol {
+    var playbackState: MPNowPlayingPlaybackState { get set }
+    var nowPlayingInfo: [String: Any]? { get set }
+}
+
+extension MPNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {}
+
+// MARK: - NowPlayingInfoCenterManager
+
 @MainActor
 final class NowPlayingInfoCenterManager {
-    /// Uses the shared AudioPlayerController singleton
-    private var controller: AudioPlayerController { AudioPlayerController.shared }
+    private var infoCenter: NowPlayingInfoCenterProtocol
+    private let boundsSize: CGSize
+    
+    /// Convenience initializer using defaults for production use.
+    convenience init(nowPlayingService: NowPlayingService) {
+        let screenWidth = UIScreen.main.bounds.size.width
+        let controller = AudioPlayerController.shared
+        let playbackStateStream = Observations { controller.isPlaying }
+        
+        self.init(
+            nowPlayingItemStream: nowPlayingService,
+            playbackStateStream: playbackStateStream,
+            infoCenter: MPNowPlayingInfoCenter.default(),
+            boundsSize: CGSize(width: screenWidth, height: screenWidth)
+        )
+    }
 
-    init(nowPlayingService: NowPlayingService) {
+    init<NowPlayingStream: AsyncSequence, PlaybackStream: AsyncSequence>(
+        nowPlayingItemStream: NowPlayingStream,
+        playbackStateStream: PlaybackStream,
+        infoCenter: NowPlayingInfoCenterProtocol,
+        boundsSize: CGSize
+    ) where NowPlayingStream.Element == NowPlayingItem, NowPlayingStream: Sendable,
+            PlaybackStream.Element == Bool, PlaybackStream: Sendable {
+        self.infoCenter = infoCenter
+        self.boundsSize = boundsSize
+        
         Task {
-            for try await nowPlayingItem in nowPlayingService {
+            for try await nowPlayingItem in nowPlayingItemStream {
                 self.update(playcut: nowPlayingItem.playcut)
                 self.update(artwork: nowPlayingItem.artwork)
+            }
+        }
+        
+        Task {
+            for try await isPlaying in playbackStateStream {
+                self.infoCenter.playbackState = isPlaying ? .playing : .paused
             }
         }
     }
@@ -32,27 +74,21 @@ final class NowPlayingInfoCenterManager {
     private func update(playcut: Playcut) {
         let playcutMediaItems = playcut.playcutMediaItems
         
-        if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
+        if infoCenter.nowPlayingInfo == nil {
+            infoCenter.nowPlayingInfo = [:]
         }
-        
-        MPNowPlayingInfoCenter.default().nowPlayingInfo?.update(with: playcutMediaItems)
-        MPNowPlayingInfoCenter.default().playbackState = controller.isPlaying ? .playing : .paused
+
+        infoCenter.nowPlayingInfo?.update(with: playcutMediaItems)
     }
 
     private func update(artwork: UIImage?) {
         let artwork = artwork ?? UIImage.placeholder
-        if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = [:]
+        if infoCenter.nowPlayingInfo == nil {
+            infoCenter.nowPlayingInfo = [:]
         }
         
-        let screenWidth = UIScreen.main.bounds.size.width
-        let boundsSize = CGSize(width: screenWidth, height: screenWidth)
-        
-        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] =
+        infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork] =
             self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
-        MPNowPlayingInfoCenter.default().playbackState =
-            controller.isPlaying ? .playing : .paused
     }
     
     private func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
@@ -79,6 +115,7 @@ extension Optional where Wrapped == Playcut {
 }
 
 extension Dictionary {
+    // TODO: Replace with new `mutating func merging` method
     mutating func update(with dict: Dictionary<Key, Value>) {
         for (key, value) in dict {
             self[key] = value
@@ -98,7 +135,7 @@ extension UIImage {
         .withRenderingMode(.alwaysOriginal)
         .scaleAndCenter(scale: 0.90)
 }
-
+    
 extension CGImage {
     func overlay(with overlay: CGImage) -> CGImage? {
         Log(.info, "overlaying \(overlay.size) with \(size)")
@@ -117,7 +154,7 @@ extension CGImage {
             Log(.error, "Couldn't create CGContext")
             return nil
         }
-
+    
         var rect = CGRect(x: 0, y: 0, width: width, height: height)
         // Draw the background image.
         context.draw(self, in: rect)
@@ -152,9 +189,9 @@ extension CGImage {
         }
         let context = CIContext(options: [.useSoftwareRenderer: false])
         return context.createCGImage(outputImage, from: outputImage.extent) ?? self
-        
+
     }
-    
+
     var size: CGSize {
         .init(width: CGFloat(width), height: CGFloat(height))
     }
@@ -167,10 +204,10 @@ extension UIImage {
         // Compute the scaled size by multiplying the original dimensions by the scale.
         let scaledSize = CGSize(width: self.size.width * scale,
                                 height: self.size.height * scale)
-        
+
         // Create an image renderer using the original image's size.
         let renderer = UIGraphicsImageRenderer(size: canvasSize)
-        
+
         let newImage = renderer.image { _ in
             // Calculate the origin so the scaled image is centered in the canvas.
             let origin = CGPoint(x: (canvasSize.width - scaledSize.width) / 2,
@@ -178,7 +215,7 @@ extension UIImage {
             // Draw the image in the computed rect.
             self.draw(in: CGRect(origin: origin, size: scaledSize))
         }
-        
+
         return newImage
     }
 }
