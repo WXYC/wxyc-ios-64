@@ -91,19 +91,13 @@ struct WXYCApp: App {
             ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
         }
         
-        UserDefaults.standard.removeObject(forKey: "isPlaying")
+        UserDefaults.wxyc.removeObject(forKey: "isPlaying")
         // Analytics setup
         setUpAnalytics()
         PostHogSDK.shared.capture("app launch")
 
-        // AVAudioSession setup
-        do {
-            try AVAudioSession.sharedInstance()
-                .setCategory(.playback, mode: .default, policy: .longFormAudio)
-        } catch {
-            Log(.error, "Could not set AVAudioSession category: \(error)")
-            PostHogSDK.shared.capture(error: error, context: "WXYCApp: Could not set AVAudioSession category")
-        }
+        // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
+        // Setting it here at launch would interrupt other apps' audio unnecessarily.
 
         // UIKit appearance setup
         #if os(iOS)
@@ -141,56 +135,56 @@ struct WXYCApp: App {
             ) {
                 ZStack {
                     RootTabView()
-                    .frame(maxWidth: 440)
-                    .environment(appState)
-                    .environment(\.playlistService, appState.playlistService)
-                    .environment(\.artworkService, appState.artworkService)
-                    .environment(\.playbackController, AudioPlayerController.shared)
-                    .preferredColorScheme(.dark)
-                    .forceLightStatusBar()
-                    .onAppear {
-                        setUpNowPlayingInfoCenter()
-                        setUpQuickActions()
-                        appState.setForegrounded(true)
-                        appState.startObservingPlaylistUpdates()
-
-                        // Listen for app termination to clear playing state
-                        #if os(iOS)
-                        NotificationCenter.default.addObserver(
-                            forName: UIApplication.willTerminateNotification,
-                            object: nil,
-                            queue: .main
-                        ) { _ in
-                            // Clear the playing state so widget doesn't show "Pause" after termination
-                            UserDefaults.wxyc.set(false, forKey: "isPlaying")
+                        .frame(maxWidth: 440)
+                        .environment(appState)
+                        .environment(\.playlistService, appState.playlistService)
+                        .environment(\.artworkService, appState.artworkService)
+                        .environment(\.playbackController, AudioPlayerController.shared)
+                        .preferredColorScheme(.dark)
+                        .forceLightStatusBar()
+                        .onAppear {
+                            setUpNowPlayingInfoCenter()
+                            setUpQuickActions()
+                            appState.setForegrounded(true)
+                            appState.startObservingPlaylistUpdates()
+                            
+                            // Listen for app termination to clear playing state
+#if os(iOS)
+                            NotificationCenter.default.addObserver(
+                                forName: UIApplication.willTerminateNotification,
+                                object: nil,
+                                queue: .main
+                            ) { _ in
+                                // Clear the playing state so widget doesn't show "Pause" after termination
+                                UserDefaults.wxyc.set(false, forKey: "isPlaying")
+                            }
+#endif
+                            
+                            // Force status bar to be light
+#if os(iOS)
+                            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                               let window = windowScene.windows.first {
+                                window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
+                            }
+#endif
                         }
-                        #endif
-
-                        // Force status bar to be light
-                        #if os(iOS)
-                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           let window = windowScene.windows.first {
-                            window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
+                        .onOpenURL { url in
+                            handleURL(url)
                         }
-                        #endif
-                    }
-                    .onOpenURL { url in
-                        handleURL(url)
-                    }
-                    .onContinueUserActivity("org.wxyc.iphoneapp.play") { userActivity in
-                        handleUserActivity(userActivity)
-                    }
-                    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                        handleUserActivity(userActivity)
-                    }
-
-                    #if DEBUG
+                        .onContinueUserActivity("org.wxyc.iphoneapp.play") { userActivity in
+                            handleUserActivity(userActivity)
+                        }
+                        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                            handleUserActivity(userActivity)
+                        }
+                    
+#if DEBUG
                     DebugHUD()
-
+                    
                     if WallpaperDebugState.shared.showOverlay {
                         WallpaperDebugOverlay(configuration: appState.wallpaperConfiguration)
                     }
-                    #endif
+#endif
                 }
             }
         }
@@ -340,7 +334,7 @@ struct WXYCApp: App {
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.wxyc.refresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
-        
+
         do {
             try BGTaskScheduler.shared.submit(request)
             Log(.info, "Scheduled background refresh for 15 minutes from now")

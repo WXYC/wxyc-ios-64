@@ -108,21 +108,25 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
                "Background while playing should NOT deactivate session")
     }
 
-    @Test("stop() clears playbackIntended - background DOES deactivate session")
+    @Test("stop() clears playbackIntended - session is deactivated before background")
     func stopClearsPlaybackIntended() async throws {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         try harness.controller.play(reason: "test")
+        harness.mockSession.reset()
         harness.controller.stop()
 
-        harness.mockSession.reset()
-        harness.controller.handleAppDidEnterBackground()
-
-        // SHOULD have deactivated (playbackIntended is false)
-        #expect(harness.mockSession.setActiveCallCount == 1,
-               "Background after stop should deactivate session")
+        // stop() should have deactivated session (playbackIntended is now false)
+        #expect(harness.mockSession.setActiveCallCount >= 1,
+               "stop() should deactivate session")
         #expect(harness.mockSession.lastActiveState == false,
                "Session should be set to inactive")
+
+        // Background after stop should NOT deactivate again (already deactivated)
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background after stop should not deactivate again (already deactivated)")
     }
 
     @Test("stop then play() keeps playbackIntended true")
@@ -183,6 +187,35 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
 
         #expect(harness.mockSession.setActiveCallCount == 0,
                "Foreground without playback intent should NOT activate session")
+    }
+
+    @Test("background without ever playing does NOT deactivate session")
+    func backgroundWithoutEverPlayingDoesNotDeactivate() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // App launched but user never played anything
+        // Session was never activated, so backgrounding should NOT deactivate
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background without ever playing should NOT call setActive (session was never activated)")
+    }
+
+    @Test("Real-world scenario: Apple Music playing, launch WXYC, background without playing")
+    func appleMusicNotInterruptedScenario() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // User launches WXYC while Apple Music is playing
+        // User browses the playlist but doesn't start playback
+        // User backgrounds the app
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+
+        // Critical: Session should NOT be deactivated with .notifyOthersOnDeactivation
+        // because we never activated it. If we deactivate, it could affect Apple Music.
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "CRITICAL: Never-activated session should not be deactivated on background")
     }
 
     @Test("Real-world scenario: Apple Music interrupted, WXYC plays, backgrounding keeps WXYC playing")

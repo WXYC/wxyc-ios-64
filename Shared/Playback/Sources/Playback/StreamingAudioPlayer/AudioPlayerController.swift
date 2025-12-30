@@ -99,6 +99,8 @@ public final class AudioPlayerController {
     private var wasPlayingBeforeInterruption = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
+    /// Tracks whether the audio session has been activated (to avoid deactivating when never activated)
+    private var audioSessionActivated = false
     /// Tracks when playback started for analytics duration reporting
     private var playbackStartTime: Date?
     private var stallStartTime: Date?
@@ -240,15 +242,18 @@ public final class AudioPlayerController {
         guard let session = audioSession else { return }
         do {
             try session.setActive(true, options: [])
+            audioSessionActivated = true
         } catch {
             print("Failed to activate audio session: \(error)")
         }
     }
-    
+
     private func deactivateAudioSession() {
-        guard let session = audioSession else { return }
+        // Only deactivate if we previously activated - AVAudioSession has no isActive property
+        guard audioSessionActivated, let session = audioSession else { return }
         do {
             try session.setActive(false, options: .notifyOthersOnDeactivation)
+            audioSessionActivated = false
         } catch {
             print("Failed to deactivate audio session: \(error)")
         }
@@ -458,7 +463,7 @@ extension AudioPlayerController {
             }
         }
     }
-    
+
     private func handleStall() {
         stallStartTime = Date()
         analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration))
@@ -485,7 +490,7 @@ extension AudioPlayerController: PlaybackController {
         if stallStartTime != nil {
             return .stalled
         }
-    
+
         // Convert PlayerState to PlaybackState
         // PlayerState doesn't include .interrupted (controller-level concern)
         return player.state.asPlaybackState
