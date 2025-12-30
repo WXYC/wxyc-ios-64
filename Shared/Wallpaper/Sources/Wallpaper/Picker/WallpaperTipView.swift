@@ -10,8 +10,8 @@ import SwiftUI
 /// A tip view that informs users about the tap-and-hold gesture to reveal the wallpaper picker.
 ///
 /// Display Logic:
-/// - DEBUG: Shows on every launch for testing purposes
-/// - RELEASE: Shows on first launch, until dismissed; never shows again once dismissed
+/// Shows on first launch, until dismissed; never shows again once dismissed.
+/// Use the debug panel to reset tip state for testing.
 public struct WallpaperTipView: View {
     public typealias Dismissal = () -> Void
 
@@ -92,13 +92,8 @@ extension WallpaperTipView {
 
     /// Returns whether the wallpaper tip should be shown.
     public static func shouldShow() -> Bool {
-#if DEBUG
-        // In debug builds, always show for testing
-        return true
-#else
         // Show unless user has dismissed it
-        return !UserDefaults.standard.bool(forKey: wasDismissedKey)
-#endif
+        !UserDefaults.standard.bool(forKey: wasDismissedKey)
     }
 
     /// Call this when the user dismisses the tip to prevent future displays.
