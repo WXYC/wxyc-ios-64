@@ -88,11 +88,12 @@ public extension UserDefaults {
 }
 
 struct DiskCache: Cache, @unchecked Sendable {
-    struct DiskCacheError: Error, ExpressibleByStringLiteral, CustomStringConvertible {
+    struct DiskCacheError: LocalizedError, ExpressibleByStringLiteral, CustomStringConvertible {
         let message: String
         
         var description: String { message }
-        
+        var errorDescription: String? { message }
+
         init(stringLiteral value: String) {
             self.message = value
         }
@@ -107,20 +108,36 @@ struct DiskCache: Cache, @unchecked Sendable {
     /// - Parameter useSharedContainer: If true, uses the App Group shared container (for sharing between app and widget).
     ///                                 If false, uses the app's private caches directory.
     init(useSharedContainer: Bool = false) {
-        if useSharedContainer {
-            self.cacheDirectory = FileManager.default
-                .containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupID)?
-                .appendingPathComponent("Library/Caches", isDirectory: true)
+        guard useSharedContainer else {
+            self.cacheDirectory = FileManager.default.urls(
+                for: .cachesDirectory,
+                in: .userDomainMask
+            ).first
             
-            // Ensure the shared cache directory exists
-            if let dir = self.cacheDirectory {
-                try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            }
+            return
+        }
+
+        if let container = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupID)
+        {
+            let cacheDir = container
+                .appendingPathComponent("Library", isDirectory: true)
+                .appendingPathComponent("Caches", isDirectory: true)
+
+            try? FileManager.default.createDirectory(
+                at: cacheDir,
+                withIntermediateDirectories: true
+            )
+
+            self.cacheDirectory = cacheDir
         } else {
-            self.cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            #if !targetEnvironment(simulator)
+            Log(.error, "App group container not available for '\(Self.appGroupID)'. Check entitlements and provisioning profile.")
+            #endif
+            self.cacheDirectory = nil
         }
     }
-    
+            
     // MARK: - xattr helpers
     
     private func getMetadata(for fileURL: URL) -> CacheMetadata? {
@@ -180,7 +197,7 @@ struct DiskCache: Cache, @unchecked Sendable {
               FileManager.default.fileExists(atPath: fileURL.path) else {
             return nil
         }
-        
+    
         // Check for xattr - if missing, purge old-format file
         guard getMetadata(for: fileURL) != nil else {
             Log(.info, "No xattr metadata for \(key), purging old-format file")
@@ -200,10 +217,12 @@ struct DiskCache: Cache, @unchecked Sendable {
     
     func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
         guard let fileURL = fileURL(for: key) else {
+            #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
             Log(.error, error.localizedDescription)
             PostHogSDK.shared.capture(error: error, context: "DiskCache set(_:metadata:for:)")
-            
+            #endif
+
             // Fall back to NSCache for data only (no metadata support)
             if let data = data as? NSData {
                 cache.setObject(data, forKey: key as NSString)
@@ -233,9 +252,11 @@ struct DiskCache: Cache, @unchecked Sendable {
     
     func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
         guard let cacheDirectory else {
+            #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
             Log(.error, error.localizedDescription)
             PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
+            #endif
             return []
         }
         
@@ -247,7 +268,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
             return []
         }
-        
+    
         return contents.compactMap { fileURL -> (key: String, metadata: CacheMetadata)? in
             guard let metadata = getMetadata(for: fileURL) else { return nil }
             return (fileURL.lastPathComponent, metadata)
@@ -256,7 +277,7 @@ struct DiskCache: Cache, @unchecked Sendable {
 }
 
 // MARK: - MigratingDiskCache
-
+    
 /// A cache that migrates data from a legacy private location to a shared App Group container.
 /// On reads: checks shared container first, falls back to legacy, auto-migrates if found in legacy.
 /// On writes: always writes to shared container only.
@@ -295,17 +316,17 @@ struct MigratingDiskCache: Cache, @unchecked Sendable {
         Log(.info, "Migrated cache entry '\(key)' from legacy to shared container")
         return legacyData
     }
-    
+
     func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
         // Always write to primary (shared container)
         primary.set(data, metadata: metadata, for: key)
     }
-    
+
     func remove(for key: String) {
         primary.remove(for: key)
         legacy.remove(for: key)  // Clean up both locations
     }
-    
+
     func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
         // Combine both, preferring primary
         var result = Dictionary(uniqueKeysWithValues: legacy.allMetadata())
