@@ -275,6 +275,7 @@ fragment half4 refractNoiseFrag(
     float aspect = u.resolution.y / max(u.resolution.x, 1.0f);
     float uvMax = max(0.5f, 0.5f * aspect);  // whichever axis is larger in UV space
     float cubeHalfSize = (camDist * uvMax) / (1.0f + uvMax);
+    cubeHalfSize += 0.15f; // Add margin for max noise displacement
     cubeHalfSize = min(cubeHalfSize, camDist * 0.95f);
     // Backdrop plane behind the cube (negative Z, facing camera)
     float floorZ = -cubeHalfSize - 0.02f;
