@@ -33,28 +33,23 @@ public final actor CacheCoordinator {
         #endif
         
         guard let metadata = cache.metadata(for: key) else {
-            Log(.warning, "No metadata for '\(key)'")
             throw Error.noCachedResult
         }
         
         guard !metadata.isExpired else {
-            Log(.info, "Cache entry expired for '\(key)'")
             cache.remove(for: key)
             throw Error.noCachedResult
         }
         
         guard let data = cache.data(for: key) else {
-            Log(.warning, "No data for '\(key)'")
             throw Error.noCachedResult
         }
         
         return data
     }
-    
+        
     /// Store raw binary data in cache
     public func setData(_ data: Data?, for key: String, lifespan: TimeInterval) {
-        Log(.info, "Setting data for key \(key). Data is \(data == nil ? "nil" : "\(data!.count) bytes"). Lifespan: \(lifespan)")
-        
         guard let data else {
             cache.remove(for: key)
             return
@@ -73,18 +68,15 @@ public final actor CacheCoordinator {
         #endif
         
         guard let metadata = cache.metadata(for: key) else {
-            Log(.warning, "No metadata for '\(key)'")
             throw Error.noCachedResult
         }
         
         guard !metadata.isExpired else {
-            Log(.info, "Cache entry expired for '\(key)'")
             cache.remove(for: key)
             throw Error.noCachedResult
         }
         
         guard let data = cache.data(for: key) else {
-            Log(.warning, "No data for '\(key)'")
             throw Error.noCachedResult
         }
         
@@ -106,8 +98,6 @@ public final actor CacheCoordinator {
     
     /// Store a Codable value in cache
     public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
-        Log(.info, "Setting value for key \(key). Value is \(value == nil ? "nil" : "not nil"). Lifespan: \(lifespan). Value type is \(String(describing: Value.self))")
-        
         guard let value else {
             cache.remove(for: key)
             return
@@ -134,11 +124,9 @@ public final actor CacheCoordinator {
     
     private nonisolated func purgeExpiredEntries() {
         Task {
-            Log(.info, "Purging expired cache entries")
             let cache = await self.cache
             for (key, metadata) in cache.allMetadata() {
                 if metadata.isExpired || metadata.lifespan == .infinity {
-                    Log(.info, "Purging expired entry: \(key)")
                     cache.remove(for: key)
                 }
             }
@@ -186,7 +174,7 @@ extension FileManager {
         } catch {
             Log(.error, "Error listing directory contents: \(error)")
         }
-        
+
         let directories: [SearchPathDirectory] = [
             .applicationDirectory,
             .demoApplicationDirectory,
@@ -224,4 +212,3 @@ extension FileManager {
     }
 }
 #endif
-

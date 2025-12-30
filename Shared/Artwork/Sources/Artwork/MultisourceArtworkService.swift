@@ -81,7 +81,6 @@ public final actor MultisourceArtworkService: ArtworkService {
 
         if let error: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKeyId),
            Error.allCases.contains(error) {
-            Log(.info, "Previous attempt to find artwork errored \(error) for \(errorCacheKeyId), skipping")
         }
         
         let timer = Core.Timer.start()
@@ -90,8 +89,7 @@ public final actor MultisourceArtworkService: ArtworkService {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
                 
-                Log(.info, "Artwork \(artwork) found for \(cacheKeyId) using fetcher \(fetcher) after \(timer.duration()) seconds")
-
+                
 #if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
                     Log(.info, "Inappropriate artwork found for \(cacheKeyId) using fetcher \(fetcher)")
