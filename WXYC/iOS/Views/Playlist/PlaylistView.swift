@@ -25,6 +25,7 @@ struct PlaylistView: View {
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
+    @State private var showingWallpaperTip = false
 
     @Environment(Singletonia.self) var appState
 
@@ -49,6 +50,14 @@ struct PlaylistView: View {
                 if showingSiriTip {
                     SiriTipView(isVisible: $showingSiriTip) {
                         SiriTipView.recordDismissal()
+                    }
+                    .padding(.vertical, 8)
+                }
+
+                // Wallpaper tip
+                if showingWallpaperTip {
+                    WallpaperTipView(isVisible: $showingWallpaperTip) {
+                        WallpaperTipView.recordDismissal()
                     }
                     .padding(.vertical, 8)
                 }
@@ -99,6 +108,7 @@ struct PlaylistView: View {
         #endif
         .onAppear {
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
+            showingWallpaperTip = WallpaperTipView.shouldShow()
         }
         .task {
             guard let playlistService else { return }
