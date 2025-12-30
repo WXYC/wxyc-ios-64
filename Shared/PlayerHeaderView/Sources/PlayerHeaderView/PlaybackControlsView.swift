@@ -23,14 +23,22 @@ struct PlaybackControlsView: View {
     
     public var body: some View {
         Button(action: onPlayTapped) {
-            Image(systemName: "\(isPlaying ? "pause" : "play").circle.fill")
+            image
                 .resizable()
                 .frame(width: 50, height: 50)
                 .padding(.trailing, 4)
-                // .symbolEffect(.bounce.up.wholeSymbol, options: .repeat(.continuous), isActive: isLoading)
+                .contentTransition(.symbolEffect)
+                .symbolEffect(
+                    .bounce.up.wholeSymbol,
+                    options: .repeat(.continuous),
+                    isActive: isLoading
+                )
         }
         .accessibilityIdentifier("playPauseButton")
         .foregroundColor(.secondary)
     }
-}
 
+    var image: Image {
+        Image(systemName: "\((isPlaying || isLoading) ? "pause" : "play").circle.fill")
+    }
+}

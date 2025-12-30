@@ -10,6 +10,7 @@ import Foundation
 import Logger
 import Playlist
 import Artwork
+import Core
 
 public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
