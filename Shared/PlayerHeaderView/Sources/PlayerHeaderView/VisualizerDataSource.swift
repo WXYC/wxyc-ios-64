@@ -91,9 +91,16 @@ public final class VisualizerDataSource: @unchecked Sendable {
 
     // MARK: - Persisted Settings
 
-    /// Signal boost multiplier for amplifying visualization (1.0 = no boost)
+    /// Signal boost multiplier for amplifying visualization (1.0 = no boost, range: 0.1–10.0)
     public var signalBoost: Float = 1.0 {
-        didSet { UserDefaults.standard.set(signalBoost, forKey: DefaultsKeys.signalBoost) }
+        didSet {
+            let clamped = max(0.1, min(signalBoost, 10.0))
+            if signalBoost != clamped {
+                signalBoost = clamped
+            } else {
+                UserDefaults.standard.set(signalBoost, forKey: DefaultsKeys.signalBoost)
+            }
+        }
     }
 
     /// Whether signal boost is applied (when false, boost is bypassed regardless of value)
@@ -231,7 +238,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
             self.showFPS = defaults.bool(forKey: DefaultsKeys.showFPS)
         }
     }
-    
+        
     // MARK: - Public Methods
     
     /// Process an audio buffer for visualization
@@ -280,7 +287,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
             }
         }
     }
-    
+        
     /// Reset visualization state and persisted settings to defaults
     public func reset() {
         fftMagnitudes = []
