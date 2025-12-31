@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Wallpaper
+import WXUI
 
 struct WallpaperDetailView: View {
     let wallpaper: LoadedWallpaper
@@ -15,4 +16,10 @@ struct WallpaperDetailView: View {
             .navigationTitle(wallpaper.displayName)
             .navigationBarTitleDisplayMode(.inline)
     }
+}
+
+#Preview {
+    WallpaperDetailView(
+        wallpaper: WallpaperRegistry.shared.wallpaper(for: "chroma_wave")!
+    )
 }
