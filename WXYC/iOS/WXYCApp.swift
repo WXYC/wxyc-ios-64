@@ -140,7 +140,6 @@ struct WXYCApp: App {
                         .environment(\.playlistService, appState.playlistService)
                         .environment(\.artworkService, appState.artworkService)
                         .environment(\.playbackController, AudioPlayerController.shared)
-                        .preferredColorScheme(.dark)
                         .forceLightStatusBar()
                         .onAppear {
                             setUpNowPlayingInfoCenter()
