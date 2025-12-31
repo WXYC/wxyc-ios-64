@@ -27,6 +27,7 @@ public struct WallpaperView: View {
                 Color.black.ignoresSafeArea()
             }
         }
+        .environment(\.wallpaperAnimationStartTime, configuration.animationStartTime)
         .ignoresSafeArea()
     }
 }

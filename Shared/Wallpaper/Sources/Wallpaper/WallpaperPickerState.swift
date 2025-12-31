@@ -16,12 +16,23 @@ private struct WallpaperPickerActiveKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }
 
+/// Environment key for the shared wallpaper animation start time.
+/// All wallpaper renderers use this to stay synchronized.
+private struct WallpaperAnimationStartTimeKey: EnvironmentKey {
+    static let defaultValue: Date = Date()
+}
+
 import SwiftUI
 
 public extension EnvironmentValues {
     var isWallpaperPickerActive: Bool {
         get { self[WallpaperPickerActiveKey.self] }
         set { self[WallpaperPickerActiveKey.self] = newValue }
+    }
+
+    var wallpaperAnimationStartTime: Date {
+        get { self[WallpaperAnimationStartTimeKey.self] }
+        set { self[WallpaperAnimationStartTimeKey.self] = newValue }
     }
 }
 

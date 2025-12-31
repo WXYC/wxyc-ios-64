@@ -75,6 +75,8 @@ struct WallpaperCarouselView: View {
             pickerState.updateCenteredWallpaper(forIndex: newIndex)
         }
         .accessibilityIdentifier("wallpaperCarousel")
+        .background(Color.black)
+        .environment(\.wallpaperAnimationStartTime, configuration.animationStartTime)
     }
 
     private func confirmSelectionAndExit() {

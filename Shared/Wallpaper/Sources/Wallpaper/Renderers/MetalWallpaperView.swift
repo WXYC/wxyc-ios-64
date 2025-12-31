@@ -17,6 +17,8 @@ private typealias ViewRepresentable = UIViewRepresentable
 /// Unified SwiftUI wrapper for Metal-based wallpaper rendering.
 /// Supports both simple precompiled shaders and runtime-compiled shaders with directive stores.
 public struct MetalWallpaperView: ViewRepresentable {
+    @Environment(\.wallpaperAnimationStartTime) private var animationStartTime
+
     let wallpaper: LoadedWallpaper
     let directiveStore: ShaderDirectiveStore?
 
@@ -26,7 +28,11 @@ public struct MetalWallpaperView: ViewRepresentable {
     }
 
     public func makeCoordinator() -> MetalWallpaperRenderer {
-        MetalWallpaperRenderer(wallpaper: wallpaper, directiveStore: directiveStore)
+        MetalWallpaperRenderer(
+            wallpaper: wallpaper,
+            directiveStore: directiveStore,
+            animationStartTime: animationStartTime
+        )
     }
 
 #if os(macOS)

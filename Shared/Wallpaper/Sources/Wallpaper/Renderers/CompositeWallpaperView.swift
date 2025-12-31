@@ -11,7 +11,7 @@ import WXUI
 /// View for composite wallpapers that layer multiple elements (e.g., gradient + shader overlay).
 public struct CompositeWallpaperView: View {
     @Environment(\.displayScale) private var displayScale
-    @State private var startTime = Date()
+    @Environment(\.wallpaperAnimationStartTime) private var startTime
 
     let wallpaper: LoadedWallpaper
 

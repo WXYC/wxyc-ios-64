@@ -10,7 +10,7 @@ import SwiftUI
 /// Generic view for wallpapers that use SwiftUI's colorEffect with stitchable shaders.
 public struct StitchableWallpaperView: View {
     @Environment(\.displayScale) private var displayScale
-    @State private var startTime = Date()
+    @Environment(\.wallpaperAnimationStartTime) private var startTime
 
     let wallpaper: LoadedWallpaper
 
@@ -38,7 +38,6 @@ public struct StitchableWallpaperView: View {
                     .ignoresSafeArea()
             }
         }
-        .onAppear { startTime = Date() }
     }
 
     private func buildShader(arguments: [ShaderArgumentValue]) -> Shader {

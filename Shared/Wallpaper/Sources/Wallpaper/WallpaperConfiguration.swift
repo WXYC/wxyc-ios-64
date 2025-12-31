@@ -15,6 +15,10 @@ public final class WallpaperConfiguration {
     private let storageKey = "wallpaper.selectedType.v3"
     private let defaultWallpaperID = "wxyc_gradient"
 
+    /// Shared animation start time for all wallpaper renderers.
+    /// This ensures picker previews and main view show synchronized animations.
+    public private(set) var animationStartTime: Date = Date()
+
     public var selectedWallpaperID: String {
         didSet {
             UserDefaults.standard.set(selectedWallpaperID, forKey: storageKey)

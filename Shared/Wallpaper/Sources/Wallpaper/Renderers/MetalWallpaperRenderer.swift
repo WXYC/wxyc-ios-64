@@ -31,8 +31,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var sampler: MTLSamplerState?
     private var noiseTex: MTLTexture?
 
-    private var startTime: CFTimeInterval = CACurrentMediaTime()
-    private let startTimeOffset = 0.0 // CFTimeInterval.random(in: 0.0...10.0)
+    /// The start time in CACurrentMediaTime's time base, computed from the shared Date-based start time.
+    private let startTime: CFTimeInterval
     private let wallpaper: LoadedWallpaper
     private let directiveStore: ShaderDirectiveStore?
     private var runtimeCompiler: RuntimeShaderCompiler?
@@ -44,9 +44,13 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         wallpaper.manifest.renderer.type == .rawMetal
     }
 
-    init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
+    init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil, animationStartTime: Date) {
         self.wallpaper = wallpaper
         self.directiveStore = directiveStore
+        // Convert the Date-based start time to CACurrentMediaTime's time base.
+        // This ensures Metal rendering is synchronized with SwiftUI's TimelineView-based renderers.
+        let elapsedSinceStart = Date().timeIntervalSince(animationStartTime)
+        self.startTime = CACurrentMediaTime() - elapsedSinceStart
         super.init()
     }
 
@@ -216,7 +220,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         let now = CACurrentMediaTime()
         let timeScale = wallpaper.manifest.renderer.timeScale ?? 1.0
-        let t = Float(now - startTime + startTimeOffset) * timeScale
+        let t = Float(now - startTime) * timeScale
 
         guard let cmd = queue.makeCommandBuffer(),
               let enc = cmd.makeRenderCommandEncoder(descriptor: rpd)
