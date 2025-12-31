@@ -36,6 +36,19 @@ struct WallpaperPickerStateTests {
         #expect(state.centeredWallpaperID == testWallpaperID)
     }
 
+    @Test("Enter sets correct carousel index for each wallpaper")
+    func enterSetsCorrectCarouselIndex() {
+        let state = WallpaperPickerState()
+        let wallpapers = WallpaperRegistry.shared.wallpapers
+
+        for (expectedIndex, wallpaper) in wallpapers.enumerated() {
+            state.enter(currentWallpaperID: wallpaper.id)
+
+            #expect(state.carouselIndex == expectedIndex, "Expected index \(expectedIndex) for wallpaper '\(wallpaper.id)', but got \(state.carouselIndex)")
+            #expect(state.centeredWallpaperID == wallpaper.id)
+        }
+    }
+
     @Test("Exit clears active state")
     func exitClearsActiveState() {
         let state = WallpaperPickerState()
