@@ -2,6 +2,9 @@
 //  NeonTopologyIso.metal
 //  Wallpaper
 //
+//  Created by Jake Bromberg on 12/22/2025
+//  Translated from https://www.shadertoy.com/view/dtccWB
+//
 //  Strategy: single-sample isolines (no neighbor-based edge detection)
 //  - 1 noise eval per pixel (perlinNoiseOctaves at center)
 //  - Derivative-based AA width for stable, even strokes

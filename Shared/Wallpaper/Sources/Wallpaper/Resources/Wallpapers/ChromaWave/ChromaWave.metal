@@ -3,6 +3,7 @@
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/18/25.
+//  Translated from https://www.shadertoy.com/view/clVGDc
 //
 
 #include <metal_stdlib>

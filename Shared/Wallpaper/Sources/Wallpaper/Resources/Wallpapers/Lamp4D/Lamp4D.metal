@@ -4,6 +4,8 @@
 //
 //  Created by Jake Bromberg on 12/18/25.
 //  Simplex noise based colorful lamp effect
+//  Ported from shadertoy https://www.shadertoy.com/view/3lKBD3
+//  Copyright © 2013 Inigo Quilez
 //
 
 #include <metal_stdlib>
@@ -89,6 +91,7 @@ static inline float noise4(float2 uv, float time, float2 offset) {
 
 // Core implementation
 static half4 lamp4DImpl(float2 position, float width, float height, float time) {
+    time /= 9.0;
     float2 iResolution = float2(width, height);
     float2 p = position / iResolution;
     float2 uv = p * float2(iResolution.x / iResolution.y, 0.8f);
