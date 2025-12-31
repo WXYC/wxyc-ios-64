@@ -17,6 +17,7 @@ struct RootTabView: View {
 
     @State private var selectedPage = Page.playlist
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isWallpaperPickerActive) private var isPickerActive
 
     var body: some View {
         TabView(selection: $selectedPage) {
@@ -29,7 +30,7 @@ struct RootTabView: View {
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
         .ignoresSafeArea(edges: .vertical)
-        .safeAreaPadding([.top, .bottom])
+        .safeAreaPadding([.top])
     }
 }
 
