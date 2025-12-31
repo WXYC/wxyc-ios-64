@@ -1,0 +1,13 @@
+{
+  "id": "opal",
+  "displayName": "Opal",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "opalFragment",
+    "timeScale": 1.0
+  },
+  "parameters": [],
+  "shaderArguments": []
+}

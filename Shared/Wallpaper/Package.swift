@@ -24,6 +24,9 @@ let package = Package(
                 "Core",
                 "WXUI",
             ],
+            exclude: [
+                "Resources/Wallpapers/Opal"
+            ],
             resources: [
                 .process("Resources/Wallpapers"),
                 .process("Resources/Shaders")
