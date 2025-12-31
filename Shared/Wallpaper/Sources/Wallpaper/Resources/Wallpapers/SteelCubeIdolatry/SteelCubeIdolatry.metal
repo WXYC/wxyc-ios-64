@@ -32,29 +32,34 @@ constant float PI = 3.141592;
 
 // 2D random
 static inline float2 r2D(float2 p) {
-    return float2(fract(sin(dot(p, float2(92.51, 65.19))) * 4981.32),
-                  fract(sin(dot(p, float2(23.34, 15.28))) * 6981.32));
+    return float2(fract(fast::sin(dot(p, float2(92.51, 65.19))) * 4981.32),
+                  fract(fast::sin(dot(p, float2(23.34, 15.28))) * 6981.32));
 }
 
 // Polygon distance (rounded polygon shape)
 static inline float polygon(float2 p, float s) {
-    float a = ceil(s * (atan2(-p.y, -p.x) / PI + 1.0) * 0.5);
+    float a = ceil(s * (fast::atan2(-p.y, -p.x) / PI + 1.0) * 0.5);
     float n = 2.0 * PI / s;
     float t = n * a - n * 0.5;
-    return mix(dot(p, float2(cos(t), sin(t))), length(p), 0.3);
+    return mix(dot(p, float2(fast::cos(t), fast::sin(t))), length(p), 0.3);
 }
 
-// Voronoi pattern with animated cells
+// Voronoi pattern with animated cells (optimized 2x2 neighborhood)
 static inline float voronoi(float2 p, float s, float time) {
     float2 i = floor(p * s);
-    float2 current = i + fract(p * s);
+    float2 f = fract(p * s);
+    float2 current = i + f;
     float min_dist = 1.0;
 
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
+    // Use 2x2 neighborhood based on fractional position
+    int x0 = (f.x < 0.5) ? -1 : 0;
+    int y0 = (f.y < 0.5) ? -1 : 0;
+
+    for (int y = y0; y <= y0 + 1; y++) {
+        for (int x = x0; x <= x0 + 1; x++) {
             float2 neighbor = i + float2(x, y);
             float2 point = r2D(neighbor);
-            point = 0.5 + 0.5 * sin(time * 0.5 + 6.0 * point);
+            point = 0.5 + 0.5 * fast::sin(time * 0.5 + 6.0 * point);
             float dist = polygon(neighbor + point - current, 3.0);
             min_dist = min(min_dist, dist);
         }
@@ -71,7 +76,7 @@ static inline float3 neonEnvironment(float3 dir,
                                       float blueInt,
                                       float ambientLevel,
                                       float glowAmount) {
-    float3 d = normalize(dir);
+    float3 d = fast::normalize(dir);
 
     // Base colors for neon tubes
     float3 yellow = float3(1.0, 0.95, 0.2);
@@ -135,7 +140,7 @@ fragment float4 steelCubeIdolatryFragment(
     float2 e = float2(0.01, 0.0);
 
     float s = 2.0;
-    float t = u.time / 2.0;
+    float t = u.time / 3.0;
 
     // Voronoi and derivatives for normal calculation
     float vor = 1.0 - voronoi(uv, s, t);
@@ -145,24 +150,25 @@ fragment float4 steelCubeIdolatryFragment(
     dy = (dy - vor) / e.x;
 
     // Surface normal from height field
-    float3 n = normalize(float3(dx, dy, 1.0));
+    float3 n = fast::normalize(float3(dx, dy, 1.0));
 
     // Animated light position
-    float3 lp = float3(cos(t), sin(t), 0.5) * 2.0;
-    float3 ld = normalize(lp - float3(uv, 0.0));
-    float3 ed = normalize(float3(0.0, 0.0, 1.0) - float3(uv, 0.0));
-    float3 hd = normalize(ld + ed);
+    float3 lp = float3(fast::cos(t), fast::sin(t), 0.5) * 2.0;
+    float3 ld = fast::normalize(lp - float3(uv, 0.0));
+    float3 ed = fast::normalize(float3(0.0, 0.0, 1.0) - float3(uv, 0.0));
+    float3 hd = fast::normalize(ld + ed);
 
     // Lighting calculations
-    float sl = pow(max(dot(hd, n), 0.0), 4.0);  // Specular
-    float oc = saturate(pow(vor, 2.0));          // Occlusion
+    float spec = max(dot(hd, n), 0.0);
+    float sl = spec * spec * spec * spec;  // Specular (x^4)
+    float oc = saturate(vor * vor);         // Occlusion (x^2)
     float amb = (1.0 - vor) * 0.5;              // Ambient
     float diff = max(dot(n, ld), 0.0) * 0.75;   // Diffuse
     float l = oc * diff + amb + sl;
 
     // Reflection direction for environment sampling
     float3 viewDir = float3(0.0, 0.0, 1.0);
-    float3 reflectDir = normalize(reflect(viewDir, n));
+    float3 reflectDir = fast::normalize(reflect(viewDir, n));
 
     // Sample procedural neon environment with tunable parameters
     float3 envColor = neonEnvironment(reflectDir, yellowInt, magentaInt, cyanInt,
