@@ -15,6 +15,11 @@ struct Uniforms {
     float pad;
 };
 
+struct Parameters {
+    float brightness;
+    float pad1, pad2, pad3, pad4, pad5, pad6, pad7;
+};
+
 struct VertexOut {
     float4 position [[position]];
     float2 uv;
@@ -45,6 +50,7 @@ static inline float2 Noise(float3 x, texture2d<float> noiseTex, sampler s) {
 fragment float4 lavaLiteFragment(
     VertexOut in [[stage_in]],
     constant Uniforms& u [[buffer(0)]],
+    constant Parameters& p [[buffer(1)]],
     texture2d<float> noiseTex [[texture(0)]],
     sampler s [[sampler(0)]]
 ) {
@@ -69,5 +75,10 @@ fragment float4 lavaLiteFragment(
     float3 col2 = powr(ink2, float3(exp2));
 
     // Combine and apply gamma correction (powr safe since col values are positive)
-    return float4(powr(1.0f - col1 * col2, float3(INV_GAMMA)), 1.0f);
+    float3 color = powr(1.0f - col1 * col2, float3(INV_GAMMA));
+
+    // Apply brightness adjustment
+    color *= p.brightness;
+
+    return float4(color, 1.0f);
 }

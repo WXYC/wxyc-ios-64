@@ -8,6 +8,14 @@
     "fragmentFunction": "lavaLiteFragment",
     "timeScale": 0.5
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "brightness",
+      "type": "float",
+      "label": "Brightness",
+      "default": 1.0,
+      "range": { "min": 0.0, "max": 2.0 }
+    }
+  ],
   "shaderArguments": []
 }
