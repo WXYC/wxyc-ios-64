@@ -186,8 +186,8 @@ fragment float4 windowlightFragment(
     VertexOut in [[stage_in]],
     constant Uniforms& u [[buffer(0)]]
 ) {
-    // Normalized coordinates
-    float2 uv = (in.uv - 0.5) * float2(u.resolution.x / u.resolution.y, 1.0) * 0.7;
+    // Normalized coordinates (flip Y to match Shadertoy convention)
+    float2 uv = (float2(in.uv.x, 1.0 - in.uv.y) - 0.5) * float2(u.resolution.x / u.resolution.y, 1.0) * 0.7;
 
     float T = u.time;
     float t = T * 0.2;
@@ -200,8 +200,8 @@ fragment float4 windowlightFragment(
 
     float focus = mix(MAX_BLUR - c.y, MIN_BLUR, S(0.1, 0.2, c.x));
 
-    // Sample procedural background with refraction and blur
-    float3 col = sampleBlurred(in.uv + n, focus, T);
+    // Sample procedural background with refraction and blur (flip Y for background too)
+    float3 col = sampleBlurred(float2(in.uv.x, 1.0 - in.uv.y) + n, focus, T);
 
     // Apply precomputed color shift
     col *= COLOR_SHIFT_MIXED;
