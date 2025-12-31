@@ -79,13 +79,14 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 struct PlaycutRowView: View {
     let playcut: Playcut
+    let onSelect: (UIImage?) -> Void
+
     @State private var artwork: UIImage?
     @State private var isLoadingArtwork = true
-    @State private var showingDetailSheet = false
     @State private var timeOffset: Int = (-10..<10).randomElement()!
     @State private var colors = Self.randomColors()
     @State private var shadowYOffset: CGFloat = 0
-    
+
     // Shadow offset configuration
     private let shadowOffsetAtTop: CGFloat = -3
     private let shadowOffsetAtBottom: CGFloat = 3
@@ -184,7 +185,7 @@ struct PlaycutRowView: View {
                         
                         // Info button
                         Button {
-                            showingDetailSheet = true
+                            onSelect(artwork)
                         } label: {
                             Image(systemName: "info.circle")
                                 .font(.title3)
@@ -195,7 +196,7 @@ struct PlaycutRowView: View {
                     }
                 }
                 .onTapGesture {
-                    showingDetailSheet = true
+                    onSelect(artwork)
                 }
             }
             .aspectRatio(2.5, contentMode: .fill)
@@ -233,9 +234,6 @@ struct PlaycutRowView: View {
             }
             .task {
                 await loadArtwork()
-            }
-            .sheet(isPresented: $showingDetailSheet) {
-                PlaycutDetailView(playcut: playcut, artwork: artwork)
             }
     }
 
@@ -304,7 +302,9 @@ extension Shape {
             labelName: nil,
             artistName: "Laurel Halo",
             releaseTitle: "Atlas"
-        ))
-        .environment(\.artworkService, MultisourceArtworkService())
-        .background(WXYCBackground())
+        ),
+        onSelect: { _ in }
+    )
+    .environment(\.artworkService, MultisourceArtworkService())
+    .background(WXYCBackground())
 }

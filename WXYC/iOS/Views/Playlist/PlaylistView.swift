@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 import WXUI
 import AppIntents
 import DebugPanel
@@ -16,16 +17,24 @@ import Playlist
 import PostHog
 import Wallpaper
 
+struct PlaycutSelection {
+    let playcut: Playcut
+    let artwork: UIImage?
+}
+
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
-    
+    @Environment(\.isWallpaperPickerActive) private var isWallpaperPickerActive
+
     @State private var visualizer = VisualizerDataSource()
     @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     @State private var showingWallpaperTip = false
+
+    @State private var selectedPlaycut: PlaycutSelection?
 
     @Environment(Singletonia.self) var appState
 
@@ -87,6 +96,7 @@ struct PlaylistView: View {
                     }
                 }
             }
+            .padding(.top, isWallpaperPickerActive ? 24 : 0)
             .padding(.horizontal, 12)
             .coordinateSpace(name: "scroll")
         }
@@ -123,20 +133,30 @@ struct PlaylistView: View {
             configuration: appState.wallpaperConfiguration
         )
         .accessibilityIdentifier("playlistView")
+        .overlaySheet(isPresented: Binding(
+            get: { selectedPlaycut != nil },
+            set: { if !$0 { selectedPlaycut = nil } }
+        )) {
+            if let selection = selectedPlaycut {
+                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
+            }
+        }
     }
 
     @ViewBuilder
     private func playlistRow(for entry: any PlaylistEntry) -> some View {
         switch entry {
         case let playcut as Playcut:
-            PlaycutRowView(playcut: playcut)
-            
+            PlaycutRowView(playcut: playcut) { artwork in
+                selectedPlaycut = PlaycutSelection(playcut: playcut, artwork: artwork)
+            }
+
         case let breakpoint as Breakpoint:
             TextRowView(text: breakpoint.formattedDate)
-            
+
         case _ as Talkset:
             TextRowView(text: "Talkset")
-            
+
         default:
             EmptyView()
         }
