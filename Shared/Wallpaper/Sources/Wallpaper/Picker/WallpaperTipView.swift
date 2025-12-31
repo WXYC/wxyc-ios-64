@@ -36,11 +36,11 @@ public struct WallpaperTipView: View {
 
             // Tip content
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pick a theme!")
+                Text("Pick a theme")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
 
-                Text("Just tap and hold.")
+                Text("Tap and hold anywhere")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.white)
@@ -76,6 +76,7 @@ public struct WallpaperTipView: View {
                         .fill(.ultraThinMaterial)
                 }
             }
+            .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .transition(.asymmetric(
