@@ -37,8 +37,8 @@ public struct WallpaperTipView: View {
             // Tip content
             VStack(alignment: .leading, spacing: 2) {
                 Text("Pick a theme")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(.caption.weight(.heavy).smallCaps())
+                    .foregroundStyle(.white.opacity(0.8))
 
                 Text("Tap and hold anywhere")
                     .font(.subheadline)
@@ -66,10 +66,11 @@ public struct WallpaperTipView: View {
         .background {
             GeometryReader { geometry in
                 if let wallpaper = spaceMountainWallpaper {
+                    
                     // Render wallpaper at a larger fixed size so the shader looks correct,
                     // centered within the tip view's bounds
                     WallpaperRendererFactory.makeView(for: wallpaper)
-                        .frame(width: 500, height: 300)
+                        .frame(width: 1000, height: 600)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 } else {
                     RoundedRectangle(cornerRadius: 16)
