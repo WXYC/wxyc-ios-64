@@ -32,7 +32,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var noiseTex: MTLTexture?
 
     private var startTime: CFTimeInterval = CACurrentMediaTime()
-    private let startTimeOffset = CFTimeInterval.random(in: 0.0...10.0)
+    private let startTimeOffset = 0.0 // CFTimeInterval.random(in: 0.0...10.0)
     private let wallpaper: LoadedWallpaper
     private let directiveStore: ShaderDirectiveStore?
     private var runtimeCompiler: RuntimeShaderCompiler?
@@ -233,6 +233,23 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
             enc.setFragmentTexture(noiseTex, index: 0)
             enc.setFragmentSamplerState(sampler, index: 0)
+
+            // Pass custom parameters in buffer index 1 (up to 8 floats)
+            let parameterStore = wallpaper.parameterStore
+            let params = wallpaper.manifest.parameters
+            if !params.isEmpty {
+                var paramValues: [Float] = []
+                for param in params.prefix(8) {
+                    paramValues.append(parameterStore.floatValue(for: param.id))
+                }
+                // Pad to 8 floats for consistent buffer size
+                while paramValues.count < 8 {
+                    paramValues.append(0)
+                }
+                paramValues.withUnsafeBytes { ptr in
+                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
+                }
+            }
         } else {
             // Stitchable uniforms (no textures)
             #if os(iOS) || os(tvOS)

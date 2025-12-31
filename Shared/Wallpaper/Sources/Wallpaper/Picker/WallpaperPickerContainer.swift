@@ -19,7 +19,7 @@ public struct WallpaperPickerContainer<Content: View>: View {
     private let activeScale: CGFloat = 0.75
 
     /// Corner radius for content clipping when picker is active.
-    private let activeCornerRadius: CGFloat = 40
+    private let activeCornerRadius: CGFloat = 60
 
     /// Animation for picker mode transitions.
     private let pickerAnimation: Animation = .spring(duration: 0.5, bounce: 0.2)
@@ -36,12 +36,6 @@ public struct WallpaperPickerContainer<Content: View>: View {
 
     public var body: some View {
         GeometryReader { geometry in
-            let safeAreaTop = geometry.safeAreaInsets.top
-            let safeAreaBottom = geometry.safeAreaInsets.bottom
-            // Calculate the content center as a unit point (0-1 range) accounting for asymmetric safe areas.
-            // This ensures scaleEffect scales from the content's visual center rather than the frame center.
-            let contentCenterY = (safeAreaTop + (geometry.size.height - safeAreaBottom)) / 2 / geometry.size.height
-
             ZStack {
                 // Background layer - either single wallpaper or carousel
                 if pickerState.isActive {
@@ -60,10 +54,8 @@ public struct WallpaperPickerContainer<Content: View>: View {
                 content()
                     .environment(\.isWallpaperPickerActive, pickerState.isActive)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
-                    .scaleEffect(
-                        pickerState.isActive ? activeScale : 1.0,
-                        anchor: pickerState.isActive ? UnitPoint(x: 0.5, y: contentCenterY) : .center
-                    )
+                    .scaleEffect(pickerState.isActive ? activeScale : 1.0)
+                    .offset(y: pickerState.isActive ? 16 : 0)
                     .allowsHitTesting(!pickerState.isActive)
                     .animation(pickerAnimation, value: pickerState.isActive)
             }

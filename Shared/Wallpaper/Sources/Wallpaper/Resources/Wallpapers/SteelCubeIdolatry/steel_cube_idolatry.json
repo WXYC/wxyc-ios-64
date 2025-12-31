@@ -1,0 +1,56 @@
+{
+  "id": "steel_cube_idolatry",
+  "displayName": "Steel Cube Idolatry",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "steelCubeIdolatryFragment",
+    "timeScale": 1.0
+  },
+  "parameters": [
+    {
+      "id": "yellowIntensity",
+      "type": "float",
+      "label": "Yellow",
+      "default": 1.2,
+      "range": { "min": 0.0, "max": 3.0 }
+    },
+    {
+      "id": "magentaIntensity",
+      "type": "float",
+      "label": "Magenta",
+      "default": 0.7,
+      "range": { "min": 0.0, "max": 3.0 }
+    },
+    {
+      "id": "cyanIntensity",
+      "type": "float",
+      "label": "Cyan",
+      "default": 0.6,
+      "range": { "min": 0.0, "max": 3.0 }
+    },
+    {
+      "id": "blueIntensity",
+      "type": "float",
+      "label": "Blue",
+      "default": 0.5,
+      "range": { "min": 0.0, "max": 3.0 }
+    },
+    {
+      "id": "ambientLevel",
+      "type": "float",
+      "label": "Ambient",
+      "default": 1.0,
+      "range": { "min": 0.0, "max": 2.0 }
+    },
+    {
+      "id": "glowAmount",
+      "type": "float",
+      "label": "Glow",
+      "default": 0.3,
+      "range": { "min": 0.0, "max": 1.0 }
+    }
+  ],
+  "shaderArguments": []
+}
