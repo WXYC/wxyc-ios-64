@@ -39,40 +39,46 @@ struct WallpaperCarouselView: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: cardSpacing) {
-                ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                    WallpaperCardView(
-                        wallpaper: wallpaper,
-                        cardSize: cardSize,
-                        cornerRadius: cardCornerRadius
-                    )
-                    .id(index)
-                    .onTapGesture {
-                        if pickerState.carouselIndex == index {
-                            confirmSelectionAndExit()
-                        } else {
-                            withAnimation(.spring(duration: 0.3)) {
-                                pickerState.carouselIndex = index
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: cardSpacing) {
+                    ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
+                        WallpaperCardView(
+                            wallpaper: wallpaper,
+                            cardSize: cardSize,
+                            cornerRadius: cardCornerRadius
+                        )
+                        .id(index)
+                        .onTapGesture {
+                            if pickerState.carouselIndex == index {
+                                confirmSelectionAndExit()
+                            } else {
+                                withAnimation(.spring(duration: 0.3)) {
+                                    pickerState.carouselIndex = index
+                                }
                             }
                         }
                     }
                 }
+                .scrollTargetLayout()
             }
-            .scrollTargetLayout()
-        }
-        .scrollTargetBehavior(.viewAligned)
-        .scrollPosition(id: Binding(
-            get: { pickerState.carouselIndex },
-            set: { newValue in
-                if let newValue {
-                    pickerState.carouselIndex = newValue
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: Binding(
+                get: { pickerState.carouselIndex },
+                set: { newValue in
+                    if let newValue {
+                        pickerState.carouselIndex = newValue
+                    }
                 }
+            ))
+            .safeAreaPadding(.horizontal, (screenSize.width - cardSize.width) / 2)
+            .onChange(of: pickerState.carouselIndex) { _, newIndex in
+                pickerState.updateCenteredWallpaper(forIndex: newIndex)
             }
-        ))
-        .safeAreaPadding(.horizontal, (screenSize.width - cardSize.width) / 2)
-        .onChange(of: pickerState.carouselIndex) { _, newIndex in
-            pickerState.updateCenteredWallpaper(forIndex: newIndex)
+            .onAppear {
+                // Ensure scroll position is set correctly on initial appearance
+                proxy.scrollTo(pickerState.carouselIndex, anchor: .center)
+            }
         }
         .accessibilityIdentifier("wallpaperCarousel")
         .background(Color.black)
