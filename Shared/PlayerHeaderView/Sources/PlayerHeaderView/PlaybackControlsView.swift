@@ -28,11 +28,6 @@ struct PlaybackControlsView: View {
                 .frame(width: 50, height: 50)
                 .padding(.trailing, 4)
                 .contentTransition(.symbolEffect)
-                .symbolEffect(
-                    .bounce.up.wholeSymbol,
-                    options: .repeat(.continuous),
-                    isActive: isLoading
-                )
         }
         .accessibilityIdentifier("playPauseButton")
         .foregroundColor(.secondary)
