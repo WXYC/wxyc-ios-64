@@ -25,7 +25,6 @@ struct PlaycutDetailView: View {
     @State private var hideHeaderArtwork = false
     @Namespace private var artworkNamespace
     
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     
     private let metadataService = PlaycutMetadataService()
@@ -105,7 +104,7 @@ struct PlaycutDetailView: View {
         }
         .scrollClipDisabled()
         .scrollContentBackground(.hidden)
-        .background(WXYCBackground())
+        .overlaySheetScrollTracking()
         .onAppear {
             PostHogSDK.shared.capture(
                 "playcut detail view presented",
