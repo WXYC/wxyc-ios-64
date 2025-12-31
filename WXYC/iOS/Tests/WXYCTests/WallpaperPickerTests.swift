@@ -2,7 +2,7 @@
 //  WallpaperPickerTests.swift
 //  WXYCTests
 //
-//  Tests for wallpaper picker state management and snapshot service.
+//  Tests for wallpaper picker state management.
 //
 
 import Testing
@@ -23,8 +23,6 @@ struct WallpaperPickerStateTests {
         #expect(state.isActive == false)
         #expect(state.centeredWallpaperID == "")
         #expect(state.carouselIndex == 0)
-        #expect(state.snapshots.isEmpty)
-        #expect(state.isGeneratingSnapshots == false)
     }
 
     @Test("Enter sets active state")
@@ -62,55 +60,6 @@ struct WallpaperPickerStateTests {
 
         #expect(state.carouselIndex == 1)
         #expect(state.centeredWallpaperID == wallpapers[1].id)
-    }
-
-    @Test("Prewarmed wallpaper IDs")
-    func prewarmedWallpaperIDs() {
-        let state = WallpaperPickerState()
-        let wallpapers = WallpaperRegistry.shared.wallpapers
-
-        guard wallpapers.count >= 3 else {
-            return // Skip if not enough wallpapers
-        }
-
-        // Set to middle of list
-        state.updateCenteredWallpaper(forIndex: 1)
-
-        let prewarmed = state.prewarmedWallpaperIDs
-
-        // Should include center, left neighbor, and right neighbor
-        #expect(prewarmed.contains(wallpapers[0].id))
-        #expect(prewarmed.contains(wallpapers[1].id))
-        #expect(prewarmed.contains(wallpapers[2].id))
-    }
-
-    @Test("Store and retrieve snapshot")
-    func storeAndRetrieveSnapshot() {
-        let state = WallpaperPickerState()
-
-        // Create a mock snapshot with a 1x1 image
-        let image = UIImage()
-
-        let snapshot = WallpaperSnapshot(
-            wallpaperID: "test-wallpaper",
-            image: image,
-            captureTime: 1.5
-        )
-
-        state.storeSnapshot(snapshot)
-
-        let retrieved = state.snapshot(for: "test-wallpaper")
-        #expect(retrieved != nil)
-        #expect(retrieved?.wallpaperID == "test-wallpaper")
-        #expect(retrieved?.captureTime == 1.5)
-    }
-
-    @Test("Snapshot for nonexistent wallpaper returns nil")
-    func snapshotForNonexistentWallpaperReturnsNil() {
-        let state = WallpaperPickerState()
-
-        let retrieved = state.snapshot(for: "nonexistent")
-        #expect(retrieved == nil)
     }
 
     @Test("Confirm selection updates configuration")
@@ -164,25 +113,5 @@ struct WallpaperRegistryTests {
         for wallpaper in WallpaperRegistry.shared.wallpapers {
             #expect(wallpaper.displayName.isEmpty == false)
         }
-    }
-}
-
-// MARK: - WallpaperSnapshot Tests
-
-@Suite("WallpaperSnapshot Tests")
-struct WallpaperSnapshotTests {
-
-    @Test("Snapshot stores data")
-    func snapshotStoresData() {
-        let image = UIImage()
-
-        let snapshot = WallpaperSnapshot(
-            wallpaperID: "my-wallpaper",
-            image: image,
-            captureTime: 2.5
-        )
-
-        #expect(snapshot.wallpaperID == "my-wallpaper")
-        #expect(snapshot.captureTime == 2.5)
     }
 }

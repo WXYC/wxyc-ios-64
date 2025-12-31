@@ -44,8 +44,6 @@ struct WallpaperCarouselView: View {
                 ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
                     WallpaperCardView(
                         wallpaper: wallpaper,
-                        isLive: pickerState.centeredWallpaperID == wallpaper.id,
-                        snapshot: pickerState.snapshot(for: wallpaper.id),
                         cardSize: cardSize,
                         cornerRadius: cardCornerRadius
                     )

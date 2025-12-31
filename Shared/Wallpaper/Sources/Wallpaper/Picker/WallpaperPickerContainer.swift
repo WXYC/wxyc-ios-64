@@ -7,13 +7,9 @@
 
 import SwiftUI
 
-#if canImport(UIKit)
-import UIKit
-#endif
-
 /// Container view that manages the wallpaper picker mode.
 /// When inactive, displays a single wallpaper at full size.
-/// When active, displays a carousel of wallpapers with the content scaled down.
+/// When active, displays a carousel of live wallpapers with the content scaled down.
 public struct WallpaperPickerContainer<Content: View>: View {
     @Bindable var configuration: WallpaperConfiguration
     @Bindable var pickerState: WallpaperPickerState
@@ -70,20 +66,6 @@ public struct WallpaperPickerContainer<Content: View>: View {
                     )
                     .allowsHitTesting(!pickerState.isActive)
                     .animation(pickerAnimation, value: pickerState.isActive)
-            }
-            .onAppear {
-                // Preload snapshots in background so they're ready when user enters picker
-                // Use half resolution to reduce memory and speed up generation
-                let snapshotSize = CGSize(
-                    width: geometry.size.width * 0.5,
-                    height: geometry.size.height * 0.5
-                )
-                #if os(iOS)
-                let scale = UIScreen.main.scale
-                #else
-                let scale: CGFloat = 2.0
-                #endif
-                pickerState.preloadSnapshotsInBackground(size: snapshotSize, scale: scale)
             }
         }
         .ignoresSafeArea()

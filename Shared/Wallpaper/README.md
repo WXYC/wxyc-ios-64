@@ -15,7 +15,7 @@ The current architecture emerged through several iterations:
 3. **Auto-discovery** - Wallpapers are automatically discovered by scanning the bundle for valid manifest files
 4. **Unified Metal renderer** - Consolidated multiple renderer implementations into a single `MetalWallpaperRenderer` that handles both stitchable and raw Metal modes
 5. **Runtime shader compilation** - Added support for runtime compilation with toggleable `#define` directives for debug controls
-6. **Wallpaper picker** - Added a carousel-based picker UI with snapshot previews and gesture-based activation
+6. **Wallpaper picker** - Added a carousel-based picker UI with live previews and gesture-based activation
 
 ## Package Structure
 
@@ -37,8 +37,7 @@ Sources/Wallpaper/
 ├── Picker/
 │   ├── WallpaperPickerContainer.swift   # Picker mode container
 │   ├── WallpaperCarouselView.swift      # Horizontal wallpaper carousel
-│   ├── WallpaperCardView.swift          # Individual wallpaper card
-│   └── WallpaperSnapshotService.swift   # Generates static previews
+│   └── WallpaperCardView.swift          # Individual wallpaper card (live preview)
 ├── Resources/
 │   ├── Shaders/
 │   │   └── FullscreenVertex.metal       # Shared vertex shader
@@ -230,8 +229,8 @@ The package includes several built-in wallpapers:
 - Shaders use `fast::` math functions where possible
 - Iteration counts are tuned for 60fps on typical devices
 - `fast_tanh()` approximations replace expensive tone mapping
-- Snapshot service generates half-resolution previews for the picker
-- Only the centered wallpaper renders live in the picker carousel
+- Picker carousel uses `LazyHStack` so only visible wallpapers render live
+- Off-screen wallpapers are not instantiated until they scroll into view
 
 ## Dependencies
 
