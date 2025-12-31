@@ -54,7 +54,10 @@ public struct PlayerHeaderView: View {
     
     public var body: some View {
         HStack(alignment: .center) {
-            PlaybackControlsView(isPlaying: Self.controller.isPlaying, isLoading: Self.controller.isLoading) {
+            PlaybackControlsView(
+                isPlaying: Self.controller.isPlaying,
+                isLoading: Self.controller.isLoading
+            ) {
                 Self.controller.toggle()
             }
 

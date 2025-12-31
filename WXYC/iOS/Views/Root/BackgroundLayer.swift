@@ -10,9 +10,7 @@ import SwiftUI
 struct BackgroundLayer: View, Animatable {
     let cornerRadius: CGFloat
 
-    internal init(
-        cornerRadius: CGFloat = 12
-    ) {
+    internal init(cornerRadius: CGFloat = 12) {
         self.cornerRadius = cornerRadius
     }
     
