@@ -1,5 +1,5 @@
 //
-//  WallpaperPickerState.swift
+//  ThemePickerState.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/20/25.
@@ -10,9 +10,9 @@ import Observation
 
 // MARK: - Environment Key
 
-/// Environment key to indicate whether the wallpaper picker is active.
+/// Environment key to indicate whether the theme picker is active.
 /// Content can use this to adjust layout (e.g., disable safe area padding when scaled).
-private struct WallpaperPickerActiveKey: EnvironmentKey {
+private struct ThemePickerActiveKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }
 
@@ -25,9 +25,9 @@ private struct WallpaperAnimationStartTimeKey: EnvironmentKey {
 import SwiftUI
 
 public extension EnvironmentValues {
-    var isWallpaperPickerActive: Bool {
-        get { self[WallpaperPickerActiveKey.self] }
-        set { self[WallpaperPickerActiveKey.self] = newValue }
+    var isThemePickerActive: Bool {
+        get { self[ThemePickerActiveKey.self] }
+        set { self[ThemePickerActiveKey.self] = newValue }
     }
 
     var wallpaperAnimationStartTime: Date {
@@ -36,37 +36,37 @@ public extension EnvironmentValues {
     }
 }
 
-/// Observable state for the wallpaper picker mode.
+/// Observable state for the theme picker mode.
 /// Manages the picker lifecycle and carousel position.
 @MainActor
 @Observable
-public final class WallpaperPickerState {
+public final class ThemePickerState {
     /// Whether the picker mode is currently active.
     public var isActive: Bool = false
 
-    /// The wallpaper ID currently centered in the carousel.
-    /// This may differ from the selected wallpaper until the user confirms.
-    public var centeredWallpaperID: String = ""
+    /// The theme ID currently centered in the carousel.
+    /// This may differ from the selected theme until the user confirms.
+    public var centeredThemeID: String = ""
 
-    /// The carousel page index (corresponds to wallpaper position in registry).
+    /// The carousel page index (corresponds to theme position in registry).
     public var carouselIndex: Int = 0
 
     public init() {}
 
     // MARK: - Lifecycle
 
-    /// Enters picker mode, centering on the currently selected wallpaper.
-    /// - Parameter currentWallpaperID: The currently selected wallpaper ID to center on.
-    public func enter(currentWallpaperID: String) {
-        centeredWallpaperID = currentWallpaperID
-        carouselIndex = indexFor(wallpaperID: currentWallpaperID)
+    /// Enters picker mode, centering on the currently selected theme.
+    /// - Parameter currentThemeID: The currently selected theme ID to center on.
+    public func enter(currentThemeID: String) {
+        centeredThemeID = currentThemeID
+        carouselIndex = indexFor(themeID: currentThemeID)
         isActive = true
     }
 
-    /// Confirms the current centered wallpaper as the selection.
-    /// - Parameter configuration: The wallpaper configuration to update.
-    public func confirmSelection(to configuration: WallpaperConfiguration) {
-        configuration.selectedWallpaperID = centeredWallpaperID
+    /// Confirms the current centered theme as the selection.
+    /// - Parameter configuration: The theme configuration to update.
+    public func confirmSelection(to configuration: ThemeConfiguration) {
+        configuration.selectedThemeID = centeredThemeID
     }
 
     /// Exits picker mode.
@@ -76,18 +76,22 @@ public final class WallpaperPickerState {
 
     // MARK: - Carousel Navigation
 
-    /// Updates the centered wallpaper based on carousel index.
+    /// Updates the centered theme based on carousel index.
     /// - Parameter index: The new carousel index.
-    public func updateCenteredWallpaper(forIndex index: Int) {
-        let wallpapers = WallpaperRegistry.shared.wallpapers
-        guard index >= 0 && index < wallpapers.count else { return }
+    public func updateCenteredTheme(forIndex index: Int) {
+        let themes = ThemeRegistry.shared.themes
+        guard index >= 0 && index < themes.count else { return }
         carouselIndex = index
-        centeredWallpaperID = wallpapers[index].id
+        centeredThemeID = themes[index].id
     }
 
     // MARK: - Private
 
-    private func indexFor(wallpaperID: String) -> Int {
-        WallpaperRegistry.shared.wallpapers.firstIndex { $0.id == wallpaperID } ?? 0
+    private func indexFor(themeID: String) -> Int {
+        ThemeRegistry.shared.themes.firstIndex { $0.id == themeID } ?? 0
     }
 }
+
+/// Type alias for backward compatibility during migration.
+@available(*, deprecated, renamed: "ThemePickerState")
+public typealias WallpaperPickerState = ThemePickerState
