@@ -13,15 +13,15 @@ public struct CompositeWallpaperView: View {
     @Environment(\.displayScale) private var displayScale
     @Environment(\.wallpaperAnimationStartTime) private var startTime
 
-    let wallpaper: LoadedWallpaper
+    let theme: LoadedTheme
 
-    public init(wallpaper: LoadedWallpaper) {
-        self.wallpaper = wallpaper
+    public init(theme: LoadedTheme) {
+        self.theme = theme
     }
 
     public var body: some View {
         ZStack {
-            ForEach(wallpaper.manifest.renderer.layers ?? [], id: \.type) { layer in
+            ForEach(theme.manifest.renderer.layers ?? [], id: \.type) { layer in
                 layerView(for: layer)
             }
         }
@@ -46,7 +46,7 @@ public struct CompositeWallpaperView: View {
         TimelineView(.animation) { context in
             GeometryReader { geometry in
                 let time = Float(context.date.timeIntervalSince(startTime))
-                let arguments = wallpaper.parameterStore.buildShaderArguments(
+                let arguments = theme.parameterStore.buildShaderArguments(
                     time: time,
                     viewSize: (Float(geometry.size.width), Float(geometry.size.height)),
                     displayScale: Float(displayScale)

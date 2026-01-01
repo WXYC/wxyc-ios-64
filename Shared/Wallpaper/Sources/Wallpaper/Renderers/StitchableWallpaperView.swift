@@ -12,10 +12,10 @@ public struct StitchableWallpaperView: View {
     @Environment(\.displayScale) private var displayScale
     @Environment(\.wallpaperAnimationStartTime) private var startTime
 
-    let wallpaper: LoadedWallpaper
+    let theme: LoadedTheme
 
-    public init(wallpaper: LoadedWallpaper) {
-        self.wallpaper = wallpaper
+    public init(theme: LoadedTheme) {
+        self.theme = theme
     }
 
     public var body: some View {
@@ -26,7 +26,7 @@ public struct StitchableWallpaperView: View {
                 let height = Float(geometry.size.height)
                 let scale = Float(displayScale)
 
-                let arguments = wallpaper.parameterStore.buildShaderArguments(
+                let arguments = theme.parameterStore.buildShaderArguments(
                     time: time,
                     viewSize: (width, height),
                     displayScale: scale
@@ -41,7 +41,7 @@ public struct StitchableWallpaperView: View {
     }
 
     private func buildShader(arguments: [ShaderArgumentValue]) -> Shader {
-        guard let functionName = wallpaper.manifest.renderer.functionName else {
+        guard let functionName = theme.manifest.renderer.functionName else {
             // Fallback to a simple black color if no function specified
             return Shader(function: ShaderFunction(library: .default, name: ""), arguments: [])
         }

@@ -33,7 +33,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     /// The start time in CACurrentMediaTime's time base, computed from the shared Date-based start time.
     private let startTime: CFTimeInterval
-    private let wallpaper: LoadedWallpaper
+    private let theme: LoadedTheme
     private let directiveStore: ShaderDirectiveStore?
     private var runtimeCompiler: RuntimeShaderCompiler?
     private var pixelFormat: MTLPixelFormat = .bgra8Unorm
@@ -41,11 +41,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     /// Whether this renderer uses rawMetal mode (noise texture, sampler, rawMetal uniforms).
     private var usesRawMetalMode: Bool {
-        wallpaper.manifest.renderer.type == .rawMetal
+        theme.manifest.renderer.type == .rawMetal
     }
 
-    init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil, animationStartTime: Date) {
-        self.wallpaper = wallpaper
+    init(theme: LoadedTheme, directiveStore: ShaderDirectiveStore? = nil, animationStartTime: Date) {
+        self.theme = theme
         self.directiveStore = directiveStore
         // Convert the Date-based start time to CACurrentMediaTime's time base.
         // This ensures Metal rendering is synchronized with SwiftUI's TimelineView-based renderers.
@@ -64,7 +64,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         self.queue = device.makeCommandQueue()
         self.pixelFormat = view.colorPixelFormat
 
-        let renderer = wallpaper.manifest.renderer
+        let renderer = theme.manifest.renderer
 
         if usesRawMetalMode {
             // RawMetal mode: check for runtime compilation, set up noise texture and sampler
@@ -203,7 +203,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         }
 
         // Rebuild pipeline
-        buildRuntimePipeline(renderer: wallpaper.manifest.renderer, pixelFormat: pixelFormat)
+        buildRuntimePipeline(renderer: theme.manifest.renderer, pixelFormat: pixelFormat)
     }
 
     // MARK: - MTKViewDelegate
@@ -219,7 +219,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         else { return }
 
         let now = CACurrentMediaTime()
-        let timeScale = wallpaper.manifest.renderer.timeScale ?? 1.0
+        let timeScale = theme.manifest.renderer.timeScale ?? 1.0
         let t = Float(now - startTime) * timeScale
 
         guard let cmd = queue.makeCommandBuffer(),
@@ -239,8 +239,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             enc.setFragmentSamplerState(sampler, index: 0)
 
             // Pass custom parameters in buffer index 1 (up to 8 floats)
-            let parameterStore = wallpaper.parameterStore
-            let params = wallpaper.manifest.parameters
+            let parameterStore = theme.parameterStore
+            let params = theme.manifest.parameters
             if !params.isEmpty {
                 var paramValues: [Float] = []
                 for param in params.prefix(8) {

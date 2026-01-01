@@ -19,17 +19,17 @@ private typealias ViewRepresentable = UIViewRepresentable
 public struct MetalWallpaperView: ViewRepresentable {
     @Environment(\.wallpaperAnimationStartTime) private var animationStartTime
 
-    let wallpaper: LoadedWallpaper
+    let theme: LoadedTheme
     let directiveStore: ShaderDirectiveStore?
 
-    public init(wallpaper: LoadedWallpaper, directiveStore: ShaderDirectiveStore? = nil) {
-        self.wallpaper = wallpaper
+    public init(theme: LoadedTheme, directiveStore: ShaderDirectiveStore? = nil) {
+        self.theme = theme
         self.directiveStore = directiveStore
     }
 
     public func makeCoordinator() -> MetalWallpaperRenderer {
         MetalWallpaperRenderer(
-            wallpaper: wallpaper,
+            theme: theme,
             directiveStore: directiveStore,
             animationStartTime: animationStartTime
         )

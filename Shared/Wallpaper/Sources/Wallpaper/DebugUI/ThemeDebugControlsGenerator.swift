@@ -1,5 +1,5 @@
 //
-//  WallpaperDebugControlsGenerator.swift
+//  ThemeDebugControlsGenerator.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/19/25.
@@ -7,16 +7,16 @@
 
 import SwiftUI
 
-/// Generates debug controls for a wallpaper based on its parameter definitions.
-public struct WallpaperDebugControlsGenerator: View {
-    let wallpaper: LoadedWallpaper
+/// Generates debug controls for a theme based on its parameter definitions.
+public struct ThemeDebugControlsGenerator: View {
+    let theme: LoadedTheme
 
-    public init(wallpaper: LoadedWallpaper) {
-        self.wallpaper = wallpaper
+    public init(theme: LoadedTheme) {
+        self.theme = theme
     }
 
     public var body: some View {
-        let parameters = wallpaper.manifest.parameters
+        let parameters = theme.manifest.parameters
 
         if parameters.isEmpty {
             EmptyView()
@@ -50,10 +50,10 @@ public struct WallpaperDebugControlsGenerator: View {
     private func controlView(for parameter: ParameterDefinition) -> some View {
         switch parameter.type {
         case .float:
-            FloatSliderControl(parameter: parameter, store: wallpaper.parameterStore)
+            FloatSliderControl(parameter: parameter, store: theme.parameterStore)
 
         case .color:
-            ColorControl(parameter: parameter, store: wallpaper.parameterStore)
+            ColorControl(parameter: parameter, store: theme.parameterStore)
 
         case .bool:
             boolToggle(for: parameter)
@@ -66,10 +66,14 @@ public struct WallpaperDebugControlsGenerator: View {
 
     private func boolToggle(for parameter: ParameterDefinition) -> some View {
         let binding = Binding<Bool>(
-            get: { wallpaper.parameterStore.boolValue(for: parameter.id) },
-            set: { wallpaper.parameterStore.setBool($0, for: parameter.id) }
+            get: { theme.parameterStore.boolValue(for: parameter.id) },
+            set: { theme.parameterStore.setBool($0, for: parameter.id) }
         )
 
         return Toggle(parameter.label, isOn: binding)
     }
 }
+
+/// Type alias for backward compatibility during migration.
+@available(*, deprecated, renamed: "ThemeDebugControlsGenerator")
+public typealias WallpaperDebugControlsGenerator = ThemeDebugControlsGenerator

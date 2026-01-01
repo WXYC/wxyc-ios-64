@@ -1,5 +1,5 @@
 //
-//  WallpaperDebugControls.swift
+//  ThemeDebugControls.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/18/25.
@@ -7,57 +7,61 @@
 
 import SwiftUI
 
-/// Debug controls for wallpaper settings, intended for use in a Form.
-public struct WallpaperDebugControls: View {
-    @Bindable var configuration: WallpaperConfiguration
+/// Debug controls for theme settings, intended for use in a Form.
+public struct ThemeDebugControls: View {
+    @Bindable var configuration: ThemeConfiguration
 
-    public init(configuration: WallpaperConfiguration) {
+    public init(configuration: ThemeConfiguration) {
         self.configuration = configuration
     }
 
     public var body: some View {
         Section {
-            Picker("Wallpaper", selection: $configuration.selectedWallpaperID) {
-                ForEach(WallpaperRegistry.shared.wallpapers) { wallpaper in
-                    Text(wallpaper.displayName).tag(wallpaper.id)
+            Picker("Theme", selection: $configuration.selectedThemeID) {
+                ForEach(ThemeRegistry.shared.themes) { theme in
+                    Text(theme.displayName).tag(theme.id)
                 }
             }
 
-            if let wallpaper = WallpaperRegistry.shared.wallpaper(for: configuration.selectedWallpaperID) {
-                // Use id to force view recreation when wallpaper changes
+            if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
+                // Use id to force view recreation when theme changes
                 Group {
-                    if !wallpaper.manifest.parameters.isEmpty {
+                    if !theme.manifest.parameters.isEmpty {
                         DisclosureGroup("Parameters") {
-                            WallpaperDebugControlsGenerator(wallpaper: wallpaper)
+                            ThemeDebugControlsGenerator(theme: theme)
                         }
                     }
 
                     // Show shader directive toggles if available
-                    ShaderDirectiveControls(wallpaper: wallpaper)
+                    ShaderDirectiveControls(theme: theme)
                 }
-                .id(wallpaper.id)
+                .id(theme.id)
             }
 
-            Button("Reset Wallpaper Settings") {
+            Button("Reset Theme Settings") {
                 configuration.reset()
             }
             .foregroundStyle(.red)
 
             Button("Nuke Legacy Data") {
-                WallpaperConfiguration.nukeLegacyData()
+                ThemeConfiguration.nukeLegacyData()
             }
             .foregroundStyle(.red)
         } header: {
-            Text("Wallpaper")
+            Text("Theme")
         }
     }
 }
+
+/// Type alias for backward compatibility during migration.
+@available(*, deprecated, renamed: "ThemeDebugControls")
+public typealias WallpaperDebugControls = ThemeDebugControls
 
 // MARK: - Shader Directive Controls
 
 /// Shows toggles for shader compiler directives (feature flags).
 private struct ShaderDirectiveControls: View {
-    let wallpaper: LoadedWallpaper
+    let theme: LoadedTheme
     @State private var directives: [ShaderDirectiveStore.DirectiveInfo] = []
 
     var body: some View {
@@ -65,8 +69,8 @@ private struct ShaderDirectiveControls: View {
             DisclosureGroup("Shader Features") {
                 ForEach(directives) { directive in
                     Toggle(directive.displayName, isOn: Binding(
-                        get: { wallpaper.directiveStore.isEnabled(directive.id) },
-                        set: { wallpaper.directiveStore.setEnabled($0, for: directive.id) }
+                        get: { theme.directiveStore.isEnabled(directive.id) },
+                        set: { theme.directiveStore.setEnabled($0, for: directive.id) }
                     ))
                 }
 
@@ -77,14 +81,14 @@ private struct ShaderDirectiveControls: View {
         }
     }
 
-    init(wallpaper: LoadedWallpaper) {
-        self.wallpaper = wallpaper
+    init(theme: LoadedTheme) {
+        self.theme = theme
         // Parse directives from shader source on init
-        self._directives = State(initialValue: Self.parseDirectives(for: wallpaper))
+        self._directives = State(initialValue: Self.parseDirectives(for: theme))
     }
 
-    private static func parseDirectives(for wallpaper: LoadedWallpaper) -> [ShaderDirectiveStore.DirectiveInfo] {
-        guard let shaderFile = wallpaper.manifest.renderer.shaderFile else { return [] }
+    private static func parseDirectives(for theme: LoadedTheme) -> [ShaderDirectiveStore.DirectiveInfo] {
+        guard let shaderFile = theme.manifest.renderer.shaderFile else { return [] }
 
         let shaderName = shaderFile.replacingOccurrences(of: ".metal", with: "")
         guard let url = Bundle.module.url(forResource: shaderName, withExtension: "metal"),
@@ -129,12 +133,12 @@ private struct ShaderDirectiveControls: View {
         }
 
         // Configure the store if not already configured
-        if wallpaper.directiveStore.availableDirectives.isEmpty && !directives.isEmpty {
-            wallpaper.directiveStore.configure(with: directives.map(\.id))
+        if theme.directiveStore.availableDirectives.isEmpty && !directives.isEmpty {
+            theme.directiveStore.configure(with: directives.map(\.id))
             // Apply initial states
             for directive in directives {
                 if !directive.isEnabled {
-                    wallpaper.directiveStore.setEnabled(false, for: directive.id)
+                    theme.directiveStore.setEnabled(false, for: directive.id)
                 }
             }
         }
