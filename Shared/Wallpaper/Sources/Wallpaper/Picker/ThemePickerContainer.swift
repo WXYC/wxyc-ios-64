@@ -1,5 +1,5 @@
 //
-//  WallpaperPickerContainer.swift
+//  ThemePickerContainer.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/20/25.
@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-/// Container view that manages the wallpaper picker mode.
+/// Container view that manages the theme picker mode.
 /// When inactive, displays a single wallpaper at full size.
-/// When active, displays a carousel of live wallpapers with the content scaled down.
-public struct WallpaperPickerContainer<Content: View>: View {
-    @Bindable var configuration: WallpaperConfiguration
-    @Bindable var pickerState: WallpaperPickerState
+/// When active, displays a carousel of live themes with the content scaled down.
+public struct ThemePickerContainer<Content: View>: View {
+    @Bindable var configuration: ThemeConfiguration
+    @Bindable var pickerState: ThemePickerState
     @ViewBuilder var content: () -> Content
 
     /// Scale factor for content when picker is active.
@@ -25,8 +25,8 @@ public struct WallpaperPickerContainer<Content: View>: View {
     private let pickerAnimation: Animation = .spring(duration: 0.5, bounce: 0.2)
 
     public init(
-        configuration: WallpaperConfiguration,
-        pickerState: WallpaperPickerState,
+        configuration: ThemeConfiguration,
+        pickerState: ThemePickerState,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.configuration = configuration
@@ -39,7 +39,7 @@ public struct WallpaperPickerContainer<Content: View>: View {
             ZStack {
                 // Background layer - either single wallpaper or carousel
                 if pickerState.isActive {
-                    WallpaperCarouselView(
+                    ThemeCarouselView(
                         configuration: configuration,
                         pickerState: pickerState,
                         screenSize: geometry.size
@@ -52,7 +52,7 @@ public struct WallpaperPickerContainer<Content: View>: View {
 
                 // Content overlay - scales and clips when picker is active
                 content()
-                    .environment(\.isWallpaperPickerActive, pickerState.isActive)
+                    .environment(\.isThemePickerActive, pickerState.isActive)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)
                     .offset(y: pickerState.isActive ? 16 : 0)
@@ -63,3 +63,7 @@ public struct WallpaperPickerContainer<Content: View>: View {
         .ignoresSafeArea()
     }
 }
+
+/// Type alias for backward compatibility during migration.
+@available(*, deprecated, renamed: "ThemePickerContainer")
+public typealias WallpaperPickerContainer = ThemePickerContainer

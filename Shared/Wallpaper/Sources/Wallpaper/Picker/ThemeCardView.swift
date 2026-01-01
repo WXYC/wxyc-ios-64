@@ -1,5 +1,5 @@
 //
-//  WallpaperCardView.swift
+//  ThemeCardView.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/20/25.
@@ -7,23 +7,23 @@
 
 import SwiftUI
 
-/// A card view that displays a live wallpaper preview.
-struct WallpaperCardView: View {
-    let wallpaper: LoadedWallpaper
+/// A card view that displays a live theme preview.
+struct ThemeCardView: View {
+    let theme: LoadedTheme
     let cardSize: CGSize
     let cornerRadius: CGFloat
 
     var body: some View {
         VStack(spacing: 12) {
-            // Wallpaper name label above the card
-            Text(wallpaper.displayName)
+            // Theme name label above the card
+            Text(theme.displayName)
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
 
             // Wallpaper card - always live
-            WallpaperRendererFactory.makeView(for: wallpaper)
+            WallpaperRendererFactory.makeView(for: theme)
                 .frame(width: cardSize.width, height: cardSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 .overlay {
