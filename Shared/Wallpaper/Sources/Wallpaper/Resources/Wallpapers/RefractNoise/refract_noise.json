@@ -9,6 +9,12 @@
     "timeScale": 1.0
   },
   "parameters": [],
-  "shaderArguments": []
+  "shaderArguments": [],
+  "foreground": "light",
+  "accent": {
+    "hue": 23,
+    "saturation": 0.75
+  },
+  "appIconName": "RefractNoise"
 }
 

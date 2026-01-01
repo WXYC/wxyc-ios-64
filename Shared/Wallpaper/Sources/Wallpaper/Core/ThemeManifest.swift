@@ -1,5 +1,5 @@
 //
-//  WallpaperManifest.swift
+//  ThemeManifest.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/19/25.
@@ -7,15 +7,23 @@
 
 import Foundation
 
-/// Codable representation of a wallpaper manifest (wallpaper.json).
+/// Codable representation of a theme manifest.
+/// Themes are the primary entity containing wallpaper configuration and styling properties.
 @MainActor
-public struct WallpaperManifest: Codable, Sendable {
+public struct ThemeManifest: Codable, Sendable {
     public let id: String
     public let displayName: String
     public let version: String
+
+    // Wallpaper configuration
     public let renderer: RendererConfiguration
     public let parameters: [ParameterDefinition]
     public let shaderArguments: [ShaderArgument]
+
+    // Theme properties
+    public let foreground: ForegroundStyle
+    public let accent: AccentColor
+    public let appIconName: String?
 
     public init(
         id: String,
@@ -23,7 +31,10 @@ public struct WallpaperManifest: Codable, Sendable {
         version: String,
         renderer: RendererConfiguration,
         parameters: [ParameterDefinition] = [],
-        shaderArguments: [ShaderArgument] = []
+        shaderArguments: [ShaderArgument] = [],
+        foreground: ForegroundStyle,
+        accent: AccentColor,
+        appIconName: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -31,8 +42,15 @@ public struct WallpaperManifest: Codable, Sendable {
         self.renderer = renderer
         self.parameters = parameters
         self.shaderArguments = shaderArguments
+        self.foreground = foreground
+        self.accent = accent
+        self.appIconName = appIconName
     }
 }
+
+/// Type alias for backward compatibility during migration.
+@available(*, deprecated, renamed: "ThemeManifest")
+public typealias WallpaperManifest = ThemeManifest
 
 // MARK: - Renderer Configuration
 

@@ -52,5 +52,11 @@
       "range": { "min": 0.0, "max": 1.0 }
     }
   ],
-  "shaderArguments": []
+  "shaderArguments": [],
+  "foreground": "light",
+  "accent": {
+    "hue": 23,
+    "saturation": 0.75
+  },
+  "appIconName": "SteelCubeIdolatry"
 }
