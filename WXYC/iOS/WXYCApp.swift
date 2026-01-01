@@ -41,8 +41,8 @@ final class Singletonia {
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
 
-    let wallpaperConfiguration = WallpaperConfiguration()
-    let wallpaperPickerState = WallpaperPickerState()
+    let themeConfiguration = ThemeConfiguration()
+    let themePickerState = ThemePickerState()
 
     private var playlistObservationTask: Task<Void, Never>?
     private var isForegrounded = false
