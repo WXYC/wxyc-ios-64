@@ -63,7 +63,3 @@ public struct ThemePickerContainer<Content: View>: View {
         .ignoresSafeArea()
     }
 }
-
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemePickerContainer")
-public typealias WallpaperPickerContainer = ThemePickerContainer

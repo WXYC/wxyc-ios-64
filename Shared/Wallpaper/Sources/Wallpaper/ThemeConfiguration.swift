@@ -64,7 +64,3 @@ public final class ThemeConfiguration {
         return mapping[legacyID]
     }
 }
-
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeConfiguration")
-public typealias WallpaperConfiguration = ThemeConfiguration

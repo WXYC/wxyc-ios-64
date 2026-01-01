@@ -162,14 +162,5 @@ extension View {
             configuration: configuration
         ))
     }
-
-    /// Type alias for backward compatibility during migration.
-    @available(*, deprecated, renamed: "themePickerGesture")
-    public func wallpaperPickerGesture(
-        pickerState: ThemePickerState,
-        configuration: ThemeConfiguration
-    ) -> some View {
-        themePickerGesture(pickerState: pickerState, configuration: configuration)
-    }
 }
 #endif

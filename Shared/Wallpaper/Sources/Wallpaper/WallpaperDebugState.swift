@@ -26,8 +26,3 @@ public final class ThemeDebugState {
         self.showOverlay = UserDefaults.standard.bool(forKey: storageKey)
     }
 }
-
-// MARK: - Compatibility Alias
-
-@available(*, deprecated, renamed: "ThemeDebugState")
-public typealias WallpaperDebugState = ThemeDebugState

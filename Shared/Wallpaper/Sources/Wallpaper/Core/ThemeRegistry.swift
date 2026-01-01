@@ -25,10 +25,6 @@ public final class LoadedTheme: Identifiable, Sendable {
     }
 }
 
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "LoadedTheme")
-public typealias LoadedWallpaper = LoadedTheme
-
 /// Central registry for discovering and loading themes from bundle resources.
 @MainActor
 public final class ThemeRegistry: Sendable {
@@ -94,7 +90,3 @@ public final class ThemeRegistry: Sendable {
         return (themes: loadedThemes, byID: byID)
     }
 }
-
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeRegistry")
-public typealias WallpaperRegistry = ThemeRegistry

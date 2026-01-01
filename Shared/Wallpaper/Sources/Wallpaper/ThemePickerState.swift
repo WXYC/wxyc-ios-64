@@ -91,7 +91,3 @@ public final class ThemePickerState {
         ThemeRegistry.shared.themes.firstIndex { $0.id == themeID } ?? 0
     }
 }
-
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemePickerState")
-public typealias WallpaperPickerState = ThemePickerState

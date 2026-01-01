@@ -73,7 +73,3 @@ public struct ThemeDebugControlsGenerator: View {
         return Toggle(parameter.label, isOn: binding)
     }
 }
-
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeDebugControlsGenerator")
-public typealias WallpaperDebugControlsGenerator = ThemeDebugControlsGenerator

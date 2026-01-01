@@ -2,7 +2,7 @@
 //  WallpaperPickerTests.swift
 //  WXYCTests
 //
-//  Tests for wallpaper picker state management.
+//  Tests for theme picker state management.
 //
 
 import Testing
@@ -10,121 +10,121 @@ import UIKit
 @testable import WXYC
 @testable import Wallpaper
 
-// MARK: - WallpaperPickerState Tests
+// MARK: - ThemePickerState Tests
 
-@Suite("WallpaperPickerState Tests")
+@Suite("ThemePickerState Tests")
 @MainActor
-struct WallpaperPickerStateTests {
+struct ThemePickerStateTests {
 
     @Test("Initial state is inactive")
     func initialStateIsInactive() {
-        let state = WallpaperPickerState()
+        let state = ThemePickerState()
 
         #expect(state.isActive == false)
-        #expect(state.centeredWallpaperID == "")
+        #expect(state.centeredThemeID == "")
         #expect(state.carouselIndex == 0)
     }
 
     @Test("Enter sets active state")
     func enterSetsActiveState() {
-        let state = WallpaperPickerState()
-        let testWallpaperID = WallpaperRegistry.shared.wallpapers.first?.id ?? "test"
+        let state = ThemePickerState()
+        let testThemeID = ThemeRegistry.shared.themes.first?.id ?? "test"
 
-        state.enter(currentWallpaperID: testWallpaperID)
+        state.enter(currentThemeID: testThemeID)
 
         #expect(state.isActive == true)
-        #expect(state.centeredWallpaperID == testWallpaperID)
+        #expect(state.centeredThemeID == testThemeID)
     }
 
-    @Test("Enter sets correct carousel index for each wallpaper")
+    @Test("Enter sets correct carousel index for each theme")
     func enterSetsCorrectCarouselIndex() {
-        let state = WallpaperPickerState()
-        let wallpapers = WallpaperRegistry.shared.wallpapers
+        let state = ThemePickerState()
+        let themes = ThemeRegistry.shared.themes
 
-        for (expectedIndex, wallpaper) in wallpapers.enumerated() {
-            state.enter(currentWallpaperID: wallpaper.id)
+        for (expectedIndex, theme) in themes.enumerated() {
+            state.enter(currentThemeID: theme.id)
 
-            #expect(state.carouselIndex == expectedIndex, "Expected index \(expectedIndex) for wallpaper '\(wallpaper.id)', but got \(state.carouselIndex)")
-            #expect(state.centeredWallpaperID == wallpaper.id)
+            #expect(state.carouselIndex == expectedIndex, "Expected index \(expectedIndex) for theme '\(theme.id)', but got \(state.carouselIndex)")
+            #expect(state.centeredThemeID == theme.id)
         }
     }
 
     @Test("Exit clears active state")
     func exitClearsActiveState() {
-        let state = WallpaperPickerState()
+        let state = ThemePickerState()
 
-        state.enter(currentWallpaperID: "test")
+        state.enter(currentThemeID: "test")
         #expect(state.isActive == true)
 
         state.exit()
         #expect(state.isActive == false)
     }
 
-    @Test("Update centered wallpaper")
-    func updateCenteredWallpaper() {
-        let state = WallpaperPickerState()
-        let wallpapers = WallpaperRegistry.shared.wallpapers
+    @Test("Update centered theme")
+    func updateCenteredTheme() {
+        let state = ThemePickerState()
+        let themes = ThemeRegistry.shared.themes
 
-        guard wallpapers.count >= 2 else {
-            return // Skip if not enough wallpapers
+        guard themes.count >= 2 else {
+            return // Skip if not enough themes
         }
 
-        state.updateCenteredWallpaper(forIndex: 1)
+        state.updateCenteredTheme(forIndex: 1)
 
         #expect(state.carouselIndex == 1)
-        #expect(state.centeredWallpaperID == wallpapers[1].id)
+        #expect(state.centeredThemeID == themes[1].id)
     }
 
     @Test("Confirm selection updates configuration")
     func confirmSelectionUpdatesConfiguration() {
-        let state = WallpaperPickerState()
-        let configuration = WallpaperConfiguration()
+        let state = ThemePickerState()
+        let configuration = ThemeConfiguration()
 
-        let wallpapers = WallpaperRegistry.shared.wallpapers
-        guard let firstWallpaper = wallpapers.first,
-              let secondWallpaper = wallpapers.dropFirst().first else {
+        let themes = ThemeRegistry.shared.themes
+        guard let firstTheme = themes.first,
+              let secondTheme = themes.dropFirst().first else {
             return
         }
 
         // Set initial selection
-        configuration.selectedWallpaperID = firstWallpaper.id
+        configuration.selectedThemeID = firstTheme.id
 
-        // Enter picker and move to second wallpaper
-        state.enter(currentWallpaperID: firstWallpaper.id)
-        state.updateCenteredWallpaper(forIndex: 1)
+        // Enter picker and move to second theme
+        state.enter(currentThemeID: firstTheme.id)
+        state.updateCenteredTheme(forIndex: 1)
 
         // Confirm selection
         state.confirmSelection(to: configuration)
 
-        #expect(configuration.selectedWallpaperID == secondWallpaper.id)
+        #expect(configuration.selectedThemeID == secondTheme.id)
     }
 }
 
-// MARK: - WallpaperRegistry Tests
+// MARK: - ThemeRegistry Tests
 
-@Suite("WallpaperRegistry Tests")
+@Suite("ThemeRegistry Tests")
 @MainActor
-struct WallpaperRegistryTests {
+struct ThemeRegistryTests {
 
-    @Test("Registry contains wallpapers")
-    func registryContainsWallpapers() {
-        let wallpapers = WallpaperRegistry.shared.wallpapers
+    @Test("Registry contains themes")
+    func registryContainsThemes() {
+        let themes = ThemeRegistry.shared.themes
 
-        #expect(wallpapers.isEmpty == false)
+        #expect(themes.isEmpty == false)
     }
 
-    @Test("Wallpapers have unique IDs")
-    func wallpapersHaveUniqueIDs() {
-        let wallpapers = WallpaperRegistry.shared.wallpapers
-        let ids = Set(wallpapers.map(\.id))
+    @Test("Themes have unique IDs")
+    func themesHaveUniqueIDs() {
+        let themes = ThemeRegistry.shared.themes
+        let ids = Set(themes.map(\.id))
 
-        #expect(ids.count == wallpapers.count)
+        #expect(ids.count == themes.count)
     }
 
-    @Test("Wallpapers have display names")
-    func wallpapersHaveDisplayNames() {
-        for wallpaper in WallpaperRegistry.shared.wallpapers {
-            #expect(wallpaper.displayName.isEmpty == false)
+    @Test("Themes have display names")
+    func themesHaveDisplayNames() {
+        for theme in ThemeRegistry.shared.themes {
+            #expect(theme.displayName.isEmpty == false)
         }
     }
 }

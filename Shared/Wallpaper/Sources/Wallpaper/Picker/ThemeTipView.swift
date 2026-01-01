@@ -108,10 +108,6 @@ extension ThemeTipView {
     }
 }
 
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeTipView")
-public typealias WallpaperTipView = ThemeTipView
-
 #Preview {
     VStack {
         ThemeTipView(isVisible: .constant(true)) {

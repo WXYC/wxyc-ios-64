@@ -41,10 +41,6 @@ public struct ThemeDebugOverlay: View {
     }
 }
 
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeDebugOverlay")
-public typealias WallpaperDebugOverlay = ThemeDebugOverlay
-
 /// Content for the theme debug popover.
 private struct ThemeDebugPopoverContent: View {
     @Bindable var configuration: ThemeConfiguration

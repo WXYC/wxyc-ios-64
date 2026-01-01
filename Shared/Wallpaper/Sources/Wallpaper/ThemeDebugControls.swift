@@ -53,10 +53,6 @@ public struct ThemeDebugControls: View {
     }
 }
 
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeDebugControls")
-public typealias WallpaperDebugControls = ThemeDebugControls
-
 // MARK: - Shader Directive Controls
 
 /// Shows toggles for shader compiler directives (feature flags).

@@ -48,10 +48,6 @@ public struct ThemeManifest: Codable, Sendable {
     }
 }
 
-/// Type alias for backward compatibility during migration.
-@available(*, deprecated, renamed: "ThemeManifest")
-public typealias WallpaperManifest = ThemeManifest
-
 // MARK: - Renderer Configuration
 
 public struct RendererConfiguration: Codable, Sendable {
