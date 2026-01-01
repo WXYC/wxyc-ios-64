@@ -129,9 +129,9 @@ struct WXYCApp: App {
 
     var body: some Scene {
         WindowGroup {
-            WallpaperPickerContainer(
-                configuration: appState.wallpaperConfiguration,
-                pickerState: appState.wallpaperPickerState
+            ThemePickerContainer(
+                configuration: appState.themeConfiguration,
+                pickerState: appState.themePickerState
             ) {
                 ZStack {
                     RootTabView()
@@ -180,8 +180,8 @@ struct WXYCApp: App {
 #if DEBUG
                     DebugHUD()
                     
-                    if WallpaperDebugState.shared.showOverlay {
-                        WallpaperDebugOverlay(configuration: appState.wallpaperConfiguration)
+                    if ThemeDebugState.shared.showOverlay {
+                        ThemeDebugOverlay(configuration: appState.themeConfiguration)
                     }
 #endif
                 }
@@ -407,9 +407,9 @@ struct WXYCApp: App {
 }
 
 #Preview {
-    WallpaperPickerContainer(
-        configuration: WallpaperConfiguration(),
-        pickerState: WallpaperPickerState()
+    ThemePickerContainer(
+        configuration: ThemeConfiguration(),
+        pickerState: ThemePickerState()
     ) {
         RootTabView()
             .environment(\.playlistService, PlaylistService())
