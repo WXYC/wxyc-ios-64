@@ -15,5 +15,6 @@
     "hue": 23,
     "saturation": 0.75
   },
-  "appIconName": "Opal"
+  "appIconName": "Opal",
+  "materialWeight": "thin"
 }

@@ -32,5 +32,9 @@ let package = Package(
                 .process("Resources/Shaders")
             ]
         ),
+        .testTarget(
+            name: "WallpaperTests",
+            dependencies: ["Wallpaper"]
+        ),
     ]
 )

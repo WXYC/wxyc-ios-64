@@ -19,7 +19,8 @@
     "hue": 23,
     "saturation": 0.75
   },
-  "appIconName": "NeonTopologyIso"
+  "appIconName": "NeonTopologyIso",
+  "materialWeight": "thin"
 }
 
 

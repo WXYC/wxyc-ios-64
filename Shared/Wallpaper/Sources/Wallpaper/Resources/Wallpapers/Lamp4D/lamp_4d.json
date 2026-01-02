@@ -16,5 +16,6 @@
     "hue": 23,
     "saturation": 0.75
   },
-  "appIconName": "Lamp4d"
+  "appIconName": "Lamp4d",
+  "materialWeight": "thin"
 }

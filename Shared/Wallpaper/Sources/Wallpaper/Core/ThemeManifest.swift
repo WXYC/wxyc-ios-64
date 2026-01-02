@@ -24,6 +24,7 @@ public struct ThemeManifest: Codable, Sendable {
     public let foreground: ForegroundStyle
     public let accent: AccentColor
     public let appIconName: String?
+    public let materialWeight: MaterialWeight
 
     public init(
         id: String,
@@ -34,7 +35,8 @@ public struct ThemeManifest: Codable, Sendable {
         shaderArguments: [ShaderArgument] = [],
         foreground: ForegroundStyle,
         accent: AccentColor,
-        appIconName: String? = nil
+        appIconName: String? = nil,
+        materialWeight: MaterialWeight = .thin
     ) {
         self.id = id
         self.displayName = displayName
@@ -45,6 +47,7 @@ public struct ThemeManifest: Codable, Sendable {
         self.foreground = foreground
         self.accent = accent
         self.appIconName = appIconName
+        self.materialWeight = materialWeight
     }
 }
 

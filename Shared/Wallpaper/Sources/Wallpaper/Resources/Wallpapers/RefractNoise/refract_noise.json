@@ -15,6 +15,7 @@
     "hue": 23,
     "saturation": 0.75
   },
-  "appIconName": "RefractNoise"
+  "appIconName": "RefractNoise",
+  "materialWeight": "thin"
 }
 

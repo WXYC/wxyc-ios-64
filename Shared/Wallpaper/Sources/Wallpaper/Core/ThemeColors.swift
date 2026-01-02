@@ -59,3 +59,26 @@ public struct AccentColor: Codable, Sendable, Equatable {
         Color(hue: normalizedHue, saturation: saturation, brightness: brightness)
     }
 }
+
+// MARK: - Material Weight
+
+/// Material weight for background blur effects in UI elements.
+public enum MaterialWeight: String, Codable, Sendable {
+    case ultraThin
+    case thin
+    case regular
+    case thick
+    case ultraThick
+
+    /// The corresponding SwiftUI Material.
+    @MainActor
+    public var material: Material {
+        switch self {
+        case .ultraThin: .ultraThinMaterial
+        case .thin: .thinMaterial
+        case .regular: .regularMaterial
+        case .thick: .thickMaterial
+        case .ultraThick: .ultraThickMaterial
+        }
+    }
+}

@@ -23,5 +23,6 @@
     "hue": 23,
     "saturation": 0.75
   },
-  "appIconName": "LavaLite"
+  "appIconName": "LavaLite",
+  "materialWeight": "thin"
 }
