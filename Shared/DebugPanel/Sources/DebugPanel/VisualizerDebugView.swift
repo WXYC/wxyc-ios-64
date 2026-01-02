@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppServices
 import Playback
 import PlayerHeaderView
 import Playlist
@@ -17,7 +18,9 @@ public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
     @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
+    @State private var skipNextAPIVersionPersist = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var wallpaperDebugState = WallpaperDebugState.shared
 
@@ -141,10 +144,18 @@ public struct VisualizerDebugView: View {
                         }
                     }
                     .onChange(of: selectedAPIVersion) { _, newValue in
-                        newValue.persist()
+                        if skipNextAPIVersionPersist {
+                            skipNextAPIVersionPersist = false
+                        } else {
+                            newValue.persist()
+                        }
+                        Task {
+                            await playlistService?.switchAPIVersion(to: newValue)
+                        }
                     }
                     Button("Use Feature Flag") {
                         PlaylistAPIVersion.clearOverride()
+                        skipNextAPIVersionPersist = true
                         selectedAPIVersion = .loadActive()
                     }
                 } header: {

@@ -47,15 +47,21 @@ public final class ThermalThrottleController {
     /// - Parameters:
     ///   - thermalStateProvider: Closure returning current thermal state.
     ///   - hysteresisDelay: Seconds to wait before upgrading quality after cooling.
+    ///   - startMonitoringAutomatically: Whether to start polling immediately.
     public init(
         thermalStateProvider: @escaping () -> ProcessInfo.ThermalState = { ProcessInfo.processInfo.thermalState },
-        hysteresisDelay: TimeInterval = 30.0
+        hysteresisDelay: TimeInterval = 30.0,
+        startMonitoringAutomatically: Bool = true
     ) {
         self.thermalStateProvider = thermalStateProvider
         self.hysteresisDelay = hysteresisDelay
 
         // Initialize with current state
         updateThermalState()
+
+        if startMonitoringAutomatically {
+            startMonitoring()
+        }
     }
 
     /// Starts periodic thermal monitoring.

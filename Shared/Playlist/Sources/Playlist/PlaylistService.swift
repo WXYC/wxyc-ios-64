@@ -11,7 +11,7 @@ import Logger
 import Caching
 
 public final actor PlaylistService: Sendable {
-    private let fetcher: PlaylistFetcherProtocol
+    private var fetcher: PlaylistFetcherProtocol
     private let interval: TimeInterval
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
@@ -133,6 +133,32 @@ public final actor PlaylistService: Sendable {
         }
     }
 
+    /// Switches to a different API version and immediately fetches fresh data.
+    /// Clears the current playlist and cache before fetching to ensure clean data.
+    ///
+    /// - Parameter version: The API version to switch to.
+    public func switchAPIVersion(to version: PlaylistAPIVersion) async {
+        Log(.info, "Switching playlist API to \(version.rawValue)")
+        
+        // Cancel any existing fetch task
+        cancelFetchTask()
+
+        // Create new fetcher with the specified version
+        fetcher = PlaylistFetcher(apiVersion: version)
+
+        // Clear current playlist to show loading state
+        currentPlaylist = .empty
+        broadcast(.empty)
+            
+        // Fetch fresh data with new API version (this will overwrite the cache)
+        _ = await fetchAndCachePlaylist()
+                
+        // Restart fetch loop if we have observers
+        if !continuations.isEmpty {
+            ensureFetchTaskRunning()
+        }
+    }
+
     /// Returns an AsyncStream that yields playlist updates.
     /// If a cached playlist exists, it's yielded immediately.
     /// Otherwise, observers wait for the first fetch to complete.
@@ -154,7 +180,7 @@ public final actor PlaylistService: Sendable {
                 setupTask.cancel()
                 
                 guard let self else { return }
-                
+    
                 Task {
                     await self.removeContinuation(for: id)
                 }
@@ -201,7 +227,7 @@ public final actor PlaylistService: Sendable {
         fetchTask?.cancel()
         fetchTask = nil
     }
-
+            
     deinit {
         for continuation in continuations.values {
             continuation.finish()
@@ -227,11 +253,11 @@ public final actor PlaylistService: Sendable {
     private func startFetching() async {
         while !Task.isCancelled {
             let playlist = await fetcher.fetchPlaylist()
-            
+
             // Only cache and broadcast non-empty playlists, OR if we don't have any data yet.
             // This prevents network errors (which return .empty) from clearing valid cached data.
             let shouldUpdate = playlist != .empty || currentPlaylist == .empty
-            
+
             if shouldUpdate {
                 // Cache the fetched playlist
                 await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
