@@ -64,6 +64,14 @@ struct InfoDetailView: View {
                 ) {
                     UIApplication.shared.open(RadioStation.WXYC.requestLine)
                 }
+                
+                ActionButton(
+                    title: "Buy cool merch",
+                    icon: "tshirt",
+                    color: .purple
+                ) {
+                    UIApplication.shared.open(RadioStation.WXYC.merchURL)
+                }
             }
             
             Spacer()
