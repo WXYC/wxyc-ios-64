@@ -21,6 +21,8 @@ public struct VisualizerDebugView: View {
     private var hudState = DebugHUDState.shared
     private var wallpaperDebugState = WallpaperDebugState.shared
 
+    private var throttleController = ThermalThrottleController.shared
+
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>
@@ -56,6 +58,53 @@ public struct VisualizerDebugView: View {
                     Text("Shows a floating button to access wallpaper picker and parameter controls.")
                 }
 
+                // Thermal Throttling Override
+                Section {
+                    Toggle("Override Throttle Level", isOn: Binding(
+                        get: { throttleController.debugOverrideLevel != nil },
+                        set: { enabled in
+                            if enabled {
+                                throttleController.debugOverrideLevel = .nominal
+                            } else {
+                                throttleController.debugOverrideLevel = nil
+                            }
+                        }
+                    ))
+
+                    if throttleController.debugOverrideLevel != nil {
+                        Picker("Throttle Level", selection: Binding(
+                            get: { throttleController.debugOverrideLevel ?? .nominal },
+                            set: { throttleController.debugOverrideLevel = $0 }
+                        )) {
+                            ForEach(ThermalThrottleLevel.allCases, id: \.self) { level in
+                                Text(level.displayName).tag(level)
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Text("System Thermal State")
+                        Spacer()
+                        Text(throttleController.rawThermalState.description)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text("Active Level")
+                        Spacer()
+                        Text(throttleController.currentLevel.displayName)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Thermal Throttling")
+                } footer: {
+                    if throttleController.debugOverrideLevel != nil {
+                        Text("Override active. Automatic thermal-based throttling is disabled.")
+                    } else {
+                        Text("Automatically reduces resolution and FPS when the device heats up.")
+                    }
+                }
+
                 // Tip Views
                 Section {
                     Button("Reset Tip Views") {
@@ -83,7 +132,7 @@ public struct VisualizerDebugView: View {
                 } footer: {
                     Text(selectedPlayerType.shortDescription)
                 }
-
+                        
                 // Playlist API Version
                 Section {
                     Picker("API Version", selection: $selectedAPIVersion) {
@@ -111,7 +160,7 @@ public struct VisualizerDebugView: View {
                             Text(type.displayName).tag(type)
                         }
                     }
-                    
+                
                     Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
                     
                     // FFT Settings (shown for FFT or Both)
@@ -192,7 +241,7 @@ public struct VisualizerDebugView: View {
                             .foregroundStyle(.secondary)
                     }
                     Slider(value: $visualizer.minBrightness, in: 0.0...1.5)
-                    
+
                     HStack {
                         Text("Max Brightness")
                         Spacer()
@@ -200,7 +249,7 @@ public struct VisualizerDebugView: View {
                             .foregroundStyle(.secondary)
                     }
                     Slider(value: $visualizer.maxBrightness, in: 0.0...1.5)
-                    
+
                     Button("Reset Brightness") {
                         visualizer.minBrightness = 0.90
                         visualizer.maxBrightness = 1.0
@@ -235,4 +284,3 @@ public struct VisualizerDebugView: View {
     }
 }
 #endif
-

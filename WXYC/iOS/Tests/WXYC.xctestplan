@@ -80,6 +80,13 @@
         "identifier" : "CachingTests",
         "name" : "CachingTests"
       }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Wallpaper",
+        "identifier" : "WallpaperTests",
+        "name" : "WallpaperTests"
+      }
     }
   ],
   "version" : 1
