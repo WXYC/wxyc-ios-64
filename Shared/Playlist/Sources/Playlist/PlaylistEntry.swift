@@ -74,6 +74,32 @@ public struct Talkset: PlaylistEntry {
     public let chronOrderID: UInt64
 }
 
+/// Represents a show start or end marker from the v2 API.
+public struct ShowMarker: PlaylistEntry {
+    public let id: UInt64
+    public let hour: UInt64
+    public let chronOrderID: UInt64
+    public let isStart: Bool
+    public let djName: String?
+    public let message: String
+
+    public init(
+        id: UInt64,
+        hour: UInt64,
+        chronOrderID: UInt64,
+        isStart: Bool,
+        djName: String?,
+        message: String
+    ) {
+        self.id = id
+        self.hour = hour
+        self.chronOrderID = chronOrderID
+        self.isStart = isStart
+        self.djName = djName
+        self.message = message
+    }
+}
+
 public struct Playcut: PlaylistEntry, Hashable {
     public let id: UInt64
     public let hour: UInt64
@@ -136,8 +162,34 @@ public struct Playlist: Codable, Sendable {
     public let playcuts: [Playcut]
     let breakpoints: [Breakpoint]
     let talksets: [Talkset]
-    
-    public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [])
+    public let showMarkers: [ShowMarker]
+
+    public init(
+        playcuts: [Playcut],
+        breakpoints: [Breakpoint],
+        talksets: [Talkset],
+        showMarkers: [ShowMarker] = []
+    ) {
+        self.playcuts = playcuts
+        self.breakpoints = breakpoints
+        self.talksets = talksets
+        self.showMarkers = showMarkers
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.playcuts = try container.decode([Playcut].self, forKey: .playcuts)
+        self.breakpoints = try container.decode([Breakpoint].self, forKey: .breakpoints)
+        self.talksets = try container.decode([Talkset].self, forKey: .talksets)
+        // showMarkers is optional for backwards compatibility with v1 API
+        self.showMarkers = try container.decodeIfPresent([ShowMarker].self, forKey: .showMarkers) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case playcuts, breakpoints, talksets, showMarkers
+    }
+
+    public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [], showMarkers: [])
     
     public static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
         guard lhs.entries.count == rhs.entries.count else {
@@ -151,9 +203,9 @@ public struct Playlist: Codable, Sendable {
     }
 }
 
-public extension Playlist {    
+public extension Playlist {
     var entries: [any PlaylistEntry] {
-        let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets)
+        let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
     }
 }
@@ -162,7 +214,8 @@ public extension Playlist {
     static let marketingList = Playlist(
         playcuts: placeholderPlaycuts,
         breakpoints: [],
-        talksets: []
+        talksets: [],
+        showMarkers: []
     )
     
     private struct PlaceholderSong {
@@ -233,7 +286,7 @@ public extension Playlist {
             releaseTitle: "Nutrition EP"
         ),
     ]
-    
+
     private static let placeholderPlaycuts: [Playcut] = placeholderSongs.shuffled().enumerated().map { index, song in
         Playcut(
             id: UInt64(index),
@@ -249,7 +302,7 @@ public extension Playlist {
 
 public struct PlaceholderFetcher: PlaylistDataSource {
     public init() { }
-    
+
     public func getPlaylist() async throws -> Playlist {
         Playlist.marketingList
     }

@@ -67,19 +67,39 @@ extension URLSession: PlaylistDataSource {
 public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
     private let dataSource: PlaylistDataSource
     private let analytics: PlaylistAnalytics
+    private let apiVersion: PlaylistAPIVersion
 
+    /// Creates a new PlaylistFetcher.
+    ///
+    /// - Parameters:
+    ///   - apiVersion: The API version to use. If nil, uses `PlaylistAPIVersion.loadActive()`.
+    ///   - dataSource: Custom data source. If nil, creates one based on apiVersion.
+    ///   - analytics: Analytics service for logging.
     public init(
-        dataSource: PlaylistDataSource = URLSession.shared,
+        apiVersion: PlaylistAPIVersion? = nil,
+        dataSource: PlaylistDataSource? = nil,
         analytics: PlaylistAnalytics = PostHogSDK.shared
     ) {
-        self.dataSource = dataSource
+        let resolvedVersion = apiVersion ?? PlaylistAPIVersion.loadActive()
+        self.apiVersion = resolvedVersion
+        self.dataSource = dataSource ?? Self.createDataSource(for: resolvedVersion)
         self.analytics = analytics
+    }
+
+    /// Creates the appropriate data source for the given API version.
+    private static func createDataSource(for version: PlaylistAPIVersion) -> PlaylistDataSource {
+        switch version {
+        case .v1:
+            URLSession.shared
+        case .v2:
+            PlaylistDataSourceV2()
+        }
     }
 
     /// Fetches a playlist from the remote source.
     /// Returns an empty playlist if the fetch fails.
     public func fetchPlaylist() async -> Playlist {
-        Log(.info, "Fetching remote playlist")
+        Log(.info, "Fetching remote playlist (API \(apiVersion.rawValue))")
         let timer = Core.Timer.start()
         do {
             let playlist = try await self.dataSource.getPlaylist()
