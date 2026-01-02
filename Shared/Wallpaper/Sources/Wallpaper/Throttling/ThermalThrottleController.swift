@@ -19,42 +19,79 @@ public final class ThermalThrottleController {
     }
 
     /// Internal current level (without debug override).
-    private var _currentLevel: ThermalThrottleLevel = .nominal
+    private var _currentLevel: ThermalThrottleLevel = .nominal {
+        didSet {
+            if oldValue != _currentLevel {
+                levelContinuation?.yield(_currentLevel)
+            }
+        }
+    }
 
     /// Debug override for throttle level. Set to nil to use automatic thermal-based throttling.
-    public var debugOverrideLevel: ThermalThrottleLevel?
+    public var debugOverrideLevel: ThermalThrottleLevel? {
+        didSet {
+            if oldValue != debugOverrideLevel {
+                levelContinuation?.yield(currentLevel)
+            }
+        }
+    }
 
     /// Raw thermal state from system (for debug display).
     public private(set) var rawThermalState: ProcessInfo.ThermalState = .nominal
 
     /// Provider for thermal state (injectable for testing).
-    private let thermalStateProvider: () -> ProcessInfo.ThermalState
+    private let thermalStateProvider: @Sendable () -> ProcessInfo.ThermalState
 
     /// Hysteresis delay before ramping quality back up.
-    private let hysteresisDelay: TimeInterval
+    private let hysteresisDelay: Duration
+
+    /// Polling interval for thermal state checks.
+    private let pollingInterval: Duration
 
     /// Time when thermal state last improved (for hysteresis).
-    private var lastImprovementTime: Date?
+    private var lastImprovementTime: ContinuousClock.Instant?
 
-    /// Timer for periodic thermal state checks.
-    private var thermalTimer: Timer?
+    /// Task for periodic thermal monitoring.
+    private var monitoringTask: Task<Void, Never>?
 
-    /// Timer for hysteresis recovery checks.
-    private var hysteresisTimer: Timer?
+    /// Task for hysteresis recovery.
+    private var hysteresisTask: Task<Void, Never>?
+
+    /// Continuation for the level changes stream.
+    private var levelContinuation: AsyncStream<ThermalThrottleLevel>.Continuation?
+
+    /// AsyncStream of throttle level changes.
+    @ObservationIgnored
+    public private(set) lazy var levelChanges: AsyncStream<ThermalThrottleLevel> = {
+        AsyncStream { continuation in
+            self.levelContinuation = continuation
+            // Yield current level immediately
+            continuation.yield(self.currentLevel)
+
+            continuation.onTermination = { @Sendable _ in
+                Task { @MainActor in
+                    self.levelContinuation = nil
+                }
+            }
+        }
+    }()
 
     /// Creates a controller with injectable dependencies for testing.
     ///
     /// - Parameters:
     ///   - thermalStateProvider: Closure returning current thermal state.
-    ///   - hysteresisDelay: Seconds to wait before upgrading quality after cooling.
+    ///   - hysteresisDelay: Duration to wait before upgrading quality after cooling.
+    ///   - pollingInterval: Duration between thermal state checks.
     ///   - startMonitoringAutomatically: Whether to start polling immediately.
     public init(
-        thermalStateProvider: @escaping () -> ProcessInfo.ThermalState = { ProcessInfo.processInfo.thermalState },
-        hysteresisDelay: TimeInterval = 30.0,
+        thermalStateProvider: @escaping @Sendable () -> ProcessInfo.ThermalState = { ProcessInfo.processInfo.thermalState },
+        hysteresisDelay: Duration = .seconds(30),
+        pollingInterval: Duration = .seconds(5),
         startMonitoringAutomatically: Bool = true
     ) {
         self.thermalStateProvider = thermalStateProvider
         self.hysteresisDelay = hysteresisDelay
+        self.pollingInterval = pollingInterval
 
         // Initialize with current state
         updateThermalState()
@@ -68,22 +105,27 @@ public final class ThermalThrottleController {
     public func startMonitoring() {
         stopMonitoring()
 
-        thermalTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.checkThermalState()
+        monitoringTask = Task { [weak self] in
+            guard let self else { return }
+
+            while !Task.isCancelled {
+                self.checkThermalState()
+
+                do {
+                    try await Task.sleep(for: self.pollingInterval)
+                } catch {
+                    break
+                }
             }
         }
-
-        // Initial check
-        checkThermalState()
     }
 
     /// Stops periodic thermal monitoring.
     public func stopMonitoring() {
-        thermalTimer?.invalidate()
-        thermalTimer = nil
-        hysteresisTimer?.invalidate()
-        hysteresisTimer = nil
+        monitoringTask?.cancel()
+        monitoringTask = nil
+        hysteresisTask?.cancel()
+        hysteresisTask = nil
     }
 
     /// Checks thermal state and updates throttle level.
@@ -97,7 +139,7 @@ public final class ThermalThrottleController {
     public func checkHysteresisRecovery() {
         guard let improvementTime = lastImprovementTime else { return }
 
-        let elapsed = Date().timeIntervalSince(improvementTime)
+        let elapsed = ContinuousClock.now - improvementTime
         if elapsed >= hysteresisDelay {
             let targetLevel = ThermalThrottleLevel(thermalState: rawThermalState)
             if targetLevel.isBetterThan(_currentLevel) {
@@ -106,11 +148,11 @@ public final class ThermalThrottleController {
 
                 // If still not at target, schedule another check
                 if _currentLevel != targetLevel {
-                    lastImprovementTime = Date()
+                    lastImprovementTime = .now
                     scheduleHysteresisCheck()
                 } else {
                     lastImprovementTime = nil
-                    cancelHysteresisTimer()
+                    cancelHysteresisTask()
                 }
             }
         }
@@ -128,11 +170,11 @@ public final class ThermalThrottleController {
             // Immediate downgrade
             _currentLevel = newLevel
             lastImprovementTime = nil
-            cancelHysteresisTimer()
+            cancelHysteresisTask()
         } else if newLevel.isBetterThan(_currentLevel) {
             // Start or continue hysteresis timer
             if lastImprovementTime == nil {
-                lastImprovementTime = Date()
+                lastImprovementTime = .now
                 scheduleHysteresisCheck()
             }
         }
@@ -140,17 +182,22 @@ public final class ThermalThrottleController {
     }
 
     private func scheduleHysteresisCheck() {
-        cancelHysteresisTimer()
+        cancelHysteresisTask()
 
-        hysteresisTimer = Timer.scheduledTimer(withTimeInterval: hysteresisDelay, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.checkHysteresisRecovery()
+        hysteresisTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                try await Task.sleep(for: self.hysteresisDelay)
+                self.checkHysteresisRecovery()
+            } catch {
+                // Task was cancelled
             }
         }
     }
 
-    private func cancelHysteresisTimer() {
-        hysteresisTimer?.invalidate()
-        hysteresisTimer = nil
+    private func cancelHysteresisTask() {
+        hysteresisTask?.cancel()
+        hysteresisTask = nil
     }
 }
