@@ -88,6 +88,7 @@ public final class PlaybackControllerManager {
         startConsumingBuffers(from: controller)
 
         // Setup CPU Monitor
+        #if DEBUG
         self.cpuMonitor = CPUMonitor { [weak self] usage in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -95,9 +96,10 @@ public final class PlaybackControllerManager {
                     playerType: self.currentType,
                     cpuUsage: usage
                 )
-                self.analytics.capture(event)
+                // self.analytics.capture(event)
             }
         }
+        #endif
     }
 
     /// Internal initializer for testing with dependency injection
