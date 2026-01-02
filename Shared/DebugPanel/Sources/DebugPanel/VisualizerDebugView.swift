@@ -8,6 +8,7 @@
 import SwiftUI
 import Playback
 import PlayerHeaderView
+import Playlist
 import Wallpaper
 import WXUI
 
@@ -15,6 +16,7 @@ import WXUI
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var selectedPlayerType: PlayerControllerType
+    @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
     @Environment(\.dismiss) private var dismiss
     private var hudState = DebugHUDState.shared
     private var wallpaperDebugState = WallpaperDebugState.shared
@@ -81,7 +83,27 @@ public struct VisualizerDebugView: View {
                 } footer: {
                     Text(selectedPlayerType.shortDescription)
                 }
-                
+
+                // Playlist API Version
+                Section {
+                    Picker("API Version", selection: $selectedAPIVersion) {
+                        ForEach(PlaylistAPIVersion.allCases) { version in
+                            Text(version.displayName).tag(version)
+                        }
+                    }
+                    .onChange(of: selectedAPIVersion) { _, newValue in
+                        newValue.persist()
+                    }
+                    Button("Use Feature Flag") {
+                        PlaylistAPIVersion.clearOverride()
+                        selectedAPIVersion = .loadActive()
+                    }
+                } header: {
+                    Text("Playlist API")
+                } footer: {
+                    Text(selectedAPIVersion.shortDescription)
+                }
+
                 // Processor & Settings
                 Section {
                     Picker("Processor", selection: $visualizer.displayProcessor) {
