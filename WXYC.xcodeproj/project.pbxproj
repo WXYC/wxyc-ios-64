@@ -19,6 +19,7 @@
 		236B51FE2EFC675B0058AD01 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 236B51FD2EFC675B0058AD01 /* Playlist */; };
 		236B52022EFC67630058AD01 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52012EFC67630058AD01 /* Analytics */; };
 		236B52062EFC67750058AD01 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52052EFC67750058AD01 /* AppServices */; };
+		236B52072EFC67800058AD01 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = 236B52082EFC67800058AD01 /* Playback */; };
 		23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 23B42F962F0209CB007351F1 /* ColorPalette */; };
 		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
 		23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */ = {isa = PBXBuildFile; productRef = 23D4181A2EF2C8000DBGPNL /* DebugPanel */; };
@@ -172,7 +173,11 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
+				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
+				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
+				iOS/Tests/WXYCTests/ThermalThrottleControllerTests.swift,
+				iOS/Tests/WXYCTests/ThermalThrottleLevelTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
 			target = A3EC40619289B0065648A53C /* WXYCTests */;
@@ -210,7 +215,11 @@
 				"iOS/Request Share Extension/ShareViewController.swift",
 				iOS/Tests/WXYC.xctestplan,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
+				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
+				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
+				iOS/Tests/WXYCTests/ThermalThrottleControllerTests.swift,
+				iOS/Tests/WXYCTests/ThermalThrottleLevelTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
@@ -276,6 +285,7 @@
 			files = (
 				236B52062EFC67750058AD01 /* AppServices in Frameworks */,
 				236B51FA2EFC674F0058AD01 /* Caching in Frameworks */,
+				236B52072EFC67800058AD01 /* Playback in Frameworks */,
 				SEC00001XCFR0002WDGT0001 /* Secrets.xcframework in Frameworks */,
 				236B51D22EFC651A0058AD01 /* SwiftUI.framework in Frameworks */,
 				236B52022EFC67630058AD01 /* Analytics in Frameworks */,
@@ -419,6 +429,7 @@
 				236B51FD2EFC675B0058AD01 /* Playlist */,
 				236B52012EFC67630058AD01 /* Analytics */,
 				236B52052EFC67750058AD01 /* AppServices */,
+				236B52082EFC67800058AD01 /* Playback */,
 			);
 			productName = NowPlayingWidget;
 			productReference = 236B51CE2EFC651A0058AD01 /* NowPlayingWidget.appex */;
@@ -1007,6 +1018,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "WXYC/Entitlements/NowPlayingWidgetDebug.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -1049,6 +1061,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "WXYC/Entitlements/NowPlayingWidget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -1090,6 +1103,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "WXYC/Entitlements/NowPlayingWidget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -1131,6 +1145,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "WXYC/Entitlements/NowPlayingWidget.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -2128,6 +2143,10 @@
 		236B52052EFC67750058AD01 /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AppServices;
+		};
+		236B52082EFC67800058AD01 /* Playback */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Playback;
 		};
 		23B42F962F0209CB007351F1 /* ColorPalette */ = {
 			isa = XCSwiftPackageProductDependency;

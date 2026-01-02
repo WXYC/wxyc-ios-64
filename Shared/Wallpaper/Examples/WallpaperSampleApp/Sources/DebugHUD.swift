@@ -8,10 +8,12 @@
 import SwiftUI
 import Metal
 import QuartzCore
+import Wallpaper
 
 /// A debug HUD overlay displaying real-time performance metrics.
 struct DebugHUD: View {
     @State private var metrics = DebugMetricsProvider()
+    private var throttleController = ThermalThrottleController.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -20,6 +22,7 @@ struct DebugHUD: View {
             MetricRow(label: "GPU", value: metrics.gpuMemoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "MEM", value: metrics.memoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "TMP", value: metrics.thermalState.description)
+            MetricRow(label: "THR", value: throttleDescription)
         }
         .font(.system(.caption, design: .monospaced))
         .foregroundStyle(.white)
@@ -30,6 +33,12 @@ struct DebugHUD: View {
         .padding(.top, 50)
         .padding(.trailing, 8)
         .allowsHitTesting(false)
+    }
+
+    private var throttleDescription: String {
+        let level = throttleController.currentLevel
+        let scalePercent = Int(level.resolutionScale * 100)
+        return "\(scalePercent)% @ \(level.targetFPS)fps"
     }
 }
 

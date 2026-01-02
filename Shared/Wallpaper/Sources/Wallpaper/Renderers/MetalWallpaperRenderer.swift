@@ -31,6 +31,15 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var sampler: MTLSamplerState?
     private var noiseTex: MTLTexture?
 
+    /// Intermediate texture for scaled rendering during thermal throttling.
+    private var scaledRenderTarget = ScaledRenderTarget()
+
+    /// Sampler for upscaling the intermediate texture to the drawable.
+    private var upscaleSampler: MTLSamplerState?
+
+    /// Pipeline for blitting the scaled texture to the drawable.
+    private var blitPipeline: MTLRenderPipelineState?
+
     /// The start time in CACurrentMediaTime's time base, computed from the shared Date-based start time.
     private let startTime: CFTimeInterval
     private let wallpaper: LoadedWallpaper
@@ -90,6 +99,32 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             // Stitchable mode: simple precompiled pipeline, no textures
             setUpStitchablePipeline(device: device, renderer: renderer, pixelFormat: view.colorPixelFormat)
         }
+
+        // Set up upscale sampler for thermal throttling
+        setUpUpscaleSampler(device: device)
+        setUpBlitPipeline(device: device, pixelFormat: view.colorPixelFormat)
+    }
+
+    private func setUpUpscaleSampler(device: MTLDevice) {
+        let descriptor = MTLSamplerDescriptor()
+        descriptor.minFilter = .linear
+        descriptor.magFilter = .linear
+        descriptor.sAddressMode = .clampToEdge
+        descriptor.tAddressMode = .clampToEdge
+        upscaleSampler = device.makeSamplerState(descriptor: descriptor)
+    }
+
+    private func setUpBlitPipeline(device: MTLDevice, pixelFormat: MTLPixelFormat) {
+        guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else { return }
+        guard let vfn = library.makeFunction(name: "fullscreenVertex") else { return }
+        guard let ffn = library.makeFunction(name: "blitFragment") else { return }
+
+        let desc = MTLRenderPipelineDescriptor()
+        desc.vertexFunction = vfn
+        desc.fragmentFunction = ffn
+        desc.colorAttachments[0].pixelFormat = pixelFormat
+
+        blitPipeline = try? device.makeRenderPipelineState(descriptor: desc)
     }
 
     // MARK: - Pipeline Setup
@@ -214,31 +249,68 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         guard
             let pipeline,
             let queue,
-            let rpd = view.currentRenderPassDescriptor,
             let drawable = view.currentDrawable
         else { return }
+
+        // Check thermal throttle level
+        let throttleLevel = ThermalThrottleController.shared.currentLevel
+        let resolutionScale = throttleLevel.resolutionScale
+
+        // Update FPS if changed
+        if view.preferredFramesPerSecond != throttleLevel.targetFPS {
+            view.preferredFramesPerSecond = throttleLevel.targetFPS
+        }
 
         let now = CACurrentMediaTime()
         let timeScale = wallpaper.manifest.renderer.timeScale ?? 1.0
         let t = Float(now - startTime) * timeScale
 
-        guard let cmd = queue.makeCommandBuffer(),
-              let enc = cmd.makeRenderCommandEncoder(descriptor: rpd)
-        else { return }
+        // Update scaled render target
+        _ = scaledRenderTarget.update(
+            device: device,
+            viewSize: view.drawableSize,
+            scale: resolutionScale,
+            pixelFormat: pixelFormat
+        )
+
+        guard let cmd = queue.makeCommandBuffer() else { return }
+
+        if resolutionScale < 1.0, let scaledTexture = scaledRenderTarget.renderTexture {
+            // Render to scaled texture, then upscale to drawable
+            renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: t)
+            blitToDrawable(cmd: cmd, texture: scaledTexture, drawable: drawable, view: view)
+        } else {
+            // Render directly to drawable
+            guard let rpd = view.currentRenderPassDescriptor else { return }
+            renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: t, view: view)
+        }
+
+        cmd.present(drawable)
+        cmd.commit()
+    }
+
+    private func renderToScaledTexture(cmd: MTLCommandBuffer, texture: MTLTexture, time: Float) {
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = texture
+        rpd.colorAttachments[0].loadAction = .clear
+        rpd.colorAttachments[0].storeAction = .store
+        rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
 
         enc.setRenderPipelineState(pipeline)
 
+        let scaledSize = scaledRenderTarget.scaledSize
+
         if usesRawMetalMode {
-            // RawMetal uniforms and textures
             var uniforms = RawMetalUniforms(
-                resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
-                time: t
+                resolution: SIMD2(Float(scaledSize.width), Float(scaledSize.height)),
+                time: time
             )
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
             enc.setFragmentTexture(noiseTex, index: 0)
             enc.setFragmentSamplerState(sampler, index: 0)
 
-            // Pass custom parameters in buffer index 1 (up to 8 floats)
             let parameterStore = wallpaper.parameterStore
             let params = wallpaper.manifest.parameters
             if !params.isEmpty {
@@ -246,7 +318,6 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 for param in params.prefix(8) {
                     paramValues.append(parameterStore.floatValue(for: param.id))
                 }
-                // Pad to 8 floats for consistent buffer size
                 while paramValues.count < 8 {
                     paramValues.append(0)
                 }
@@ -255,27 +326,80 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 }
             }
         } else {
-            // Stitchable uniforms (no textures)
-            #if os(iOS) || os(tvOS)
-            let scale = Float(view.contentScaleFactor)
-            #else
-            let scale = Float(view.drawableSize.width / max(view.bounds.width, 1))
-            #endif
-
             var uniforms = StitchableUniforms(
-                resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
-                time: t,
-                displayScale: scale
+                resolution: SIMD2(Float(scaledSize.width), Float(scaledSize.height)),
+                time: time,
+                displayScale: 1.0
             )
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
         }
 
-        // Fullscreen triangle
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-
         enc.endEncoding()
-        cmd.present(drawable)
-        cmd.commit()
+    }
+
+    private func blitToDrawable(cmd: MTLCommandBuffer, texture: MTLTexture, drawable: CAMetalDrawable, view: MTKView) {
+        guard let blitPipeline, let upscaleSampler else { return }
+
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = drawable.texture
+        rpd.colorAttachments[0].loadAction = .dontCare
+        rpd.colorAttachments[0].storeAction = .store
+
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+
+        enc.setRenderPipelineState(blitPipeline)
+        enc.setFragmentTexture(texture, index: 0)
+        enc.setFragmentSamplerState(upscaleSampler, index: 0)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    private func renderDirectly(cmd: MTLCommandBuffer, descriptor: MTLRenderPassDescriptor, drawableSize: CGSize, time: Float, view: MTKView) {
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: descriptor) else { return }
+
+        enc.setRenderPipelineState(pipeline)
+
+        if usesRawMetalMode {
+            var uniforms = RawMetalUniforms(
+                resolution: SIMD2(Float(drawableSize.width), Float(drawableSize.height)),
+                time: time
+            )
+            enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
+            enc.setFragmentTexture(noiseTex, index: 0)
+            enc.setFragmentSamplerState(sampler, index: 0)
+
+            let parameterStore = wallpaper.parameterStore
+            let params = wallpaper.manifest.parameters
+            if !params.isEmpty {
+                var paramValues: [Float] = []
+                for param in params.prefix(8) {
+                    paramValues.append(parameterStore.floatValue(for: param.id))
+                }
+                while paramValues.count < 8 {
+                    paramValues.append(0)
+                }
+                paramValues.withUnsafeBytes { ptr in
+                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
+                }
+            }
+        } else {
+            #if os(iOS) || os(tvOS)
+            let displayScale = Float(view.contentScaleFactor)
+            #else
+            let displayScale = Float(drawableSize.width / max(view.bounds.width, 1))
+            #endif
+
+            var uniforms = StitchableUniforms(
+                resolution: SIMD2(Float(drawableSize.width), Float(drawableSize.height)),
+                time: time,
+                displayScale: displayScale
+            )
+            enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
+        }
+
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
     }
 
     // MARK: - Noise Texture

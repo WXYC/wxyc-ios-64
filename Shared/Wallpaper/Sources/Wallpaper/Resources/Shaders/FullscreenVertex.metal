@@ -25,3 +25,10 @@ vertex VertexOut fullscreenVertex(uint vid [[vertex_id]]) {
     out.uv.y = 1.0 - out.uv.y;  // Flip Y for Metal coordinates
     return out;
 }
+
+// Simple texture blit for upscaling during thermal throttling
+fragment half4 blitFragment(VertexOut in [[stage_in]],
+                            texture2d<half> tex [[texture(0)]],
+                            sampler samp [[sampler(0)]]) {
+    return tex.sample(samp, in.uv);
+}
