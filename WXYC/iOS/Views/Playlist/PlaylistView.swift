@@ -157,8 +157,19 @@ struct PlaylistView: View {
         case _ as Talkset:
             TextRowView(text: "Talkset")
 
+        case let showMarker as ShowMarker:
+            TextRowView(text: showMarkerText(for: showMarker))
+
         default:
             EmptyView()
+        }
+    }
+
+    private func showMarkerText(for marker: ShowMarker) -> String {
+        if let djName = marker.djName {
+            marker.isStart ? "\(djName) signed on" : "\(djName) signed off"
+        } else {
+            marker.isStart ? "Signed on" : "Signed off"
         }
     }
 }

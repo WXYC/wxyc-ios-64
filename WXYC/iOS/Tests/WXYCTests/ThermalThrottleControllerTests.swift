@@ -9,7 +9,8 @@ struct ThermalThrottleControllerTests {
     @Test("Initial state is nominal")
     func initialState() {
         let controller = ThermalThrottleController(
-            thermalStateProvider: { .nominal }
+            thermalStateProvider: { .nominal },
+            startMonitoringAutomatically: false
         )
         #expect(controller.currentLevel == .nominal)
         #expect(controller.rawThermalState == .nominal)
@@ -19,7 +20,8 @@ struct ThermalThrottleControllerTests {
     func immediateDowngrade() {
         var mockState: ProcessInfo.ThermalState = .nominal
         let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState }
+            thermalStateProvider: { mockState },
+            startMonitoringAutomatically: false
         )
 
         #expect(controller.currentLevel == .nominal)
@@ -36,7 +38,8 @@ struct ThermalThrottleControllerTests {
         var mockState: ProcessInfo.ThermalState = .serious
         let controller = ThermalThrottleController(
             thermalStateProvider: { mockState },
-            hysteresisDelay: 0.1
+            hysteresisDelay: 0.1,
+            startMonitoringAutomatically: false
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .serious)
@@ -62,7 +65,8 @@ struct ThermalThrottleControllerTests {
         var mockState: ProcessInfo.ThermalState = .critical
         let controller = ThermalThrottleController(
             thermalStateProvider: { mockState },
-            hysteresisDelay: 0.05
+            hysteresisDelay: 0.05,
+            startMonitoringAutomatically: false
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .critical)
@@ -95,7 +99,8 @@ struct ThermalThrottleControllerTests {
         var mockState: ProcessInfo.ThermalState = .fair
         let controller = ThermalThrottleController(
             thermalStateProvider: { mockState },
-            hysteresisDelay: 0.5
+            hysteresisDelay: 0.5,
+            startMonitoringAutomatically: false
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .fair)
@@ -122,7 +127,8 @@ struct ThermalThrottleControllerTests {
     func noChangeWhenUnchanged() {
         let mockState: ProcessInfo.ThermalState = .fair
         let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState }
+            thermalStateProvider: { mockState },
+            startMonitoringAutomatically: false
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .fair)
@@ -136,7 +142,8 @@ struct ThermalThrottleControllerTests {
     func rapidDowngrades() {
         var mockState: ProcessInfo.ThermalState = .nominal
         let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState }
+            thermalStateProvider: { mockState },
+            startMonitoringAutomatically: false
         )
 
         mockState = .fair
