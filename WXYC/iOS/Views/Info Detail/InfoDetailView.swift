@@ -73,7 +73,7 @@ struct InfoDetailView: View {
                 
                 ActionButton(
                     title: "Buy cool merch",
-                    icon: "tshirt",
+                    icon: "tshirt.fill",
                     color: .purple
                 ) {
                     UIApplication.shared.open(RadioStation.WXYC.merchURL)
