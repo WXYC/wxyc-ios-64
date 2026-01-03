@@ -122,6 +122,11 @@ public final class WidgetStateService {
                 // Update UserDefaults
                 UserDefaults.wxyc.set(isActive, forKey: "isPlaying")
 
+                // Reload Control Center controls to update toggle state
+                #if os(iOS)
+                ControlCenter.shared.reloadAllControls()
+                #endif
+
                 // Reload widgets (foreground reloads don't count against daily budget)
                 if self.isForegrounded {
                     self.reloadWidgets()
