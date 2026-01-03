@@ -96,11 +96,6 @@ final class Provider: TimelineProvider, Sendable {
         )
 
         Task {
-            // Clear stale playing state when widget refreshes.
-            // If the app was force-quit or terminated, this ensures the widget
-            // shows "Play" instead of "Pause" on the next refresh.
-            // The main app will set this back to true when it starts playing.
-            UserDefaults.wxyc.set(false, forKey: "isPlaying")
             var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
             // Default to empty state; will be replaced if we have data
             var entry: NowPlayingTimelineEntry = .emptyState(family: family)
