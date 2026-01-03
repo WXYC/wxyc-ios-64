@@ -37,21 +37,28 @@ struct LCDSpectrumAnalyzerView: View {
     let minBrightness: Double
     let maxBrightness: Double
     
-    private static let saturation = 0.75
-    private static let hue = 23.0 / 360.0
+    /// Hue value for segment colors (0.0-1.0, already normalized)
+    let hue: Double
     
+    /// Saturation value for segment colors (0.0-1.0)
+    let saturation: Double
+
     init(
         data: [BarData],
         maxValue: Double,
         segmentsPerBar: Int = 8,
         minBrightness: Double = 0.80,
-        maxBrightness: Double = 1.0
+        maxBrightness: Double = 1.0,
+        hue: Double = 23.0 / 360.0,
+        saturation: Double = 0.75
     ) {
         self.data = data
         self.maxValue = maxValue
         self.segmentsPerBar = segmentsPerBar
         self.minBrightness = minBrightness
         self.maxBrightness = maxBrightness
+        self.hue = hue
+        self.saturation = saturation
     }
     
     public var body: some View {
@@ -123,7 +130,7 @@ struct LCDSpectrumAnalyzerView: View {
                         glowContext.addFilter(.blur(radius: 1))
                         glowContext.fill(path, with: .color(glowColor))
                     }
-                    
+    
                     // Draw the segment
                     context.fill(path, with: .color(segmentColor))
                 }
@@ -141,7 +148,7 @@ struct LCDSpectrumAnalyzerView: View {
     
     private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {
         let multiplier = brightnessMultiplier(for: segmentIndex)
-        
+
         let activeBrightness = colorScheme == .light ? 1.5 : 1.24
         let inactiveBrightness = colorScheme == .light ? 1.15 : 0.90
         
@@ -151,17 +158,16 @@ struct LCDSpectrumAnalyzerView: View {
         } else {
             brightness = inactiveBrightness
         }
-        
-        return Color(hue: Self.hue, saturation: Self.saturation, brightness: brightness * multiplier)
+
+        return Color(hue: hue, saturation: saturation, brightness: brightness * multiplier)
     }
-    
+
     private func glowColor(for segmentIndex: Int, isActive: Bool) -> Color {
         guard isActive else { return .clear }
-        
+
         let multiplier = brightnessMultiplier(for: segmentIndex)
         let baseBrightness = 1.5 * multiplier
-        
-        return Color(hue: Self.hue, saturation: Self.saturation, brightness: baseBrightness).opacity(0.6)
+
+        return Color(hue: hue, saturation: saturation, brightness: baseBrightness).opacity(0.6)
     }
 }
-

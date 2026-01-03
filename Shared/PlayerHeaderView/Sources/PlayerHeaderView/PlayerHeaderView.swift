@@ -14,7 +14,7 @@ import WXUI
 /// A complete player header view with playback controls and visualizer
 /// Uses AudioPlayerController.shared singleton for playback control
 /// Note: The consuming app must call `AudioPlayerController.shared.play(url:)` to start playback
-public struct PlayerHeaderView: View {
+public struct PlayerHeaderView<M: ShapeStyle>: View {
     /// Uses the shared singleton controller
     private static var controller: AudioPlayerController { AudioPlayerController.shared }
     
@@ -26,17 +26,22 @@ public struct PlayerHeaderView: View {
     /// Selected player controller type for debug switching
     @Binding var selectedPlayerType: PlayerControllerType
     
+    /// Background material for the header
+    let material: M
+    
     /// Callback when debug tap occurs (DEBUG only)
     var onDebugTapped: (() -> Void)?
-    
+
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
+        material: M,
         previewValues: [Float]? = nil,
         onDebugTapped: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
+        self.material = material
         self.onDebugTapped = onDebugTapped
         if let values = previewValues {
             _barHistory = State(initialValue: values.map { value in
@@ -71,7 +76,7 @@ public struct PlayerHeaderView: View {
             )
         }
         .padding(12)
-        .background(.ultraThinMaterial)
+        .background(material)
         .cornerRadius(12)
         .task {
             // Get stream reference on MainActor, then process on background thread
@@ -101,6 +106,23 @@ public struct PlayerHeaderView: View {
                 // If AudioPlayerController's stream implementation is robust, it shouldn't end on replace.
             }
         }
+    }
+}
+
+extension PlayerHeaderView where M == Material {
+    public init(
+        visualizer: VisualizerDataSource,
+        selectedPlayerType: Binding<PlayerControllerType>,
+        previewValues: [Float]? = nil,
+        onDebugTapped: (() -> Void)? = nil
+    ) {
+        self.init(
+            visualizer: visualizer,
+            selectedPlayerType: selectedPlayerType,
+            material: .ultraThinMaterial,
+            previewValues: previewValues,
+            onDebugTapped: onDebugTapped
+        )
     }
 }
 

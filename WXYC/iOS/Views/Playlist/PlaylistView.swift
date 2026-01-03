@@ -25,19 +25,25 @@ struct PlaycutSelection {
 struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
-    @Environment(\.isWallpaperPickerActive) private var isWallpaperPickerActive
+    @Environment(\.isThemePickerActive) private var isThemePickerActive
 
     @State private var visualizer = VisualizerDataSource()
     @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
-    @State private var showingWallpaperTip = false
+    @State private var showingThemeTip = false
 
     @State private var selectedPlaycut: PlaycutSelection?
 
     @Environment(Singletonia.self) var appState
 
+    private var currentMaterial: Material {
+        let themeID = appState.themeConfiguration.selectedThemeID
+        let theme = ThemeRegistry.shared.theme(for: themeID)
+        return theme?.manifest.materialWeight.material ?? .thinMaterial
+    }
+            
     var body: some View {
         @Bindable var appState = appState
         
@@ -48,6 +54,7 @@ struct PlaylistView: View {
                 PlayerHeaderView(
                     visualizer: visualizer,
                     selectedPlayerType: $selectedPlayerType,
+                    material: currentMaterial,
                     onDebugTapped: {
                         #if DEBUG
                         showVisualizerDebug = true
@@ -63,10 +70,10 @@ struct PlaylistView: View {
                     .padding(.vertical, 8)
                 }
 
-                // Wallpaper tip
-                if showingWallpaperTip {
-                    WallpaperTipView(isVisible: $showingWallpaperTip) {
-                        WallpaperTipView.recordDismissal()
+                // Theme tip
+                if showingThemeTip {
+                    ThemeTipView(isVisible: $showingThemeTip) {
+                        ThemeTipView.recordDismissal()
                     }
                     .padding(.vertical, 8)
                 }
@@ -96,7 +103,7 @@ struct PlaylistView: View {
                     }
                 }
             }
-            .padding(.top, isWallpaperPickerActive ? 24 : 0)
+            .padding(.top, isThemePickerActive ? 24 : 0)
             .padding(.horizontal, 12)
             .coordinateSpace(name: "scroll")
         }
@@ -118,7 +125,7 @@ struct PlaylistView: View {
         #endif
         .onAppear {
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
-            showingWallpaperTip = WallpaperTipView.shouldShow()
+            showingThemeTip = ThemeTipView.shouldShow()
         }
         .task {
             guard let playlistService else { return }
@@ -128,9 +135,9 @@ struct PlaylistView: View {
                 }
             }
         }
-        .wallpaperPickerGesture(
-            pickerState: appState.wallpaperPickerState,
-            configuration: appState.wallpaperConfiguration
+        .themePickerGesture(
+            pickerState: appState.themePickerState,
+            configuration: appState.themeConfiguration
         )
         .accessibilityIdentifier("playlistView")
         .overlaySheet(isPresented: Binding(

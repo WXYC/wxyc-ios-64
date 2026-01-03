@@ -17,7 +17,7 @@ struct RootTabView: View {
 
     @State private var selectedPage = Page.playlist
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.isWallpaperPickerActive) private var isPickerActive
+    @Environment(\.isThemePickerActive) private var isPickerActive
 
     var body: some View {
         TabView(selection: $selectedPage) {
