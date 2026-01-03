@@ -7,6 +7,7 @@
 //
 
 import AppIntents
+import Caching
 import SwiftUI
 import WidgetKit
 import WXYCIntents
@@ -41,32 +42,28 @@ struct NowPlayingWidget: Widget {
 
 // MARK: - Widget Bundle
 
-#if DEBUG
 @main
 struct NowPlayingWidgetBundle: WidgetBundle {
-    @WidgetBundleBuilder
-    var body: some Widget {
-        NowPlayingWidget()
-    }
-}
-#else
-@main
-struct NowPlayingWidgetBundle: WidgetBundle {
-    @WidgetBundleBuilder
     var body: some Widget {
         NowPlayingControl()
         NowPlayingWidget()
     }
 }
-#endif
 
 // MARK: - Control Widget
 
-@available(iOSApplicationExtension 18.0, *)
+struct PlaybackStateProvider: ControlValueProvider {
+    var previewValue: Bool { false }
+
+    func currentValue() async throws -> Bool {
+        UserDefaults.wxyc.bool(forKey: "isPlaying")
+    }
+}
+
 struct NowPlayingControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
-        AppIntentControlConfiguration(kind: "org.wxyc.control", intent: PlayWXYC.self) { config in
-            ControlWidgetButton(action: config) {
+        StaticControlConfiguration(kind: "org.wxyc.control", provider: PlaybackStateProvider()) { isPlaying in
+            ControlWidgetToggle(isOn: isPlaying, action: ToggleWXYC(value: !isPlaying)) {
                 Label {
                     Text("WXYC")
                 } icon: {
@@ -75,7 +72,7 @@ struct NowPlayingControl: ControlWidget {
             }
         }
         .displayName("Play WXYC")
-        .description("Start playing WXYC 89.3 FM.")
+        .description("Toggle WXYC 89.3 FM playback.")
     }
 }
 
