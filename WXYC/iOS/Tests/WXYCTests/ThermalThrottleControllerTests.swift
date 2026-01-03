@@ -52,9 +52,8 @@ struct ThermalThrottleControllerTests {
         #expect(controller.currentLevel == .serious)
         #expect(controller.rawThermalState == .nominal)
 
-        // Wait for hysteresis
-        try await Task.sleep(for: .milliseconds(150))
-        controller.checkHysteresisRecovery()
+        // Wait for hysteresis (scheduled task will run after 100ms and step up to .fair)
+        try await Task.sleep(for: .milliseconds(200))
 
         // Should step up one level (serious -> fair), not jump to nominal
         #expect(controller.currentLevel == .fair)
