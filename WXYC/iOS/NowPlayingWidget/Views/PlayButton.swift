@@ -5,9 +5,10 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
-import SwiftUI
 import AppIntents
 import Caching
+import SwiftUI
+import WXYCIntents
 
 struct PlayButton: View {
     @AppStorage("isPlaying", store: .wxyc)

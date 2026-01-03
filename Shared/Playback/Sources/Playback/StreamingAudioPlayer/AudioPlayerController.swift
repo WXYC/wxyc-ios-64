@@ -5,18 +5,17 @@
 //  High-level audio player controller that handles system integration
 //
 
-import Foundation
+import AVAudioStreamerModule
 import AVFoundation
+import Caching
+import Core
+import Foundation
 import MediaPlayer
+import PlaybackCore
+import RadioPlayerModule
 #if os(iOS)
 import UIKit
 #endif
-import Core
-import Caching
-import WidgetKit
-import PlaybackCore
-import RadioPlayerModule
-import AVAudioStreamerModule
 
 
 // AudioPlayerController is not available on watchOS.
@@ -81,7 +80,7 @@ public final class AudioPlayerController {
     public var isLoading: Bool {
         playbackIntended && (!isPlaying || player.state == .loading) && !player.state.isError
     }
-    
+
     // MARK: - Dependencies
     // These are nonisolated(unsafe) to allow cleanup in deinit
     
@@ -205,7 +204,6 @@ public final class AudioPlayerController {
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
         analytics.capture(PlaybackStartedEvent(reason: reason))
-        updateWidgetState()
     }
     
     /// Calculate how long playback has been active
@@ -223,7 +221,6 @@ public final class AudioPlayerController {
         #if os(iOS) || os(tvOS)
         deactivateAudioSession()
         #endif
-        updateWidgetState()
     }
     
     // MARK: - Audio Session (iOS/tvOS only)
@@ -313,7 +310,7 @@ public final class AudioPlayerController {
     
     private func removeRemoteCommandTargets() {
         guard let commandCenter = remoteCommandCenter else { return }
-        
+    
         for target in commandTargets {
             commandCenter.playCommand.removeTarget(target)
             commandCenter.pauseCommand.removeTarget(target)
@@ -431,15 +428,10 @@ public final class AudioPlayerController {
         }
     }
     #endif
-            
-    private func updateWidgetState() {
-        UserDefaults.wxyc.set(isPlaying, forKey: "isPlaying")
-        WidgetCenter.shared.reloadAllTimelines()
-    }
 }
 
 // MARK: - Convenience for views
-
+            
 extension AudioPlayerController {
     /// Stream of audio buffers for visualization
     public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
@@ -490,7 +482,7 @@ extension AudioPlayerController: PlaybackController {
         if stallStartTime != nil {
             return .stalled
         }
-
+    
         // Convert PlayerState to PlaybackState
         // PlayerState doesn't include .interrupted (controller-level concern)
         return player.state.asPlaybackState

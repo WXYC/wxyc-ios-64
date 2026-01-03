@@ -68,15 +68,6 @@ final class MockAnalytics: AnalyticsService, @unchecked Sendable {
     }
 }
 
-// MARK: - Mock UserDefaults
-
-extension UserDefaults {
-    static var test: UserDefaults {
-        let suiteName = "com.wxyc.RadioPlayerTests.\(UUID().uuidString)"
-        return UserDefaults(suiteName: suiteName)!
-    }
-}
-
 // MARK: - RadioPlayer Tests
 
 @Suite("RadioPlayer Tests")
@@ -90,12 +81,10 @@ struct RadioPlayerTests {
         // Given
         let mockPlayer = MockPlayer()
         let mockAnalytics = MockAnalytics()
-        let testDefaults = UserDefaults.test
 
         // When
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: mockAnalytics
         )
 
@@ -111,11 +100,9 @@ struct RadioPlayerTests {
         // Given
         let mockPlayer = MockPlayer()
         let mockAnalytics = MockAnalytics()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: mockAnalytics
         )
 
@@ -127,7 +114,6 @@ struct RadioPlayerTests {
 
         // Then
         #expect(mockPlayer.playCallCount == 1)
-        #expect(testDefaults.bool(forKey: "isPlaying") == true)
         #expect(mockAnalytics.capturedEventNames().contains("radioPlayer play"))
     }
 
@@ -136,11 +122,9 @@ struct RadioPlayerTests {
         // Given
         let mockPlayer = MockPlayer()
         let mockAnalytics = MockAnalytics()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: mockAnalytics
         )
 
@@ -181,37 +165,13 @@ struct RadioPlayerTests {
         #expect(mockPlayer.playCallCount >= 1)
     }
 
-    @Test("Play updates UserDefaults")
-    func playUpdatesUserDefaults() async throws {
-        // Given
-        let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
-
-        let radioPlayer = RadioPlayer(
-            player: mockPlayer,
-            userDefaults: testDefaults,
-            analytics: nil
-        )
-
-        // Ensure starting state
-        testDefaults.set(false, forKey: "isPlaying")
-
-        // When
-        radioPlayer.play()
-
-        // Then
-        #expect(testDefaults.bool(forKey: "isPlaying") == true)
-    }
-
     @Test("Play calls player.play()")
     func playCallsPlayerPlay() async throws {
         // Given
         let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
-            player: mockPlayer,
-            userDefaults: testDefaults
+            player: mockPlayer
         )
 
         // When
@@ -228,11 +188,9 @@ struct RadioPlayerTests {
     func pauseStopsPlayback() async throws {
         // Given
         let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
-            player: mockPlayer,
-            userDefaults: testDefaults
+            player: mockPlayer
         )
 
         // Start playing first
@@ -245,39 +203,15 @@ struct RadioPlayerTests {
 
         // Then
         #expect(mockPlayer.pauseCallCount == 1)
-        #expect(testDefaults.bool(forKey: "isPlaying") == false)
-    }
-
-    @Test("Pause updates UserDefaults")
-    func pauseUpdatesUserDefaults() async throws {
-        // Given
-        let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
-
-        let radioPlayer = RadioPlayer(
-            player: mockPlayer,
-            userDefaults: testDefaults
-        )
-
-        // Set to playing first
-        testDefaults.set(true, forKey: "isPlaying")
-
-        // When
-        radioPlayer.pause()
-
-        // Then
-        #expect(testDefaults.bool(forKey: "isPlaying") == false)
     }
 
     @Test("Pause resets stream")
     func pauseResetsStream() async throws {
         // Given
         let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
-            player: mockPlayer,
-            userDefaults: testDefaults
+            player: mockPlayer
         )
 
         // When
@@ -296,11 +230,9 @@ struct RadioPlayerTests {
         // Given
         let mockPlayer = MockPlayer()
         let mockAnalytics = MockAnalytics()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: mockAnalytics
         )
 
@@ -317,11 +249,9 @@ struct RadioPlayerTests {
     func worksWithoutAnalytics() async throws {
         // Given
         let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: nil // No analytics
         )
 
@@ -344,11 +274,9 @@ struct RadioPlayerTests {
         // Given
         let notificationCenter = NotificationCenter()
         let mockPlayer = MockPlayer()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: nil,
             notificationCenter: notificationCenter
         )
@@ -373,11 +301,9 @@ struct RadioPlayerTests {
         // Given
         let mockPlayer = MockPlayer()
         let mockAnalytics = MockAnalytics()
-        let testDefaults = UserDefaults.test
 
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: testDefaults,
             analytics: mockAnalytics
         )
 
@@ -387,7 +313,6 @@ struct RadioPlayerTests {
 
         // Then - Playing state
         #expect(mockPlayer.playCallCount == 1)
-        #expect(testDefaults.bool(forKey: "isPlaying") == true)
 
         // When - Pause
         radioPlayer.pause()
@@ -395,21 +320,6 @@ struct RadioPlayerTests {
 
         // Then - Paused state
         #expect(mockPlayer.pauseCallCount == 1)
-        #expect(testDefaults.bool(forKey: "isPlaying") == false)
         #expect(mockPlayer.replaceCurrentItemCallCount == 1) // Stream reset
-    }
-
-    @Test("UserDefaults isolation between tests")
-    func userDefaultsIsolation() async throws {
-        // Given
-        let testDefaults1 = UserDefaults.test
-        let testDefaults2 = UserDefaults.test
-
-        // When
-        testDefaults1.set(true, forKey: "isPlaying")
-
-        // Then - Different suite names should be isolated
-        #expect(testDefaults1.bool(forKey: "isPlaying") == true)
-        #expect(testDefaults2.bool(forKey: "isPlaying") == false)
     }
 }

@@ -49,7 +49,6 @@ extension RadioPlayerController {
     static func makeForTesting(
         radioPlayer: any AudioPlayerProtocol = RadioPlayer(
             player: MockPlayer(),
-            userDefaults: .test,
             analytics: nil
         ),
         notificationCenter: NotificationCenter = NotificationCenter(),
@@ -91,7 +90,6 @@ struct RadioPlayerControllerTests {
         let notificationCenter = NotificationCenter()
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: .test,
             analytics: nil,
             notificationCenter: notificationCenter
         )
@@ -127,7 +125,6 @@ struct RadioPlayerControllerTests {
         let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: .test,
             analytics: nil
         )
         let controller = RadioPlayerController.makeForTesting(
@@ -154,7 +151,6 @@ struct RadioPlayerControllerTests {
         let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
             player: mockPlayer,
-            userDefaults: .test,
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
