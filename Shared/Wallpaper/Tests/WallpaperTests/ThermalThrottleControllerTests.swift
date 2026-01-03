@@ -9,8 +9,7 @@ struct ThermalThrottleControllerTests {
     @Test("Initial state is nominal")
     func initialState() {
         let controller = ThermalThrottleController(
-            thermalStateProvider: { .nominal },
-            startMonitoringAutomatically: false
+            thermalStateProvider: { .nominal }
         )
         #expect(controller.currentLevel == .nominal)
         #expect(controller.rawThermalState == .nominal)
@@ -18,10 +17,9 @@ struct ThermalThrottleControllerTests {
 
     @Test("Immediate downgrade on thermal worsening")
     func immediateDowngrade() {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .nominal
+        var mockState: ProcessInfo.ThermalState = .nominal
         let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState },
-            startMonitoringAutomatically: false
+            thermalStateProvider: { mockState }
         )
 
         #expect(controller.currentLevel == .nominal)
@@ -35,11 +33,10 @@ struct ThermalThrottleControllerTests {
 
     @Test("Delayed upgrade with hysteresis")
     func delayedUpgrade() async throws {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .serious
+        var mockState: ProcessInfo.ThermalState = .serious
         let controller = ThermalThrottleController(
             thermalStateProvider: { mockState },
-            hysteresisDelay: .milliseconds(100),
-            startMonitoringAutomatically: false
+            hysteresisDelay: 0.1
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .serious)
@@ -52,8 +49,9 @@ struct ThermalThrottleControllerTests {
         #expect(controller.currentLevel == .serious)
         #expect(controller.rawThermalState == .nominal)
 
-        // Wait for hysteresis (scheduled task will run after 100ms and step up to .fair)
-        try await Task.sleep(for: .milliseconds(200))
+        // Wait for hysteresis
+        try await Task.sleep(for: .milliseconds(150))
+        controller.checkHysteresisRecovery()
 
         // Should step up one level (serious -> fair), not jump to nominal
         #expect(controller.currentLevel == .fair)
@@ -61,11 +59,10 @@ struct ThermalThrottleControllerTests {
 
     @Test("Steps up one level at a time")
     func stepsUpOneLevel() async throws {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .critical
+        var mockState: ProcessInfo.ThermalState = .critical
         let controller = ThermalThrottleController(
             thermalStateProvider: { mockState },
-            hysteresisDelay: .milliseconds(50),
-            startMonitoringAutomatically: false
+            hysteresisDelay: 0.05
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .critical)
@@ -95,11 +92,10 @@ struct ThermalThrottleControllerTests {
 
     @Test("Downgrade cancels pending upgrade")
     func downgradeCancelsPendingUpgrade() async throws {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .fair
+        var mockState: ProcessInfo.ThermalState = .fair
         let controller = ThermalThrottleController(
             thermalStateProvider: { mockState },
-            hysteresisDelay: .milliseconds(500),
-            startMonitoringAutomatically: false
+            hysteresisDelay: 0.5
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .fair)
@@ -126,8 +122,7 @@ struct ThermalThrottleControllerTests {
     func noChangeWhenUnchanged() {
         let mockState: ProcessInfo.ThermalState = .fair
         let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState },
-            startMonitoringAutomatically: false
+            thermalStateProvider: { mockState }
         )
         controller.checkThermalState()
         #expect(controller.currentLevel == .fair)
@@ -139,10 +134,9 @@ struct ThermalThrottleControllerTests {
 
     @Test("Multiple rapid downgrades")
     func rapidDowngrades() {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .nominal
+        var mockState: ProcessInfo.ThermalState = .nominal
         let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState },
-            startMonitoringAutomatically: false
+            thermalStateProvider: { mockState }
         )
 
         mockState = .fair
@@ -156,42 +150,5 @@ struct ThermalThrottleControllerTests {
         mockState = .critical
         controller.checkThermalState()
         #expect(controller.currentLevel == .critical)
-    }
-
-    @Test("AsyncStream yields level changes")
-    func asyncStreamYieldsChanges() async {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .nominal
-        let controller = ThermalThrottleController(
-            thermalStateProvider: { mockState },
-            startMonitoringAutomatically: false
-        )
-
-        var receivedLevels: [ThermalThrottleLevel] = []
-        let expectation = Task {
-            for await level in controller.levelChanges {
-                receivedLevels.append(level)
-                if receivedLevels.count >= 3 {
-                    break
-                }
-            }
-        }
-
-        // Give the stream time to set up
-        try? await Task.sleep(for: .milliseconds(10))
-
-        // Trigger changes
-        mockState = .fair
-        controller.checkThermalState()
-
-        mockState = .serious
-        controller.checkThermalState()
-
-        // Wait for stream to receive values
-        try? await Task.sleep(for: .milliseconds(50))
-        expectation.cancel()
-
-        #expect(receivedLevels.contains(.nominal))
-        #expect(receivedLevels.contains(.fair))
-        #expect(receivedLevels.contains(.serious))
     }
 }
