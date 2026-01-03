@@ -11,7 +11,6 @@ import AVFoundation
 import MediaPlayer
 import Logger
 import Core
-import Caching
 import PostHog
 import Analytics
 import PlaybackCore
@@ -23,7 +22,6 @@ public final class RadioPlayer: Sendable {
     private var rateObservation: (any NSObjectProtocol)?
     private var stallObservation: (any NSObjectProtocol)?
     private var timer: Core.Timer = Core.Timer.start()
-    private let userDefaults: UserDefaults
     private let analytics: AnalyticsService?
     private let notificationCenter: NotificationCenter
 
@@ -62,7 +60,6 @@ public final class RadioPlayer: Sendable {
         self.init(
             streamURL: streamURL,
             player: AVPlayer(url: streamURL),
-            userDefaults: .wxyc,
             analytics: PostHogAnalytics.shared,
             notificationCenter: .default
         )
@@ -71,13 +68,11 @@ public final class RadioPlayer: Sendable {
     init(
         streamURL: URL = RadioStation.WXYC.streamURL,
         player: PlayerProtocol,
-        userDefaults: UserDefaults,
         analytics: AnalyticsService? = nil,
         notificationCenter: NotificationCenter = .default
     ) {
         self.streamURL = streamURL
         self.player = player
-        self.userDefaults = userDefaults
         self.analytics = analytics
         self.notificationCenter = notificationCenter
 
@@ -156,9 +151,6 @@ public final class RadioPlayer: Sendable {
             return
         }
 
-        // Mark as playing in shared UserDefaults
-        userDefaults.set(true, forKey: "isPlaying")
-
         analytics?.capture("radioPlayer play")
         timer = Timer.start()
         state = .loading
@@ -166,8 +158,6 @@ public final class RadioPlayer: Sendable {
     }
 
     func pause() {
-        userDefaults.set(false, forKey: "isPlaying")
-
         state = .idle
         self.player.pause()
         self.resetStream()

@@ -6,9 +6,10 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
-import WidgetKit
-import SwiftUI
 import AppIntents
+import SwiftUI
+import WidgetKit
+import WXYCIntents
 
 // MARK: - Widget Definitions
 
@@ -19,6 +20,9 @@ struct NowPlayingWidget: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             content(for: entry)
         }
+        .configurationDisplayName("WXYC Now Playing")
+        .description("See what's playing on WXYC 89.3 FM.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
     
@@ -70,6 +74,8 @@ struct NowPlayingControl: ControlWidget {
                 }
             }
         }
+        .displayName("Play WXYC")
+        .description("Start playing WXYC 89.3 FM.")
     }
 }
 

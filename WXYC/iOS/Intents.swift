@@ -6,39 +6,26 @@
 //  Copyright © 2023 WXYC. All rights reserved.
 //
 
-import Foundation
 import AppIntents
-import SwiftUI
-import Logger
-import PostHog
-import UIKit
-import MusicShareKit
-import Playback
-import WidgetKit
 import AppServices
-import Playlist
 import Artwork
+import Logger
+import MusicShareKit
+import Playlist
+import PostHog
+import SwiftUI
+import UIKit
+import WXYCIntents
 
-struct IntentError: Error {
-    let description: String
-}
-
-/// Helper to sync playback state with widget
-/// Note: App Intents run in a separate process and cannot access SwiftUI environment,
-/// so they access the shared controller directly.
-@MainActor
-private var playbackController: PlaybackController { AudioPlayerController.shared }
-
-@MainActor
-private func syncWidgetPlaybackState() {
-    UserDefaults.wxyc.set(playbackController.isPlaying, forKey: "isPlaying")
-    WidgetCenter.shared.reloadAllTimelines()
-}
+@_exported import struct WXYCIntents.PlayWXYC
+@_exported import struct WXYCIntents.PauseWXYC
+@_exported import struct WXYCIntents.ToggleWXYC
+@_exported import struct WXYCIntents.IntentError
 
 // App-level service access for intents
 // App Intents run in a separate process and cannot access the main app's
 // SwiftUI environment, so they must create their own service instances.
-enum AppServices {
+enum AppIntentServices {
     @MainActor
     static func nowPlayingService() -> NowPlayingService {
         NowPlayingService(
@@ -47,79 +34,6 @@ enum AppServices {
         )
     }
 }
-
-struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
-    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    public static let description = "Plays WXYC"
-    public static let isDiscoverable = true
-    public static let openAppWhenRun = false
-    public static let title: LocalizedStringResource = "Play WXYC"
-    
-    public var displayRepresentation = DisplayRepresentation(
-        title: Self.title,
-        subtitle: nil,
-        image: .init(systemName: "play.fill")
-    )
-
-    public init() { }
-    public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
-        Log(.info, "PlayWXYC intent")
-        try await MainActor.run {
-            try playbackController.play(reason: "PlayWXYC intent")
-        }
-        await syncWidgetPlaybackState()
-        
-        let value = "Tuning in to WXYC…"
-        return .result(
-            value: value,
-            dialog: IntentDialog(stringLiteral: value)
-        )
-    }
-    
-    @available(iOS 26.0, *)
-    static var supportedModes: IntentModes { [.background] }
-}
-
-struct PauseWXYC: AudioPlaybackIntent {
-    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    public static let description = "Pauses WXYC"
-    public static let isDiscoverable = false
-    public static let openAppWhenRun = false
-    public static let title: LocalizedStringResource = "Pause WXYC"
-
-    public init() { }
-    public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        PostHogSDK.shared.capture("PauseWXYC intent")
-        await MainActor.run {
-            playbackController.stop()
-        }
-        await syncWidgetPlaybackState()
-        return .result(value: "Now pausing WXYC")
-    }
-}
-
-struct ToggleWXYC: AudioPlaybackIntent {
-    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    public static let description = "Toggles WXYC Playback"
-    public static let isDiscoverable = false
-    public static let openAppWhenRun = false
-    public static let title: LocalizedStringResource = "Toggle WXYC"
-
-    public init() { }
-    public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        try await MainActor.run {
-            try playbackController.toggle(reason: "ToggleWXYC intent")
-        }
-        await syncWidgetPlaybackState()
-        return .result(value: "Now toggling WXYC")
-    }
-}
-
-#if os(iOS)
-extension PlayWXYC: ControlConfigurationIntent {
-    
-}
-#endif
 
 struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -136,7 +50,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
 
     public init() { }
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
-        let nowPlayingService = await MainActor.run { AppServices.nowPlayingService() }
+        let nowPlayingService = await AppIntentServices.nowPlayingService()
 
         // Get the first item from the now playing service
         var iterator = nowPlayingService.makeAsyncIterator()
@@ -213,7 +127,7 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
         )
     }
 }
-
+    
 struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(

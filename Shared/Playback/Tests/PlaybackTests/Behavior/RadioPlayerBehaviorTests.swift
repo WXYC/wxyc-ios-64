@@ -21,7 +21,6 @@ struct RadioPlayerBehaviorTests {
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
-            userDefaults: UserDefaults(suiteName: "test-\(UUID().uuidString)")!,
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
@@ -37,7 +36,6 @@ struct RadioPlayerBehaviorTests {
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
-            userDefaults: UserDefaults(suiteName: "test-\(UUID().uuidString)")!,
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
@@ -54,7 +52,6 @@ struct RadioPlayerBehaviorTests {
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
-            userDefaults: UserDefaults(suiteName: "test-\(UUID().uuidString)")!,
             analytics: nil,
             notificationCenter: NotificationCenter()
         )
@@ -72,7 +69,6 @@ struct RadioPlayerBehaviorTests {
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
-            userDefaults: UserDefaults(suiteName: "test-\(UUID().uuidString)")!,
             analytics: nil,
             notificationCenter: notificationCenter
         )
@@ -97,7 +93,6 @@ struct RadioPlayerBehaviorTests {
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
-            userDefaults: UserDefaults(suiteName: "test-\(UUID().uuidString)")!,
             analytics: nil,
             notificationCenter: NotificationCenter()
         )

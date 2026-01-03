@@ -11,10 +11,10 @@ import Artwork
 import AVFoundation
 import BackgroundTasks
 import Caching
-import Playlist
 import Core
 import Intents
 import Logger
+import Observation
 import OpenNSFW
 import Playback
 import PlayerHeaderView
@@ -22,10 +22,8 @@ import Playlist
 import PostHog
 import Secrets
 import SwiftUI
-import WidgetKit
-import WXUI
 import Wallpaper
-import Observation
+import WXUI
 #if DEBUG
 import DebugPanel
 #endif
@@ -37,44 +35,36 @@ import DebugPanel
 final class Singletonia {
     static let shared = Singletonia()
 
-    var nowPlayingInfoCenterManager: NowPlayingInfoCenterManager?
+    let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
+    let widgetStateService: WidgetStateService
 
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
 
-    private var playlistObservationTask: Task<Void, Never>?
-    private var isForegrounded = false
-
-    private init() { }
+    private init() {
+        self.widgetStateService = WidgetStateService(
+            playbackController: AudioPlayerController.shared,
+            playlistService: playlistService
+        )
     
+        let nowPlayingService = NowPlayingService(
+            playlistService: playlistService,
+            artworkService: artworkService
+        )
+        nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(nowPlayingService: nowPlayingService)
+    }
+
     /// Update the foreground state (called when scene phase changes)
     func setForegrounded(_ foregrounded: Bool) {
-        isForegrounded = foregrounded
+        widgetStateService.setForegrounded(foregrounded)
     }
-    
-    /// Start observing playlist updates and reload widgets when the playlist changes
-    /// Note: Widget reloads only occur when the app is in the foreground to avoid
-    /// consuming the daily refresh budget (40-70 updates/day) when backgrounded.
-    func startObservingPlaylistUpdates() {
-        // Cancel any existing observation task
-        playlistObservationTask?.cancel()
         
-        let service = playlistService
-        playlistObservationTask = Task { [weak self] in
-            for await _ in service.updates() {
-                // Only reload widgets when app is in foreground
-                // (foreground reloads don't count against daily budget)
-                await MainActor.run {
-                    guard let self, self.isForegrounded else { return }
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
-            }
-        }
+    /// Start the widget state service to observe playback and playlist updates
+    func startWidgetStateService() {
+        widgetStateService.start()
     }
-    
-
 }
 
 @main
@@ -91,7 +81,6 @@ struct WXYCApp: App {
             ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
         }
         
-        UserDefaults.wxyc.removeObject(forKey: "isPlaying")
         // Analytics setup
         setUpAnalytics()
         PostHogSDK.shared.capture("app launch")
@@ -110,23 +99,10 @@ struct WXYCApp: App {
         }
         #endif
 
-        // Widget reload
-        WidgetCenter.shared.getCurrentConfigurations { result in
-            guard case let .success(configurations) = result else {
-                return
-            }
-
-            for configuration in configurations {
-                Log(.info, configuration)
-            }
-
-            WidgetCenter.shared.reloadAllTimelines()
-        }
-
         // Siri intent donation
         Self.donateSiriIntent()
     }
-
+        
     var body: some Scene {
         WindowGroup {
             ThemePickerContainer(
@@ -142,23 +118,10 @@ struct WXYCApp: App {
                         .environment(\.playbackController, AudioPlayerController.shared)
                         .forceLightStatusBar()
                         .onAppear {
-                            setUpNowPlayingInfoCenter()
                             setUpQuickActions()
                             appState.setForegrounded(true)
-                            appState.startObservingPlaylistUpdates()
-                            
-                            // Listen for app termination to clear playing state
-#if os(iOS)
-                            NotificationCenter.default.addObserver(
-                                forName: UIApplication.willTerminateNotification,
-                                object: nil,
-                                queue: .main
-                            ) { _ in
-                                // Clear the playing state so widget doesn't show "Pause" after termination
-                                UserDefaults.wxyc.set(false, forKey: "isPlaying")
-                            }
-#endif
-                            
+                            appState.startWidgetStateService()
+
                             // Force status bar to be light
 #if os(iOS)
                             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -192,20 +155,18 @@ struct WXYCApp: App {
         }
         .backgroundTask(.appRefresh("com.wxyc.refresh")) {
             Log(.info, "Background refresh started")
-            
+
             // Fetch fresh playlist (this always fetches from network, ignoring cache)
-            // and caches it with a 15-minute lifespan
+            // and caches it with a 15-minute lifespan.
+            // Note: Widget reload is handled by WidgetStateService observing playlist updates.
             let playlist = await appState.playlistService.fetchAndCachePlaylist()
-            
-            // Update widget with fresh data
-            WidgetCenter.shared.reloadAllTimelines()
-            
+
             Log(.info, "Background refresh completed successfully with \(playlist.entries.count) entries")
-            
+
             PostHogSDK.shared.capture("Background refresh completed", additionalData: [
                 "entry_count": "\(playlist.entries.count)"
             ])
-            
+
             // Schedule the next refresh
             await MainActor.run {
                 scheduleBackgroundRefresh()
@@ -224,7 +185,6 @@ struct WXYCApp: App {
                         Task {
                             Log(.info, "Manual background refresh triggered")
                             let playlist = await appState.playlistService.fetchAndCachePlaylist()
-                            WidgetCenter.shared.reloadAllTimelines()
                             Log(.info, "Manual background refresh completed with \(playlist.entries.count) entries")
                         }
                     }
@@ -232,18 +192,8 @@ struct WXYCApp: App {
             #endif
             }
     }
-
+            
     // MARK: - Setup
-
-    private func setUpNowPlayingInfoCenter() {
-        let nowPlayingService = NowPlayingService(
-            playlistService: appState.playlistService,
-            artworkService: appState.artworkService
-        )
-        appState.nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
-            nowPlayingService: nowPlayingService
-        )
-    }
 
     private func setUpQuickActions() {
         let playShortcut = UIApplicationShortcutItem(
@@ -255,7 +205,7 @@ struct WXYCApp: App {
         )
         UIApplication.shared.shortcutItems = [playShortcut]
     }
-
+            
     private func handleURL(_ url: URL) {
         // Handle deep links and user activities
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
@@ -279,25 +229,18 @@ struct WXYCApp: App {
     private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .background:
-            // Save state and handle audio session when entering background
             PostHogSDK.shared.capture("App entered background", properties: [
                 "Is Playing?": AudioPlayerController.shared.isPlaying
             ])
-            UserDefaults.wxyc.set(AudioPlayerController.shared.isPlaying, forKey: "isPlaying")
             AudioPlayerController.shared.handleAppDidEnterBackground()
             appState.setForegrounded(false)
 
         case .inactive:
-            // Handle becoming inactive (e.g., phone call, control center)
             appState.setForegrounded(false)
 
         case .active:
-            // Handle becoming active - reactivate audio session if needed
             AudioPlayerController.shared.handleAppWillEnterForeground()
             appState.setForegrounded(true)
-            // Reload widgets when app becomes active to show latest data
-            WidgetCenter.shared.reloadAllTimelines()
-            // Schedule next background refresh
             scheduleBackgroundRefresh()
             // Refresh playlist if cache has expired while in background.
             // This ensures users see fresh data when returning to the app after
