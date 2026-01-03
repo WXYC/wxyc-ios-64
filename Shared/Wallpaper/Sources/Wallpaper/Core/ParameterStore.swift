@@ -8,17 +8,17 @@
 import Foundation
 import Observation
 
-/// Observable storage for wallpaper parameter values.
+/// Observable storage for theme parameter values.
 ///
 /// Stores current parameter values at runtime and syncs with UserDefaults
-/// for persistence. The store is keyed by wallpaper ID.
+/// for persistence. The store is keyed by theme ID.
 @Observable
 @MainActor
 public final class ParameterStore: Sendable {
     private var values: [String: Any] = [:]
-    private let manifest: WallpaperManifest
+    private let manifest: ThemeManifest
 
-    public init(manifest: WallpaperManifest) {
+    public init(manifest: ThemeManifest) {
         self.manifest = manifest
         loadFromDefaults()
     }

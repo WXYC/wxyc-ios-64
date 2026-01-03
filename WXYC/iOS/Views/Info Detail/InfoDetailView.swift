@@ -25,19 +25,25 @@ struct InfoDetailView: View {
     @State private var requestText = ""
     @Environment(Singletonia.self) private var appState
 
+    /// The foreground color based on the current theme.
+    private var themeForegroundColor: Color {
+        let themeID = appState.themeConfiguration.selectedThemeID
+        let theme = ThemeRegistry.shared.theme(for: themeID)
+        return theme?.manifest.foreground.color ?? .white
+    }
+
     var body: some View {
         VStack(alignment: .center) {
             Spacer()
-            
+
             FittingText("You're tuned in.")
-//                .font(.largeTitle.pointSize(72))
                 .fontWeight(.black)
-                .foregroundStyle(.white)
+                .foregroundStyle(themeForegroundColor)
                 .padding(.bottom)
-            
+
             Text(RadioStation.WXYC.description)
                 .font(.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(themeForegroundColor)
                 .padding(.bottom)
             
             VStack(spacing: 16) {
@@ -109,9 +115,9 @@ struct InfoDetailView: View {
         .sheet(isPresented: $showingMailComposer) {
             MailComposerView(attachLogs: attachLogsToEmail)
         }
-        .wallpaperPickerGesture(
-            pickerState: appState.wallpaperPickerState,
-            configuration: appState.wallpaperConfiguration
+        .themePickerGesture(
+            pickerState: appState.themePickerState,
+            configuration: appState.themeConfiguration
         )
     }
 

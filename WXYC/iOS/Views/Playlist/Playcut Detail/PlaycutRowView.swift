@@ -11,6 +11,7 @@ import UIKit
 import WXUI
 import Playlist
 import Artwork
+import Wallpaper
 
 // MARK: - Artwork View Components
 
@@ -91,7 +92,14 @@ struct PlaycutRowView: View {
     private let shadowOffsetAtTop: CGFloat = -3
     private let shadowOffsetAtBottom: CGFloat = 3
 
+    @Environment(Singletonia.self) private var appState
     @Environment(\.artworkService) private var artworkService
+
+    private var currentMaterial: Material {
+        let themeID = appState.themeConfiguration.selectedThemeID
+        let theme = ThemeRegistry.shared.theme(for: themeID)
+        return theme?.manifest.materialWeight.material ?? .thinMaterial
+    }
     private var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
         TimelineView(.animation) { context in
             let time = context.date.timeIntervalSince1970 + TimeInterval(timeOffset)
@@ -142,7 +150,7 @@ struct PlaycutRowView: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     // Background layer
-                    BackgroundLayer()
+                    BackgroundLayer(material: currentMaterial)
                     
                     // Content that can punch through the background
                     HStack(alignment: .center, spacing: 0) {

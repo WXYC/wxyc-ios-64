@@ -22,7 +22,7 @@ public struct VisualizerDebugView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
-    private var wallpaperDebugState = WallpaperDebugState.shared
+    private var themeDebugState = ThemeDebugState.shared
 
     private var throttleController = ThermalThrottleController.shared
 
@@ -51,9 +51,9 @@ public struct VisualizerDebugView: View {
 
                 // Wallpaper Debug Overlay
                 Section {
-                    Toggle("Show Wallpaper Debug Button", isOn: Binding(
-                        get: { wallpaperDebugState.showOverlay },
-                        set: { wallpaperDebugState.showOverlay = $0 }
+                    Toggle("Show Theme Debug Button", isOn: Binding(
+                        get: { themeDebugState.showOverlay },
+                        set: { themeDebugState.showOverlay = $0 }
                     ))
                 } header: {
                     Text("Wallpaper")
@@ -112,12 +112,12 @@ public struct VisualizerDebugView: View {
                 Section {
                     Button("Reset Tip Views") {
                         SiriTipView.resetState()
-                        WallpaperTipView.resetState()
+                        ThemeTipView.resetState()
                     }
                 } header: {
                     Text("Tips")
                 } footer: {
-                    Text("Resets Siri and Wallpaper tip dismissal state so they appear again on next launch.")
+                    Text("Resets Siri and Theme tip dismissal state so they appear again on next launch.")
                 }
 
                 // Player Controller Selection

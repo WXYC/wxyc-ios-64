@@ -10,24 +10,24 @@ import SwiftUI
 /// Factory for creating the appropriate view for a wallpaper based on its renderer type.
 public enum WallpaperRendererFactory {
     @ViewBuilder
-    public static func makeView(for wallpaper: LoadedWallpaper) -> some View {
-        switch wallpaper.manifest.renderer.type {
+    public static func makeView(for theme: LoadedTheme) -> some View {
+        switch theme.manifest.renderer.type {
         case .stitchable:
             // Use MTKView-based renderer if fragmentFunction is specified (eliminates CPU overhead)
-            if wallpaper.manifest.renderer.fragmentFunction != nil {
-                MetalWallpaperView(wallpaper: wallpaper)
+            if theme.manifest.renderer.fragmentFunction != nil {
+                MetalWallpaperView(theme: theme)
             } else {
-                StitchableWallpaperView(wallpaper: wallpaper)
+                StitchableWallpaperView(theme: theme)
             }
 
         case .rawMetal:
-            MetalWallpaperView(wallpaper: wallpaper, directiveStore: wallpaper.directiveStore)
+            MetalWallpaperView(theme: theme, directiveStore: theme.directiveStore)
 
         case .composite:
-            CompositeWallpaperView(wallpaper: wallpaper)
+            CompositeWallpaperView(theme: theme)
 
         case .swiftUI:
-            SwiftUIWallpaperView(wallpaper: wallpaper)
+            SwiftUIWallpaperView(theme: theme)
         }
     }
 }

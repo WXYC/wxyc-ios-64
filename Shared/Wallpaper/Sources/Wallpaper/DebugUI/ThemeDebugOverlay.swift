@@ -1,21 +1,21 @@
 //
-//  WallpaperDebugOverlay.swift
+//  ThemeDebugOverlay.swift
 //  Wallpaper
 //
-//  Floating button overlay that presents wallpaper debug controls in a popover.
+//  Floating button overlay that presents theme debug controls in a popover.
 //
 
 import SwiftUI
 
 #if DEBUG
-/// Floating button overlay for wallpaper debug controls.
+/// Floating button overlay for theme debug controls.
 /// Shows a button in the bottom-right corner that presents a popover with
-/// wallpaper selection and parameter controls.
-public struct WallpaperDebugOverlay: View {
-    @Bindable var configuration: WallpaperConfiguration
+/// theme selection and parameter controls.
+public struct ThemeDebugOverlay: View {
+    @Bindable var configuration: ThemeConfiguration
     @State private var showingPopover = false
 
-    public init(configuration: WallpaperConfiguration) {
+    public init(configuration: ThemeConfiguration) {
         self.configuration = configuration
     }
 
@@ -33,7 +33,7 @@ public struct WallpaperDebugOverlay: View {
                         .shadow(radius: 4)
                 }
                 .popover(isPresented: $showingPopover) {
-                    WallpaperDebugPopoverContent(configuration: configuration)
+                    ThemeDebugPopoverContent(configuration: configuration)
                 }
             }
         }
@@ -41,43 +41,43 @@ public struct WallpaperDebugOverlay: View {
     }
 }
 
-/// Content for the wallpaper debug popover.
-private struct WallpaperDebugPopoverContent: View {
-    @Bindable var configuration: WallpaperConfiguration
+/// Content for the theme debug popover.
+private struct ThemeDebugPopoverContent: View {
+    @Bindable var configuration: ThemeConfiguration
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Wallpaper picker
+                // Theme picker
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Wallpaper")
+                    Text("Theme")
                         .font(.headline)
 
-                    Picker("Wallpaper", selection: $configuration.selectedWallpaperID) {
-                        ForEach(WallpaperRegistry.shared.wallpapers) { wallpaper in
-                            Text(wallpaper.displayName).tag(wallpaper.id)
+                    Picker("Theme", selection: $configuration.selectedThemeID) {
+                        ForEach(ThemeRegistry.shared.themes) { theme in
+                            Text(theme.displayName).tag(theme.id)
                         }
                     }
                     .labelsHidden()
                 }
 
-                if let wallpaper = WallpaperRegistry.shared.wallpaper(for: configuration.selectedWallpaperID) {
+                if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
                     // Parameters (no disclosure group)
-                    if !wallpaper.manifest.parameters.isEmpty {
+                    if !theme.manifest.parameters.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Parameters")
                                 .font(.headline)
 
-                            WallpaperDebugControlsGenerator(wallpaper: wallpaper)
+                            ThemeDebugControlsGenerator(theme: theme)
                         }
                     }
 
                     // Shader directives (no disclosure group)
-                    ShaderDirectiveControlsExpanded(wallpaper: wallpaper)
+                    ShaderDirectiveControlsExpanded(theme: theme)
                 }
 
                 // Reset button
-                Button("Reset Wallpaper Settings") {
+                Button("Reset Theme Settings") {
                     configuration.reset()
                 }
                 .foregroundStyle(.red)
@@ -91,7 +91,7 @@ private struct WallpaperDebugPopoverContent: View {
 
 /// Shader directive controls without the disclosure group wrapper.
 private struct ShaderDirectiveControlsExpanded: View {
-    let wallpaper: LoadedWallpaper
+    let theme: LoadedTheme
     @State private var directives: [ShaderDirectiveStore.DirectiveInfo] = []
 
     var body: some View {
@@ -102,8 +102,8 @@ private struct ShaderDirectiveControlsExpanded: View {
 
                 ForEach(directives) { directive in
                     Toggle(directive.displayName, isOn: Binding(
-                        get: { wallpaper.directiveStore.isEnabled(directive.id) },
-                        set: { wallpaper.directiveStore.setEnabled($0, for: directive.id) }
+                        get: { theme.directiveStore.isEnabled(directive.id) },
+                        set: { theme.directiveStore.setEnabled($0, for: directive.id) }
                     ))
                 }
 
@@ -114,13 +114,13 @@ private struct ShaderDirectiveControlsExpanded: View {
         }
     }
 
-    init(wallpaper: LoadedWallpaper) {
-        self.wallpaper = wallpaper
-        self._directives = State(initialValue: Self.parseDirectives(for: wallpaper))
+    init(theme: LoadedTheme) {
+        self.theme = theme
+        self._directives = State(initialValue: Self.parseDirectives(for: theme))
     }
 
-    private static func parseDirectives(for wallpaper: LoadedWallpaper) -> [ShaderDirectiveStore.DirectiveInfo] {
-        guard let shaderFile = wallpaper.manifest.renderer.shaderFile else { return [] }
+    private static func parseDirectives(for theme: LoadedTheme) -> [ShaderDirectiveStore.DirectiveInfo] {
+        guard let shaderFile = theme.manifest.renderer.shaderFile else { return [] }
 
         let shaderName = shaderFile.replacing(".metal", with: "")
         guard let url = Bundle.module.url(forResource: shaderName, withExtension: "metal"),
@@ -160,11 +160,11 @@ private struct ShaderDirectiveControlsExpanded: View {
             }
         }
 
-        if wallpaper.directiveStore.availableDirectives.isEmpty && !directives.isEmpty {
-            wallpaper.directiveStore.configure(with: directives.map(\.id))
+        if theme.directiveStore.availableDirectives.isEmpty && !directives.isEmpty {
+            theme.directiveStore.configure(with: directives.map(\.id))
             for directive in directives {
                 if !directive.isEnabled {
-                    wallpaper.directiveStore.setEnabled(false, for: directive.id)
+                    theme.directiveStore.setEnabled(false, for: directive.id)
                 }
             }
         }

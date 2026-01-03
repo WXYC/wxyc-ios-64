@@ -2,17 +2,17 @@
 //  WallpaperDebugState.swift
 //  Wallpaper
 //
-//  Manages state for the wallpaper debug overlay.
+//  Manages state for the theme debug overlay.
 //
 
 import Foundation
 import Observation
 
-/// State for the wallpaper debug overlay button visibility.
+/// State for the theme debug overlay button visibility.
 @Observable
 @MainActor
-public final class WallpaperDebugState {
-    public static let shared = WallpaperDebugState()
+public final class ThemeDebugState {
+    public static let shared = ThemeDebugState()
 
     private let storageKey = "wallpaper.debug.showOverlay"
 

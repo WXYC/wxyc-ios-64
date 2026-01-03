@@ -1,5 +1,5 @@
 //
-//  WallpaperCarouselView.swift
+//  ThemeCarouselView.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/20/25.
@@ -11,24 +11,24 @@ import SwiftUI
 import UIKit
 #endif
 
-/// Horizontal carousel view showing all available wallpapers.
-/// Only the centered wallpaper renders live; others show static snapshots.
-struct WallpaperCarouselView: View {
-    @Bindable var configuration: WallpaperConfiguration
-    @Bindable var pickerState: WallpaperPickerState
+/// Horizontal carousel view showing all available themes.
+/// Only the centered theme renders live; others show static snapshots.
+struct ThemeCarouselView: View {
+    @Bindable var configuration: ThemeConfiguration
+    @Bindable var pickerState: ThemePickerState
     let screenSize: CGSize
 
-    /// Scale factor for wallpaper cards relative to screen size.
+    /// Scale factor for theme cards relative to screen size.
     private let cardScale: CGFloat = 0.75
 
-    /// Corner radius for wallpaper cards.
+    /// Corner radius for theme cards.
     private let cardCornerRadius: CGFloat = 40
 
     /// Spacing between cards.
     private let cardSpacing: CGFloat = 16
 
-    private var wallpapers: [LoadedWallpaper] {
-        WallpaperRegistry.shared.wallpapers
+    private var themes: [LoadedTheme] {
+        ThemeRegistry.shared.themes
     }
 
     private var cardSize: CGSize {
@@ -42,9 +42,9 @@ struct WallpaperCarouselView: View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: cardSpacing) {
-                    ForEach(Array(wallpapers.enumerated()), id: \.element.id) { index, wallpaper in
-                        WallpaperCardView(
-                            wallpaper: wallpaper,
+                    ForEach(Array(themes.enumerated()), id: \.element.id) { index, theme in
+                        ThemeCardView(
+                            theme: theme,
                             cardSize: cardSize,
                             cornerRadius: cardCornerRadius
                         )
@@ -73,14 +73,14 @@ struct WallpaperCarouselView: View {
             ))
             .safeAreaPadding(.horizontal, (screenSize.width - cardSize.width) / 2)
             .onChange(of: pickerState.carouselIndex) { _, newIndex in
-                pickerState.updateCenteredWallpaper(forIndex: newIndex)
+                pickerState.updateCenteredTheme(forIndex: newIndex)
             }
             .onAppear {
                 // Ensure scroll position is set correctly on initial appearance
                 proxy.scrollTo(pickerState.carouselIndex, anchor: .center)
             }
         }
-        .accessibilityIdentifier("wallpaperCarousel")
+        .accessibilityIdentifier("themeCarousel")
         .background(Color.black)
         .environment(\.wallpaperAnimationStartTime, configuration.animationStartTime)
     }

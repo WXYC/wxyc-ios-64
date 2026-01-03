@@ -1,5 +1,5 @@
 //
-//  WallpaperConfiguration.swift
+//  ThemeConfiguration.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/18/25.
@@ -8,35 +8,35 @@
 import Foundation
 import Observation
 
-/// Main wallpaper configuration - holds the selected wallpaper ID.
+/// Main theme configuration - holds the selected theme ID.
 @Observable
 @MainActor
-public final class WallpaperConfiguration {
+public final class ThemeConfiguration {
     private let storageKey = "wallpaper.selectedType.v3"
-    private let defaultWallpaperID = "wxyc_gradient"
+    private let defaultThemeID = "wxyc_gradient"
 
     /// Shared animation start time for all wallpaper renderers.
     /// This ensures picker previews and main view show synchronized animations.
     public private(set) var animationStartTime: Date = Date()
 
-    public var selectedWallpaperID: String {
+    public var selectedThemeID: String {
         didSet {
-            UserDefaults.standard.set(selectedWallpaperID, forKey: storageKey)
+            UserDefaults.standard.set(selectedThemeID, forKey: storageKey)
         }
     }
 
     public init() {
         let storedID = UserDefaults.standard.string(forKey: storageKey)
         // Map legacy IDs to new IDs
-        self.selectedWallpaperID = Self.mapLegacyID(storedID) ?? defaultWallpaperID
+        self.selectedThemeID = Self.mapLegacyID(storedID) ?? defaultThemeID
     }
 
     public func reset() {
-        selectedWallpaperID = defaultWallpaperID
-        WallpaperRegistry.shared.wallpapers.forEach { $0.parameterStore.reset() }
+        selectedThemeID = defaultThemeID
+        ThemeRegistry.shared.themes.forEach { $0.parameterStore.reset() }
     }
 
-    /// Clears any corrupted UserDefaults data for wallpaper settings.
+    /// Clears any corrupted UserDefaults data for theme settings.
     public static func nukeLegacyData() {
         UserDefaults.standard.removeObject(forKey: "wallpaper.selectedType.v3")
         UserDefaults.standard.removeObject(forKey: "wallpaper.selectedType")
@@ -47,7 +47,7 @@ public final class WallpaperConfiguration {
         guard let legacyID else { return nil }
 
         // If it's already a new-style ID, return it
-        if WallpaperRegistry.shared.wallpaper(for: legacyID) != nil {
+        if ThemeRegistry.shared.theme(for: legacyID) != nil {
             return legacyID
         }
 

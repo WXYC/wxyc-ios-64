@@ -17,5 +17,12 @@
       "range": { "min": 0.0, "max": 2.0 }
     }
   ],
-  "shaderArguments": []
+  "shaderArguments": [],
+  "foreground": "light",
+  "accent": {
+    "hue": 23,
+    "saturation": 0.75
+  },
+  "appIconName": "LavaLite",
+  "materialWeight": "thin"
 }

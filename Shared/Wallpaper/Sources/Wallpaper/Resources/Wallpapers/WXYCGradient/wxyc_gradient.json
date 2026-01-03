@@ -6,5 +6,12 @@
     "type": "swiftUI"
   },
   "parameters": [],
-  "shaderArguments": []
+  "shaderArguments": [],
+  "foreground": "light",
+  "accent": {
+    "hue": 23,
+    "saturation": 0.75
+  },
+  "appIconName": null,
+  "materialWeight": "thin"
 }

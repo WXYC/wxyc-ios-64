@@ -10,10 +10,10 @@ import WXUI
 
 /// View for pure SwiftUI wallpapers (no shaders).
 public struct SwiftUIWallpaperView: View {
-    let wallpaper: LoadedWallpaper
+    let theme: LoadedTheme
 
-    public init(wallpaper: LoadedWallpaper) {
-        self.wallpaper = wallpaper
+    public init(theme: LoadedTheme) {
+        self.theme = theme
     }
 
     public var body: some View {

@@ -1,8 +1,8 @@
 //
-//  WallpaperPickerGesture.swift
+//  ThemePickerGesture.swift
 //  Wallpaper
 //
-//  Long press gesture to enter wallpaper picker mode.
+//  Long press gesture to enter theme picker mode.
 //
 
 #if os(iOS)
@@ -11,10 +11,10 @@ import UIKit
 
 // MARK: - Long Press Gesture Behavior
 //
-// This view modifier provides the long press gesture to enter wallpaper picker mode.
+// This view modifier provides the long press gesture to enter theme picker mode.
 //
 // Requirements:
-// 1. Long pressing (0.5 seconds) triggers wallpaper picker while finger is still down
+// 1. Long pressing (0.5 seconds) triggers theme picker while finger is still down
 // 2. Vertical dragging cancels the gesture and allows ScrollView scrolling
 // 3. Horizontal dragging cancels the gesture and allows TabView swiping
 //
@@ -24,10 +24,10 @@ import UIKit
 // coordination because the recognizer is part of the same UIKit gesture system
 // as the scroll view's pan gesture.
 
-/// View modifier that adds long press gesture to enter wallpaper picker mode.
-struct WallpaperPickerGestureModifier: ViewModifier {
-    @Bindable var pickerState: WallpaperPickerState
-    @Bindable var configuration: WallpaperConfiguration
+/// View modifier that adds long press gesture to enter theme picker mode.
+struct ThemePickerGestureModifier: ViewModifier {
+    @Bindable var pickerState: ThemePickerState
+    @Bindable var configuration: ThemeConfiguration
 
     func body(content: Content) -> some View {
         content
@@ -41,19 +41,19 @@ struct WallpaperPickerGestureModifier: ViewModifier {
     private func addLongPressGesture(to scrollView: UIScrollView) {
         // Check if we already added our gesture recognizer
         let existingRecognizer = scrollView.gestureRecognizers?.first {
-            $0 is WallpaperPickerLongPressGesture
+            $0 is ThemePickerLongPressGesture
         }
         guard existingRecognizer == nil else { return }
 
-        let recognizer = WallpaperPickerLongPressGesture { [pickerState, configuration] in
+        let recognizer = ThemePickerLongPressGesture { [pickerState, configuration] in
             // Haptic feedback
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
 
-            // Enter wallpaper picker mode
+            // Enter theme picker mode
             withAnimation(.spring(duration: 0.5, bounce: 0.2)) {
                 pickerState.enter(
-                    currentWallpaperID: configuration.selectedWallpaperID
+                    currentThemeID: configuration.selectedThemeID
                 )
             }
         }
@@ -63,8 +63,8 @@ struct WallpaperPickerGestureModifier: ViewModifier {
 
 // MARK: - Custom Long Press Gesture Recognizer
 
-/// A long press gesture recognizer configured for wallpaper picker activation.
-private class WallpaperPickerLongPressGesture: UILongPressGestureRecognizer, UIGestureRecognizerDelegate {
+/// A long press gesture recognizer configured for theme picker activation.
+private class ThemePickerLongPressGesture: UILongPressGestureRecognizer, UIGestureRecognizerDelegate {
     private let onLongPress: () -> Void
 
     init(onLongPress: @escaping () -> Void) {
@@ -144,20 +144,20 @@ private class IntrospectionView: UIView {
 // MARK: - View Extension
 
 extension View {
-    /// Adds a long press gesture that enters wallpaper picker mode.
+    /// Adds a long press gesture that enters theme picker mode.
     ///
     /// The gesture triggers after 0.5 seconds while the finger is still down.
     /// Moving more than 10 points cancels the gesture, allowing normal
     /// scrolling and horizontal swiping for tab navigation.
     ///
     /// - Parameters:
-    ///   - pickerState: The wallpaper picker state to enter picker mode
-    ///   - configuration: The wallpaper configuration to get the current wallpaper ID
-    public func wallpaperPickerGesture(
-        pickerState: WallpaperPickerState,
-        configuration: WallpaperConfiguration
+    ///   - pickerState: The theme picker state to enter picker mode
+    ///   - configuration: The theme configuration to get the current theme ID
+    public func themePickerGesture(
+        pickerState: ThemePickerState,
+        configuration: ThemeConfiguration
     ) -> some View {
-        modifier(WallpaperPickerGestureModifier(
+        modifier(ThemePickerGestureModifier(
             pickerState: pickerState,
             configuration: configuration
         ))

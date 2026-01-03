@@ -13,5 +13,12 @@
     { "source": "viewWidth" },
     { "source": "viewHeight" },
     { "source": "time" }
-  ]
+  ],
+  "foreground": "light",
+  "accent": {
+    "hue": 23,
+    "saturation": 0.75
+  },
+  "appIconName": "Plasma",
+  "materialWeight": "thin"
 }
