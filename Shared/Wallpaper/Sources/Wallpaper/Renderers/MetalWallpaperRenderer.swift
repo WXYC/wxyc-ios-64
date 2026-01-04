@@ -48,6 +48,9 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var pixelFormat: MTLPixelFormat = .bgra8Unorm
     private var directiveObservationTask: Task<Void, Never>?
 
+    /// Reference to the adaptive thermal controller for continuous FPS/scale optimization.
+    private let thermalController = AdaptiveThermalController.shared
+
     /// Whether this renderer uses rawMetal mode (noise texture, sampler, rawMetal uniforms).
     private var usesRawMetalMode: Bool {
         theme.manifest.renderer.type == .rawMetal
@@ -72,6 +75,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         self.device = device
         self.queue = device.makeCommandQueue()
         self.pixelFormat = view.colorPixelFormat
+
+        // Set active shader for thermal optimization
+        Task {
+            await thermalController.setActiveShader(theme.manifest.id)
+        }
 
         let renderer = theme.manifest.renderer
 
@@ -252,13 +260,13 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let drawable = view.currentDrawable
         else { return }
 
-        // Check thermal throttle level
-        let throttleLevel = ThermalThrottleController.shared.currentLevel
-        let resolutionScale = throttleLevel.resolutionScale
+        // Get current thermal optimization values
+        let resolutionScale = thermalController.currentScale
+        let targetFPS = Int(thermalController.currentFPS)
 
         // Update FPS if changed
-        if view.preferredFramesPerSecond != throttleLevel.targetFPS {
-            view.preferredFramesPerSecond = throttleLevel.targetFPS
+        if view.preferredFramesPerSecond != targetFPS {
+            view.preferredFramesPerSecond = targetFPS
         }
 
         let now = CACurrentMediaTime()

@@ -107,14 +107,3 @@ extension ThemeTipView {
         UserDefaults.standard.removeObject(forKey: wasDismissedKey)
     }
 }
-
-#Preview {
-    VStack {
-        ThemeTipView(isVisible: .constant(true)) {
-            print("Dismissed")
-        }
-        .padding()
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.black)
-}

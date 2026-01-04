@@ -19,27 +19,6 @@
   "testTargets" : [
     {
       "target" : {
-        "containerPath" : "container:Shared\/Playback",
-        "identifier" : "PlaybackTests",
-        "name" : "PlaybackTests"
-      }
-    },
-    {
-      "target" : {
-        "containerPath" : "container:Shared\/PlayerHeaderView",
-        "identifier" : "PlayerHeaderViewTests",
-        "name" : "PlayerHeaderViewTests"
-      }
-    },
-    {
-      "target" : {
-        "containerPath" : "container:Shared\/Metadata",
-        "identifier" : "MetadataTests",
-        "name" : "MetadataTests"
-      }
-    },
-    {
-      "target" : {
         "containerPath" : "container:Shared\/Playlist",
         "identifier" : "PlaylistTests",
         "name" : "PlaylistTests"
@@ -47,9 +26,9 @@
     },
     {
       "target" : {
-        "containerPath" : "container:Shared\/AppServices",
-        "identifier" : "AppServicesTests",
-        "name" : "AppServicesTests"
+        "containerPath" : "container:WXYC.xcodeproj",
+        "identifier" : "6DEE556479EB425A885731F3",
+        "name" : "WXYCUITests"
       }
     },
     {
@@ -69,9 +48,16 @@
     },
     {
       "target" : {
-        "containerPath" : "container:Shared\/MusicShareKit",
-        "identifier" : "MusicShareKitTests",
-        "name" : "MusicShareKitTests"
+        "containerPath" : "container:Shared\/Playback",
+        "identifier" : "RadioPlayerTests",
+        "name" : "RadioPlayerTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Playback",
+        "identifier" : "AVAudioStreamerTests",
+        "name" : "AVAudioStreamerTests"
       }
     },
     {
@@ -83,9 +69,44 @@
     },
     {
       "target" : {
-        "containerPath" : "container:Shared\/Wallpaper",
-        "identifier" : "WallpaperTests",
-        "name" : "WallpaperTests"
+        "containerPath" : "container:Shared\/MusicShareKit",
+        "identifier" : "MusicShareKitTests",
+        "name" : "MusicShareKitTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/PlayerHeaderView",
+        "identifier" : "PlayerHeaderViewTests",
+        "name" : "PlayerHeaderViewTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Metadata",
+        "identifier" : "MetadataTests",
+        "name" : "MetadataTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Core",
+        "identifier" : "CoreTests",
+        "name" : "CoreTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/AppServices",
+        "identifier" : "AppServicesTests",
+        "name" : "AppServicesTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Playback",
+        "identifier" : "PlaybackTests",
+        "name" : "PlaybackTests"
       }
     }
   ],

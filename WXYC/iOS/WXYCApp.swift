@@ -233,6 +233,7 @@ struct WXYCApp: App {
                 "Is Playing?": AudioPlayerController.shared.isPlaying
             ])
             AudioPlayerController.shared.handleAppDidEnterBackground()
+            AdaptiveThermalController.shared.handleBackgrounded()
             appState.setForegrounded(false)
 
         case .inactive:
@@ -240,6 +241,7 @@ struct WXYCApp: App {
 
         case .active:
             AudioPlayerController.shared.handleAppWillEnterForeground()
+            AdaptiveThermalController.shared.handleForegrounded()
             appState.setForegrounded(true)
             scheduleBackgroundRefresh()
             // Refresh playlist if cache has expired while in background.
@@ -270,7 +272,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-
+        
     // MARK: - Background Refresh
         
     private func scheduleBackgroundRefresh() {

@@ -96,7 +96,3 @@ struct ThemeManifestTests {
         }
     }
 }
-
-// MARK: - CaseIterable Conformance
-
-extension MaterialWeight: CaseIterable {}

@@ -63,7 +63,7 @@ public struct AccentColor: Codable, Sendable, Equatable {
 // MARK: - Material Weight
 
 /// Material weight for background blur effects in UI elements.
-public enum MaterialWeight: String, Codable, Sendable {
+public enum MaterialWeight: String, Codable, Sendable, CaseIterable {
     case ultraThin
     case thin
     case regular
