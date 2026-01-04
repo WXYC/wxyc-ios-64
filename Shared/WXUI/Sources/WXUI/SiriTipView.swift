@@ -111,13 +111,3 @@ extension SiriTipView {
         defaults.removeObject(forKey: wasDismissedKey)
     }
 }
-
-#Preview {
-    VStack {
-        SiriTipView(isVisible: .constant(true)) {
-            print("Dismissed")
-        }
-        .padding()
-    }
-    .background(WXYCBackground())
-}

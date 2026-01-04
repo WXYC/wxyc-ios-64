@@ -7,58 +7,45 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		236CDFCA2EFBC56D00C677C4 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 236CDFC92EFBC56D00C677C4 /* WXUI */; };
+		B1000001339F0001 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = B1000002339F0002 /* WXUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1000010229F0010 /* WXUISampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXUISampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000010339F0010 /* WXUISampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXUISampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A1000030229F0030 /* Exceptions for "Sources" folder in "WXUISampleApp" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = A1000020229F0020 /* WXUISampleApp */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A1000040229F0040 /* Sources */ = {
+		B1000040339F0040 /* Sources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				A1000030229F0030 /* Exceptions for "Sources" folder in "WXUISampleApp" target */,
-			);
 			path = Sources;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A1000050229F0050 /* Frameworks */ = {
+		B1000050339F0050 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				236CDFCA2EFBC56D00C677C4 /* WXUI in Frameworks */,
+				B1000001339F0001 /* WXUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A1000060229F0060 = {
+		B1000060339F0060 = {
 			isa = PBXGroup;
 			children = (
-				A1000040229F0040 /* Sources */,
-				A1000070229F0070 /* Products */,
+				B1000040339F0040 /* Sources */,
+				B1000070339F0070 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A1000070229F0070 /* Products */ = {
+		B1000070339F0070 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A1000010229F0010 /* WXUISampleApp.app */,
+				B1000010339F0010 /* WXUISampleApp.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,68 +53,68 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1000020229F0020 /* WXUISampleApp */ = {
+		B1000020339F0020 /* WXUISampleApp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A1000080229F0080 /* Build configuration list for PBXNativeTarget "WXUISampleApp" */;
+			buildConfigurationList = B1000080339F0080 /* Build configuration list for PBXNativeTarget "WXUISampleApp" */;
 			buildPhases = (
-				A1000090229F0090 /* Sources */,
-				A1000050229F0050 /* Frameworks */,
-				A10000A0229F00A0 /* Resources */,
+				B1000090339F0090 /* Sources */,
+				B1000050339F0050 /* Frameworks */,
+				B10000A0339F00A0 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				A1000040229F0040 /* Sources */,
+				B1000040339F0040 /* Sources */,
 			);
 			name = WXUISampleApp;
 			packageProductDependencies = (
-				236CDFC92EFBC56D00C677C4 /* WXUI */,
+				B1000002339F0002 /* WXUI */,
 			);
 			productName = WXUISampleApp;
-			productReference = A1000010229F0010 /* WXUISampleApp.app */;
+			productReference = B1000010339F0010 /* WXUISampleApp.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		A10000B0229F00B0 /* Project object */ = {
+		B10000B0339F00B0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
-					A1000020229F0020 = {
+					B1000020339F0020 = {
 						CreatedOnToolsVersion = 16.2;
 					};
 				};
 			};
-			buildConfigurationList = A10000C0229F00C0 /* Build configuration list for PBXProject "WXUISampleApp" */;
+			buildConfigurationList = B10000C0339F00C0 /* Build configuration list for PBXProject "WXUISampleApp" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = A1000060229F0060;
+			mainGroup = B1000060339F0060;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				236CDFC82EFBC56D00C677C4 /* XCLocalSwiftPackageReference "../../../WXUI" */,
+				B10000D0339F00D0 /* XCLocalSwiftPackageReference "../../../WXUI" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = A1000070229F0070 /* Products */;
+			productRefGroup = B1000070339F0070 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1000020229F0020 /* WXUISampleApp */,
+				B1000020339F0020 /* WXUISampleApp */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A10000A0229F00A0 /* Resources */ = {
+		B10000A0339F00A0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -137,7 +124,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A1000090229F0090 /* Sources */ = {
+		B1000090339F0090 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -147,7 +134,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		A10000E0229F00E0 /* Debug */ = {
+		B10000E0339F00E0 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -211,7 +198,7 @@
 			};
 			name = Debug;
 		};
-		A10000F0229F00F0 /* Release */ = {
+		B10000F0339F00F0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -268,7 +255,7 @@
 			};
 			name = Release;
 		};
-		A1000100229F0100 /* Debug */ = {
+		B1000100339F0100 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -278,7 +265,6 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Sources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -296,7 +282,7 @@
 			};
 			name = Debug;
 		};
-		A1000110229F0110 /* Release */ = {
+		B1000110339F0110 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -306,7 +292,6 @@
 				DEVELOPMENT_TEAM = 92V374HC38;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Sources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -327,20 +312,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1000080229F0080 /* Build configuration list for PBXNativeTarget "WXUISampleApp" */ = {
+		B1000080339F0080 /* Build configuration list for PBXNativeTarget "WXUISampleApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1000100229F0100 /* Debug */,
-				A1000110229F0110 /* Release */,
+				B1000100339F0100 /* Debug */,
+				B1000110339F0110 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A10000C0229F00C0 /* Build configuration list for PBXProject "WXUISampleApp" */ = {
+		B10000C0339F00C0 /* Build configuration list for PBXProject "WXUISampleApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A10000E0229F00E0 /* Debug */,
-				A10000F0229F00F0 /* Release */,
+				B10000E0339F00E0 /* Debug */,
+				B10000F0339F00F0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -348,18 +333,18 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		236CDFC82EFBC56D00C677C4 /* XCLocalSwiftPackageReference "../../../WXUI" */ = {
+		B10000D0339F00D0 /* XCLocalSwiftPackageReference "../../../WXUI" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../../WXUI;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		236CDFC92EFBC56D00C677C4 /* WXUI */ = {
+		B1000002339F0002 /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WXUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = A10000B0229F00B0 /* Project object */;
+	rootObject = B10000B0339F00B0 /* Project object */;
 }
