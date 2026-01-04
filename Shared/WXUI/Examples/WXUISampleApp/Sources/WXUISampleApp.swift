@@ -2,9 +2,10 @@
 //  WXUISampleApp.swift
 //  WXUISampleApp
 //
+//  Sample app for previewing WXUI components.
+//
 
 import SwiftUI
-import WXUI
 
 @main
 struct WXUISampleApp: App {
@@ -19,11 +20,11 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
-                NavigationLink("WXYC Logo") {
-                    WXYCLogoPreview()
+                NavigationLink("OverlaySheet") {
+                    OverlaySheetPreview()
                 }
-                NavigationLink("Placeholder Artwork") {
-                    PlaceholderArtworkPreview()
+                NavigationLink("SiriTipView") {
+                    SiriTipViewPreview()
                 }
             }
             .navigationTitle("WXUI Components")

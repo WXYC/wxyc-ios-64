@@ -195,37 +195,3 @@ extension View {
         modifier(OverlaySheetScrollTracker())
     }
 }
-
-#Preview {
-    struct PreviewWrapper: View {
-        @State private var showSheet = false
-
-        var body: some View {
-            ZStack {
-                LinearGradient(
-                    colors: [.purple, .blue],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                Button("Show Sheet") {
-                    showSheet = true
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .overlaySheet(isPresented: $showSheet) {
-                VStack {
-                    Text("Custom Sheet Content")
-                        .font(.title)
-                        .foregroundStyle(.white)
-
-                    Spacer()
-                }
-                .padding()
-            }
-        }
-    }
-
-    return PreviewWrapper()
-}
