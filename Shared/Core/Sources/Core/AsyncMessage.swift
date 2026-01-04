@@ -1,0 +1,145 @@
+//
+//  AsyncMessage.swift
+//  Core
+//
+//  Created by Jake Bromberg on 1/4/26.
+//
+
+@preconcurrency import Foundation
+
+// MARK: - AsyncNotificationMessage Protocol
+
+/// A backport of `NotificationCenter.AsyncMessage` for iOS versions prior to iOS 26.
+///
+/// This protocol enables type-safe, concurrency-safe notifications that can be
+/// observed via `AsyncSequence`. On iOS 26+, consider using the native
+/// `NotificationCenter.AsyncMessage` protocol instead.
+///
+/// Example usage:
+/// ```swift
+/// struct MyMessage: AsyncNotificationMessage {
+///     typealias Subject = MyService
+///     static var name: Notification.Name { .init("MyMessage") }
+///
+///     let data: String
+///
+///     static func makeMessage(_ notification: Notification) -> Self? {
+///         guard let data = notification.userInfo?["data"] as? String else { return nil }
+///         return Self(data: data)
+///     }
+///
+///     static func makeNotification(_ message: Self, object: Subject?) -> Notification {
+///         Notification(name: name, object: object, userInfo: ["data": message.data])
+///     }
+/// }
+/// ```
+public protocol AsyncNotificationMessage: Sendable {
+    /// The type of object that can be the subject of this message.
+    associatedtype Subject
+
+    /// The notification name used for posting and observing this message type.
+    static var name: Notification.Name { get }
+
+    /// Converts a traditional `Notification` to this message type.
+    /// Returns `nil` if the notification cannot be converted.
+    static func makeMessage(_ notification: Notification) -> Self?
+
+    /// Converts this message to a traditional `Notification`.
+    static func makeNotification(_ message: Self, object: Subject?) -> Notification
+}
+
+// MARK: - NotificationCenter Extensions
+
+extension NotificationCenter {
+    /// Posts an async message with an object subject.
+    ///
+    /// - Parameters:
+    ///   - message: The message to post.
+    ///   - subject: The object that is the subject of this message.
+    public func post<M: AsyncNotificationMessage>(_ message: M, subject: M.Subject?) where M.Subject: AnyObject {
+        let notification = M.makeNotification(message, object: subject)
+        post(notification)
+    }
+
+    /// Posts an async message with a metatype subject.
+    ///
+    /// - Parameters:
+    ///   - message: The message to post.
+    ///   - subject: The metatype that is the subject of this message.
+    public func post<M: AsyncNotificationMessage>(_ message: M, subject: M.Subject.Type) {
+        let notification = M.makeNotification(message, object: nil)
+        post(notification)
+    }
+
+    /// Returns an async sequence of messages matching the given type and optional subject.
+    ///
+    /// - Parameters:
+    ///   - subject: The object to filter messages by, or `nil` to receive all messages of this type.
+    ///   - messageType: The type of message to observe.
+    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
+    public func messages<M: AsyncNotificationMessage>(
+        of subject: M.Subject? = nil,
+        for messageType: M.Type
+    ) -> AsyncNotificationMessageSequence<M> where M.Subject: AnyObject {
+        AsyncNotificationMessageSequence(center: self, subject: subject)
+    }
+
+    /// Returns an async sequence of messages matching the given type.
+    ///
+    /// - Parameter messageType: The type of message to observe.
+    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
+    public func messages<M: AsyncNotificationMessage>(
+        for messageType: M.Type
+    ) -> AsyncNotificationMessageSequence<M> where M.Subject: AnyObject {
+        AsyncNotificationMessageSequence(center: self, subject: nil)
+    }
+}
+
+// MARK: - AsyncNotificationMessageSequence
+
+/// An `AsyncSequence` that yields notification messages as they are posted.
+public struct AsyncNotificationMessageSequence<M: AsyncNotificationMessage>: AsyncSequence
+    where M.Subject: AnyObject
+{
+    public typealias Element = M
+
+    private let center: NotificationCenter
+    private let subject: M.Subject?
+
+    init(center: NotificationCenter, subject: M.Subject?) {
+        self.center = center
+        self.subject = subject
+    }
+
+    public func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(center: center, subject: subject)
+    }
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private var iterator: AsyncStream<M>.Iterator
+
+        init(center: NotificationCenter, subject: M.Subject?) {
+            let (stream, continuation) = AsyncStream<M>.makeStream(bufferingPolicy: .bufferingNewest(100))
+
+            let observation = center.addObserver(
+                forName: M.name,
+                object: subject,
+                queue: nil
+            ) { notification in
+                if let message = M.makeMessage(notification) {
+                    continuation.yield(message)
+                }
+            }
+
+            continuation.onTermination = { _ in
+                center.removeObserver(observation)
+            }
+
+            self.iterator = stream.makeAsyncIterator()
+        }
+
+        public mutating func next() async -> M? {
+            await iterator.next()
+        }
+    }
+}
