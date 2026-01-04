@@ -35,7 +35,8 @@ enum FlowsheetConverter {
                     songTitle: entry.track_title ?? "Unknown",
                     labelName: entry.record_label,
                     artistName: entry.artist_name ?? "Unknown",
-                    releaseTitle: entry.album_title
+                    releaseTitle: entry.album_title,
+                    rotation: entry.rotation_id != nil
                 )
                 playcuts.append(playcut)
 
