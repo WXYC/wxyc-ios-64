@@ -92,6 +92,18 @@ public final class ThermalProfileStore: Sendable {
         memoryCache.removeAll()
     }
 
+    /// Removes all thermal profiles from memory and disk.
+    ///
+    /// Use this to reset learned thermal behavior for all shaders.
+    public func removeAllProfiles() {
+        memoryCache.removeAll()
+
+        let allKeys = defaults.dictionaryRepresentation().keys
+        for key in allKeys where key.hasPrefix(keyPrefix) {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     // MARK: - Device Migration
 
     private func checkDeviceMigration() {
@@ -117,15 +129,5 @@ public final class ThermalProfileStore: Sendable {
         // Fallback: use a generated UUID stored in Keychain would be better,
         // but for simplicity use model name (will trigger re-learning on new device)
         return ProcessInfo.processInfo.hostName
-    }
-
-    private func removeAllProfiles() {
-        memoryCache.removeAll()
-
-        // Find and remove all thermal profile keys
-        let allKeys = defaults.dictionaryRepresentation().keys
-        for key in allKeys where key.hasPrefix(keyPrefix) {
-            defaults.removeObject(forKey: key)
-        }
     }
 }
