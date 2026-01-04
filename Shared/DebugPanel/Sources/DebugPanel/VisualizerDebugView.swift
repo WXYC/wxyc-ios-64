@@ -24,8 +24,6 @@ public struct VisualizerDebugView: View {
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
 
-    private var throttleController = ThermalThrottleController.shared
-
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>
@@ -61,52 +59,8 @@ public struct VisualizerDebugView: View {
                     Text("Shows a floating button to access wallpaper picker and parameter controls.")
                 }
 
-                // Thermal Throttling Override
-                Section {
-                    Toggle("Override Throttle Level", isOn: Binding(
-                        get: { throttleController.debugOverrideLevel != nil },
-                        set: { enabled in
-                            if enabled {
-                                throttleController.debugOverrideLevel = .nominal
-                            } else {
-                                throttleController.debugOverrideLevel = nil
-                            }
-                        }
-                    ))
-
-                    if throttleController.debugOverrideLevel != nil {
-                        Picker("Throttle Level", selection: Binding(
-                            get: { throttleController.debugOverrideLevel ?? .nominal },
-                            set: { throttleController.debugOverrideLevel = $0 }
-                        )) {
-                            ForEach(ThermalThrottleLevel.allCases, id: \.self) { level in
-                                Text(level.displayName).tag(level)
-                            }
-                        }
-                    }
-
-                    HStack {
-                        Text("System Thermal State")
-                        Spacer()
-                        Text(throttleController.rawThermalState.description)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    HStack {
-                        Text("Active Level")
-                        Spacer()
-                        Text(throttleController.currentLevel.displayName)
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("Thermal Throttling")
-                } footer: {
-                    if throttleController.debugOverrideLevel != nil {
-                        Text("Override active. Automatic thermal-based throttling is disabled.")
-                    } else {
-                        Text("Automatically reduces resolution and FPS when the device heats up.")
-                    }
-                }
+                // Thermal Throttling
+                ThermalThrottlingSection()
 
                 // Tip Views
                 Section {
@@ -270,7 +224,7 @@ public struct VisualizerDebugView: View {
                 } footer: {
                     Text("Controls the brightness gradient of LCD segments. Min is applied to top segments, max to bottom.")
                 }
-
+                    
                 // Actions
                 Section("Actions") {
                     Button("Reset All Settings") {
@@ -291,6 +245,56 @@ public struct VisualizerDebugView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Thermal Throttling Section
+
+private struct ThermalThrottlingSection: View {
+    var body: some View {
+        let thermal = AdaptiveThermalController.shared
+        Section {
+            HStack {
+                Text("System Thermal State")
+                Spacer()
+                Text(thermal.rawThermalState.description)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text("Target FPS")
+                Spacer()
+                Text("\(Int(thermal.currentFPS))")
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text("Render Scale")
+                Spacer()
+                Text("\(Int(thermal.currentScale * 100))%")
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text("Thermal Momentum")
+                Spacer()
+                Text(String(format: "%.2f", thermal.currentMomentum))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let shaderID = thermal.activeShaderID {
+                HStack {
+                    Text("Active Shader")
+                    Spacer()
+                    Text(shaderID)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Adaptive Thermal Throttling")
+        } footer: {
+            Text("Continuously optimizes FPS and resolution scale based on thermal state.")
         }
     }
 }
