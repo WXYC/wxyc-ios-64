@@ -594,7 +594,7 @@ struct CacheCoordinatorArtworkTests {
         )
 
         // Set cached artwork with correct key format: artistName-releaseTitle
-        await cache.set(artwork: testImage, for: "Test Artist-Test Album")
+        await cache.set(artwork: testImage, for: "Test Artist-Test Album", lifespan: .thirtyDays)
 
         // When
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
@@ -619,7 +619,7 @@ struct CacheCoordinatorArtworkTests {
         )
 
         // Set cached artwork with correct key format: artistName-songTitle (no release title)
-        await cache.set(artwork: testImage, for: "Test Artist-Test Song")
+        await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)
 
         // When
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
@@ -655,7 +655,7 @@ struct CacheCoordinatorArtworkTests {
         let testImage = Image.testImage
 
         // Set with correct key format: artistName-releaseTitle
-        await cache.set(artwork: testImage, for: "Some Artist-My Album")
+        await cache.set(artwork: testImage, for: "Some Artist-My Album", lifespan: .thirtyDays)
 
         // Playcut with matching release title
         let playcut = Playcut(
@@ -682,7 +682,7 @@ struct CacheCoordinatorArtworkTests {
         let testImage = Image.testImage
 
         // Set with correct key format: artistName-songTitle (empty release title is skipped)
-        await cache.set(artwork: testImage, for: "Test Artist-Test Song")
+        await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)
 
         // Playcut with empty release title
         let playcut = Playcut(

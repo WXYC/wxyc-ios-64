@@ -110,6 +110,10 @@ public struct Playcut: PlaylistEntry, Hashable {
     public let artistName: String
     public let releaseTitle: String?
     
+    /// Whether this playcut is a rotation play (station library track).
+    /// Rotation plays have their artwork cached longer than non-rotation plays.
+    public let rotation: Bool
+
     private enum CodingKeys: String, CodingKey {
         case id
         case hour
@@ -118,8 +122,9 @@ public struct Playcut: PlaylistEntry, Hashable {
         case labelName
         case artistName
         case releaseTitle
+        case rotation
     }
-    
+
     public init(
         id: UInt64,
         hour: UInt64,
@@ -127,7 +132,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         songTitle: String,
         labelName: String?,
         artistName: String,
-        releaseTitle: String?
+        releaseTitle: String?,
+        rotation: Bool = false
     ) {
         self.id = id
         self.hour = hour
@@ -136,11 +142,12 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.labelName = labelName
         self.artistName = artistName
         self.releaseTitle = releaseTitle
+        self.rotation = rotation
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         self.id = try container.decode(UInt64.self, forKey: .id)
         self.hour = try container.decode(UInt64.self, forKey: .hour)
         self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
@@ -150,6 +157,15 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.labelName = try container.decodeIfPresent(String.self, forKey: .labelName)
             self.artistName = try container.decode(String.self, forKey: .artistName)
             self.releaseTitle = try container.decodeIfPresent(String.self, forKey: .releaseTitle)
+
+            // V1 API returns rotation as a string ("true"/"false"), V2 converter uses Bool
+            if let rotationBool = try? container.decodeIfPresent(Bool.self, forKey: .rotation) {
+                self.rotation = rotationBool
+            } else if let rotationString = try container.decodeIfPresent(String.self, forKey: .rotation) {
+                self.rotation = rotationString.lowercased() == "true"
+            } else {
+                self.rotation = false
+            }
         } catch {
             Log(.error, "Could not decode Playcut: \(error)")
             PostHogSDK.shared.capture(error: error, context: "Playcut init")

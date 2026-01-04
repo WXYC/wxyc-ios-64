@@ -83,32 +83,34 @@ public final actor MultisourceArtworkService: ArtworkService {
            Error.allCases.contains(error) {
         }
         
+        // Rotation plays get cached for 30 days; non-rotation plays for 1 day
+        let artworkLifespan: TimeInterval = playcut.rotation ? .thirtyDays : .oneDay
+
         let timer = Core.Timer.start()
-        
+
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
-                
-                
+
 #if canImport(UIKit) && canImport(Vision)
                 guard try await artwork.checkNSFW() == .sfw else {
                     Log(.info, "Inappropriate artwork found for \(cacheKeyId) using fetcher \(fetcher)")
                     await self.cacheCoordinator.set(value: Error.nsfw, for: errorCacheKeyId, lifespan: .thirtyDays)
-                    
+
                     return nil
                 }
 #endif
-                
-                await self.cacheCoordinator.set(artwork: artwork, for: cacheKeyId)
+
+                await self.cacheCoordinator.set(artwork: artwork, for: cacheKeyId, lifespan: artworkLifespan)
                 return artwork
             } catch {
                 Log(.info, "No artwork found for \(cacheKeyId) using fetcher \(fetcher): \(error)")
             }
         }
-        
+
         Log(.error, "No artwork found for \(cacheKeyId) using any fetcher after \(timer.duration()) seconds")
         await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: errorCacheKeyId, lifespan: .thirtyDays)
-        
+
         return nil
     }
     

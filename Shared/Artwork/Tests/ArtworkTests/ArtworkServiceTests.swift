@@ -39,14 +39,14 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
 actor MockCacheCoordinator {
     private var storage: [String: Data] = [:]
 
-    func set(artwork: Image, for key: String) {
+    func set(artwork: Image, for key: String, lifespan: TimeInterval = .thirtyDays) {
         if let data = artwork.pngDataCompatibility {
             storage[key] = data
         }
     }
 
     func hasKey(_ key: String) -> Bool {
-        return storage[key] != nil
+        storage[key] != nil
     }
 }
 

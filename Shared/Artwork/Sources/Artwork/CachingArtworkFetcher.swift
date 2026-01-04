@@ -30,8 +30,8 @@ extension CacheCoordinator: ArtworkService {
         return artwork
     }
     
-    func set(artwork: Image, for id: String) async {
+    func set(artwork: Image, for id: String, lifespan: TimeInterval) async {
         let artworkData = artwork.pngDataCompatibility
-        self.setData(artworkData, for: id, lifespan: .thirtyDays)
+        self.setData(artworkData, for: id, lifespan: lifespan)
     }
 }
