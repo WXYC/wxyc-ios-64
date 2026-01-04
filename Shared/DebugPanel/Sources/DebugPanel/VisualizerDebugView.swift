@@ -291,10 +291,14 @@ private struct ThermalThrottlingSection: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Button("Reset Thermal Profiles") {
+                ThermalProfileStore.shared.removeAllProfiles()
+            }
         } header: {
             Text("Adaptive Thermal Throttling")
         } footer: {
-            Text("Continuously optimizes FPS and resolution scale based on thermal state.")
+            Text("Continuously optimizes FPS and resolution scale based on thermal state. Reset clears all learned profiles.")
         }
     }
 }
