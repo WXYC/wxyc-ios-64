@@ -15,6 +15,7 @@ import Playlist
 import PostHog
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 import WXYCIntents
 
 @_exported import struct WXYCIntents.PlayWXYC
@@ -99,6 +100,54 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     }
 }
 
+/// Intent donated when a user taps a streaming service to add a song to their library.
+/// This intent is donation-only and does not perform any action when executed.
+struct AddedSongToLibrary: AppIntent {
+    static let title: LocalizedStringResource = "Added Song to Library"
+    static let description: IntentDescription = "Records when you add a song from WXYC to your music library"
+    static let isDiscoverable = false
+    static let openAppWhenRun = false
+
+    @Parameter(title: "Song Title")
+    var songTitle: String
+
+    @Parameter(title: "Artist")
+    var artistName: String
+
+    @Parameter(title: "Album")
+    var albumName: String?
+        
+    @Parameter(title: "Streaming Service")
+    var streamingService: String
+
+    @Parameter(title: "Artwork", supportedContentTypes: [.jpeg, .png])
+    var artwork: IntentFile?
+
+    init() {}
+
+    init(
+        songTitle: String,
+        artistName: String,
+        albumName: String?,
+        streamingService: String,
+        artwork: UIImage?
+    ) {
+        self.songTitle = songTitle
+        self.artistName = artistName
+        self.albumName = albumName
+        self.streamingService = streamingService
+
+        if let artwork, let data = artwork.jpegData(compressionQuality: 0.8) {
+            self.artwork = IntentFile(data: data, filename: "artwork.jpg", type: .jpeg)
+        }
+    }
+
+    func perform() async throws -> some IntentResult {
+        // This intent is donation-only; it doesn't perform any action
+        .result()
+    }
+}
+
 struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     public var displayRepresentation = DisplayRepresentation(
         title: Self.title,
@@ -111,14 +160,14 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     public static let isDiscoverable = true
     public static let openAppWhenRun = false
     public static let title: LocalizedStringResource = "Request a song on WXYC"
-    
+
     @Parameter(title: "Request", description: "What song would you like to request?")
     var request: String
 
     public init() {
-        
+
     }
-    
+
     public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog {
         try await RequestService.shared.sendRequest(message: request)
         return .result(
@@ -127,7 +176,7 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
         )
     }
 }
-    
+
 struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
