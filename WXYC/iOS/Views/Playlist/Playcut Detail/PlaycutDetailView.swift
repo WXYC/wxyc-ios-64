@@ -6,12 +6,13 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import AppIntents
+import Metadata
+import Playlist
+import PostHog
 import SwiftUI
 import UIKit
 import WXUI
-import PostHog
-import Playlist
-import Metadata
 
 struct PlaycutDetailView: View {
     let playcut: Playcut
@@ -75,6 +76,7 @@ struct PlaycutDetailView: View {
                                     "album": playcut.releaseTitle
                                 ]
                             )
+                            donateAddedSongIntent(service: service)
                         }
                     )
                     .foregroundStyle(.white)
@@ -157,13 +159,27 @@ struct PlaycutDetailView: View {
         withAnimation(heroSpringAnimation) {
             isLightboxActive = false
         }
-        
+
         // Allow the matched geometry animation to complete before revealing the source.
         DispatchQueue.main.asyncAfter(deadline: .now() + heroSpringResponse) {
             if !isLightboxActive {
                 hideHeaderArtwork = false
                 showLightboxContainer = false
             }
+        }
+    }
+
+    private func donateAddedSongIntent(service: StreamingService) {
+        let intent = AddedSongToLibrary(
+            songTitle: playcut.songTitle,
+            artistName: playcut.artistName,
+            albumName: playcut.releaseTitle,
+            streamingService: service.name,
+            artwork: artwork
+        )
+
+        Task {
+            try? await intent.donate()
         }
     }
 }
