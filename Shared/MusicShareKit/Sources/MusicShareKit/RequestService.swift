@@ -5,8 +5,30 @@
 //  Created by Jake Bromberg on 11/25/25.
 //
 
+import Core
 import Foundation
 import Logger
+
+/// Subject for RequestSentMessage notifications.
+public final class RequestServiceSubject: @unchecked Sendable {
+    public static let shared = RequestServiceSubject()
+    private init() {}
+}
+
+/// Message posted when a song request is successfully sent.
+public struct RequestSentMessage: AsyncNotificationMessage, Sendable {
+    public typealias Subject = RequestServiceSubject
+
+    public static var name: Notification.Name { .init("MusicShareKit.RequestSent") }
+
+    public static func makeMessage(_ notification: Notification) -> Self? {
+        Self()
+    }
+
+    public static func makeNotification(_ message: Self, object: Subject?) -> Notification {
+        Notification(name: name, object: object)
+    }
+}
 
 /// A service for sending song requests to WXYC
 public struct RequestService: Sendable {
@@ -48,9 +70,11 @@ public struct RequestService: Sendable {
                 Log(.error, "No response object from request service")
                 throw RequestServiceError.invalidResponse
             }
-
+    
             if httpResponse.statusCode == 200 {
                 Log(.info, "Request sent successfully. Status code: \(httpResponse.statusCode)")
+                let notification = RequestSentMessage.makeNotification(RequestSentMessage(), object: RequestServiceSubject.shared)
+                NotificationCenter.default.post(notification)
             } else {
                 Log(.error, "Request failed. Status code: \(httpResponse.statusCode)")
                 Log(.error, "Response data: \(String(data: data, encoding: .utf8) ?? "nil")")
@@ -89,7 +113,7 @@ public enum RequestServiceError: Error, LocalizedError {
     case invalidResponse
     case serverError(statusCode: Int)
     case networkError(Error)
-    
+
     public var errorDescription: String? {
         switch self {
         case .emptyMessage:
@@ -105,4 +129,3 @@ public enum RequestServiceError: Error, LocalizedError {
         }
     }
 }
-

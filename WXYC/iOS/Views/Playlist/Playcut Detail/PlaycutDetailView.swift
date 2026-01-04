@@ -7,6 +7,7 @@
 //
 
 import AppIntents
+import AppServices
 import Metadata
 import Playlist
 import PostHog
@@ -27,7 +28,8 @@ struct PlaycutDetailView: View {
     @Namespace private var artworkNamespace
     
     @Environment(\.colorScheme) var colorScheme
-    
+    @Environment(\.reviewRequestService) var reviewRequestService
+
     private let metadataService = PlaycutMetadataService()
     
     private var artworkGeometryID: String {
@@ -181,6 +183,8 @@ struct PlaycutDetailView: View {
         Task {
             try? await intent.donate()
         }
+
+        reviewRequestService?.recordSongAddedToLibrary()
     }
 }
 

@@ -14,6 +14,7 @@ import Caching
 import Core
 import Intents
 import Logger
+import MusicShareKit
 import Observation
 import OpenNSFW
 import Playback
@@ -21,6 +22,7 @@ import PlayerHeaderView
 import Playlist
 import PostHog
 import Secrets
+import StoreKit
 import SwiftUI
 import Wallpaper
 import WXUI
@@ -39,6 +41,7 @@ final class Singletonia {
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
     let widgetStateService: WidgetStateService
+    let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
 
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
@@ -48,7 +51,7 @@ final class Singletonia {
             playbackController: AudioPlayerController.shared,
             playlistService: playlistService
         )
-    
+
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: artworkService
@@ -65,12 +68,61 @@ final class Singletonia {
     func startWidgetStateService() {
         widgetStateService.start()
     }
+
+    // MARK: - Review Request Tracking
+
+    private var playbackObservationTask: Task<Void, Never>?
+    private var requestSentObservationTask: Task<Void, Never>?
+
+    /// Start observing playback state to track user engagement for review requests.
+    func startReviewRequestTracking() {
+        startObservingPlaybackState()
+        startObservingRequestSent()
+    }
+
+    private func startObservingPlaybackState() {
+        playbackObservationTask?.cancel()
+
+        playbackObservationTask = Task { [weak self] in
+            guard let self else { return }
+
+            var wasPlaying = AudioPlayerController.shared.isPlaying
+
+            let observations = Observations {
+                AudioPlayerController.shared.isPlaying
+            }
+
+            for await isPlaying in observations {
+                guard !Task.isCancelled else { break }
+        
+                // Track when playback starts (transition from not playing to playing)
+                if isPlaying && !wasPlaying {
+                    self.reviewRequestService.recordPlaybackStarted()
+                }
+                wasPlaying = isPlaying
+            }
+        }
+    }
+
+    private func startObservingRequestSent() {
+        requestSentObservationTask?.cancel()
+
+        requestSentObservationTask = Task { [weak self] in
+            guard let self else { return }
+
+            for await _ in NotificationCenter.default.messages(of: RequestServiceSubject.shared, for: RequestSentMessage.self) {
+                guard !Task.isCancelled else { break }
+                self.reviewRequestService.recordRequestSent()
+            }
+        }
+    }
 }
 
 @main
 struct WXYCApp: App {
     @State private var appState = Singletonia.shared
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
 
     init() {
         // Cache migration - purge if version changed
@@ -90,7 +142,7 @@ struct WXYCApp: App {
 
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
         // Setting it here at launch would interrupt other apps' audio unnecessarily.
-
+                    
         // UIKit appearance setup
         #if os(iOS)
         UINavigationBar.appearance().barStyle = .black
@@ -119,11 +171,13 @@ struct WXYCApp: App {
                         .environment(\.playlistService, appState.playlistService)
                         .environment(\.artworkService, appState.artworkService)
                         .environment(\.playbackController, AudioPlayerController.shared)
+                        .environment(\.reviewRequestService, appState.reviewRequestService)
                         .forceLightStatusBar()
                         .onAppear {
                             setUpQuickActions()
                             appState.setForegrounded(true)
                             appState.startWidgetStateService()
+                            appState.startReviewRequestTracking()
 
                             // Force status bar to be light
 #if os(iOS)
@@ -155,6 +209,12 @@ struct WXYCApp: App {
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
+        }
+        .onChange(of: appState.reviewRequestService.shouldRequestReview) { _, shouldRequest in
+            if shouldRequest {
+                requestReview()
+                appState.reviewRequestService.didRequestReview()
+            }
         }
         .backgroundTask(.appRefresh("com.wxyc.refresh")) {
             Log(.info, "Background refresh started")
@@ -215,7 +275,7 @@ struct WXYCApp: App {
             AudioPlayerController.shared.play()
         }
     }
-
+        
     private func handleUserActivity(_ userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
             AudioPlayerController.shared.play()
