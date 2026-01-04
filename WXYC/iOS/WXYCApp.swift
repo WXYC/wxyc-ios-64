@@ -81,6 +81,9 @@ struct WXYCApp: App {
             ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
         }
         
+        // Enable battery monitoring for thermal context
+        ThermalContext.enableBatteryMonitoring()
+
         // Analytics setup
         setUpAnalytics()
         PostHogSDK.shared.capture("app launch")

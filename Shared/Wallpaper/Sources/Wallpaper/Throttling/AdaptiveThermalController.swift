@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// Adaptive thermal throttling controller with continuous FPS × Scale optimization.
@@ -50,7 +51,7 @@ public final class AdaptiveThermalController {
     private let store: ThermalProfileStore
     private let optimizer: ThermalOptimizer
     private let analytics: ThermalAnalytics?
-    private let thermalStateProvider: @Sendable () -> ProcessInfo.ThermalState
+    private let context: ThermalContextProtocol
 
     // MARK: - Internal State
 
@@ -58,7 +59,14 @@ public final class AdaptiveThermalController {
     private var currentProfile: ThermalProfile?
     private var optimizationTask: Task<Void, Never>?
     private var periodicFlushTask: Task<Void, Never>?
+    private var contextObservationTask: Task<Void, Never>?
     private var backgroundedAt: Date?
+
+    /// FPS-based momentum boost (decays over time).
+    private var fpsMomentumBoost: Float = 0
+
+    /// Quality recovery step per optimization tick.
+    private static let qualityRecoveryStep: Float = 0.01
 
     /// Optimization loop interval.
     private let optimizationInterval: Duration
@@ -80,7 +88,7 @@ public final class AdaptiveThermalController {
     ///   - store: Profile persistence store.
     ///   - optimizer: Optimization algorithm.
     ///   - analytics: Analytics for session tracking (optional).
-    ///   - thermalStateProvider: Closure returning current thermal state.
+    ///   - context: Thermal context for system state observation.
     ///   - optimizationInterval: How often to run optimization (default 5 seconds).
     ///   - periodicFlushInterval: How often to flush analytics (default 5 minutes).
     ///   - backgroundThreshold: Time after which to apply cooldown bonus (default 5 minutes).
@@ -88,7 +96,7 @@ public final class AdaptiveThermalController {
         store: ThermalProfileStore = .shared,
         optimizer: ThermalOptimizer = ThermalOptimizer(),
         analytics: ThermalAnalytics? = nil,
-        thermalStateProvider: @escaping @Sendable () -> ProcessInfo.ThermalState = { ProcessInfo.processInfo.thermalState },
+        context: ThermalContextProtocol = ThermalContext.shared,
         optimizationInterval: Duration = .seconds(5),
         periodicFlushInterval: Duration = .seconds(300),
         backgroundThreshold: TimeInterval = 300
@@ -96,7 +104,7 @@ public final class AdaptiveThermalController {
         self.store = store
         self.optimizer = optimizer
         self.analytics = analytics
-        self.thermalStateProvider = thermalStateProvider
+        self.context = context
         self.optimizationInterval = optimizationInterval
         self.periodicFlushInterval = periodicFlushInterval
         self.backgroundThreshold = backgroundThreshold
@@ -179,6 +187,23 @@ public final class AdaptiveThermalController {
         performOptimizationTick()
     }
 
+    /// Reports the measured FPS from the renderer.
+    ///
+    /// Call this periodically from the render loop when FPS measurements are available.
+    /// Low FPS readings boost thermal momentum to trigger faster quality reduction,
+    /// providing faster feedback than thermal state changes alone.
+    ///
+    /// - Parameter fps: The measured average FPS.
+    public func reportMeasuredFPS(_ fps: Float) {
+        let severity = FrameRateMonitor.severity(for: fps)
+        fpsMomentumBoost = severity.momentumBoost
+
+        // If FPS is critically low, trigger immediate optimization
+        if severity == .critical {
+            performOptimizationTick()
+        }
+    }
+
     // MARK: - Optimization Loop
 
     private func startOptimizationLoop() {
@@ -205,16 +230,39 @@ public final class AdaptiveThermalController {
     }
 
     private func performOptimizationTick() {
-        // Update thermal state
-        let state = thermalStateProvider()
+        // Low power mode: force aggressive throttle to save battery
+        if context.isLowPowerMode {
+            currentFPS = ThermalContext.lowPowerFPS
+            currentScale = ThermalContext.lowPowerScale
+            rawThermalState = context.thermalState
+            currentMomentum = 0
+            // Don't update profile or persist - this is temporary
+            return
+        }
+
+        // Update thermal state from context
+        let state = context.thermalState
         rawThermalState = state
         signal.record(state)
-        currentMomentum = signal.momentum
+
+        // Combine thermal momentum with FPS-based boost
+        let effectiveMomentum = min(signal.momentum + fpsMomentumBoost, 1.0)
+        currentMomentum = effectiveMomentum
+
+        // Decay FPS boost over time (so it doesn't persist indefinitely)
+        fpsMomentumBoost *= 0.8
 
         guard var profile = currentProfile else { return }
 
-        // Optimize
-        let (newFPS, newScale) = optimizer.optimize(current: profile, momentum: signal.momentum)
+        // Optimize using effective momentum
+        var (newFPS, newScale) = optimizer.optimize(current: profile, momentum: effectiveMomentum)
+
+        // Apply gradual quality recovery when thermal is stable
+        // This allows the profile to drift back toward max quality over time
+        if effectiveMomentum < ThermalSignal.deadZone {
+            newFPS = min(newFPS + Self.qualityRecoveryStep * 5, ThermalProfile.fpsRange.upperBound)
+            newScale = min(newScale + Self.qualityRecoveryStep, ThermalProfile.scaleRange.upperBound)
+        }
 
         // Update profile
         profile.update(fps: newFPS, scale: newScale)
@@ -238,7 +286,8 @@ public final class AdaptiveThermalController {
         }
 
         // Persist periodically (every 12 ticks = ~1 minute)
-        if profile.sampleCount % 12 == 0 {
+        // But not when charging - external heat source may skew profile
+        if !context.hasExternalFactors && profile.sampleCount % 12 == 0 {
             store.save(profile)
         }
     }

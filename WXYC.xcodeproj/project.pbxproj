@@ -148,7 +148,6 @@
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
 		SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Secrets.xcframework; path = Shared/Secrets/Secrets.xcframework; sourceTree = SOURCE_ROOT; };
-		WXYCINTENTS00000003 /* WXYCIntents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WXYCIntents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -178,8 +177,6 @@
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
-				iOS/Tests/WXYCTests/ThermalThrottleControllerTests.swift,
-				iOS/Tests/WXYCTests/ThermalThrottleLevelTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
 			target = A3EC40619289B0065648A53C /* WXYCTests */;
@@ -219,8 +216,6 @@
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
-				iOS/Tests/WXYCTests/ThermalThrottleControllerTests.swift,
-				iOS/Tests/WXYCTests/ThermalThrottleLevelTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,

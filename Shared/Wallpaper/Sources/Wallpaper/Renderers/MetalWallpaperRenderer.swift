@@ -51,6 +51,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Reference to the adaptive thermal controller for continuous FPS/scale optimization.
     private let thermalController = AdaptiveThermalController.shared
 
+    /// Frame rate monitor for early performance detection.
+    private var frameRateMonitor = FrameRateMonitor()
+
+    /// Timestamp of last frame start for duration measurement.
+    private var lastFrameStart: CFTimeInterval = 0
+
     /// Whether this renderer uses rawMetal mode (noise texture, sampler, rawMetal uniforms).
     private var usesRawMetalMode: Bool {
         theme.manifest.renderer.type == .rawMetal
@@ -259,6 +265,16 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let queue,
             let drawable = view.currentDrawable
         else { return }
+
+        // Measure frame duration for FPS monitoring
+        let frameStart = CACurrentMediaTime()
+        if lastFrameStart > 0 {
+            let frameDuration = frameStart - lastFrameStart
+            if let measuredFPS = frameRateMonitor.recordFrame(duration: frameDuration) {
+                thermalController.reportMeasuredFPS(measuredFPS)
+            }
+        }
+        lastFrameStart = frameStart
 
         // Get current thermal optimization values
         let resolutionScale = thermalController.currentScale

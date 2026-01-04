@@ -13,16 +13,17 @@ import Wallpaper
 /// A debug HUD overlay displaying real-time performance metrics.
 struct DebugHUD: View {
     @State private var metrics = DebugMetricsProvider()
-    private var throttleController = ThermalThrottleController.shared
 
     var body: some View {
+        let thermal = AdaptiveThermalController.shared
         VStack(alignment: .leading, spacing: 2) {
             MetricRow(label: "FPS", value: "\(metrics.fps)")
             MetricRow(label: "CPU", value: metrics.cpuUsage.formatted(.number.precision(.fractionLength(1))) + "%")
             MetricRow(label: "GPU", value: metrics.gpuMemoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "MEM", value: metrics.memoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "TMP", value: metrics.thermalState.description)
-            MetricRow(label: "THR", value: throttleDescription)
+            MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentFPS))fps")
+            MetricRow(label: "MTM", value: String(format: "%.2f", thermal.currentMomentum))
         }
         .font(.system(.caption, design: .monospaced))
         .foregroundStyle(.white)
@@ -33,12 +34,6 @@ struct DebugHUD: View {
         .padding(.top, 50)
         .padding(.trailing, 8)
         .allowsHitTesting(false)
-    }
-
-    private var throttleDescription: String {
-        let level = throttleController.currentLevel
-        let scalePercent = Int(level.resolutionScale * 100)
-        return "\(scalePercent)% @ \(level.targetFPS)fps"
     }
 }
 

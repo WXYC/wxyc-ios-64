@@ -6,9 +6,9 @@ import Testing
 @MainActor
 struct AdaptiveThermalControllerTests {
 
-    /// Creates a test controller with injectable thermal state.
+    /// Creates a test controller with injectable context.
     func makeController(
-        thermalState: @escaping @Sendable () -> ProcessInfo.ThermalState = { .nominal },
+        context: ThermalContextProtocol = MockThermalContext(),
         analytics: ThermalAnalytics? = nil
     ) -> AdaptiveThermalController {
         let defaults = UserDefaults(suiteName: "AdaptiveThermalControllerTests-\(UUID().uuidString)")!
@@ -18,7 +18,7 @@ struct AdaptiveThermalControllerTests {
             store: store,
             optimizer: ThermalOptimizer(),
             analytics: analytics,
-            thermalStateProvider: thermalState,
+            context: context,
             optimizationInterval: .milliseconds(10),
             periodicFlushInterval: .seconds(300),
             backgroundThreshold: 1  // 1 second for testing
@@ -47,14 +47,21 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Heating reduces quality")
     func heatingReducesQuality() async throws {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .nominal
-        let controller = makeController(thermalState: { mockState })
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
 
-        // Simulate heating
-        mockState = .serious
+        // Record initial state so signal has a baseline
         controller.checkNow()
+
+        // Simulate heating progression (each tick increases thermal state)
+        // This generates positive delta each time, building momentum
+        context.thermalState = .fair
+        controller.checkNow()
+        context.thermalState = .serious
+        controller.checkNow()
+        context.thermalState = .critical
         controller.checkNow()
         controller.checkNow()
 
@@ -90,8 +97,8 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Foreground after long background applies cooldown bonus")
     func foregroundAppliesCooldownBonus() async throws {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .critical
-        let controller = makeController(thermalState: { mockState })
+        let context = MockThermalContext(thermalState: .critical)
+        let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
 
@@ -110,7 +117,7 @@ struct AdaptiveThermalControllerTests {
         try await Task.sleep(for: .seconds(1.5))
 
         // Cool down while backgrounded
-        mockState = .nominal
+        context.thermalState = .nominal
 
         // Foreground
         controller.handleForegrounded()
@@ -122,12 +129,12 @@ struct AdaptiveThermalControllerTests {
 
     @Test("checkNow updates thermal state")
     func checkNowUpdatesThermalState() async {
-        nonisolated(unsafe) var mockState: ProcessInfo.ThermalState = .nominal
-        let controller = makeController(thermalState: { mockState })
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
 
-        mockState = .serious
+        context.thermalState = .serious
         controller.checkNow()
 
         #expect(controller.rawThermalState == .serious)
@@ -144,5 +151,91 @@ struct AdaptiveThermalControllerTests {
 
         #expect(analytics.recordedEvents.count == 2)
         #expect(analytics.recordedEvents.first?.shaderId == "test")
+    }
+
+    // MARK: - External Factor Tests
+
+    @Test("Low power mode forces aggressive throttle")
+    func lowPowerModeThrottle() async {
+        let context = MockThermalContext(thermalState: .nominal, isLowPowerMode: true)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+        controller.checkNow()
+
+        #expect(controller.currentFPS == ThermalContext.lowPowerFPS)
+        #expect(controller.currentScale == ThermalContext.lowPowerScale)
+    }
+
+    @Test("Charging suppresses profile persistence")
+    func chargingSuppressesPersistence() async {
+        let suiteName = "ChargingTest-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let store = ThermalProfileStore(defaults: defaults)
+        let context = MockThermalContext(thermalState: .serious, isCharging: true)
+
+        let controller = AdaptiveThermalController(
+            store: store,
+            context: context,
+            optimizationInterval: .milliseconds(10),
+            backgroundThreshold: 1
+        )
+
+        await controller.setActiveShader("test")
+
+        // Run many ticks to trigger persistence check (every 12 ticks)
+        for _ in 0..<24 {
+            controller.checkNow()
+        }
+
+        // Check UserDefaults directly - profile should not be persisted when charging
+        // store.load always returns a profile (default if not saved), so check defaults directly
+        let key = "thermal_profile_test"
+        #expect(defaults.data(forKey: key) == nil)
+    }
+
+    @Test("Quality recovery when thermal stable")
+    func qualityRecoveryWhenStable() async {
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Record baseline
+        controller.checkNow()
+
+        // Heat up progressively to build momentum
+        context.thermalState = .fair
+        controller.checkNow()
+        context.thermalState = .serious
+        controller.checkNow()
+        context.thermalState = .critical
+        controller.checkNow()
+        controller.checkNow()
+        controller.checkNow()
+
+        let throttledFPS = controller.currentFPS
+        let throttledScale = controller.currentScale
+
+        // Ensure we've actually throttled down
+        #expect(throttledFPS < 60.0)
+        #expect(throttledScale < 1.0)
+
+        // Cool down progressively
+        context.thermalState = .serious
+        controller.checkNow()
+        context.thermalState = .fair
+        controller.checkNow()
+        context.thermalState = .nominal
+        controller.checkNow()
+
+        // Run ticks for quality recovery (when momentum is in dead zone)
+        for _ in 0..<10 {
+            controller.checkNow()
+        }
+
+        // Should have recovered some quality
+        #expect(controller.currentFPS > throttledFPS)
+        #expect(controller.currentScale > throttledScale)
     }
 }
