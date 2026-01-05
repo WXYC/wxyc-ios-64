@@ -14,7 +14,6 @@ let package = Package(
             targets: ["Wallpaper"]),
     ],
     dependencies: [
-        .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Core", path: "../Core"),
         .package(name: "WXUI", path: "../WXUI"),
     ],
@@ -22,12 +21,8 @@ let package = Package(
         .target(
             name: "Wallpaper",
             dependencies: [
-                "Analytics",
                 "Core",
                 "WXUI",
-            ],
-            exclude: [
-                "Resources/Wallpapers/Opal"
             ],
             resources: [
                 .process("Resources/Wallpapers"),

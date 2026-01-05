@@ -50,7 +50,7 @@ public final class AdaptiveThermalController {
 
     private let store: ThermalProfileStore
     private let optimizer: ThermalOptimizer
-    private let analytics: ThermalAnalytics?
+    private var analytics: ThermalAnalytics?
     private let context: ThermalContextProtocol
 
     // MARK: - Internal State
@@ -108,6 +108,14 @@ public final class AdaptiveThermalController {
         self.optimizationInterval = optimizationInterval
         self.periodicFlushInterval = periodicFlushInterval
         self.backgroundThreshold = backgroundThreshold
+    }
+
+    /// Configures analytics for session tracking.
+    ///
+    /// Call this early in app initialization to enable thermal analytics.
+    /// - Parameter analytics: The analytics implementation to use.
+    public func setAnalytics(_ analytics: ThermalAnalytics) {
+        self.analytics = analytics
     }
 
     // MARK: - Public API
@@ -366,17 +374,5 @@ public final class AdaptiveThermalController {
     private func stopPeriodicFlush() {
         periodicFlushTask?.cancel()
         periodicFlushTask = nil
-    }
-}
-
-// MARK: - Convenience Factory
-
-extension AdaptiveThermalController {
-
-    /// Creates a controller with PostHog analytics enabled.
-    public static func withPostHogAnalytics() -> AdaptiveThermalController {
-        let reporter = PostHogThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
-        return AdaptiveThermalController(analytics: aggregator)
     }
 }

@@ -1,12 +1,13 @@
 import Foundation
 import PostHog
+import Wallpaper
 
 /// Reports thermal session summaries to PostHog.
-public final class PostHogThermalReporter: ThermalMetricsReporter, @unchecked Sendable {
+final class PostHogThermalReporter: ThermalMetricsReporter, @unchecked Sendable {
 
-    public init() {}
+    init() {}
 
-    public func report(_ summary: ThermalSessionSummary) {
+    func report(_ summary: ThermalSessionSummary) {
         PostHogSDK.shared.capture("thermal_session_summary", properties: [
             // Identity
             "shader_id": summary.shaderId,

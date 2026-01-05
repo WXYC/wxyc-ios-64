@@ -138,6 +138,7 @@ struct WXYCApp: App {
 
         // Analytics setup
         setUpAnalytics()
+        setUpThermalAnalytics()
         PostHogSDK.shared.capture("app launch")
 
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
@@ -324,6 +325,12 @@ struct WXYCApp: App {
         )
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
+    }
+
+    private func setUpThermalAnalytics() {
+        let reporter = PostHogThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        AdaptiveThermalController.shared.setAnalytics(aggregator)
     }
 
     private func buildConfiguration() -> String {
