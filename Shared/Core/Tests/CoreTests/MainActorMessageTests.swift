@@ -41,7 +41,7 @@ struct MainActorMessageTests {
         let expectedTitle = "Observer Title"
         let receivedTitle = LockIsolated<String?>(nil)
 
-        let token = center.addObserver(
+        let token = center.addMainActorObserver(
             for: UIUpdateMessage.self
         ) { message in
             receivedTitle.setValue(message.title)
