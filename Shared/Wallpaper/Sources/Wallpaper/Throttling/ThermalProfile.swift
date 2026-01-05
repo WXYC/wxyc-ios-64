@@ -35,7 +35,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     public static let fpsRange: ClosedRange<Float> = 15.0...60.0
 
     /// Valid range for scale.
-    public static let scaleRange: ClosedRange<Float> = 0.25...1.0
+    public static let scaleRange: ClosedRange<Float> = 0.333...1.0
 
     /// Creates a new thermal profile with default (maximum quality) settings.
     ///
