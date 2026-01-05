@@ -43,7 +43,7 @@ if [ -z "$POSTHOG_API_KEY" ] || [ -z "$DISCOGS_API_KEY_V2_5" ] || \
    [ -z "$DISCOGS_API_SECRET_V2_5" ] || [ -z "$SPOTIFY_CLIENT_ID" ] || \
    [ -z "$SPOTIFY_CLIENT_SECRET" ] || [ -z "$REQUEST_O_MATIC" ]; then
     SECRETS_FILE="${1:-}"
-    if [ -n "$SECRETS_FILE" ] || [ -f "$SCRIPT_DIR/../../../secrets/secrets.txt" ]; then
+    if [ -n "$SECRETS_FILE" ] || [ -f "$SCRIPT_DIR/../../../../secrets/secrets.txt" ]; then
         log "Loading secrets from file..."
         # shellcheck source=/dev/null
         source "$SCRIPT_DIR/load-secrets-env.sh" "$SECRETS_FILE"
