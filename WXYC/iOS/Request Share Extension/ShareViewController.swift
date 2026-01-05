@@ -44,7 +44,7 @@ class ShareViewController: UIViewController {
         ])
         
         hostingController.didMove(toParent: self)
-        
+
         // Make the hosting controller's view transparent so our SwiftUI background shows
         hostingController.view.backgroundColor = .clear
         hostingController.view.isOpaque = false
