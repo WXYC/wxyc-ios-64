@@ -1,13 +1,13 @@
 {
-  "originHash" : "7c7fff33c719e41d7aee3b02f82d83c38be7d578b2ea6206618ec42ed3d9cc71",
+  "originHash" : "d8c76e9dd88633e9c4080a63a6e3c6520b22715bdd81ae73f2ab60ac44d643a5",
   "pins" : [
     {
       "identity" : "obfuscatemacro",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/p-x9/ObfuscateMacro.git",
       "state" : {
-        "revision" : "5fd8dfe96142229d67aaeb8d274c584dec8f732b",
-        "version" : "0.12.0"
+        "revision" : "116c9747ed2dd50d6b058a49bbb79e96b5e2e1a2",
+        "version" : "0.13.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PostHog/posthog-ios.git",
       "state" : {
-        "revision" : "fac9fc77380d2a38c3389f3cf4505a534921ee41",
-        "version" : "3.35.1"
+        "revision" : "6146a9f0bc41e687b1978a5d10d76dd85331c410",
+        "version" : "3.37.0"
       }
     },
     {
@@ -51,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
-        "version" : "3.15.1"
+        "revision" : "6f70fa9eab24c1fd982af18c281c4525d05e3095",
+        "version" : "4.2.0"
       }
     },
     {
