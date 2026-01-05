@@ -1,3 +1,3 @@
 @_exported import PlaybackCore
-import RadioPlayerModule
+@_exported import RadioPlayerModule
 import AVAudioStreamerModule

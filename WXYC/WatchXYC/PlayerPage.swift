@@ -8,18 +8,25 @@
 
 import SwiftUI
 import Playlist
+#if os(watchOS)
 import PlaybackWatchOS
+#else
+import Playback
+#endif
 import AppServices
+#if canImport(UIKit)
 import UIKit
+#endif
 import AVKit
 import AVFAudio
-
+    
 struct PlayerPage: View {
+    @Environment(\.playlistService) private var playlistService
     @State private var playlist: Playlist = .empty
     @State private var elementHeights: CGFloat = 0
     private let placeholder: UIImage = UIImage(named: "logo")!
     private let radioPlayerController: RadioPlayerController
-    
+
     init(radioPlayerController: RadioPlayerController) {
         self.radioPlayerController = radioPlayerController
     }
@@ -92,6 +99,12 @@ struct PlayerPage: View {
                 try? radioPlayerController.play(reason: "tvOS task")
             }
             #endif
+            .task {
+                guard let playlistService else { return }
+                for await playlist in playlistService.updates() {
+                    self.playlist = playlist
+                }
+            }
         }
     }
     

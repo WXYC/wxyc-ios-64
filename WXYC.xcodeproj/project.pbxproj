@@ -262,6 +262,10 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"WXYC TV/Assets.xcassets",
+				"WXYC TV/ContentView.swift",
+				"WXYC TV/WXYCTVApp.swift",
+				"WatchXYC/PlayerPage.swift",
+				"WatchXYC/RemoteImage.swift",
 			);
 			target = 9BCD7F5ECE0107BFED8218E5 /* WXYC TV */;
 		};
@@ -526,6 +530,10 @@
 			packageProductDependencies = (
 				3CABF5AF82DAA2E0D9877A07 /* Core */,
 				C0D1E2F30405162718192AC3 /* PostHog */,
+				23TV00012EFC67800058AD01 /* Playback */,
+				23TV00022EFC67570058AD01 /* Playlist */,
+				23TV00032EFC676F0058AD01 /* AppServices */,
+				23TV00042EFC6780ARTWORK01 /* Artwork */,
 			);
 			productName = "WXYC TV";
 			productReference = 6D8ECE997571529CE8187362 /* WXYC TV.app */;
@@ -1552,6 +1560,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = (
 					"**/PostHogExample*/*.storyboard",
 					"**/PostHogObjCExample/*.storyboard",
@@ -2180,6 +2189,22 @@
 		236B52082EFC67800058AD01 /* Playback */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Playback;
+		};
+		23TV00012EFC67800058AD01 /* Playback */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Playback;
+		};
+		23TV00022EFC67570058AD01 /* Playlist */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Playlist;
+		};
+		23TV00032EFC676F0058AD01 /* AppServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AppServices;
+		};
+		23TV00042EFC6780ARTWORK01 /* Artwork */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Artwork;
 		};
 		23B42F962F0209CB007351F1 /* ColorPalette */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Playback",
-    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15), .tvOS(.v18)],
+    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15), .tvOS("18.4")],
     products: [
         // Public-facing libraries
         .library(name: "Playback", targets: ["Playback"]),
@@ -48,6 +48,7 @@ let package = Package(
             name: "AVAudioStreamerModule",
             dependencies: [
                 "PlaybackCore",
+                .product(name: "DequeModule", package: "swift-collections"),
             ],
             path: "Sources/AVAudioStreamer"
         ),
@@ -61,11 +62,6 @@ let package = Package(
                 "PlaybackCore",
                 "RadioPlayerModule",
                 "AVAudioStreamerModule",
-                .product(
-                    name: "DequeModule",
-                    package: "swift-collections",
-                    condition: .when(platforms: [.iOS, .macOS, .tvOS, .visionOS])
-                ),
             ]
         ),
 
