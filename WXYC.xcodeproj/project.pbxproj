@@ -190,6 +190,14 @@
 			);
 			target = 6DEE556479EB425A885731F3 /* WXYCUITests */;
 		};
+		23F7425A2F0AE92A00333332 /* Exceptions for "WXYC" folder in "Request Share Extension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"/Localized: iOS/Request Share Extension/RequestShareMainInterface.storyboard",
+				"iOS/Request Share Extension/ShareViewController.swift",
+			);
+			target = 622FA860996235B58BA37A32 /* Request Share Extension */;
+		};
 		23FB1F662EEA847B0064E6FD /* Exceptions for "WXYC" folder in "WXYC" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -264,6 +272,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				23FB1F662EEA847B0064E6FD /* Exceptions for "WXYC" folder in "WXYC" target */,
+				23F7425A2F0AE92A00333332 /* Exceptions for "WXYC" folder in "Request Share Extension" target */,
 				23FB21C12EEA85F20064E6FD /* Exceptions for "WXYC" folder in "WXYC TV" target */,
 				23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */,
 				23A10B252EF5F166001EF137 /* Exceptions for "WXYC" folder in "WXYCUITests" target */,
@@ -636,7 +645,6 @@
 				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
-				61539220C8BCCFF9AC473AD9 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */,
 				6797FDE9A6390018099531DF /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */,
 				9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */,
 				F312D55190C505B9EE16903A /* XCLocalSwiftPackageReference "Shared/Playback" */,
@@ -2025,10 +2033,6 @@
 		23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/DebugPanel;
-		};
-		61539220C8BCCFF9AC473AD9 /* XCLocalSwiftPackageReference "Shared/MusicShareKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Shared/MusicShareKit;
 		};
 		6220DC310DFF2FC4A929FDB0 /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */ = {
 			isa = XCLocalSwiftPackageReference;

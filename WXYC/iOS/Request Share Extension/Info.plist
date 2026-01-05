@@ -22,20 +22,20 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSExtension</key>
 	<dict>
-	<key>NSExtensionAttributes</key>
-	<dict>
-		<key>NSExtensionActivationRule</key>
+		<key>NSExtensionAttributes</key>
 		<dict>
-			<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
-			<integer>10</integer>
-			<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
-			<integer>10</integer>
-			<key>NSExtensionActivationSupportsText</key>
-			<true/>
+			<key>NSExtensionActivationRule</key>
+			<dict>
+				<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
+				<integer>10</integer>
+				<key>NSExtensionActivationSupportsWebPageWithMaxCount</key>
+				<integer>10</integer>
+				<key>NSExtensionActivationSupportsText</key>
+				<true/>
+			</dict>
 		</dict>
-	</dict>
-	<key>NSExtensionPrincipalClass</key>
-	<string>ShareViewController</string>
+		<key>NSExtensionMainStoryboard</key>
+		<string>RequestShareMainInterface</string>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>
 	</dict>
