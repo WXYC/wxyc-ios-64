@@ -203,26 +203,30 @@ public final class AdaptiveThermalController {
             return
         }
 
-        // Direct FPS-based scale adjustment
-        // If FPS is below target, reduce scale proportionally to the deficit
+        // Direct FPS-based optimization
+        // If FPS is below target, reduce scale first, then FPS if scale is at minimum
         let targetFPS = currentFPS
         if fps < targetFPS {
             let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
-            let scaleReduction = deficit * 0.1  // Up to 10% reduction per report
-            let newScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
 
-            if newScale < currentScale {
-                currentScale = newScale
-
-                // Update profile
-                if var profile = currentProfile {
-                    profile.update(fps: currentFPS, scale: currentScale)
-                    currentProfile = profile
-                }
-
-                // Boost momentum to slow recovery
-                fpsMomentumBoost = max(fpsMomentumBoost, deficit)
+            if currentScale > ThermalProfile.scaleRange.lowerBound {
+                // First: reduce scale (less perceptible)
+                let scaleReduction = deficit * 0.1  // Up to 10% reduction per report
+                currentScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
+            } else {
+                // Scale at minimum: reduce FPS target to match reality
+                let fpsReduction = deficit * 5.0  // Up to 5 FPS reduction per report
+                currentFPS = max(currentFPS - fpsReduction, ThermalProfile.fpsRange.lowerBound)
             }
+
+            // Update profile
+            if var profile = currentProfile {
+                profile.update(fps: currentFPS, scale: currentScale)
+                currentProfile = profile
+            }
+
+            // Boost momentum to slow recovery
+            fpsMomentumBoost = max(fpsMomentumBoost, deficit)
         }
     }
 
