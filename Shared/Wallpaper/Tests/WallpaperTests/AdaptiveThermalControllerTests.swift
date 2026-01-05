@@ -214,6 +214,45 @@ struct AdaptiveThermalControllerTests {
         #expect(controller.currentMomentum == 1.0)
     }
 
+    @Test("Low FPS reduces scale when above minimum")
+    func lowFPSReducesScale() async {
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Start at max quality
+        #expect(controller.currentFPS == 60.0)
+        #expect(controller.currentScale == 1.0)
+
+        // Report low FPS (warning level, 25-50)
+        controller.reportMeasuredFPS(40.0)
+
+        // Should reduce scale, keep FPS target high
+        #expect(controller.currentFPS == 60.0)
+        #expect(controller.currentScale < 1.0)
+    }
+
+    @Test("Low FPS reduces FPS target when scale at minimum")
+    func lowFPSReducesFPSTargetAtMinScale() async {
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Force scale to minimum first
+        controller.reportMeasuredFPS(15.0)  // Critical - drops scale to min
+        #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)
+        #expect(controller.currentFPS == 60.0)
+
+        // Now report low FPS again - scale can't go lower, so FPS should drop
+        controller.reportMeasuredFPS(40.0)
+
+        // FPS target should be reduced since scale is at minimum
+        #expect(controller.currentFPS < 60.0)
+        #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)
+    }
+
     @Test("Quality recovery when thermal stable")
     func qualityRecoveryWhenStable() async {
         let context = MockThermalContext(thermalState: .nominal)
