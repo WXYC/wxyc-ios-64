@@ -87,9 +87,6 @@ final class DiscogsArtworkService: ArtworkService {
         let searchData = try await session.data(from: searchURL)
         let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: searchData)
         
-        let responseString = String(data: searchData, encoding: .utf8)
-        print(responseString!)
-        
         let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
         return imageURLs.first(where: { !$0.lastPathComponent.hasPrefix("spacer.gif") })
     }
@@ -156,7 +153,7 @@ public struct Discogs {
             
             return URL(string: "https://www.discogs.com\(path)")
         }
-        
+            
         /// Parsed release year as Int
         public var releaseYear: Int? {
             guard let year = year else { return nil }
