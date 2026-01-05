@@ -111,9 +111,6 @@ extension Playcut {
     }
 }
 
-extension Optional where Wrapped == Playcut {
-}
-
 extension Dictionary {
     // TODO: Replace with new `mutating func merging` method
     mutating func update(with dict: Dictionary<Key, Value>) {
