@@ -170,16 +170,30 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
 
     float edge = 1.0f - smoothstep(0.0f, w, d);
 
+    // Glow layers - softer, wider edges for bloom approximation
+    float glow1 = 1.0f - smoothstep(0.0f, w * 4.0f, d);
+    float glow2 = 1.0f - smoothstep(0.0f, w * 16.0f, d);
+    float glow = glow1 * 0.4f + glow2 * 0.2f;
+
+    // Hue-based glow intensity
+    // valueback controls purple(1.0) to cyan(0.0) blend
+    // Target a hue range - glow peaks at center, drops to zero at edges
+    float targetHue = 0.7f;    // center of glow range
+    float hueRange = 0.3f;     // half-width of range
+    float glowBrightness = 0.5f; // 0.0 = no glow, 1.0 = full, >1.0 = overdriven
+    float hueWeight = 1.0f - smoothstep(0.0f, hueRange, abs(valueback - targetHue));
+
     half3 purple = half3(1.0h, 0.0h, 1.0h);
     half3 cyan = half3(0.0h, 1.0h, 1.0h);
     half blend = half(valueback);
 
     half3 edgeColor = mix(cyan, purple, blend) * half(edge);
+    half3 glowColor = mix(cyan, purple, blend) * half(glow * hueWeight * glowBrightness);
 
     float q = floor(valueback * 10.0f) * 0.1f;
     half3 baseColor = half3(0.0h, 0.0h, half(q) * 0.2h);
 
-    return half4(edgeColor + baseColor, 1.0h);
+    return half4(edgeColor + glowColor + baseColor, 1.0h);
 }
 
 [[ stitchable ]]
@@ -192,4 +206,5 @@ fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]], constant Uniforms&
     float2 pos = in.uv * u.resolution;
     return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time);
 }
+
 

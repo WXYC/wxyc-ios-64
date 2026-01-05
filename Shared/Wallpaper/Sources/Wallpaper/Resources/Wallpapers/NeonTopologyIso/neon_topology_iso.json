@@ -14,13 +14,11 @@
     { "source": "viewHeight" },
     { "source": "time" }
   ],
-  "foreground": "light",
+  "foreground": "dark",
   "accent": {
     "hue": 23,
     "saturation": 0.75
   },
   "appIconName": "NeonTopologyIso",
-  "materialWeight": "thin"
+  "materialWeight": "ultraThin"
 }
-
-

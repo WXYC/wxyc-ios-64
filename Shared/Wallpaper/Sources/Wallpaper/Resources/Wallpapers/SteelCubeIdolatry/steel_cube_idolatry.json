@@ -34,14 +34,14 @@
       "id": "blueIntensity",
       "type": "float",
       "label": "Blue",
-      "default": 0.5,
+      "default": 0.0,
       "range": { "min": 0.0, "max": 3.0 }
     },
     {
       "id": "ambientLevel",
       "type": "float",
       "label": "Ambient",
-      "default": 1.0,
+      "default": 0.0,
       "range": { "min": 0.0, "max": 2.0 }
     },
     {
@@ -53,7 +53,7 @@
     }
   ],
   "shaderArguments": [],
-  "foreground": "light",
+  "foreground": "dark",
   "accent": {
     "hue": 23,
     "saturation": 0.75

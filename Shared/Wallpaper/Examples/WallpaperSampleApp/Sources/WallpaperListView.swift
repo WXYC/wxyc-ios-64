@@ -7,12 +7,12 @@ import SwiftUI
 import Wallpaper
 
 struct WallpaperListView: View {
-    private let wallpapers = WallpaperRegistry.shared.wallpapers
+    private let theme = ThemeRegistry.shared.themes
     @State private var showDebugHUD = false
 
     var body: some View {
         NavigationStack {
-            List(wallpapers) { wallpaper in
+            List(theme) { wallpaper in
                 NavigationLink(wallpaper.displayName) {
                     WallpaperDetailView(wallpaper: wallpaper)
                         .overlay {

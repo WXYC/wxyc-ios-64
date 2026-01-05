@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		236CDFCA2EFBC56D00C677C4 /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 236CDFC92EFBC56D00C677C4 /* Wallpaper */; };
-		23B432152F024974007351F1 /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = A1000002229F0002 /* Wallpaper */; };
 		23B432202F0249A3007351F1 /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23B4321F2F0249A3007351F1 /* Wallpaper */; };
 /* End PBXBuildFile section */
 
@@ -43,8 +41,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				23B432202F0249A3007351F1 /* Wallpaper in Frameworks */,
-				23B432152F024974007351F1 /* Wallpaper in Frameworks */,
-				236CDFCA2EFBC56D00C677C4 /* Wallpaper in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

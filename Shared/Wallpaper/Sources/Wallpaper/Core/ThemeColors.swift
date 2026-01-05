@@ -31,6 +31,13 @@ public enum ForegroundStyle: String, Codable, Sendable {
         case .dark: .black.opacity(0.6)
         }
     }
+    
+    public var colorScheme: ColorScheme {
+        switch self {
+        case .light: .light
+        case .dark: .dark
+        }
+    }
 }
 
 // MARK: - Accent Color
