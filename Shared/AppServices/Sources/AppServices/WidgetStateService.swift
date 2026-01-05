@@ -32,25 +32,23 @@ public final class WidgetStateService {
     private var isForegrounded = false
     private var playbackObservationTask: Task<Void, Never>?
     private var playlistObservationTask: Task<Void, Never>?
+    private var appTerminationObservation: NSObjectProtocol?
 
     public init(playbackController: any PlaybackController, playlistService: PlaylistService) {
         self.playbackController = playbackController
         self.playlistService = playlistService
 
+        // Listen for app termination to clear playback state
+        #if canImport(UIKit) && !os(watchOS)
+        appTerminationObservation = NotificationCenter.default
+            .addMainActorObserver(of: UIApplication.shared, for: ApplicationWillTerminateMessage.self) { _ in
+                self.clearPlaybackState()
+            }
+        #endif
+        
         // Clear stale playback state from previous app session.
         // The app wasn't playing when it was terminated, so reset to false.
         clearPlaybackState()
-
-        // Listen for app termination to clear playback state
-        #if canImport(UIKit) && !os(watchOS)
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.willTerminateNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.clearPlaybackState()
-        }
-        #endif
     }
 
     deinit {
