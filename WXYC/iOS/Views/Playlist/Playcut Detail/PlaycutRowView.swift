@@ -100,6 +100,13 @@ struct PlaycutRowView: View {
         let theme = ThemeRegistry.shared.theme(for: themeID)
         return theme?.manifest.materialWeight.material ?? .thinMaterial
     }
+
+    private var currentColorScheme: ColorScheme {
+        let themeID = appState.themeConfiguration.selectedThemeID
+        let theme = ThemeRegistry.shared.theme(for: themeID)
+        return theme?.manifest.foreground.colorScheme ?? .light
+    }
+    
     private var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
         TimelineView(.animation) { context in
             let time = context.date.timeIntervalSince1970 + TimeInterval(timeOffset)
@@ -151,6 +158,7 @@ struct PlaycutRowView: View {
                 ZStack(alignment: .leading) {
                     // Background layer
                     BackgroundLayer(material: currentMaterial)
+                        .preferredColorScheme(currentColorScheme)
                     
                     // Content that can punch through the background
                     HStack(alignment: .center, spacing: 0) {
