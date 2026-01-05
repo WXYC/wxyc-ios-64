@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import Core
+import Playback
 
 struct ContentView: View {
     let radioPlayerController: RadioPlayerController

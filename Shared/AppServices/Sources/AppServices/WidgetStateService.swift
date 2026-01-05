@@ -6,6 +6,7 @@
 //  Observes playback state and playlist updates to keep widgets synchronized.
 //
 
+#if canImport(WidgetKit)
 import Caching
 import Core
 import PlaybackCore
@@ -150,3 +151,4 @@ public final class WidgetStateService {
         }
     }
 }
+#endif
