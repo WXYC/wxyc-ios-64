@@ -194,6 +194,26 @@ struct AdaptiveThermalControllerTests {
         #expect(defaults.data(forKey: key) == nil)
     }
 
+    @Test("Critical FPS forces immediate floor values")
+    func criticalFPSForcesFloorValues() async {
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Start at max quality
+        #expect(controller.currentFPS == 60.0)
+        #expect(controller.currentScale == 1.0)
+
+        // Report critical FPS (< 25)
+        controller.reportMeasuredFPS(15.0)
+
+        // Should immediately drop to floor values
+        #expect(controller.currentFPS == ThermalProfile.fpsRange.lowerBound)
+        #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)
+        #expect(controller.currentMomentum == 1.0)
+    }
+
     @Test("Quality recovery when thermal stable")
     func qualityRecoveryWhenStable() async {
         let context = MockThermalContext(thermalState: .nominal)

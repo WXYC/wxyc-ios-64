@@ -190,18 +190,44 @@ public final class AdaptiveThermalController {
     /// Reports the measured FPS from the renderer.
     ///
     /// Call this periodically from the render loop when FPS measurements are available.
-    /// Low FPS readings boost thermal momentum to trigger faster quality reduction,
-    /// providing faster feedback than thermal state changes alone.
+    /// Critically low FPS (< 25) triggers immediate aggressive throttling to floor values.
+    /// Low FPS (< 50) boosts momentum for faster quality reduction.
     ///
     /// - Parameter fps: The measured average FPS.
     public func reportMeasuredFPS(_ fps: Float) {
         let severity = FrameRateMonitor.severity(for: fps)
-        fpsMomentumBoost = severity.momentumBoost
 
-        // If FPS is critically low, trigger immediate optimization
+        // Critical FPS: immediately force floor values
+        // The GPU is severely overloaded - gradual reduction won't help
         if severity == .critical {
-            performOptimizationTick()
+            forceCriticalThrottle()
+            return
         }
+
+        // Warning level: boost momentum for faster reduction
+        fpsMomentumBoost = severity.momentumBoost
+    }
+
+    /// Forces immediate aggressive throttling due to critical FPS.
+    private func forceCriticalThrottle() {
+        // Immediately drop to minimum viable quality
+        currentFPS = ThermalProfile.fpsRange.lowerBound  // 15 FPS
+        currentScale = ThermalProfile.scaleRange.lowerBound  // 0.5 scale
+
+        // Update profile so we remember this shader struggles
+        if var profile = currentProfile {
+            profile.update(fps: currentFPS, scale: currentScale)
+            currentProfile = profile
+
+            // Persist immediately - this shader needs aggressive settings
+            if !context.hasExternalFactors {
+                store.save(profile)
+            }
+        }
+
+        // Set high momentum so recovery is slow
+        currentMomentum = 1.0
+        fpsMomentumBoost = 0
     }
 
     // MARK: - Optimization Loop
