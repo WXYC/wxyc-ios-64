@@ -24,6 +24,7 @@
 		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
 		23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */ = {isa = PBXBuildFile; productRef = 23D4181A2EF2C8000DBGPNL /* DebugPanel */; };
 		23DD3EC12EFA090B0090636B /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = C0D1E2F30405162718192AC3 /* PostHog */; };
+		23F742602F0AEBFC00333332 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
 		37327445A68BBA56C392BEF7 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 01163D6D065337EB60F79C5B /* WXUI */; };
@@ -47,7 +48,6 @@
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
-		SEC00001XCFR0001WXYC0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		SEC00001XCFR0002WDGT0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		SEC00001XCFR0003SHAR0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		SEC00001XCFR0004WTCH0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
@@ -306,10 +306,10 @@
 				2C25163B4CC5F775E9F8409E /* Logger in Frameworks */,
 				B78B37108DAAACABF26EB624 /* OpenNSFW in Frameworks */,
 				78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */,
-				SEC00001XCFR0001WXYC0001 /* Secrets.xcframework in Frameworks */,
 				9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */,
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
+				23F742602F0AEBFC00333332 /* Secrets.xcframework in Frameworks */,
 				1F3D795595990939AC76274D /* Playlist in Frameworks */,
 				23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */,
 				23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */,
@@ -551,6 +551,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BCDB07AF50A606A90AFC77E6 /* Build configuration list for PBXNativeTarget "WXYC" */;
 			buildPhases = (
+				23F742632F0AF0AA00333332 /* Ensure Secrets XCFramework */,
 				6AF4C1FE1EAD852AFDE5A6DC /* Sources */,
 				2994456FF2469AAFA85A0645 /* Frameworks */,
 				3FA193A59B6488FC4364B0FD /* Embed Foundation Extensions */,
@@ -698,6 +699,25 @@
 			);
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		23F742632F0AF0AA00333332 /* Ensure Secrets XCFramework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			inputFileListPaths = (
+				"$(SRCROOT)/Shared/Secrets/Scripts/ensure-xcframework.sh",
+			);
+			name = "Ensure Secrets XCFramework";
+			outputPaths = (
+				" $(SRCROOT)/Shared/Secrets/Secrets.xcframework",
+			);
+			shellPath = /bin/sh;
+			shellScript = (
+				"\"${SRCROOT}/Shared/Secrets/Scripts/ensure-xcframework.sh\"",
+				"",
+			);
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		0A8685FC6482490EFF13F1AA /* Sources */ = {
