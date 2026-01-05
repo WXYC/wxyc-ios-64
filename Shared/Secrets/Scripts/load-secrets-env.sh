@@ -28,9 +28,9 @@ if [ -z "$SECRETS_FILE" ]; then
     # Try standard locations
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    # Check relative to Shared/Secrets/Scripts
-    if [ -f "$SCRIPT_DIR/../../../secrets/secrets.txt" ]; then
-        SECRETS_FILE="$SCRIPT_DIR/../../../secrets/secrets.txt"
+    # Check relative to Shared/Secrets/Scripts (4 levels up to reach secrets/)
+    if [ -f "$SCRIPT_DIR/../../../../secrets/secrets.txt" ]; then
+        SECRETS_FILE="$SCRIPT_DIR/../../../../secrets/secrets.txt"
     # Check relative to project root
     elif [ -f "../secrets/secrets.txt" ]; then
         SECRETS_FILE="../secrets/secrets.txt"
