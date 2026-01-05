@@ -209,10 +209,14 @@ public final class AdaptiveThermalController {
     }
 
     /// Forces immediate aggressive throttling due to critical FPS.
+    ///
+    /// Drops scale to minimum while keeping FPS target high. Low measured FPS
+    /// means the GPU can't keep up with the workload - reducing scale (fewer pixels)
+    /// is the fix, not reducing FPS target.
     private func forceCriticalThrottle() {
-        // Immediately drop to minimum viable quality
-        currentFPS = ThermalProfile.fpsRange.lowerBound  // 15 FPS
+        // Drop scale to reduce GPU workload, keep FPS target high
         currentScale = ThermalProfile.scaleRange.lowerBound  // 0.5 scale
+        // Keep currentFPS unchanged - we want smooth animation
 
         // Update profile so we remember this shader struggles
         if var profile = currentProfile {

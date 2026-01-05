@@ -194,8 +194,8 @@ struct AdaptiveThermalControllerTests {
         #expect(defaults.data(forKey: key) == nil)
     }
 
-    @Test("Critical FPS forces immediate floor values")
-    func criticalFPSForcesFloorValues() async {
+    @Test("Critical FPS drops scale but keeps FPS target high")
+    func criticalFPSDropsScale() async {
         let context = MockThermalContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
@@ -205,12 +205,12 @@ struct AdaptiveThermalControllerTests {
         #expect(controller.currentFPS == 60.0)
         #expect(controller.currentScale == 1.0)
 
-        // Report critical FPS (< 25)
+        // Report critical FPS (< 25) - GPU can't keep up
         controller.reportMeasuredFPS(15.0)
 
-        // Should immediately drop to floor values
-        #expect(controller.currentFPS == ThermalProfile.fpsRange.lowerBound)
-        #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)
+        // Should drop scale to reduce workload, but keep FPS target high
+        #expect(controller.currentFPS == 60.0)  // Keep high - we want smooth animation
+        #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)  // Drop scale
         #expect(controller.currentMomentum == 1.0)
     }
 
