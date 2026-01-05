@@ -3,8 +3,8 @@
 # build-xcframework.sh
 #
 # Builds the Secrets XCFramework for all required platforms.
-# This pre-compiles the ObfuscateMacro/swift-syntax dependency to avoid
-# rebuilding it on every app build.
+# Uses SecretsFramework.xcodeproj to avoid swift-algorithms library evolution
+# compatibility issues with Swift 6.2.
 #
 # Usage:
 #   ./build-xcframework.sh [path-to-secrets.txt]
@@ -26,8 +26,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUTPUT_DIR="$SECRETS_DIR"
 XCFRAMEWORK_NAME="Secrets.xcframework"
-BUILD_DIR="$SECRETS_DIR/.build-xcframework"
 SECRETS_SWIFT="$SECRETS_DIR/Sources/Secrets/Secrets.swift"
+XCODEPROJ="$SECRETS_DIR/SecretsFramework.xcodeproj"
 
 log() {
     echo "[build-xcframework] $1"
@@ -36,11 +36,6 @@ log() {
 error() {
     echo "[build-xcframework] ERROR: $1" >&2
     exit 1
-}
-
-cleanup() {
-    log "Cleaning up build directory..."
-    rm -rf "$BUILD_DIR"
 }
 
 # Load secrets from file if environment variables aren't already set
@@ -70,13 +65,18 @@ if [ ${#missing_vars[@]} -gt 0 ]; then
     error "Missing required environment variables: ${missing_vars[*]}"
 fi
 
+# Verify Xcode project exists
+if [ ! -d "$XCODEPROJ" ]; then
+    error "SecretsFramework.xcodeproj not found at $XCODEPROJ"
+fi
+
 # Generate Secrets.swift
 log "Generating Secrets.swift..."
 mkdir -p "$(dirname "$SECRETS_SWIFT")"
 cat > "$SECRETS_SWIFT" << EOF
 // This file is auto-generated. Do not edit.
 
-import ObfuscateMacro
+@_implementationOnly import ObfuscateMacro
 import Foundation
 
 public struct Secrets {
@@ -90,119 +90,73 @@ public struct Secrets {
 EOF
 log "Generated Secrets.swift"
 
-# Clean previous builds
-rm -rf "$BUILD_DIR"
+# Remove old xcframework
 rm -rf "$OUTPUT_DIR/$XCFRAMEWORK_NAME"
-mkdir -p "$BUILD_DIR"
 
-cd "$SECRETS_DIR"
-
-# Build for each platform using swift build
-# Triples: ios-arm64, ios-arm64-simulator, watchos-arm64, watchos-arm64-simulator
+# Define platforms to build
 PLATFORMS=(
-    "arm64-apple-ios"
-    "arm64-apple-ios-simulator"
-    "arm64-apple-watchos"
-    "arm64-apple-watchos-simulator"
+    "generic/platform=iOS"
+    "generic/platform=iOS Simulator"
+    "generic/platform=watchOS"
+    "generic/platform=watchOS Simulator"
 )
 
-FRAMEWORK_PATHS=()
+PLATFORM_DIRS=(
+    "Release-iphoneos"
+    "Release-iphonesimulator"
+    "Release-watchos"
+    "Release-watchsimulator"
+)
 
 log "Building for all platforms..."
 
-for triple in "${PLATFORMS[@]}"; do
-    log "Building for $triple..."
+cd "$SECRETS_DIR"
 
-    swift build \
-        --triple "$triple" \
-        --configuration release \
-        --build-path "$BUILD_DIR/$triple" \
-        -Xswiftc -enable-library-evolution \
-        -Xswiftc -emit-module-interface \
-        2>&1 | grep -E "^(Build|Compiling|error:|warning:)" || true
+for i in "${!PLATFORMS[@]}"; do
+    platform="${PLATFORMS[$i]}"
+    log "Building for $platform..."
 
-    # Find the built framework
-    FRAMEWORK_PATH="$BUILD_DIR/$triple/release/Secrets.framework"
-
-    # For Swift packages, we need to construct the framework from the build products
-    PRODUCTS_DIR="$BUILD_DIR/$triple/release"
-
-    if [ -f "$PRODUCTS_DIR/libSecrets.a" ] || [ -f "$PRODUCTS_DIR/Secrets.o" ]; then
-        log "Creating framework structure for $triple..."
-
-        FRAMEWORK_DIR="$BUILD_DIR/frameworks/$triple/Secrets.framework"
-        mkdir -p "$FRAMEWORK_DIR/Modules/Secrets.swiftmodule"
-
-        # Copy the binary
-        if [ -f "$PRODUCTS_DIR/libSecrets.a" ]; then
-            cp "$PRODUCTS_DIR/libSecrets.a" "$FRAMEWORK_DIR/Secrets"
-        elif [ -f "$PRODUCTS_DIR/Secrets.o" ]; then
-            # Link into a static library if needed
-            ar rcs "$FRAMEWORK_DIR/Secrets" "$PRODUCTS_DIR/Secrets.o"
-        fi
-
-        # Copy Swift module interface files
-        if [ -d "$PRODUCTS_DIR/Secrets.build" ]; then
-            find "$PRODUCTS_DIR/Secrets.build" -name "*.swiftinterface" -exec cp {} "$FRAMEWORK_DIR/Modules/Secrets.swiftmodule/" \;
-            find "$PRODUCTS_DIR/Secrets.build" -name "*.swiftmodule" -exec cp {} "$FRAMEWORK_DIR/Modules/Secrets.swiftmodule/" \;
-            find "$PRODUCTS_DIR/Secrets.build" -name "*.swiftdoc" -exec cp {} "$FRAMEWORK_DIR/Modules/Secrets.swiftmodule/" \;
-        fi
-
-        # Create module.modulemap
-        cat > "$FRAMEWORK_DIR/Modules/module.modulemap" << 'MODULEMAP'
-framework module Secrets {
-    header "Secrets-Swift.h"
-    requires objc
-}
-MODULEMAP
-
-        # Create umbrella header
-        cat > "$FRAMEWORK_DIR/Secrets-Swift.h" << 'HEADER'
-// Secrets umbrella header
-HEADER
-
-        # Create Info.plist
-        cat > "$FRAMEWORK_DIR/Info.plist" << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>Secrets</string>
-    <key>CFBundleIdentifier</key>
-    <string>org.wxyc.Secrets</string>
-    <key>CFBundleName</key>
-    <string>Secrets</string>
-    <key>CFBundlePackageType</key>
-    <string>FMWK</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-</dict>
-</plist>
-PLIST
-
-        FRAMEWORK_PATHS+=("-framework" "$FRAMEWORK_DIR")
-        log "Created framework for $triple"
-    else
-        log "Warning: Could not find build products for $triple"
-        ls -la "$PRODUCTS_DIR" 2>/dev/null || true
-    fi
+    xcodebuild -project "$XCODEPROJ" \
+        -scheme Secrets \
+        -destination "$platform" \
+        -configuration Release \
+        SKIP_INSTALL=NO \
+        -quiet \
+        2>&1 | grep -E "^(error:|warning:.*Secrets)" || true
 done
 
-# Check if we have any frameworks to bundle
-if [ ${#FRAMEWORK_PATHS[@]} -eq 0 ]; then
-    error "No frameworks were built successfully"
+log "All platforms built successfully"
+
+# Find DerivedData path for this project
+# xcodebuild uses ~/Library/Developer/Xcode/DerivedData/ProjectName-hash/
+DERIVED_DATA_BASE="$HOME/Library/Developer/Xcode/DerivedData"
+DERIVED_DATA=$(find "$DERIVED_DATA_BASE" -maxdepth 1 -name "SecretsFramework-*" -type d 2>/dev/null | head -1)
+
+if [ -z "$DERIVED_DATA" ]; then
+    error "Could not find SecretsFramework DerivedData directory"
 fi
+
+BUILD_PRODUCTS="$DERIVED_DATA/Build/Products"
+
+if [ ! -d "$BUILD_PRODUCTS" ]; then
+    error "Could not find build products at $BUILD_PRODUCTS"
+fi
+
+# Verify all frameworks exist
+FRAMEWORK_ARGS=()
+for dir in "${PLATFORM_DIRS[@]}"; do
+    framework_path="$BUILD_PRODUCTS/$dir/Secrets.framework"
+    if [ ! -d "$framework_path" ]; then
+        error "Framework not found at $framework_path"
+    fi
+    FRAMEWORK_ARGS+=("-framework" "$framework_path")
+done
 
 # Create XCFramework
 log "Creating XCFramework..."
 xcodebuild -create-xcframework \
-    "${FRAMEWORK_PATHS[@]}" \
+    "${FRAMEWORK_ARGS[@]}" \
     -output "$OUTPUT_DIR/$XCFRAMEWORK_NAME" 2>&1 || {
-        log "XCFramework creation failed, checking what we have..."
-        ls -laR "$BUILD_DIR/frameworks/" 2>/dev/null || true
         error "Failed to create XCFramework"
     }
 
@@ -211,10 +165,4 @@ if [ ! -d "$OUTPUT_DIR/$XCFRAMEWORK_NAME" ]; then
 fi
 
 log "Created $XCFRAMEWORK_NAME successfully"
-
-# Cleanup
-cleanup
-
 log "XCFramework build complete: $OUTPUT_DIR/$XCFRAMEWORK_NAME"
-log ""
-log "The Secrets package will now automatically use the XCFramework."
