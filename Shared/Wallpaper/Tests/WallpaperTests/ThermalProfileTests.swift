@@ -22,11 +22,11 @@ struct ThermalProfileTests {
         let profile = ThermalProfile(
             shaderId: "test",
             fps: 100,  // Above max
-            scale: 0.1  // Below min
+            scale: 0.05  // Below min
         )
 
         #expect(profile.fps == 60.0)
-        #expect(profile.scale == 0.5)
+        #expect(profile.scale == ThermalProfile.scaleRange.lowerBound)
     }
 
     @Test("Update increments sample count")

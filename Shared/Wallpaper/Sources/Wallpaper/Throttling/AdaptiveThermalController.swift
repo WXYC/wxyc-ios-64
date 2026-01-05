@@ -190,22 +190,40 @@ public final class AdaptiveThermalController {
     /// Reports the measured FPS from the renderer.
     ///
     /// Call this periodically from the render loop when FPS measurements are available.
-    /// Critically low FPS (< 25) triggers immediate aggressive throttling to floor values.
-    /// Low FPS (< 50) boosts momentum for faster quality reduction.
+    /// Directly reduces scale when FPS is below target - this is the primary optimization
+    /// mechanism for GPU-bound scenarios.
     ///
     /// - Parameter fps: The measured average FPS.
     public func reportMeasuredFPS(_ fps: Float) {
         let severity = FrameRateMonitor.severity(for: fps)
 
-        // Critical FPS: immediately force floor values
-        // The GPU is severely overloaded - gradual reduction won't help
+        // Critical FPS (< 25): immediately drop to minimum scale
         if severity == .critical {
             forceCriticalThrottle()
             return
         }
 
-        // Warning level: boost momentum for faster reduction
-        fpsMomentumBoost = severity.momentumBoost
+        // Direct FPS-based scale adjustment
+        // If FPS is below target, reduce scale proportionally to the deficit
+        let targetFPS = currentFPS
+        if fps < targetFPS {
+            let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
+            let scaleReduction = deficit * 0.1  // Up to 10% reduction per report
+            let newScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
+
+            if newScale < currentScale {
+                currentScale = newScale
+
+                // Update profile
+                if var profile = currentProfile {
+                    profile.update(fps: currentFPS, scale: currentScale)
+                    currentProfile = profile
+                }
+
+                // Boost momentum to slow recovery
+                fpsMomentumBoost = max(fpsMomentumBoost, deficit)
+            }
+        }
     }
 
     /// Forces immediate aggressive throttling due to critical FPS.
