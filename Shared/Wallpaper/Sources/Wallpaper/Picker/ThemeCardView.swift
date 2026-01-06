@@ -22,8 +22,9 @@ struct ThemeCardView: View {
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
 
-            // Wallpaper card - always live
+            // Wallpaper card - always live, using reduced quality for picker
             WallpaperRendererFactory.makeView(for: theme)
+                .environment(\.wallpaperQualityProfile, .picker)
                 .frame(width: cardSize.width, height: cardSize.height)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 .overlay {

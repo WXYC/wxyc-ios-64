@@ -18,6 +18,7 @@ private typealias ViewRepresentable = UIViewRepresentable
 /// Supports both simple precompiled shaders and runtime-compiled shaders with directive stores.
 public struct MetalWallpaperView: ViewRepresentable {
     @Environment(\.wallpaperAnimationStartTime) private var animationStartTime
+    @Environment(\.wallpaperQualityProfile) private var qualityProfile
 
     let theme: LoadedTheme
     let directiveStore: ShaderDirectiveStore?
@@ -31,7 +32,8 @@ public struct MetalWallpaperView: ViewRepresentable {
         MetalWallpaperRenderer(
             theme: theme,
             directiveStore: directiveStore,
-            animationStartTime: animationStartTime
+            animationStartTime: animationStartTime,
+            qualityProfile: qualityProfile
         )
     }
 

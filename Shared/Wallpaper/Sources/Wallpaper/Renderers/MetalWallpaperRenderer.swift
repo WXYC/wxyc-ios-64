@@ -48,7 +48,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var pixelFormat: MTLPixelFormat = .bgra8Unorm
     private var directiveObservationTask: Task<Void, Never>?
 
+    /// Optional fixed quality profile that overrides adaptive thermal optimization.
+    private let qualityProfile: QualityProfile?
+
     /// Reference to the adaptive thermal controller for continuous FPS/scale optimization.
+    /// Only used when `qualityProfile` is nil.
     private let thermalController = AdaptiveThermalController.shared
 
     /// Frame rate monitor for early performance detection.
@@ -62,9 +66,15 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         theme.manifest.renderer.type == .rawMetal
     }
 
-    init(theme: LoadedTheme, directiveStore: ShaderDirectiveStore? = nil, animationStartTime: Date) {
+    init(
+        theme: LoadedTheme,
+        directiveStore: ShaderDirectiveStore? = nil,
+        animationStartTime: Date,
+        qualityProfile: QualityProfile? = nil
+    ) {
         self.theme = theme
         self.directiveStore = directiveStore
+        self.qualityProfile = qualityProfile
         // Convert the Date-based start time to CACurrentMediaTime's time base.
         // This ensures Metal rendering is synchronized with SwiftUI's TimelineView-based renderers.
         let elapsedSinceStart = Date().timeIntervalSince(animationStartTime)
@@ -82,9 +92,15 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         self.queue = device.makeCommandQueue()
         self.pixelFormat = view.colorPixelFormat
 
-        // Set active shader for thermal optimization
-        Task {
-            await thermalController.setActiveShader(theme.manifest.id)
+        // Set up thermal optimization only when no fixed quality profile is set
+        if let profile = qualityProfile {
+            // Use fixed quality profile settings
+            view.preferredFramesPerSecond = Int(profile.fps)
+        } else {
+            // Set active shader for adaptive thermal optimization
+            Task {
+                await thermalController.setActiveShader(theme.manifest.id)
+            }
         }
 
         let renderer = theme.manifest.renderer
@@ -266,23 +282,33 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let drawable = view.currentDrawable
         else { return }
 
-        // Measure frame duration for FPS monitoring
-        let frameStart = CACurrentMediaTime()
-        if lastFrameStart > 0 {
-            let frameDuration = frameStart - lastFrameStart
-            if let measuredFPS = frameRateMonitor.recordFrame(duration: frameDuration) {
-                thermalController.reportMeasuredFPS(measuredFPS)
+        // Get quality values from fixed profile or thermal controller
+        let resolutionScale: Float
+        let targetFPS: Int
+
+        if let profile = qualityProfile {
+            // Use fixed quality profile
+            resolutionScale = profile.scale
+            targetFPS = Int(profile.fps)
+        } else {
+            // Measure frame duration for FPS monitoring
+            let frameStart = CACurrentMediaTime()
+            if lastFrameStart > 0 {
+                let frameDuration = frameStart - lastFrameStart
+                if let measuredFPS = frameRateMonitor.recordFrame(duration: frameDuration) {
+                    thermalController.reportMeasuredFPS(measuredFPS)
+                }
             }
-        }
-        lastFrameStart = frameStart
+            lastFrameStart = frameStart
 
-        // Get current thermal optimization values
-        let resolutionScale = thermalController.currentScale
-        let targetFPS = Int(thermalController.currentFPS)
+            // Get current thermal optimization values
+            resolutionScale = thermalController.currentScale
+            targetFPS = Int(thermalController.currentFPS)
 
-        // Update FPS if changed
-        if view.preferredFramesPerSecond != targetFPS {
-            view.preferredFramesPerSecond = targetFPS
+            // Update FPS if changed
+            if view.preferredFramesPerSecond != targetFPS {
+                view.preferredFramesPerSecond = targetFPS
+            }
         }
 
         let now = CACurrentMediaTime()

@@ -22,6 +22,11 @@ private struct WallpaperAnimationStartTimeKey: EnvironmentKey {
     static let defaultValue: Date = Date()
 }
 
+/// Environment key for a fixed quality profile that overrides adaptive thermal optimization.
+private struct WallpaperQualityProfileKey: EnvironmentKey {
+    static let defaultValue: QualityProfile? = nil
+}
+
 import SwiftUI
 
 public extension EnvironmentValues {
@@ -33,6 +38,16 @@ public extension EnvironmentValues {
     var wallpaperAnimationStartTime: Date {
         get { self[WallpaperAnimationStartTimeKey.self] }
         set { self[WallpaperAnimationStartTimeKey.self] = newValue }
+    }
+
+    /// Optional quality profile that overrides adaptive thermal optimization.
+    ///
+    /// When set, renderers use these fixed FPS and scale values instead of
+    /// the adaptive thermal controller. Use for contexts like the wallpaper
+    /// picker where lower quality is acceptable.
+    var wallpaperQualityProfile: QualityProfile? {
+        get { self[WallpaperQualityProfileKey.self] }
+        set { self[WallpaperQualityProfileKey.self] = newValue }
     }
 }
 
