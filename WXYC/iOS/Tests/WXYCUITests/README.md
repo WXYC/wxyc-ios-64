@@ -6,6 +6,13 @@ This directory contains UI integration tests for the WXYC iOS app. These tests v
 
 ## Test Files
 
+### `UITestUtilities.swift`
+Reusable utilities for condition-based waiting in UI tests:
+- `waitUntil(condition:)` - Waits until a condition is met, yielding between checks
+- `waitUntil(_:is:)` - Waits until an XCUIElement meets requirements (`.exists`, `.hittable`, `.enabled`)
+
+This approach is faster and more deterministic than fixed `Task.sleep` delays.
+
 ### `PlaybackUITests.swift`
 Existing tests for basic playback functionality and crash prevention.
 

@@ -32,8 +32,8 @@ struct PlaybackButtonObservationUITests {
         // Tap to start playback
         playButton.tap()
 
-        // Wait for state change animation
-        try await Task.sleep(for: .seconds(1))
+        // Wait for button to stabilize after state change
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Verify button still exists and responds
         #expect(playButton.exists, "Button should exist after starting playback")
@@ -41,8 +41,8 @@ struct PlaybackButtonObservationUITests {
         // Tap to pause
         playButton.tap()
 
-        // Wait for state change animation
-        try await Task.sleep(for: .milliseconds(500))
+        // Wait for button to stabilize
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Verify button still works
         #expect(playButton.exists, "Button should exist after pausing")
@@ -58,8 +58,8 @@ struct PlaybackButtonObservationUITests {
         // Start playback via button tap (simulates AudioPlayerController.play())
         playButton.tap()
 
-        // Wait for playback to start and UI to update
-        try await Task.sleep(for: .seconds(2))
+        // Wait for UI to stabilize after playback starts
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Button should still be responsive
         #expect(playButton.exists, "Button should remain responsive during playback")
@@ -68,7 +68,8 @@ struct PlaybackButtonObservationUITests {
         // Stop playback via button tap (simulates AudioPlayerController.pause())
         playButton.tap()
 
-        try await Task.sleep(for: .milliseconds(500))
+        // Wait for UI to stabilize
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Verify UI remains in sync
         #expect(playButton.exists, "Button should exist after stopping")
@@ -83,14 +84,14 @@ struct PlaybackButtonObservationUITests {
         #expect(exists, "Play button should exist")
 
         // Rapidly tap the button 15 times
+        // Using minimal delay to simulate rapid user interaction
         for _ in 1...15 {
             playButton.tap()
-            // Small delay between taps to simulate rapid user interaction
-            try await Task.sleep(for: .milliseconds(100))
+            await Task.yield()
         }
 
-        // Allow any pending animations/state changes to complete
-        try await Task.sleep(for: .seconds(1))
+        // Wait for button to stabilize after rapid tapping
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // App shouldn't crash and button should remain functional
         #expect(playButton.exists, "Button should exist after rapid tapping")
@@ -98,7 +99,7 @@ struct PlaybackButtonObservationUITests {
 
         // Verify button still responds to taps
         playButton.tap()
-        try await Task.sleep(for: .milliseconds(300))
+        try await waitUntil(playButton, is: .exists)
         #expect(playButton.exists, "Button should still respond after rapid tapping")
     }
 
@@ -111,23 +112,27 @@ struct PlaybackButtonObservationUITests {
 
         // Start playback
         playButton.tap()
-        try await Task.sleep(for: .seconds(2))
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Background the app
         XCUIDevice.shared.press(.home)
-        try await Task.sleep(for: .seconds(2))
+
+        // Wait for app to enter background (need real time for OS transition)
+        try await Task.sleep(for: .seconds(1))
 
         // Foreground the app
         app.activate()
-        try await Task.sleep(for: .seconds(1))
+
+        // Wait for button to be accessible again
+        try await waitUntil(playButton, is: .exists, .hittable, timeout: .seconds(10))
 
         // Button should still exist and be responsive
-        #expect(playButton.waitForExistence(timeout: 5), "Button should exist after foregrounding")
+        #expect(playButton.exists, "Button should exist after foregrounding")
         #expect(playButton.isHittable, "Button should be hittable after foregrounding")
 
         // Verify button still responds
         playButton.tap()
-        try await Task.sleep(for: .milliseconds(500))
+        try await waitUntil(playButton, is: .exists)
         #expect(playButton.exists, "Button should respond after backgrounding cycle")
     }
 
@@ -141,16 +146,17 @@ struct PlaybackButtonObservationUITests {
         // Perform state change and verify animation completes
         playButton.tap()
 
-        // Animation duration is 0.24 seconds per PlaybackButton.swift
-        // Wait for animation to complete
-        try await Task.sleep(for: .milliseconds(300))
+        // Wait for button to be hittable (indicates animation complete)
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Verify button is in a stable state
         #expect(playButton.exists, "Button should exist after animation")
 
         // Perform another state change
         playButton.tap()
-        try await Task.sleep(for: .milliseconds(300))
+
+        // Wait for second animation to complete
+        try await waitUntil(playButton, is: .exists, .hittable)
 
         // Verify no issues
         #expect(playButton.exists, "Button should exist after second animation")
