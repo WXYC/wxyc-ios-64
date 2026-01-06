@@ -15,7 +15,7 @@ struct DiskCacheReproductionTests {
     // MARK: - Test that value(for:) does NOT delete entries on decode failure
     
     @Test("Corrupted data causes decode failure but entry is not deleted")
-    func corruptedDataPersistsAfterDecodeFailure() async throws {
+    func corruptedDataPersistsAfterDecodeFailure() async {
         // Given: A mock cache with corrupted data (valid metadata, invalid JSON payload)
         let mockCache = MockCache()
         let key = "corrupted_playlist"
@@ -28,8 +28,8 @@ struct DiskCacheReproductionTests {
         // Create coordinator
         let coordinator = CacheCoordinator(cache: mockCache)
         
-        // Wait for any async purge to complete
-        try await Task.sleep(for: .milliseconds(100))
+        // Wait for initial purge to complete
+        await coordinator.waitForPurge()
         
         // Verify the corrupted data is in the cache
         #expect(mockCache.data(for: key) != nil)
@@ -45,7 +45,7 @@ struct DiskCacheReproductionTests {
     }
     
     @Test("Corrupted data causes repeated failures on subsequent reads")
-    func corruptedDataCausesRepeatedFailures() async throws {
+    func corruptedDataCausesRepeatedFailures() async {
         // Given: A mock cache with corrupted data
         let mockCache = MockCache()
         let key = "persistent_corruption"
@@ -53,7 +53,7 @@ struct DiskCacheReproductionTests {
         let metadata = CacheMetadata(lifespan: 3600)
         
         let coordinator = CacheCoordinator(cache: mockCache)
-        try await Task.sleep(for: .milliseconds(100))
+        await coordinator.waitForPurge()
         
         // Write corrupted data after init
         mockCache.set(corruptedData, metadata: metadata, for: key)
@@ -72,7 +72,7 @@ struct DiskCacheReproductionTests {
     // MARK: - Test that purgeExpiredEntries() deletes expired entries
     
     @Test("purgeExpiredEntries deletes expired entries on coordinator initialization")
-    func purgeExpiredEntriesDeletesExpiredEntries() async throws {
+    func purgeExpiredEntriesDeletesExpiredEntries() async {
         // Given: A mock cache pre-populated with expired data
         let mockCache = MockCache()
         let expiredKey = "expired_on_init"
@@ -89,11 +89,9 @@ struct DiskCacheReproductionTests {
         #expect(mockCache.data(for: expiredKey) != nil)
         
         // When: Create a new CacheCoordinator (which calls purgeExpiredEntries in init)
-        _ = CacheCoordinator(cache: mockCache)
-        
-        // Wait for async purge to complete
-        try await Task.sleep(for: .milliseconds(200))
-        
+        let coordinator = CacheCoordinator(cache: mockCache)
+        await coordinator.waitForPurge()
+
         // Then: The expired entry should be deleted by purgeExpiredEntries
         #expect(mockCache.data(for: expiredKey) == nil, "purgeExpiredEntries should delete expired entries")
     }
@@ -124,7 +122,7 @@ struct DiskCacheReproductionTests {
         
         // When: Create coordinator (triggers purgeExpiredEntries)
         let coordinator = CacheCoordinator(cache: mockCache)
-        try await Task.sleep(for: .milliseconds(200))
+        await coordinator.waitForPurge()
         
         // Then: Valid entry preserved, expired entry deleted
         #expect(mockCache.data(for: validKey) != nil, "Valid entry should be preserved")
@@ -162,4 +160,3 @@ struct DiskCacheReproductionTests {
         #expect(retrieved == "Not a number")
     }
 }
-
