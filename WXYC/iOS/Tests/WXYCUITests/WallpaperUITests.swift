@@ -5,26 +5,23 @@
 //  UI tests for wallpaper selection and display
 //
 
+import Testing
 import XCTest
 
-final class WallpaperUITests: XCTestCase {
+@Suite("Wallpaper UI Tests", .serialized)
+@MainActor
+struct WallpaperUITests {
 
-    var app: XCUIApplication!
+    let app = XCUIApplication()
 
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        app = XCUIApplication()
+    init() {
         app.launch()
-    }
-
-    override func tearDownWithError() throws {
-        app = nil
     }
 
     // MARK: - Helper Methods
 
     /// Opens the wallpaper picker via long press on the playlist view
-    private func openWallpaperPicker() -> Bool {
+    private func openWallpaperPicker() async throws -> Bool {
         let playlistView = app.otherElements["playlistView"]
 
         // Wait for playlist view to be available
@@ -35,145 +32,158 @@ final class WallpaperUITests: XCTestCase {
                 return false
             }
             mainWindow.press(forDuration: 0.6)
-            Thread.sleep(forTimeInterval: 0.5)
+            // Brief delay for gesture recognition
+            try await Task.sleep(for: .milliseconds(100))
             return true
         }
 
         // Long press to open wallpaper picker
         playlistView.press(forDuration: 0.6)
-        Thread.sleep(forTimeInterval: 0.5)
+        // Brief delay for gesture recognition
+        try await Task.sleep(for: .milliseconds(100))
         return true
     }
 
     // MARK: - Navigation Tests
 
     /// Test that the playlist view exists and is accessible
-    @MainActor
-    func testPlaylistViewExists() throws {
-        // Wait for app to load
-        Thread.sleep(forTimeInterval: 2.0)
+    @Test("Playlist view exists")
+    func playlistViewExists() async throws {
+        // Wait for app to be ready
+        try await waitUntil(timeout: .seconds(5), "app window") {
+            app.windows.count > 0
+        }
 
         // Verify app is running and main UI is visible
-        XCTAssertTrue(app.exists, "App should be running")
+        #expect(app.exists, "App should be running")
 
         // The app uses a paged tab view, verify the main scroll view exists
         let scrollViews = app.scrollViews
-        XCTAssertTrue(scrollViews.count > 0 || app.otherElements.count > 0,
-                     "Main UI elements should be visible")
+        #expect(scrollViews.count > 0 || app.otherElements.count > 0,
+                "Main UI elements should be visible")
     }
 
     /// Test that wallpaper picker can be accessed via long press
-    @MainActor
-    func testWallpaperPickerAccess() throws {
-        // Wait for app to fully load
-        Thread.sleep(forTimeInterval: 2.0)
+    @Test("Wallpaper picker access")
+    func wallpaperPickerAccess() async throws {
+        // Wait for app to be ready
+        try await waitUntil(timeout: .seconds(5), "app window") {
+            app.windows.count > 0
+        }
 
         // Long press to open wallpaper picker
-        let opened = openWallpaperPicker()
-        XCTAssertTrue(opened, "Should be able to perform long press gesture")
+        let opened = try await openWallpaperPicker()
+        #expect(opened, "Should be able to perform long press gesture")
 
-        // Wait for picker animation
-        Thread.sleep(forTimeInterval: 1.0)
+        // Wait for picker to appear
+        try await Task.sleep(for: .milliseconds(500))
 
         // App should still be responsive
-        XCTAssertTrue(app.exists, "App should be running after opening wallpaper picker")
+        #expect(app.exists, "App should be running after opening wallpaper picker")
     }
 
     // MARK: - Wallpaper Selection Tests
 
     /// Test that selecting a wallpaper works without crashing
-    @MainActor
-    func testWallpaperSelection() throws {
-        // Wait for app to load
-        Thread.sleep(forTimeInterval: 2.0)
+    @Test("Wallpaper selection")
+    func wallpaperSelection() async throws {
+        // Wait for app to be ready
+        try await waitUntil(timeout: .seconds(5), "app window") {
+            app.windows.count > 0
+        }
 
         // Open wallpaper picker
-        guard openWallpaperPicker() else {
-            throw XCTSkip("Could not access wallpaper picker")
+        let opened = try await openWallpaperPicker()
+        guard opened else {
+            throw TestTimeoutError("Could not access wallpaper picker")
         }
 
         // Wait for picker to appear
-        Thread.sleep(forTimeInterval: 1.0)
+        try await Task.sleep(for: .milliseconds(500))
 
         // Try to find and tap a wallpaper option
-        // The carousel uses scroll views or buttons
         let buttons = app.buttons
         let scrollViews = app.scrollViews
 
         // Try tapping any button that might be a wallpaper option
         if buttons.count > 0 {
             buttons.firstMatch.tap()
-            Thread.sleep(forTimeInterval: 0.5)
+            await Task.yield()
         } else if scrollViews.count > 0 {
             // Swipe in the carousel to see if selection works
             scrollViews.firstMatch.swipeLeft()
-            Thread.sleep(forTimeInterval: 0.5)
+            await Task.yield()
         }
 
         // App should still be responsive
-        XCTAssertTrue(app.exists, "App should still be running after wallpaper interaction")
+        #expect(app.exists, "App should still be running after wallpaper interaction")
     }
 
     /// Test that wallpaper renders without crashing
-    @MainActor
-    func testWallpaperRenderingStability() throws {
-        // Just launch and wait - the wallpaper should be rendering in the background
-        Thread.sleep(forTimeInterval: 3.0)
+    @Test("Wallpaper rendering stability")
+    func wallpaperRenderingStability() async throws {
+        // Wait for app and wallpaper to be ready
+        try await waitUntil(timeout: .seconds(5), "app window") {
+            app.windows.count > 0
+        }
 
         // Verify app is still running
-        XCTAssertTrue(app.exists, "App should be running with wallpaper rendered")
+        #expect(app.exists, "App should be running with wallpaper rendered")
 
-        // Verify main UI elements are visible (the app uses paged TabView, not standard tab bar)
+        // Verify main UI elements are visible
         let windows = app.windows
-        XCTAssertTrue(windows.count > 0, "App window should be visible")
+        #expect(windows.count > 0, "App window should be visible")
     }
 
     // MARK: - Stress Tests
 
     /// Test swipe navigation doesn't crash with wallpaper rendering
-    @MainActor
-    func testSwipeNavigationWithWallpaper() throws {
-        // Wait for app to load
-        Thread.sleep(forTimeInterval: 2.0)
-
-        // The app uses a paged TabView - swipe between pages
+    @Test("Swipe navigation with wallpaper")
+    func swipeNavigationWithWallpaper() async throws {
         let mainWindow = app.windows.firstMatch
-        guard mainWindow.waitForExistence(timeout: 3) else {
-            throw XCTSkip("Could not find main window")
+        guard mainWindow.waitForExistence(timeout: 5) else {
+            throw TestTimeoutError("Could not find main window")
         }
 
         // Swipe left and right between pages multiple times
         for _ in 0..<3 {
             mainWindow.swipeLeft()
-            Thread.sleep(forTimeInterval: 0.3)
+            await Task.yield()
             mainWindow.swipeRight()
-            Thread.sleep(forTimeInterval: 0.3)
+            await Task.yield()
         }
 
         // App should survive navigation
-        XCTAssertTrue(app.exists, "App should survive swipe navigation with wallpaper")
+        #expect(app.exists, "App should survive swipe navigation with wallpaper")
     }
 
     /// Test that wallpaper continues rendering during app lifecycle
-    @MainActor
-    func testWallpaperPersistsThroughBackground() throws {
-        // Wait for initial render
-        Thread.sleep(forTimeInterval: 2.0)
+    @Test("Wallpaper persists through background")
+    func wallpaperPersistsThroughBackground() async throws {
+        // Wait for initial app load
+        try await waitUntil(timeout: .seconds(5), "app window") {
+            app.windows.count > 0
+        }
 
         // Background the app
         XCUIDevice.shared.press(.home)
-        Thread.sleep(forTimeInterval: 1.0)
+
+        // Wait for background transition
+        try await Task.sleep(for: .seconds(1))
 
         // Reactivate the app
         app.activate()
-        Thread.sleep(forTimeInterval: 1.0)
+
+        // Wait for app to be accessible again
+        try await waitUntil(timeout: .seconds(5), "app recovery") {
+            app.windows.firstMatch.exists
+        }
 
         // Verify app recovered
-        XCTAssertTrue(app.exists, "App should exist after backgrounding")
+        #expect(app.exists, "App should exist after backgrounding")
 
         // Verify window is visible
         let windows = app.windows
-        XCTAssertTrue(windows.firstMatch.waitForExistence(timeout: 5),
-                     "UI should be visible after foregrounding")
+        #expect(windows.firstMatch.exists, "UI should be visible after foregrounding")
     }
 }
