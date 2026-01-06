@@ -42,7 +42,19 @@ struct ColorControl: View {
                     .font(.footnote.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
+            #if os(tvOS)
+            HStack {
+                Button("-") {
+                    binding.wrappedValue = max(0, binding.wrappedValue - 0.05)
+                }
+                Spacer()
+                Button("+") {
+                    binding.wrappedValue = min(1, binding.wrappedValue + 0.05)
+                }
+            }
+            #else
             Slider(value: binding, in: 0...1)
+            #endif
         }
     }
 

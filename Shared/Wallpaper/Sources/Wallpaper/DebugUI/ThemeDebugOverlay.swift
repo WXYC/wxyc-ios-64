@@ -32,9 +32,15 @@ public struct ThemeDebugOverlay: View {
                         .foregroundStyle(.white)
                         .shadow(radius: 4)
                 }
+                #if os(tvOS)
+                .sheet(isPresented: $showingPopover) {
+                    ThemeDebugPopoverContent(configuration: configuration)
+                }
+                #else
                 .popover(isPresented: $showingPopover) {
                     ThemeDebugPopoverContent(configuration: configuration)
                 }
+                #endif
             }
         }
         .padding()

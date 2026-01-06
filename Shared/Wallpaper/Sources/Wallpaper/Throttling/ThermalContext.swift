@@ -101,7 +101,7 @@ public final class ThermalContext: ThermalContextProtocol {
             }
         })
 
-        #if canImport(UIKit) && !os(watchOS)
+        #if canImport(UIKit) && !os(watchOS) && !os(tvOS)
         observers.append(center.addObserver(
             forName: UIDevice.batteryStateDidChangeNotification,
             object: nil,
@@ -124,7 +124,7 @@ public final class ThermalContext: ThermalContextProtocol {
     ///
     /// Without this, `UIDevice.current.batteryState` always returns `.unknown`.
     public static func enableBatteryMonitoring() {
-        #if canImport(UIKit) && !os(watchOS)
+        #if canImport(UIKit) && !os(watchOS) && !os(tvOS)
         UIDevice.current.isBatteryMonitoringEnabled = true
         #endif
         // Touch shared to ensure it's initialized
@@ -135,7 +135,7 @@ public final class ThermalContext: ThermalContextProtocol {
         thermalState = ProcessInfo.processInfo.thermalState
         isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
 
-        #if canImport(UIKit) && !os(watchOS)
+        #if canImport(UIKit) && !os(watchOS) && !os(tvOS)
         let batteryState = UIDevice.current.batteryState
         isCharging = batteryState == .charging || batteryState == .full
         #else

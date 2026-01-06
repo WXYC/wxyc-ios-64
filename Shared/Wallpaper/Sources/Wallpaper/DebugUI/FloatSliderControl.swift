@@ -12,6 +12,18 @@ struct FloatSliderControl: View {
     let parameter: ParameterDefinition
     @Bindable var store: ParameterStore
 
+    private var range: ClosedRange<Float> {
+        if let r = parameter.range {
+            r.min...r.max
+        } else {
+            0...1
+        }
+    }
+
+    private var step: Float {
+        (range.upperBound - range.lowerBound) / 20
+    }
+
     var body: some View {
         let binding = Binding<Float>(
             get: { store.floatValue(for: parameter.id) },
@@ -26,11 +38,19 @@ struct FloatSliderControl: View {
                     .font(.footnote.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-            if let range = parameter.range {
-                Slider(value: binding, in: range.min...range.max)
-            } else {
-                Slider(value: binding, in: 0...1)
+            #if os(tvOS)
+            HStack {
+                Button("-") {
+                    binding.wrappedValue = max(range.lowerBound, binding.wrappedValue - step)
+                }
+                Spacer()
+                Button("+") {
+                    binding.wrappedValue = min(range.upperBound, binding.wrappedValue + step)
+                }
             }
+            #else
+            Slider(value: binding, in: range)
+            #endif
         }
     }
 }

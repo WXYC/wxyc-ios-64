@@ -27,9 +27,15 @@ public struct ThemeDebugControls: View {
                 // Use id to force view recreation when theme changes
                 Group {
                     if !theme.manifest.parameters.isEmpty {
+                        #if os(tvOS)
+                        Section("Parameters") {
+                            ThemeDebugControlsGenerator(theme: theme)
+                        }
+                        #else
                         DisclosureGroup("Parameters") {
                             ThemeDebugControlsGenerator(theme: theme)
                         }
+                        #endif
                     }
 
                     // Show shader directive toggles if available
@@ -62,6 +68,20 @@ private struct ShaderDirectiveControls: View {
 
     var body: some View {
         if !directives.isEmpty {
+            #if os(tvOS)
+            Section("Shader Features") {
+                ForEach(directives) { directive in
+                    Toggle(directive.displayName, isOn: Binding(
+                        get: { theme.directiveStore.isEnabled(directive.id) },
+                        set: { theme.directiveStore.setEnabled($0, for: directive.id) }
+                    ))
+                }
+
+                Text("Changes recompile the shader")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            #else
             DisclosureGroup("Shader Features") {
                 ForEach(directives) { directive in
                     Toggle(directive.displayName, isOn: Binding(
@@ -74,6 +94,7 @@ private struct ShaderDirectiveControls: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            #endif
         }
     }
 
