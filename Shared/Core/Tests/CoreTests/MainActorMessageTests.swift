@@ -14,19 +14,24 @@ struct MainActorMessageTests {
 
     @Test("Message can be posted and received via AsyncSequence")
     @MainActor
-    func postAndReceiveViaSequence() async throws {
+    func postAndReceiveViaSequence() async {
         let center = NotificationCenter()
         let expectedTitle = "Test Title"
 
+        let subscribed = AsyncStream<Void>.makeStream()
+
         let task = Task<String?, Never> { @MainActor in
-            for await message in center.messages(for: UIUpdateMessage.self) {
+            for await message in center.messages(for: UIUpdateMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 return message.title
             }
             return nil
         }
 
-        // Give the observer time to register
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         center.post(UIUpdateMessage(title: expectedTitle), subject: nil as TestController?)
 
@@ -36,41 +41,53 @@ struct MainActorMessageTests {
 
     @Test("Message can be posted and received via addObserver")
     @MainActor
-    func postAndReceiveViaObserver() async throws {
+    func postAndReceiveViaObserver() async {
         let center = NotificationCenter()
         let expectedTitle = "Observer Title"
-        let receivedTitle = LockIsolated<String?>(nil)
+
+        let received = AsyncStream<String>.makeStream()
 
         let token = center.addMainActorObserver(
             for: UIUpdateMessage.self
         ) { message in
-            receivedTitle.setValue(message.title)
+            received.continuation.yield(message.title)
+            received.continuation.finish()
         }
 
         center.post(UIUpdateMessage(title: expectedTitle), subject: nil as TestController?)
 
-        // Give time for notification delivery
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for notification delivery
+        var receivedTitle: String?
+        for await title in received.stream {
+            receivedTitle = title
+            break
+        }
 
-        #expect(receivedTitle.value == expectedTitle)
+        #expect(receivedTitle == expectedTitle)
         center.removeObserver(token)
     }
 
     @Test("Subject filtering works correctly")
     @MainActor
-    func subjectFiltering() async throws {
+    func subjectFiltering() async {
         let center = NotificationCenter()
         let targetController = TestController()
         let otherController = TestController()
 
+        let subscribed = AsyncStream<Void>.makeStream()
+
         let task = Task<String?, Never> { @MainActor in
-            for await message in center.messages(of: targetController, for: UIUpdateMessage.self) {
+            for await message in center.messages(of: targetController, for: UIUpdateMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 return message.title
             }
             return nil
         }
 
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         // Post to other controller first - should be ignored
         center.post(UIUpdateMessage(title: "wrong"), subject: otherController)
@@ -104,13 +121,18 @@ struct MainActorMessageTests {
 
     @Test("Multiple messages are received in order")
     @MainActor
-    func multipleMessages() async throws {
+    func multipleMessages() async {
         let center = NotificationCenter()
         let titles = ["first", "second", "third"]
 
+        let subscribed = AsyncStream<Void>.makeStream()
+
         let task = Task { @MainActor in
             var received: [String] = []
-            for await message in center.messages(for: UIUpdateMessage.self) {
+            for await message in center.messages(for: UIUpdateMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 received.append(message.title)
                 if received.count == titles.count {
                     break
@@ -119,7 +141,8 @@ struct MainActorMessageTests {
             return received
         }
 
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         for title in titles {
             center.post(UIUpdateMessage(title: title), subject: nil as TestController?)
@@ -149,23 +172,5 @@ struct UIUpdateMessage: MainActorNotificationMessage, Sendable {
     @MainActor
     static func makeNotification(_ message: Self, object: Subject?) -> Notification {
         Notification(name: name, object: object, userInfo: ["title": message.title])
-    }
-}
-
-/// Thread-safe wrapper for testing
-final class LockIsolated<Value>: @unchecked Sendable {
-    private var _value: Value
-    private let lock = NSLock()
-
-    init(_ value: Value) {
-        self._value = value
-    }
-
-    var value: Value {
-        lock.withLock { _value }
-    }
-
-    func setValue(_ newValue: Value) {
-        lock.withLock { _value = newValue }
     }
 }
