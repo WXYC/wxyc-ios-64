@@ -137,6 +137,25 @@ public extension NotificationCenter {
     ) -> MainActorNotificationMessageSequence<M> where M.Subject: AnyObject {
         MainActorNotificationMessageSequence(center: self, subject: nil)
     }
+
+    /// Returns an async sequence with a callback that fires when the observer is registered.
+    ///
+    /// This variant is useful for tests that need to synchronize with observer registration.
+    ///
+    /// - Parameters:
+    ///   - subject: The object to filter messages by, or `nil` to receive all messages.
+    ///   - messageType: The type of message to observe.
+    ///   - onSubscribed: Callback fired when the observer is registered.
+    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
+    func messages<M: MainActorNotificationMessage>(
+        of subject: M.Subject? = nil,
+        for messageType: M.Type,
+        onSubscribed: @escaping () -> Void
+    ) -> MainActorNotificationMessageSequence<M> where M.Subject: AnyObject {
+        var sequence = MainActorNotificationMessageSequence<M>(center: self, subject: subject)
+        sequence.onSubscribed = onSubscribed
+        return sequence
+    }
 }
 
 // MARK: - MainActorNotificationMessageSequence
@@ -150,19 +169,22 @@ public struct MainActorNotificationMessageSequence<M: MainActorNotificationMessa
     private let center: NotificationCenter
     private let subject: M.Subject?
 
+    /// Internal callback fired when observer is registered. Used by tests for synchronization.
+    var onSubscribed: (() -> Void)?
+
     init(center: NotificationCenter, subject: M.Subject?) {
         self.center = center
         self.subject = subject
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator(center: center, subject: subject)
+        AsyncIterator(center: center, subject: subject, onSubscribed: onSubscribed)
     }
 
     public struct AsyncIterator: AsyncIteratorProtocol {
         private var iterator: AsyncStream<M>.Iterator
 
-        init(center: NotificationCenter, subject: M.Subject?) {
+        init(center: NotificationCenter, subject: M.Subject?, onSubscribed: (() -> Void)?) {
             let (stream, continuation) = AsyncStream<M>.makeStream(bufferingPolicy: .bufferingNewest(100))
 
             let observation = center.addObserver(
@@ -174,6 +196,9 @@ public struct MainActorNotificationMessageSequence<M: MainActorNotificationMessa
                     continuation.yield(message)
                 }
             }
+
+            // Signal that observer is now registered
+            onSubscribed?()
 
             continuation.onTermination = { _ in
                 center.removeObserver(observation)

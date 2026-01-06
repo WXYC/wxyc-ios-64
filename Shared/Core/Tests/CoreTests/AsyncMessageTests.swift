@@ -13,19 +13,24 @@ import Foundation
 struct AsyncMessageTests {
 
     @Test("Message can be posted and received")
-    func postAndReceive() async throws {
+    func postAndReceive() async {
         let center = NotificationCenter()
         let expectedData = "test-data"
 
+        let subscribed = AsyncStream<Void>.makeStream()
+
         let task = Task<String?, Never> {
-            for await message in center.messages(for: TestMessage.self) {
+            for await message in center.messages(for: TestMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 return message.data
             }
             return nil
         }
 
-        // Give the observer time to register
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         center.post(TestMessage(data: expectedData), subject: nil as TestService?)
 
@@ -34,13 +39,18 @@ struct AsyncMessageTests {
     }
 
     @Test("Multiple messages are received in order")
-    func multipleMessages() async throws {
+    func multipleMessages() async {
         let center = NotificationCenter()
         let messages = ["first", "second", "third"]
 
+        let subscribed = AsyncStream<Void>.makeStream()
+
         let task = Task {
             var received: [String] = []
-            for await message in center.messages(for: TestMessage.self) {
+            for await message in center.messages(for: TestMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 received.append(message.data)
                 if received.count == messages.count {
                     break
@@ -49,7 +59,8 @@ struct AsyncMessageTests {
             return received
         }
 
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         for msg in messages {
             center.post(TestMessage(data: msg), subject: nil as TestService?)
@@ -60,19 +71,25 @@ struct AsyncMessageTests {
     }
 
     @Test("Subject filtering works correctly")
-    func subjectFiltering() async throws {
+    func subjectFiltering() async {
         let center = NotificationCenter()
         let targetService = TestService()
         let otherService = TestService()
 
+        let subscribed = AsyncStream<Void>.makeStream()
+
         let task = Task<String?, Never> {
-            for await message in center.messages(of: targetService, for: TestMessage.self) {
+            for await message in center.messages(of: targetService, for: TestMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 return message.data
             }
             return nil
         }
 
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         // Post to other service first - should be ignored
         center.post(TestMessage(data: "wrong"), subject: otherService)
@@ -103,27 +120,36 @@ struct AsyncMessageTests {
     }
 
     @Test("Cancellation stops receiving messages")
-    func cancellationStopsReceiving() async throws {
+    func cancellationStopsReceiving() async {
         let center = NotificationCenter()
         let counter = Counter()
 
+        let subscribed = AsyncStream<Void>.makeStream()
+        let received = AsyncStream<Void>.makeStream()
+
         let task = Task {
-            for await _ in center.messages(for: TestMessage.self) {
+            for await _ in center.messages(for: TestMessage.self, onSubscribed: {
+                subscribed.continuation.yield()
+                subscribed.continuation.finish()
+            }) {
                 counter.increment()
+                received.continuation.yield()
             }
         }
 
-        try await Task.sleep(for: .milliseconds(10))
+        // Wait for observer to be registered
+        for await _ in subscribed.stream { break }
 
         center.post(TestMessage(data: "one"), subject: nil as TestService?)
-        try await Task.sleep(for: .milliseconds(10))
+
+        // Wait for first message to be processed
+        for await _ in received.stream { break }
 
         task.cancel()
-        try await Task.sleep(for: .milliseconds(10))
+        await task.value
 
         // This should not be received after cancellation
         center.post(TestMessage(data: "two"), subject: nil as TestService?)
-        try await Task.sleep(for: .milliseconds(50))
 
         #expect(counter.value == 1)
     }
