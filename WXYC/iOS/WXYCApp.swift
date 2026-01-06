@@ -46,17 +46,49 @@ final class Singletonia {
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
 
+    private var nowPlayingObservationTask: Task<Void, Never>?
+    private var playbackStateObservationTask: Task<Void, Never>?
+
     private init() {
         self.widgetStateService = WidgetStateService(
             playbackController: AudioPlayerController.shared,
             playlistService: playlistService
         )
 
+        let screenWidth = UIScreen.main.bounds.size.width
+        nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
+            boundsSize: CGSize(width: screenWidth, height: screenWidth)
+        )
+
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: artworkService
         )
-        nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(nowPlayingService: nowPlayingService)
+        startNowPlayingObservation(nowPlayingService: nowPlayingService)
+        startPlaybackStateObservation()
+    }
+
+    private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
+        nowPlayingObservationTask = Task { [weak self] in
+            do {
+                for try await item in nowPlayingService {
+                    guard !Task.isCancelled else { break }
+                    self?.nowPlayingInfoCenterManager.handleNowPlayingItem(item)
+                }
+            } catch {
+                Log(.error, "NowPlaying observation error: \(error)")
+            }
+        }
+    }
+
+    private func startPlaybackStateObservation() {
+        playbackStateObservationTask = Task { [weak self] in
+            let observations = Observations { AudioPlayerController.shared.isPlaying }
+            for await isPlaying in observations {
+                guard !Task.isCancelled else { break }
+                self?.nowPlayingInfoCenterManager.handlePlaybackState(isPlaying)
+            }
+        }
     }
 
     /// Update the foreground state (called when scene phase changes)
@@ -147,7 +179,7 @@ struct WXYCApp: App {
         // UIKit appearance setup
         #if os(iOS)
         UINavigationBar.appearance().barStyle = .black
-        
+
         // Force light status bar style
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first {
@@ -224,7 +256,7 @@ struct WXYCApp: App {
             // and caches it with a 15-minute lifespan.
             // Note: Widget reload is handled by WidgetStateService observing playlist updates.
             let playlist = await appState.playlistService.fetchAndCachePlaylist()
-
+            
             Log(.info, "Background refresh completed successfully with \(playlist.entries.count) entries")
 
             PostHogSDK.shared.capture("Background refresh completed", additionalData: [
@@ -312,7 +344,7 @@ struct WXYCApp: App {
             // This ensures users see fresh data when returning to the app after
             // an extended period, rather than waiting for the next fetch cycle.
             refreshPlaylistIfCacheExpired()
-
+        
         @unknown default:
             break
         }
@@ -342,7 +374,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-        
+
     // MARK: - Background Refresh
         
     private func scheduleBackgroundRefresh() {

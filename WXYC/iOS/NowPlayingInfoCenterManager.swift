@@ -6,14 +6,12 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import Core
-import Foundation
-import MediaPlayer
-import Logger
-import PlayerHeaderView
-import Playback
-import Playlist
 import AppServices
+import Foundation
+import Logger
+import MediaPlayer
+import PlayerHeaderView
+import Playlist
 
 // MARK: - NowPlayingInfoCenter Protocol
 
@@ -28,56 +26,44 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {}
 
 // MARK: - NowPlayingInfoCenterManager
 
+/// Manages the system's Now Playing info center, updating playback state and track metadata.
+/// This class is a simple processor - callers are responsible for observing streams and
+/// calling the handler methods.
 @MainActor
 final class NowPlayingInfoCenterManager {
     private var infoCenter: NowPlayingInfoCenterProtocol
     private let boundsSize: CGSize
-    
-    /// Convenience initializer using defaults for production use.
-    convenience init(nowPlayingService: NowPlayingService) {
-        let screenWidth = UIScreen.main.bounds.size.width
-        let controller = AudioPlayerController.shared
-        let playbackStateStream = Observations { controller.isPlaying }
-        
-        self.init(
-            nowPlayingItemStream: nowPlayingService,
-            playbackStateStream: playbackStateStream,
-            infoCenter: MPNowPlayingInfoCenter.default(),
-            boundsSize: CGSize(width: screenWidth, height: screenWidth)
-        )
-    }
 
-    init<NowPlayingStream: AsyncSequence, PlaybackStream: AsyncSequence>(
-        nowPlayingItemStream: NowPlayingStream,
-        playbackStateStream: PlaybackStream,
-        infoCenter: NowPlayingInfoCenterProtocol,
+    init(
+        infoCenter: NowPlayingInfoCenterProtocol = MPNowPlayingInfoCenter.default(),
         boundsSize: CGSize
-    ) where NowPlayingStream.Element == NowPlayingItem, NowPlayingStream: Sendable,
-            PlaybackStream.Element == Bool, PlaybackStream: Sendable {
+    ) {
         self.infoCenter = infoCenter
         self.boundsSize = boundsSize
-        
-        Task {
-            for try await nowPlayingItem in nowPlayingItemStream {
-                self.update(playcut: nowPlayingItem.playcut)
-                self.update(artwork: nowPlayingItem.artwork)
-            }
-        }
-        
-        Task {
-            for try await isPlaying in playbackStateStream {
-                self.infoCenter.playbackState = isPlaying ? .playing : .paused
-            }
-        }
     }
-    
+
+    // MARK: - Public API
+
+    /// Update the playback state displayed in the Now Playing info center.
+    func handlePlaybackState(_ isPlaying: Bool) {
+        infoCenter.playbackState = isPlaying ? .playing : .paused
+    }
+
+    /// Update the track metadata and artwork in the Now Playing info center.
+    func handleNowPlayingItem(_ item: NowPlayingItem) {
+        update(playcut: item.playcut)
+        update(artwork: item.artwork)
+    }
+
+    // MARK: - Private
+        
     private func update(playcut: Playcut) {
         let playcutMediaItems = playcut.playcutMediaItems
         
         if infoCenter.nowPlayingInfo == nil {
             infoCenter.nowPlayingInfo = [:]
         }
-
+        
         infoCenter.nowPlayingInfo?.update(with: playcutMediaItems)
     }
 
@@ -100,7 +86,7 @@ final class NowPlayingInfoCenterManager {
         }
     }
 }
-
+        
 extension Playcut {
     var playcutMediaItems: [String: Any] {
         return [
@@ -165,7 +151,7 @@ extension CGImage {
             height: overlay.height
         )
         context.draw(overlay, in: rect)
-        
+    
         // Create a new CGImage from the context.
         return context.makeImage()
     }
