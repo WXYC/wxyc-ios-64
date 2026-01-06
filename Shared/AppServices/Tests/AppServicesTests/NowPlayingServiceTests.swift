@@ -72,7 +72,6 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
     var artworkToReturn: Image?
     var errorToThrow: Error?
     var fetchCount = 0
-    var delaySeconds: Double = 0
     var lastPlaycut: Playcut?
     /// When true, returns a default image if artworkToReturn is nil instead of throwing
     var returnDefaultImageWhenNil = true
@@ -80,10 +79,6 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
     func fetchArtwork(for playcut: Playcut) async throws -> Image {
         fetchCount += 1
         lastPlaycut = playcut
-
-        if delaySeconds > 0 {
-            try? await Task.sleep(for: .seconds(delaySeconds))
-        }
 
         if let error = errorToThrow {
             throw error
