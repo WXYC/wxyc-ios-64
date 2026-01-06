@@ -11,22 +11,45 @@ import Logger
 import PostHog
 import Analytics
 
+// MARK: - Clock
+
+/// Protocol for providing the current time, enabling testable time-dependent code.
+public protocol Clock: Sendable {
+    /// The current time as a TimeInterval since the reference date.
+    var now: TimeInterval { get }
+}
+
+/// Default clock implementation that uses the system time.
+public struct SystemClock: Clock, Sendable {
+    public init() {}
+
+    public var now: TimeInterval {
+        Date.timeIntervalSinceReferenceDate
+    }
+}
+
 // MARK: - CacheMetadata
 
 struct CacheMetadata: Codable, Sendable {
     let timestamp: TimeInterval
     let lifespan: TimeInterval
-    
+
     init(timestamp: TimeInterval = Date.timeIntervalSinceReferenceDate, lifespan: TimeInterval) {
         self.timestamp = timestamp
         self.lifespan = lifespan
     }
     
+    /// Check if expired relative to a given time.
+    func isExpired(at currentTime: TimeInterval) -> Bool {
+        currentTime - timestamp > lifespan
+    }
+
+    /// Check if expired using the system clock. Prefer `isExpired(at:)` for testability.
     var isExpired: Bool {
-        Date.timeIntervalSinceReferenceDate - timestamp > lifespan
+        isExpired(at: Date.timeIntervalSinceReferenceDate)
     }
 }
-
+    
 // MARK: - Cache Protocol
 
 protocol Cache: Sendable {
@@ -90,7 +113,7 @@ public extension UserDefaults {
 struct DiskCache: Cache, @unchecked Sendable {
     struct DiskCacheError: LocalizedError, ExpressibleByStringLiteral, CustomStringConvertible {
         let message: String
-        
+            
         var description: String { message }
         var errorDescription: String? { message }
 
@@ -116,7 +139,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             
             return
         }
-
+    
         if let container = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: Self.appGroupID)
         {
@@ -158,7 +181,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             return try? JSONDecoder().decode(CacheMetadata.self, from: data)
         }
     }
-    
+        
     private func setMetadata(_ metadata: CacheMetadata, for fileURL: URL) {
         guard let data = try? JSONEncoder().encode(metadata) else { return }
         
@@ -275,7 +298,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         }
     }
 }
-
+    
 // MARK: - MigratingDiskCache
     
 /// A cache that migrates data from a legacy private location to a shared App Group container.
@@ -298,7 +321,7 @@ struct MigratingDiskCache: Cache, @unchecked Sendable {
         // Fall back to legacy
         return legacy.metadata(for: key)
     }
-    
+
     func data(for key: String) -> Data? {
         // Check primary first
         if let data = primary.data(for: key) {

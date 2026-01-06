@@ -12,14 +12,16 @@ public final actor CacheCoordinator {
         case noCachedResult
     }
     
-    internal init(cache: Cache) {
+    internal init(cache: Cache, clock: Clock = SystemClock()) {
         self.cache = cache
+        self.clock = clock
         self.purgeExpiredEntries()
     }
-    
+
     // MARK: Private vars
-    
+
     private var cache: Cache
+    private let clock: Clock
     
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
@@ -31,20 +33,20 @@ public final actor CacheCoordinator {
         #if DEBUG
         assert(!key.isEmpty, "Cache key cannot be empty")
         #endif
-        
+
         guard let metadata = cache.metadata(for: key) else {
             throw Error.noCachedResult
         }
-        
-        guard !metadata.isExpired else {
+
+        guard !metadata.isExpired(at: clock.now) else {
             cache.remove(for: key)
             throw Error.noCachedResult
         }
-        
+
         guard let data = cache.data(for: key) else {
             throw Error.noCachedResult
         }
-        
+
         return data
     }
         
@@ -54,8 +56,8 @@ public final actor CacheCoordinator {
             cache.remove(for: key)
             return
         }
-        
-        let metadata = CacheMetadata(lifespan: lifespan)
+
+        let metadata = CacheMetadata(timestamp: clock.now, lifespan: lifespan)
         cache.set(data, metadata: metadata, for: key)
     }
     
@@ -66,16 +68,16 @@ public final actor CacheCoordinator {
         #if DEBUG
         assert(!key.isEmpty, "Cache key cannot be empty")
         #endif
-        
+
         guard let metadata = cache.metadata(for: key) else {
             throw Error.noCachedResult
         }
-        
-        guard !metadata.isExpired else {
+
+        guard !metadata.isExpired(at: clock.now) else {
             cache.remove(for: key)
             throw Error.noCachedResult
         }
-        
+
         guard let data = cache.data(for: key) else {
             throw Error.noCachedResult
         }
@@ -102,10 +104,10 @@ public final actor CacheCoordinator {
             cache.remove(for: key)
             return
         }
-        
+
         do {
             let data = try Self.encoder.encode(value)
-            let metadata = CacheMetadata(lifespan: lifespan)
+            let metadata = CacheMetadata(timestamp: clock.now, lifespan: lifespan)
             cache.set(data, metadata: metadata, for: key)
         } catch {
             Log(.error, "Failed to encode value for \(key): \(error)")
@@ -124,9 +126,9 @@ public final actor CacheCoordinator {
     
     private nonisolated func purgeExpiredEntries() {
         Task {
-            let cache = await self.cache
+            let (cache, currentTime) = await (self.cache, self.clock.now)
             for (key, metadata) in cache.allMetadata() {
-                if metadata.isExpired || metadata.lifespan == .infinity {
+                if metadata.isExpired(at: currentTime) || metadata.lifespan == .infinity {
                     cache.remove(for: key)
                 }
             }
