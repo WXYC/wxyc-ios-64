@@ -2,14 +2,35 @@ import Foundation
 import Testing
 @testable import Wallpaper
 
+// MARK: - Mock Clock
+
+/// Mock clock for testing time-dependent behavior.
+@MainActor
+final class MockThermalClock: ThermalClock, @unchecked Sendable {
+    private var _now: TimeInterval = 0
+
+    nonisolated var now: TimeInterval {
+        MainActor.assumeIsolated { _now }
+    }
+
+    func advance(by seconds: TimeInterval) {
+        _now += seconds
+    }
+
+    func set(_ time: TimeInterval) {
+        _now = time
+    }
+}
+
 @Suite("AdaptiveThermalController")
 @MainActor
 struct AdaptiveThermalControllerTests {
 
-    /// Creates a test controller with injectable context.
+    /// Creates a test controller with injectable context and clock.
     func makeController(
         context: ThermalContextProtocol = MockThermalContext(),
-        analytics: ThermalAnalytics? = nil
+        analytics: ThermalAnalytics? = nil,
+        clock: ThermalClock = SystemThermalClock()
     ) -> AdaptiveThermalController {
         let defaults = UserDefaults(suiteName: "AdaptiveThermalControllerTests-\(UUID().uuidString)")!
         let store = ThermalProfileStore(defaults: defaults)
@@ -19,6 +40,7 @@ struct AdaptiveThermalControllerTests {
             optimizer: ThermalOptimizer(),
             analytics: analytics,
             context: context,
+            clock: clock,
             optimizationInterval: .milliseconds(10),
             periodicFlushInterval: .seconds(300),
             backgroundThreshold: 1  // 1 second for testing
@@ -96,9 +118,10 @@ struct AdaptiveThermalControllerTests {
     }
 
     @Test("Foreground after long background applies cooldown bonus")
-    func foregroundAppliesCooldownBonus() async throws {
+    func foregroundAppliesCooldownBonus() async {
         let context = MockThermalContext(thermalState: .critical)
-        let controller = makeController(context: context)
+        let mockClock = MockThermalClock()
+        let controller = makeController(context: context, clock: mockClock)
 
         await controller.setActiveShader("test")
 
@@ -113,8 +136,8 @@ struct AdaptiveThermalControllerTests {
         // Background
         controller.handleBackgrounded()
 
-        // Wait for "long" background (> 1 second in our test config)
-        try await Task.sleep(for: .seconds(1.5))
+        // Advance time past the background threshold (> 1 second in our test config)
+        mockClock.advance(by: 1.5)
 
         // Cool down while backgrounded
         context.thermalState = .nominal

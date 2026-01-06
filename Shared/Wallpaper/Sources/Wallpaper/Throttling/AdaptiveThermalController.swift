@@ -1,6 +1,23 @@
 import Core
 import Foundation
 
+// MARK: - Clock Protocol
+
+/// Protocol for providing the current time, enabling testable time-dependent code.
+public protocol ThermalClock: Sendable {
+    /// The current time as a TimeInterval since the reference date.
+    var now: TimeInterval { get }
+}
+
+/// Default clock implementation that uses the system time.
+public struct SystemThermalClock: ThermalClock, Sendable {
+    public init() {}
+
+    public var now: TimeInterval {
+        Date.timeIntervalSinceReferenceDate
+    }
+}
+
 /// Adaptive thermal throttling controller with continuous FPS × Scale optimization.
 ///
 /// Replaces the discrete 4-level `ThermalThrottleController` with continuous
@@ -52,6 +69,7 @@ public final class AdaptiveThermalController {
     private let optimizer: ThermalOptimizer
     private var analytics: ThermalAnalytics?
     private let context: ThermalContextProtocol
+    private let clock: ThermalClock
 
     // MARK: - Internal State
 
@@ -60,7 +78,7 @@ public final class AdaptiveThermalController {
     private var optimizationTask: Task<Void, Never>?
     private var periodicFlushTask: Task<Void, Never>?
     private var contextObservationTask: Task<Void, Never>?
-    private var backgroundedAt: Date?
+    private var backgroundedAt: TimeInterval?
 
     /// FPS-based momentum boost (decays over time).
     private var fpsMomentumBoost: Float = 0
@@ -89,6 +107,7 @@ public final class AdaptiveThermalController {
     ///   - optimizer: Optimization algorithm.
     ///   - analytics: Analytics for session tracking (optional).
     ///   - context: Thermal context for system state observation.
+    ///   - clock: Clock for time-based calculations (default: system clock).
     ///   - optimizationInterval: How often to run optimization (default 5 seconds).
     ///   - periodicFlushInterval: How often to flush analytics (default 5 minutes).
     ///   - backgroundThreshold: Time after which to apply cooldown bonus (default 5 minutes).
@@ -97,6 +116,7 @@ public final class AdaptiveThermalController {
         optimizer: ThermalOptimizer = ThermalOptimizer(),
         analytics: ThermalAnalytics? = nil,
         context: ThermalContextProtocol = ThermalContext.shared,
+        clock: ThermalClock = SystemThermalClock(),
         optimizationInterval: Duration = .seconds(5),
         periodicFlushInterval: Duration = .seconds(300),
         backgroundThreshold: TimeInterval = 300
@@ -105,6 +125,7 @@ public final class AdaptiveThermalController {
         self.optimizer = optimizer
         self.analytics = analytics
         self.context = context
+        self.clock = clock
         self.optimizationInterval = optimizationInterval
         self.periodicFlushInterval = periodicFlushInterval
         self.backgroundThreshold = backgroundThreshold
@@ -149,7 +170,7 @@ public final class AdaptiveThermalController {
     /// conservative cooldown bonus if backgrounded long enough.
     public func handleForegrounded() {
         let wasBackgroundedLong = backgroundedAt.map {
-            Date().timeIntervalSince($0) > backgroundThreshold
+            clock.now - $0 > backgroundThreshold
         } ?? false
 
         // Reset signal - thermal state during background is unknown
@@ -175,7 +196,7 @@ public final class AdaptiveThermalController {
     ///
     /// Pauses optimization and flushes analytics.
     public func handleBackgrounded() {
-        backgroundedAt = Date()
+        backgroundedAt = clock.now
         stopOptimizationLoop()
         stopPeriodicFlush()
 
