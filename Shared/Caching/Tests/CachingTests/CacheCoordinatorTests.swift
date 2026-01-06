@@ -21,6 +21,36 @@ import Testing
 import Foundation
 @testable import Caching
 
+// MARK: - Mock Clock
+
+/// A controllable clock for testing time-dependent behavior without sleeps.
+final class MockClock: Clock, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _now: TimeInterval
+
+    init(now: TimeInterval = 1_000_000) {
+        self._now = now
+    }
+
+    var now: TimeInterval {
+        lock.lock()
+        defer { lock.unlock() }
+        return _now
+    }
+
+    func advance(by interval: TimeInterval) {
+        lock.lock()
+        defer { lock.unlock() }
+        _now += interval
+    }
+
+    func set(_ time: TimeInterval) {
+        lock.lock()
+        defer { lock.unlock() }
+        _now = time
+    }
+}
+    
 // MARK: - Mock Cache
 
 final class MockCache: Cache, @unchecked Sendable {
@@ -172,15 +202,16 @@ struct CacheCoordinatorTests {
     func throwsErrorForExpiredValues() async throws {
         // Given
         let mockCache = MockCache()
-        let coordinator = CacheCoordinator(cache: mockCache)
+        let mockClock = MockClock()
+        let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "expired-value"
         let value = "Will expire"
 
-        // When - Set with very short lifespan
-        await coordinator.set(value: value, for: key, lifespan: 0.001)
+        // When - Set with 60 second lifespan
+        await coordinator.set(value: value, for: key, lifespan: 60)
 
-        // Wait for expiration
-        try await Task.sleep(for: .milliseconds(10))
+        // Advance clock past expiration
+        mockClock.advance(by: 61)
 
         // Then - Should throw noCachedResult
         await #expect(throws: CacheCoordinator.Error.noCachedResult) {
@@ -192,15 +223,16 @@ struct CacheCoordinatorTests {
     func nonExpiredValuesAreAccessible() async throws {
         // Given
         let mockCache = MockCache()
-        let coordinator = CacheCoordinator(cache: mockCache)
+        let mockClock = MockClock()
+        let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "valid-value"
         let value = "Still valid"
 
-        // When - Set with long lifespan
+        // When - Set with 3600 second lifespan
         await coordinator.set(value: value, for: key, lifespan: 3600)
 
-        // Wait a bit but not long enough to expire
-        try await Task.sleep(for: .milliseconds(50))
+        // Advance clock but not past expiration
+        mockClock.advance(by: 1800)
 
         // Then - Should still be retrievable
         let retrieved: String = try await coordinator.value(for: key)
@@ -211,27 +243,26 @@ struct CacheCoordinatorTests {
     func expiredRecordsAreRemoved() async throws {
         // Given
         let mockCache = MockCache()
-        let coordinator = CacheCoordinator(cache: mockCache)
+        let mockClock = MockClock()
+        let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "to-be-removed"
         let value = "Remove me"
 
         // When
-        await coordinator.set(value: value, for: key, lifespan: 0.001)
+        await coordinator.set(value: value, for: key, lifespan: 60)
 
         // Verify it's in cache
         #expect(mockCache.data(for: key) != nil)
 
-        // Wait for expiration
-        try await Task.sleep(for: .milliseconds(10))
+        // Advance clock past expiration
+        mockClock.advance(by: 61)
 
         // Try to retrieve (which should remove it)
         await #expect(throws: CacheCoordinator.Error.noCachedResult) {
             let _: String = try await coordinator.value(for: key)
         }
 
-        // Then - Should be removed from underlying cache
-        // Give async cleanup time to complete
-        try await Task.sleep(for: .milliseconds(50))
+        // Then - Should be removed from underlying cache (removal is synchronous)
         #expect(mockCache.data(for: key) == nil)
     }
 
@@ -315,21 +346,22 @@ struct CacheCoordinatorTests {
     func updatesLifespanWhenOverwriting() async throws {
         // Given
         let mockCache = MockCache()
-        let coordinator = CacheCoordinator(cache: mockCache)
+        let mockClock = MockClock()
+        let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "lifespan-update"
         let value = "Same value"
 
-        // When - First set with short lifespan
-        await coordinator.set(value: value, for: key, lifespan: 0.05)
+        // When - First set with 60 second lifespan
+        await coordinator.set(value: value, for: key, lifespan: 60)
 
-        // Wait almost until expiration
-        try await Task.sleep(for: .milliseconds(30))
+        // Advance almost to expiration
+        mockClock.advance(by: 50)
 
-        // Update with longer lifespan
-        await coordinator.set(value: value, for: key, lifespan: 3600)
+        // Update with fresh 60 second lifespan (resets timestamp to current clock time)
+        await coordinator.set(value: value, for: key, lifespan: 60)
 
-        // Wait past original expiration
-        try await Task.sleep(for: .milliseconds(30))
+        // Advance past original expiration time but within new lifespan
+        mockClock.advance(by: 30)
 
         // Then - Should still be valid with new lifespan
         let retrieved: String = try await coordinator.value(for: key)
