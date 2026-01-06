@@ -90,7 +90,9 @@ public struct OverlaySheet<Content: View>: View {
                     .clipShape(.rect(cornerRadius: 20, style: .continuous))
                     .shadow(color: .black.opacity(0.2), radius: 20, y: -5)
                     .offset(y: appeared ? max(offsetY, 0) : geometry.size.height)
+                    #if !os(tvOS)
                     .simultaneousGesture(dragGesture)
+                    #endif
             }
         }
         .ignoresSafeArea()
@@ -101,6 +103,7 @@ public struct OverlaySheet<Content: View>: View {
         }
     }
 
+    #if !os(tvOS)
     private var dragGesture: some Gesture {
         DragGesture()
             .onChanged { gesture in
@@ -128,6 +131,7 @@ public struct OverlaySheet<Content: View>: View {
                 }
             }
     }
+    #endif
 
     private func dismiss() {
         withAnimation(springAnimation) {

@@ -7,18 +7,20 @@
 
 import SwiftUI
 import Playback
+import Wallpaper
 
 struct ContentView: View {
     let radioPlayerController: RadioPlayerController
-    
+    @State private var themeConfiguration: ThemeConfiguration = {
+        let config = ThemeConfiguration()
+        config.selectedThemeID = "neon_topology_iso"
+        return config
+    }()
+
     var body: some View {
         ZStack {
-            Image(ImageResource(name: "Background", bundle: .main))
-                .resizable()
+            WallpaperView(configuration: themeConfiguration)
                 .ignoresSafeArea()
-            Color(white: 0, opacity: 0.5)
-                .ignoresSafeArea()
-                .background(.ultraThinMaterial)
             PlayerPage(radioPlayerController: radioPlayerController)
         }
     }
