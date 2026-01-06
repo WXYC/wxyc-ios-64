@@ -15,17 +15,25 @@ public final actor CacheCoordinator {
     internal init(cache: Cache, clock: Clock = SystemClock()) {
         self.cache = cache
         self.clock = clock
-        self.purgeExpiredEntries()
+        self.purgeTask = Task { [cache, clock] in
+            let currentTime = clock.now
+            for (key, metadata) in cache.allMetadata() {
+                if metadata.isExpired(at: currentTime) || metadata.lifespan == .infinity {
+                    cache.remove(for: key)
+                }
+            }
+        }
     }
 
     // MARK: Private vars
 
     private var cache: Cache
     private let clock: Clock
+    private let purgeTask: Task<Void, Never>
     
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
-    
+
     // MARK: Public methods - Binary data (images, etc.)
     
     /// Retrieve raw binary data from cache
@@ -60,7 +68,7 @@ public final actor CacheCoordinator {
         let metadata = CacheMetadata(timestamp: clock.now, lifespan: lifespan)
         cache.set(data, metadata: metadata, for: key)
     }
-    
+
     // MARK: Public methods - Codable values (playlists, etc.)
     
     /// Retrieve a Codable value from cache
@@ -122,17 +130,14 @@ public final actor CacheCoordinator {
         }
     }
     
-    // MARK: Private methods
-    
-    private nonisolated func purgeExpiredEntries() {
-        Task {
-            let (cache, currentTime) = await (self.cache, self.clock.now)
-            for (key, metadata) in cache.allMetadata() {
-                if metadata.isExpired(at: currentTime) || metadata.lifespan == .infinity {
-                    cache.remove(for: key)
-                }
-            }
-        }
+    // MARK: - Public Methods (Testing Support)
+
+    /// Waits for the initial purge operation to complete.
+    ///
+    /// The coordinator automatically purges expired entries at initialization.
+    /// This method allows callers to await that operation's completion.
+    public func waitForPurge() async {
+        await purgeTask.value
     }
 }
 
