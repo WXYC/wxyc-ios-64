@@ -159,10 +159,17 @@ public final class RadioPlayerController: PlaybackController {
         self.inputObservations = observations
     }
 
+    /// Callback fired when player state observation has started. Used by tests for synchronization.
+    var onObserversReady: (() -> Void)?
+
     private func setUpPlayerStateObservation() {
         // Observe radioPlayer state and derive controller state
         Task { [weak self] in
             guard let self else { return }
+
+            // Signal that observer is ready before entering the loop
+            self.onObserversReady?()
+
             for await playerState in self.radioPlayer.stateStream {
                 // Don't overwrite controller-specific states like .interrupted
                 guard self.state != .interrupted else { continue }
@@ -207,7 +214,7 @@ public final class RadioPlayerController: PlaybackController {
         self.radioPlayer.play()
         // State transitions to .playing when radioPlayer.isPlaying becomes true
     }
-
+    
     /// Stops playback without capturing analytics.
     /// Call sites should capture analytics BEFORE calling this method.
     public func stop() {
@@ -227,7 +234,7 @@ public final class RadioPlayerController: PlaybackController {
     public func handleAppDidEnterBackground() {
         applicationDidEnterBackground(Notification(name: UIApplication.didEnterBackgroundNotification))
     }
-    
+
     public func handleAppWillEnterForeground() {
         applicationWillEnterForeground(Notification(name: UIApplication.willEnterForegroundNotification))
     }
@@ -238,7 +245,7 @@ public final class RadioPlayerController: PlaybackController {
     private let radioPlayer: any AudioPlayerProtocol
     private let notificationCenter: NotificationCenter
     private var inputObservations: [Any] = []
-
+    
     #if os(iOS) || os(tvOS)
     private let audioSession: AudioSessionProtocol
     #endif
@@ -253,7 +260,7 @@ public final class RadioPlayerController: PlaybackController {
 
 private extension RadioPlayerController {
     // MARK: AVPlayer handlers
-    
+
     nonisolated func playbackStalled(_ notification: Notification) {
         Log(.error, "Playback stalled: \(notification)")
 
@@ -302,7 +309,7 @@ private extension RadioPlayerController {
                     try self.play(reason: "Resume after interruption ended")
                 }
                 wasPlayingBeforeInterruption = false
-
+    
             @unknown default:
                 break
             }
@@ -361,7 +368,7 @@ private extension RadioPlayerController {
     }
 
     // MARK: External playback command handlers
-    
+
     nonisolated func applicationDidEnterBackground(_: Notification) {
 #if os(iOS) || os(tvOS)
         Task { @MainActor in
@@ -398,7 +405,7 @@ private extension RadioPlayerController {
             return .commandFailed
         }
     }
-        
+    
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
         self.stop()
