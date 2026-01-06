@@ -94,23 +94,43 @@ struct RadioPlayerControllerTests {
             notificationCenter: notificationCenter
         )
 
+        let observersReady = AsyncStream<Void>.makeStream()
+
         let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter
         )
+        controller.onObserversReady = {
+            observersReady.continuation.yield()
+            observersReady.continuation.finish()
+        }
 
-        // Give async observations time to set up
-        try await Task.sleep(for: .milliseconds(50))
+        // Wait for observers to be ready
+        for await _ in observersReady.stream { break }
 
         // When - Start playing via radio player
         radioPlayer.play()
-        try await Task.sleep(for: .milliseconds(50))
+
+        // Wait for state to propagate by observing isPlaying
+        let stateChanged = AsyncStream<Void>.makeStream()
+        let observationTask = Task {
+            let observations = Observations { radioPlayer.isPlaying }
+            for await isPlaying in observations {
+                if isPlaying {
+                    stateChanged.continuation.yield()
+                    stateChanged.continuation.finish()
+                    break
+                }
+            }
+        }
 
         // Simulate rate change notification on the mock player
         mockPlayer.rate = 1.0
         notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
 
-        try await Task.sleep(for: .milliseconds(100))
+        // Wait for state change
+        for await _ in stateChanged.stream { break }
+        observationTask.cancel()
 
         // Then - Controller should observe the change
         #expect(radioPlayer.isPlaying == true)
@@ -127,16 +147,23 @@ struct RadioPlayerControllerTests {
             player: mockPlayer,
             analytics: nil
         )
+
+        let observersReady = AsyncStream<Void>.makeStream()
+
         let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer
         )
+        controller.onObserversReady = {
+            observersReady.continuation.yield()
+            observersReady.continuation.finish()
+        }
 
-        try await Task.sleep(for: .milliseconds(50))
+        // Wait for observers to be ready
+        for await _ in observersReady.stream { break }
 
         // When - Attempt to play (may fail to activate session in test environment)
         // This should not crash
         try controller.play(reason: "error handling test")
-        try await Task.sleep(for: .milliseconds(100))
 
         // Then - Should handle gracefully
         #expect(true) // No crash = success
@@ -146,7 +173,7 @@ struct RadioPlayerControllerTests {
 
     #if os(iOS) || os(tvOS)
     @Test("Handles route change notification")
-    func handlesRouteChange() async throws {
+    func handlesRouteChange() async {
         // Given
         let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
@@ -154,17 +181,23 @@ struct RadioPlayerControllerTests {
             analytics: nil
         )
         let notificationCenter = NotificationCenter()
-        _ = RadioPlayerController.makeForTesting(
+
+        let observersReady = AsyncStream<Void>.makeStream()
+
+        let controller = RadioPlayerController.makeForTesting(
             radioPlayer: radioPlayer,
             notificationCenter: notificationCenter
         )
+        controller.onObserversReady = {
+            observersReady.continuation.yield()
+            observersReady.continuation.finish()
+        }
 
-        try await Task.sleep(for: .milliseconds(50))
+        // Wait for observers to be ready
+        for await _ in observersReady.stream { break }
 
         // When - This should not crash or throw
         notificationCenter.post(name: AVAudioSession.routeChangeNotification, object: nil)
-
-        try await Task.sleep(for: .milliseconds(50))
 
         // Then - Should handle gracefully (just logs)
         #expect(true) // No crash = success
