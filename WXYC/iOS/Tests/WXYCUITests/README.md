@@ -9,19 +9,20 @@ This directory contains UI integration tests for the WXYC iOS app. These tests v
 ### `PlaybackUITests.swift`
 Existing tests for basic playback functionality and crash prevention.
 
-### `PlaybackButtonObservationUITests.swift` (TODO)
+### `PlaybackButtonObservationUITests.swift`
 UI integration tests for PlaybackButton and CarPlay observation behavior.
 
-**Status:** Template created, tests need implementation
+**PlaybackButton tests (implemented):**
+- `playbackButtonVisualStateUpdates()` - Verifies button state changes on tap
+- `playbackButtonStateSyncs()` - Verifies UI stays in sync with AudioPlayerController
+- `rapidTappingHandled()` - Verifies app handles rapid button taps without issues
+- `stateSurvivesBackgrounding()` - Verifies state persists across app backgrounding
+- `animationPlaysSmooth()` - Verifies animations complete without issues
 
-**What needs to be tested:**
-1. PlaybackButton visual state updates correctly
-2. State synchronization between AudioPlayerController and UI
-3. Rapid interaction handling
-4. State persistence across backgrounding
-5. Animation smoothness
-6. CarPlay template updates
-7. Cross-component state synchronization
+**CarPlay tests (disabled - requires manual testing):**
+- CarPlay UI automation is not available in standard XCUITest runs
+- Use Xcode's CarPlay Simulator for manual testing
+- See test file for manual testing steps
 
 ## Running UI Tests
 
@@ -44,20 +45,6 @@ xcodebuild test \
   -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
   -only-testing:WXYCUITests/PlaybackButtonObservationUITests
 ```
-
-## Implementation Priority
-
-1. **High Priority:**
-   - `playbackButtonVisualStateUpdates()` - Core functionality
-   - `playbackButtonStateSyncs()` - Verifies the observation fix works
-
-2. **Medium Priority:**
-   - `rapidTappingHandled()` - Edge case handling
-   - `stateSurvivesBackgrounding()` - State persistence
-
-3. **Low Priority:**
-   - `animationPlaysSmooth()` - Polish
-   - CarPlay tests - Feature-specific
 
 ## Related Tests
 
