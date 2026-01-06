@@ -79,6 +79,16 @@ public final actor PlaylistService: Sendable {
         }
     }
     
+    /// Waits for the initial cache load to complete.
+    ///
+    /// The service automatically loads cached data at initialization.
+    /// This method allows callers to await that operation's completion.
+    public func waitForCacheLoad() async {
+        if !cacheLoaded {
+            await cacheLoadTask?.value
+        }
+    }
+    
     /// Fetch playlist and cache it, always fetching fresh data (ignores cache).
     /// Used for background refresh to ensure we always get the latest data.
     ///
@@ -91,7 +101,7 @@ public final actor PlaylistService: Sendable {
         // Only cache and broadcast non-empty playlists, OR if we don't have any data yet.
         // This prevents network errors (which return .empty) from clearing valid cached data.
         let shouldUpdate = playlist != .empty || currentPlaylist == .empty
-        
+
         if shouldUpdate {
             // Cache the fresh playlist (this will overwrite any existing cache)
             await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
@@ -139,10 +149,10 @@ public final actor PlaylistService: Sendable {
     /// - Parameter version: The API version to switch to.
     public func switchAPIVersion(to version: PlaylistAPIVersion) async {
         Log(.info, "Switching playlist API to \(version.rawValue)")
-        
+            
         // Cancel any existing fetch task
         cancelFetchTask()
-
+                
         // Create new fetcher with the specified version
         fetcher = PlaylistFetcher(apiVersion: version)
 
@@ -165,7 +175,7 @@ public final actor PlaylistService: Sendable {
     /// Multiple observers each receive their own stream of updates.
     public nonisolated func updates() -> AsyncStream<Playlist> {
         let id = UUID()
-        
+            
         return AsyncStream { continuation in
             let setupTask = Task { [weak self] in
                 guard let self else {
@@ -180,14 +190,14 @@ public final actor PlaylistService: Sendable {
                 setupTask.cancel()
                 
                 guard let self else { return }
-    
+        
                 Task {
                     await self.removeContinuation(for: id)
                 }
             }
         }
     }
-    
+        
     private func addContinuation(_ continuation: AsyncStream<Playlist>.Continuation, for id: UUID) async {
         continuations[id] = continuation
         
