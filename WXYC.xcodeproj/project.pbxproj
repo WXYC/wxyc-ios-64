@@ -191,6 +191,7 @@
 			membershipExceptions = (
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
+				iOS/Tests/WXYCUITests/UITestUtilities.swift,
 				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
 			);
 			target = 6DEE556479EB425A885731F3 /* WXYCUITests */;
@@ -233,6 +234,7 @@
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
 				iOS/Tests/WXYCUITests/README.md,
+				iOS/Tests/WXYCUITests/UITestUtilities.swift,
 				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
 				WatchXYC/Assets.xcassets,
 				WatchXYC/DialADJPage.swift,
