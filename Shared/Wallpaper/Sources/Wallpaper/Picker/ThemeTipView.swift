@@ -86,10 +86,22 @@ public struct ThemeTipView: View {
     }
 }
 
-// MARK: - Persistence
+// MARK: - Persistence & Analytics
 
 extension ThemeTipView {
     private static let wasDismissedKey = "themeTip.wasDismissed"
+
+    /// Analytics handler for tip dismissal events.
+    @MainActor
+    private static var analytics: ThemePickerAnalytics?
+
+    /// Sets the analytics handler for theme tip events.
+    ///
+    /// - Parameter analytics: The analytics implementation to use.
+    @MainActor
+    public static func setAnalytics(_ analytics: ThemePickerAnalytics) {
+        self.analytics = analytics
+    }
 
     /// Returns whether the theme tip should be shown.
     public static func shouldShow() -> Bool {
@@ -98,7 +110,18 @@ extension ThemeTipView {
     }
 
     /// Call this when the user dismisses the tip to prevent future displays.
-    public static func recordDismissal() {
+    ///
+    /// - Parameter userInitiated: Whether the user tapped the dismiss button (true)
+    ///   or the tip was auto-dismissed because they entered the picker (false).
+    @MainActor
+    public static func recordDismissal(userInitiated: Bool = false) {
+        // Only record analytics for user-initiated dismissals
+        if userInitiated {
+            analytics?.record(ThemeTipDismissedEvent(
+                hadEverEnteredPicker: ThemePickerUsage.hasEverUsed
+            ))
+        }
+
         UserDefaults.standard.set(true, forKey: wasDismissedKey)
     }
 

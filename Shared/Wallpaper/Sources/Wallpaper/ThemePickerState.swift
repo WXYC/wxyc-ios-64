@@ -7,6 +7,35 @@
 
 import Foundation
 import Observation
+import SwiftUI
+
+// MARK: - Theme Transition
+
+/// Represents an in-progress transition between two themes during picker scrolling.
+@MainActor
+public struct ThemeTransition: Equatable {
+    public let fromTheme: LoadedTheme
+    public let toTheme: LoadedTheme
+    /// Progress from 0.0 (fully fromTheme) to 1.0 (fully toTheme).
+    public let progress: CGFloat
+
+    public init(fromTheme: LoadedTheme, toTheme: LoadedTheme, progress: CGFloat) {
+        self.fromTheme = fromTheme
+        self.toTheme = toTheme
+        self.progress = progress
+    }
+
+    public var fromMaterial: Material { fromTheme.manifest.materialWeight.material }
+    public var toMaterial: Material { toTheme.manifest.materialWeight.material }
+    public var fromColorScheme: ColorScheme { fromTheme.manifest.foreground.colorScheme }
+    public var toColorScheme: ColorScheme { toTheme.manifest.foreground.colorScheme }
+
+    public static nonisolated func == (lhs: ThemeTransition, rhs: ThemeTransition) -> Bool {
+        lhs.fromTheme.id == rhs.fromTheme.id &&
+        lhs.toTheme.id == rhs.toTheme.id &&
+        lhs.progress == rhs.progress
+    }
+}
 
 // MARK: - Environment Key
 
@@ -27,7 +56,10 @@ private struct WallpaperQualityProfileKey: EnvironmentKey {
     static let defaultValue: QualityProfile? = nil
 }
 
-import SwiftUI
+/// Environment key for the current theme transition during picker scrolling.
+private struct PreviewThemeTransitionKey: EnvironmentKey {
+    static let defaultValue: ThemeTransition? = nil
+}
 
 public extension EnvironmentValues {
     var isThemePickerActive: Bool {
@@ -49,6 +81,12 @@ public extension EnvironmentValues {
         get { self[WallpaperQualityProfileKey.self] }
         set { self[WallpaperQualityProfileKey.self] = newValue }
     }
+
+    /// Theme transition state for preview during picker scrolling.
+    var previewThemeTransition: ThemeTransition? {
+        get { self[PreviewThemeTransitionKey.self] }
+        set { self[PreviewThemeTransitionKey.self] = newValue }
+    }
 }
 
 /// Observable state for the theme picker mode.
@@ -66,7 +104,28 @@ public final class ThemePickerState {
     /// The carousel page index (corresponds to theme position in registry).
     public var carouselIndex: Int = 0
 
+    /// Current theme transition state during picker scrolling.
+    public private(set) var themeTransition: ThemeTransition?
+
+    // MARK: - Analytics
+
+    /// Analytics handler for theme picker events.
+    private var analytics: ThemePickerAnalytics?
+
+    /// When the picker was entered (for duration tracking).
+    private var enteredAt: Date?
+
+    /// Theme ID when picker was entered (for change detection).
+    private var previousThemeID: String?
+
     public init() {}
+
+    /// Sets the analytics handler for theme picker events.
+    ///
+    /// - Parameter analytics: The analytics implementation to use.
+    public func setAnalytics(_ analytics: ThemePickerAnalytics) {
+        self.analytics = analytics
+    }
 
     // MARK: - Lifecycle
 
@@ -76,17 +135,46 @@ public final class ThemePickerState {
         centeredThemeID = currentThemeID
         carouselIndex = indexFor(themeID: currentThemeID)
         isActive = true
+
+        // Track for analytics
+        enteredAt = Date()
+        previousThemeID = currentThemeID
+
+        // Record first-time usage for discoverability tracking
+        ThemePickerUsage.recordFirstUse()
+
+        // Auto-dismiss the theme tip since user discovered the picker
+        ThemeTipView.recordDismissal()
+
+        // Record analytics event
+        analytics?.record(ThemePickerEnteredEvent(fromThemeID: currentThemeID))
     }
 
-    /// Confirms the current centered theme as the selection.
+    /// Confirms the current centered theme as the selection and records analytics.
     /// - Parameter configuration: The theme configuration to update.
     public func confirmSelection(to configuration: ThemeConfiguration) {
-        configuration.selectedThemeID = centeredThemeID
+        let selectedThemeID = centeredThemeID
+        let previousID = previousThemeID ?? configuration.selectedThemeID
+        let themeChanged = selectedThemeID != previousID
+        let duration = enteredAt.map { Date().timeIntervalSince($0) } ?? 0
+
+        configuration.selectedThemeID = selectedThemeID
+
+        // Record analytics event
+        analytics?.record(ThemePickerSelectionEvent(
+            selectedThemeID: selectedThemeID,
+            previousThemeID: previousID,
+            themeChanged: themeChanged,
+            durationSeconds: duration
+        ))
     }
 
     /// Exits picker mode.
     public func exit() {
         isActive = false
+        themeTransition = nil
+        enteredAt = nil
+        previousThemeID = nil
     }
 
     // MARK: - Carousel Navigation
@@ -98,6 +186,39 @@ public final class ThemePickerState {
         guard index >= 0 && index < themes.count else { return }
         carouselIndex = index
         centeredThemeID = themes[index].id
+    }
+
+    /// Updates the transition progress based on continuous scroll offset.
+    /// - Parameters:
+    ///   - scrollOffset: The current horizontal scroll offset.
+    ///   - cardWidth: The width of each card.
+    ///   - cardSpacing: The spacing between cards.
+    ///   - horizontalPadding: The horizontal padding applied to center the first card.
+    public func updateTransitionProgress(
+        scrollOffset: CGFloat,
+        cardWidth: CGFloat,
+        cardSpacing: CGFloat,
+        horizontalPadding: CGFloat
+    ) {
+        let themes = ThemeRegistry.shared.themes
+        guard themes.count > 1 else {
+            themeTransition = nil
+            return
+        }
+
+        let effectiveOffset = scrollOffset + horizontalPadding
+        let cardTotalWidth = cardWidth + cardSpacing
+        let currentPosition = effectiveOffset / cardTotalWidth
+
+        let leadingIndex = max(0, min(themes.count - 2, Int(floor(currentPosition))))
+        let trailingIndex = min(themes.count - 1, leadingIndex + 1)
+        let progress = max(0, min(1, currentPosition - CGFloat(leadingIndex)))
+
+        themeTransition = ThemeTransition(
+            fromTheme: themes[leadingIndex],
+            toTheme: themes[trailingIndex],
+            progress: progress
+        )
     }
 
     // MARK: - Private
