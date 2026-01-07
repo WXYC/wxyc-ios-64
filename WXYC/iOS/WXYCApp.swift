@@ -171,8 +171,11 @@ struct WXYCApp: App {
         // Analytics setup
         setUpAnalytics()
         setUpThermalAnalytics()
-        PostHogSDK.shared.capture("app launch")
-
+        setUpThemePickerAnalytics()
+        PostHogSDK.shared.capture("app launch", properties: [
+            "has_used_theme_picker": ThemePickerUsage.hasEverUsed
+        ])
+                    
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
         // Setting it here at launch would interrupt other apps' audio unnecessarily.
                     
@@ -365,6 +368,12 @@ struct WXYCApp: App {
         AdaptiveThermalController.shared.setAnalytics(aggregator)
     }
 
+    private func setUpThemePickerAnalytics() {
+        let analytics = PostHogThemePickerAnalytics()
+        appState.themePickerState.setAnalytics(analytics)
+        ThemeTipView.setAnalytics(analytics)
+    }
+
     private func buildConfiguration() -> String {
         #if DEBUG
         return "Debug"
@@ -380,7 +389,7 @@ struct WXYCApp: App {
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.wxyc.refresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
-
+    
         do {
             try BGTaskScheduler.shared.submit(request)
             Log(.info, "Scheduled background refresh for 15 minutes from now")
