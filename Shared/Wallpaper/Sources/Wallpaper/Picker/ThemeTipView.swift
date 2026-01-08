@@ -89,7 +89,10 @@ public struct ThemeTipView: View {
 // MARK: - Persistence & Analytics
 
 extension ThemeTipView {
-    private static let wasDismissedKey = "themeTip.wasDismissed"
+    private static let dismissedAtKey = "themeTip.dismissedAt"
+
+    /// Number of days before re-showing the tip to users who dismissed without using the picker.
+    private static let reShowCooldownDays: TimeInterval = 90
 
     /// Analytics handler for tip dismissal events.
     @MainActor
@@ -104,9 +107,24 @@ extension ThemeTipView {
     }
 
     /// Returns whether the theme tip should be shown.
+    ///
+    /// Shows the tip if:
+    /// - User has never dismissed it, OR
+    /// - User dismissed it but never used the picker AND 90+ days have passed
     public static func shouldShow() -> Bool {
-        // Show unless user has dismissed it
-        !UserDefaults.standard.bool(forKey: wasDismissedKey)
+        // If user has used the picker, never show the tip again
+        if ThemePickerUsage.hasEverUsed {
+            return false
+        }
+
+        // If never dismissed, show it
+        guard let dismissedAt = UserDefaults.standard.object(forKey: dismissedAtKey) as? Date else {
+            return true
+        }
+
+        // Re-show after cooldown period if user still hasn't used the picker
+        let daysSinceDismissal = Date().timeIntervalSince(dismissedAt) / 86400
+        return daysSinceDismissal >= reShowCooldownDays
     }
 
     /// Call this when the user dismisses the tip to prevent future displays.
@@ -122,11 +140,11 @@ extension ThemeTipView {
             ))
         }
 
-        UserDefaults.standard.set(true, forKey: wasDismissedKey)
+        UserDefaults.standard.set(Date(), forKey: dismissedAtKey)
     }
 
     /// Resets the theme tip state (useful for testing).
     public static func resetState() {
-        UserDefaults.standard.removeObject(forKey: wasDismissedKey)
+        UserDefaults.standard.removeObject(forKey: dismissedAtKey)
     }
 }
