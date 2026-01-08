@@ -7,6 +7,20 @@
 
 import Foundation
 
+// MARK: - Protocol
+
+/// Protocol for theme registry access, enabling dependency injection and testing.
+@MainActor
+public protocol ThemeRegistryProtocol: Sendable {
+    /// Returns all available themes.
+    var themes: [LoadedTheme] { get }
+
+    /// Finds a theme by its ID.
+    func theme(for id: String) -> LoadedTheme?
+}
+
+// MARK: - LoadedTheme
+
 /// A loaded theme with its manifest and parameter store.
 @Observable
 @MainActor
@@ -27,7 +41,7 @@ public final class LoadedTheme: Identifiable, Sendable {
 
 /// Central registry for discovering and loading themes from bundle resources.
 @MainActor
-public final class ThemeRegistry: Sendable {
+public final class ThemeRegistry: ThemeRegistryProtocol, Sendable {
     public static let shared = ThemeRegistry()
 
     private let loadedThemes: [LoadedTheme]

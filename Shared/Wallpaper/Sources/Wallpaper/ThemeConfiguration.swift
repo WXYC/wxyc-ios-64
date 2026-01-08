@@ -15,7 +15,13 @@ public final class ThemeConfiguration {
     private let storageKey = "wallpaper.selectedType.v3"
     private let accentHueOverrideKey = "wallpaper.accentHueOverride"
     private let accentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
+    private let materialTintOverrideKey = "wallpaper.materialTintOverride"
     private let defaultThemeID = "wxyc_gradient"
+
+    // MARK: - Dependencies
+
+    private let registry: any ThemeRegistryProtocol
+    private let defaults: UserDefaults
 
     /// Shared animation start time for all wallpaper renderers.
     /// This ensures picker previews and main view show synchronized animations.
@@ -23,7 +29,7 @@ public final class ThemeConfiguration {
 
     public var selectedThemeID: String {
         didSet {
-            UserDefaults.standard.set(selectedThemeID, forKey: storageKey)
+            defaults.set(selectedThemeID, forKey: storageKey)
         }
     }
 
@@ -33,9 +39,9 @@ public final class ThemeConfiguration {
     public var accentHueOverride: Double? {
         didSet {
             if let hue = accentHueOverride {
-                UserDefaults.standard.set(hue, forKey: accentHueOverrideKey)
+                defaults.set(hue, forKey: accentHueOverrideKey)
             } else {
-                UserDefaults.standard.removeObject(forKey: accentHueOverrideKey)
+                defaults.removeObject(forKey: accentHueOverrideKey)
             }
         }
     }
@@ -44,16 +50,41 @@ public final class ThemeConfiguration {
     public var accentSaturationOverride: Double? {
         didSet {
             if let saturation = accentSaturationOverride {
-                UserDefaults.standard.set(saturation, forKey: accentSaturationOverrideKey)
+                defaults.set(saturation, forKey: accentSaturationOverrideKey)
             } else {
-                UserDefaults.standard.removeObject(forKey: accentSaturationOverrideKey)
+                defaults.removeObject(forKey: accentSaturationOverrideKey)
             }
         }
     }
 
+    // MARK: - Material Tint Override
+
+    /// Optional material tint override (-1.0 to 1.0). When nil, uses the theme's default tint.
+    /// Positive values lighten (white overlay), negative values darken (black overlay).
+    public var materialTintOverride: Double? {
+        didSet {
+            if let tint = materialTintOverride {
+                defaults.set(tint, forKey: materialTintOverrideKey)
+            } else {
+                defaults.removeObject(forKey: materialTintOverrideKey)
+            }
+        }
+    }
+
+    /// Returns the effective material tint, applying any override to the current theme's tint.
+    public var effectiveMaterialTint: Double {
+        if let override = materialTintOverride {
+            return override
+        }
+        guard let theme = registry.theme(for: selectedThemeID) else {
+            return 0.0
+        }
+        return theme.manifest.materialTint
+    }
+
     /// Returns the effective accent color, applying any overrides to the current theme's accent.
     public var effectiveAccentColor: AccentColor {
-        guard let theme = ThemeRegistry.shared.theme(for: selectedThemeID) else {
+        guard let theme = registry.theme(for: selectedThemeID) else {
             return AccentColor(hue: accentHueOverride ?? 0, saturation: accentSaturationOverride ?? 1.0)
         }
         let baseAccent = theme.manifest.accent
@@ -63,17 +94,32 @@ public final class ThemeConfiguration {
         )
     }
 
-    public init() {
-        let storedID = UserDefaults.standard.string(forKey: storageKey)
+    // MARK: - Initialization
+
+    /// Creates a configuration with injected dependencies.
+    /// - Parameters:
+    ///   - registry: The theme registry for looking up themes.
+    ///   - defaults: The UserDefaults instance for persistence.
+    public init(
+        registry: any ThemeRegistryProtocol = ThemeRegistry.shared,
+        defaults: UserDefaults = .standard
+    ) {
+        self.registry = registry
+        self.defaults = defaults
+
+        let storedID = defaults.string(forKey: storageKey)
         // Map legacy IDs to new IDs
-        self.selectedThemeID = Self.mapLegacyID(storedID) ?? defaultThemeID
+        self.selectedThemeID = Self.mapLegacyID(storedID, using: registry) ?? defaultThemeID
 
         // Load accent color overrides
-        if UserDefaults.standard.object(forKey: accentHueOverrideKey) != nil {
-            self.accentHueOverride = UserDefaults.standard.double(forKey: accentHueOverrideKey)
+        if defaults.object(forKey: accentHueOverrideKey) != nil {
+            self.accentHueOverride = defaults.double(forKey: accentHueOverrideKey)
         }
-        if UserDefaults.standard.object(forKey: accentSaturationOverrideKey) != nil {
-            self.accentSaturationOverride = UserDefaults.standard.double(forKey: accentSaturationOverrideKey)
+        if defaults.object(forKey: accentSaturationOverrideKey) != nil {
+            self.accentSaturationOverride = defaults.double(forKey: accentSaturationOverrideKey)
+        }
+        if defaults.object(forKey: materialTintOverrideKey) != nil {
+            self.materialTintOverride = defaults.double(forKey: materialTintOverrideKey)
         }
     }
 
@@ -81,21 +127,25 @@ public final class ThemeConfiguration {
         selectedThemeID = defaultThemeID
         accentHueOverride = nil
         accentSaturationOverride = nil
-        ThemeRegistry.shared.themes.forEach { $0.parameterStore.reset() }
+        materialTintOverride = nil
+        registry.themes.forEach { $0.parameterStore.reset() }
     }
 
     /// Clears any corrupted UserDefaults data for theme settings.
-    public static func nukeLegacyData() {
-        UserDefaults.standard.removeObject(forKey: "wallpaper.selectedType.v3")
-        UserDefaults.standard.removeObject(forKey: "wallpaper.selectedType")
+    public static func nukeLegacyData(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: "wallpaper.selectedType.v3")
+        defaults.removeObject(forKey: "wallpaper.selectedType")
     }
 
     /// Maps legacy wallpaper type IDs to new manifest-based IDs.
-    private static func mapLegacyID(_ legacyID: String?) -> String? {
+    private static func mapLegacyID(
+        _ legacyID: String?,
+        using registry: any ThemeRegistryProtocol
+    ) -> String? {
         guard let legacyID else { return nil }
 
         // If it's already a new-style ID, return it
-        if ThemeRegistry.shared.theme(for: legacyID) != nil {
+        if registry.theme(for: legacyID) != nil {
             return legacyID
         }
 

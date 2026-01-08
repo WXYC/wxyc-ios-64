@@ -179,6 +179,9 @@ public final class ThemePickerState {
 
     // MARK: - Dependencies
 
+    /// Theme registry for looking up themes.
+    private let registry: any ThemeRegistryProtocol
+
     /// Analytics handler for theme picker events.
     private var analytics: ThemePickerAnalytics?
 
@@ -191,7 +194,11 @@ public final class ThemePickerState {
     /// Theme ID when picker was entered (for change detection).
     private var previousThemeID: String?
 
-    public init() {}
+    /// Creates a picker state with injected dependencies.
+    /// - Parameter registry: The theme registry for looking up themes.
+    public init(registry: any ThemeRegistryProtocol = ThemeRegistry.shared) {
+        self.registry = registry
+    }
 
     /// Sets the analytics handler for theme picker events.
     ///
@@ -266,7 +273,7 @@ public final class ThemePickerState {
     /// Updates the centered theme based on carousel index.
     /// - Parameter index: The new carousel index.
     public func updateCenteredTheme(forIndex index: Int) {
-        let themes = ThemeRegistry.shared.themes
+        let themes = registry.themes
         guard index >= 0 && index < themes.count else { return }
         carouselIndex = index
         centeredThemeID = themes[index].id
@@ -284,7 +291,7 @@ public final class ThemePickerState {
         cardSpacing: CGFloat,
         horizontalPadding: CGFloat
     ) {
-        let themes = ThemeRegistry.shared.themes
+        let themes = registry.themes
         guard themes.count > 1 else {
             themeTransition = nil
             return
@@ -308,6 +315,6 @@ public final class ThemePickerState {
     // MARK: - Private
 
     private func indexFor(themeID: String) -> Int {
-        ThemeRegistry.shared.themes.firstIndex { $0.id == themeID } ?? 0
+        registry.themes.firstIndex { $0.id == themeID } ?? 0
     }
 }
