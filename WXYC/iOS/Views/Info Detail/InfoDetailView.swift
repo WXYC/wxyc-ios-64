@@ -132,22 +132,49 @@ struct ActionButton: View {
     let color: Color
     let action: () -> Void
 
+    @Environment(Singletonia.self) private var appState
+
+    private var currentTheme: LoadedTheme? {
+        ThemeRegistry.shared.theme(for: appState.themeConfiguration.selectedThemeID)
+    }
+
+    private var useGlassStyle: Bool {
+        currentTheme?.manifest.buttonStyle == .glass
+    }
+
+    private var foregroundColor: Color {
+        currentTheme?.manifest.foreground.color ?? .white
+    }
+
     var body: some View {
         Button(action: action) {
             HStack {
                 Image(systemName: icon)
                     .font(.body)
                 Text(title)
-                    .fontWeight(.bold)
+                    .bold()
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(foregroundColor)
             .frame(maxWidth: .infinity)
             .padding()
-            .glassEffectClearIfAvailable()
-            .background(
-                Capsule()
-                    .fill(color)
-            )
+            .background {
+                if !useGlassStyle {
+                    Capsule().fill(color)
+                }
+            }
+            .modifier(GlassButtonModifier(enabled: useGlassStyle))
+        }
+    }
+}
+
+private struct GlassButtonModifier: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.glassEffectClearIfAvailable(in: .capsule)
+        } else {
+            content
         }
     }
 }
