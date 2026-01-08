@@ -50,11 +50,16 @@ public struct ThemeDebugOverlay: View {
 /// Content for the theme debug popover.
 private struct ThemeDebugPopoverContent: View {
     @Bindable var configuration: ThemeConfiguration
+    @AppStorage("ThemeDebug.isLCDBrightnessExpanded") private var isLCDBrightnessExpanded = false
+    @AppStorage("ThemeDebug.isAccentColorExpanded") private var isAccentColorExpanded = false
+    @AppStorage("ThemeDebug.isMaterialTintExpanded") private var isMaterialTintExpanded = false
+    @AppStorage("ThemeDebug.isParametersExpanded") private var isParametersExpanded = false
+    @AppStorage("ThemeDebug.isShaderFeaturesExpanded") private var isShaderFeaturesExpanded = false
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Theme picker
+            VStack(alignment: .leading, spacing: 12) {
+                // Theme picker (always visible)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Theme")
                         .font(.headline)
@@ -67,30 +72,67 @@ private struct ThemeDebugPopoverContent: View {
                     .labelsHidden()
                 }
 
-                // LCD brightness controls (offset is theme-dependent)
+                Divider()
+
                 let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
-                LCDBrightnessControls(configuration: configuration, theme: theme)
+
+                // LCD brightness controls
+                DisclosureGroup(isExpanded: $isLCDBrightnessExpanded) {
+                    LCDBrightnessControls(configuration: configuration, theme: theme)
+                        .padding(.top, 8)
+                } label: {
+                    Text("LCD Brightness")
+                        .font(.headline)
+                }
 
                 if let theme {
                     // Accent color controls
-                    AccentColorControls(configuration: configuration, theme: theme)
-
-                    // Material tint controls
-                    MaterialTintControls(configuration: configuration, theme: theme)
-
-                    // Parameters (no disclosure group)
-                    if !theme.manifest.parameters.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Parameters")
+                    DisclosureGroup(isExpanded: $isAccentColorExpanded) {
+                        AccentColorControls(configuration: configuration, theme: theme)
+                            .padding(.top, 8)
+                    } label: {
+                        HStack {
+                            Text("Accent Color")
                                 .font(.headline)
-
-                            ThemeDebugControlsGenerator(theme: theme)
+                            Spacer()
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(configuration.effectiveAccentColor.color(brightness: 0.8))
+                                .frame(width: 20, height: 20)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.primary.opacity(0.3), lineWidth: 1)
+                                )
                         }
                     }
 
-                    // Shader directives (no disclosure group)
-                    ShaderDirectiveControlsExpanded(theme: theme)
+                    // Material tint controls
+                    DisclosureGroup(isExpanded: $isMaterialTintExpanded) {
+                        MaterialTintControls(configuration: configuration, theme: theme)
+                            .padding(.top, 8)
+                    } label: {
+                        Text("Material Tint")
+                            .font(.headline)
+                    }
+
+                    // Parameters
+                    if !theme.manifest.parameters.isEmpty {
+                        DisclosureGroup(isExpanded: $isParametersExpanded) {
+                            ThemeDebugControlsGenerator(theme: theme)
+                                .padding(.top, 8)
+                        } label: {
+                            Text("Parameters")
+                                .font(.headline)
+                        }
+                    }
+
+                    // Shader directives
+                    ShaderDirectiveControlsDisclosure(
+                        theme: theme,
+                        isExpanded: $isShaderFeaturesExpanded
+                    )
                 }
+
+                Divider()
 
                 // Reset button
                 Button("Reset Theme Settings") {
@@ -126,20 +168,6 @@ private struct AccentColorControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Accent Color")
-                    .font(.headline)
-                Spacer()
-                // Color preview swatch
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(configuration.effectiveAccentColor.color(brightness: 0.8))
-                    .frame(width: 24, height: 24)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.primary.opacity(0.3), lineWidth: 1)
-                    )
-            }
-
             VStack(alignment: .leading, spacing: 4) {
                 Text("Hue: \(Int(hueBinding.wrappedValue))°")
                     .font(.caption)
@@ -179,20 +207,6 @@ private struct MaterialTintControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Material Tint")
-                    .font(.headline)
-                Spacer()
-                // Tint preview swatch
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(tintColor)
-                    .frame(width: 24, height: 24)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.primary.opacity(0.3), lineWidth: 1)
-                    )
-            }
-
             VStack(alignment: .leading, spacing: 4) {
                 Text("Tint: \(Int(tintBinding.wrappedValue * 100))%")
                     .font(.caption)
@@ -210,15 +224,6 @@ private struct MaterialTintControls: View {
                 }
                 .font(.caption)
             }
-        }
-    }
-
-    private var tintColor: Color {
-        let tint = tintBinding.wrappedValue
-        if tint > 0 {
-            return Color.white.opacity(tint)
-        } else {
-            return Color.black.opacity(-tint)
         }
     }
 }
@@ -239,9 +244,6 @@ private struct LCDBrightnessControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("LCD Brightness")
-                .font(.headline)
-
             VStack(alignment: .leading, spacing: 4) {
                 Text("Min: \(configuration.lcdMinBrightness, format: .number.precision(.fractionLength(2)))")
                     .font(.caption)
@@ -284,33 +286,38 @@ private struct LCDBrightnessControls: View {
     }
 }
 
-/// Shader directive controls without the disclosure group wrapper.
-private struct ShaderDirectiveControlsExpanded: View {
+/// Shader directive controls with disclosure group wrapper.
+private struct ShaderDirectiveControlsDisclosure: View {
     let theme: LoadedTheme
+    @Binding var isExpanded: Bool
     @State private var directives: [ShaderDirectiveStore.DirectiveInfo] = []
 
     var body: some View {
         if !directives.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(directives) { directive in
+                        Toggle(directive.displayName, isOn: Binding(
+                            get: { theme.directiveStore.isEnabled(directive.id) },
+                            set: { theme.directiveStore.setEnabled($0, for: directive.id) }
+                        ))
+                    }
+
+                    Text("Changes recompile the shader")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 8)
+            } label: {
                 Text("Shader Features")
                     .font(.headline)
-
-                ForEach(directives) { directive in
-                    Toggle(directive.displayName, isOn: Binding(
-                        get: { theme.directiveStore.isEnabled(directive.id) },
-                        set: { theme.directiveStore.setEnabled($0, for: directive.id) }
-                    ))
-                }
-
-                Text("Changes recompile the shader")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
     }
 
-    init(theme: LoadedTheme) {
+    init(theme: LoadedTheme, isExpanded: Binding<Bool>) {
         self.theme = theme
+        self._isExpanded = isExpanded
         self._directives = State(initialValue: Self.parseDirectives(for: theme))
     }
 
