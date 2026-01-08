@@ -26,6 +26,8 @@ struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
+    @Environment(\.currentAccentHue) private var currentAccentHue
+    @Environment(\.currentAccentSaturation) private var currentAccentSaturation
 
     @State private var visualizer = VisualizerDataSource()
     @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
@@ -55,8 +57,8 @@ struct PlaylistView: View {
                     }
                 )
                 .lcdAccentColor(
-                    hue: appState.themeConfiguration.effectiveAccentColor.normalizedHue,
-                    saturation: appState.themeConfiguration.effectiveAccentColor.saturation
+                    hue: currentAccentHue,
+                    saturation: currentAccentSaturation
                 )
 
                 // Siri tip
