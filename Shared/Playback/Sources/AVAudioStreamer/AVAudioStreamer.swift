@@ -126,8 +126,7 @@ public final class AVAudioStreamer {
         // Create buffer queue
         self.bufferQueue = PCMBufferQueue(
             capacity: configuration.bufferQueueSize,
-            minimumBuffersBeforePlayback: configuration.minimumBuffersBeforePlayback,
-            delegate: nil
+            minimumBuffersBeforePlayback: configuration.minimumBuffersBeforePlayback
         )
 
         // Use injected dependencies or create defaults
