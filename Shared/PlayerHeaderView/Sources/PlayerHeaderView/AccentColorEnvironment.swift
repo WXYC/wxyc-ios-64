@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Wallpaper
 
 // MARK: - Environment Keys
 
@@ -19,11 +20,11 @@ private struct AccentSaturationKey: EnvironmentKey {
 }
 
 private struct LCDMinBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 0.90
+    static let defaultValue: Double = ThemeConfiguration.defaultLCDMinBrightness
 }
 
 private struct LCDMaxBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 1.0
+    static let defaultValue: Double = ThemeConfiguration.defaultLCDMaxBrightness
 }
 
 private struct LCDBrightnessOffsetKey: EnvironmentKey {

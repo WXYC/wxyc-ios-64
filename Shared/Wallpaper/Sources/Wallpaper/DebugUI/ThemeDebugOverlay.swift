@@ -228,9 +228,6 @@ private struct LCDBrightnessControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme?
 
-    private let defaultMinBrightness = 0.90
-    private let defaultMaxBrightness = 1.0
-
     private var offsetBinding: Binding<Double> {
         Binding(
             get: {
@@ -270,14 +267,15 @@ private struct LCDBrightnessControls: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            let hasCustomValues = configuration.lcdMinBrightness != defaultMinBrightness ||
-                configuration.lcdMaxBrightness != defaultMaxBrightness ||
+            let hasCustomValues =
+                configuration.lcdMinBrightness != ThemeConfiguration.defaultLCDMinBrightness ||
+                configuration.lcdMaxBrightness != ThemeConfiguration.defaultLCDMaxBrightness ||
                 configuration.lcdBrightnessOffsetOverride != nil
 
             if hasCustomValues {
                 Button("Reset to Default") {
-                    configuration.lcdMinBrightness = defaultMinBrightness
-                    configuration.lcdMaxBrightness = defaultMaxBrightness
+                    configuration.lcdMinBrightness = ThemeConfiguration.defaultLCDMinBrightness
+                    configuration.lcdMaxBrightness = ThemeConfiguration.defaultLCDMaxBrightness
                     configuration.lcdBrightnessOffsetOverride = nil
                 }
                 .font(.caption)

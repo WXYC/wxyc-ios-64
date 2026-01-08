@@ -12,6 +12,17 @@ import Observation
 @Observable
 @MainActor
 public final class ThemeConfiguration {
+
+    // MARK: - LCD Brightness Defaults
+
+    /// Default minimum brightness for LCD segments (applied to top segments).
+    public nonisolated(unsafe) static let defaultLCDMinBrightness: Double = 0.90
+
+    /// Default maximum brightness for LCD segments (applied to bottom segments).
+    public nonisolated(unsafe) static let defaultLCDMaxBrightness: Double = 1.0
+
+    // MARK: - Storage Keys
+
     private let storageKey = "wallpaper.selectedType.v3"
     private let accentHueOverrideKey = "wallpaper.accentHueOverride"
     private let accentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
@@ -88,14 +99,14 @@ public final class ThemeConfiguration {
     // MARK: - LCD Brightness Settings
 
     /// Minimum brightness for LCD segments (applied to top segments). Default: 0.90.
-    public var lcdMinBrightness: Double = 0.90 {
+    public var lcdMinBrightness: Double = ThemeConfiguration.defaultLCDMinBrightness {
         didSet {
             defaults.set(lcdMinBrightness, forKey: lcdMinBrightnessKey)
         }
     }
 
     /// Maximum brightness for LCD segments (applied to bottom segments). Default: 1.0.
-    public var lcdMaxBrightness: Double = 1.0 {
+    public var lcdMaxBrightness: Double = ThemeConfiguration.defaultLCDMaxBrightness {
         didSet {
             defaults.set(lcdMaxBrightness, forKey: lcdMaxBrightnessKey)
         }
@@ -180,8 +191,8 @@ public final class ThemeConfiguration {
         accentHueOverride = nil
         accentSaturationOverride = nil
         materialTintOverride = nil
-        lcdMinBrightness = 0.90
-        lcdMaxBrightness = 1.0
+        lcdMinBrightness = Self.defaultLCDMinBrightness
+        lcdMaxBrightness = Self.defaultLCDMaxBrightness
         lcdBrightnessOffsetOverride = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }

@@ -76,8 +76,6 @@ public final class VisualizerDataSource: @unchecked Sendable {
         static let displayProcessor = "visualizer.displayProcessor"
         static let fftProcessingEnabled = "visualizer.fftProcessingEnabled"
         static let rmsProcessingEnabled = "visualizer.rmsProcessingEnabled"
-        static let minBrightness = "visualizer.minBrightness"
-        static let maxBrightness = "visualizer.maxBrightness"
         static let showFPS = "visualizer.showFPS"
     }
 
@@ -163,16 +161,6 @@ public final class VisualizerDataSource: @unchecked Sendable {
         didSet { UserDefaults.standard.set(rmsProcessingEnabled, forKey: DefaultsKeys.rmsProcessingEnabled) }
     }
 
-    /// Minimum brightness for LCD segments (bottom segments)
-    public var minBrightness: Double = 0.90 {
-        didSet { UserDefaults.standard.set(minBrightness, forKey: DefaultsKeys.minBrightness) }
-    }
-
-    /// Maximum brightness for LCD segments (top segments)
-    public var maxBrightness: Double = 1.0 {
-        didSet { UserDefaults.standard.set(maxBrightness, forKey: DefaultsKeys.maxBrightness) }
-    }
-
     /// Whether to show the FPS debug overlay
     public var showFPS: Bool = false {
         didSet { UserDefaults.standard.set(showFPS, forKey: DefaultsKeys.showFPS) }
@@ -200,7 +188,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         let storedWeighting = defaults.object(forKey: DefaultsKeys.fftFrequencyWeighting) as? Float ?? 1.0
         let storedRmsNormMode = defaults.string(forKey: DefaultsKeys.rmsNormalizationMode)
             .flatMap { NormalizationMode(rawValue: $0) } ?? .ema
-
+    
         // Initialize processors with stored values
         self.fftProcessor = FFTProcessor(
             normalizationMode: storedNormMode,
@@ -227,12 +215,6 @@ public final class VisualizerDataSource: @unchecked Sendable {
         }
         if defaults.object(forKey: DefaultsKeys.rmsProcessingEnabled) != nil {
             self.rmsProcessingEnabled = defaults.bool(forKey: DefaultsKeys.rmsProcessingEnabled)
-        }
-        if let minB = defaults.object(forKey: DefaultsKeys.minBrightness) as? Double {
-            self.minBrightness = minB
-        }
-        if let maxB = defaults.object(forKey: DefaultsKeys.maxBrightness) as? Double {
-            self.maxBrightness = maxB
         }
         if defaults.object(forKey: DefaultsKeys.showFPS) != nil {
             self.showFPS = defaults.bool(forKey: DefaultsKeys.showFPS)
@@ -279,7 +261,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.fftMagnitudes = magnitudes
-            
+        
             // Apply smoothing: blend new RMS with previous values
             for i in 0..<VisualizerConstants.barAmount {
                 let newValue = i < rmsValues.count ? rmsValues[i] : 0
@@ -303,11 +285,9 @@ public final class VisualizerDataSource: @unchecked Sendable {
         rmsNormalizationMode = .ema
         // displayProcessor's didSet will set the processing flags appropriately
         displayProcessor = .rms
-        minBrightness = 0.90
-        maxBrightness = 1.0
         showFPS = false
     }
-    
+        
     /// Sets the signal boost level
     public func setSignalBoost(_ boost: Float) {
         signalBoost = boost
