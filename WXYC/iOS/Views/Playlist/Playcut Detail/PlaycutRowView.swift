@@ -287,7 +287,8 @@ extension Shape {
 }
 
 #Preview {
-    PlaylistView()
+    PlaylistView(selectedPlaycut: .constant(nil))
+        .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
         .environment(\.artworkService, MultisourceArtworkService())
         .background(WXYCBackground())

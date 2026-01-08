@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Playlist
+import WXUI
 
 struct RootTabView: View {
     private enum Page {
@@ -16,12 +17,13 @@ struct RootTabView: View {
     }
 
     @State private var selectedPage = Page.playlist
+    @State private var selectedPlaycut: PlaycutSelection?
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isThemePickerActive) private var isPickerActive
 
     var body: some View {
         TabView(selection: $selectedPage) {
-            PlaylistView()
+            PlaylistView(selectedPlaycut: $selectedPlaycut)
                 .tag(Page.playlist)
 
             InfoDetailView()
@@ -31,6 +33,14 @@ struct RootTabView: View {
         .indexViewStyle(.page(backgroundDisplayMode: .always))
         .ignoresSafeArea(edges: .vertical)
         .safeAreaPadding([.top])
+        .overlaySheet(isPresented: Binding(
+            get: { selectedPlaycut != nil },
+            set: { if !$0 { selectedPlaycut = nil } }
+        )) {
+            if let selection = selectedPlaycut {
+                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
+            }
+        }
     }
 }
 
