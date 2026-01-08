@@ -18,6 +18,14 @@ private struct AccentSaturationKey: EnvironmentKey {
     static let defaultValue: Double = 0.75
 }
 
+private struct LCDMinBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 0.90
+}
+
+private struct LCDMaxBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 1.0
+}
+
 // MARK: - Environment Values Extension
 
 public extension EnvironmentValues {
@@ -32,6 +40,18 @@ public extension EnvironmentValues {
         get { self[AccentSaturationKey.self] }
         set { self[AccentSaturationKey.self] = newValue }
     }
+
+    /// Minimum brightness for LCD segments (applied to top segments).
+    var lcdMinBrightness: Double {
+        get { self[LCDMinBrightnessKey.self] }
+        set { self[LCDMinBrightnessKey.self] = newValue }
+    }
+
+    /// Maximum brightness for LCD segments (applied to bottom segments).
+    var lcdMaxBrightness: Double {
+        get { self[LCDMaxBrightnessKey.self] }
+        set { self[LCDMaxBrightnessKey.self] = newValue }
+    }
 }
 
 // MARK: - View Extension
@@ -45,6 +65,16 @@ public extension View {
         self
             .environment(\.lcdAccentHue, hue)
             .environment(\.lcdAccentSaturation, saturation)
+    }
+
+    /// Sets the brightness range for LCD visualizer segments.
+    /// - Parameters:
+    ///   - min: Minimum brightness (applied to top segments). Default: 0.90.
+    ///   - max: Maximum brightness (applied to bottom segments). Default: 1.0.
+    func lcdBrightness(min: Double, max: Double) -> some View {
+        self
+            .environment(\.lcdMinBrightness, min)
+            .environment(\.lcdMaxBrightness, max)
     }
 }
 
