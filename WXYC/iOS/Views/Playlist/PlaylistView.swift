@@ -32,6 +32,7 @@ struct PlaylistView: View {
     @Environment(\.currentAccentSaturation) private var currentAccentSaturation
     @Environment(\.currentLCDMinBrightness) private var currentLCDMinBrightness
     @Environment(\.currentLCDMaxBrightness) private var currentLCDMaxBrightness
+    @Environment(\.currentLCDBrightnessOffset) private var currentLCDBrightnessOffset
 
     @State private var visualizer = VisualizerDataSource()
     @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
@@ -64,7 +65,8 @@ struct PlaylistView: View {
                 )
                 .lcdBrightness(
                     min: currentLCDMinBrightness,
-                    max: currentLCDMaxBrightness
+                    max: currentLCDMaxBrightness,
+                    offset: currentLCDBrightnessOffset
                 )
 
                 // Siri tip
