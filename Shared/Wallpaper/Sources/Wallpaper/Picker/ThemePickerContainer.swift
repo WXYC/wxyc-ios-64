@@ -34,9 +34,13 @@ public struct ThemePickerContainer<Content: View>: View {
         currentTheme?.manifest.materialWeight.material ?? .thinMaterial
     }
 
-    /// Material tint from the currently selected theme.
-    private var currentThemeMaterialTint: Double {
-        currentTheme?.manifest.materialTint ?? 0.0
+    /// Material tint - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    private var effectiveMaterialTint: Double {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            transition.interpolatedMaterialTint
+        } else {
+            configuration.effectiveMaterialTint
+        }
     }
 
     /// Accent hue - interpolated during picker transitions, otherwise from configuration (respects overrides).
@@ -88,7 +92,7 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.isThemePickerActive, pickerState.isActive)
                     .environment(\.previewThemeTransition, pickerState.isActive ? pickerState.themeTransition : nil)
                     .environment(\.currentMaterial, currentThemeMaterial)
-                    .environment(\.currentMaterialTint, currentThemeMaterialTint)
+                    .environment(\.currentMaterialTint, effectiveMaterialTint)
                     .environment(\.currentAccentHue, effectiveAccentHue)
                     .environment(\.currentAccentSaturation, effectiveAccentSaturation)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))

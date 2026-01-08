@@ -71,6 +71,9 @@ private struct ThemeDebugPopoverContent: View {
                     // Accent color controls
                     AccentColorControls(configuration: configuration, theme: theme)
 
+                    // Material tint controls
+                    MaterialTintControls(configuration: configuration, theme: theme)
+
                     // Parameters (no disclosure group)
                     if !theme.manifest.parameters.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -154,6 +157,64 @@ private struct AccentColorControls: View {
                 }
                 .font(.caption)
             }
+        }
+    }
+}
+
+/// Controls for adjusting the theme's material tint.
+private struct MaterialTintControls: View {
+    @Bindable var configuration: ThemeConfiguration
+    let theme: LoadedTheme
+
+    private var tintBinding: Binding<Double> {
+        Binding(
+            get: { configuration.materialTintOverride ?? theme.manifest.materialTint },
+            set: { configuration.materialTintOverride = $0 }
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Material Tint")
+                    .font(.headline)
+                Spacer()
+                // Tint preview swatch
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(tintColor)
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.primary.opacity(0.3), lineWidth: 1)
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Tint: \(Int(tintBinding.wrappedValue * 100))%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: tintBinding, in: -1...1)
+            }
+
+            Text("Positive = lighter, Negative = darker")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if configuration.materialTintOverride != nil {
+                Button("Reset to Theme Default") {
+                    configuration.materialTintOverride = nil
+                }
+                .font(.caption)
+            }
+        }
+    }
+
+    private var tintColor: Color {
+        let tint = tintBinding.wrappedValue
+        if tint > 0 {
+            return Color.white.opacity(tint)
+        } else {
+            return Color.black.opacity(-tint)
         }
     }
 }
