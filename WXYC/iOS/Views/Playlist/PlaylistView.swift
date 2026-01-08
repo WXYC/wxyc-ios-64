@@ -23,6 +23,8 @@ struct PlaycutSelection {
 }
 
 struct PlaylistView: View {
+    @Binding var selectedPlaycut: PlaycutSelection?
+
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
@@ -35,8 +37,6 @@ struct PlaylistView: View {
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     @State private var showingThemeTip = false
-
-    @State private var selectedPlaycut: PlaycutSelection?
 
     @Environment(Singletonia.self) var appState
 
@@ -142,14 +142,6 @@ struct PlaylistView: View {
             configuration: appState.themeConfiguration
         )
         .accessibilityIdentifier("playlistView")
-        .overlaySheet(isPresented: Binding(
-            get: { selectedPlaycut != nil },
-            set: { if !$0 { selectedPlaycut = nil } }
-        )) {
-            if let selection = selectedPlaycut {
-                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-            }
-        }
     }
 
     @ViewBuilder
@@ -184,7 +176,7 @@ struct PlaylistView: View {
 }
 
 #Preview {
-    PlaylistView()
+    PlaylistView(selectedPlaycut: .constant(nil))
         .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
         .background(WXYCBackground())
