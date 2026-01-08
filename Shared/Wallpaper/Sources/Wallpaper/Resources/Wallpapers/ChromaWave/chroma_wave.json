@@ -8,11 +8,20 @@
     "functionName": "chromaWave",
     "fragmentFunction": "chromaWaveFrag"
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "highlightCompression",
+      "type": "float",
+      "label": "Highlight Compression",
+      "default": 0.0,
+      "range": { "min": 0.0, "max": 2.0 }
+    }
+  ],
   "shaderArguments": [
     { "source": "viewWidth" },
     { "source": "viewHeight" },
-    { "source": "time" }
+    { "source": "time" },
+    { "source": "parameter", "id": "highlightCompression" }
   ],
   "foreground": "dark",
   "accent": {

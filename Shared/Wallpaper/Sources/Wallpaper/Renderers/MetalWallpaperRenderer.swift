@@ -383,6 +383,22 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 displayScale: 1.0
             )
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
+
+            // Pass custom parameters in buffer index 1 for stitchable shaders too
+            let parameterStore = theme.parameterStore
+            let params = theme.manifest.parameters
+            if !params.isEmpty {
+                var paramValues: [Float] = []
+                for param in params.prefix(8) {
+                    paramValues.append(parameterStore.floatValue(for: param.id))
+                }
+                while paramValues.count < 8 {
+                    paramValues.append(0)
+                }
+                paramValues.withUnsafeBytes { ptr in
+                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
+                }
+            }
         }
 
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -447,6 +463,22 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 displayScale: displayScale
             )
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
+
+            // Pass custom parameters in buffer index 1 for stitchable shaders too
+            let parameterStore = theme.parameterStore
+            let params = theme.manifest.parameters
+            if !params.isEmpty {
+                var paramValues: [Float] = []
+                for param in params.prefix(8) {
+                    paramValues.append(parameterStore.floatValue(for: param.id))
+                }
+                while paramValues.count < 8 {
+                    paramValues.append(0)
+                }
+                paramValues.withUnsafeBytes { ptr in
+                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
+                }
+            }
         }
 
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)

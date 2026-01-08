@@ -14,7 +14,13 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float displayScale;
+};
+
+// Parameters passed in buffer 1 (up to 8 floats)
+struct Parameters {
+    float highlightCompression;
+    float pad[7];
 };
 
 struct VertexOut {
@@ -23,7 +29,7 @@ struct VertexOut {
 };
 
 // Core implementation (called by both stitchable and fragment versions)
-static half4 chromaWaveImpl(float2 position, float width, float height, float time) {
+static half4 chromaWaveImpl(float2 position, float width, float height, float time, float highlightCompression) {
     float2 iResolution = float2(width, height);
     float t = time / 32.0f;
     float3 col = float3(0.0f);
@@ -44,6 +50,9 @@ static half4 chromaWaveImpl(float2 position, float width, float height, float ti
 
     // Apply slight color enhancement
     col += 0.2f * clamp(col, 0.0f, 0.5f);
+    // Compress highlights using Reinhard tone curve: x / (1 + x * k)
+    // At k=0: no compression (linear). Higher k rolls off highlights more.
+    col = col / (1.0f + col * highlightCompression);
     // Gamma correction
     col = pow(col, float3(1.0f / 2.2f));
 
@@ -55,13 +64,18 @@ half4 chromaWave(float2 position,
                  half4 inColor,
                  float width,
                  float height,
-                 float time)
+                 float time,
+                 float highlightCompression)
 {
-    return chromaWaveImpl(position, width, height, time);
+    return chromaWaveImpl(position, width, height, time, highlightCompression);
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 chromaWaveFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
+fragment half4 chromaWaveFrag(
+    VertexOut in [[stage_in]],
+    constant Uniforms& u [[buffer(0)]],
+    constant Parameters& p [[buffer(1)]]
+) {
     float2 pos = in.uv * u.resolution;
-    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time);
+    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time, p.highlightCompression);
 }
