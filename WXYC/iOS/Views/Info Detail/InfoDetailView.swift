@@ -24,26 +24,19 @@ struct InfoDetailView: View {
     @State private var attachLogsToEmail = false
     @State private var requestText = ""
     @Environment(Singletonia.self) private var appState
-
-    /// The foreground color based on the current theme.
-    private var themeForegroundColor: Color {
-        let themeID = appState.themeConfiguration.selectedThemeID
-        let theme = ThemeRegistry.shared.theme(for: themeID)
-        return theme?.manifest.foreground.color ?? .white
-    }
-
+    
     var body: some View {
         VStack(alignment: .center) {
             Spacer()
 
             FittingText("You're tuned in.")
                 .fontWeight(.black)
-                .foregroundStyle(themeForegroundColor)
+                .foregroundStyle(.white)
                 .padding(.bottom)
 
             Text(RadioStation.WXYC.description)
                 .font(.body)
-                .foregroundStyle(themeForegroundColor)
+                .foregroundStyle(.white)
                 .padding(.bottom)
             
             VStack(spacing: 16) {
