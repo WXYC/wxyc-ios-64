@@ -35,7 +35,7 @@ struct InfoDetailView: View {
                 .padding(.bottom)
 
             Text(RadioStation.WXYC.description)
-                .font(.body)
+                .font(.body.bold())
                 .foregroundStyle(.white)
                 .padding(.bottom)
             
