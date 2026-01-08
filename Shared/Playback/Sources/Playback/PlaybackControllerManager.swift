@@ -54,8 +54,7 @@ public final class PlaybackControllerManager {
     
     private let controllerFactory: PlaybackControllerFactory
     private let analytics: PlaybackAnalytics
-    private let metricsAdapter: StreamerMetricsAdapter
-    
+
     private let audioBufferStreamContinuation: (AsyncStream<AVAudioPCMBuffer>, AsyncStream<AVAudioPCMBuffer>.Continuation) = {
         var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
         let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { c in
@@ -79,12 +78,10 @@ public final class PlaybackControllerManager {
         self.currentType = type
         self.controllerFactory = Self.defaultFactory
         self.analytics = analytics
-        self.metricsAdapter = StreamerMetricsAdapter(analytics: analytics)
 
         let controller = Self.defaultFactory(type)
         self.current = controller
 
-        wireUpMetricsAdapter(for: controller)
         startConsumingBuffers(from: controller)
 
         // Setup CPU Monitor
@@ -115,12 +112,10 @@ public final class PlaybackControllerManager {
         self.currentType = initialType
         self.controllerFactory = factory
         self.analytics = analytics
-        self.metricsAdapter = StreamerMetricsAdapter(analytics: analytics)
 
         let controller = factory(initialType)
         self.current = controller
 
-        wireUpMetricsAdapter(for: controller)
         startConsumingBuffers(from: controller)
     }
     
@@ -154,9 +149,7 @@ public final class PlaybackControllerManager {
         
         // Create new controller using the factory
         let newController = controllerFactory(type)
-        
-        wireUpMetricsAdapter(for: newController)
-        
+
         // Update state
         current = newController
         currentType = type
@@ -181,7 +174,7 @@ public final class PlaybackControllerManager {
         try? current.play(reason: "user_play")
         donatePlayIntent()
     }
-
+    
     /// Stop playback
     public func stop() {
         cpuMonitor?.stop()
@@ -199,11 +192,6 @@ public final class PlaybackControllerManager {
         current.handleAppWillEnterForeground()
     }
     #endif
-
-    private func wireUpMetricsAdapter(for controller: any PlaybackController) {
-        // Metrics are now handled within AudioPlayerController via its internal player
-        // The AVAudioStreamer delegate is set up within AudioPlayerController
-    }
 
     private func startConsumingBuffers(from controller: any PlaybackController) {
         bufferConsumptionTask?.cancel()

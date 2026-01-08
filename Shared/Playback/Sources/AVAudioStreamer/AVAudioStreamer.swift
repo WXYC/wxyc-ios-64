@@ -8,12 +8,8 @@ import PlaybackCore
 @MainActor
 @Observable
 public final class AVAudioStreamer {
-    // MARK: - Public Properties
-
-    public weak var delegate: (any AVAudioStreamerDelegate)?
-    
     // MARK: - Streams
-    
+
     /// Stream of audio buffers for visualization - yields at render rate (~60 times/sec)
     public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
         audioPlayer.renderTapStream
@@ -32,8 +28,6 @@ public final class AVAudioStreamer {
     public private(set) var streamingState: StreamingAudioState = .idle {
         didSet {
             if streamingState != oldValue {
-                delegate?.audioStreamer(didChangeState: streamingState)
-                // Yield to AudioPlayerProtocol stateStream
                 stateContinuationInternal.yield(state)
             }
         }
@@ -264,25 +258,19 @@ public final class AVAudioStreamer {
         case .stalled:
             if case .playing = streamingState {
                 streamingState = .stalled
-                delegate?.audioStreamerDidStall(self)
                 eventContinuationInternal.yield(.stall)
             }
 
         case .recoveredFromStall:
             if case .stalled = streamingState {
                 streamingState = .playing
-                delegate?.audioStreamerDidRecover(self)
                 eventContinuationInternal.yield(.recovery)
             }
         }
     }
 
     private func handleDecodedBuffer(_ buffer: AVAudioPCMBuffer) async {
-        // Add to queue
         bufferQueue.enqueue(buffer)
-
-        // Notify delegate
-        delegate?.audioStreamer(didOutput: buffer, at: nil)
 
         // Check if we should start playing
         if case .buffering = streamingState, bufferQueue.hasMinimumBuffers {
