@@ -34,39 +34,51 @@ public struct ThemePickerContainer<Content: View>: View {
         currentTheme?.manifest.materialWeight.material ?? .thinMaterial
     }
 
-    /// Material tint - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    /// Material tint - interpolated during picker transitions, otherwise from configuration.
+    /// Uses effective values which respect user overrides for the selected theme.
     private var effectiveMaterialTint: Double {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            transition.interpolatedMaterialTint
+            let fromTint = configuration.effectiveMaterialTint(for: transition.fromTheme.id)
+            let toTint = configuration.effectiveMaterialTint(for: transition.toTheme.id)
+            return fromTint + (toTint - fromTint) * transition.progress
         } else {
-            configuration.effectiveMaterialTint
+            return configuration.effectiveMaterialTint
         }
     }
 
-    /// Accent hue - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    /// Accent hue - interpolated during picker transitions, otherwise from configuration.
+    /// Uses effective values which respect user overrides for the selected theme.
     private var effectiveAccentHue: Double {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            transition.interpolatedAccentHue
+            let fromHue = configuration.effectiveAccentColor(for: transition.fromTheme.id).normalizedHue
+            let toHue = configuration.effectiveAccentColor(for: transition.toTheme.id).normalizedHue
+            return fromHue + (toHue - fromHue) * transition.progress
         } else {
-            configuration.effectiveAccentColor.normalizedHue
+            return configuration.effectiveAccentColor.normalizedHue
         }
     }
 
-    /// Accent saturation - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    /// Accent saturation - interpolated during picker transitions, otherwise from configuration.
+    /// Uses effective values which respect user overrides for the selected theme.
     private var effectiveAccentSaturation: Double {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            transition.interpolatedAccentSaturation
+            let fromSat = configuration.effectiveAccentColor(for: transition.fromTheme.id).saturation
+            let toSat = configuration.effectiveAccentColor(for: transition.toTheme.id).saturation
+            return fromSat + (toSat - fromSat) * transition.progress
         } else {
-            configuration.effectiveAccentColor.saturation
+            return configuration.effectiveAccentColor.saturation
         }
     }
 
-    /// LCD brightness offset - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    /// LCD brightness offset - interpolated during picker transitions, otherwise from configuration.
+    /// Uses effective values which respect user overrides for the selected theme.
     private var effectiveLCDBrightnessOffset: Double {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            transition.interpolatedLCDBrightnessOffset
+            let fromOffset = configuration.effectiveLCDBrightnessOffset(for: transition.fromTheme.id)
+            let toOffset = configuration.effectiveLCDBrightnessOffset(for: transition.toTheme.id)
+            return fromOffset + (toOffset - fromOffset) * transition.progress
         } else {
-            configuration.effectiveLCDBrightnessOffset
+            return configuration.effectiveLCDBrightnessOffset
         }
     }
 

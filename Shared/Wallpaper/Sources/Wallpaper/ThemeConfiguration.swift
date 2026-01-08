@@ -16,21 +16,43 @@ public final class ThemeConfiguration {
     // MARK: - LCD Brightness Defaults
 
     /// Default minimum brightness for LCD segments (applied to top segments).
+    /// nonisolated(unsafe) needed for use in EnvironmentKey.defaultValue (nonisolated context).
     public nonisolated(unsafe) static let defaultLCDMinBrightness: Double = 0.90
 
     /// Default maximum brightness for LCD segments (applied to bottom segments).
+    /// nonisolated(unsafe) needed for use in EnvironmentKey.defaultValue (nonisolated context).
     public nonisolated(unsafe) static let defaultLCDMaxBrightness: Double = 1.0
 
     // MARK: - Storage Keys
 
     private let storageKey = "wallpaper.selectedType.v3"
-    private let accentHueOverrideKey = "wallpaper.accentHueOverride"
-    private let accentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
-    private let materialTintOverrideKey = "wallpaper.materialTintOverride"
     private let lcdMinBrightnessKey = "wallpaper.lcdMinBrightness"
     private let lcdMaxBrightnessKey = "wallpaper.lcdMaxBrightness"
-    private let lcdBrightnessOffsetOverrideKey = "wallpaper.lcdBrightnessOffsetOverride"
     private let defaultThemeID = "wxyc_gradient"
+
+    // Legacy global keys (for migration)
+    private let legacyAccentHueOverrideKey = "wallpaper.accentHueOverride"
+    private let legacyAccentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
+    private let legacyMaterialTintOverrideKey = "wallpaper.materialTintOverride"
+    private let legacyLcdBrightnessOffsetOverrideKey = "wallpaper.lcdBrightnessOffsetOverride"
+
+    // MARK: - Per-Theme Storage Keys
+
+    private func accentHueOverrideKey(for themeID: String) -> String {
+        "wallpaper.accentHueOverride.\(themeID)"
+    }
+
+    private func accentSaturationOverrideKey(for themeID: String) -> String {
+        "wallpaper.accentSaturationOverride.\(themeID)"
+    }
+
+    private func materialTintOverrideKey(for themeID: String) -> String {
+        "wallpaper.materialTintOverride.\(themeID)"
+    }
+
+    private func lcdBrightnessOffsetOverrideKey(for themeID: String) -> String {
+        "wallpaper.lcdBrightnessOffsetOverride.\(themeID)"
+    }
 
     // MARK: - Dependencies
 
@@ -44,29 +66,35 @@ public final class ThemeConfiguration {
     public var selectedThemeID: String {
         didSet {
             defaults.set(selectedThemeID, forKey: storageKey)
+            // Load overrides for the newly selected theme
+            loadOverrides(for: selectedThemeID)
         }
     }
 
     // MARK: - Accent Color Override
 
     /// Optional hue override (0-360). When nil, uses the theme's default hue.
+    /// Stored per-theme so each theme remembers its customizations.
     public var accentHueOverride: Double? {
         didSet {
+            let key = accentHueOverrideKey(for: selectedThemeID)
             if let hue = accentHueOverride {
-                defaults.set(hue, forKey: accentHueOverrideKey)
+                defaults.set(hue, forKey: key)
             } else {
-                defaults.removeObject(forKey: accentHueOverrideKey)
+                defaults.removeObject(forKey: key)
             }
         }
     }
 
     /// Optional saturation override (0.0-1.0). When nil, uses the theme's default saturation.
+    /// Stored per-theme so each theme remembers its customizations.
     public var accentSaturationOverride: Double? {
         didSet {
+            let key = accentSaturationOverrideKey(for: selectedThemeID)
             if let saturation = accentSaturationOverride {
-                defaults.set(saturation, forKey: accentSaturationOverrideKey)
+                defaults.set(saturation, forKey: key)
             } else {
-                defaults.removeObject(forKey: accentSaturationOverrideKey)
+                defaults.removeObject(forKey: key)
             }
         }
     }
@@ -75,12 +103,14 @@ public final class ThemeConfiguration {
 
     /// Optional material tint override (-1.0 to 1.0). When nil, uses the theme's default tint.
     /// Positive values lighten (white overlay), negative values darken (black overlay).
+    /// Stored per-theme so each theme remembers its customizations.
     public var materialTintOverride: Double? {
         didSet {
+            let key = materialTintOverrideKey(for: selectedThemeID)
             if let tint = materialTintOverride {
-                defaults.set(tint, forKey: materialTintOverrideKey)
+                defaults.set(tint, forKey: key)
             } else {
-                defaults.removeObject(forKey: materialTintOverrideKey)
+                defaults.removeObject(forKey: key)
             }
         }
     }
@@ -113,12 +143,14 @@ public final class ThemeConfiguration {
     }
 
     /// Optional LCD brightness offset override (-0.5 to 0.5). When nil, uses the theme's default.
+    /// Stored per-theme so each theme remembers its customizations.
     public var lcdBrightnessOffsetOverride: Double? {
         didSet {
+            let key = lcdBrightnessOffsetOverrideKey(for: selectedThemeID)
             if let offset = lcdBrightnessOffsetOverride {
-                defaults.set(offset, forKey: lcdBrightnessOffsetOverrideKey)
+                defaults.set(offset, forKey: key)
             } else {
-                defaults.removeObject(forKey: lcdBrightnessOffsetOverrideKey)
+                defaults.removeObject(forKey: key)
             }
         }
     }
@@ -146,6 +178,120 @@ public final class ThemeConfiguration {
         )
     }
 
+    // MARK: - Effective Values for Any Theme
+
+    /// Returns the effective accent color for a given theme ID.
+    /// For the selected theme, uses in-memory overrides. For other themes, looks up stored overrides.
+    public func effectiveAccentColor(for themeID: String) -> AccentColor {
+        if themeID == selectedThemeID {
+            return effectiveAccentColor
+        }
+        guard let theme = registry.theme(for: themeID) else {
+            return AccentColor(hue: 0, saturation: 1.0)
+        }
+        let baseAccent = theme.manifest.accent
+
+        // Look up stored overrides for this theme
+        let hueKey = accentHueOverrideKey(for: themeID)
+        let satKey = accentSaturationOverrideKey(for: themeID)
+        let storedHue = defaults.object(forKey: hueKey) != nil ? defaults.double(forKey: hueKey) : nil
+        let storedSat = defaults.object(forKey: satKey) != nil ? defaults.double(forKey: satKey) : nil
+
+        return AccentColor(
+            hue: storedHue ?? baseAccent.hue,
+            saturation: storedSat ?? baseAccent.saturation
+        )
+    }
+
+    /// Returns the effective material tint for a given theme ID.
+    /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
+    public func effectiveMaterialTint(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return effectiveMaterialTint
+        }
+        guard let theme = registry.theme(for: themeID) else {
+            return 0.0
+        }
+
+        // Look up stored override for this theme
+        let tintKey = materialTintOverrideKey(for: themeID)
+        if defaults.object(forKey: tintKey) != nil {
+            return defaults.double(forKey: tintKey)
+        }
+        return theme.manifest.materialTint
+    }
+
+    /// Returns the effective LCD brightness offset for a given theme ID.
+    /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
+    public func effectiveLCDBrightnessOffset(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return effectiveLCDBrightnessOffset
+        }
+        guard let theme = registry.theme(for: themeID) else {
+            return 0.0
+        }
+
+        // Look up stored override for this theme
+        let offsetKey = lcdBrightnessOffsetOverrideKey(for: themeID)
+        if defaults.object(forKey: offsetKey) != nil {
+            return defaults.double(forKey: offsetKey)
+        }
+        return theme.manifest.lcdBrightnessOffset
+    }
+
+    // MARK: - Per-Theme Override Loading
+
+    /// Loads overrides for a specific theme from UserDefaults.
+    /// Falls back to legacy global keys if per-theme keys don't exist (migration).
+    private func loadOverrides(for themeID: String) {
+        let hueKey = accentHueOverrideKey(for: themeID)
+        let satKey = accentSaturationOverrideKey(for: themeID)
+        let tintKey = materialTintOverrideKey(for: themeID)
+        let offsetKey = lcdBrightnessOffsetOverrideKey(for: themeID)
+
+        // Try per-theme keys first, fall back to legacy global keys for migration
+        if defaults.object(forKey: hueKey) != nil {
+            accentHueOverride = defaults.double(forKey: hueKey)
+        } else if defaults.object(forKey: legacyAccentHueOverrideKey) != nil {
+            // Migrate legacy value to per-theme storage
+            let value = defaults.double(forKey: legacyAccentHueOverrideKey)
+            accentHueOverride = value
+            defaults.removeObject(forKey: legacyAccentHueOverrideKey)
+        } else {
+            accentHueOverride = nil
+        }
+
+        if defaults.object(forKey: satKey) != nil {
+            accentSaturationOverride = defaults.double(forKey: satKey)
+        } else if defaults.object(forKey: legacyAccentSaturationOverrideKey) != nil {
+            let value = defaults.double(forKey: legacyAccentSaturationOverrideKey)
+            accentSaturationOverride = value
+            defaults.removeObject(forKey: legacyAccentSaturationOverrideKey)
+        } else {
+            accentSaturationOverride = nil
+        }
+
+        if defaults.object(forKey: tintKey) != nil {
+            materialTintOverride = defaults.double(forKey: tintKey)
+        } else if defaults.object(forKey: legacyMaterialTintOverrideKey) != nil {
+            let value = defaults.double(forKey: legacyMaterialTintOverrideKey)
+            materialTintOverride = value
+            defaults.removeObject(forKey: legacyMaterialTintOverrideKey)
+        } else {
+            materialTintOverride = nil
+        }
+
+        if defaults.object(forKey: offsetKey) != nil {
+            lcdBrightnessOffsetOverride = defaults.double(forKey: offsetKey)
+        } else if defaults.object(forKey: legacyLcdBrightnessOffsetOverrideKey) != nil {
+            let value = defaults.double(forKey: legacyLcdBrightnessOffsetOverrideKey)
+            lcdBrightnessOffsetOverride = value
+            defaults.removeObject(forKey: legacyLcdBrightnessOffsetOverrideKey)
+        } else {
+            lcdBrightnessOffsetOverride = nil
+        }
+    }
+
     // MARK: - Initialization
 
     /// Creates a configuration with injected dependencies.
@@ -163,27 +309,16 @@ public final class ThemeConfiguration {
         // Map legacy IDs to new IDs
         self.selectedThemeID = Self.mapLegacyID(storedID, using: registry) ?? defaultThemeID
 
-        // Load accent color overrides
-        if defaults.object(forKey: accentHueOverrideKey) != nil {
-            self.accentHueOverride = defaults.double(forKey: accentHueOverrideKey)
-        }
-        if defaults.object(forKey: accentSaturationOverrideKey) != nil {
-            self.accentSaturationOverride = defaults.double(forKey: accentSaturationOverrideKey)
-        }
-        if defaults.object(forKey: materialTintOverrideKey) != nil {
-            self.materialTintOverride = defaults.double(forKey: materialTintOverrideKey)
-        }
-
-        // Load LCD brightness settings
+        // Load LCD brightness settings (these are global, not per-theme)
         if defaults.object(forKey: lcdMinBrightnessKey) != nil {
             self.lcdMinBrightness = defaults.double(forKey: lcdMinBrightnessKey)
         }
         if defaults.object(forKey: lcdMaxBrightnessKey) != nil {
             self.lcdMaxBrightness = defaults.double(forKey: lcdMaxBrightnessKey)
         }
-        if defaults.object(forKey: lcdBrightnessOffsetOverrideKey) != nil {
-            self.lcdBrightnessOffsetOverride = defaults.double(forKey: lcdBrightnessOffsetOverrideKey)
-        }
+
+        // Load per-theme overrides for the selected theme
+        loadOverrides(for: selectedThemeID)
     }
 
     public func reset() {

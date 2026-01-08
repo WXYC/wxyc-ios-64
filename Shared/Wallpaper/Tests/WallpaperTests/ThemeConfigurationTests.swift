@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import SwiftUI
 @testable import Wallpaper
 
 @Suite("ThemeConfiguration Tests")
@@ -207,7 +208,7 @@ struct ThemeConfigurationTests {
             #expect(defaults.string(forKey: "wallpaper.selectedType.v3") == "test_light")
         }
 
-        @Test("Persists accent hue override")
+        @Test("Persists accent hue override with per-theme key")
         func persistsAccentHueOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
@@ -215,22 +216,26 @@ struct ThemeConfigurationTests {
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
             config.accentHueOverride = 45
 
-            #expect(defaults.double(forKey: "wallpaper.accentHueOverride") == 45)
+            // Overrides are stored per-theme using the selected theme ID
+            let perThemeKey = "wallpaper.accentHueOverride.\(config.selectedThemeID)"
+            #expect(defaults.double(forKey: perThemeKey) == 45)
         }
 
         @Test("Removes accent hue override when set to nil")
         func removesAccentHueOverrideWhenNil() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
-            defaults.set(90.0, forKey: "wallpaper.accentHueOverride")
+            // Set up per-theme key for the default theme
+            defaults.set(90.0, forKey: "wallpaper.accentHueOverride.wxyc_gradient")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
             config.accentHueOverride = nil
 
-            #expect(defaults.object(forKey: "wallpaper.accentHueOverride") == nil)
+            let perThemeKey = "wallpaper.accentHueOverride.\(config.selectedThemeID)"
+            #expect(defaults.object(forKey: perThemeKey) == nil)
         }
 
-        @Test("Persists material tint override")
+        @Test("Persists material tint override with per-theme key")
         func persistsMaterialTintOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
@@ -238,7 +243,176 @@ struct ThemeConfigurationTests {
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
             config.materialTintOverride = -0.7
 
-            #expect(defaults.double(forKey: "wallpaper.materialTintOverride") == -0.7)
+            // Overrides are stored per-theme using the selected theme ID
+            let perThemeKey = "wallpaper.materialTintOverride.\(config.selectedThemeID)"
+            #expect(defaults.double(forKey: perThemeKey) == -0.7)
+        }
+
+        @Test("Persists LCD min brightness")
+        func persistsLCDMinBrightness() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+            config.lcdMinBrightness = 0.75
+
+            #expect(defaults.double(forKey: "wallpaper.lcdMinBrightness") == 0.75)
+        }
+
+        @Test("Persists LCD max brightness")
+        func persistsLCDMaxBrightness() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+            config.lcdMaxBrightness = 1.2
+
+            #expect(defaults.double(forKey: "wallpaper.lcdMaxBrightness") == 1.2)
+        }
+
+        @Test("Loads LCD brightness values on init")
+        func loadsLCDBrightnessOnInit() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+            defaults.set(0.80, forKey: "wallpaper.lcdMinBrightness")
+            defaults.set(1.10, forKey: "wallpaper.lcdMaxBrightness")
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            #expect(config.lcdMinBrightness == 0.80)
+            #expect(config.lcdMaxBrightness == 1.10)
+        }
+
+        @Test("LCD brightness persists across sessions")
+        func lcdBrightnessPersistsAcrossSessions() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            // First session: set values
+            let config1 = ThemeConfiguration(registry: registry, defaults: defaults)
+            config1.lcdMinBrightness = 0.65
+            config1.lcdMaxBrightness = 1.25
+
+            // Second session: create new config with same defaults
+            let config2 = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            #expect(config2.lcdMinBrightness == 0.65)
+            #expect(config2.lcdMaxBrightness == 1.25)
+        }
+
+        @Test("LCD brightness persists when set via Bindable pattern")
+        func lcdBrightnessPersistsViaBindable() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            // Simulate @Bindable access pattern
+            let config1 = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            // Create a binding similar to what @Bindable would create
+            var minBrightnessBinding = Bindable(config1).lcdMinBrightness
+            minBrightnessBinding.wrappedValue = 0.72
+
+            // Verify the value was set on the object
+            #expect(config1.lcdMinBrightness == 0.72)
+
+            // Verify it was persisted to UserDefaults
+            #expect(defaults.double(forKey: "wallpaper.lcdMinBrightness") == 0.72)
+
+            // Verify it loads in a new instance
+            let config2 = ThemeConfiguration(registry: registry, defaults: defaults)
+            #expect(config2.lcdMinBrightness == 0.72)
+        }
+    }
+
+    // MARK: - Per-Theme Override Storage Tests
+
+    @Suite("Per-Theme Override Storage")
+    @MainActor
+    struct PerThemeOverrideStorageTests {
+
+        private func makeTestDefaults() -> UserDefaults {
+            let suiteName = "ThemeConfigurationTests.\(UUID().uuidString)"
+            return UserDefaults(suiteName: suiteName)!
+        }
+
+        @Test("Each theme remembers its own accent hue override")
+        func eachThemeRemembersHueOverride() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            // Set override for default theme (wxyc_gradient)
+            config.accentHueOverride = 120
+
+            // Switch to test_dark and set different override
+            config.selectedThemeID = "test_dark"
+            config.accentHueOverride = 240
+
+            // Switch back to default theme - should load its saved override
+            config.selectedThemeID = "wxyc_gradient"
+            #expect(config.accentHueOverride == 120)
+
+            // Switch back to test_dark - should load its saved override
+            config.selectedThemeID = "test_dark"
+            #expect(config.accentHueOverride == 240)
+        }
+
+        @Test("Theme without saved overrides uses nil")
+        func themeWithoutOverridesUsesNil() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            // Set override for default theme
+            config.accentHueOverride = 120
+            #expect(config.accentHueOverride == 120)
+
+            // Switch to test_dark which has no saved override
+            config.selectedThemeID = "test_dark"
+            #expect(config.accentHueOverride == nil)
+        }
+
+        @Test("Per-theme overrides persist across sessions")
+        func perThemeOverridesPersistAcrossSessions() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            // First session: set overrides for two themes
+            let config1 = ThemeConfiguration(registry: registry, defaults: defaults)
+            config1.accentHueOverride = 100
+            config1.selectedThemeID = "test_dark"
+            config1.accentHueOverride = 200
+
+            // Second session: verify overrides are loaded correctly
+            let config2 = ThemeConfiguration(registry: registry, defaults: defaults)
+            // Should load test_dark's override since that was the last selected theme
+            #expect(config2.selectedThemeID == "test_dark")
+            #expect(config2.accentHueOverride == 200)
+
+            // Switch to default theme and verify its override
+            config2.selectedThemeID = "wxyc_gradient"
+            #expect(config2.accentHueOverride == 100)
+        }
+
+        @Test("effectiveAccentColor returns stored overrides for non-selected themes")
+        func effectiveAccentColorReturnsStoredOverrides() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            // Select test_light and set override
+            config.selectedThemeID = "test_light"
+            config.accentHueOverride = 150
+
+            // Switch to test_dark
+            config.selectedThemeID = "test_dark"
+
+            // Query effective accent for test_light (not selected) should return stored override
+            let accent = config.effectiveAccentColor(for: "test_light")
+            #expect(accent.hue == 150)
         }
     }
 
