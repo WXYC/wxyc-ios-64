@@ -30,35 +30,27 @@ public struct BarData: Identifiable, Equatable {
 /// Uses Canvas for GPU-accelerated rendering instead of SwiftUI Charts
 struct LCDSpectrumAnalyzerView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.lcdAccentHue) private var hue
+    @Environment(\.lcdAccentSaturation) private var saturation
     
     let data: [BarData]
     let segmentsPerBar: Int
     let maxValue: Double
     let minBrightness: Double
     let maxBrightness: Double
-    
-    /// Hue value for segment colors (0.0-1.0, already normalized)
-    let hue: Double
-    
-    /// Saturation value for segment colors (0.0-1.0)
-    let saturation: Double
 
     init(
         data: [BarData],
         maxValue: Double,
         segmentsPerBar: Int = 8,
         minBrightness: Double = 0.80,
-        maxBrightness: Double = 1.0,
-        hue: Double = 23.0 / 360.0,
-        saturation: Double = 0.75
+        maxBrightness: Double = 1.0
     ) {
         self.data = data
         self.maxValue = maxValue
         self.segmentsPerBar = segmentsPerBar
         self.minBrightness = minBrightness
         self.maxBrightness = maxBrightness
-        self.hue = hue
-        self.saturation = saturation
     }
     
     public var body: some View {
