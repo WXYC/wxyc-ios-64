@@ -17,5 +17,6 @@
   },
   "appIconName": "Windowlight",
   "materialWeight": "ultraThin",
-  "buttonStyle": "glass"
+  "buttonStyle": "glass",
+  "materialTint": -0.2
 }

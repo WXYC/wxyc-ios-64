@@ -59,5 +59,6 @@
     "saturation": 0.75
   },
   "appIconName": "SteelCubeIdolatry",
-  "materialWeight": "thin"
+  "materialWeight": "thin",
+  "materialTint": -0.5
 }

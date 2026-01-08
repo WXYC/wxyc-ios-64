@@ -24,5 +24,6 @@
     "saturation": 0.75
   },
   "appIconName": "LavaLite",
-  "materialWeight": "regular"
+  "materialWeight": "regular",
+  "materialTint": -0.2
 }

@@ -13,5 +13,6 @@
     "saturation": 0.75
   },
   "appIconName": null,
-  "materialWeight": "thin"
+  "materialWeight": "thin",
+  "materialTint": -0.5
 }

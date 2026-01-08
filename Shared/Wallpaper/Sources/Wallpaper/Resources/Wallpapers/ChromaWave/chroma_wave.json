@@ -20,5 +20,6 @@
     "saturation": 0.75
   },
   "appIconName": "Chroma Wave",
-  "materialWeight": "thin"
+  "materialWeight": "thin",
+  "materialTint": -0.2
 }

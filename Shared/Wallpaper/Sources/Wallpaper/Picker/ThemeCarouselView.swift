@@ -72,6 +72,16 @@ struct ThemeCarouselView: View {
                 }
             ))
             .safeAreaPadding(.horizontal, (screenSize.width - cardSize.width) / 2)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.x
+            } action: { _, newOffset in
+                pickerState.updateTransitionProgress(
+                    scrollOffset: newOffset,
+                    cardWidth: cardSize.width,
+                    cardSpacing: cardSpacing,
+                    horizontalPadding: (screenSize.width - cardSize.width) / 2
+                )
+            }
             .onChange(of: pickerState.carouselIndex) { _, newIndex in
                 pickerState.updateCenteredTheme(forIndex: newIndex)
             }

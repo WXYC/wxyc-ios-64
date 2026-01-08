@@ -29,6 +29,13 @@ public struct ThemeTransition: Equatable {
     public var toMaterial: Material { toTheme.manifest.materialWeight.material }
     public var fromColorScheme: ColorScheme { fromTheme.manifest.foreground.colorScheme }
     public var toColorScheme: ColorScheme { toTheme.manifest.foreground.colorScheme }
+    public var fromMaterialTint: Double { fromTheme.manifest.materialTint }
+    public var toMaterialTint: Double { toTheme.manifest.materialTint }
+
+    /// Interpolated tint value based on transition progress.
+    public var interpolatedMaterialTint: Double {
+        fromMaterialTint + (toMaterialTint - fromMaterialTint) * progress
+    }
 
     public static nonisolated func == (lhs: ThemeTransition, rhs: ThemeTransition) -> Bool {
         lhs.fromTheme.id == rhs.fromTheme.id &&
@@ -61,6 +68,16 @@ private struct PreviewThemeTransitionKey: EnvironmentKey {
     static let defaultValue: ThemeTransition? = nil
 }
 
+/// Environment key for the current theme's material tint value.
+private struct CurrentMaterialTintKey: EnvironmentKey {
+    static let defaultValue: Double = 0.0
+}
+
+/// Environment key for the current theme's material.
+private struct CurrentMaterialKey: EnvironmentKey {
+    static let defaultValue: Material = .thinMaterial
+}
+
 public extension EnvironmentValues {
     var isThemePickerActive: Bool {
         get { self[ThemePickerActiveKey.self] }
@@ -86,6 +103,18 @@ public extension EnvironmentValues {
     var previewThemeTransition: ThemeTransition? {
         get { self[PreviewThemeTransitionKey.self] }
         set { self[PreviewThemeTransitionKey.self] = newValue }
+    }
+
+    /// The current theme's material tint value for non-picker mode.
+    var currentMaterialTint: Double {
+        get { self[CurrentMaterialTintKey.self] }
+        set { self[CurrentMaterialTintKey.self] = newValue }
+    }
+
+    /// The current theme's material for non-picker mode.
+    var currentMaterial: Material {
+        get { self[CurrentMaterialKey.self] }
+        set { self[CurrentMaterialKey.self] = newValue }
     }
 }
 

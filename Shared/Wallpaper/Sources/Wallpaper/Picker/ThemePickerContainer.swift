@@ -24,6 +24,21 @@ public struct ThemePickerContainer<Content: View>: View {
     /// Animation for picker mode transitions.
     private let pickerAnimation: Animation = .spring(duration: 0.5, bounce: 0.2)
 
+    /// Current theme looked up from registry.
+    private var currentTheme: LoadedTheme? {
+        ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
+    }
+
+    /// Material from the currently selected theme.
+    private var currentThemeMaterial: Material {
+        currentTheme?.manifest.materialWeight.material ?? .thinMaterial
+    }
+
+    /// Material tint from the currently selected theme.
+    private var currentThemeMaterialTint: Double {
+        currentTheme?.manifest.materialTint ?? 0.0
+    }
+
     public init(
         configuration: ThemeConfiguration,
         pickerState: ThemePickerState,
@@ -53,6 +68,9 @@ public struct ThemePickerContainer<Content: View>: View {
                 // Content overlay - scales and clips when picker is active
                 content()
                     .environment(\.isThemePickerActive, pickerState.isActive)
+                    .environment(\.previewThemeTransition, pickerState.isActive ? pickerState.themeTransition : nil)
+                    .environment(\.currentMaterial, currentThemeMaterial)
+                    .environment(\.currentMaterialTint, currentThemeMaterialTint)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)
                     .offset(y: pickerState.isActive ? 16 : 0)

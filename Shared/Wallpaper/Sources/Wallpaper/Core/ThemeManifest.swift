@@ -25,7 +25,12 @@ public struct ThemeManifest: Codable, Sendable {
     public let accent: AccentColor
     public let appIconName: String?
     public let materialWeight: MaterialWeight
-    public let buttonStyle: ButtonStyle
+    public let buttonStyle: ButtonStyle?
+
+    /// Tint applied to material backgrounds.
+    /// Positive values lighten (white overlay), negative values darken (black overlay).
+    /// Range: -1.0 to 1.0, where 0.0 is no tint.
+    public let materialTint: Double
 
     public init(
         id: String,
@@ -38,7 +43,8 @@ public struct ThemeManifest: Codable, Sendable {
         accent: AccentColor,
         appIconName: String? = nil,
         materialWeight: MaterialWeight = .thin,
-        buttonStyle: ButtonStyle = .colored
+        buttonStyle: ButtonStyle = .colored,
+        materialTint: Double = 0.0
     ) {
         self.id = id
         self.displayName = displayName
@@ -51,6 +57,7 @@ public struct ThemeManifest: Codable, Sendable {
         self.appIconName = appIconName
         self.materialWeight = materialWeight
         self.buttonStyle = buttonStyle
+        self.materialTint = materialTint
     }
 }
 

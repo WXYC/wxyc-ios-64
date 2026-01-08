@@ -17,8 +17,9 @@
   "foreground": "dark",
   "accent": {
     "hue": 23,
-    "saturation": 0.75
+    "saturation": 0.55
   },
   "appIconName": "Plasma",
-  "materialWeight": "regular"
+  "materialWeight": "regular",
+  "materialTint": -0.5
 }

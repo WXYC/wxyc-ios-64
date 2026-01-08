@@ -20,6 +20,6 @@
     "saturation": 0.75
   },
   "appIconName": "NeonTopologyIso",
-  "materialWeight": "ultraThin"
+  "materialWeight": "thin",
+  "materialTint": -0.5
 }
-
