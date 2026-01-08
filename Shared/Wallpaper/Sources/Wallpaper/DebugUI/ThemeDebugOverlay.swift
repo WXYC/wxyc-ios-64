@@ -68,6 +68,9 @@ private struct ThemeDebugPopoverContent: View {
                 }
 
                 if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
+                    // Accent color controls
+                    AccentColorControls(configuration: configuration, theme: theme)
+
                     // Parameters (no disclosure group)
                     if !theme.manifest.parameters.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -92,6 +95,66 @@ private struct ThemeDebugPopoverContent: View {
         }
         .frame(minWidth: 300, minHeight: 200)
         .presentationCompactAdaptation(.popover)
+    }
+}
+
+/// Controls for adjusting the theme's accent color hue and saturation.
+private struct AccentColorControls: View {
+    @Bindable var configuration: ThemeConfiguration
+    let theme: LoadedTheme
+
+    private var hueBinding: Binding<Double> {
+        Binding(
+            get: { configuration.accentHueOverride ?? theme.manifest.accent.hue },
+            set: { configuration.accentHueOverride = $0 }
+        )
+    }
+
+    private var saturationBinding: Binding<Double> {
+        Binding(
+            get: { configuration.accentSaturationOverride ?? theme.manifest.accent.saturation },
+            set: { configuration.accentSaturationOverride = $0 }
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Accent Color")
+                    .font(.headline)
+                Spacer()
+                // Color preview swatch
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(configuration.effectiveAccentColor.color(brightness: 0.8))
+                    .frame(width: 24, height: 24)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.primary.opacity(0.3), lineWidth: 1)
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Hue: \(Int(hueBinding.wrappedValue))°")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: hueBinding, in: 0...360)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Saturation: \(Int(saturationBinding.wrappedValue * 100))%")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: saturationBinding, in: 0...1)
+            }
+
+            if configuration.accentHueOverride != nil || configuration.accentSaturationOverride != nil {
+                Button("Reset to Theme Default") {
+                    configuration.accentHueOverride = nil
+                    configuration.accentSaturationOverride = nil
+                }
+                .font(.caption)
+            }
+        }
     }
 }
 
