@@ -27,8 +27,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
     private nonisolated(unsafe) static var nextInstanceID = 0
     private let instanceID: Int
 
-    private weak var delegate: MP3DecoderDelegate?
     private let decoderQueue: DispatchQueue
+
+    /// Stream of decoded PCM buffers
+    let decodedBufferStream: AsyncStream<AVAudioPCMBuffer>
+    private let bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+
+    /// Stream of decoding errors
+    let errorStream: AsyncStream<Error>
+    private let errorContinuation: AsyncStream<Error>.Continuation
 
     /// The AudioFileStream for parsing MP3 packets
     private var audioFileStream: AudioFileStreamID?
@@ -49,11 +56,20 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// Context for C callbacks - retained to prevent deallocation
     private var callbackContext: AudioStreamContext?
 
-    init(delegate: any MP3DecoderDelegate) {
+    init() {
         self.instanceID = Self.nextInstanceID
         Self.nextInstanceID += 1
-        self.delegate = delegate
         self.decoderQueue = DispatchQueue(label: "com.avaudiostreamer.mp3decoder.\(instanceID)", qos: .userInitiated)
+
+        // Initialize buffer stream
+        var bufferCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        self.decodedBufferStream = AsyncStream(bufferingPolicy: .unbounded) { bufferCont = $0 }
+        self.bufferContinuation = bufferCont
+
+        // Initialize error stream
+        var errorCont: AsyncStream<Error>.Continuation!
+        self.errorStream = AsyncStream(bufferingPolicy: .unbounded) { errorCont = $0 }
+        self.errorContinuation = errorCont
 
         // Standard output format for decoded audio
         guard let format = AVAudioFormat(
@@ -80,18 +96,20 @@ final class MP3StreamDecoder: @unchecked Sendable {
             // Release that retain count here
             Unmanaged.passUnretained(callbackContext!).release()
         }
+        bufferContinuation.finish()
+        errorContinuation.finish()
     }
 
     func decode(data: Data) {
         decoderQueue.async { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
             self.processMP3Data(data)
         }
     }
 
     func reset() {
         decoderQueue.async { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
             self.packetData.removeAll()
             self.packetDescriptions.removeAll()
             self.inputFormat = nil
@@ -139,7 +157,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
             )
 
             guard status == noErr, let fileStream = stream else {
-                notifyError(MP3DecoderError.audioFileStreamError(status))
+                errorContinuation.yield(MP3DecoderError.audioFileStreamError(status))
                 return
             }
 
@@ -220,7 +238,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
         let status = AudioConverterNew(&inputFormatCopy, &outputFormatCopy, &newConverter)
 
         guard status == noErr, let audioConverter = newConverter else {
-            notifyError(MP3DecoderError.converterCreationFailed(status))
+            errorContinuation.yield(MP3DecoderError.converterCreationFailed(status))
             return
         }
 
@@ -228,13 +246,13 @@ final class MP3StreamDecoder: @unchecked Sendable {
     }
 
     private func convertToPCM() {
-        guard let converter = converter else { return }
+        guard let converter else { return }
         guard !packetDescriptions.isEmpty else { return }
 
         // Create output buffer
         let frameCapacity = AVAudioFrameCount(4096)
         guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: frameCapacity) else {
-            notifyError(MP3DecoderError.bufferAllocationFailed)
+            errorContinuation.yield(MP3DecoderError.bufferAllocationFailed)
             return
         }
 
@@ -350,28 +368,12 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 }
             }
 
-            // Notify delegate
-            notifyDelegate { [weak self] in
-                guard let self = self else { return }
-                self.delegate?.mp3Decoder(self, didDecode: pcmBuffer)
-            }
+            // Yield the decoded buffer
+            bufferContinuation.yield(pcmBuffer)
         } else if status != noErr && status != kAudioConverterErr_InvalidInputSize {
             // Only clear on non-recoverable errors
             packetDescriptions.removeAll()
             packetData.removeAll()
-        }
-    }
-
-    private func notifyDelegate(_ closure: @Sendable @escaping () -> Void) {
-        Task { @MainActor in
-            closure()
-        }
-    }
-
-    private func notifyError(_ error: Error) {
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
-            self.delegate?.mp3Decoder(self, didEncounterError: error)
         }
     }
 }

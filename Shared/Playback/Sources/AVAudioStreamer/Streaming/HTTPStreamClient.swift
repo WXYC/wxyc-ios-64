@@ -10,21 +10,25 @@ enum HTTPStreamError: Error {
 }
 
 /// HTTP client for streaming audio data using URLSession
-final class HTTPStreamClient: @unchecked Sendable {
+final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
     private let url: URL
     private let configuration: AVAudioStreamerConfiguration
-    private weak var delegate: (any HTTPStreamClientDelegate)?
-
     private let streamingTask: StreamingTaskBox
+    private let continuation: AsyncStream<HTTPStreamEvent>.Continuation
 
-    /// Chunk size for buffering bytes before forwarding to delegate
+    let eventStream: AsyncStream<HTTPStreamEvent>
+
+    /// Chunk size for buffering bytes before forwarding
     private static let chunkSize = 4096
 
-    init(url: URL, configuration: AVAudioStreamerConfiguration, delegate: any HTTPStreamClientDelegate) {
+    init(url: URL, configuration: AVAudioStreamerConfiguration) {
         self.url = url
         self.configuration = configuration
-        self.delegate = delegate
         self.streamingTask = StreamingTaskBox()
+
+        var cont: AsyncStream<HTTPStreamEvent>.Continuation!
+        self.eventStream = AsyncStream(bufferingPolicy: .unbounded) { cont = $0 }
+        self.continuation = cont
     }
 
     func connect() async throws {
@@ -50,11 +54,8 @@ final class HTTPStreamClient: @unchecked Sendable {
                 throw HTTPStreamError.httpError(statusCode: httpResponse.statusCode)
             }
 
-            // Notify delegate of successful connection
-            notifyDelegate { [weak self] in
-                guard let self else { return }
-                self.delegate?.httpStreamClientDidConnect(self)
-            }
+            // Notify of successful connection
+            continuation.yield(.connected)
 
             // Start streaming task
             let task = Task { [weak self] in
@@ -72,34 +73,20 @@ final class HTTPStreamClient: @unchecked Sendable {
                         if buffer.count >= Self.chunkSize {
                             let chunk = buffer
                             buffer.removeAll(keepingCapacity: true)
-
-                            self.notifyDelegate { [weak self] in
-                                guard let self else { return }
-                                self.delegate?.httpStreamClient(self, didReceiveData: chunk)
-                            }
+                            self.continuation.yield(.data(chunk))
                         }
                     }
 
                     // Flush remaining buffer
                     if !buffer.isEmpty {
-                        let chunk = buffer
-                        self.notifyDelegate { [weak self] in
-                            guard let self else { return }
-                            self.delegate?.httpStreamClient(self, didReceiveData: chunk)
-                        }
+                        self.continuation.yield(.data(buffer))
                     }
 
                     // Stream ended normally
-                    self.notifyDelegate { [weak self] in
-                        guard let self else { return }
-                        self.delegate?.httpStreamClientDidDisconnect(self)
-                    }
+                    self.continuation.yield(.disconnected)
                 } catch {
                     if !Task.isCancelled {
-                        self.notifyDelegate { [weak self] in
-                            guard let self else { return }
-                            self.delegate?.httpStreamClient(self, didEncounterError: error)
-                        }
+                        self.continuation.yield(.error(error))
                     }
                 }
             }
@@ -117,17 +104,7 @@ final class HTTPStreamClient: @unchecked Sendable {
     func disconnect() {
         streamingTask.task?.cancel()
         streamingTask.task = nil
-
-        notifyDelegate { [weak self] in
-            guard let self else { return }
-            self.delegate?.httpStreamClientDidDisconnect(self)
-        }
-    }
-
-    private func notifyDelegate(_ closure: @Sendable @escaping () -> Void) {
-        Task { @MainActor in
-            closure()
-        }
+        continuation.yield(.disconnected)
     }
 }
 

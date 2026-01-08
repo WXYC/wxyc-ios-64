@@ -68,24 +68,22 @@ public final class AVAudioStreamer {
     @ObservationIgnored
     public let configuration: AVAudioStreamerConfiguration
     @ObservationIgnored
-    private let httpClient: HTTPStreamClient
+    private let httpClient: any HTTPStreamClientProtocol
     @ObservationIgnored
     private let mp3Decoder: MP3StreamDecoder
     @ObservationIgnored
     private let bufferQueue: PCMBufferQueue
     @ObservationIgnored
-    private let httpAdapter: HTTPStreamClientDelegateAdapter
-    @ObservationIgnored
-    private let decoderAdapter: MP3DecoderDelegateAdapter
-    @ObservationIgnored
-    private let playerAdapter: AudioPlayerDelegateAdapter
-    @ObservationIgnored
-    private let audioPlayer: AudioEnginePlayer
+    private let audioPlayer: any AudioEnginePlayerProtocol
 
     @ObservationIgnored
     internal var backoffTimer: ExponentialBackoff
     @ObservationIgnored
     private var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var httpEventTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var playerEventTask: Task<Void, Never>?
 
     // Output format for decoded audio
     private static let outputFormat: AVAudioFormat = {
@@ -104,6 +102,8 @@ public final class AVAudioStreamer {
 
     public init(
         configuration: AVAudioStreamerConfiguration,
+        httpClient: (any HTTPStreamClientProtocol)? = nil,
+        audioPlayer: (any AudioEnginePlayerProtocol)? = nil,
         backoffTimer: ExponentialBackoff = .default
     ) {
         self.configuration = configuration
@@ -123,11 +123,6 @@ public final class AVAudioStreamer {
         }
         self.eventContinuationInternal = eventContinuation
 
-        // Create delegate adapters (stored as properties to prevent deallocation)
-        self.httpAdapter = HTTPStreamClientDelegateAdapter()
-        self.decoderAdapter = MP3DecoderDelegateAdapter()
-        self.playerAdapter = AudioPlayerDelegateAdapter()
-
         // Create buffer queue
         self.bufferQueue = PCMBufferQueue(
             capacity: configuration.bufferQueueSize,
@@ -135,30 +130,51 @@ public final class AVAudioStreamer {
             delegate: nil
         )
 
-        // Create components with their adapters
-        self.audioPlayer = AudioEnginePlayer(
-            format: Self.outputFormat,
-            delegate: playerAdapter
-        )
+        // Use injected dependencies or create defaults
+        self.audioPlayer = audioPlayer ?? AudioEnginePlayer(format: Self.outputFormat)
 
-        self.mp3Decoder = MP3StreamDecoder(
-            delegate: decoderAdapter
-        )
+        self.mp3Decoder = MP3StreamDecoder()
 
-        self.httpClient = HTTPStreamClient(
+        self.httpClient = httpClient ?? HTTPStreamClient(
             url: configuration.url,
-            configuration: configuration,
-            delegate: httpAdapter
+            configuration: configuration
         )
-        
+
         self.streamURL = configuration.url
 
-        // Connect adapters back to self
-        httpAdapter.streamer = self
-        decoderAdapter.streamer = self
-        playerAdapter.streamer = self
+        // Start listening to event streams
+        startEventListeners()
     }
-        
+
+    private func startEventListeners() {
+        // Listen to HTTP events
+        httpEventTask = Task { [weak self] in
+            guard let self else { return }
+            for await event in self.httpClient.eventStream {
+                guard !Task.isCancelled else { break }
+                await self.handleHTTPEvent(event)
+            }
+        }
+
+        // Listen to audio player events
+        playerEventTask = Task { [weak self] in
+            guard let self else { return }
+            for await event in self.audioPlayer.eventStream {
+                guard !Task.isCancelled else { break }
+                await self.handlePlayerEvent(event)
+            }
+        }
+
+        // Listen to decoded buffers
+        Task { [weak self] in
+            guard let self else { return }
+            for await buffer in self.mp3Decoder.decodedBufferStream {
+                guard !Task.isCancelled else { break }
+                await self.handleDecodedBuffer(buffer)
+            }
+        }
+    }
+
     // MARK: - Public Methods
 
     /// Start streaming and playing audio
@@ -207,13 +223,62 @@ public final class AVAudioStreamer {
         backoffTimer.reset()
     }
 
-    // MARK: - Private Methods
+    // MARK: - Event Handlers
 
-    fileprivate func handleHTTPData(_ data: Data) {
-        mp3Decoder.decode(data: data)
+    private func handleHTTPEvent(_ event: HTTPStreamEvent) async {
+        switch event {
+        case .connected:
+            streamingState = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
+
+        case .data(let data):
+            mp3Decoder.decode(data: data)
+
+        case .disconnected:
+            // Only handle if we're not intentionally stopping
+            guard streamingState != .idle else { return }
+            attemptReconnect()
+
+        case .error(let error):
+            streamingState = .error(error)
+            attemptReconnect()
+        }
     }
 
-    fileprivate func handleDecodedBuffer(_ buffer: AVAudioPCMBuffer) {
+    private func handlePlayerEvent(_ event: AudioPlayerEvent) async {
+        switch event {
+        case .started:
+            break // State already managed by play()
+
+        case .paused:
+            break // State already managed
+
+        case .stopped:
+            break // State already managed by stop()
+
+        case .error(let error):
+            streamingState = .error(error)
+            eventContinuationInternal.yield(.error(error))
+
+        case .needsMoreBuffers:
+            scheduleBuffers()
+
+        case .stalled:
+            if case .playing = streamingState {
+                streamingState = .stalled
+                delegate?.audioStreamerDidStall(self)
+                eventContinuationInternal.yield(.stall)
+            }
+
+        case .recoveredFromStall:
+            if case .stalled = streamingState {
+                streamingState = .playing
+                delegate?.audioStreamerDidRecover(self)
+                eventContinuationInternal.yield(.recovery)
+            }
+        }
+    }
+
+    private func handleDecodedBuffer(_ buffer: AVAudioPCMBuffer) async {
         // Add to queue
         bufferQueue.enqueue(buffer)
 
@@ -251,30 +316,14 @@ public final class AVAudioStreamer {
         }
     }
 
-    fileprivate func scheduleBuffers() {
+    private func scheduleBuffers() {
         // Schedule available buffers
         while let buffer = bufferQueue.dequeue() {
             audioPlayer.scheduleBuffer(buffer)
         }
     }
 
-    fileprivate func handleHTTPConnected() {
-        streamingState = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
-    }
-
-    fileprivate func handleHTTPDisconnected() {
-        // Only handle if we're not intentionally stopping
-        guard streamingState != .idle else { return }
-
-        attemptReconnect()
-    }
-
-    fileprivate func handleError(_ error: Error) {
-        streamingState = .error(error)
-        attemptReconnect()
-    }
-
-    fileprivate func attemptReconnect() {
+    private func attemptReconnect() {
         guard let waitTime = backoffTimer.nextWaitTime() else {
             // Backoff exhausted - give up and transition to error state
             streamingState = .error(HTTPStreamError.connectionFailed)
@@ -292,110 +341,9 @@ public final class AVAudioStreamer {
                 // Reset backoff on successful connection
                 backoffTimer.reset()
             } catch {
-                handleError(error)
+                streamingState = .error(error)
+                attemptReconnect()
             }
-        }
-    }
-
-    internal func handleStall() {
-        if case .playing = streamingState {
-            streamingState = .stalled
-            delegate?.audioStreamerDidStall(self)
-            eventContinuationInternal.yield(.stall)
-        }
-    }
-
-    internal func handleRecovery() {
-        if case .stalled = streamingState {
-            streamingState = .playing
-            delegate?.audioStreamerDidRecover(self)
-            eventContinuationInternal.yield(.recovery)
-        }
-    }
-}
-
-// MARK: - Delegate Adapters
-
-private final class HTTPStreamClientDelegateAdapter: HTTPStreamClientDelegate, @unchecked Sendable {
-    weak var streamer: AVAudioStreamer?
-
-    func httpStreamClient(_ client: HTTPStreamClient, didReceiveData data: Data) {
-        Task { @MainActor in
-            streamer?.handleHTTPData(data)
-        }
-    }
-
-    func httpStreamClientDidConnect(_ client: HTTPStreamClient) {
-        Task { @MainActor in
-            streamer?.handleHTTPConnected()
-        }
-    }
-
-    func httpStreamClientDidDisconnect(_ client: HTTPStreamClient) {
-        Task { @MainActor in
-            streamer?.handleHTTPDisconnected()
-        }
-    }
-
-    func httpStreamClient(_ client: HTTPStreamClient, didEncounterError error: Error) {
-        Task { @MainActor in
-            streamer?.handleError(error)
-        }
-    }
-}
-
-private final class MP3DecoderDelegateAdapter: MP3DecoderDelegate, @unchecked Sendable {
-    weak var streamer: AVAudioStreamer?
-
-    func mp3Decoder(_ decoder: MP3StreamDecoder, didDecode buffer: AVAudioPCMBuffer) {
-        Task { @MainActor in
-            streamer?.handleDecodedBuffer(buffer)
-        }
-    }
-
-    func mp3Decoder(_ decoder: MP3StreamDecoder, didEncounterError error: Error) {
-        Task { @MainActor in
-            streamer?.handleError(error)
-        }
-    }
-}
-
-private final class AudioPlayerDelegateAdapter: AudioPlayerDelegate, @unchecked Sendable {
-    weak var streamer: AVAudioStreamer?
-
-    func audioPlayerDidStartPlaying(_ player: AudioEnginePlayer) {
-        // Handled by streamer
-    }
-
-    func audioPlayerDidPause(_ player: AudioEnginePlayer) {
-        // Handled by streamer
-    }
-
-    func audioPlayerDidStop(_ player: AudioEnginePlayer) {
-        // Handled by streamer
-    }
-
-    func audioPlayer(_ player: AudioEnginePlayer, didEncounterError error: Error) {
-        Task { @MainActor in
-            streamer?.handleError(error)
-        }
-    }
-
-    func audioPlayerNeedsMoreBuffers(_ player: AudioEnginePlayer) {
-        Task { @MainActor in
-            streamer?.scheduleBuffers()
-        }
-    }
-
-    func audioPlayerDidStall(_ player: AudioEnginePlayer) {
-        Task { @MainActor in
-            streamer?.handleStall()
-        }
-    }
-
-    func audioPlayerDidRecoverFromStall(_ player: AudioEnginePlayer) {
-        Task { @MainActor in
-            streamer?.handleRecovery()
         }
     }
 }
