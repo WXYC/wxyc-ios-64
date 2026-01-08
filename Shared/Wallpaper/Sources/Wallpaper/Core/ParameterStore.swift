@@ -202,21 +202,23 @@ public final class ParameterStore: Sendable {
     private func loadFromDefaults() {
         let defaults = UserDefaults.standard
         for param in manifest.parameters {
+            let key = storageKey(for: param)
             switch param.type {
             case .float:
-                if let key = param.userDefaultsKey, defaults.object(forKey: key) != nil {
+                if defaults.object(forKey: key) != nil {
                     values[param.id] = defaults.float(forKey: key)
                 }
             case .bool:
-                if let key = param.userDefaultsKey, defaults.object(forKey: key) != nil {
+                if defaults.object(forKey: key) != nil {
                     values[param.id] = defaults.bool(forKey: key)
                 }
             case .color:
                 if let components = param.components {
                     for component in components {
-                        if let key = component.userDefaultsKey, defaults.object(forKey: key) != nil {
+                        let componentKey = storageKey(for: param, component: component)
+                        if defaults.object(forKey: componentKey) != nil {
                             let storeKey = "\(param.id).\(component.id)"
-                            values[storeKey] = defaults.float(forKey: key)
+                            values[storeKey] = defaults.float(forKey: componentKey)
                         }
                     }
                 }
@@ -227,22 +229,31 @@ public final class ParameterStore: Sendable {
     }
 
     private func saveToDefaults(parameterId: String, value: Float) {
-        guard let param = manifest.parameters.first(where: { $0.id == parameterId }),
-              let key = param.userDefaultsKey else { return }
-        UserDefaults.standard.set(value, forKey: key)
+        guard let param = manifest.parameters.first(where: { $0.id == parameterId }) else { return }
+        UserDefaults.standard.set(value, forKey: storageKey(for: param))
     }
 
     private func saveToDefaults(parameterId: String, value: Bool) {
-        guard let param = manifest.parameters.first(where: { $0.id == parameterId }),
-              let key = param.userDefaultsKey else { return }
-        UserDefaults.standard.set(value, forKey: key)
+        guard let param = manifest.parameters.first(where: { $0.id == parameterId }) else { return }
+        UserDefaults.standard.set(value, forKey: storageKey(for: param))
     }
 
     private func saveColorComponentToDefaults(parameterId: String, componentId: String, value: Float) {
         guard let param = manifest.parameters.first(where: { $0.id == parameterId }),
-              let component = param.components?.first(where: { $0.id == componentId }),
-              let key = component.userDefaultsKey else { return }
-        UserDefaults.standard.set(value, forKey: key)
+              let component = param.components?.first(where: { $0.id == componentId }) else { return }
+        UserDefaults.standard.set(value, forKey: storageKey(for: param, component: component))
+    }
+
+    /// Returns the UserDefaults key for a parameter.
+    /// Uses the explicit `userDefaultsKey` if provided, otherwise auto-generates from theme and parameter IDs.
+    private func storageKey(for param: ParameterDefinition) -> String {
+        param.userDefaultsKey ?? "Theme.\(manifest.id).Param.\(param.id)"
+    }
+
+    /// Returns the UserDefaults key for a color component.
+    /// Uses the explicit `userDefaultsKey` if provided, otherwise auto-generates from theme, parameter, and component IDs.
+    private func storageKey(for param: ParameterDefinition, component: ParameterComponentDefinition) -> String {
+        component.userDefaultsKey ?? "Theme.\(manifest.id).Param.\(param.id).\(component.id)"
     }
 
     private func defaultFloatValue(for parameterId: String) -> Float {
