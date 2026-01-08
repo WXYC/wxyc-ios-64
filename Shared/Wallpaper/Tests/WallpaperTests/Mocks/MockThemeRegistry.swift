@@ -1,0 +1,70 @@
+//
+//  MockThemeRegistry.swift
+//  WallpaperTests
+//
+//  Mock implementation of ThemeRegistryProtocol for testing.
+//
+
+import Foundation
+@testable import Wallpaper
+
+/// Mock theme registry for testing ThemeConfiguration and ThemePickerState.
+@MainActor
+final class MockThemeRegistry: ThemeRegistryProtocol {
+    private var loadedThemes: [LoadedTheme]
+    private var themesByID: [String: LoadedTheme]
+
+    var themes: [LoadedTheme] { loadedThemes }
+
+    init(themes: [LoadedTheme] = []) {
+        self.loadedThemes = themes
+        self.themesByID = Dictionary(uniqueKeysWithValues: themes.map { ($0.id, $0) })
+    }
+
+    func theme(for id: String) -> LoadedTheme? {
+        themesByID[id]
+    }
+
+    // MARK: - Test Helpers
+
+    /// Creates a mock registry with test themes.
+    static func withTestThemes() -> MockThemeRegistry {
+        MockThemeRegistry(themes: [
+            LoadedTheme(manifest: .testDarkTheme),
+            LoadedTheme(manifest: .testLightTheme)
+        ])
+    }
+
+    /// Creates an empty mock registry.
+    static func empty() -> MockThemeRegistry {
+        MockThemeRegistry(themes: [])
+    }
+}
+
+// MARK: - Test Theme Manifests
+
+extension ThemeManifest {
+    /// A dark test theme with orange accent and negative material tint.
+    @MainActor
+    static let testDarkTheme = ThemeManifest(
+        id: "test_dark",
+        displayName: "Test Dark",
+        version: "1.0.0",
+        renderer: RendererConfiguration(type: .swiftUI),
+        foreground: .light,
+        accent: AccentColor(hue: 30, saturation: 0.8),
+        materialTint: -0.3
+    )
+
+    /// A light test theme with blue accent and positive material tint.
+    @MainActor
+    static let testLightTheme = ThemeManifest(
+        id: "test_light",
+        displayName: "Test Light",
+        version: "1.0.0",
+        renderer: RendererConfiguration(type: .swiftUI),
+        foreground: .dark,
+        accent: AccentColor(hue: 210, saturation: 0.6),
+        materialTint: 0.2
+    )
+}
