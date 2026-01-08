@@ -37,6 +37,25 @@ public struct ThemeTransition: Equatable {
         fromMaterialTint + (toMaterialTint - fromMaterialTint) * progress
     }
 
+    // MARK: Accent Color
+
+    public var fromAccent: AccentColor { fromTheme.manifest.accent }
+    public var toAccent: AccentColor { toTheme.manifest.accent }
+
+    /// Interpolated accent hue (normalized 0.0-1.0) based on transition progress.
+    public var interpolatedAccentHue: Double {
+        let fromHue = fromAccent.normalizedHue
+        let toHue = toAccent.normalizedHue
+        return fromHue + (toHue - fromHue) * progress
+    }
+
+    /// Interpolated accent saturation based on transition progress.
+    public var interpolatedAccentSaturation: Double {
+        let fromSat = fromAccent.saturation
+        let toSat = toAccent.saturation
+        return fromSat + (toSat - fromSat) * progress
+    }
+
     public static nonisolated func == (lhs: ThemeTransition, rhs: ThemeTransition) -> Bool {
         lhs.fromTheme.id == rhs.fromTheme.id &&
         lhs.toTheme.id == rhs.toTheme.id &&
@@ -78,6 +97,16 @@ private struct CurrentMaterialKey: EnvironmentKey {
     static let defaultValue: Material = .thinMaterial
 }
 
+/// Environment key for the current/interpolated accent hue (normalized 0.0-1.0).
+private struct CurrentAccentHueKey: EnvironmentKey {
+    static let defaultValue: Double = 23.0 / 360.0 // Default orange
+}
+
+/// Environment key for the current/interpolated accent saturation.
+private struct CurrentAccentSaturationKey: EnvironmentKey {
+    static let defaultValue: Double = 0.75
+}
+
 public extension EnvironmentValues {
     var isThemePickerActive: Bool {
         get { self[ThemePickerActiveKey.self] }
@@ -115,6 +144,18 @@ public extension EnvironmentValues {
     var currentMaterial: Material {
         get { self[CurrentMaterialKey.self] }
         set { self[CurrentMaterialKey.self] = newValue }
+    }
+
+    /// The current/interpolated accent hue (normalized 0.0-1.0).
+    var currentAccentHue: Double {
+        get { self[CurrentAccentHueKey.self] }
+        set { self[CurrentAccentHueKey.self] = newValue }
+    }
+
+    /// The current/interpolated accent saturation.
+    var currentAccentSaturation: Double {
+        get { self[CurrentAccentSaturationKey.self] }
+        set { self[CurrentAccentSaturationKey.self] = newValue }
     }
 }
 

@@ -39,6 +39,24 @@ public struct ThemePickerContainer<Content: View>: View {
         currentTheme?.manifest.materialTint ?? 0.0
     }
 
+    /// Accent hue - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    private var effectiveAccentHue: Double {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            transition.interpolatedAccentHue
+        } else {
+            configuration.effectiveAccentColor.normalizedHue
+        }
+    }
+
+    /// Accent saturation - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    private var effectiveAccentSaturation: Double {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            transition.interpolatedAccentSaturation
+        } else {
+            configuration.effectiveAccentColor.saturation
+        }
+    }
+
     public init(
         configuration: ThemeConfiguration,
         pickerState: ThemePickerState,
@@ -71,6 +89,8 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.previewThemeTransition, pickerState.isActive ? pickerState.themeTransition : nil)
                     .environment(\.currentMaterial, currentThemeMaterial)
                     .environment(\.currentMaterialTint, currentThemeMaterialTint)
+                    .environment(\.currentAccentHue, effectiveAccentHue)
+                    .environment(\.currentAccentSaturation, effectiveAccentSaturation)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)
                     .offset(y: pickerState.isActive ? 16 : 0)
