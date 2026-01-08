@@ -113,9 +113,7 @@ public struct VisualizerTimelineView: View {
                         )
                     }
                 },
-                maxValue: Double(VisualizerConstants.magnitudeLimit),
-                minBrightness: visualizer.minBrightness,
-                maxBrightness: visualizer.maxBrightness
+                maxValue: Double(VisualizerConstants.magnitudeLimit)
             )
             .frame(height: 75)
             .padding()

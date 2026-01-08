@@ -30,6 +30,8 @@ struct PlaylistView: View {
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.currentAccentHue) private var currentAccentHue
     @Environment(\.currentAccentSaturation) private var currentAccentSaturation
+    @Environment(\.currentLCDMinBrightness) private var currentLCDMinBrightness
+    @Environment(\.currentLCDMaxBrightness) private var currentLCDMaxBrightness
 
     @State private var visualizer = VisualizerDataSource()
     @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
@@ -59,6 +61,10 @@ struct PlaylistView: View {
                 .lcdAccentColor(
                     hue: currentAccentHue,
                     saturation: currentAccentSaturation
+                )
+                .lcdBrightness(
+                    min: currentLCDMinBrightness,
+                    max: currentLCDMaxBrightness
                 )
 
                 // Siri tip

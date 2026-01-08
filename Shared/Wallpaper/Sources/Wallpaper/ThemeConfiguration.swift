@@ -16,6 +16,8 @@ public final class ThemeConfiguration {
     private let accentHueOverrideKey = "wallpaper.accentHueOverride"
     private let accentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
     private let materialTintOverrideKey = "wallpaper.materialTintOverride"
+    private let lcdMinBrightnessKey = "wallpaper.lcdMinBrightness"
+    private let lcdMaxBrightnessKey = "wallpaper.lcdMaxBrightness"
     private let defaultThemeID = "wxyc_gradient"
 
     // MARK: - Dependencies
@@ -82,6 +84,22 @@ public final class ThemeConfiguration {
         return theme.manifest.materialTint
     }
 
+    // MARK: - LCD Brightness Settings
+
+    /// Minimum brightness for LCD segments (applied to top segments). Default: 0.90.
+    public var lcdMinBrightness: Double = 0.90 {
+        didSet {
+            defaults.set(lcdMinBrightness, forKey: lcdMinBrightnessKey)
+        }
+    }
+
+    /// Maximum brightness for LCD segments (applied to bottom segments). Default: 1.0.
+    public var lcdMaxBrightness: Double = 1.0 {
+        didSet {
+            defaults.set(lcdMaxBrightness, forKey: lcdMaxBrightnessKey)
+        }
+    }
+
     /// Returns the effective accent color, applying any overrides to the current theme's accent.
     public var effectiveAccentColor: AccentColor {
         guard let theme = registry.theme(for: selectedThemeID) else {
@@ -121,6 +139,14 @@ public final class ThemeConfiguration {
         if defaults.object(forKey: materialTintOverrideKey) != nil {
             self.materialTintOverride = defaults.double(forKey: materialTintOverrideKey)
         }
+
+        // Load LCD brightness settings
+        if defaults.object(forKey: lcdMinBrightnessKey) != nil {
+            self.lcdMinBrightness = defaults.double(forKey: lcdMinBrightnessKey)
+        }
+        if defaults.object(forKey: lcdMaxBrightnessKey) != nil {
+            self.lcdMaxBrightness = defaults.double(forKey: lcdMaxBrightnessKey)
+        }
     }
 
     public func reset() {
@@ -128,6 +154,8 @@ public final class ThemeConfiguration {
         accentHueOverride = nil
         accentSaturationOverride = nil
         materialTintOverride = nil
+        lcdMinBrightness = 0.90
+        lcdMaxBrightness = 1.0
         registry.themes.forEach { $0.parameterStore.reset() }
     }
 

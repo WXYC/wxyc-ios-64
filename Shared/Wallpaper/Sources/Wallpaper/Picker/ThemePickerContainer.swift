@@ -95,6 +95,8 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.currentMaterialTint, effectiveMaterialTint)
                     .environment(\.currentAccentHue, effectiveAccentHue)
                     .environment(\.currentAccentSaturation, effectiveAccentSaturation)
+                    .environment(\.currentLCDMinBrightness, configuration.lcdMinBrightness)
+                    .environment(\.currentLCDMaxBrightness, configuration.lcdMaxBrightness)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)
                     .offset(y: pickerState.isActive ? 16 : 0)

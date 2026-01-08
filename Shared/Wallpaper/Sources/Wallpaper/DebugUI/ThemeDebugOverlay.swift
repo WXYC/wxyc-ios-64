@@ -67,6 +67,9 @@ private struct ThemeDebugPopoverContent: View {
                     .labelsHidden()
                 }
 
+                // LCD brightness controls (independent of theme)
+                LCDBrightnessControls(configuration: configuration)
+
                 if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
                     // Accent color controls
                     AccentColorControls(configuration: configuration, theme: theme)
@@ -215,6 +218,48 @@ private struct MaterialTintControls: View {
             return Color.white.opacity(tint)
         } else {
             return Color.black.opacity(-tint)
+        }
+    }
+}
+
+/// Controls for adjusting the LCD visualizer brightness.
+private struct LCDBrightnessControls: View {
+    @Bindable var configuration: ThemeConfiguration
+
+    private let defaultMinBrightness = 0.90
+    private let defaultMaxBrightness = 1.0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("LCD Brightness")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Min: \(configuration.lcdMinBrightness, format: .number.precision(.fractionLength(2)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: $configuration.lcdMinBrightness, in: 0...1.5)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Max: \(configuration.lcdMaxBrightness, format: .number.precision(.fractionLength(2)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: $configuration.lcdMaxBrightness, in: 0...1.5)
+            }
+
+            Text("Min applied to top, max to bottom segments")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if configuration.lcdMinBrightness != defaultMinBrightness ||
+               configuration.lcdMaxBrightness != defaultMaxBrightness {
+                Button("Reset to Default") {
+                    configuration.lcdMinBrightness = defaultMinBrightness
+                    configuration.lcdMaxBrightness = defaultMaxBrightness
+                }
+                .font(.caption)
+            }
         }
     }
 }

@@ -32,25 +32,21 @@ struct LCDSpectrumAnalyzerView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.lcdAccentHue) private var hue
     @Environment(\.lcdAccentSaturation) private var saturation
-    
+    @Environment(\.lcdMinBrightness) private var minBrightness
+    @Environment(\.lcdMaxBrightness) private var maxBrightness
+
     let data: [BarData]
     let segmentsPerBar: Int
     let maxValue: Double
-    let minBrightness: Double
-    let maxBrightness: Double
 
     init(
         data: [BarData],
         maxValue: Double,
-        segmentsPerBar: Int = 8,
-        minBrightness: Double = 0.80,
-        maxBrightness: Double = 1.0
+        segmentsPerBar: Int = 8
     ) {
         self.data = data
         self.maxValue = maxValue
         self.segmentsPerBar = segmentsPerBar
-        self.minBrightness = minBrightness
-        self.maxBrightness = maxBrightness
     }
     
     public var body: some View {
@@ -78,7 +74,7 @@ struct LCDSpectrumAnalyzerView: View {
             for (barIndex, item) in data.enumerated() {
                 let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
                 let x = drawingRect.minX + CGFloat(barIndex) * (barWidth + horizontalGap)
-                
+            
                 for segmentIndex in 0..<segmentsPerBar {
                     // Determine if this segment is active
                     let isActive: Bool

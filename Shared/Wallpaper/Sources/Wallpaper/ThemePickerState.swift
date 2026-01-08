@@ -107,6 +107,16 @@ private struct CurrentAccentSaturationKey: EnvironmentKey {
     static let defaultValue: Double = 0.75
 }
 
+/// Environment key for the current LCD minimum brightness.
+private struct CurrentLCDMinBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 0.90
+}
+
+/// Environment key for the current LCD maximum brightness.
+private struct CurrentLCDMaxBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 1.0
+}
+
 public extension EnvironmentValues {
     var isThemePickerActive: Bool {
         get { self[ThemePickerActiveKey.self] }
@@ -156,6 +166,18 @@ public extension EnvironmentValues {
     var currentAccentSaturation: Double {
         get { self[CurrentAccentSaturationKey.self] }
         set { self[CurrentAccentSaturationKey.self] = newValue }
+    }
+
+    /// The current LCD minimum brightness setting.
+    var currentLCDMinBrightness: Double {
+        get { self[CurrentLCDMinBrightnessKey.self] }
+        set { self[CurrentLCDMinBrightnessKey.self] = newValue }
+    }
+
+    /// The current LCD maximum brightness setting.
+    var currentLCDMaxBrightness: Double {
+        get { self[CurrentLCDMaxBrightnessKey.self] }
+        set { self[CurrentLCDMaxBrightnessKey.self] = newValue }
     }
 }
 
