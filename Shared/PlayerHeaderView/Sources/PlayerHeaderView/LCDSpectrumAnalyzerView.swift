@@ -34,6 +34,7 @@ struct LCDSpectrumAnalyzerView: View {
     @Environment(\.lcdAccentSaturation) private var saturation
     @Environment(\.lcdMinBrightness) private var minBrightness
     @Environment(\.lcdMaxBrightness) private var maxBrightness
+    @Environment(\.lcdBrightnessOffset) private var brightnessOffset
 
     let data: [BarData]
     let segmentsPerBar: Int
@@ -127,11 +128,14 @@ struct LCDSpectrumAnalyzerView: View {
     }
     
     /// Calculates brightness multiplier based on segment position (0 = bottom, segmentsPerBar-1 = top)
-    /// Returns a value from minBrightness at top to maxBrightness at bottom for a gradient effect
+    /// Returns a value from minBrightness at top to maxBrightness at bottom for a gradient effect.
+    /// The brightness offset is applied to both min and max values.
     private func brightnessMultiplier(for segmentIndex: Int) -> Double {
-        let brightnessSpan = maxBrightness - minBrightness
+        let effectiveMin = minBrightness + brightnessOffset
+        let effectiveMax = maxBrightness + brightnessOffset
+        let brightnessSpan = effectiveMax - effectiveMin
         let progress = Double(segmentIndex) / Double(max(segmentsPerBar - 1, 1))
-        return maxBrightness - (brightnessSpan * progress)
+        return effectiveMax - (brightnessSpan * progress)
     }
     
     private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {

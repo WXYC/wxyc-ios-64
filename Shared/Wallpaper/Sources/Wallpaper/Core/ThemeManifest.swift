@@ -32,6 +32,20 @@ public struct ThemeManifest: Codable, Sendable {
     /// Range: -1.0 to 1.0, where 0.0 is no tint.
     public let materialTint: Double
 
+    /// Offset applied to LCD brightness values.
+    /// Positive values increase brightness, negative values decrease it.
+    /// Applied to both min and max brightness. Range: -0.5 to 0.5, default 0.0.
+    private let _lcdBrightnessOffset: Double?
+
+    /// Effective LCD brightness offset, defaulting to 0.0 if not specified.
+    public var lcdBrightnessOffset: Double { _lcdBrightnessOffset ?? 0.0 }
+
+    enum CodingKeys: String, CodingKey {
+        case id, displayName, version, renderer, parameters, shaderArguments
+        case foreground, accent, appIconName, materialWeight, buttonStyle, materialTint
+        case _lcdBrightnessOffset = "lcdBrightnessOffset"
+    }
+
     public init(
         id: String,
         displayName: String,
@@ -44,7 +58,8 @@ public struct ThemeManifest: Codable, Sendable {
         appIconName: String? = nil,
         materialWeight: MaterialWeight = .thin,
         buttonStyle: ButtonStyle = .colored,
-        materialTint: Double = 0.0
+        materialTint: Double = 0.0,
+        lcdBrightnessOffset: Double = 0.0
     ) {
         self.id = id
         self.displayName = displayName
@@ -58,6 +73,7 @@ public struct ThemeManifest: Codable, Sendable {
         self.materialWeight = materialWeight
         self.buttonStyle = buttonStyle
         self.materialTint = materialTint
+        self._lcdBrightnessOffset = lcdBrightnessOffset
     }
 }
 

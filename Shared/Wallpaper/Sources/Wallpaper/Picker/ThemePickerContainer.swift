@@ -61,6 +61,15 @@ public struct ThemePickerContainer<Content: View>: View {
         }
     }
 
+    /// LCD brightness offset - interpolated during picker transitions, otherwise from configuration (respects overrides).
+    private var effectiveLCDBrightnessOffset: Double {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            transition.interpolatedLCDBrightnessOffset
+        } else {
+            configuration.effectiveLCDBrightnessOffset
+        }
+    }
+
     public init(
         configuration: ThemeConfiguration,
         pickerState: ThemePickerState,
@@ -97,6 +106,7 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.currentAccentSaturation, effectiveAccentSaturation)
                     .environment(\.currentLCDMinBrightness, configuration.lcdMinBrightness)
                     .environment(\.currentLCDMaxBrightness, configuration.lcdMaxBrightness)
+                    .environment(\.currentLCDBrightnessOffset, effectiveLCDBrightnessOffset)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)
                     .offset(y: pickerState.isActive ? 16 : 0)

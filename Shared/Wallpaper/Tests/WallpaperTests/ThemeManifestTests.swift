@@ -69,7 +69,8 @@ struct ThemeManifestTests {
                 "foreground": "light",
                 "accent": { "hue": 23, "saturation": 0.75 },
                 "appIconName": null,
-                "materialWeight": "\(weight.rawValue)"
+                "materialWeight": "\(weight.rawValue)",
+                "materialTint": 0.0
             }
             """
             let data = Data(json.utf8)

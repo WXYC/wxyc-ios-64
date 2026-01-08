@@ -18,6 +18,7 @@ public final class ThemeConfiguration {
     private let materialTintOverrideKey = "wallpaper.materialTintOverride"
     private let lcdMinBrightnessKey = "wallpaper.lcdMinBrightness"
     private let lcdMaxBrightnessKey = "wallpaper.lcdMaxBrightness"
+    private let lcdBrightnessOffsetOverrideKey = "wallpaper.lcdBrightnessOffsetOverride"
     private let defaultThemeID = "wxyc_gradient"
 
     // MARK: - Dependencies
@@ -100,6 +101,28 @@ public final class ThemeConfiguration {
         }
     }
 
+    /// Optional LCD brightness offset override (-0.5 to 0.5). When nil, uses the theme's default.
+    public var lcdBrightnessOffsetOverride: Double? {
+        didSet {
+            if let offset = lcdBrightnessOffsetOverride {
+                defaults.set(offset, forKey: lcdBrightnessOffsetOverrideKey)
+            } else {
+                defaults.removeObject(forKey: lcdBrightnessOffsetOverrideKey)
+            }
+        }
+    }
+
+    /// Returns the effective LCD brightness offset, applying any override to the current theme's offset.
+    public var effectiveLCDBrightnessOffset: Double {
+        if let override = lcdBrightnessOffsetOverride {
+            return override
+        }
+        guard let theme = registry.theme(for: selectedThemeID) else {
+            return 0.0
+        }
+        return theme.manifest.lcdBrightnessOffset
+    }
+
     /// Returns the effective accent color, applying any overrides to the current theme's accent.
     public var effectiveAccentColor: AccentColor {
         guard let theme = registry.theme(for: selectedThemeID) else {
@@ -147,6 +170,9 @@ public final class ThemeConfiguration {
         if defaults.object(forKey: lcdMaxBrightnessKey) != nil {
             self.lcdMaxBrightness = defaults.double(forKey: lcdMaxBrightnessKey)
         }
+        if defaults.object(forKey: lcdBrightnessOffsetOverrideKey) != nil {
+            self.lcdBrightnessOffsetOverride = defaults.double(forKey: lcdBrightnessOffsetOverrideKey)
+        }
     }
 
     public func reset() {
@@ -156,6 +182,7 @@ public final class ThemeConfiguration {
         materialTintOverride = nil
         lcdMinBrightness = 0.90
         lcdMaxBrightness = 1.0
+        lcdBrightnessOffsetOverride = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }
 

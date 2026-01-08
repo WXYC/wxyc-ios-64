@@ -67,10 +67,11 @@ private struct ThemeDebugPopoverContent: View {
                     .labelsHidden()
                 }
 
-                // LCD brightness controls (independent of theme)
-                LCDBrightnessControls(configuration: configuration)
+                // LCD brightness controls (offset is theme-dependent)
+                let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
+                LCDBrightnessControls(configuration: configuration, theme: theme)
 
-                if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
+                if let theme {
                     // Accent color controls
                     AccentColorControls(configuration: configuration, theme: theme)
 
@@ -225,9 +226,19 @@ private struct MaterialTintControls: View {
 /// Controls for adjusting the LCD visualizer brightness.
 private struct LCDBrightnessControls: View {
     @Bindable var configuration: ThemeConfiguration
+    let theme: LoadedTheme?
 
     private let defaultMinBrightness = 0.90
     private let defaultMaxBrightness = 1.0
+
+    private var offsetBinding: Binding<Double> {
+        Binding(
+            get: {
+                configuration.lcdBrightnessOffsetOverride ?? theme?.manifest.lcdBrightnessOffset ?? 0.0
+            },
+            set: { configuration.lcdBrightnessOffsetOverride = $0 }
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -248,15 +259,26 @@ private struct LCDBrightnessControls: View {
                 Slider(value: $configuration.lcdMaxBrightness, in: 0...1.5)
             }
 
-            Text("Min applied to top, max to bottom segments")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Offset: \(offsetBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: offsetBinding, in: -0.5...0.5)
+            }
+
+            Text("Offset adjusts both min and max values per-theme")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            if configuration.lcdMinBrightness != defaultMinBrightness ||
-               configuration.lcdMaxBrightness != defaultMaxBrightness {
+            let hasCustomValues = configuration.lcdMinBrightness != defaultMinBrightness ||
+                configuration.lcdMaxBrightness != defaultMaxBrightness ||
+                configuration.lcdBrightnessOffsetOverride != nil
+
+            if hasCustomValues {
                 Button("Reset to Default") {
                     configuration.lcdMinBrightness = defaultMinBrightness
                     configuration.lcdMaxBrightness = defaultMaxBrightness
+                    configuration.lcdBrightnessOffsetOverride = nil
                 }
                 .font(.caption)
             }

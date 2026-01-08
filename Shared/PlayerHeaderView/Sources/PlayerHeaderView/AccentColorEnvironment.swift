@@ -26,6 +26,10 @@ private struct LCDMaxBrightnessKey: EnvironmentKey {
     static let defaultValue: Double = 1.0
 }
 
+private struct LCDBrightnessOffsetKey: EnvironmentKey {
+    static let defaultValue: Double = 0.0
+}
+
 // MARK: - Environment Values Extension
 
 public extension EnvironmentValues {
@@ -52,6 +56,12 @@ public extension EnvironmentValues {
         get { self[LCDMaxBrightnessKey.self] }
         set { self[LCDMaxBrightnessKey.self] = newValue }
     }
+
+    /// Brightness offset applied to both min and max brightness values.
+    var lcdBrightnessOffset: Double {
+        get { self[LCDBrightnessOffsetKey.self] }
+        set { self[LCDBrightnessOffsetKey.self] = newValue }
+    }
 }
 
 // MARK: - View Extension
@@ -71,10 +81,12 @@ public extension View {
     /// - Parameters:
     ///   - min: Minimum brightness (applied to top segments). Default: 0.90.
     ///   - max: Maximum brightness (applied to bottom segments). Default: 1.0.
-    func lcdBrightness(min: Double, max: Double) -> some View {
+    ///   - offset: Offset applied to both min and max brightness. Default: 0.0.
+    func lcdBrightness(min: Double, max: Double, offset: Double = 0.0) -> some View {
         self
             .environment(\.lcdMinBrightness, min)
             .environment(\.lcdMaxBrightness, max)
+            .environment(\.lcdBrightnessOffset, offset)
     }
 }
 
