@@ -13,7 +13,7 @@
   "foreground": "light",
   "accent": {
     "hue": 23,
-    "saturation": 0.75
+    "saturation": 0.5
   },
   "appIconName": "RefractNoise",
   "materialWeight": "thin",
