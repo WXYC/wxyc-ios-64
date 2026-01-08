@@ -25,6 +25,7 @@ public struct ThemeManifest: Codable, Sendable {
     public let accent: AccentColor
     public let appIconName: String?
     public let materialWeight: MaterialWeight
+    public let buttonStyle: ButtonStyle
 
     public init(
         id: String,
@@ -36,7 +37,8 @@ public struct ThemeManifest: Codable, Sendable {
         foreground: ForegroundStyle,
         accent: AccentColor,
         appIconName: String? = nil,
-        materialWeight: MaterialWeight = .thin
+        materialWeight: MaterialWeight = .thin,
+        buttonStyle: ButtonStyle = .colored
     ) {
         self.id = id
         self.displayName = displayName
@@ -48,6 +50,7 @@ public struct ThemeManifest: Codable, Sendable {
         self.accent = accent
         self.appIconName = appIconName
         self.materialWeight = materialWeight
+        self.buttonStyle = buttonStyle
     }
 }
 
@@ -131,6 +134,11 @@ public enum RendererType: String, Codable, Sendable {
     case rawMetal
     case composite
     case swiftUI
+}
+
+public enum ButtonStyle: String, Codable, Sendable {
+    case colored   // Default: solid colored capsule backgrounds
+    case glass     // Glass effect, no color background
 }
 
 /// Configuration for a layer in a composite wallpaper.

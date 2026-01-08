@@ -16,5 +16,6 @@
     "saturation": 0.75
   },
   "appIconName": "Windowlight",
-  "materialWeight": "ultraThin"
+  "materialWeight": "ultraThin",
+  "buttonStyle": "glass"
 }
