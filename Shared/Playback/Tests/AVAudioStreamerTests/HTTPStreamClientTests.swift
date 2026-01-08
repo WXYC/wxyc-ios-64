@@ -26,12 +26,11 @@ struct HTTPStreamClientTests {
     @Test("Client can be initialized")
     func testInitialization() {
         let url = makeTestURL()
-        let delegate = MockHTTPStreamClientDelegate()
+        let config = makeConfiguration(url: url)
 
         let client = HTTPStreamClient(
             url: url,
-            configuration: makeConfiguration(url: url),
-            delegate: delegate
+            configuration: config
         )
 
         // Client should be created without error
@@ -52,6 +51,39 @@ struct HTTPStreamClientTests {
         #expect(String(describing: httpError).contains("404"))
         #expect(String(describing: timeout).contains("timeout"))
         #expect(String(describing: cancelled).contains("cancelled"))
+    }
+
+    @Test("HTTPStreamEvent cases are correct")
+    func testEventCases() {
+        let connected = HTTPStreamEvent.connected
+        let data = HTTPStreamEvent.data(Data([0x01, 0x02]))
+        let disconnected = HTTPStreamEvent.disconnected
+        let error = HTTPStreamEvent.error(HTTPStreamError.timeout)
+
+        // Verify event cases
+        if case .connected = connected {
+            // Success
+        } else {
+            Issue.record("Expected connected event")
+        }
+
+        if case .data(let receivedData) = data {
+            #expect(receivedData.count == 2)
+        } else {
+            Issue.record("Expected data event")
+        }
+
+        if case .disconnected = disconnected {
+            // Success
+        } else {
+            Issue.record("Expected disconnected event")
+        }
+
+        if case .error = error {
+            // Success
+        } else {
+            Issue.record("Expected error event")
+        }
     }
 }
 

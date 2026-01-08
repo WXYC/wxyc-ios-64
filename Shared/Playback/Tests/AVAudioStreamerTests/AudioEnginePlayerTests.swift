@@ -13,9 +13,8 @@ struct AudioEnginePlayerTests {
 
     @Test("Initial state is not playing with default volume")
     func testInitialization() {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         #expect(player.isPlaying == false)
         #expect(player.volume == 1.0)
@@ -25,9 +24,8 @@ struct AudioEnginePlayerTests {
 
     @Test("Volume can be set and retrieved")
     func testVolumeControl() {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         #expect(player.volume == 1.0)
 
@@ -43,37 +41,41 @@ struct AudioEnginePlayerTests {
 
     // MARK: - Play Tests
 
-    @Test("Play starts playback and notifies delegate")
+    @Test("Play starts playback and emits started event")
     func testPlay() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
 
         #expect(player.isPlaying == true)
 
-        // Wait for delegate notification
-        let event = try await delegate.eventStream.first(timeout: 2)
-        #expect(event == .didStartPlaying)
+        // Wait for event
+        let event = try await player.eventStream.first(timeout: 2)
+        guard case .started = event else {
+            Issue.record("Expected .started but got \(event)")
+            return
+        }
 
         player.stop()
     }
 
     @Test("Play is idempotent - calling twice doesn't double-notify")
     func testPlayIdempotent() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
         try player.play() // Second call should be no-op
 
         #expect(player.isPlaying == true)
 
-        // Should only receive one didStartPlaying event
-        let event = try await delegate.eventStream.first(timeout: 2)
-        #expect(event == .didStartPlaying)
+        // Should only receive one started event
+        let event = try await player.eventStream.first(timeout: 2)
+        guard case .started = event else {
+            Issue.record("Expected .started but got \(event)")
+            return
+        }
 
         // Give time for any spurious second event
         try await Task.sleep(for: .milliseconds(100))
@@ -83,32 +85,33 @@ struct AudioEnginePlayerTests {
 
     // MARK: - Pause Tests
 
-    @Test("Pause stops playback and notifies delegate")
+    @Test("Pause stops playback and emits paused event")
     func testPause() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
-        _ = try await delegate.eventStream.first(timeout: 2) // Consume didStartPlaying
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         player.pause()
 
         #expect(player.isPlaying == false)
 
-        let event = try await delegate.eventStream.first(timeout: 2)
-        #expect(event == .didPause)
+        let event = try await player.eventStream.first(timeout: 2)
+        guard case .paused = event else {
+            Issue.record("Expected .paused but got \(event)")
+            return
+        }
 
         player.stop()
     }
 
     @Test("Pause when not playing is a no-op")
     func testPauseWhenNotPlaying() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
-        // Should not crash or notify delegate
+        // Should not crash or emit event
         player.pause()
 
         #expect(player.isPlaying == false)
@@ -119,30 +122,31 @@ struct AudioEnginePlayerTests {
 
     // MARK: - Stop Tests
 
-    @Test("Stop stops playback and notifies delegate")
+    @Test("Stop stops playback and emits stopped event")
     func testStop() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
-        _ = try await delegate.eventStream.first(timeout: 2) // Consume didStartPlaying
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         player.stop()
 
         #expect(player.isPlaying == false)
 
-        let event = try await delegate.eventStream.first(timeout: 2)
-        #expect(event == .didStop)
+        let event = try await player.eventStream.first(timeout: 2)
+        guard case .stopped = event else {
+            Issue.record("Expected .stopped but got \(event)")
+            return
+        }
     }
 
     @Test("Stop when not running is a no-op")
     func testStopWhenNotRunning() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
-        // Should not crash or notify delegate
+        // Should not crash or emit event
         player.stop()
 
         #expect(player.isPlaying == false)
@@ -155,12 +159,11 @@ struct AudioEnginePlayerTests {
 
     @Test("Schedule buffer accepts PCM buffer")
     func testScheduleBuffer() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
-        _ = try await delegate.eventStream.first(timeout: 2) // Consume didStartPlaying
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         let buffer = TestAudioBufferFactory.makeSilentBuffer()
         player.scheduleBuffer(buffer)
@@ -175,62 +178,70 @@ struct AudioEnginePlayerTests {
 
     @Test("Stall is detected when buffers are exhausted while playing", .tags(.stall))
     func testStallDetection() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
-        _ = try await delegate.eventStream.first(timeout: 2) // Consume didStartPlaying
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         // Schedule a very short buffer that will finish quickly
         let shortBuffer = TestAudioBufferFactory.makeSilentBuffer(frameCount: 1024)
         player.scheduleBuffer(shortBuffer)
 
         // Wait for buffer to finish and stall to be detected
-        let event = try await delegate.eventStream.first(timeout: 5) { event in
-            event == .didStall
+        let event = try await player.eventStream.first(timeout: 5) { event in
+            if case .stalled = event { return true }
+            return false
         }
-        #expect(event == .didStall)
+        guard case .stalled = event else {
+            Issue.record("Expected .stalled but got \(event)")
+            return
+        }
 
         player.stop()
     }
 
     @Test("Recovery from stall when new buffer arrives", .tags(.stall))
     func testRecoveryFromStall() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
-        _ = try await delegate.eventStream.first(timeout: 2) // Consume didStartPlaying
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         // Schedule a very short buffer that will finish quickly
         let shortBuffer = TestAudioBufferFactory.makeSilentBuffer(frameCount: 1024)
         player.scheduleBuffer(shortBuffer)
 
         // Wait for stall
-        _ = try await delegate.eventStream.first(timeout: 5) { $0 == .didStall }
+        _ = try await player.eventStream.first(timeout: 5) { event in
+            if case .stalled = event { return true }
+            return false
+        }
 
         // Schedule a new buffer - should trigger recovery
         let recoveryBuffer = TestAudioBufferFactory.makeSilentBuffer()
         player.scheduleBuffer(recoveryBuffer)
 
-        let event = try await delegate.eventStream.first(timeout: 2) { event in
-            event == .didRecoverFromStall
+        let event = try await player.eventStream.first(timeout: 2) { event in
+            if case .recoveredFromStall = event { return true }
+            return false
         }
-        #expect(event == .didRecoverFromStall)
+        guard case .recoveredFromStall = event else {
+            Issue.record("Expected .recoveredFromStall but got \(event)")
+            return
+        }
 
         player.stop()
     }
 
     @Test("Requests more buffers when count drops below threshold", .tags(.stall))
     func testRequestMoreBuffers() async throws {
-        let delegate = MockAudioPlayerDelegate()
         let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format, delegate: delegate)
+        let player = AudioEnginePlayer(format: format)
 
         try player.play()
-        _ = try await delegate.eventStream.first(timeout: 2) // Consume didStartPlaying
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         // Schedule 3 short buffers - when they start completing,
         // the count will drop below 3 and trigger needsMoreBuffers
@@ -240,12 +251,45 @@ struct AudioEnginePlayerTests {
         }
 
         // Wait for needsMoreBuffers event
-        let event = try await delegate.eventStream.first(timeout: 5) { event in
-            event == .needsMoreBuffers
+        let event = try await player.eventStream.first(timeout: 5) { event in
+            if case .needsMoreBuffers = event { return true }
+            return false
         }
-        #expect(event == .needsMoreBuffers)
+        guard case .needsMoreBuffers = event else {
+            Issue.record("Expected .needsMoreBuffers but got \(event)")
+            return
+        }
 
         player.stop()
+    }
+}
+
+// MARK: - AsyncStream Extension for Testing
+
+extension AsyncStream where Element: Sendable {
+    /// Returns the first element matching predicate, or throws TimeoutError if timeout is reached.
+    func first(timeout: TimeInterval, where predicate: @escaping @Sendable (Element) -> Bool) async throws -> Element {
+        try await withThrowingTaskGroup(of: Element.self) { group in
+            group.addTask {
+                for await element in self {
+                    if predicate(element) {
+                        return element
+                    }
+                }
+                throw CancellationError()
+            }
+
+            group.addTask {
+                try await Task.sleep(for: .seconds(timeout))
+                throw TimeoutError()
+            }
+
+            guard let result = try await group.next() else {
+                throw TimeoutError()
+            }
+            group.cancelAll()
+            return result
+        }
     }
 }
 

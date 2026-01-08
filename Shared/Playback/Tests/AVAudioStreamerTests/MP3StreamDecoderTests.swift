@@ -13,8 +13,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Decoder can be created")
     func testDecoderCreation() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
         _ = decoder // Silence unused variable warning
         // Just verify creation doesn't crash
     }
@@ -27,8 +26,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Decode can be called without crash")
     func testDecodeCall() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         // Just send a tiny bit of data
         let data = Data([0xFF, 0xFB, 0x90, 0x00])
@@ -45,8 +43,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Decodes MP3 file and produces PCM buffers")
     func testDecodeMp3File() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
 
@@ -62,14 +59,13 @@ struct MP3StreamDecoderTests {
         }
 
         // Wait for at least one decoded buffer
-        let buffer = try await delegate.bufferStream.first(timeout: 120)
+        let buffer = try await decoder.decodedBufferStream.first(timeout: 120)
         #expect(buffer.frameLength > 0)
     }
 
     @Test("Output format is 44.1kHz stereo float32")
     func testOutputFormat() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
 
@@ -85,7 +81,7 @@ struct MP3StreamDecoderTests {
         }
 
         // Wait for a decoded buffer
-        let buffer = try await delegate.bufferStream.first(timeout: 120)
+        let buffer = try await decoder.decodedBufferStream.first(timeout: 120)
 
         let format = buffer.format
         #expect(format.sampleRate == 44100)
@@ -96,8 +92,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Reset clears state and allows reuse")
     func testReset() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
 
@@ -112,7 +107,7 @@ struct MP3StreamDecoderTests {
             try await Task.sleep(for: .milliseconds(100))
         }
 
-        _ = try await delegate.bufferStream.first(timeout: 120)
+        _ = try await decoder.decodedBufferStream.first(timeout: 120)
 
         // Reset the decoder
         decoder.reset()
@@ -120,9 +115,8 @@ struct MP3StreamDecoderTests {
         // Give time for reset to complete on the decoder queue
         try await Task.sleep(for: .milliseconds(500))
 
-        // Should be able to decode again from the start
-        let delegate2 = MockMP3DecoderDelegate()
-        let decoder2 = MP3StreamDecoder(delegate: delegate2)
+        // Should be able to decode again from the start with a new decoder
+        let decoder2 = MP3StreamDecoder()
 
         offset = 0
         while offset < min(mp3Data.count, 200000) {
@@ -133,7 +127,7 @@ struct MP3StreamDecoderTests {
             try await Task.sleep(for: .milliseconds(100))
         }
 
-        let buffer = try await delegate2.bufferStream.first(timeout: 120)
+        let buffer = try await decoder2.decodedBufferStream.first(timeout: 120)
         #expect(buffer.frameLength > 0)
     }
 
@@ -141,8 +135,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Waits for enough data before decoding")
     func testPartialData() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         // Send just a tiny bit of data - not enough to parse MP3 headers
         let tinyData = Data([0xFF, 0xFB]) // MP3 sync word fragment
@@ -158,8 +151,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Reports error for invalid non-MP3 data")
     func testInvalidData() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         // Create clearly invalid data (random bytes, not MP3)
         let invalidData = Data(repeating: 0x00, count: 4096)
@@ -177,8 +169,7 @@ struct MP3StreamDecoderTests {
 
     @Test("Decodes multiple chunks efficiently")
     func testMultipleChunks() async throws {
-        let delegate = MockMP3DecoderDelegate()
-        let decoder = MP3StreamDecoder(delegate: delegate)
+        let decoder = MP3StreamDecoder()
 
         let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
 
@@ -195,7 +186,7 @@ struct MP3StreamDecoderTests {
 
         // Wait for multiple decoded buffers
         var bufferCount = 0
-        for try await _ in delegate.bufferStream {
+        for try await _ in decoder.decodedBufferStream {
             bufferCount += 1
             if bufferCount >= 5 {
                 break
@@ -204,6 +195,37 @@ struct MP3StreamDecoderTests {
 
         #expect(bufferCount >= 5, "Should produce multiple PCM buffers from MP3 file")
     }
+}
+
+// MARK: - AsyncStream Extension for Testing
+
+extension AsyncStream where Element: Sendable {
+    /// Returns the first element, or throws TimeoutError if timeout is reached.
+    func first(timeout: TimeInterval) async throws -> Element {
+        try await withThrowingTaskGroup(of: Element.self) { group in
+            group.addTask {
+                for await element in self {
+                    return element
+                }
+                throw CancellationError()
+            }
+
+            group.addTask {
+                try await Task.sleep(for: .seconds(timeout))
+                throw TimeoutError()
+            }
+
+            guard let result = try await group.next() else {
+                throw TimeoutError()
+            }
+            group.cancelAll()
+            return result
+        }
+    }
+}
+
+struct TimeoutError: Error, CustomStringConvertible {
+    var description: String { "Operation timed out" }
 }
 
 #endif // !os(watchOS)

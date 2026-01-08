@@ -15,16 +15,19 @@ enum AudioPlayerError: Error {
 }
 
 /// Manages audio playback using AVAudioEngine
-final class AudioEnginePlayer: @unchecked Sendable {
+final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     private let engine: AVAudioEngine
     private let playerNode: AVAudioPlayerNode
     private let format: AVAudioFormat
     private let stateBox: PlayerStateBox
-    private weak var delegate: (any AudioPlayerDelegate)?
     private let schedulingQueue: DispatchQueue
 
     // Track scheduled buffers to know when to request more
     private let scheduledBufferCount: ScheduledBufferCount
+
+    // Event stream
+    let eventStream: AsyncStream<AudioPlayerEvent>
+    private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
 
     /// Stream of audio buffers from the render tap - yields at render rate (~60 times/sec)
     let renderTapStream: AsyncStream<AVAudioPCMBuffer>
@@ -39,21 +42,23 @@ final class AudioEnginePlayer: @unchecked Sendable {
         set { playerNode.volume = newValue }
     }
 
-    init(format: AVAudioFormat, delegate: any AudioPlayerDelegate) {
+    init(format: AVAudioFormat) {
         self.format = format
-        self.delegate = delegate
         self.engine = AVAudioEngine()
         self.playerNode = AVAudioPlayerNode()
         self.stateBox = PlayerStateBox()
         self.scheduledBufferCount = ScheduledBufferCount()
         self.schedulingQueue = DispatchQueue(label: "com.avaudiostreamer.scheduling", qos: .userInitiated)
 
+        // Initialize event stream
+        var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
+        self.eventStream = AsyncStream(bufferingPolicy: .unbounded) { eventCont = $0 }
+        self.eventContinuation = eventCont
+
         // Initialize render tap stream
-        var continuation: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { c in
-            continuation = c
-        }
-        self.renderTapContinuation = continuation
+        var renderCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { renderCont = $0 }
+        self.renderTapContinuation = renderCont
 
         setUpAudioEngine()
     }
@@ -62,8 +67,7 @@ final class AudioEnginePlayer: @unchecked Sendable {
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
 
-        // Install tap on main mixer to capture audio at render rate
-        // Use the player's format (44.1kHz) to match FFT processor expectations
+        // Install tap on player node to capture audio at render rate
         let continuation = renderTapContinuation
         playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             continuation.yield(buffer)
@@ -95,11 +99,7 @@ final class AudioEnginePlayer: @unchecked Sendable {
 
         playerNode.play()
         stateBox.isPlaying = true
-
-        notifyDelegate { [weak self] in
-            guard let self = self else { return }
-            self.delegate?.audioPlayerDidStartPlaying(self)
-        }
+        eventContinuation.yield(.started)
     }
 
     func pause() {
@@ -107,11 +107,7 @@ final class AudioEnginePlayer: @unchecked Sendable {
 
         playerNode.pause()
         stateBox.isPlaying = false
-
-        notifyDelegate { [weak self] in
-            guard let self = self else { return }
-            self.delegate?.audioPlayerDidPause(self)
-        }
+        eventContinuation.yield(.paused)
     }
 
     func stop() {
@@ -121,57 +117,38 @@ final class AudioEnginePlayer: @unchecked Sendable {
         engine.stop()
         stateBox.isPlaying = false
         scheduledBufferCount.reset()
-
-        notifyDelegate { [weak self] in
-            guard let self = self else { return }
-            self.delegate?.audioPlayerDidStop(self)
-        }
+        eventContinuation.yield(.stopped)
     }
 
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
         schedulingQueue.async { [weak self] in
-            guard let self = self else { return }
-            
+            guard let self else { return }
+
             // If we were stalled and now have a buffer, we're recovering
             if self.stateBox.isStalled {
                 self.stateBox.isStalled = false
-                self.notifyDelegate { [weak self] in
-                    guard let self = self else { return }
-                    self.delegate?.audioPlayerDidRecoverFromStall(self)
-                }
+                self.eventContinuation.yield(.recoveredFromStall)
             }
 
             self.playerNode.scheduleBuffer(buffer) { [weak self] in
-                guard let self = self else { return }
+                guard let self else { return }
 
                 // Buffer finished playing
                 self.scheduledBufferCount.decrement()
-                
+
                 // Detect stall: count hit zero while we were playing
                 if self.scheduledBufferCount.count == 0 && self.stateBox.isPlaying {
                     self.stateBox.isStalled = true
-                    self.notifyDelegate { [weak self] in
-                        guard let self = self else { return }
-                        self.delegate?.audioPlayerDidStall(self)
-                    }
+                    self.eventContinuation.yield(.stalled)
                 }
 
                 // Request more buffers if running low
                 if self.scheduledBufferCount.count < 3 && self.stateBox.isPlaying {
-                    self.notifyDelegate { [weak self] in
-                        guard let self = self else { return }
-                        self.delegate?.audioPlayerNeedsMoreBuffers(self)
-                    }
+                    self.eventContinuation.yield(.needsMoreBuffers)
                 }
             }
 
             self.scheduledBufferCount.increment()
-        }
-    }
-
-    private func notifyDelegate(_ closure: @Sendable @escaping () -> Void) {
-        Task { @MainActor in
-            closure()
         }
     }
 }
@@ -207,7 +184,7 @@ private final class PlayerStateBox: @unchecked Sendable {
             _isStalled = newValue
         }
     }
-    
+
     private var _isStalled = false
 }
 

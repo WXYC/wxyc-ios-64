@@ -74,22 +74,17 @@ struct StallRecoveryTests {
         // That's the correct behavior - successful reconnection resets the backoff.
     }
 
-    @Test("AVAudioStreamer stall transitions to stalled state")
-    func avAudioStreamerStallTransitionsToStalledState() async {
+    @Test("AVAudioStreamer starts in idle state")
+    func avAudioStreamerStartsInIdleState() async {
         #if !os(watchOS)
         let config = AVAudioStreamerConfiguration(
             url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         )
         let streamer = AVAudioStreamer(configuration: config)
 
-        // Need to be in playing state for stall to take effect
-        // Since we can't easily get to playing state without network, we test the mechanism:
-        // handleStall() only transitions if state == .playing
+        // Verify initial state
         #expect(streamer.state == .idle, "Should start in idle state")
-
-        // Calling handleStall() in idle state should be a no-op
-        streamer.handleStall()
-        #expect(streamer.state == .idle, "Stall in idle state should be no-op")
+        #expect(streamer.streamingState == .idle, "Streaming state should start as idle")
         #endif
     }
 
