@@ -200,12 +200,6 @@ public enum ShaderArgumentSource: String, Codable, Sendable {
     case displayScale
     case parameter
     case color
-    // Audio-reactive sources
-    case audioLevel      // Overall audio amplitude (0.0 - 1.0)
-    case audioBass       // Low frequency energy (0.0 - 1.0)
-    case audioMid        // Mid frequency energy (0.0 - 1.0)
-    case audioHigh       // High frequency energy (0.0 - 1.0)
-    case audioBeat       // Beat intensity (0.0 - 1.0, pulses on beats)
 }
 
 // MARK: - Parameter Definitions
