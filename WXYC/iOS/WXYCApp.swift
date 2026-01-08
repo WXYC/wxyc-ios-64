@@ -173,7 +173,7 @@ struct WXYCApp: App {
         setUpThermalAnalytics()
         setUpThemePickerAnalytics()
         PostHogSDK.shared.capture("app launch", properties: [
-            "has_used_theme_picker": ThemePickerUsage.hasEverUsed
+            "has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker
         ])
                     
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
@@ -371,7 +371,6 @@ struct WXYCApp: App {
     private func setUpThemePickerAnalytics() {
         let analytics = PostHogThemePickerAnalytics()
         appState.themePickerState.setAnalytics(analytics)
-        ThemeTipView.setAnalytics(analytics)
     }
 
     private func buildConfiguration() -> String {

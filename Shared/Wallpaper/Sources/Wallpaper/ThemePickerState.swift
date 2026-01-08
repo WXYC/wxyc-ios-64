@@ -107,10 +107,13 @@ public final class ThemePickerState {
     /// Current theme transition state during picker scrolling.
     public private(set) var themeTransition: ThemeTransition?
 
-    // MARK: - Analytics
+    // MARK: - Dependencies
 
     /// Analytics handler for theme picker events.
     private var analytics: ThemePickerAnalytics?
+
+    /// Persistence layer for picker state.
+    public var persistence = ThemePickerPersistence()
 
     /// When the picker was entered (for duration tracking).
     private var enteredAt: Date?
@@ -127,6 +130,17 @@ public final class ThemePickerState {
         self.analytics = analytics
     }
 
+    /// Records that the user dismissed the theme tip via the close button.
+    ///
+    /// This records both analytics and persistence. For auto-dismissal
+    /// (when user enters the picker), use `enter(currentThemeID:)` instead.
+    public func recordTipDismissedByUser() {
+        analytics?.record(ThemeTipDismissedEvent(
+            hadEverEnteredPicker: persistence.hasEverUsedPicker
+        ))
+        persistence.recordTipDismissed()
+    }
+
     // MARK: - Lifecycle
 
     /// Enters picker mode, centering on the currently selected theme.
@@ -141,10 +155,10 @@ public final class ThemePickerState {
         previousThemeID = currentThemeID
 
         // Record first-time usage for discoverability tracking
-        ThemePickerUsage.recordFirstUse()
+        persistence.recordPickerUsed()
 
         // Auto-dismiss the theme tip since user discovered the picker
-        ThemeTipView.recordDismissal()
+        persistence.recordTipDismissed()
 
         // Record analytics event
         analytics?.record(ThemePickerEnteredEvent(fromThemeID: currentThemeID))

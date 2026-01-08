@@ -68,28 +68,3 @@ public protocol ThemePickerAnalytics: AnyObject {
     func record(_ event: ThemeTipDismissedEvent)
 }
 
-// MARK: - Picker Usage Tracking
-
-/// Tracks whether the user has ever used the theme picker.
-///
-/// Used for discoverability analytics and to auto-dismiss the theme tip.
-public enum ThemePickerUsage {
-    private static let key = "themePicker.hasEverBeenUsed"
-
-    /// Whether the user has ever entered the theme picker.
-    public static var hasEverUsed: Bool {
-        UserDefaults.standard.bool(forKey: key)
-    }
-
-    /// Records that the user has used the picker for the first time.
-    public static func recordFirstUse() {
-        guard !hasEverUsed else { return }
-        UserDefaults.standard.set(true, forKey: key)
-    }
-
-    /// Resets the usage state (for testing via debug panel).
-    public static func resetState() {
-        UserDefaults.standard.removeObject(forKey: key)
-    }
-}
-

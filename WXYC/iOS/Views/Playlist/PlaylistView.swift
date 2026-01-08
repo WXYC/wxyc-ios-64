@@ -61,6 +61,10 @@ struct PlaylistView: View {
                         #endif
                     }
                 )
+                .lcdAccentColor(
+                    hue: appState.themeConfiguration.effectiveAccentColor.normalizedHue,
+                    saturation: appState.themeConfiguration.effectiveAccentColor.saturation
+                )
 
                 // Siri tip
                 if showingSiriTip {
@@ -73,7 +77,7 @@ struct PlaylistView: View {
                 // Theme tip
                 if showingThemeTip {
                     ThemeTipView(isVisible: $showingThemeTip) {
-                        ThemeTipView.recordDismissal()
+                        appState.themePickerState.recordTipDismissedByUser()
                     }
                     .padding(.vertical, 8)
                 }
@@ -118,14 +122,17 @@ struct PlaylistView: View {
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(
                 visualizer: visualizer,
-                selectedPlayerType: $selectedPlayerType
+                selectedPlayerType: $selectedPlayerType,
+                onResetThemePickerState: {
+                    appState.themePickerState.persistence.resetState()
+                }
             )
             .presentationDetents([.fraction(0.75)])
         }
         #endif
         .onAppear {
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
-            showingThemeTip = ThemeTipView.shouldShow()
+            showingThemeTip = appState.themePickerState.persistence.shouldShowTip
         }
         .task {
             guard let playlistService else { return }

@@ -23,13 +23,16 @@ public struct VisualizerDebugView: View {
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
+    private var onResetThemePickerState: (() -> Void)?
 
     public init(
         visualizer: VisualizerDataSource,
-        selectedPlayerType: Binding<PlayerControllerType>
+        selectedPlayerType: Binding<PlayerControllerType>,
+        onResetThemePickerState: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
+        self.onResetThemePickerState = onResetThemePickerState
     }
     
     public var body: some View {
@@ -62,16 +65,19 @@ public struct VisualizerDebugView: View {
                 // Thermal Throttling
                 ThermalThrottlingSection()
 
-                // Tip Views
+                // Tip Views & Picker Usage
                 Section {
-                    Button("Reset Tip Views") {
+                    Button("Reset Siri Tip") {
                         SiriTipView.resetState()
-                        ThemeTipView.resetState()
                     }
+                    Button("Reset Theme Picker State") {
+                        onResetThemePickerState?()
+                    }
+                    .disabled(onResetThemePickerState == nil)
                 } header: {
-                    Text("Tips")
+                    Text("Tips & Discoverability")
                 } footer: {
-                    Text("Resets Siri and Theme tip dismissal state so they appear again on next launch.")
+                    Text("Resets tip dismissal state and theme picker usage tracking for testing analytics.")
                 }
 
                 // Player Controller Selection
