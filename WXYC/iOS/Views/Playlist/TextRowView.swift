@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Wallpaper
 
 struct TextRowView: View {
     let text: String

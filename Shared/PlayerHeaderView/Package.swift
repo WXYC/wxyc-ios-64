@@ -19,6 +19,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "Playback", path: "../Playback"),
+        .package(name: "Wallpaper", path: "../Wallpaper"),
         .package(name: "WXUI", path: "../WXUI"),
     ],
     targets: [
@@ -26,6 +27,7 @@ let package = Package(
             name: "PlayerHeaderView",
             dependencies: [
                 "Playback",
+                "Wallpaper",
                 "WXUI",
             ]
         ),

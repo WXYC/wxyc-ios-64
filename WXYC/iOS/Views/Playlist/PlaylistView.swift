@@ -38,12 +38,6 @@ struct PlaylistView: View {
 
     @Environment(Singletonia.self) var appState
 
-    private var currentMaterial: Material {
-        let themeID = appState.themeConfiguration.selectedThemeID
-        let theme = ThemeRegistry.shared.theme(for: themeID)
-        return theme?.manifest.materialWeight.material ?? .thinMaterial
-    }
-            
     var body: some View {
         @Bindable var appState = appState
         
@@ -54,7 +48,6 @@ struct PlaylistView: View {
                 PlayerHeaderView(
                     visualizer: visualizer,
                     selectedPlayerType: $selectedPlayerType,
-                    material: currentMaterial,
                     onDebugTapped: {
                         #if DEBUG
                         showVisualizerDebug = true
