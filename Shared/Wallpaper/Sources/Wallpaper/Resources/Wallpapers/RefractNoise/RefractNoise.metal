@@ -12,7 +12,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float lod;  // 0.0 = minimum quality, 1.0 = full quality
 };
 
 struct VertexOut {
@@ -53,8 +53,8 @@ static inline float fbm(float3 pos, int octaves, float persistence, texture2d<fl
     return total / max(maxValue, 1e-5f);
 }
 
-static inline float getNoise(float3 p, float time, texture2d<float> noiseTex, sampler s) {
-    return 0.15f * fbm(p + 0.3f * time, 4, 0.3f, noiseTex, s);
+static inline float getNoise(float3 p, float time, int octaves, texture2d<float> noiseTex, sampler s) {
+    return 0.15f * fbm(p + 0.3f * time, octaves, 0.3f, noiseTex, s);
 }
 
 // === Camera ===
@@ -92,12 +92,13 @@ static inline float2 mapScene(
     float cubeHalfSize,
     float floorZ,
     float time,
+    int octaves,
     texture2d<float> noiseTex,
     sampler s
 ) {
     // Shape 0: cube (slightly noisy surface)
     float dCube = sdBox(pos, float3(cubeHalfSize));
-    dCube += getNoise(pos, time, noiseTex, s);
+    dCube += getNoise(pos, time, octaves, noiseTex, s);
     float2 res = float2(dCube, 0.0f);
 
     // Shape 1: backdrop plane (perpendicular to camera, behind the cube)
@@ -107,33 +108,32 @@ static inline float2 mapScene(
     return res;
 }
 
-static inline float sdScene(float3 pos, float cubeHalfSize, float floorZ, float time, texture2d<float> noiseTex, sampler s) {
-    return mapScene(pos, cubeHalfSize, floorZ, time, noiseTex, s).x;
+static inline float sdScene(float3 pos, float cubeHalfSize, float floorZ, float time, int octaves, texture2d<float> noiseTex, sampler s) {
+    return mapScene(pos, cubeHalfSize, floorZ, time, octaves, noiseTex, s).x;
 }
 
-static inline float3 calculateNormal(float3 p, float cubeHalfSize, float floorZ, float time, texture2d<float> noiseTex, sampler s) {
+static inline float3 calculateNormal(float3 p, float cubeHalfSize, float floorZ, float time, int octaves, texture2d<float> noiseTex, sampler s) {
     const float eps = 0.01f;
     float3 ex = float3(eps, 0.0f, 0.0f);
     float3 ey = float3(0.0f, eps, 0.0f);
     float3 ez = float3(0.0f, 0.0f, eps);
 
-    float gradX = sdScene(p + ex, cubeHalfSize, floorZ, time, noiseTex, s) - sdScene(p - ex, cubeHalfSize, floorZ, time, noiseTex, s);
-    float gradY = sdScene(p + ey, cubeHalfSize, floorZ, time, noiseTex, s) - sdScene(p - ey, cubeHalfSize, floorZ, time, noiseTex, s);
-    float gradZ = sdScene(p + ez, cubeHalfSize, floorZ, time, noiseTex, s) - sdScene(p - ez, cubeHalfSize, floorZ, time, noiseTex, s);
+    float gradX = sdScene(p + ex, cubeHalfSize, floorZ, time, octaves, noiseTex, s) - sdScene(p - ex, cubeHalfSize, floorZ, time, octaves, noiseTex, s);
+    float gradY = sdScene(p + ey, cubeHalfSize, floorZ, time, octaves, noiseTex, s) - sdScene(p - ey, cubeHalfSize, floorZ, time, octaves, noiseTex, s);
+    float gradZ = sdScene(p + ez, cubeHalfSize, floorZ, time, octaves, noiseTex, s) - sdScene(p - ez, cubeHalfSize, floorZ, time, octaves, noiseTex, s);
 
     return normalize(float3(gradX, gradY, gradZ));
 }
 
 // Returns (distance, shapeIndex)
-static inline float2 rayMarch(float3 rayOri, float3 rayDir, float cubeHalfSize, float floorZ, float time, texture2d<float> noiseTex, sampler s) {
+static inline float2 rayMarch(float3 rayOri, float3 rayDir, float cubeHalfSize, float floorZ, float time, int octaves, int maxSteps, texture2d<float> noiseTex, sampler s) {
     const float MAX_TRACE_DISTANCE = 20.0f;
-    const int MAX_STEPS = 64;
 
     float totalDistance = 0.0f;
     float shapeIndex = -1.0f;
 
-    for (int i = 0; i < MAX_STEPS; ++i) {
-        float2 res = mapScene(rayOri + totalDistance * rayDir, cubeHalfSize, floorZ, time, noiseTex, s);
+    for (int i = 0; i < maxSteps; ++i) {
+        float2 res = mapScene(rayOri + totalDistance * rayDir, cubeHalfSize, floorZ, time, octaves, noiseTex, s);
         float minHitDistance = max(0.0005f * totalDistance, 0.0005f);
 
         if (res.x < minHitDistance) {
@@ -202,13 +202,13 @@ static inline float3 skyColor(float3 dir, float time, texture2d<float> noiseTex,
     return clamp(col, 0.0f, 1.0f);
 }
 
-static inline float3 render(float3 rayOri, float3 rayDir, float cubeHalfSize, float floorZ, float time, texture2d<float> noiseTex, sampler s) {
+static inline float3 render(float3 rayOri, float3 rayDir, float cubeHalfSize, float floorZ, float time, int octaves, int maxSteps, texture2d<float> noiseTex, sampler s) {
     time /= 2.0;
     
     // Match Shadertoy's "sample then pow(2.2)" workflow (treat skyColor as sRGB-ish).
     float3 color = powr(skyColor(rayDir, time, noiseTex, s), float3(2.2f));
 
-    float2 res = rayMarch(rayOri, rayDir, cubeHalfSize, floorZ, time, noiseTex, s);
+    float2 res = rayMarch(rayOri, rayDir, cubeHalfSize, floorZ, time, octaves, maxSteps, noiseTex, s);
     int shapeIndex = int(res.y);
 
     if (shapeIndex >= 0) {
@@ -228,7 +228,7 @@ static inline float3 render(float3 rayOri, float3 rayDir, float cubeHalfSize, fl
             color = lit + spec;
         } else {
             // Cube: refractive
-            float3 normal = calculateNormal(pos, cubeHalfSize, floorZ, time, noiseTex, s);
+            float3 normal = calculateNormal(pos, cubeHalfSize, floorZ, time, octaves, noiseTex, s);
             float3 refractDir = refract(rayDir, normal, 0.8f);
 
             // If refracted ray goes backward (-Z), intersect the backdrop plane analytically and sample tiles.
@@ -258,6 +258,13 @@ fragment half4 refractNoiseFrag(
     texture2d<float> noiseTex [[texture(0)]],
     sampler s [[sampler(0)]]
 ) {
+    // Compute dynamic quality settings from LOD
+    // LOD 1.0 = 4 octaves, 64 steps (full quality)
+    // LOD 0.0 = 1 octave, 16 steps (minimum quality)
+    float lod = clamp(u.lod, 0.0f, 1.0f);
+    int octaves = int(mix(1.0f, 4.0f, lod) + 0.5f);
+    int maxSteps = int(mix(16.0f, 64.0f, lod) + 0.5f);
+
     float2 fragCoord = in.uv * u.resolution;
     float3 totalColor = float3(0.0f);
 
@@ -285,11 +292,10 @@ fragment half4 refractNoiseFrag(
         float2 offset = (float2(float(i) + 0.5f, float(k) + 0.5f) / float(AA)) - 0.5f;
         float2 uv = (fragCoord + offset - u.resolution * 0.5f) / u.resolution.x;
         float3 rayDir = normalize(viewMat * float3(uv, -1.0f));
-        totalColor += render(rayOri, rayDir, cubeHalfSize, floorZ, u.time, noiseTex, s);
+        totalColor += render(rayOri, rayDir, cubeHalfSize, floorZ, u.time, octaves, maxSteps, noiseTex, s);
     }
 
     totalColor /= float(AA * AA);
     totalColor = powr(totalColor, float3(0.45f)); // gamma-ish to output
     return half4(half3(totalColor), 1.0h);
 }
-

@@ -18,11 +18,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         var displayScale: Float
     }
 
-    /// Uniforms for rawMetal shaders (resolution, time, pad).
+    /// Uniforms for rawMetal shaders (resolution, time, lod).
     struct RawMetalUniforms {
         var resolution: SIMD2<Float>
         var time: Float
-        var pad: Float = 0
+        var lod: Float = 1.0
     }
 
     private var device: MTLDevice!
@@ -285,11 +285,13 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         // Get quality values from fixed profile or thermal controller
         let resolutionScale: Float
         let targetFPS: Int
+        let lod: Float
 
         if let profile = qualityProfile {
             // Use fixed quality profile
             resolutionScale = profile.scale
             targetFPS = Int(profile.fps)
+            lod = profile.lod
         } else {
             // Measure frame duration for FPS monitoring
             let frameStart = CACurrentMediaTime()
@@ -301,9 +303,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             }
             lastFrameStart = frameStart
 
-            // Get current thermal optimization values
-            resolutionScale = thermalController.currentScale
-            targetFPS = Int(thermalController.currentFPS)
+            // Get current thermal optimization values (using effective values which respect debug overrides)
+            resolutionScale = thermalController.effectiveScale
+            targetFPS = Int(thermalController.effectiveFPS)
+            lod = thermalController.effectiveLOD
 
             // Update FPS if changed
             if view.preferredFramesPerSecond != targetFPS {
@@ -327,19 +330,19 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         if resolutionScale < 1.0, let scaledTexture = scaledRenderTarget.renderTexture {
             // Render to scaled texture, then upscale to drawable
-            renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: t)
+            renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: t, lod: lod)
             blitToDrawable(cmd: cmd, texture: scaledTexture, drawable: drawable, view: view)
         } else {
             // Render directly to drawable
             guard let rpd = view.currentRenderPassDescriptor else { return }
-            renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: t, view: view)
+            renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: t, lod: lod, view: view)
         }
 
         cmd.present(drawable)
         cmd.commit()
     }
 
-    private func renderToScaledTexture(cmd: MTLCommandBuffer, texture: MTLTexture, time: Float) {
+    private func renderToScaledTexture(cmd: MTLCommandBuffer, texture: MTLTexture, time: Float, lod: Float) {
         let rpd = MTLRenderPassDescriptor()
         rpd.colorAttachments[0].texture = texture
         rpd.colorAttachments[0].loadAction = .clear
@@ -355,7 +358,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         if usesRawMetalMode {
             var uniforms = RawMetalUniforms(
                 resolution: SIMD2(Float(scaledSize.width), Float(scaledSize.height)),
-                time: time
+                time: time,
+                lod: lod
             )
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
             enc.setFragmentTexture(noiseTex, index: 0)
@@ -422,7 +426,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         enc.endEncoding()
     }
 
-    private func renderDirectly(cmd: MTLCommandBuffer, descriptor: MTLRenderPassDescriptor, drawableSize: CGSize, time: Float, view: MTKView) {
+    private func renderDirectly(cmd: MTLCommandBuffer, descriptor: MTLRenderPassDescriptor, drawableSize: CGSize, time: Float, lod: Float, view: MTKView) {
         guard let enc = cmd.makeRenderCommandEncoder(descriptor: descriptor) else { return }
 
         enc.setRenderPipelineState(pipeline)
@@ -430,7 +434,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         if usesRawMetalMode {
             var uniforms = RawMetalUniforms(
                 resolution: SIMD2(Float(drawableSize.width), Float(drawableSize.height)),
-                time: time
+                time: time,
+                lod: lod
             )
             enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
             enc.setFragmentTexture(noiseTex, index: 0)

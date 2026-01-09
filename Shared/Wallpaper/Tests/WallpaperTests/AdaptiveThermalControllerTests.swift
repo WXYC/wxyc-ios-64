@@ -53,6 +53,7 @@ struct AdaptiveThermalControllerTests {
 
         #expect(controller.currentFPS == 60.0)
         #expect(controller.currentScale == 1.0)
+        #expect(controller.currentLOD == 1.0)
         #expect(controller.activeShaderID == nil)
     }
 
@@ -65,6 +66,7 @@ struct AdaptiveThermalControllerTests {
         #expect(controller.activeShaderID == "test_shader")
         #expect(controller.currentFPS == 60.0)
         #expect(controller.currentScale == 1.0)
+        #expect(controller.currentLOD == 1.0)
     }
 
     @Test("Heating reduces quality")
@@ -89,6 +91,7 @@ struct AdaptiveThermalControllerTests {
 
         #expect(controller.currentFPS < 60.0)
         #expect(controller.currentScale < 1.0)
+        #expect(controller.currentLOD < 1.0)
     }
 
     @Test("Background flushes analytics")
@@ -132,6 +135,7 @@ struct AdaptiveThermalControllerTests {
 
         let throttledFPS = controller.currentFPS
         let throttledScale = controller.currentScale
+        let throttledLOD = controller.currentLOD
 
         // Background
         controller.handleBackgrounded()
@@ -148,6 +152,7 @@ struct AdaptiveThermalControllerTests {
         // Should have some recovery bonus
         #expect(controller.currentFPS >= throttledFPS)
         #expect(controller.currentScale >= throttledScale)
+        #expect(controller.currentLOD >= throttledLOD)
     }
 
     @Test("checkNow updates thermal state")
@@ -188,6 +193,7 @@ struct AdaptiveThermalControllerTests {
 
         #expect(controller.currentFPS == ThermalContext.lowPowerFPS)
         #expect(controller.currentScale == ThermalContext.lowPowerScale)
+        #expect(controller.currentLOD == ThermalProfile.lodRange.lowerBound)
     }
 
     @Test("Charging suppresses profile persistence")
@@ -217,7 +223,7 @@ struct AdaptiveThermalControllerTests {
         #expect(defaults.data(forKey: key) == nil)
     }
 
-    @Test("Critical FPS drops scale but keeps FPS target high")
+    @Test("Critical FPS drops LOD and scale but keeps FPS target high")
     func criticalFPSDropsScale() async {
         let context = MockThermalContext(thermalState: .nominal)
         let controller = makeController(context: context)
@@ -227,17 +233,19 @@ struct AdaptiveThermalControllerTests {
         // Start at max quality
         #expect(controller.currentFPS == 60.0)
         #expect(controller.currentScale == 1.0)
+        #expect(controller.currentLOD == 1.0)
 
         // Report critical FPS (< 25) - GPU can't keep up
         controller.reportMeasuredFPS(15.0)
 
-        // Should drop scale to reduce workload, but keep FPS target high
+        // Should drop LOD and scale to reduce workload, but keep FPS target high
         #expect(controller.currentFPS == 60.0)  // Keep high - we want smooth animation
         #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)  // Drop scale
+        #expect(controller.currentLOD == ThermalProfile.lodRange.lowerBound)  // Drop LOD
         #expect(controller.currentMomentum == 1.0)
     }
 
-    @Test("Low FPS reduces scale when above minimum")
+    @Test("Low FPS reduces LOD first when above minimum")
     func lowFPSReducesScale() async {
         let context = MockThermalContext(thermalState: .nominal)
         let controller = makeController(context: context)
@@ -247,32 +255,35 @@ struct AdaptiveThermalControllerTests {
         // Start at max quality
         #expect(controller.currentFPS == 60.0)
         #expect(controller.currentScale == 1.0)
+        #expect(controller.currentLOD == 1.0)
 
         // Report low FPS (warning level, 25-50)
         controller.reportMeasuredFPS(40.0)
 
-        // Should reduce scale, keep FPS target high
+        // Should reduce LOD first (least perceptible), keep FPS target and scale high
         #expect(controller.currentFPS == 60.0)
-        #expect(controller.currentScale < 1.0)
+        #expect(controller.currentLOD < 1.0)
     }
 
-    @Test("Low FPS reduces FPS target when scale at minimum")
+    @Test("Low FPS reduces FPS target when LOD and scale at minimum")
     func lowFPSReducesFPSTargetAtMinScale() async {
         let context = MockThermalContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
 
-        // Force scale to minimum first
-        controller.reportMeasuredFPS(15.0)  // Critical - drops scale to min
+        // Force LOD and scale to minimum first
+        controller.reportMeasuredFPS(15.0)  // Critical - drops LOD and scale to min
+        #expect(controller.currentLOD == ThermalProfile.lodRange.lowerBound)
         #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)
         #expect(controller.currentFPS == 60.0)
 
-        // Now report low FPS again - scale can't go lower, so FPS should drop
+        // Now report low FPS again - LOD and scale can't go lower, so FPS should drop
         controller.reportMeasuredFPS(40.0)
 
-        // FPS target should be reduced since scale is at minimum
+        // FPS target should be reduced since LOD and scale are at minimum
         #expect(controller.currentFPS < 60.0)
+        #expect(controller.currentLOD == ThermalProfile.lodRange.lowerBound)
         #expect(controller.currentScale == ThermalProfile.scaleRange.lowerBound)
     }
 
@@ -298,10 +309,12 @@ struct AdaptiveThermalControllerTests {
 
         let throttledFPS = controller.currentFPS
         let throttledScale = controller.currentScale
+        let throttledLOD = controller.currentLOD
 
         // Ensure we've actually throttled down
         #expect(throttledFPS < 60.0)
         #expect(throttledScale < 1.0)
+        #expect(throttledLOD < 1.0)
 
         // Cool down progressively
         context.thermalState = .serious
@@ -319,5 +332,6 @@ struct AdaptiveThermalControllerTests {
         // Should have recovered some quality
         #expect(controller.currentFPS > throttledFPS)
         #expect(controller.currentScale > throttledScale)
+        #expect(controller.currentLOD > throttledLOD)
     }
 }

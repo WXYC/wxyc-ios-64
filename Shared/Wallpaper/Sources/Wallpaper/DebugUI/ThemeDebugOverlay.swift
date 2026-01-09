@@ -55,6 +55,7 @@ private struct ThemeDebugPopoverContent: View {
     @AppStorage("ThemeDebug.isMaterialExpanded") private var isMaterialExpanded = false
     @AppStorage("ThemeDebug.isParametersExpanded") private var isParametersExpanded = false
     @AppStorage("ThemeDebug.isShaderFeaturesExpanded") private var isShaderFeaturesExpanded = false
+    @AppStorage("ThemeDebug.isPerformanceExpanded") private var isPerformanceExpanded = false
 
     var body: some View {
         ScrollView {
@@ -130,6 +131,15 @@ private struct ThemeDebugPopoverContent: View {
                         theme: theme,
                         isExpanded: $isShaderFeaturesExpanded
                     )
+                }
+
+                // Performance controls (always visible)
+                DisclosureGroup(isExpanded: $isPerformanceExpanded) {
+                    PerformanceControls()
+                        .padding(.top, 8)
+                } label: {
+                    Text("Performance")
+                        .font(.headline)
                 }
 
                 Divider()
@@ -424,6 +434,136 @@ private struct ShaderDirectiveControlsDisclosure: View {
         return name
             .replacing("_", with: " ")
             .capitalized
+    }
+}
+
+/// Controls for debugging shader performance (LOD, scale, FPS overrides).
+private struct PerformanceControls: View {
+    private let thermalController = AdaptiveThermalController.shared
+
+    private var lodBinding: Binding<Float> {
+        Binding(
+            get: { thermalController.debugLODOverride ?? thermalController.currentLOD },
+            set: { thermalController.debugLODOverride = $0 }
+        )
+    }
+
+    private var scaleBinding: Binding<Float> {
+        Binding(
+            get: { thermalController.debugScaleOverride ?? thermalController.currentScale },
+            set: { thermalController.debugScaleOverride = $0 }
+        )
+    }
+
+    private var fpsBinding: Binding<Float> {
+        Binding(
+            get: { thermalController.debugFPSOverride ?? thermalController.currentFPS },
+            set: { thermalController.debugFPSOverride = $0 }
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Current thermal state display
+            HStack {
+                Text("Thermal:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(thermalStateLabel)
+                    .font(.caption)
+                    .foregroundStyle(thermalStateColor)
+                Spacer()
+                Text("Momentum: \(thermalController.currentMomentum, format: .number.precision(.fractionLength(2)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            // LOD slider
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("LOD: \(lodBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if thermalController.debugLODOverride != nil {
+                        Text("(override)")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                Slider(value: lodBinding, in: Float(ThermalProfile.lodRange.lowerBound)...Float(ThermalProfile.lodRange.upperBound))
+            }
+
+            // Scale slider
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Scale: \(scaleBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if thermalController.debugScaleOverride != nil {
+                        Text("(override)")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                Slider(value: scaleBinding, in: Float(ThermalProfile.scaleRange.lowerBound)...Float(ThermalProfile.scaleRange.upperBound))
+            }
+
+            // FPS slider
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("FPS: \(Int(fpsBinding.wrappedValue))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if thermalController.debugFPSOverride != nil {
+                        Text("(override)")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                Slider(value: fpsBinding, in: Float(ThermalProfile.fpsRange.lowerBound)...Float(ThermalProfile.fpsRange.upperBound), step: 1)
+            }
+
+            // Reset button
+            let hasOverrides =
+                thermalController.debugLODOverride != nil ||
+                thermalController.debugScaleOverride != nil ||
+                thermalController.debugFPSOverride != nil
+
+            if hasOverrides {
+                Button("Clear Overrides") {
+                    thermalController.debugLODOverride = nil
+                    thermalController.debugScaleOverride = nil
+                    thermalController.debugFPSOverride = nil
+                }
+                .font(.caption)
+            }
+
+            Text("Overrides bypass adaptive thermal optimization")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var thermalStateLabel: String {
+        switch thermalController.rawThermalState {
+        case .nominal: "Nominal"
+        case .fair: "Fair"
+        case .serious: "Serious"
+        case .critical: "Critical"
+        @unknown default: "Unknown"
+        }
+    }
+
+    private var thermalStateColor: Color {
+        switch thermalController.rawThermalState {
+        case .nominal: .green
+        case .fair: .yellow
+        case .serious: .orange
+        case .critical: .red
+        @unknown default: .gray
+        }
     }
 }
 #endif

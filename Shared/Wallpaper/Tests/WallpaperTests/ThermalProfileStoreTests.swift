@@ -21,13 +21,14 @@ struct ThermalProfileStoreTests {
         #expect(profile.shaderId == "new_shader")
         #expect(profile.fps == 60.0)
         #expect(profile.scale == 1.0)
+        #expect(profile.lod == 1.0)
     }
 
     @Test("Save and load roundtrip")
     func saveAndLoad() {
         let store = makeTestStore()
 
-        var profile = ThermalProfile(shaderId: "test_shader", fps: 45, scale: 0.8)
+        var profile = ThermalProfile(shaderId: "test_shader", fps: 45, scale: 0.8, lod: 0.7)
         profile.thermalMomentum = 0.3
         profile.sampleCount = 5
 
@@ -40,6 +41,7 @@ struct ThermalProfileStoreTests {
 
         #expect(loaded.fps == 45)
         #expect(loaded.scale == 0.8)
+        #expect(loaded.lod == 0.7)
         #expect(loaded.thermalMomentum == 0.3)
         #expect(loaded.sampleCount == 5)
     }

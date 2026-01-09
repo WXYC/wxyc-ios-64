@@ -54,6 +54,9 @@ public final class AdaptiveThermalController {
     /// Current render scale (0.5 - 1.0).
     public private(set) var currentScale: Float = 1.0
 
+    /// Current shader level of detail (0.0 - 1.0).
+    public private(set) var currentLOD: Float = 1.0
+
     /// Current thermal state from system (for debug display).
     public private(set) var rawThermalState: ProcessInfo.ThermalState = .nominal
 
@@ -62,6 +65,63 @@ public final class AdaptiveThermalController {
 
     /// Active shader ID.
     public private(set) var activeShaderID: String?
+
+    // MARK: - Debug Overrides
+
+    /// Debug override for LOD. When set, this value is used instead of adaptive optimization.
+    /// Set to nil to return to adaptive behavior.
+    public var debugLODOverride: Float? {
+        didSet {
+            #if DEBUG
+            if let lod = debugLODOverride {
+                UserDefaults.standard.set(lod, forKey: "wallpaper.debug.lodOverride")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.lodOverride")
+            }
+            #endif
+        }
+    }
+
+    /// Debug override for scale. When set, this value is used instead of adaptive optimization.
+    public var debugScaleOverride: Float? {
+        didSet {
+            #if DEBUG
+            if let scale = debugScaleOverride {
+                UserDefaults.standard.set(scale, forKey: "wallpaper.debug.scaleOverride")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.scaleOverride")
+            }
+            #endif
+        }
+    }
+
+    /// Debug override for FPS. When set, this value is used instead of adaptive optimization.
+    public var debugFPSOverride: Float? {
+        didSet {
+            #if DEBUG
+            if let fps = debugFPSOverride {
+                UserDefaults.standard.set(fps, forKey: "wallpaper.debug.fpsOverride")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.fpsOverride")
+            }
+            #endif
+        }
+    }
+
+    /// Effective LOD value, considering debug override.
+    public var effectiveLOD: Float {
+        debugLODOverride ?? currentLOD
+    }
+
+    /// Effective scale value, considering debug override.
+    public var effectiveScale: Float {
+        debugScaleOverride ?? currentScale
+    }
+
+    /// Effective FPS value, considering debug override.
+    public var effectiveFPS: Float {
+        debugFPSOverride ?? currentFPS
+    }
 
     // MARK: - Dependencies
 
@@ -129,6 +189,19 @@ public final class AdaptiveThermalController {
         self.optimizationInterval = optimizationInterval
         self.periodicFlushInterval = periodicFlushInterval
         self.backgroundThreshold = backgroundThreshold
+
+        // Load persisted debug overrides
+        #if DEBUG
+        if UserDefaults.standard.object(forKey: "wallpaper.debug.lodOverride") != nil {
+            self.debugLODOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.lodOverride")
+        }
+        if UserDefaults.standard.object(forKey: "wallpaper.debug.scaleOverride") != nil {
+            self.debugScaleOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.scaleOverride")
+        }
+        if UserDefaults.standard.object(forKey: "wallpaper.debug.fpsOverride") != nil {
+            self.debugFPSOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.fpsOverride")
+        }
+        #endif
     }
 
     /// Configures analytics for session tracking.
@@ -158,6 +231,7 @@ public final class AdaptiveThermalController {
         if let profile = currentProfile {
             currentFPS = profile.fps
             currentScale = profile.scale
+            currentLOD = profile.lod
         }
 
         startOptimizationLoop()
@@ -180,11 +254,17 @@ public final class AdaptiveThermalController {
             // Apply conservative cooldown bonus
             let fpsBonus = (ThermalProfile.fpsRange.upperBound - profile.fps) * maxCooldownBonus
             let scaleBonus = (ThermalProfile.scaleRange.upperBound - profile.scale) * maxCooldownBonus
+            let lodBonus = (ThermalProfile.lodRange.upperBound - profile.lod) * maxCooldownBonus
 
-            profile.update(fps: profile.fps + fpsBonus, scale: profile.scale + scaleBonus)
+            profile.update(
+                fps: profile.fps + fpsBonus,
+                scale: profile.scale + scaleBonus,
+                lod: profile.lod + lodBonus
+            )
             currentProfile = profile
             currentFPS = profile.fps
             currentScale = profile.scale
+            currentLOD = profile.lod
         }
 
         backgroundedAt = nil
@@ -219,38 +299,42 @@ public final class AdaptiveThermalController {
     /// Reports the measured FPS from the renderer.
     ///
     /// Call this periodically from the render loop when FPS measurements are available.
-    /// Directly reduces scale when FPS is below target - this is the primary optimization
+    /// Directly reduces LOD/scale when FPS is below target - this is the primary optimization
     /// mechanism for GPU-bound scenarios.
     ///
     /// - Parameter fps: The measured average FPS.
     public func reportMeasuredFPS(_ fps: Float) {
         let severity = FrameRateMonitor.severity(for: fps)
 
-        // Critical FPS (< 25): immediately drop to minimum scale
+        // Critical FPS (< 25): immediately drop to minimum LOD and scale
         if severity == .critical {
             forceCriticalThrottle()
             return
         }
 
         // Direct FPS-based optimization
-        // If FPS is below target, reduce scale first, then FPS if scale is at minimum
+        // If FPS is below target, reduce LOD first, then scale, then FPS
         let targetFPS = currentFPS
         if fps < targetFPS {
             let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
 
-            if currentScale > ThermalProfile.scaleRange.lowerBound {
-                // First: reduce scale (less perceptible)
+            if currentLOD > ThermalProfile.lodRange.lowerBound {
+                // First: reduce LOD (least perceptible)
+                let lodReduction = deficit * 0.15  // Up to 15% reduction per report
+                currentLOD = max(currentLOD - lodReduction, ThermalProfile.lodRange.lowerBound)
+            } else if currentScale > ThermalProfile.scaleRange.lowerBound {
+                // Second: reduce scale
                 let scaleReduction = deficit * 0.1  // Up to 10% reduction per report
                 currentScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
             } else {
-                // Scale at minimum: reduce FPS target to match reality
+                // LOD and scale at minimum: reduce FPS target to match reality
                 let fpsReduction = deficit * 5.0  // Up to 5 FPS reduction per report
                 currentFPS = max(currentFPS - fpsReduction, ThermalProfile.fpsRange.lowerBound)
             }
 
             // Update profile
             if var profile = currentProfile {
-                profile.update(fps: currentFPS, scale: currentScale)
+                profile.update(fps: currentFPS, scale: currentScale, lod: currentLOD)
                 currentProfile = profile
             }
 
@@ -261,17 +345,18 @@ public final class AdaptiveThermalController {
 
     /// Forces immediate aggressive throttling due to critical FPS.
     ///
-    /// Drops scale to minimum while keeping FPS target high. Low measured FPS
-    /// means the GPU can't keep up with the workload - reducing scale (fewer pixels)
+    /// Drops LOD and scale to minimum while keeping FPS target high. Low measured FPS
+    /// means the GPU can't keep up with the workload - reducing LOD/scale (less work)
     /// is the fix, not reducing FPS target.
     private func forceCriticalThrottle() {
-        // Drop scale to reduce GPU workload, keep FPS target high
+        // Drop LOD and scale to reduce GPU workload, keep FPS target high
+        currentLOD = ThermalProfile.lodRange.lowerBound  // minimum LOD
         currentScale = ThermalProfile.scaleRange.lowerBound  // 0.5 scale
         // Keep currentFPS unchanged - we want smooth animation
 
         // Update profile so we remember this shader struggles
         if var profile = currentProfile {
-            profile.update(fps: currentFPS, scale: currentScale)
+            profile.update(fps: currentFPS, scale: currentScale, lod: currentLOD)
             currentProfile = profile
 
             // Persist immediately - this shader needs aggressive settings
@@ -315,6 +400,7 @@ public final class AdaptiveThermalController {
         if context.isLowPowerMode {
             currentFPS = ThermalContext.lowPowerFPS
             currentScale = ThermalContext.lowPowerScale
+            currentLOD = ThermalProfile.lodRange.lowerBound
             rawThermalState = context.thermalState
             currentMomentum = 0
             // Don't update profile or persist - this is temporary
@@ -336,23 +422,25 @@ public final class AdaptiveThermalController {
         guard var profile = currentProfile else { return }
 
         // Optimize using effective momentum
-        var (newFPS, newScale) = optimizer.optimize(current: profile, momentum: effectiveMomentum)
+        var (newFPS, newScale, newLOD) = optimizer.optimize(current: profile, momentum: effectiveMomentum)
 
         // Apply gradual quality recovery when thermal is stable
         // This allows the profile to drift back toward max quality over time
         if effectiveMomentum < ThermalSignal.deadZone {
             newFPS = min(newFPS + Self.qualityRecoveryStep * 5, ThermalProfile.fpsRange.upperBound)
             newScale = min(newScale + Self.qualityRecoveryStep, ThermalProfile.scaleRange.upperBound)
+            newLOD = min(newLOD + Self.qualityRecoveryStep * 2, ThermalProfile.lodRange.upperBound)
         }
 
         // Update profile
-        profile.update(fps: newFPS, scale: newScale)
+        profile.update(fps: newFPS, scale: newScale, lod: newLOD)
         profile.thermalMomentum = signal.momentum
         currentProfile = profile
 
         // Update published values
         currentFPS = newFPS
         currentScale = newScale
+        currentLOD = newLOD
 
         // Record analytics event
         if let shaderID = activeShaderID {
