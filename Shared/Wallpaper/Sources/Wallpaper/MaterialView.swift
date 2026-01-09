@@ -40,9 +40,10 @@ public struct MaterialView: View {
         Rectangle()
             .fill(.clear)
             .background(
-                // Base blur
+                // Base blur - extend beyond bounds so blur is consistent at edges
                 Rectangle()
-                    .fill(.ultraThinMaterial) // keeps correct system blending
+                    .fill(.ultraThinMaterial)
+                    .padding(-blurRadius) // extend beyond visible bounds
                     .blur(radius: blurRadius)
             )
             .overlay(
@@ -54,6 +55,6 @@ public struct MaterialView: View {
             .clipShape(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
-            .compositingGroup() // improves blur consistency
+            .compositingGroup()
     }
 }
