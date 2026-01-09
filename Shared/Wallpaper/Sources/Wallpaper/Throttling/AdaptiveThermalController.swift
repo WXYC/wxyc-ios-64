@@ -296,6 +296,31 @@ public final class AdaptiveThermalController {
         performOptimizationTick()
     }
 
+    /// Resets the thermal profile for the current shader to default values.
+    ///
+    /// This removes the persisted profile and resets to max quality (60 FPS, 1.0 scale, 1.0 LOD).
+    /// Use this when you want a shader to re-learn its optimal thermal settings.
+    public func resetCurrentProfile() {
+        guard let shaderID = activeShaderID else { return }
+
+        // Remove persisted profile
+        store.remove(shaderId: shaderID)
+
+        // Create fresh default profile
+        let freshProfile = ThermalProfile(shaderId: shaderID)
+        currentProfile = freshProfile
+
+        // Reset to max quality
+        currentFPS = freshProfile.fps
+        currentScale = freshProfile.scale
+        currentLOD = freshProfile.lod
+
+        // Reset thermal signal
+        signal.reset()
+        currentMomentum = 0
+        fpsMomentumBoost = 0
+    }
+
     /// Reports the measured FPS from the renderer.
     ///
     /// Call this periodically from the render loop when FPS measurements are available.

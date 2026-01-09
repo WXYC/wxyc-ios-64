@@ -525,7 +525,7 @@ private struct PerformanceControls: View {
                 Slider(value: fpsBinding, in: Float(ThermalProfile.fpsRange.lowerBound)...Float(ThermalProfile.fpsRange.upperBound), step: 1)
             }
 
-            // Reset button
+            // Reset buttons
             let hasOverrides =
                 thermalController.debugLODOverride != nil ||
                 thermalController.debugScaleOverride != nil ||
@@ -540,7 +540,16 @@ private struct PerformanceControls: View {
                 .font(.caption)
             }
 
-            Text("Overrides bypass adaptive thermal optimization")
+            Divider()
+
+            // Reset learned profile button
+            Button("Reset Learned Profile") {
+                thermalController.resetCurrentProfile()
+            }
+            .font(.caption)
+            .foregroundStyle(.red)
+
+            Text("Removes persisted throttling values and resets to max quality")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
