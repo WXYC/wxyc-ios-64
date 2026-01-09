@@ -58,8 +58,9 @@ struct ThemeConfigurationTests {
         func loadsAccentOverrides() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
-            defaults.set(180.0, forKey: "wallpaper.accentHueOverride")
-            defaults.set(0.5, forKey: "wallpaper.accentSaturationOverride")
+            // Use per-theme keys for the default theme (wxyc_gradient)
+            defaults.set(180.0, forKey: "wallpaper.accentHueOverride.wxyc_gradient")
+            defaults.set(0.5, forKey: "wallpaper.accentSaturationOverride.wxyc_gradient")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
@@ -71,7 +72,8 @@ struct ThemeConfigurationTests {
         func loadsOverlayOpacityOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
-            defaults.set(0.5, forKey: "wallpaper.overlayOpacityOverride")
+            // Use per-theme key for the default theme (wxyc_gradient)
+            defaults.set(0.5, forKey: "wallpaper.overlayOpacityOverride.wxyc_gradient")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
@@ -327,31 +329,6 @@ struct ThemeConfigurationTests {
             // Verify it loads in a new instance
             let config2 = ThemeConfiguration(registry: registry, defaults: defaults)
             #expect(config2.lcdMinBrightness == 0.72)
-        }
-
-        @Test("Migrates legacy global brightness keys to per-theme keys")
-        func migratesLegacyBrightnessKeys() {
-            let registry = MockThemeRegistry.withTestThemes()
-            let defaults = makeTestDefaults()
-            // Set legacy global keys
-            defaults.set(0.85, forKey: "wallpaper.lcdMinBrightness")
-            defaults.set(1.15, forKey: "wallpaper.lcdMaxBrightness")
-
-            let config = ThemeConfiguration(registry: registry, defaults: defaults)
-
-            // Values should be loaded from legacy keys
-            #expect(config.lcdMinBrightness == 0.85)
-            #expect(config.lcdMaxBrightness == 1.15)
-
-            // Legacy keys should be removed after migration
-            #expect(defaults.object(forKey: "wallpaper.lcdMinBrightness") == nil)
-            #expect(defaults.object(forKey: "wallpaper.lcdMaxBrightness") == nil)
-
-            // Values should now be stored in per-theme keys
-            let minKey = "wallpaper.lcdMinBrightness.\(config.selectedThemeID)"
-            let maxKey = "wallpaper.lcdMaxBrightness.\(config.selectedThemeID)"
-            #expect(defaults.double(forKey: minKey) == 0.85)
-            #expect(defaults.double(forKey: maxKey) == 1.15)
         }
 
         @Test("Each theme remembers its own brightness settings")

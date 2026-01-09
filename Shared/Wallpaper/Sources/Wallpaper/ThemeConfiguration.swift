@@ -28,16 +28,6 @@ public final class ThemeConfiguration {
     private let storageKey = "wallpaper.selectedType.v3"
     private let defaultThemeID = "wxyc_gradient"
 
-    // Legacy global keys (for migration)
-    private let legacyLcdMinBrightnessKey = "wallpaper.lcdMinBrightness"
-    private let legacyLcdMaxBrightnessKey = "wallpaper.lcdMaxBrightness"
-
-    // Legacy global keys (for migration)
-    private let legacyAccentHueOverrideKey = "wallpaper.accentHueOverride"
-    private let legacyAccentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
-    private let legacyOverlayOpacityOverrideKey = "wallpaper.overlayOpacityOverride"
-    private let legacyLcdBrightnessOffsetOverrideKey = "wallpaper.lcdBrightnessOffsetOverride"
-
     // MARK: - Per-Theme Storage Keys
 
     private func accentHueOverrideKey(for themeID: String) -> String {
@@ -381,96 +371,46 @@ public final class ThemeConfiguration {
     // MARK: - Per-Theme Override Loading
 
     /// Loads overrides for a specific theme from UserDefaults.
-    /// Falls back to legacy global keys if per-theme keys don't exist (migration).
     private func loadOverrides(for themeID: String) {
         let hueKey = accentHueOverrideKey(for: themeID)
+        accentHueOverride = defaults.object(forKey: hueKey) != nil
+            ? defaults.double(forKey: hueKey)
+            : nil
+
         let satKey = accentSaturationOverrideKey(for: themeID)
+        accentSaturationOverride = defaults.object(forKey: satKey) != nil
+            ? defaults.double(forKey: satKey)
+            : nil
+
         let opacityKey = overlayOpacityOverrideKey(for: themeID)
+        overlayOpacityOverride = defaults.object(forKey: opacityKey) != nil
+            ? defaults.double(forKey: opacityKey)
+            : nil
+
         let offsetKey = lcdBrightnessOffsetOverrideKey(for: themeID)
+        lcdBrightnessOffsetOverride = defaults.object(forKey: offsetKey) != nil
+            ? defaults.double(forKey: offsetKey)
+            : nil
 
-        // Try per-theme keys first, fall back to legacy global keys for migration
-        if defaults.object(forKey: hueKey) != nil {
-            accentHueOverride = defaults.double(forKey: hueKey)
-        } else if defaults.object(forKey: legacyAccentHueOverrideKey) != nil {
-            // Migrate legacy value to per-theme storage
-            let value = defaults.double(forKey: legacyAccentHueOverrideKey)
-            accentHueOverride = value
-            defaults.removeObject(forKey: legacyAccentHueOverrideKey)
-        } else {
-            accentHueOverride = nil
-        }
-
-        if defaults.object(forKey: satKey) != nil {
-            accentSaturationOverride = defaults.double(forKey: satKey)
-        } else if defaults.object(forKey: legacyAccentSaturationOverrideKey) != nil {
-            let value = defaults.double(forKey: legacyAccentSaturationOverrideKey)
-            accentSaturationOverride = value
-            defaults.removeObject(forKey: legacyAccentSaturationOverrideKey)
-        } else {
-            accentSaturationOverride = nil
-        }
-
-        if defaults.object(forKey: opacityKey) != nil {
-            overlayOpacityOverride = defaults.double(forKey: opacityKey)
-        } else if defaults.object(forKey: legacyOverlayOpacityOverrideKey) != nil {
-            let value = defaults.double(forKey: legacyOverlayOpacityOverrideKey)
-            overlayOpacityOverride = value
-            defaults.removeObject(forKey: legacyOverlayOpacityOverrideKey)
-        } else {
-            overlayOpacityOverride = nil
-        }
-
-        if defaults.object(forKey: offsetKey) != nil {
-            lcdBrightnessOffsetOverride = defaults.double(forKey: offsetKey)
-        } else if defaults.object(forKey: legacyLcdBrightnessOffsetOverrideKey) != nil {
-            let value = defaults.double(forKey: legacyLcdBrightnessOffsetOverrideKey)
-            lcdBrightnessOffsetOverride = value
-            defaults.removeObject(forKey: legacyLcdBrightnessOffsetOverrideKey)
-        } else {
-            lcdBrightnessOffsetOverride = nil
-        }
-
-        // Blur radius override (no legacy migration needed)
         let blurKey = blurRadiusOverrideKey(for: themeID)
-        if defaults.object(forKey: blurKey) != nil {
-            blurRadiusOverride = defaults.double(forKey: blurKey)
-        } else {
-            blurRadiusOverride = nil
-        }
+        blurRadiusOverride = defaults.object(forKey: blurKey) != nil
+            ? defaults.double(forKey: blurKey)
+            : nil
 
-        // Overlay dark/light override (no legacy migration needed)
         let isDarkKey = overlayIsDarkOverrideKey(for: themeID)
-        if defaults.object(forKey: isDarkKey) != nil {
-            overlayIsDarkOverride = defaults.bool(forKey: isDarkKey)
-        } else {
-            overlayIsDarkOverride = nil
-        }
+        overlayIsDarkOverride = defaults.object(forKey: isDarkKey) != nil
+            ? defaults.bool(forKey: isDarkKey)
+            : nil
 
-        // LCD min brightness (migrate from legacy global key if needed)
         let minBrightnessKey = lcdMinBrightnessKey(for: themeID)
-        if defaults.object(forKey: minBrightnessKey) != nil {
-            lcdMinBrightness = defaults.double(forKey: minBrightnessKey)
-        } else if defaults.object(forKey: legacyLcdMinBrightnessKey) != nil {
-            // Migrate legacy value to per-theme storage
-            let value = defaults.double(forKey: legacyLcdMinBrightnessKey)
-            lcdMinBrightness = value
-            defaults.removeObject(forKey: legacyLcdMinBrightnessKey)
-        } else {
-            lcdMinBrightness = Self.defaultLCDMinBrightness
-        }
+        lcdMinBrightness = defaults.object(forKey: minBrightnessKey) != nil
+            ? defaults.double(forKey: minBrightnessKey)
+            : Self.defaultLCDMinBrightness
 
-        // LCD max brightness (migrate from legacy global key if needed)
         let maxBrightnessKey = lcdMaxBrightnessKey(for: themeID)
-        if defaults.object(forKey: maxBrightnessKey) != nil {
-            lcdMaxBrightness = defaults.double(forKey: maxBrightnessKey)
-        } else if defaults.object(forKey: legacyLcdMaxBrightnessKey) != nil {
-            // Migrate legacy value to per-theme storage
-            let value = defaults.double(forKey: legacyLcdMaxBrightnessKey)
-            lcdMaxBrightness = value
-            defaults.removeObject(forKey: legacyLcdMaxBrightnessKey)
-        } else {
-            lcdMaxBrightness = Self.defaultLCDMaxBrightness
-        }
+        lcdMaxBrightness = defaults.object(forKey: maxBrightnessKey) != nil
+            ? defaults.double(forKey: maxBrightnessKey)
+            : Self.defaultLCDMaxBrightness
     }
 
     // MARK: - Initialization
