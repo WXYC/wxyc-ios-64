@@ -324,7 +324,7 @@ public final class AdaptiveThermalController {
     /// Reports the measured FPS from the renderer.
     ///
     /// Call this periodically from the render loop when FPS measurements are available.
-    /// Directly reduces LOD/scale when FPS is below target - this is the primary optimization
+    /// Reduces LOD/scale/FPS proportionally when below target - this is the primary optimization
     /// mechanism for GPU-bound scenarios.
     ///
     /// - Parameter fps: The measured average FPS.
@@ -337,25 +337,27 @@ public final class AdaptiveThermalController {
             return
         }
 
-        // Direct FPS-based optimization
-        // If FPS is below target, reduce LOD first, then scale, then FPS
+        // Proportional FPS-based optimization
+        // Reduce all three axes together using optimizer weights
         let targetFPS = currentFPS
         if fps < targetFPS {
             let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
 
-            if currentLOD > ThermalProfile.lodRange.lowerBound {
-                // First: reduce LOD (least perceptible)
-                let lodReduction = deficit * 0.15  // Up to 15% reduction per report
-                currentLOD = max(currentLOD - lodReduction, ThermalProfile.lodRange.lowerBound)
-            } else if currentScale > ThermalProfile.scaleRange.lowerBound {
-                // Second: reduce scale
-                let scaleReduction = deficit * 0.1  // Up to 10% reduction per report
-                currentScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
-            } else {
-                // LOD and scale at minimum: reduce FPS target to match reality
-                let fpsReduction = deficit * 5.0  // Up to 5 FPS reduction per report
-                currentFPS = max(currentFPS - fpsReduction, ThermalProfile.fpsRange.lowerBound)
-            }
+            // Apply reductions proportionally using optimizer weights (LOD 20%, Scale 60%, FPS 20%)
+            // Scale the deficit so moderate drops don't over-throttle
+            let adjustedDeficit = deficit * 0.3  // Dampen to avoid oscillation
+
+            // Reduce LOD (20% weight, affects shader complexity)
+            let lodReduction = adjustedDeficit * ThermalOptimizer.lodWeight * ThermalOptimizer.maxLODStep * 5
+            currentLOD = max(currentLOD - lodReduction, ThermalProfile.lodRange.lowerBound)
+
+            // Reduce scale (60% weight, affects pixel count)
+            let scaleReduction = adjustedDeficit * ThermalOptimizer.scaleWeight * ThermalOptimizer.maxScaleStep * 5
+            currentScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
+
+            // Reduce FPS target (20% weight, last resort)
+            let fpsReduction = adjustedDeficit * ThermalOptimizer.fpsWeight * ThermalOptimizer.maxFPSStep * 5
+            currentFPS = max(currentFPS - fpsReduction, ThermalProfile.fpsRange.lowerBound)
 
             // Update profile
             if var profile = currentProfile {

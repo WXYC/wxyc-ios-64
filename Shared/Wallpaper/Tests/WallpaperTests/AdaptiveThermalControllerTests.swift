@@ -245,8 +245,8 @@ struct AdaptiveThermalControllerTests {
         #expect(controller.currentMomentum == 1.0)
     }
 
-    @Test("Low FPS reduces LOD first when above minimum")
-    func lowFPSReducesScale() async {
+    @Test("Low FPS reduces all axes proportionally")
+    func lowFPSReducesProportionally() async {
         let context = MockThermalContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
@@ -260,9 +260,10 @@ struct AdaptiveThermalControllerTests {
         // Report low FPS (warning level, 25-50)
         controller.reportMeasuredFPS(40.0)
 
-        // Should reduce LOD first (least perceptible), keep FPS target and scale high
-        #expect(controller.currentFPS == 60.0)
+        // Should reduce all three axes proportionally (not just LOD)
         #expect(controller.currentLOD < 1.0)
+        #expect(controller.currentScale < 1.0)
+        #expect(controller.currentFPS < 60.0)
     }
 
     @Test("Low FPS reduces FPS target when LOD and scale at minimum")
