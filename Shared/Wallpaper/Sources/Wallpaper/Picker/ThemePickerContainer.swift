@@ -62,28 +62,26 @@ public struct ThemePickerContainer<Content: View>: View {
         }
     }
 
-    /// Accent hue - interpolated during picker transitions, otherwise from configuration.
-    /// Uses effective values which respect user overrides for the selected theme.
-    private var effectiveAccentHue: Double {
+    /// Interpolated accent color during picker transitions.
+    /// Uses RGB interpolation to avoid rainbow effects when transitioning between distant hues.
+    private var effectiveAccentColor: AccentColor {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromHue = configuration.effectiveAccentColor(for: transition.fromTheme.id).normalizedHue
-            let toHue = configuration.effectiveAccentColor(for: transition.toTheme.id).normalizedHue
-            return fromHue + (toHue - fromHue) * transition.progress
+            let fromColor = configuration.effectiveAccentColor(for: transition.fromTheme.id)
+            let toColor = configuration.effectiveAccentColor(for: transition.toTheme.id)
+            return fromColor.interpolated(to: toColor, progress: transition.progress)
         } else {
-            return configuration.effectiveAccentColor.normalizedHue
+            return configuration.effectiveAccentColor
         }
     }
 
-    /// Accent saturation - interpolated during picker transitions, otherwise from configuration.
-    /// Uses effective values which respect user overrides for the selected theme.
+    /// Accent hue (normalized 0.0-1.0) from interpolated accent color.
+    private var effectiveAccentHue: Double {
+        effectiveAccentColor.normalizedHue
+    }
+
+    /// Accent saturation from interpolated accent color.
     private var effectiveAccentSaturation: Double {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromSat = configuration.effectiveAccentColor(for: transition.fromTheme.id).saturation
-            let toSat = configuration.effectiveAccentColor(for: transition.toTheme.id).saturation
-            return fromSat + (toSat - fromSat) * transition.progress
-        } else {
-            return configuration.effectiveAccentColor.saturation
-        }
+        effectiveAccentColor.saturation
     }
 
     /// LCD brightness offset - interpolated during picker transitions, otherwise from configuration.
