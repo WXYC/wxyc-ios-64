@@ -25,7 +25,7 @@ public struct DebugHUD: View {
                     MetricRow(label: "GPU", value: String(format: "%.1f MB", metrics.gpuMemoryMB))
                     MetricRow(label: "MEM", value: String(format: "%.1f MB", metrics.memoryMB))
                     MetricRow(label: "TMP", value: metrics.thermalState.description)
-                    MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentFPS))fps")
+                    MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentWallpaperFPS))fps")
                     MetricRow(label: "MTM", value: String(format: "%.2f", thermal.currentMomentum))
                 }
                 .font(.system(.caption, design: .monospaced))
