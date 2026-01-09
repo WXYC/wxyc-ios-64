@@ -4,9 +4,12 @@ import PostHog
 import Analytics
 
 public final actor CacheCoordinator {
+    /// Cache for album artwork images (binary data)
     public static let AlbumArt = CacheCoordinator(cache: DiskCache())
     /// Playlist cache uses MigratingDiskCache to migrate from private to shared App Group container
     public static let Playlist = CacheCoordinator(cache: MigratingDiskCache())
+    /// Cache for playcut metadata (artist, album, streaming links)
+    public static let Metadata = CacheCoordinator(cache: DiskCache())
     
     public enum Error: String, LocalizedError, Codable {
         case noCachedResult
@@ -30,7 +33,7 @@ public final actor CacheCoordinator {
     private var cache: Cache
     private let clock: Clock
     private let purgeTask: Task<Void, Never>
-    
+
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
 
@@ -54,7 +57,7 @@ public final actor CacheCoordinator {
         guard let data = cache.data(for: key) else {
             throw Error.noCachedResult
         }
-
+        
         return data
     }
         
@@ -139,6 +142,33 @@ public final actor CacheCoordinator {
     public func waitForPurge() async {
         await purgeTask.value
     }
+
+    // MARK: - Migration
+
+    /// Removes entries matching a key prefix from this cache.
+    ///
+    /// This is useful for migrating away from legacy cache key patterns.
+    public func removeEntries(withPrefix prefix: String) async {
+        await waitForPurge()
+
+        for (key, _) in cache.allMetadata() {
+            if key.hasPrefix(prefix) {
+                cache.remove(for: key)
+                Log(.info, "Removed cache entry with prefix '\(prefix)': \(key)")
+            }
+        }
+    }
+
+    /// Migrates legacy playcut metadata from AlbumArt cache.
+    ///
+    /// Previously, playcut metadata was cached in `CacheCoordinator.AlbumArt` with keys
+    /// prefixed by `playcut-metadata-`. This removes those entries since metadata is now
+    /// cached in `CacheCoordinator.Metadata` with granular keys (artist, album, streaming).
+    ///
+    /// Old entries will naturally expire (7-day TTL) if migration is not run.
+    public static func migrateLegacyMetadataCache() async {
+        await CacheCoordinator.AlbumArt.removeEntries(withPrefix: "playcut-metadata-")
+    }
 }
 
 #if false
@@ -209,7 +239,7 @@ extension FileManager {
             .allApplicationsDirectory,
             .allLibrariesDirectory,
         ]
-        
+
         for d in directories {
             if let documentsURL = FileManager.default.urls(for: d, in: .userDomainMask).first {
                 Log(.info, "Listing contents of: \(documentsURL.path)")
