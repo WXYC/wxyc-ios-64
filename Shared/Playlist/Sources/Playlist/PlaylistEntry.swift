@@ -174,6 +174,17 @@ public struct Playcut: PlaylistEntry, Hashable {
     }
 }
 
+public extension Playcut {
+    /// Cache key for artwork lookups based on artist and release/song title.
+    ///
+    /// Uses `releaseTitle` if available and non-empty, otherwise falls back to `songTitle`.
+    /// This ensures consistent cache keys regardless of whether `releaseTitle` is `nil` or empty string.
+    var artworkCacheKey: String {
+        let release = releaseTitle.flatMap { $0.isEmpty ? nil : $0 } ?? songTitle
+        return "\(artistName)-\(release)"
+    }
+}
+
 public struct Playlist: Codable, Sendable {
     public let playcuts: [Playcut]
     let breakpoints: [Breakpoint]
