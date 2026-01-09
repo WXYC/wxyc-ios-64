@@ -12,7 +12,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float lod;  // 0.0 to 1.0: scales layer count for thermal throttling
 };
 
 struct VertexOut {
@@ -141,7 +141,7 @@ static inline float2 Drops(float2 uv, float t, float l0, float l1, float l2) {
 }
 
 // Procedural window light background - unrolled loop with precomputed positions
-static inline float3 windowBackground(float2 uv, float time) {
+static inline float3 windowBackground(float2 uv, float time, float lod) {
     // Warm ambient light gradient (simulating city lights through rainy window)
     const float3 warmLight = float3(1.0, 0.85, 0.6);
     const float3 coolShadow = float3(0.15, 0.2, 0.35);
@@ -149,12 +149,14 @@ static inline float3 windowBackground(float2 uv, float time) {
     // Vertical gradient - lighter at top (sky/lights)
     float grad = smoothstep(-0.3, 0.8, uv.y);
 
-    // Unrolled light calculations with precomputed positions
+    // Light calculations - always evaluate first 3, add 2 more at LOD >= 0.5
     float lights = smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_0)) * LIGHT_INTENSITY_0
                  + smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_1)) * LIGHT_INTENSITY_1
-                 + smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_2)) * LIGHT_INTENSITY_2
-                 + smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_3)) * LIGHT_INTENSITY_3
-                 + smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_4)) * LIGHT_INTENSITY_4;
+                 + smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_2)) * LIGHT_INTENSITY_2;
+    if (lod >= 0.5f) {
+        lights += smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_3)) * LIGHT_INTENSITY_3
+                + smoothstep(0.5, 0.0, fast::length(uv - LIGHT_POS_4)) * LIGHT_INTENSITY_4;
+    }
 
     // Soft bokeh-like glow
     float3 col = mix(coolShadow, warmLight, grad * 0.7 + lights * 0.5);
@@ -166,17 +168,22 @@ static inline float3 windowBackground(float2 uv, float time) {
 }
 
 // Sample background with blur (simulated with fewer samples - background is already soft)
-static inline float3 sampleBlurred(float2 uv, float blur, float time) {
-    float3 col = windowBackground(uv, time);
+static inline float3 sampleBlurred(float2 uv, float blur, float time, float lod) {
+    float3 col = windowBackground(uv, time, lod);
 
-    // Reduced blur simulation - 5 samples instead of 9
+    // At low LOD, skip blur entirely
+    if (lod < 0.5f) {
+        return col;
+    }
+
+    // Reduced blur simulation - 5 samples
     float blurAmount = blur * 0.02;
 
     float3 blurred = col
-        + windowBackground(uv + float2(blurAmount, 0.0), time)
-        + windowBackground(uv + float2(-blurAmount, 0.0), time)
-        + windowBackground(uv + float2(0.0, blurAmount), time)
-        + windowBackground(uv + float2(0.0, -blurAmount), time);
+        + windowBackground(uv + float2(blurAmount, 0.0), time, lod)
+        + windowBackground(uv + float2(-blurAmount, 0.0), time, lod)
+        + windowBackground(uv + float2(0.0, blurAmount), time, lod)
+        + windowBackground(uv + float2(0.0, -blurAmount), time, lod);
     blurred *= 0.2;  // 1/5
 
     return mix(col, blurred, saturate(blur * 0.2));
@@ -192,8 +199,14 @@ fragment float4 windowlightFragment(
     float T = u.time;
     float t = T * 0.2;
 
-    // Use precomputed constants (rainAmount = 1.0)
-    float2 c = Drops(uv, t, STATIC_DROPS_MULT, LAYER1_MULT, LAYER2_MULT);
+    // LOD-scaled drop layers:
+    // - LOD < 0.3: 1 layer (static drops only)
+    // - LOD < 0.7: 2 layers (static + 1 animated)
+    // - LOD >= 0.7: 3 layers (all)
+    float l0 = STATIC_DROPS_MULT;
+    float l1 = (u.lod >= 0.3f) ? LAYER1_MULT : 0.0f;
+    float l2 = (u.lod >= 0.7f) ? LAYER2_MULT : 0.0f;
+    float2 c = Drops(uv, t, l0, l1, l2);
 
     // Cheap normals using derivatives
     float2 n = float2(dfdx(c.x), dfdy(c.x));
@@ -201,7 +214,7 @@ fragment float4 windowlightFragment(
     float focus = mix(MAX_BLUR - c.y, MIN_BLUR, S(0.1, 0.2, c.x));
 
     // Sample procedural background with refraction and blur (flip Y for background too)
-    float3 col = sampleBlurred(float2(in.uv.x, 1.0 - in.uv.y) + n, focus, T);
+    float3 col = sampleBlurred(float2(in.uv.x, 1.0 - in.uv.y) + n, focus, T, u.lod);
 
     // Apply precomputed color shift
     col *= COLOR_SHIFT_MIXED;

@@ -18,14 +18,14 @@ using namespace metal;
 #define ENABLE_CYAN_ROTATION      // Cyan layer rotation
 #define ENABLE_MAGENTA_ROTATION   // Magenta layer rotation
 
-// Noise quality (reduce for performance)
-#define NOISE_OCTAVES 4  // Original: 7, try 3-4 for better perf
+// Noise quality (max octaves at LOD 1.0)
+#define MAX_NOISE_OCTAVES 4
 
 // === MTKView Support ===
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float lod;  // 0.0 to 1.0: scales octave counts for thermal throttling
 };
 
 struct VertexOut {
@@ -76,12 +76,13 @@ static inline float2 rotate(float2 oldpoint, float s, float c) {
     return float2(left, right);
 }
 
-static inline float noise4(float2 uv, float time, float2 offset) {
+static inline float noise4(float2 uv, float time, float2 offset, int octaves) {
     float f = 0.5f;
     float frequency = 1.75f;
     float amplitude = 0.5f;
 
-    for (int i = 0; i < NOISE_OCTAVES; i++) {
+    for (int i = 0; i < MAX_NOISE_OCTAVES; i++) {
+        if (i >= octaves) break;
         f += amplitude * simplexNoise(frequency * uv - offset);
         frequency *= 2.0f;
         amplitude *= 0.5f;
@@ -90,8 +91,12 @@ static inline float noise4(float2 uv, float time, float2 offset) {
 }
 
 // Core implementation
-static half4 lamp4DImpl(float2 position, float width, float height, float time) {
+static half4 lamp4DImpl(float2 position, float width, float height, float time, float lod) {
     time /= 9.0;
+
+    // LOD-scaled octave count: 2 at LOD 0.0, MAX_NOISE_OCTAVES at LOD 1.0
+    int octaves = int(mix(2.0f, float(MAX_NOISE_OCTAVES), lod));
+
     float2 iResolution = float2(width, height);
     float2 p = position / iResolution;
     float2 uv = p * float2(iResolution.x / iResolution.y, 0.8f);
@@ -139,10 +144,10 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time) 
     float3 color = float3(0.75f);
 
     // Cache frequently used noise values
-    float noiseUV = noise4(uv, time, noiseOffset);
+    float noiseUV = noise4(uv, time, noiseOffset, octaves);
 
     // Blue layer
-    float f = noise4(uv + noiseUV * (logTimePlus1 + (time / 60.0f)), time, noiseOffset);
+    float f = noise4(uv + noiseUV * (logTimePlus1 + (time / 60.0f)), time, noiseOffset, octaves);
     color += f * normalize2(dblue);
 
     // Cyan layer
@@ -151,8 +156,8 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time) 
 #else
     float2 cyanUV = uv;
 #endif
-    float noiseFUV = noise4(f * uv, time, noiseOffset);
-    f = noise4(f * cyanUV + f * noiseFUV, time, noiseOffset);
+    float noiseFUV = noise4(f * uv, time, noiseOffset, octaves);
+    f = noise4(f * cyanUV + f * noiseFUV, time, noiseOffset, octaves);
     color += f * normalize2(cyan);
 
     // Magenta layer
@@ -162,7 +167,7 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time) 
     float2 magentaUV = uv;
 #endif
     // Reuse cached noiseUV instead of computing noise4(uv, time) twice
-    f = noise4(f * magentaUV + f * noiseUV * noiseUV, time, noiseOffset);
+    f = noise4(f * magentaUV + f * noiseUV * noiseUV, time, noiseOffset, octaves);
     color += f * normalize2(magenta);
 
     color = normalize2(color);
@@ -172,11 +177,11 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time) 
 
 [[ stitchable ]]
 half4 lamp4D(float2 position, half4 inColor, float width, float height, float time) {
-    return lamp4DImpl(position, width, height, time);
+    return lamp4DImpl(position, width, height, time, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
 fragment half4 lamp4DFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
     float2 pos = in.uv * u.resolution;
-    return lamp4DImpl(pos, u.resolution.x, u.resolution.y, u.time);
+    return lamp4DImpl(pos, u.resolution.x, u.resolution.y, u.time, u.lod);
 }

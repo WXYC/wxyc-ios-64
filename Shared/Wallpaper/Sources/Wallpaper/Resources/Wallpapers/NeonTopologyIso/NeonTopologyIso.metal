@@ -18,7 +18,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float displayScale;
+    float lod;  // 0.0 to 1.0: scales glow layers for thermal throttling
 };
 
 struct VertexOut {
@@ -141,7 +141,7 @@ static inline float perlinNoiseOctaves(float3 position, int freq, int octaves,
 }
 
 // Core implementation - isoline-based "topology" strokes (no neighbor samples)
-static half4 neonTopologyIsoImpl(float2 position, float width, float height, float time) {
+static half4 neonTopologyIsoImpl(float2 position, float width, float height, float time, float lod) {
     float aspect = width / height;
     float invWidth = 1.0f / width;
     float invHeight = 1.0f / height;
@@ -171,9 +171,13 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
     float edge = 1.0f - smoothstep(0.0f, w, d);
 
     // Glow layers - softer, wider edges for bloom approximation
+    // LOD scaling: skip glow2 at low LOD (< 0.5)
     float glow1 = 1.0f - smoothstep(0.0f, w * 4.0f, d);
-    float glow2 = 1.0f - smoothstep(0.0f, w * 16.0f, d);
-    float glow = glow1 * 0.4f + glow2 * 0.2f;
+    float glow = glow1 * 0.4f;
+    if (lod >= 0.5f) {
+        float glow2 = 1.0f - smoothstep(0.0f, w * 16.0f, d);
+        glow += glow2 * 0.2f;
+    }
 
     // Hue-based glow intensity
     // valueback controls purple(1.0) to cyan(0.0) blend
@@ -198,13 +202,13 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
 
 [[ stitchable ]]
 half4 neonTopologyIso(float2 position, half4 inColor, float width, float height, float time) {
-    return neonTopologyIsoImpl(position, width, height, time);
+    return neonTopologyIsoImpl(position, width, height, time, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
 fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
     float2 pos = in.uv * u.resolution;
-    return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time);
+    return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time, u.lod);
 }
 
 

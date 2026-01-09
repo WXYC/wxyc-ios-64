@@ -12,7 +12,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float lod;  // 0.0 to 1.0: scales neon tube count for thermal throttling
 };
 
 // Custom parameters passed from debug UI
@@ -75,7 +75,8 @@ static inline float3 neonEnvironment(float3 dir,
                                       float cyanInt,
                                       float blueInt,
                                       float ambientLevel,
-                                      float glowAmount) {
+                                      float glowAmount,
+                                      float lod) {
     float3 d = fast::normalize(dir);
 
     // Base colors for neon tubes
@@ -87,25 +88,28 @@ static inline float3 neonEnvironment(float3 dir,
     // Corner room ambient
     float3 ambient = float3(0.15, 0.12, 0.25) * ambientLevel;
 
-    // Vertical tube (yellow) - along Y axis
+    // Vertical tube (yellow) - along Y axis (always evaluated)
     float verticalTube = smoothstep(0.3, 0.0, abs(d.x)) * smoothstep(-0.2, 0.5, d.y);
     float3 col = ambient + yellow * verticalTube * yellowInt;
 
-    // Horizontal tube (yellow) - along X axis at top
-    float horizontalTube = smoothstep(0.3, 0.0, abs(d.y - 0.4)) * smoothstep(0.0, 0.3, abs(d.x));
-    col += yellow * horizontalTube * yellowInt * 0.67;
-
-    // Left side magenta/pink glow
+    // Left side magenta/pink glow (always evaluated)
     float leftGlow = smoothstep(0.5, -0.3, d.x) * smoothstep(-0.5, 0.3, d.y);
     col += magenta * leftGlow * magentaInt;
 
-    // Right side cyan glow
-    float rightGlow = smoothstep(-0.5, 0.3, d.x) * smoothstep(-0.5, 0.3, d.y);
-    col += cyan * rightGlow * cyanInt;
+    // LOD >= 0.5: evaluate remaining tubes
+    if (lod >= 0.5f) {
+        // Horizontal tube (yellow) - along X axis at top
+        float horizontalTube = smoothstep(0.3, 0.0, abs(d.y - 0.4)) * smoothstep(0.0, 0.3, abs(d.x));
+        col += yellow * horizontalTube * yellowInt * 0.67;
 
-    // Center blue accent
-    float centerGlow = smoothstep(0.4, 0.0, length(d.xy));
-    col += blue * centerGlow * blueInt;
+        // Right side cyan glow
+        float rightGlow = smoothstep(-0.5, 0.3, d.x) * smoothstep(-0.5, 0.3, d.y);
+        col += cyan * rightGlow * cyanInt;
+
+        // Center blue accent
+        float centerGlow = smoothstep(0.4, 0.0, length(d.xy));
+        col += blue * centerGlow * blueInt;
+    }
 
     // Add some variation based on z for depth
     col *= 0.8 + 0.2 * smoothstep(-1.0, 1.0, d.z);
@@ -172,7 +176,7 @@ fragment float4 steelCubeIdolatryFragment(
 
     // Sample procedural neon environment with tunable parameters
     float3 envColor = neonEnvironment(reflectDir, yellowInt, magentaInt, cyanInt,
-                                       blueInt, ambientLevel, glowAmount);
+                                       blueInt, ambientLevel, glowAmount, u.lod);
 
     // Final color: lighting * environment
     float3 col = l * envColor;

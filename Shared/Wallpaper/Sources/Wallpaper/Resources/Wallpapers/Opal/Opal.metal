@@ -13,7 +13,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float lod;  // 0.0 to 1.0: scales octave counts for thermal throttling
 };
 
 struct VertexOut {
@@ -99,7 +99,7 @@ static inline float3 smf(float3 x, float H, float L, int oc, float off) {
     float3 v = float3(1.0f);
     float f = 1.0f;
     for (int i = 0; i < 10; i++) {
-        if (i >= oc) break;
+//        if (i >= oc) break;
         v *= off + f * (noise3(x) * 2.0f - 1.0f);
         f *= H;
         x *= L;
@@ -114,6 +114,10 @@ fragment float4 opalFragment(
     float2 uv = in.uv;
     uv.x *= u.resolution.x / u.resolution.y;
 
+    // LOD-scaled octave counts: 3 at LOD 0.0, full at LOD 1.0
+    int octaves8 = int(mix(3.0f, 8.0f, u.lod));
+    int octaves7 = int(mix(3.0f, 7.0f, u.lod));
+
     float time = u.time * 1.276f;
 
     float slow = time * 0.002f;
@@ -124,13 +128,13 @@ fragment float4 opalFragment(
 
     float3 p = float3(uv * 0.2f, slow);
 
-    float3 axis = 4.0f * fbm(p, 0.5f, 2.0f, 8);
+    float3 axis = 4.0f * fbm(p, 0.5f, 2.0f, octaves8);
 
-    float3 colorVec = 0.5f * 5.0f * fbm(p * 0.3f, 0.5f, 2.0f, 7);
+    float3 colorVec = 0.5f * 5.0f * fbm(p * 0.3f, 0.5f, 2.0f, octaves7);
     p += colorVec;
 
     float mag = 0.85e5f;
-    float3 colorMod = mag * smf(p, 0.7f, 2.0f, 8, 0.2f);
+    float3 colorMod = mag * smf(p, 0.7f, 2.0f, octaves8, 0.2f);
     colorVec += colorMod;
 
     colorVec = rotation(3.0f * length(axis) + slow * 10.0f, normalize(axis)) * colorVec;

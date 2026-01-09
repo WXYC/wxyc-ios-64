@@ -12,7 +12,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float pad;
+    float lod;  // 0.0 to 1.0: at low LOD, simplifies blob calculation
 };
 
 struct Parameters {
@@ -70,12 +70,18 @@ fragment float4 lavaLiteFragment(
     // Create colored blobs with soft edges
     // Use fast::sqrt and powr (positive base) for performance
     float exp1 = 4.0f * fast::sqrt(max(0.0f, (blob.x - 0.6f) * 2.0f));
-    float exp2 = 4.0f * fast::sqrt(max(0.0f, (blob.y - 0.6f) * 2.0f));
     float3 col1 = powr(ink1, float3(exp1));
-    float3 col2 = powr(ink2, float3(exp2));
 
-    // Combine and apply gamma correction (powr safe since col values are positive)
-    float3 color = powr(1.0f - col1 * col2, float3(INV_GAMMA));
+    float3 color;
+    if (u.lod >= 0.5f) {
+        // Full quality: both blob colors with gamma correction
+        float exp2 = 4.0f * fast::sqrt(max(0.0f, (blob.y - 0.6f) * 2.0f));
+        float3 col2 = powr(ink2, float3(exp2));
+        color = powr(1.0f - col1 * col2, float3(INV_GAMMA));
+    } else {
+        // Low LOD: skip second blob, simplified output
+        color = powr(1.0f - col1, float3(INV_GAMMA));
+    }
 
     // Apply brightness adjustment
     color *= p.brightness;

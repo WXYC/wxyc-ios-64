@@ -14,7 +14,7 @@ using namespace metal;
 struct Uniforms {
     float2 resolution;
     float time;
-    float displayScale;
+    float lod;  // 0.0 to 1.0: scales iteration count for thermal throttling
 };
 
 // Parameters passed in buffer 1 (up to 8 floats)
@@ -29,10 +29,13 @@ struct VertexOut {
 };
 
 // Core implementation (called by both stitchable and fragment versions)
-static half4 chromaWaveImpl(float2 position, float width, float height, float time, float highlightCompression) {
+static half4 chromaWaveImpl(float2 position, float width, float height, float time, float highlightCompression, float lod) {
     float2 iResolution = float2(width, height);
     float t = time / 32.0f;
     float3 col = float3(0.0f);
+
+    // LOD-scaled iteration count: 3 at LOD 0.0, 7 at LOD 1.0
+    int maxIter = int(mix(3.0f, 7.0f, lod));
 
     // Process each color channel separately
     for (int c = 0; c < 3; c++) {
@@ -40,6 +43,7 @@ static half4 chromaWaveImpl(float2 position, float width, float height, float ti
 
         // Iterative wave distortion
         for (int i = 1; i < 7; i++) {
+            if (i >= maxIter) break;
             uv /= 1.70f;
             uv += ceil(col.yx);
             uv += float(i) + (cos(uv.x) * cos(uv.y) + sin(uv.y) * cos(t) + cos(t) * cos(uv.x));
@@ -67,7 +71,7 @@ half4 chromaWave(float2 position,
                  float time,
                  float highlightCompression)
 {
-    return chromaWaveImpl(position, width, height, time, highlightCompression);
+    return chromaWaveImpl(position, width, height, time, highlightCompression, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
@@ -77,5 +81,5 @@ fragment half4 chromaWaveFrag(
     constant Parameters& p [[buffer(1)]]
 ) {
     float2 pos = in.uv * u.resolution;
-    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time, p.highlightCompression);
+    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time, p.highlightCompression, u.lod);
 }
