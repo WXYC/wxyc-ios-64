@@ -2,7 +2,7 @@ import Foundation
 
 /// Persistent thermal optimization profile for a specific shader.
 ///
-/// Stores the learned optimal FPS and scale settings for a shader based on
+/// Stores the learned optimal wallpaper FPS and scale settings for a shader based on
 /// observed thermal behavior. Profiles are persisted across app launches
 /// to avoid re-learning optimal settings on each launch.
 public struct ThermalProfile: Codable, Sendable, Equatable {
@@ -10,8 +10,8 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     /// Identifier for the shader this profile applies to.
     public let shaderId: String
 
-    /// Target frames per second (15.0 - 60.0).
-    public var fps: Float
+    /// Target wallpaper frames per second (15.0 - 60.0).
+    public var wallpaperFPS: Float
 
     /// Render scale factor (0.5 - 1.0).
     public var scale: Float
@@ -34,8 +34,8 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     /// Whether this profile has reached a stable optimized state.
     public var isStabilized: Bool
 
-    /// Valid range for FPS.
-    public static let fpsRange: ClosedRange<Float> = 15.0...60.0
+    /// Valid range for wallpaper FPS.
+    public static let wallpaperFPSRange: ClosedRange<Float> = 15.0...60.0
 
     /// Valid range for scale.
     public static let scaleRange: ClosedRange<Float> = 0.5...1.0
@@ -48,7 +48,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     /// - Parameter shaderId: The identifier of the shader.
     public init(shaderId: String) {
         self.shaderId = shaderId
-        self.fps = Self.fpsRange.upperBound
+        self.wallpaperFPS = Self.wallpaperFPSRange.upperBound
         self.scale = Self.scaleRange.upperBound
         self.lod = Self.lodRange.upperBound
         self.thermalMomentum = 0
@@ -61,7 +61,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     /// Creates a thermal profile with specified values.
     public init(
         shaderId: String,
-        fps: Float,
+        wallpaperFPS: Float,
         scale: Float,
         lod: Float = 1.0,
         thermalMomentum: Float = 0,
@@ -71,7 +71,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
         isStabilized: Bool = false
     ) {
         self.shaderId = shaderId
-        self.fps = fps.clamped(to: Self.fpsRange)
+        self.wallpaperFPS = wallpaperFPS.clamped(to: Self.wallpaperFPSRange)
         self.scale = scale.clamped(to: Self.scaleRange)
         self.lod = lod.clamped(to: Self.lodRange)
         self.thermalMomentum = thermalMomentum
@@ -83,14 +83,14 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
 
     /// Whether this profile is at maximum quality (no throttling applied).
     public var isAtMaxQuality: Bool {
-        fps >= Self.fpsRange.upperBound - 0.1
+        wallpaperFPS >= Self.wallpaperFPSRange.upperBound - 0.1
             && scale >= Self.scaleRange.upperBound - 0.01
             && lod >= Self.lodRange.upperBound - 0.01
     }
 
-    /// Updates FPS, scale, and LOD, clamping to valid ranges.
-    public mutating func update(fps: Float, scale: Float, lod: Float) {
-        self.fps = fps.clamped(to: Self.fpsRange)
+    /// Updates wallpaper FPS, scale, and LOD, clamping to valid ranges.
+    public mutating func update(wallpaperFPS: Float, scale: Float, lod: Float) {
+        self.wallpaperFPS = wallpaperFPS.clamped(to: Self.wallpaperFPSRange)
         self.scale = scale.clamped(to: Self.scaleRange)
         self.lod = lod.clamped(to: Self.lodRange)
         self.lastUpdated = Date()
@@ -107,14 +107,16 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     // MARK: - Codable (backward compatible)
 
     private enum CodingKeys: String, CodingKey {
-        case shaderId, fps, scale, lod, thermalMomentum, lastUpdated, sampleCount
+        case shaderId
+        case wallpaperFPS = "fps"  // Keep "fps" key for backward compatibility
+        case scale, lod, thermalMomentum, lastUpdated, sampleCount
         case sessionsToStability, isStabilized
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         shaderId = try container.decode(String.self, forKey: .shaderId)
-        fps = try container.decode(Float.self, forKey: .fps)
+        wallpaperFPS = try container.decode(Float.self, forKey: .wallpaperFPS)
         scale = try container.decode(Float.self, forKey: .scale)
         // Default to max LOD for profiles saved before LOD was added
         lod = try container.decodeIfPresent(Float.self, forKey: .lod) ?? Self.lodRange.upperBound

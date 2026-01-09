@@ -95,7 +95,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         // Set up thermal optimization only when no fixed quality profile is set
         if let profile = qualityProfile {
             // Use fixed quality profile settings
-            view.preferredFramesPerSecond = Int(profile.fps)
+            view.preferredFramesPerSecond = Int(profile.wallpaperFPS)
         } else {
             // Set active shader for adaptive thermal optimization
             Task {
@@ -290,7 +290,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         if let profile = qualityProfile {
             // Use fixed quality profile
             resolutionScale = profile.scale
-            targetFPS = Int(profile.fps)
+            targetFPS = Int(profile.wallpaperFPS)
             lod = profile.lod
         } else {
             // Measure frame duration for FPS monitoring
@@ -305,7 +305,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
             // Get current thermal optimization values (using effective values which respect debug overrides)
             resolutionScale = thermalController.effectiveScale
-            targetFPS = Int(thermalController.effectiveFPS)
+            targetFPS = Int(thermalController.effectiveWallpaperFPS)
             lod = thermalController.effectiveLOD
 
             // Update FPS if changed

@@ -455,10 +455,10 @@ private struct PerformanceControls: View {
         )
     }
 
-    private var fpsBinding: Binding<Float> {
+    private var wallpaperFPSBinding: Binding<Float> {
         Binding(
-            get: { thermalController.debugFPSOverride ?? thermalController.currentFPS },
-            set: { thermalController.debugFPSOverride = $0 }
+            get: { thermalController.debugWallpaperFPSOverride ?? thermalController.currentWallpaperFPS },
+            set: { thermalController.debugWallpaperFPSOverride = $0 }
         )
     }
 
@@ -510,32 +510,32 @@ private struct PerformanceControls: View {
                 Slider(value: scaleBinding, in: Float(ThermalProfile.scaleRange.lowerBound)...Float(ThermalProfile.scaleRange.upperBound))
             }
 
-            // FPS slider
+            // Wallpaper FPS slider
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("FPS: \(Int(fpsBinding.wrappedValue))")
+                    Text("Wallpaper FPS: \(Int(wallpaperFPSBinding.wrappedValue))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if thermalController.debugFPSOverride != nil {
+                    if thermalController.debugWallpaperFPSOverride != nil {
                         Text("(override)")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }
                 }
-                Slider(value: fpsBinding, in: Float(ThermalProfile.fpsRange.lowerBound)...Float(ThermalProfile.fpsRange.upperBound), step: 1)
+                Slider(value: wallpaperFPSBinding, in: Float(ThermalProfile.wallpaperFPSRange.lowerBound)...Float(ThermalProfile.wallpaperFPSRange.upperBound), step: 1)
             }
 
             // Reset buttons
             let hasOverrides =
                 thermalController.debugLODOverride != nil ||
                 thermalController.debugScaleOverride != nil ||
-                thermalController.debugFPSOverride != nil
+                thermalController.debugWallpaperFPSOverride != nil
 
             if hasOverrides {
                 Button("Clear Overrides") {
                     thermalController.debugLODOverride = nil
                     thermalController.debugScaleOverride = nil
-                    thermalController.debugFPSOverride = nil
+                    thermalController.debugWallpaperFPSOverride = nil
                 }
                 .font(.caption)
             }

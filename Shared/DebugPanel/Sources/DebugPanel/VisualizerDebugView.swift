@@ -241,9 +241,9 @@ private struct ThermalThrottlingSection: View {
             }
 
             HStack {
-                Text("Target FPS")
+                Text("Target Wallpaper FPS")
                 Spacer()
-                Text("\(Int(thermal.currentFPS))")
+                Text("\(Int(thermal.currentWallpaperFPS))")
                     .foregroundStyle(.secondary)
             }
 

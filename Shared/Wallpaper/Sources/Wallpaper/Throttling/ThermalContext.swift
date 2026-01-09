@@ -65,8 +65,8 @@ public final class ThermalContext: ThermalContextProtocol {
         isCharging || isLowPowerMode
     }
 
-    /// Low power mode forced FPS (aggressive throttle to save battery).
-    public static let lowPowerFPS: Float = 30.0
+    /// Low power mode forced wallpaper FPS (aggressive throttle to save battery).
+    public static let lowPowerWallpaperFPS: Float = 30.0
 
     /// Low power mode forced scale (aggressive throttle to save battery).
     public static let lowPowerScale: Float = 0.5

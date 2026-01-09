@@ -18,7 +18,7 @@ public struct SystemThermalClock: ThermalClock, Sendable {
     }
 }
 
-/// Adaptive thermal throttling controller with continuous FPS × Scale optimization.
+/// Adaptive thermal throttling controller with continuous wallpaper FPS × Scale optimization.
 ///
 /// Replaces the discrete 4-level `ThermalThrottleController` with continuous
 /// optimization. Persists per-shader profiles across app launches and handles
@@ -32,7 +32,7 @@ public struct SystemThermalClock: ThermalClock, Sendable {
 /// await controller.setActiveShader("pool_tiles")
 ///
 /// // Read current settings
-/// let fps = controller.currentFPS
+/// let wallpaperFPS = controller.currentWallpaperFPS
 /// let scale = controller.currentScale
 ///
 /// // App lifecycle
@@ -48,8 +48,8 @@ public final class AdaptiveThermalController {
 
     // MARK: - Published State
 
-    /// Current target FPS (15.0 - 60.0).
-    public private(set) var currentFPS: Float = 60.0
+    /// Current target wallpaper FPS (15.0 - 60.0).
+    public private(set) var currentWallpaperFPS: Float = 60.0
 
     /// Current render scale (0.5 - 1.0).
     public private(set) var currentScale: Float = 1.0
@@ -95,14 +95,14 @@ public final class AdaptiveThermalController {
         }
     }
 
-    /// Debug override for FPS. When set, this value is used instead of adaptive optimization.
-    public var debugFPSOverride: Float? {
+    /// Debug override for wallpaper FPS. When set, this value is used instead of adaptive optimization.
+    public var debugWallpaperFPSOverride: Float? {
         didSet {
             #if DEBUG
-            if let fps = debugFPSOverride {
-                UserDefaults.standard.set(fps, forKey: "wallpaper.debug.fpsOverride")
+            if let fps = debugWallpaperFPSOverride {
+                UserDefaults.standard.set(fps, forKey: "wallpaper.debug.wallpaperFPSOverride")
             } else {
-                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.fpsOverride")
+                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.wallpaperFPSOverride")
             }
             #endif
         }
@@ -118,9 +118,9 @@ public final class AdaptiveThermalController {
         debugScaleOverride ?? currentScale
     }
 
-    /// Effective FPS value, considering debug override.
-    public var effectiveFPS: Float {
-        debugFPSOverride ?? currentFPS
+    /// Effective wallpaper FPS value, considering debug override.
+    public var effectiveWallpaperFPS: Float {
+        debugWallpaperFPSOverride ?? currentWallpaperFPS
     }
 
     // MARK: - Dependencies
@@ -198,8 +198,8 @@ public final class AdaptiveThermalController {
         if UserDefaults.standard.object(forKey: "wallpaper.debug.scaleOverride") != nil {
             self.debugScaleOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.scaleOverride")
         }
-        if UserDefaults.standard.object(forKey: "wallpaper.debug.fpsOverride") != nil {
-            self.debugFPSOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.fpsOverride")
+        if UserDefaults.standard.object(forKey: "wallpaper.debug.wallpaperFPSOverride") != nil {
+            self.debugWallpaperFPSOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.wallpaperFPSOverride")
         }
         #endif
     }
@@ -229,7 +229,7 @@ public final class AdaptiveThermalController {
         currentProfile = store.load(shaderId: shaderID)
 
         if let profile = currentProfile {
-            currentFPS = profile.fps
+            currentWallpaperFPS = profile.wallpaperFPS
             currentScale = profile.scale
             currentLOD = profile.lod
         }
@@ -252,17 +252,17 @@ public final class AdaptiveThermalController {
 
         if wasBackgroundedLong, var profile = currentProfile {
             // Apply conservative cooldown bonus
-            let fpsBonus = (ThermalProfile.fpsRange.upperBound - profile.fps) * maxCooldownBonus
+            let fpsBonus = (ThermalProfile.wallpaperFPSRange.upperBound - profile.wallpaperFPS) * maxCooldownBonus
             let scaleBonus = (ThermalProfile.scaleRange.upperBound - profile.scale) * maxCooldownBonus
             let lodBonus = (ThermalProfile.lodRange.upperBound - profile.lod) * maxCooldownBonus
 
             profile.update(
-                fps: profile.fps + fpsBonus,
+                wallpaperFPS: profile.wallpaperFPS + fpsBonus,
                 scale: profile.scale + scaleBonus,
                 lod: profile.lod + lodBonus
             )
             currentProfile = profile
-            currentFPS = profile.fps
+            currentWallpaperFPS = profile.wallpaperFPS
             currentScale = profile.scale
             currentLOD = profile.lod
         }
@@ -311,7 +311,7 @@ public final class AdaptiveThermalController {
         currentProfile = freshProfile
 
         // Reset to max quality
-        currentFPS = freshProfile.fps
+        currentWallpaperFPS = freshProfile.wallpaperFPS
         currentScale = freshProfile.scale
         currentLOD = freshProfile.lod
 
@@ -339,7 +339,7 @@ public final class AdaptiveThermalController {
 
         // Proportional FPS-based optimization
         // Reduce all three axes together using optimizer weights
-        let targetFPS = currentFPS
+        let targetFPS = currentWallpaperFPS
         if fps < targetFPS {
             let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
 
@@ -355,13 +355,13 @@ public final class AdaptiveThermalController {
             let scaleReduction = adjustedDeficit * ThermalOptimizer.scaleWeight * ThermalOptimizer.maxScaleStep * 5
             currentScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
 
-            // Reduce FPS target (20% weight, last resort)
-            let fpsReduction = adjustedDeficit * ThermalOptimizer.fpsWeight * ThermalOptimizer.maxFPSStep * 5
-            currentFPS = max(currentFPS - fpsReduction, ThermalProfile.fpsRange.lowerBound)
+            // Reduce wallpaper FPS target (20% weight, last resort)
+            let fpsReduction = adjustedDeficit * ThermalOptimizer.wallpaperFPSWeight * ThermalOptimizer.maxWallpaperFPSStep * 5
+            currentWallpaperFPS = max(currentWallpaperFPS - fpsReduction, ThermalProfile.wallpaperFPSRange.lowerBound)
 
             // Update profile
             if var profile = currentProfile {
-                profile.update(fps: currentFPS, scale: currentScale, lod: currentLOD)
+                profile.update(wallpaperFPS: currentWallpaperFPS, scale: currentScale, lod: currentLOD)
                 currentProfile = profile
             }
 
@@ -379,11 +379,11 @@ public final class AdaptiveThermalController {
         // Drop LOD and scale to reduce GPU workload, keep FPS target high
         currentLOD = ThermalProfile.lodRange.lowerBound  // minimum LOD
         currentScale = ThermalProfile.scaleRange.lowerBound  // 0.5 scale
-        // Keep currentFPS unchanged - we want smooth animation
+        // Keep currentWallpaperFPS unchanged - we want smooth animation
 
         // Update profile so we remember this shader struggles
         if var profile = currentProfile {
-            profile.update(fps: currentFPS, scale: currentScale, lod: currentLOD)
+            profile.update(wallpaperFPS: currentWallpaperFPS, scale: currentScale, lod: currentLOD)
             currentProfile = profile
 
             // Persist immediately - this shader needs aggressive settings
@@ -425,7 +425,7 @@ public final class AdaptiveThermalController {
     private func performOptimizationTick() {
         // Low power mode: force aggressive throttle to save battery
         if context.isLowPowerMode {
-            currentFPS = ThermalContext.lowPowerFPS
+            currentWallpaperFPS = ThermalContext.lowPowerWallpaperFPS
             currentScale = ThermalContext.lowPowerScale
             currentLOD = ThermalProfile.lodRange.lowerBound
             rawThermalState = context.thermalState
@@ -449,23 +449,23 @@ public final class AdaptiveThermalController {
         guard var profile = currentProfile else { return }
 
         // Optimize using effective momentum
-        var (newFPS, newScale, newLOD) = optimizer.optimize(current: profile, momentum: effectiveMomentum)
+        var (newWallpaperFPS, newScale, newLOD) = optimizer.optimize(current: profile, momentum: effectiveMomentum)
 
         // Apply gradual quality recovery when thermal is stable
         // This allows the profile to drift back toward max quality over time
         if effectiveMomentum < ThermalSignal.deadZone {
-            newFPS = min(newFPS + Self.qualityRecoveryStep * 5, ThermalProfile.fpsRange.upperBound)
+            newWallpaperFPS = min(newWallpaperFPS + Self.qualityRecoveryStep * 5, ThermalProfile.wallpaperFPSRange.upperBound)
             newScale = min(newScale + Self.qualityRecoveryStep, ThermalProfile.scaleRange.upperBound)
             newLOD = min(newLOD + Self.qualityRecoveryStep * 2, ThermalProfile.lodRange.upperBound)
         }
 
         // Update profile
-        profile.update(fps: newFPS, scale: newScale, lod: newLOD)
+        profile.update(wallpaperFPS: newWallpaperFPS, scale: newScale, lod: newLOD)
         profile.thermalMomentum = signal.momentum
         currentProfile = profile
 
         // Update published values
-        currentFPS = newFPS
+        currentWallpaperFPS = newWallpaperFPS
         currentScale = newScale
         currentLOD = newLOD
 
@@ -473,8 +473,9 @@ public final class AdaptiveThermalController {
         if let shaderID = activeShaderID {
             let event = ThermalAdjustmentEvent(
                 shaderId: shaderID,
-                fps: newFPS,
+                wallpaperFPS: newWallpaperFPS,
                 scale: newScale,
+                lod: newLOD,
                 thermalState: state,
                 momentum: signal.momentum
             )
