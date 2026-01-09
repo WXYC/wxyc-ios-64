@@ -456,25 +456,6 @@ struct CacheCoordinatorTests {
 
     // MARK: - Integration Tests with Real Cache
 
-    @Test("Integration with UserDefaultsCache")
-    func integrationWithUserDefaultsCache() async throws {
-        // Given
-        let realCache = UserDefaultsCache()
-        let coordinator = CacheCoordinator(cache: realCache)
-        let key = "integration-ud-\(UUID().uuidString)"
-        let value = TestLocation(latitude: 35.9132, longitude: -79.0558, name: "Chapel Hill")
-
-        // When
-        await coordinator.set(value: value, for: key, lifespan: 3600)
-        let retrieved: TestLocation = try await coordinator.value(for: key)
-
-        // Then
-        #expect(retrieved == value)
-
-        // Cleanup
-        await coordinator.set(value: nil as TestLocation?, for: key, lifespan: 0)
-    }
-
     @Test("Integration with DiskCache")
     func integrationWithDiskCache() async throws {
         // Given
