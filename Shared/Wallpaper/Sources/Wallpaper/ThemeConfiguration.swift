@@ -26,9 +26,11 @@ public final class ThemeConfiguration {
     // MARK: - Storage Keys
 
     private let storageKey = "wallpaper.selectedType.v3"
-    private let lcdMinBrightnessKey = "wallpaper.lcdMinBrightness"
-    private let lcdMaxBrightnessKey = "wallpaper.lcdMaxBrightness"
     private let defaultThemeID = "wxyc_gradient"
+
+    // Legacy global keys (for migration)
+    private let legacyLcdMinBrightnessKey = "wallpaper.lcdMinBrightness"
+    private let legacyLcdMaxBrightnessKey = "wallpaper.lcdMaxBrightness"
 
     // Legacy global keys (for migration)
     private let legacyAccentHueOverrideKey = "wallpaper.accentHueOverride"
@@ -60,6 +62,14 @@ public final class ThemeConfiguration {
 
     private func overlayIsDarkOverrideKey(for themeID: String) -> String {
         "wallpaper.overlayIsDarkOverride.\(themeID)"
+    }
+
+    private func lcdMinBrightnessKey(for themeID: String) -> String {
+        "wallpaper.lcdMinBrightness.\(themeID)"
+    }
+
+    private func lcdMaxBrightnessKey(for themeID: String) -> String {
+        "wallpaper.lcdMaxBrightness.\(themeID)"
     }
 
     // MARK: - Dependencies
@@ -188,16 +198,20 @@ public final class ThemeConfiguration {
     // MARK: - LCD Brightness Settings
 
     /// Minimum brightness for LCD segments (applied to top segments). Default: 0.90.
+    /// Stored per-theme so each theme remembers its customizations.
     public var lcdMinBrightness: Double = ThemeConfiguration.defaultLCDMinBrightness {
         didSet {
-            defaults.set(lcdMinBrightness, forKey: lcdMinBrightnessKey)
+            let key = lcdMinBrightnessKey(for: selectedThemeID)
+            defaults.set(lcdMinBrightness, forKey: key)
         }
     }
 
     /// Maximum brightness for LCD segments (applied to bottom segments). Default: 1.0.
+    /// Stored per-theme so each theme remembers its customizations.
     public var lcdMaxBrightness: Double = ThemeConfiguration.defaultLCDMaxBrightness {
         didSet {
-            defaults.set(lcdMaxBrightness, forKey: lcdMaxBrightnessKey)
+            let key = lcdMaxBrightnessKey(for: selectedThemeID)
+            defaults.set(lcdMaxBrightness, forKey: key)
         }
     }
 
@@ -334,6 +348,36 @@ public final class ThemeConfiguration {
         return theme.manifest.overlayIsDark
     }
 
+    /// Returns the LCD min brightness for a given theme ID.
+    /// For the selected theme, uses in-memory value. For other themes, looks up stored value.
+    public func lcdMinBrightness(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return lcdMinBrightness
+        }
+
+        // Look up stored value for this theme
+        let key = lcdMinBrightnessKey(for: themeID)
+        if defaults.object(forKey: key) != nil {
+            return defaults.double(forKey: key)
+        }
+        return Self.defaultLCDMinBrightness
+    }
+
+    /// Returns the LCD max brightness for a given theme ID.
+    /// For the selected theme, uses in-memory value. For other themes, looks up stored value.
+    public func lcdMaxBrightness(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return lcdMaxBrightness
+        }
+
+        // Look up stored value for this theme
+        let key = lcdMaxBrightnessKey(for: themeID)
+        if defaults.object(forKey: key) != nil {
+            return defaults.double(forKey: key)
+        }
+        return Self.defaultLCDMaxBrightness
+    }
+
     // MARK: - Per-Theme Override Loading
 
     /// Loads overrides for a specific theme from UserDefaults.
@@ -401,6 +445,32 @@ public final class ThemeConfiguration {
         } else {
             overlayIsDarkOverride = nil
         }
+
+        // LCD min brightness (migrate from legacy global key if needed)
+        let minBrightnessKey = lcdMinBrightnessKey(for: themeID)
+        if defaults.object(forKey: minBrightnessKey) != nil {
+            lcdMinBrightness = defaults.double(forKey: minBrightnessKey)
+        } else if defaults.object(forKey: legacyLcdMinBrightnessKey) != nil {
+            // Migrate legacy value to per-theme storage
+            let value = defaults.double(forKey: legacyLcdMinBrightnessKey)
+            lcdMinBrightness = value
+            defaults.removeObject(forKey: legacyLcdMinBrightnessKey)
+        } else {
+            lcdMinBrightness = Self.defaultLCDMinBrightness
+        }
+
+        // LCD max brightness (migrate from legacy global key if needed)
+        let maxBrightnessKey = lcdMaxBrightnessKey(for: themeID)
+        if defaults.object(forKey: maxBrightnessKey) != nil {
+            lcdMaxBrightness = defaults.double(forKey: maxBrightnessKey)
+        } else if defaults.object(forKey: legacyLcdMaxBrightnessKey) != nil {
+            // Migrate legacy value to per-theme storage
+            let value = defaults.double(forKey: legacyLcdMaxBrightnessKey)
+            lcdMaxBrightness = value
+            defaults.removeObject(forKey: legacyLcdMaxBrightnessKey)
+        } else {
+            lcdMaxBrightness = Self.defaultLCDMaxBrightness
+        }
     }
 
     // MARK: - Initialization
@@ -420,15 +490,7 @@ public final class ThemeConfiguration {
         // Map legacy IDs to new IDs
         self.selectedThemeID = Self.mapLegacyID(storedID, using: registry) ?? defaultThemeID
 
-        // Load LCD brightness settings (these are global, not per-theme)
-        if defaults.object(forKey: lcdMinBrightnessKey) != nil {
-            self.lcdMinBrightness = defaults.double(forKey: lcdMinBrightnessKey)
-        }
-        if defaults.object(forKey: lcdMaxBrightnessKey) != nil {
-            self.lcdMaxBrightness = defaults.double(forKey: lcdMaxBrightnessKey)
-        }
-
-        // Load per-theme overrides for the selected theme
+        // Load per-theme overrides for the selected theme (includes brightness settings)
         loadOverrides(for: selectedThemeID)
     }
 
