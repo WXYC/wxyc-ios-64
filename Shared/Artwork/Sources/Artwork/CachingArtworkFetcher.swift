@@ -19,17 +19,14 @@ extension CacheCoordinator: ArtworkService {
     }
     
     public func fetchArtwork(for playcut: Playcut) async throws -> Image {
-        let releaseOrSong = playcut.releaseTitle.flatMap { $0.isEmpty ? nil : $0 } ?? playcut.songTitle
-        let cacheKey = "\(playcut.artistName)-\(releaseOrSong)"
-        
-        let cachedData: Data = try self.data(for: cacheKey)
+        let cachedData: Data = try self.data(for: playcut.artworkCacheKey)
         guard let artwork = Image(compatibilityData: cachedData) else {
             throw Error.noCachedResult
         }
         
         return artwork
     }
-    
+        
     func set(artwork: Image, for id: String, lifespan: TimeInterval) async {
         let artworkData = artwork.pngDataCompatibility
         self.setData(artworkData, for: id, lifespan: lifespan)
