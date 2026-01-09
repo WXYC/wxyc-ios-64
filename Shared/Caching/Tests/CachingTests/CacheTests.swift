@@ -448,3 +448,71 @@ struct CacheProtocolTests {
         cache.remove(for: key)
     }
 }
+
+// MARK: - DiskCache Integration Tests
+
+@Suite("DiskCache Expiration Integration Tests")
+struct DiskCacheExpirationIntegrationTests {
+
+    @Test("Expired data retrieval returns nil and deletes file from disk")
+    func expiredDataRetrievalReturnsNilAndDeletesFile() async throws {
+        // Given: A real DiskCache with a controllable clock
+        let diskCache = DiskCache()
+        let mockClock = MockClock()
+        let coordinator = CacheCoordinator(cache: diskCache, clock: mockClock)
+        await coordinator.waitForPurge()
+
+        let key = "expiration-integration-\(UUID().uuidString)"
+        let value = "Will expire soon"
+
+        // Store data with 60 second lifespan
+        await coordinator.set(value: value, for: key, lifespan: 60)
+
+        // Verify file exists on disk
+        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fileURL = cacheDirectory.appendingPathComponent(key)
+        #expect(FileManager.default.fileExists(atPath: fileURL.path), "File should exist after storing")
+
+        // When: Advance clock past expiration and try to retrieve
+        mockClock.advance(by: 61)
+
+        // Then: Should throw noCachedResult
+        await #expect(throws: CacheCoordinator.Error.noCachedResult) {
+            let _: String = try await coordinator.value(for: key)
+        }
+
+        // And: File should be deleted from disk
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path), "File should be deleted after expired retrieval")
+    }
+
+    @Test("Expired binary data retrieval returns nil and deletes file from disk")
+    func expiredBinaryDataRetrievalReturnsNilAndDeletesFile() async throws {
+        // Given: A real DiskCache with a controllable clock
+        let diskCache = DiskCache()
+        let mockClock = MockClock()
+        let coordinator = CacheCoordinator(cache: diskCache, clock: mockClock)
+        await coordinator.waitForPurge()
+
+        let key = "binary-expiration-\(UUID().uuidString)"
+        let data = Data(repeating: 0xAB, count: 1024)
+
+        // Store binary data with 60 second lifespan
+        await coordinator.setData(data, for: key, lifespan: 60)
+
+        // Verify file exists on disk
+        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let fileURL = cacheDirectory.appendingPathComponent(key)
+        #expect(FileManager.default.fileExists(atPath: fileURL.path), "File should exist after storing")
+
+        // When: Advance clock past expiration and try to retrieve
+        mockClock.advance(by: 61)
+
+        // Then: Should throw noCachedResult
+        await #expect(throws: CacheCoordinator.Error.noCachedResult) {
+            _ = try await coordinator.data(for: key)
+        }
+
+        // And: File should be deleted from disk
+        #expect(!FileManager.default.fileExists(atPath: fileURL.path), "File should be deleted after expired retrieval")
+    }
+}
