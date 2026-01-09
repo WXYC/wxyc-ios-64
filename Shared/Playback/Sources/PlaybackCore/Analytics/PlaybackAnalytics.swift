@@ -177,6 +177,71 @@ public struct CPUUsageEvent: PlaybackAnalyticsEvent {
     }
 }
 
+// MARK: - CPU Session Analytics
+
+/// Reason why a CPU monitoring session ended.
+public enum CPUSessionEndReason: String, Sendable, Equatable {
+    /// User explicitly stopped playback
+    case userStopped = "user_stopped"
+    /// App transitioned to background
+    case backgrounded = "backgrounded"
+    /// App returned to foreground
+    case foregrounded = "foregrounded"
+    /// Playback was interrupted (phone call, Siri, etc.)
+    case interrupted = "interrupted"
+    /// Playback stalled due to buffer underrun
+    case stalled = "stalled"
+    /// Audio route disconnected (headphones unplugged)
+    case routeDisconnected = "route_disconnected"
+    /// Error occurred during playback
+    case error = "error"
+}
+
+/// Whether the session was in foreground or background.
+public enum PlaybackContext: String, Sendable, Equatable {
+    case foreground
+    case background
+}
+
+/// Aggregated CPU usage statistics for a playback session.
+///
+/// Reports average and maximum CPU usage over a playback session,
+/// distinguishing between foreground and background playback.
+public struct CPUSessionEvent: PlaybackAnalyticsEvent {
+    /// The type of player being monitored
+    public let playerType: PlayerControllerType
+    /// Whether this was foreground or background playback
+    public let context: PlaybackContext
+    /// Why this session ended
+    public let endReason: CPUSessionEndReason
+    /// Average CPU usage over the session (0.0 - 100.0+)
+    public let averageCPU: Double
+    /// Maximum CPU usage observed (0.0 - 100.0+)
+    public let maxCPU: Double
+    /// Number of samples collected
+    public let sampleCount: Int
+    /// Session duration in seconds
+    public let durationSeconds: TimeInterval
+
+    public init(
+        playerType: PlayerControllerType,
+        context: PlaybackContext,
+        endReason: CPUSessionEndReason,
+        averageCPU: Double,
+        maxCPU: Double,
+        sampleCount: Int,
+        durationSeconds: TimeInterval
+    ) {
+        self.playerType = playerType
+        self.context = context
+        self.endReason = endReason
+        self.averageCPU = averageCPU
+        self.maxCPU = maxCPU
+        self.sampleCount = sampleCount
+        self.durationSeconds = durationSeconds
+    }
+}
+
 // MARK: - PlaybackAnalytics Protocol
 
 /// Protocol for capturing playback analytics events.
@@ -202,4 +267,7 @@ public protocol PlaybackAnalytics: AnyObject {
 
     /// Capture CPU usage during playback.
     func capture(_ event: CPUUsageEvent)
+
+    /// Capture aggregated CPU session statistics.
+    func capture(_ event: CPUSessionEvent)
 }

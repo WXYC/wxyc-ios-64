@@ -20,6 +20,7 @@ public final class MockPlaybackAnalytics: PlaybackAnalytics {
     public private(set) var interruptionEvents: [InterruptionEvent] = []
     public private(set) var errorEvents: [ErrorEvent] = []
     public private(set) var cpuUsageEvents: [CPUUsageEvent] = []
+    public private(set) var cpuSessionEvents: [CPUSessionEvent] = []
 
     // MARK: - Initialization
 
@@ -51,6 +52,10 @@ public final class MockPlaybackAnalytics: PlaybackAnalytics {
         cpuUsageEvents.append(event)
     }
 
+    public func capture(_ event: CPUSessionEvent) {
+        cpuSessionEvents.append(event)
+    }
+
     // MARK: - Test Helpers
 
     public func reset() {
@@ -60,5 +65,6 @@ public final class MockPlaybackAnalytics: PlaybackAnalytics {
         interruptionEvents.removeAll()
         errorEvents.removeAll()
         cpuUsageEvents.removeAll()
+        cpuSessionEvents.removeAll()
     }
 }
