@@ -83,4 +83,19 @@ public final class PostHogPlaybackAnalytics: PlaybackAnalytics {
             ]
         )
     }
+
+    public func capture(_ event: CPUSessionEvent) {
+        PostHogSDK.shared.capture(
+            "cpu_session",
+            properties: [
+                "player_type": event.playerType.rawValue,
+                "context": event.context.rawValue,
+                "end_reason": event.endReason.rawValue,
+                "average_cpu": event.averageCPU,
+                "max_cpu": event.maxCPU,
+                "sample_count": event.sampleCount,
+                "duration_seconds": event.durationSeconds
+            ]
+        )
+    }
 }

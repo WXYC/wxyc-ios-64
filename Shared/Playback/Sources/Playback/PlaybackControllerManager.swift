@@ -65,8 +65,9 @@ public final class PlaybackControllerManager {
     
     private var bufferConsumptionTask: Task<Void, Never>?
 
-    // CPU Monitoring
-    private var cpuMonitor: CPUMonitor?
+    // CPU Session Aggregation
+    private var cpuAggregator: CPUSessionAggregator?
+    private var isForegrounded = true
 
     // MARK: - Initialization
 
@@ -84,19 +85,11 @@ public final class PlaybackControllerManager {
 
         startConsumingBuffers(from: controller)
 
-        // Setup CPU Monitor
-        #if DEBUG
-        self.cpuMonitor = CPUMonitor { [weak self] usage in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                let event = CPUUsageEvent(
-                    playerType: self.currentType,
-                    cpuUsage: usage
-                )
-                // self.analytics.capture(event)
-            }
-        }
-        #endif
+        // Setup CPU Session Aggregator
+        self.cpuAggregator = CPUSessionAggregator(
+            analytics: analytics,
+            playerTypeProvider: { [weak self] in self?.currentType ?? .avAudioStreamer }
+        )
     }
 
     /// Internal initializer for testing with dependency injection
@@ -117,6 +110,12 @@ public final class PlaybackControllerManager {
         self.current = controller
 
         startConsumingBuffers(from: controller)
+
+        // Setup CPU Session Aggregator
+        self.cpuAggregator = CPUSessionAggregator(
+            analytics: analytics,
+            playerTypeProvider: { [weak self] in self?.currentType ?? .avAudioStreamer }
+        )
     }
     
     // MARK: - Controller Factory
@@ -170,25 +169,34 @@ public final class PlaybackControllerManager {
     
     /// Start playback
     public func play() {
-        cpuMonitor?.start()
+        let context: PlaybackContext = isForegrounded ? .foreground : .background
+        cpuAggregator?.startSession(context: context)
         try? current.play(reason: "user_play")
         donatePlayIntent()
     }
     
     /// Stop playback
     public func stop() {
-        cpuMonitor?.stop()
+        cpuAggregator?.endSession(reason: .userStopped)
         current.stop()
     }
     
     #if os(iOS)
     /// Handle app entering background
     public func handleAppDidEnterBackground() {
+        isForegrounded = false
+        if current.isPlaying {
+            cpuAggregator?.transitionContext(to: .background)
+        }
         current.handleAppDidEnterBackground()
     }
-    
+
     /// Handle app returning to foreground
     public func handleAppWillEnterForeground() {
+        isForegrounded = true
+        if current.isPlaying {
+            cpuAggregator?.transitionContext(to: .foreground)
+        }
         current.handleAppWillEnterForeground()
     }
     #endif
