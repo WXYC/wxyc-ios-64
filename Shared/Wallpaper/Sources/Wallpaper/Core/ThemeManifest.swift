@@ -24,13 +24,17 @@ public struct ThemeManifest: Codable, Sendable {
     public let foreground: ForegroundStyle
     public let accent: AccentColor
     public let appIconName: String?
-    public let materialWeight: MaterialWeight
     public let buttonStyle: ButtonStyle?
 
-    /// Tint applied to material backgrounds.
-    /// Positive values lighten (white overlay), negative values darken (black overlay).
-    /// Range: -1.0 to 1.0, where 0.0 is no tint.
-    public let materialTint: Double
+    /// The blur radius for material backgrounds.
+    /// Higher values create more blur. Typical range: 4.0 to 20.0.
+    public let blurRadius: Double
+
+    /// The opacity of the overlay tint (0.0 to 1.0).
+    public let overlayOpacity: Double
+
+    /// Whether the overlay is dark (black) or light (white).
+    public let overlayIsDark: Bool
 
     /// Offset applied to LCD brightness values.
     /// Positive values increase brightness, negative values decrease it.
@@ -42,7 +46,8 @@ public struct ThemeManifest: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
-        case foreground, accent, appIconName, materialWeight, buttonStyle, materialTint
+        case foreground, accent, appIconName, buttonStyle
+        case blurRadius, overlayOpacity, overlayIsDark
         case _lcdBrightnessOffset = "lcdBrightnessOffset"
     }
 
@@ -56,9 +61,10 @@ public struct ThemeManifest: Codable, Sendable {
         foreground: ForegroundStyle,
         accent: AccentColor,
         appIconName: String? = nil,
-        materialWeight: MaterialWeight = .thin,
         buttonStyle: ButtonStyle = .colored,
-        materialTint: Double = 0.0,
+        blurRadius: Double = 8.0,
+        overlayOpacity: Double = 0.0,
+        overlayIsDark: Bool = true,
         lcdBrightnessOffset: Double = 0.0
     ) {
         self.id = id
@@ -70,9 +76,10 @@ public struct ThemeManifest: Codable, Sendable {
         self.foreground = foreground
         self.accent = accent
         self.appIconName = appIconName
-        self.materialWeight = materialWeight
         self.buttonStyle = buttonStyle
-        self.materialTint = materialTint
+        self.blurRadius = blurRadius
+        self.overlayOpacity = overlayOpacity
+        self.overlayIsDark = overlayIsDark
         self._lcdBrightnessOffset = lcdBrightnessOffset
     }
 }

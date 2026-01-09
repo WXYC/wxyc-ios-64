@@ -67,15 +67,15 @@ struct ThemeConfigurationTests {
             #expect(config.accentSaturationOverride == 0.5)
         }
 
-        @Test("Loads material tint override from UserDefaults")
-        func loadsMaterialTintOverride() {
+        @Test("Loads overlay opacity override from UserDefaults")
+        func loadsOverlayOpacityOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
-            defaults.set(-0.5, forKey: "wallpaper.materialTintOverride")
+            defaults.set(0.5, forKey: "wallpaper.overlayOpacityOverride")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            #expect(config.materialTintOverride == -0.5)
+            #expect(config.overlayOpacityOverride == 0.5)
         }
     }
 
@@ -141,38 +141,38 @@ struct ThemeConfigurationTests {
         }
     }
 
-    // MARK: - Effective Material Tint Tests
+    // MARK: - Effective Overlay Opacity Tests
 
-    @Suite("Effective Material Tint")
+    @Suite("Effective Overlay Opacity")
     @MainActor
-    struct EffectiveMaterialTintTests {
+    struct EffectiveOverlayOpacityTests {
 
         private func makeTestDefaults() -> UserDefaults {
             let suiteName = "ThemeConfigurationTests.\(UUID().uuidString)"
             return UserDefaults(suiteName: suiteName)!
         }
 
-        @Test("Returns theme material tint when no override")
-        func returnsThemeTintWhenNoOverride() {
+        @Test("Returns theme overlay opacity when no override")
+        func returnsThemeOpacityWhenNoOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
             defaults.set("test_dark", forKey: "wallpaper.selectedType.v3")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            #expect(config.effectiveMaterialTint == -0.3)
+            #expect(config.effectiveOverlayOpacity == 0.15)
         }
 
-        @Test("Applies material tint override")
-        func appliesTintOverride() {
+        @Test("Applies overlay opacity override")
+        func appliesOpacityOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
             defaults.set("test_dark", forKey: "wallpaper.selectedType.v3")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
-            config.materialTintOverride = 0.5
+            config.overlayOpacityOverride = 0.5
 
-            #expect(config.effectiveMaterialTint == 0.5)
+            #expect(config.effectiveOverlayOpacity == 0.5)
         }
 
         @Test("Returns zero when theme not found and no override")
@@ -182,7 +182,7 @@ struct ThemeConfigurationTests {
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            #expect(config.effectiveMaterialTint == 0.0)
+            #expect(config.effectiveOverlayOpacity == 0.0)
         }
     }
 
@@ -235,17 +235,17 @@ struct ThemeConfigurationTests {
             #expect(defaults.object(forKey: perThemeKey) == nil)
         }
 
-        @Test("Persists material tint override with per-theme key")
-        func persistsMaterialTintOverride() {
+        @Test("Persists overlay opacity override with per-theme key")
+        func persistsOverlayOpacityOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
-            config.materialTintOverride = -0.7
+            config.overlayOpacityOverride = 0.3
 
             // Overrides are stored per-theme using the selected theme ID
-            let perThemeKey = "wallpaper.materialTintOverride.\(config.selectedThemeID)"
-            #expect(defaults.double(forKey: perThemeKey) == -0.7)
+            let perThemeKey = "wallpaper.overlayOpacityOverride.\(config.selectedThemeID)"
+            #expect(defaults.double(forKey: perThemeKey) == 0.3)
         }
 
         @Test("Persists LCD min brightness")
@@ -436,14 +436,14 @@ struct ThemeConfigurationTests {
             config.selectedThemeID = "test_dark"
             config.accentHueOverride = 180
             config.accentSaturationOverride = 0.5
-            config.materialTintOverride = 0.3
+            config.overlayOpacityOverride = 0.3
 
             config.reset()
 
             #expect(config.selectedThemeID == "wxyc_gradient")
             #expect(config.accentHueOverride == nil)
             #expect(config.accentSaturationOverride == nil)
-            #expect(config.materialTintOverride == nil)
+            #expect(config.overlayOpacityOverride == nil)
         }
     }
 

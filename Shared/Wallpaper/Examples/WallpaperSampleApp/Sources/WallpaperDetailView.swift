@@ -28,7 +28,13 @@ struct WallpaperDetailView: View {
                 .padding()
                 .foregroundStyle(.white)
                 .preferredColorScheme(wallpaper.manifest.foreground.colorScheme)
-                .background(wallpaper.manifest.materialWeight.material)
+                .background {
+                    MaterialView(
+                        blurRadius: wallpaper.manifest.blurRadius,
+                        overlayOpacity: wallpaper.manifest.overlayOpacity,
+                        isDark: wallpaper.manifest.overlayIsDark
+                    )
+                }
                 .preferredColorScheme(wallpaper.manifest.foreground.colorScheme)
         }
     }

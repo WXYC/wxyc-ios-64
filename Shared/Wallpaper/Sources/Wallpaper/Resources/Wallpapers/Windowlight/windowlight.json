@@ -16,7 +16,8 @@
     "saturation": 0.75
   },
   "appIconName": "Windowlight",
-  "materialWeight": "ultraThin",
   "buttonStyle": "glass",
-  "materialTint": -0.2
+  "blurRadius": 4.0,
+  "overlayOpacity": 0.1,
+  "overlayIsDark": true
 }

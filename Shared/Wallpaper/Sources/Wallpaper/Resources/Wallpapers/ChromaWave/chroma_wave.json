@@ -29,6 +29,7 @@
     "saturation": 0.75
   },
   "appIconName": "Chroma Wave",
-  "materialWeight": "thin",
-  "materialTint": -0.2
+  "blurRadius": 8.0,
+  "overlayOpacity": 0.1,
+  "overlayIsDark": true
 }

@@ -33,7 +33,7 @@ public final class ThemeConfiguration {
     // Legacy global keys (for migration)
     private let legacyAccentHueOverrideKey = "wallpaper.accentHueOverride"
     private let legacyAccentSaturationOverrideKey = "wallpaper.accentSaturationOverride"
-    private let legacyMaterialTintOverrideKey = "wallpaper.materialTintOverride"
+    private let legacyOverlayOpacityOverrideKey = "wallpaper.overlayOpacityOverride"
     private let legacyLcdBrightnessOffsetOverrideKey = "wallpaper.lcdBrightnessOffsetOverride"
 
     // MARK: - Per-Theme Storage Keys
@@ -46,8 +46,8 @@ public final class ThemeConfiguration {
         "wallpaper.accentSaturationOverride.\(themeID)"
     }
 
-    private func materialTintOverrideKey(for themeID: String) -> String {
-        "wallpaper.materialTintOverride.\(themeID)"
+    private func overlayOpacityOverrideKey(for themeID: String) -> String {
+        "wallpaper.overlayOpacityOverride.\(themeID)"
     }
 
     private func lcdBrightnessOffsetOverrideKey(for themeID: String) -> String {
@@ -99,31 +99,30 @@ public final class ThemeConfiguration {
         }
     }
 
-    // MARK: - Material Tint Override
+    // MARK: - Overlay Opacity Override
 
-    /// Optional material tint override (-1.0 to 1.0). When nil, uses the theme's default tint.
-    /// Positive values lighten (white overlay), negative values darken (black overlay).
+    /// Optional overlay opacity override (0.0 to 1.0). When nil, uses the theme's default opacity.
     /// Stored per-theme so each theme remembers its customizations.
-    public var materialTintOverride: Double? {
+    public var overlayOpacityOverride: Double? {
         didSet {
-            let key = materialTintOverrideKey(for: selectedThemeID)
-            if let tint = materialTintOverride {
-                defaults.set(tint, forKey: key)
+            let key = overlayOpacityOverrideKey(for: selectedThemeID)
+            if let opacity = overlayOpacityOverride {
+                defaults.set(opacity, forKey: key)
             } else {
                 defaults.removeObject(forKey: key)
             }
         }
     }
 
-    /// Returns the effective material tint, applying any override to the current theme's tint.
-    public var effectiveMaterialTint: Double {
-        if let override = materialTintOverride {
+    /// Returns the effective overlay opacity, applying any override to the current theme's opacity.
+    public var effectiveOverlayOpacity: Double {
+        if let override = overlayOpacityOverride {
             return override
         }
         guard let theme = registry.theme(for: selectedThemeID) else {
             return 0.0
         }
-        return theme.manifest.materialTint
+        return theme.manifest.overlayOpacity
     }
 
     // MARK: - LCD Brightness Settings
@@ -203,22 +202,22 @@ public final class ThemeConfiguration {
         )
     }
 
-    /// Returns the effective material tint for a given theme ID.
+    /// Returns the effective overlay opacity for a given theme ID.
     /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
-    public func effectiveMaterialTint(for themeID: String) -> Double {
+    public func effectiveOverlayOpacity(for themeID: String) -> Double {
         if themeID == selectedThemeID {
-            return effectiveMaterialTint
+            return effectiveOverlayOpacity
         }
         guard let theme = registry.theme(for: themeID) else {
             return 0.0
         }
 
         // Look up stored override for this theme
-        let tintKey = materialTintOverrideKey(for: themeID)
-        if defaults.object(forKey: tintKey) != nil {
-            return defaults.double(forKey: tintKey)
+        let opacityKey = overlayOpacityOverrideKey(for: themeID)
+        if defaults.object(forKey: opacityKey) != nil {
+            return defaults.double(forKey: opacityKey)
         }
-        return theme.manifest.materialTint
+        return theme.manifest.overlayOpacity
     }
 
     /// Returns the effective LCD brightness offset for a given theme ID.
@@ -246,7 +245,7 @@ public final class ThemeConfiguration {
     private func loadOverrides(for themeID: String) {
         let hueKey = accentHueOverrideKey(for: themeID)
         let satKey = accentSaturationOverrideKey(for: themeID)
-        let tintKey = materialTintOverrideKey(for: themeID)
+        let opacityKey = overlayOpacityOverrideKey(for: themeID)
         let offsetKey = lcdBrightnessOffsetOverrideKey(for: themeID)
 
         // Try per-theme keys first, fall back to legacy global keys for migration
@@ -271,14 +270,14 @@ public final class ThemeConfiguration {
             accentSaturationOverride = nil
         }
 
-        if defaults.object(forKey: tintKey) != nil {
-            materialTintOverride = defaults.double(forKey: tintKey)
-        } else if defaults.object(forKey: legacyMaterialTintOverrideKey) != nil {
-            let value = defaults.double(forKey: legacyMaterialTintOverrideKey)
-            materialTintOverride = value
-            defaults.removeObject(forKey: legacyMaterialTintOverrideKey)
+        if defaults.object(forKey: opacityKey) != nil {
+            overlayOpacityOverride = defaults.double(forKey: opacityKey)
+        } else if defaults.object(forKey: legacyOverlayOpacityOverrideKey) != nil {
+            let value = defaults.double(forKey: legacyOverlayOpacityOverrideKey)
+            overlayOpacityOverride = value
+            defaults.removeObject(forKey: legacyOverlayOpacityOverrideKey)
         } else {
-            materialTintOverride = nil
+            overlayOpacityOverride = nil
         }
 
         if defaults.object(forKey: offsetKey) != nil {
@@ -325,7 +324,7 @@ public final class ThemeConfiguration {
         selectedThemeID = defaultThemeID
         accentHueOverride = nil
         accentSaturationOverride = nil
-        materialTintOverride = nil
+        overlayOpacityOverride = nil
         lcdMinBrightness = Self.defaultLCDMinBrightness
         lcdMaxBrightness = Self.defaultLCDMaxBrightness
         lcdBrightnessOffsetOverride = nil

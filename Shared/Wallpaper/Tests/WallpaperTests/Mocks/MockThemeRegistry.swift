@@ -44,7 +44,7 @@ final class MockThemeRegistry: ThemeRegistryProtocol {
 // MARK: - Test Theme Manifests
 
 extension ThemeManifest {
-    /// A dark test theme with orange accent and negative material tint.
+    /// A dark test theme with orange accent and dark overlay.
     @MainActor
     static let testDarkTheme = ThemeManifest(
         id: "test_dark",
@@ -53,10 +53,12 @@ extension ThemeManifest {
         renderer: RendererConfiguration(type: .swiftUI),
         foreground: .light,
         accent: AccentColor(hue: 30, saturation: 0.8),
-        materialTint: -0.3
+        blurRadius: 8.0,
+        overlayOpacity: 0.15,
+        overlayIsDark: true
     )
 
-    /// A light test theme with blue accent and positive material tint.
+    /// A light test theme with blue accent and light overlay.
     @MainActor
     static let testLightTheme = ThemeManifest(
         id: "test_light",
@@ -65,6 +67,8 @@ extension ThemeManifest {
         renderer: RendererConfiguration(type: .swiftUI),
         foreground: .dark,
         accent: AccentColor(hue: 210, saturation: 0.6),
-        materialTint: 0.2
+        blurRadius: 12.0,
+        overlayOpacity: 0.1,
+        overlayIsDark: false
     )
 }

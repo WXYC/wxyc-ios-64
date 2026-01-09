@@ -20,6 +20,7 @@
     "saturation": 0.55
   },
   "appIconName": "Plasma",
-  "materialWeight": "regular",
-  "materialTint": -0.5
+  "blurRadius": 12.0,
+  "overlayOpacity": 0.25,
+  "overlayIsDark": true
 }

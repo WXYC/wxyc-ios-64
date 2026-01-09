@@ -25,17 +25,17 @@ public struct ThemeTransition: Equatable {
         self.progress = progress
     }
 
-    public var fromMaterial: Material { fromTheme.manifest.materialWeight.material }
-    public var toMaterial: Material { toTheme.manifest.materialWeight.material }
     public var fromColorScheme: ColorScheme { fromTheme.manifest.foreground.colorScheme }
     public var toColorScheme: ColorScheme { toTheme.manifest.foreground.colorScheme }
-    public var fromMaterialTint: Double { fromTheme.manifest.materialTint }
-    public var toMaterialTint: Double { toTheme.manifest.materialTint }
 
-    /// Interpolated tint value based on transition progress.
-    public var interpolatedMaterialTint: Double {
-        fromMaterialTint + (toMaterialTint - fromMaterialTint) * progress
-    }
+    // MARK: Material Properties
+
+    public var fromBlurRadius: Double { fromTheme.manifest.blurRadius }
+    public var toBlurRadius: Double { toTheme.manifest.blurRadius }
+    public var fromOverlayOpacity: Double { fromTheme.manifest.overlayOpacity }
+    public var toOverlayOpacity: Double { toTheme.manifest.overlayOpacity }
+    public var fromOverlayIsDark: Bool { fromTheme.manifest.overlayIsDark }
+    public var toOverlayIsDark: Bool { toTheme.manifest.overlayIsDark }
 
     // MARK: Accent Color
 
@@ -97,14 +97,19 @@ private struct PreviewThemeTransitionKey: EnvironmentKey {
     static let defaultValue: ThemeTransition? = nil
 }
 
-/// Environment key for the current theme's material tint value.
-private struct CurrentMaterialTintKey: EnvironmentKey {
+/// Environment key for the current theme's blur radius.
+private struct CurrentBlurRadiusKey: EnvironmentKey {
+    static let defaultValue: Double = 8.0
+}
+
+/// Environment key for the current theme's overlay opacity.
+private struct CurrentOverlayOpacityKey: EnvironmentKey {
     static let defaultValue: Double = 0.0
 }
 
-/// Environment key for the current theme's material.
-private struct CurrentMaterialKey: EnvironmentKey {
-    static let defaultValue: Material = .thinMaterial
+/// Environment key for whether the current overlay is dark.
+private struct CurrentOverlayIsDarkKey: EnvironmentKey {
+    static let defaultValue: Bool = true
 }
 
 /// Environment key for the current/interpolated accent hue (normalized 0.0-1.0).
@@ -159,16 +164,22 @@ public extension EnvironmentValues {
         set { self[PreviewThemeTransitionKey.self] = newValue }
     }
 
-    /// The current theme's material tint value for non-picker mode.
-    var currentMaterialTint: Double {
-        get { self[CurrentMaterialTintKey.self] }
-        set { self[CurrentMaterialTintKey.self] = newValue }
+    /// The current theme's blur radius.
+    var currentBlurRadius: Double {
+        get { self[CurrentBlurRadiusKey.self] }
+        set { self[CurrentBlurRadiusKey.self] = newValue }
     }
 
-    /// The current theme's material for non-picker mode.
-    var currentMaterial: Material {
-        get { self[CurrentMaterialKey.self] }
-        set { self[CurrentMaterialKey.self] = newValue }
+    /// The current theme's overlay opacity.
+    var currentOverlayOpacity: Double {
+        get { self[CurrentOverlayOpacityKey.self] }
+        set { self[CurrentOverlayOpacityKey.self] = newValue }
+    }
+
+    /// Whether the current overlay is dark.
+    var currentOverlayIsDark: Bool {
+        get { self[CurrentOverlayIsDarkKey.self] }
+        set { self[CurrentOverlayIsDarkKey.self] = newValue }
     }
 
     /// The current/interpolated accent hue (normalized 0.0-1.0).

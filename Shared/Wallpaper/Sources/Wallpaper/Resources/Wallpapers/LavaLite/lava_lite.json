@@ -24,6 +24,7 @@
     "saturation": 0.75
   },
   "appIconName": "LavaLite",
-  "materialWeight": "regular",
-  "materialTint": -0.2
+  "blurRadius": 12.0,
+  "overlayOpacity": 0.1,
+  "overlayIsDark": true
 }

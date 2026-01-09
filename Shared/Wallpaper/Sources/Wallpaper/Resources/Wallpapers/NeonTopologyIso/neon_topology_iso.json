@@ -20,6 +20,7 @@
     "saturation": 0.75
   },
   "appIconName": "NeonTopologyIso",
-  "materialWeight": "thin",
-  "materialTint": -0.5
+  "blurRadius": 8.0,
+  "overlayOpacity": 0.25,
+  "overlayIsDark": true
 }

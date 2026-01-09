@@ -7,18 +7,19 @@
 
 import SwiftUI
 
-/// A themed background layer that supports smooth material and tint transitions
+/// A themed background layer that supports smooth material transitions
 /// during wallpaper picker scrolling.
 ///
-/// Reads material and tint from the environment, which are set by `ThemePickerContainer`
-/// based on the current theme. During picker transitions, crossfades between the
-/// from/to theme's materials and tints.
+/// Reads blur radius, overlay opacity, and overlay color from the environment,
+/// which are set by `ThemePickerContainer` based on the current theme.
+/// During picker transitions, crossfades between the from/to theme's materials.
 public struct BackgroundLayer: View {
     let cornerRadius: CGFloat
 
     @Environment(\.previewThemeTransition) private var themeTransition
-    @Environment(\.currentMaterial) private var currentMaterial
-    @Environment(\.currentMaterialTint) private var currentMaterialTint
+    @Environment(\.currentBlurRadius) private var currentBlurRadius
+    @Environment(\.currentOverlayOpacity) private var currentOverlayOpacity
+    @Environment(\.currentOverlayIsDark) private var currentOverlayIsDark
 
     public init(cornerRadius: CGFloat = 12) {
         self.cornerRadius = cornerRadius
@@ -29,33 +30,31 @@ public struct BackgroundLayer: View {
             // During picker transitions: crossfade between two materials
             ZStack {
                 // From material (fades out)
-                materialLayer(
-                    material: transition.fromMaterial,
-                    tint: transition.fromMaterialTint
+                MaterialView(
+                    blurRadius: transition.fromBlurRadius,
+                    overlayOpacity: transition.fromOverlayOpacity,
+                    isDark: transition.fromOverlayIsDark,
+                    cornerRadius: cornerRadius
                 )
                 .opacity(1 - transition.progress)
 
                 // To material (fades in)
-                materialLayer(
-                    material: transition.toMaterial,
-                    tint: transition.toMaterialTint
+                MaterialView(
+                    blurRadius: transition.toBlurRadius,
+                    overlayOpacity: transition.toOverlayOpacity,
+                    isDark: transition.toOverlayIsDark,
+                    cornerRadius: cornerRadius
                 )
                 .opacity(transition.progress)
             }
         } else {
-            // Normal mode: single material with tint from environment
-            materialLayer(material: currentMaterial, tint: currentMaterialTint)
+            // Normal mode: single material from environment
+            MaterialView(
+                blurRadius: currentBlurRadius,
+                overlayOpacity: currentOverlayOpacity,
+                isDark: currentOverlayIsDark,
+                cornerRadius: cornerRadius
+            )
         }
-    }
-
-    @ViewBuilder
-    private func materialLayer(material: Material, tint: Double) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(material)
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(tint > 0 ? Color.white : Color.gray)
-                    .opacity(abs(tint))
-            }
     }
 }

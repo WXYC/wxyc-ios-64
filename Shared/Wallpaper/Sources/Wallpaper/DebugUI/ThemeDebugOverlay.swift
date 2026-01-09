@@ -52,7 +52,7 @@ private struct ThemeDebugPopoverContent: View {
     @Bindable var configuration: ThemeConfiguration
     @AppStorage("ThemeDebug.isLCDBrightnessExpanded") private var isLCDBrightnessExpanded = false
     @AppStorage("ThemeDebug.isAccentColorExpanded") private var isAccentColorExpanded = false
-    @AppStorage("ThemeDebug.isMaterialTintExpanded") private var isMaterialTintExpanded = false
+    @AppStorage("ThemeDebug.isOverlayOpacityExpanded") private var isOverlayOpacityExpanded = false
     @AppStorage("ThemeDebug.isParametersExpanded") private var isParametersExpanded = false
     @AppStorage("ThemeDebug.isShaderFeaturesExpanded") private var isShaderFeaturesExpanded = false
 
@@ -105,12 +105,12 @@ private struct ThemeDebugPopoverContent: View {
                         }
                     }
 
-                    // Material tint controls
-                    DisclosureGroup(isExpanded: $isMaterialTintExpanded) {
-                        MaterialTintControls(configuration: configuration, theme: theme)
+                    // Overlay opacity controls
+                    DisclosureGroup(isExpanded: $isOverlayOpacityExpanded) {
+                        OverlayOpacityControls(configuration: configuration, theme: theme)
                             .padding(.top, 8)
                     } label: {
-                        Text("Material Tint")
+                        Text("Overlay Opacity")
                             .font(.headline)
                     }
 
@@ -193,34 +193,34 @@ private struct AccentColorControls: View {
     }
 }
 
-/// Controls for adjusting the theme's material tint.
-private struct MaterialTintControls: View {
+/// Controls for adjusting the theme's overlay opacity.
+private struct OverlayOpacityControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme
 
-    private var tintBinding: Binding<Double> {
+    private var opacityBinding: Binding<Double> {
         Binding(
-            get: { configuration.materialTintOverride ?? theme.manifest.materialTint },
-            set: { configuration.materialTintOverride = $0 }
+            get: { configuration.overlayOpacityOverride ?? theme.manifest.overlayOpacity },
+            set: { configuration.overlayOpacityOverride = $0 }
         )
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Tint: \(Int(tintBinding.wrappedValue * 100))%")
+                Text("Opacity: \(Int(opacityBinding.wrappedValue * 100))%")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Slider(value: tintBinding, in: -1...1)
+                Slider(value: opacityBinding, in: 0...1)
             }
 
-            Text("Positive = lighter, Negative = darker")
+            Text("Overlay is \(theme.manifest.overlayIsDark ? "dark (black)" : "light (white)")")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            if configuration.materialTintOverride != nil {
+            if configuration.overlayOpacityOverride != nil {
                 Button("Reset to Theme Default") {
-                    configuration.materialTintOverride = nil
+                    configuration.overlayOpacityOverride = nil
                 }
                 .font(.caption)
             }

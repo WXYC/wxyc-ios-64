@@ -29,20 +29,36 @@ public struct ThemePickerContainer<Content: View>: View {
         ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
     }
 
-    /// Material from the currently selected theme.
-    private var currentThemeMaterial: Material {
-        currentTheme?.manifest.materialWeight.material ?? .thinMaterial
+    /// Blur radius - interpolated during picker transitions, otherwise from current theme.
+    private var effectiveBlurRadius: Double {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            let fromRadius = transition.fromBlurRadius
+            let toRadius = transition.toBlurRadius
+            return fromRadius + (toRadius - fromRadius) * transition.progress
+        } else {
+            return currentTheme?.manifest.blurRadius ?? 8.0
+        }
     }
 
-    /// Material tint - interpolated during picker transitions, otherwise from configuration.
+    /// Overlay opacity - interpolated during picker transitions, otherwise from configuration.
     /// Uses effective values which respect user overrides for the selected theme.
-    private var effectiveMaterialTint: Double {
+    private var effectiveOverlayOpacity: Double {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromTint = configuration.effectiveMaterialTint(for: transition.fromTheme.id)
-            let toTint = configuration.effectiveMaterialTint(for: transition.toTheme.id)
-            return fromTint + (toTint - fromTint) * transition.progress
+            let fromOpacity = configuration.effectiveOverlayOpacity(for: transition.fromTheme.id)
+            let toOpacity = configuration.effectiveOverlayOpacity(for: transition.toTheme.id)
+            return fromOpacity + (toOpacity - fromOpacity) * transition.progress
         } else {
-            return configuration.effectiveMaterialTint
+            return configuration.effectiveOverlayOpacity
+        }
+    }
+
+    /// Whether the overlay is dark - uses the "to" theme during transitions.
+    private var effectiveOverlayIsDark: Bool {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            // Use the target theme's isDark during transitions
+            return transition.toOverlayIsDark
+        } else {
+            return currentTheme?.manifest.overlayIsDark ?? true
         }
     }
 
@@ -112,8 +128,9 @@ public struct ThemePickerContainer<Content: View>: View {
                 content()
                     .environment(\.isThemePickerActive, pickerState.isActive)
                     .environment(\.previewThemeTransition, pickerState.isActive ? pickerState.themeTransition : nil)
-                    .environment(\.currentMaterial, currentThemeMaterial)
-                    .environment(\.currentMaterialTint, effectiveMaterialTint)
+                    .environment(\.currentBlurRadius, effectiveBlurRadius)
+                    .environment(\.currentOverlayOpacity, effectiveOverlayOpacity)
+                    .environment(\.currentOverlayIsDark, effectiveOverlayIsDark)
                     .environment(\.currentAccentHue, effectiveAccentHue)
                     .environment(\.currentAccentSaturation, effectiveAccentSaturation)
                     .environment(\.currentLCDMinBrightness, configuration.lcdMinBrightness)
