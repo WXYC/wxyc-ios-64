@@ -218,6 +218,9 @@ public final class RadioPlayerController: PlaybackController {
     /// Stops playback without capturing analytics.
     /// Call sites should capture analytics BEFORE calling this method.
     public func stop() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        backoffTimer.reset()
         self.radioPlayer.stop()
         self.state = .idle
     }
@@ -249,10 +252,11 @@ public final class RadioPlayerController: PlaybackController {
     #if os(iOS) || os(tvOS)
     private let audioSession: AudioSessionProtocol
     #endif
-
+    
     private var playbackTimer = Timer.start()
     internal var backoffTimer: ExponentialBackoff
-    
+    private var reconnectTask: Task<Void, Never>?
+
     private let analytics: PlaybackAnalytics
     private var stallStartTime: Date?
     private var wasPlayingBeforeInterruption = false
@@ -273,7 +277,7 @@ private extension RadioPlayerController {
             self.attemptReconnectWithExponentialBackoff()
         }
     }
-    
+
     nonisolated func sessionInterrupted(notification: Notification) {
 #if os(iOS) || os(tvOS)
         Log(.info, "Session interrupted: \(notification)")
@@ -330,7 +334,7 @@ private extension RadioPlayerController {
             return
         }
         Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
-        Task {
+        reconnectTask = Task {
             if self.radioPlayer.isPlaying {
                 captureRecoveryIfNeeded()
                 self.backoffTimer.reset()
@@ -341,6 +345,7 @@ private extension RadioPlayerController {
                 self.radioPlayer.play()
                 try await Task.sleep(nanoseconds: waitTime.nanoseconds)
 
+                guard !Task.isCancelled else { return }
                 if !radioPlayer.isPlaying {
                     attemptReconnectWithExponentialBackoff()
                 } else {
