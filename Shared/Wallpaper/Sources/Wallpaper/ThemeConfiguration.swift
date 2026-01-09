@@ -54,6 +54,14 @@ public final class ThemeConfiguration {
         "wallpaper.lcdBrightnessOffsetOverride.\(themeID)"
     }
 
+    private func blurRadiusOverrideKey(for themeID: String) -> String {
+        "wallpaper.blurRadiusOverride.\(themeID)"
+    }
+
+    private func overlayIsDarkOverrideKey(for themeID: String) -> String {
+        "wallpaper.overlayIsDarkOverride.\(themeID)"
+    }
+
     // MARK: - Dependencies
 
     private let registry: any ThemeRegistryProtocol
@@ -112,6 +120,58 @@ public final class ThemeConfiguration {
                 defaults.removeObject(forKey: key)
             }
         }
+    }
+
+    // MARK: - Blur Radius Override
+
+    /// Optional blur radius override (0.0 to 30.0). When nil, uses the theme's default blur radius.
+    /// Stored per-theme so each theme remembers its customizations.
+    public var blurRadiusOverride: Double? {
+        didSet {
+            let key = blurRadiusOverrideKey(for: selectedThemeID)
+            if let radius = blurRadiusOverride {
+                defaults.set(radius, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+    }
+
+    /// Returns the effective blur radius, applying any override to the current theme's blur radius.
+    public var effectiveBlurRadius: Double {
+        if let override = blurRadiusOverride {
+            return override
+        }
+        guard let theme = registry.theme(for: selectedThemeID) else {
+            return 8.0
+        }
+        return theme.manifest.blurRadius
+    }
+
+    // MARK: - Overlay Dark/Light Override
+
+    /// Optional dark/light override. When nil, uses the theme's default.
+    /// Stored per-theme so each theme remembers its customizations.
+    public var overlayIsDarkOverride: Bool? {
+        didSet {
+            let key = overlayIsDarkOverrideKey(for: selectedThemeID)
+            if let isDark = overlayIsDarkOverride {
+                defaults.set(isDark, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+    }
+
+    /// Returns whether the overlay is dark, applying any override to the current theme's setting.
+    public var effectiveOverlayIsDark: Bool {
+        if let override = overlayIsDarkOverride {
+            return override
+        }
+        guard let theme = registry.theme(for: selectedThemeID) else {
+            return true
+        }
+        return theme.manifest.overlayIsDark
     }
 
     /// Returns the effective overlay opacity, applying any override to the current theme's opacity.
@@ -238,6 +298,42 @@ public final class ThemeConfiguration {
         return theme.manifest.lcdBrightnessOffset
     }
 
+    /// Returns the effective blur radius for a given theme ID.
+    /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
+    public func effectiveBlurRadius(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return effectiveBlurRadius
+        }
+        guard let theme = registry.theme(for: themeID) else {
+            return 8.0
+        }
+
+        // Look up stored override for this theme
+        let blurKey = blurRadiusOverrideKey(for: themeID)
+        if defaults.object(forKey: blurKey) != nil {
+            return defaults.double(forKey: blurKey)
+        }
+        return theme.manifest.blurRadius
+    }
+
+    /// Returns whether the overlay is dark for a given theme ID.
+    /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
+    public func effectiveOverlayIsDark(for themeID: String) -> Bool {
+        if themeID == selectedThemeID {
+            return effectiveOverlayIsDark
+        }
+        guard let theme = registry.theme(for: themeID) else {
+            return true
+        }
+
+        // Look up stored override for this theme
+        let isDarkKey = overlayIsDarkOverrideKey(for: themeID)
+        if defaults.object(forKey: isDarkKey) != nil {
+            return defaults.bool(forKey: isDarkKey)
+        }
+        return theme.manifest.overlayIsDark
+    }
+
     // MARK: - Per-Theme Override Loading
 
     /// Loads overrides for a specific theme from UserDefaults.
@@ -289,6 +385,22 @@ public final class ThemeConfiguration {
         } else {
             lcdBrightnessOffsetOverride = nil
         }
+
+        // Blur radius override (no legacy migration needed)
+        let blurKey = blurRadiusOverrideKey(for: themeID)
+        if defaults.object(forKey: blurKey) != nil {
+            blurRadiusOverride = defaults.double(forKey: blurKey)
+        } else {
+            blurRadiusOverride = nil
+        }
+
+        // Overlay dark/light override (no legacy migration needed)
+        let isDarkKey = overlayIsDarkOverrideKey(for: themeID)
+        if defaults.object(forKey: isDarkKey) != nil {
+            overlayIsDarkOverride = defaults.bool(forKey: isDarkKey)
+        } else {
+            overlayIsDarkOverride = nil
+        }
     }
 
     // MARK: - Initialization
@@ -325,6 +437,8 @@ public final class ThemeConfiguration {
         accentHueOverride = nil
         accentSaturationOverride = nil
         overlayOpacityOverride = nil
+        blurRadiusOverride = nil
+        overlayIsDarkOverride = nil
         lcdMinBrightness = Self.defaultLCDMinBrightness
         lcdMaxBrightness = Self.defaultLCDMaxBrightness
         lcdBrightnessOffsetOverride = nil

@@ -52,7 +52,7 @@ private struct ThemeDebugPopoverContent: View {
     @Bindable var configuration: ThemeConfiguration
     @AppStorage("ThemeDebug.isLCDBrightnessExpanded") private var isLCDBrightnessExpanded = false
     @AppStorage("ThemeDebug.isAccentColorExpanded") private var isAccentColorExpanded = false
-    @AppStorage("ThemeDebug.isOverlayOpacityExpanded") private var isOverlayOpacityExpanded = false
+    @AppStorage("ThemeDebug.isMaterialExpanded") private var isMaterialExpanded = false
     @AppStorage("ThemeDebug.isParametersExpanded") private var isParametersExpanded = false
     @AppStorage("ThemeDebug.isShaderFeaturesExpanded") private var isShaderFeaturesExpanded = false
 
@@ -105,12 +105,12 @@ private struct ThemeDebugPopoverContent: View {
                         }
                     }
 
-                    // Overlay opacity controls
-                    DisclosureGroup(isExpanded: $isOverlayOpacityExpanded) {
-                        OverlayOpacityControls(configuration: configuration, theme: theme)
+                    // Material controls (blur, dark/light, opacity)
+                    DisclosureGroup(isExpanded: $isMaterialExpanded) {
+                        MaterialControls(configuration: configuration, theme: theme)
                             .padding(.top, 8)
                     } label: {
-                        Text("Overlay Opacity")
+                        Text("Material")
                             .font(.headline)
                     }
 
@@ -193,10 +193,24 @@ private struct AccentColorControls: View {
     }
 }
 
-/// Controls for adjusting the theme's overlay opacity.
-private struct OverlayOpacityControls: View {
+/// Controls for adjusting the theme's material properties (blur, dark/light, opacity).
+private struct MaterialControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme
+
+    private var blurRadiusBinding: Binding<Double> {
+        Binding(
+            get: { configuration.blurRadiusOverride ?? theme.manifest.blurRadius },
+            set: { configuration.blurRadiusOverride = $0 }
+        )
+    }
+
+    private var isDarkBinding: Binding<Bool> {
+        Binding(
+            get: { configuration.overlayIsDarkOverride ?? theme.manifest.overlayIsDark },
+            set: { configuration.overlayIsDarkOverride = $0 }
+        )
+    }
 
     private var opacityBinding: Binding<Double> {
         Binding(
@@ -206,7 +220,26 @@ private struct OverlayOpacityControls: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            // Blur radius slider
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Blur Radius: \(blurRadiusBinding.wrappedValue, format: .number.precision(.fractionLength(1)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: blurRadiusBinding, in: 0...30)
+            }
+
+            Divider()
+
+            // Dark/Light toggle
+            Toggle(isOn: isDarkBinding) {
+                Text(isDarkBinding.wrappedValue ? "Dark Overlay" : "Light Overlay")
+                    .font(.caption)
+            }
+
+            Divider()
+
+            // Opacity slider
             VStack(alignment: .leading, spacing: 4) {
                 Text("Opacity: \(Int(opacityBinding.wrappedValue * 100))%")
                     .font(.caption)
@@ -214,12 +247,16 @@ private struct OverlayOpacityControls: View {
                 Slider(value: opacityBinding, in: 0...1)
             }
 
-            Text("Overlay is \(theme.manifest.overlayIsDark ? "dark (black)" : "light (white)")")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // Reset button
+            let hasOverrides =
+                configuration.blurRadiusOverride != nil ||
+                configuration.overlayIsDarkOverride != nil ||
+                configuration.overlayOpacityOverride != nil
 
-            if configuration.overlayOpacityOverride != nil {
+            if hasOverrides {
                 Button("Reset to Theme Default") {
+                    configuration.blurRadiusOverride = nil
+                    configuration.overlayIsDarkOverride = nil
                     configuration.overlayOpacityOverride = nil
                 }
                 .font(.caption)

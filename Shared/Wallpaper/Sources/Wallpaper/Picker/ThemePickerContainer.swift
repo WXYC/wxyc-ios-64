@@ -29,14 +29,15 @@ public struct ThemePickerContainer<Content: View>: View {
         ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
     }
 
-    /// Blur radius - interpolated during picker transitions, otherwise from current theme.
+    /// Blur radius - interpolated during picker transitions, otherwise from configuration.
+    /// Uses effective values which respect user overrides for the selected theme.
     private var effectiveBlurRadius: Double {
         if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromRadius = transition.fromBlurRadius
-            let toRadius = transition.toBlurRadius
+            let fromRadius = configuration.effectiveBlurRadius(for: transition.fromTheme.id)
+            let toRadius = configuration.effectiveBlurRadius(for: transition.toTheme.id)
             return fromRadius + (toRadius - fromRadius) * transition.progress
         } else {
-            return currentTheme?.manifest.blurRadius ?? 8.0
+            return configuration.effectiveBlurRadius
         }
     }
 
@@ -52,13 +53,14 @@ public struct ThemePickerContainer<Content: View>: View {
         }
     }
 
-    /// Whether the overlay is dark - uses the "to" theme during transitions.
+    /// Whether the overlay is dark - interpolated during picker transitions, otherwise from configuration.
+    /// Uses effective values which respect user overrides for the selected theme.
     private var effectiveOverlayIsDark: Bool {
         if let transition = pickerState.themeTransition, pickerState.isActive {
             // Use the target theme's isDark during transitions
-            return transition.toOverlayIsDark
+            return configuration.effectiveOverlayIsDark(for: transition.toTheme.id)
         } else {
-            return currentTheme?.manifest.overlayIsDark ?? true
+            return configuration.effectiveOverlayIsDark
         }
     }
 
