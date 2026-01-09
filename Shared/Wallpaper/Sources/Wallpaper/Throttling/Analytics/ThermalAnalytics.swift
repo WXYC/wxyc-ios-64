@@ -37,10 +37,12 @@ public protocol ThermalAnalyticsEvent: Sendable, Equatable {}
 public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
     /// Identifier for the active shader
     public let shaderId: String
-    /// Current FPS setting
-    public let fps: Float
+    /// Current wallpaper FPS setting
+    public let wallpaperFPS: Float
     /// Current scale setting
     public let scale: Float
+    /// Current level of detail setting
+    public let lod: Float
     /// Raw thermal state from system
     public let thermalState: ProcessInfo.ThermalState
     /// Current thermal momentum
@@ -50,15 +52,17 @@ public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
 
     public init(
         shaderId: String,
-        fps: Float,
+        wallpaperFPS: Float,
         scale: Float,
+        lod: Float,
         thermalState: ProcessInfo.ThermalState,
         momentum: Float,
         timestamp: Date = Date()
     ) {
         self.shaderId = shaderId
-        self.fps = fps
+        self.wallpaperFPS = wallpaperFPS
         self.scale = scale
+        self.lod = lod
         self.thermalState = thermalState
         self.momentum = momentum
         self.timestamp = timestamp
@@ -81,10 +85,12 @@ public struct ThermalSessionSummary: Sendable, Equatable {
 
     // MARK: Quality Delivered
 
-    /// Average FPS over the session
-    public let avgFPS: Float
+    /// Average wallpaper FPS over the session
+    public let avgWallpaperFPS: Float
     /// Average scale over the session
     public let avgScale: Float
+    /// Average level of detail over the session
+    public let avgLOD: Float
     /// How long this session lasted
     public let sessionDurationSeconds: TimeInterval
 
@@ -105,24 +111,35 @@ public struct ThermalSessionSummary: Sendable, Equatable {
     public let sessionsToStability: Int?
     /// Classification of how the session concluded
     public let sessionOutcome: ThermalSessionOutcome
+    /// Final wallpaper FPS when stability was reached (nil if not stabilized)
+    public let stableWallpaperFPS: Float?
+    /// Final scale when stability was reached (nil if not stabilized)
+    public let stableScale: Float?
+    /// Final LOD when stability was reached (nil if not stabilized)
+    public let stableLOD: Float?
 
     public init(
         shaderId: String,
         flushReason: ThermalFlushReason,
-        avgFPS: Float,
+        avgWallpaperFPS: Float,
         avgScale: Float,
+        avgLOD: Float,
         sessionDurationSeconds: TimeInterval,
         timeInCriticalSeconds: TimeInterval,
         throttleEventCount: Int,
         oscillationCount: Int,
         reachedStability: Bool,
         sessionsToStability: Int?,
-        sessionOutcome: ThermalSessionOutcome
+        sessionOutcome: ThermalSessionOutcome,
+        stableWallpaperFPS: Float?,
+        stableScale: Float?,
+        stableLOD: Float?
     ) {
         self.shaderId = shaderId
         self.flushReason = flushReason
-        self.avgFPS = avgFPS
+        self.avgWallpaperFPS = avgWallpaperFPS
         self.avgScale = avgScale
+        self.avgLOD = avgLOD
         self.sessionDurationSeconds = sessionDurationSeconds
         self.timeInCriticalSeconds = timeInCriticalSeconds
         self.throttleEventCount = throttleEventCount
@@ -130,6 +147,9 @@ public struct ThermalSessionSummary: Sendable, Equatable {
         self.reachedStability = reachedStability
         self.sessionsToStability = sessionsToStability
         self.sessionOutcome = sessionOutcome
+        self.stableWallpaperFPS = stableWallpaperFPS
+        self.stableScale = stableScale
+        self.stableLOD = stableLOD
     }
 }
 

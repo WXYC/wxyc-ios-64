@@ -23,8 +23,9 @@ struct ThermalMetricsAggregatorTests {
 
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test_shader",
-            fps: 60,
+            wallpaperFPS: 60,
             scale: 1.0,
+            lod: 1.0,
             thermalState: .nominal,
             momentum: 0
         ))
@@ -36,22 +37,24 @@ struct ThermalMetricsAggregatorTests {
         #expect(reporter.reportedSummaries.first?.flushReason == .background)
     }
 
-    @Test("Calculates average FPS and scale")
+    @Test("Calculates average wallpaper FPS, scale, and LOD")
     func calculatesAverages() {
         let reporter = MockThermalReporter()
         let aggregator = ThermalMetricsAggregator(reporter: reporter)
 
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 60,
+            wallpaperFPS: 60,
             scale: 1.0,
+            lod: 1.0,
             thermalState: .nominal,
             momentum: 0
         ))
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 40,
+            wallpaperFPS: 40,
             scale: 0.8,
+            lod: 0.6,
             thermalState: .fair,
             momentum: 0.2
         ))
@@ -59,8 +62,9 @@ struct ThermalMetricsAggregatorTests {
         aggregator.flush(reason: .periodic)
 
         let summary = reporter.reportedSummaries.first
-        #expect(summary?.avgFPS == 50)
+        #expect(summary?.avgWallpaperFPS == 50)
         #expect(summary?.avgScale == 0.9)
+        #expect(summary?.avgLOD == 0.8)
     }
 
     @Test("Tracks time in critical")
@@ -70,22 +74,25 @@ struct ThermalMetricsAggregatorTests {
 
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 30,
+            wallpaperFPS: 30,
             scale: 0.5,
+            lod: 0.5,
             thermalState: .critical,
             momentum: 0.8
         ))
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 30,
+            wallpaperFPS: 30,
             scale: 0.5,
+            lod: 0.5,
             thermalState: .critical,
             momentum: 0.8
         ))
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 45,
+            wallpaperFPS: 45,
             scale: 0.7,
+            lod: 0.7,
             thermalState: .serious,
             momentum: 0.5
         ))
@@ -104,8 +111,9 @@ struct ThermalMetricsAggregatorTests {
 
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "shader1",
-            fps: 60,
+            wallpaperFPS: 60,
             scale: 1.0,
+            lod: 1.0,
             thermalState: .nominal,
             momentum: 0
         ))
@@ -113,8 +121,9 @@ struct ThermalMetricsAggregatorTests {
         // Change shader
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "shader2",
-            fps: 55,
+            wallpaperFPS: 55,
             scale: 0.9,
+            lod: 0.9,
             thermalState: .fair,
             momentum: 0.1
         ))
@@ -124,29 +133,32 @@ struct ThermalMetricsAggregatorTests {
         #expect(reporter.reportedSummaries.first?.flushReason == .shaderChanged)
     }
 
-    @Test("Counts throttle events")
+    @Test("Counts throttle events including LOD")
     func countsThrottleEvents() {
         let reporter = MockThermalReporter()
         let aggregator = ThermalMetricsAggregator(reporter: reporter)
 
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 60,
+            wallpaperFPS: 60,
             scale: 1.0,
+            lod: 1.0,
             thermalState: .nominal,
             momentum: 0
         ))
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 55,  // Down
+            wallpaperFPS: 55,  // Down
             scale: 0.9,  // Down
+            lod: 1.0,  // Same
             thermalState: .fair,
             momentum: 0.2
         ))
         aggregator.record(ThermalAdjustmentEvent(
             shaderId: "test",
-            fps: 50,  // Down
+            wallpaperFPS: 55,  // Same
             scale: 0.9,  // Same
+            lod: 0.8,  // Down - throttle event
             thermalState: .serious,
             momentum: 0.4
         ))
@@ -167,8 +179,9 @@ struct ThermalMetricsAggregatorTests {
         for i in 0..<10 {
             aggregator.record(ThermalAdjustmentEvent(
                 shaderId: "efficient_shader",
-                fps: 60,
+                wallpaperFPS: 60,
                 scale: 1.0,
+                lod: 1.0,
                 thermalState: .nominal,
                 momentum: 0,
                 timestamp: baseTime.addingTimeInterval(TimeInterval(i * 5))
@@ -179,5 +192,61 @@ struct ThermalMetricsAggregatorTests {
 
         let summary = reporter.reportedSummaries.first
         #expect(summary?.sessionOutcome == .neverThrottled)
+    }
+
+    @Test("Stable values set when stability reached")
+    func stableValuesWhenStabilityReached() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        // Record stable values for longer than stability threshold (30s)
+        let baseTime = Date()
+        for i in 0..<10 {
+            aggregator.record(ThermalAdjustmentEvent(
+                shaderId: "test",
+                wallpaperFPS: 45,
+                scale: 0.8,
+                lod: 0.7,
+                thermalState: .fair,
+                momentum: 0.2,
+                timestamp: baseTime.addingTimeInterval(TimeInterval(i * 5))
+            ))
+        }
+
+        aggregator.flush(reason: .background)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.reachedStability == true)
+        #expect(summary?.stableWallpaperFPS == 45)
+        #expect(summary?.stableScale == 0.8)
+        #expect(summary?.stableLOD == 0.7)
+    }
+
+    @Test("Stable values nil when stability not reached")
+    func stableValuesNilWhenUnstable() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        // Record values that keep changing (never stable)
+        let baseTime = Date()
+        for i in 0..<10 {
+            aggregator.record(ThermalAdjustmentEvent(
+                shaderId: "test",
+                wallpaperFPS: Float(60 - i * 2),  // Constantly changing
+                scale: 1.0 - Float(i) * 0.05,
+                lod: 1.0 - Float(i) * 0.03,
+                thermalState: .fair,
+                momentum: 0.2,
+                timestamp: baseTime.addingTimeInterval(TimeInterval(i * 5))
+            ))
+        }
+
+        aggregator.flush(reason: .background)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.reachedStability == false)
+        #expect(summary?.stableWallpaperFPS == nil)
+        #expect(summary?.stableScale == nil)
+        #expect(summary?.stableLOD == nil)
     }
 }
