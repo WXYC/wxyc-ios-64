@@ -30,6 +30,7 @@ struct PlaybackControlsView: View {
                 .contentTransition(.symbolEffect)
         }
         .accessibilityIdentifier("playPauseButton")
+        .accessibilityValue(isPlaying ? "playing" : "paused")
         .foregroundColor(.secondary)
     }
 

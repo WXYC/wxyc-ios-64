@@ -181,6 +181,7 @@
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
+				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
 				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
@@ -191,6 +192,7 @@
 			membershipExceptions = (
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
+				iOS/Tests/WXYCUITests/PlayWXYCIntentUITests.swift,
 				iOS/Tests/WXYCUITests/UITestUtilities.swift,
 				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
 			);
@@ -229,10 +231,12 @@
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
+				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
 				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
+				iOS/Tests/WXYCUITests/PlayWXYCIntentUITests.swift,
 				iOS/Tests/WXYCUITests/README.md,
 				iOS/Tests/WXYCUITests/UITestUtilities.swift,
 				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
