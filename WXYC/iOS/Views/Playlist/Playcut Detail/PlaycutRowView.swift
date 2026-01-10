@@ -84,61 +84,18 @@ struct PlaycutRowView: View {
 
     @State private var artwork: UIImage?
     @State private var isLoadingArtwork = true
-    @State private var timeOffset: Int = (-10..<10).randomElement()!
-    @State private var colors = Self.randomColors()
     @State private var shadowYOffset: CGFloat = 0
+
+    /// Animated mesh gradient with random time offset for visual variety.
+    private let meshGradient = AnimatedMeshGradient(
+        timeOffset: TimeInterval((-10..<10).randomElement()!)
+    )
 
     // Shadow offset configuration
     private let shadowOffsetAtTop: CGFloat = -3
     private let shadowOffsetAtBottom: CGFloat = 3
 
     @Environment(\.artworkService) private var artworkService
-
-    private var meshGradientAnimation: TimelineView<AnimationTimelineSchedule, MeshGradient> {
-        TimelineView(.animation) { context in
-            let time = context.date.timeIntervalSince1970 + TimeInterval(timeOffset)
-            let offsetX = Float(sin(time)) * 0.25
-            let offsetY = Float(cos(time)) * 0.25
-            
-            MeshGradient(
-                width: 4,
-                height: 4,
-                points: [
-                    [0.0, 0.0],
-                    [0.3, 0.0],
-                    [0.7, 0.0],
-                    [1.0, 0.0],
-                    [0.0, 0.3],
-                    [0.2 + offsetX, 0.4 + offsetY],
-                    [0.7 + offsetX, 0.2 + offsetY],
-                    [1.0, 0.3],
-                    [0.0, 0.7],
-                    [0.3 + offsetX, 0.8],
-                    [0.7 + offsetX, 0.6],
-                    [1.0, 0.7],
-                    [0.0, 1.0],
-                    [0.3, 1.0],
-                    [0.7, 1.0],
-                    [1.0, 1.0]
-                ],
-                colors: colors
-            )
-        }
-    }
-    
-    static func randomColors() -> [Color] {
-        (0..<16).map { _ in palette.randomElement()! }
-    }
-    
-    static let palette: [Color] = [
-        .indigo,
-        .orange,
-        .pink,
-        .purple,
-        .yellow,
-        .blue,
-        .green,
-    ]
 
     var body: some View {
             GeometryReader { proxy in
@@ -160,7 +117,7 @@ struct PlaycutRowView: View {
                                 PlaceholderArtworkView(
                                     cornerRadius: ArtworkStyle.cornerRadius,
                                     shadowYOffset: shadowYOffset,
-                                    meshGradient: meshGradientAnimation
+                                    meshGradient: meshGradient
                                 )
                                 .frame(
                                     maxWidth: .infinity,

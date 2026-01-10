@@ -7,30 +7,22 @@
 
 import SwiftUI
 
-private struct LogoWidthPreferenceKey: PreferenceKey {
-    nonisolated(unsafe) static var defaultValue: CGFloat? = nil
-    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
-        value = nextValue()
-    }
-}
-
-/// Placeholder view with WXYC logo and optional animated gradient
+/// Placeholder view with WXYC logo and animated gradient background.
 public struct PlaceholderArtworkView: View {
     let cornerRadius: CGFloat
     let shadowYOffset: CGFloat
-    let meshGradient: TimelineView<AnimationTimelineSchedule, MeshGradient>
-    @State private var logoWidth: CGFloat?
-    
+    let meshGradient: AnimatedMeshGradient
+
     public init(
         cornerRadius: CGFloat = 12,
         shadowYOffset: CGFloat = 0,
-        meshGradient: TimelineView<AnimationTimelineSchedule, MeshGradient> = WXYCMeshAnimation().meshGradient
+        meshGradient: AnimatedMeshGradient = AnimatedMeshGradient()
     ) {
         self.cornerRadius = cornerRadius
         self.shadowYOffset = shadowYOffset
         self.meshGradient = meshGradient
     }
-    
+
     public var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -56,7 +48,7 @@ public struct PlaceholderArtworkView: View {
                         )
                     )
                     .shadow(radius: 2, x: 0, y: shadowYOffset)
-                
+
                 WXYCLogo()
                     .glassEffectClearIfAvailable(in: WXYCLogoShape())
                     .background(
@@ -68,8 +60,5 @@ public struct PlaceholderArtworkView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .backgroundStyle(.clear)
-        .onPreferenceChange(LogoWidthPreferenceKey.self) { width in
-            logoWidth = width
-        }
     }
 }
