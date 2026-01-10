@@ -438,6 +438,17 @@ extension AudioPlayerController {
         player.audioBufferStream
     }
 
+    /// Install the render tap for audio visualization.
+    /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
+    public func installRenderTap() {
+        player.installRenderTap()
+    }
+
+    /// Remove the render tap when visualization is no longer needed.
+    public func removeRenderTap() {
+        player.removeRenderTap()
+    }
+
     private func setUpPlayerObservation() {
         eventTask?.cancel()
         eventTask = Task { [weak self] in
@@ -476,13 +487,13 @@ extension AudioPlayerController {
 }
     
 extension AudioPlayerController: PlaybackController {
-    
+
     public var state: PlaybackState {
         // If there's a stall in progress, return stalled
         if stallStartTime != nil {
             return .stalled
         }
-    
+
         // Convert PlayerState to PlaybackState
         // PlayerState doesn't include .interrupted (controller-level concern)
         return player.state.asPlaybackState

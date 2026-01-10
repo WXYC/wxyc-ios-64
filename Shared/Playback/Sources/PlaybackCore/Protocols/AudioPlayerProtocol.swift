@@ -35,10 +35,18 @@ public protocol AudioPlayerProtocol: AnyObject {
     
     /// Stream of audio buffers for visualization
     /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread
+    /// Note: Only yields buffers when render tap is installed via `installRenderTap()`
     var audioBufferStream: AsyncStream<AVAudioPCMBuffer> { get }
 
     /// Stream of internal player events (errors, stalls, recovery)
     var eventStream: AsyncStream<AudioPlayerInternalEvent> { get }
+
+    /// Install the render tap for audio visualization.
+    /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
+    func installRenderTap()
+
+    /// Remove the render tap when visualization is no longer needed.
+    func removeRenderTap()
 }
 
 /// Internal events that can occur during playback

@@ -32,7 +32,7 @@ final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendabl
 
     init() {
         var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
-        self.eventStream = AsyncStream(bufferingPolicy: .unbounded) { eventCont = $0 }
+        self.eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(16)) { eventCont = $0 }
         self.eventContinuation = eventCont
 
         var renderCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
@@ -65,15 +65,29 @@ final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendabl
     }
 
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
-        scheduledBuffers.append(buffer)
+        scheduleBuffers([buffer])
+    }
 
-        // Simulate instant "playback" - yield to render stream
-        renderContinuation.yield(buffer)
+    func scheduleBuffers(_ buffers: [AVAudioPCMBuffer]) {
+        scheduledBuffers.append(contentsOf: buffers)
+
+        // Simulate instant "playback" - yield last buffer to render stream
+        if let lastBuffer = buffers.last {
+            renderContinuation.yield(lastBuffer)
+        }
 
         // Immediately request more buffers to simulate fast playback
-        if immediatelyRequestMoreBuffers {
+        if immediatelyRequestMoreBuffers && !buffers.isEmpty {
             eventContinuation.yield(.needsMoreBuffers)
         }
+    }
+
+    func installRenderTap() {
+        // No-op in mock - render stream is always "available"
+    }
+
+    func removeRenderTap() {
+        // No-op in mock
     }
 
     // MARK: - Test Helpers

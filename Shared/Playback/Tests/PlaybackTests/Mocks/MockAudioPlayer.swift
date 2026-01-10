@@ -79,6 +79,14 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         }
     }
 
+    func installRenderTap() {
+        // No-op for mock
+    }
+
+    func removeRenderTap() {
+        // No-op for mock
+    }
+
     // MARK: - Test Helpers
 
     func reset() {

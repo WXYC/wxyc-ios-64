@@ -74,7 +74,18 @@ public struct PlayerHeaderView: View {
         .padding(12)
         .background { BackgroundLayer() }
         .clipShape(.rect(cornerRadius: 12))
-        .task {
+        .onAppear {
+            // Install render tap when visualization is visible
+            Self.controller.installRenderTap()
+        }
+        .onDisappear {
+            // Remove render tap when visualization is hidden to save CPU
+            Self.controller.removeRenderTap()
+        }
+        .task(id: Self.controller.isPlaying) {
+            // Only process buffers when playing
+            guard Self.controller.isPlaying else { return }
+            
             // Get stream reference on MainActor, then process on background thread
             let stream = Self.controller.audioBufferStream
             let viz = visualizer
@@ -96,7 +107,7 @@ public struct PlayerHeaderView: View {
                 // AudioPlayerController.audioBufferStream returns a bridged stream,
                 // so the stream itself shouldn't terminate unless AudioPlayerController explicitly ends it.
                 // Assuming AudioPlayerController keeps the same stream alive across replacements.
-                
+
                 // If stream does terminate, we might need a way to restart the loop.
                 // But .task restarts if identity changes... local identity hasn't changed.
                 // If AudioPlayerController's stream implementation is robust, it shouldn't end on replace.
