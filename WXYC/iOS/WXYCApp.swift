@@ -225,6 +225,11 @@ struct WXYCApp: App {
                             appState.startWidgetStateService()
                             appState.startReviewRequestTracking()
 
+                            // Extract wallpaper palette on first launch if not cached
+                            if appState.themeConfiguration.meshGradientPalette == nil {
+                                extractWallpaperPalette()
+                            }
+
                             // Force status bar to be light
 #if os(iOS)
                             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -363,7 +368,7 @@ struct WXYCApp: App {
             // This ensures users see fresh data when returning to the app after
             // an extended period, rather than waiting for the next fetch cycle.
             refreshPlaylistIfCacheExpired()
-        
+
         @unknown default:
             break
         }
@@ -431,18 +436,21 @@ struct WXYCApp: App {
     // MARK: - Wallpaper Palette Extraction
 
     /// Extracts dominant colors from the current wallpaper and caches the mesh gradient palette.
-    /// Called when the theme picker exits after a theme selection.
+    /// Called when the theme picker exits after a theme selection, or on first launch.
     private func extractWallpaperPalette() {
-        // Delay briefly to allow the new renderer to be created and registered
         Task {
-            try? await Task.sleep(for: .milliseconds(500))
+            // Retry up to 5 times with increasing delays to handle renderer initialization timing
+            for attempt in 1...5 {
+                let delay = 200 * attempt  // 200ms, 400ms, 600ms, 800ms, 1000ms
+                try? await Task.sleep(for: .milliseconds(delay))
 
-            if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
-                appState.themeConfiguration.extractAndCachePalette(from: snapshot)
-                Log(.info, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID)")
-            } else {
-                Log(.warning, "Failed to capture wallpaper snapshot for palette extraction")
+                if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
+                    appState.themeConfiguration.extractAndCachePalette(from: snapshot)
+                    Log(.info, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID) (attempt \(attempt))")
+                    return
+                }
             }
+            Log(.warning, "Failed to capture wallpaper snapshot after 5 attempts")
         }
     }
 
