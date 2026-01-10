@@ -262,6 +262,12 @@ struct WXYCApp: App {
                 appState.reviewRequestService.didRequestReview()
             }
         }
+        .onChange(of: appState.themePickerState.isActive) { wasActive, isActive in
+            // When picker exits (was active, now inactive), extract palette from new theme
+            if wasActive && !isActive {
+                extractWallpaperPalette()
+            }
+        }
         .backgroundTask(.appRefresh("com.wxyc.refresh")) {
             Log(.info, "Background refresh started")
 
@@ -269,7 +275,7 @@ struct WXYCApp: App {
             // and caches it with a 15-minute lifespan.
             // Note: Widget reload is handled by WidgetStateService observing playlist updates.
             let playlist = await appState.playlistService.fetchAndCachePlaylist()
-            
+
             Log(.info, "Background refresh completed successfully with \(playlist.entries.count) entries")
 
             PostHogSDK.shared.capture("Background refresh completed", additionalData: [
@@ -392,7 +398,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-
+    
     // MARK: - Background Refresh
         
     private func scheduleBackgroundRefresh() {
@@ -422,6 +428,23 @@ struct WXYCApp: App {
         }
     }
 
+    // MARK: - Wallpaper Palette Extraction
+
+    /// Extracts dominant colors from the current wallpaper and caches the mesh gradient palette.
+    /// Called when the theme picker exits after a theme selection.
+    private func extractWallpaperPalette() {
+        // Delay briefly to allow the new renderer to be created and registered
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
+
+            if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
+                appState.themeConfiguration.extractAndCachePalette(from: snapshot)
+                Log(.info, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID)")
+            } else {
+                Log(.warning, "Failed to capture wallpaper snapshot for palette extraction")
+            }
+        }
+    }
 
     // MARK: - Siri Intents
 
