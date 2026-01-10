@@ -32,3 +32,20 @@ fragment half4 blitFragment(VertexOut in [[stage_in]],
                             sampler samp [[sampler(0)]]) {
     return tex.sample(samp, in.uv);
 }
+
+// Frame interpolation blend for thermal throttling.
+// Blends between previous and current shader frames based on sub-frame time.
+// This allows rendering the shader at a lower rate while displaying smoothly.
+struct InterpolationUniforms {
+    float blendFactor;  // 0.0 = previous frame, 1.0 = current frame
+};
+
+fragment half4 interpolateFragment(VertexOut in [[stage_in]],
+                                   texture2d<half> previousFrame [[texture(0)]],
+                                   texture2d<half> currentFrame [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant InterpolationUniforms& uniforms [[buffer(0)]]) {
+    half4 prev = previousFrame.sample(samp, in.uv);
+    half4 curr = currentFrame.sample(samp, in.uv);
+    return mix(prev, curr, half(uniforms.blendFactor));
+}
