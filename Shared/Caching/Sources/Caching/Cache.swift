@@ -18,4 +18,10 @@ protocol Cache: Sendable {
 
     /// For pruning - only reads metadata, never file contents
     func allMetadata() -> [(key: String, metadata: CacheMetadata)]
+
+    /// Remove all entries from the cache
+    func clearAll()
+
+    /// Calculate the total size of all cached files in bytes
+    func totalSize() -> Int64
 }

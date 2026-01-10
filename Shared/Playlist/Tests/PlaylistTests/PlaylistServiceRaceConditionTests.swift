@@ -53,6 +53,19 @@ final class RaceConditionTestMockCache: Cache, @unchecked Sendable {
         defer { lock.unlock() }
         return metadataStorage.map { ($0.key, $0.value) }
     }
+
+    func clearAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
+    }
+    
+    func totalSize() -> Int64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
+    }
 }
 
 /// Mock fetcher for tracking concurrency in race condition tests
@@ -129,7 +142,7 @@ struct PlaylistServiceRaceConditionTests {
 
         // Give the fetch tasks time to start
         try await Task.sleep(for: .milliseconds(100))
-
+        
         // Then: Only one fetch task should be running
         let maxConcurrent = await tracker.maxConcurrentFetches
 
@@ -209,20 +222,20 @@ struct PlaylistServiceRaceConditionTests {
             interval: 1.0,
             cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
         )
-
+        
         // Use a Task to properly manage the stream lifecycle
         let task = Task {
             var iterator = service.updates().makeAsyncIterator()
             return await iterator.next()
         }
-        
+
         // Should receive a value (will wait for first fetch since cache is empty)
         let firstValue = await task.value
         #expect(firstValue != nil, "Expected to receive initial playlist value")
-        
+
         // Cancel the task to ensure cleanup
         task.cancel()
-        
+
         // Give the service time to clean up
         try await Task.sleep(for: .milliseconds(100))
     }

@@ -58,6 +58,19 @@ final class PlaylistServiceMockCache: Cache, @unchecked Sendable {
         defer { lock.unlock() }
         return metadataStorage.map { ($0.key, $0.value) }
     }
+
+    func clearAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
+    }
+
+    func totalSize() -> Int64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
+    }
 }
 
 // MARK: - Tests
@@ -168,7 +181,7 @@ struct PlaylistServiceCachingTests {
             interval: 0.1,
             cacheCoordinator: cacheCoordinator
         )
-        
+    
         // Wait for initial load attempt
         try await Task.sleep(for: .milliseconds(100))
         
@@ -393,12 +406,11 @@ struct PlaylistServiceCachingTests {
             lifespan: 15 * 60
         )
         mockCache.set(encoded, metadata: recentMetadata, for: "com.wxyc.playlist.cache")
-        
+
         // When - Try to retrieve
         let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
-        
+
         // Then - Should succeed
         #expect(cached.playcuts.first?.songTitle == "Recent Song")
     }
 }
-

@@ -190,4 +190,48 @@ struct DiskCache: Cache, @unchecked Sendable {
             return (fileURL.lastPathComponent, metadata)
         }
     }
+
+    func clearAll() {
+        guard let cacheDirectory else { return }
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(
+                at: cacheDirectory,
+                includingPropertiesForKeys: nil
+            )
+            for fileURL in contents {
+                // Only remove files that have our cache metadata xattr
+                if getMetadata(for: fileURL) != nil {
+                    try FileManager.default.removeItem(at: fileURL)
+                }
+            }
+            cache.removeAllObjects()
+            Log(.info, "Cleared all cache entries from \(cacheDirectory.lastPathComponent)")
+        } catch {
+            Log(.error, "Failed to clear cache: \(error)")
+        }
+    }
+
+    func totalSize() -> Int64 {
+        guard let cacheDirectory else { return 0 }
+
+        var totalBytes: Int64 = 0
+
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(
+                at: cacheDirectory,
+                includingPropertiesForKeys: [.fileSizeKey]
+            )
+            for fileURL in contents {
+                // Only count files that have our cache metadata xattr
+                guard getMetadata(for: fileURL) != nil else { continue }
+                let resourceValues = try fileURL.resourceValues(forKeys: [.fileSizeKey])
+                totalBytes += Int64(resourceValues.fileSize ?? 0)
+            }
+        } catch {
+            Log(.error, "Failed to calculate cache size: \(error)")
+        }
+
+        return totalBytes
+    }
 }
