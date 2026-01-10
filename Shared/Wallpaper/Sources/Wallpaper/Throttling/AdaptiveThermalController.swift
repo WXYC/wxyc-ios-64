@@ -57,6 +57,17 @@ public final class AdaptiveThermalController {
     /// Current shader level of detail (0.0 - 1.0).
     public private(set) var currentLOD: Float = 1.0
 
+    /// Whether frame interpolation is currently enabled.
+    ///
+    /// When true, the renderer should execute the shader at `shaderFPS` while
+    /// displaying at `currentWallpaperFPS` by blending between cached frames.
+    public private(set) var interpolationEnabled: Bool = false
+
+    /// The FPS at which the shader executes when interpolation is enabled.
+    ///
+    /// When `interpolationEnabled` is false, this equals `currentWallpaperFPS`.
+    public private(set) var shaderFPS: Float = 60.0
+
     /// Current thermal state from system (for debug display).
     public private(set) var rawThermalState: ProcessInfo.ThermalState = .nominal
 
@@ -121,6 +132,20 @@ public final class AdaptiveThermalController {
     /// Effective wallpaper FPS value, considering debug override.
     public var effectiveWallpaperFPS: Float {
         debugWallpaperFPSOverride ?? currentWallpaperFPS
+    }
+
+    /// Effective interpolation enabled state.
+    ///
+    /// Currently no debug override for interpolation, but could be added.
+    public var effectiveInterpolationEnabled: Bool {
+        interpolationEnabled
+    }
+
+    /// Effective shader FPS value.
+    ///
+    /// When interpolation is disabled, this equals `effectiveWallpaperFPS`.
+    public var effectiveShaderFPS: Float {
+        interpolationEnabled ? shaderFPS : effectiveWallpaperFPS
     }
 
     // MARK: - Dependencies
@@ -430,6 +455,9 @@ public final class AdaptiveThermalController {
             currentLOD = ThermalProfile.lodRange.lowerBound
             rawThermalState = context.thermalState
             currentMomentum = 0
+            // Enable interpolation in low power mode for additional savings
+            interpolationEnabled = true
+            shaderFPS = ThermalContext.lowPowerWallpaperFPS / 2
             // Don't update profile or persist - this is temporary
             return
         }
@@ -469,6 +497,9 @@ public final class AdaptiveThermalController {
         currentScale = newScale
         currentLOD = newLOD
 
+        // Update interpolation state based on current throttling tier
+        updateInterpolationState(scale: newScale, displayFPS: newWallpaperFPS, momentum: effectiveMomentum)
+
         // Record analytics event
         if let shaderID = activeShaderID {
             let event = ThermalAdjustmentEvent(
@@ -477,7 +508,9 @@ public final class AdaptiveThermalController {
                 scale: newScale,
                 lod: newLOD,
                 thermalState: state,
-                momentum: signal.momentum
+                momentum: signal.momentum,
+                interpolationEnabled: interpolationEnabled,
+                shaderFPS: shaderFPS
             )
             analytics?.record(event)
         }
@@ -486,6 +519,36 @@ public final class AdaptiveThermalController {
         // But not when charging - external heat source may skew profile
         if !context.hasExternalFactors && profile.sampleCount % 12 == 0 {
             store.save(profile)
+        }
+    }
+
+    // MARK: - Interpolation State
+
+    /// Updates the interpolation state based on current throttling parameters.
+    ///
+    /// Interpolation is enabled as a middle tier when:
+    /// - Scale has been reduced below a threshold (thermal pressure exists)
+    /// - Display FPS is still at or near 60 (we haven't fallen back to FPS reduction yet)
+    ///
+    /// This allows us to maintain smooth 60fps display while only executing the shader
+    /// at a lower rate (e.g., 30fps), reducing GPU workload by ~50%.
+    private func updateInterpolationState(scale: Float, displayFPS: Float, momentum: Float) {
+        // Thresholds for interpolation activation
+        let scaleThreshold: Float = 0.85  // Enable when scale drops below this
+        let fpsThreshold: Float = 50.0    // Only interpolate when display FPS is still high
+
+        // Enable interpolation when we've started throttling scale but FPS is still high
+        // This is the "middle tier" of throttling
+        let shouldInterpolate = scale < scaleThreshold && displayFPS >= fpsThreshold
+
+        if shouldInterpolate {
+            interpolationEnabled = true
+            // Shader executes at half the display rate when interpolating
+            // This gives us 50% reduction in shader work while maintaining smooth display
+            shaderFPS = displayFPS / 2
+        } else {
+            interpolationEnabled = false
+            shaderFPS = displayFPS
         }
     }
 

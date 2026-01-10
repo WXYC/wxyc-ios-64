@@ -25,6 +25,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         var lod: Float = 1.0
     }
 
+    /// Uniforms for frame interpolation blending.
+    struct InterpolationUniforms {
+        var blendFactor: Float
+    }
+
     // MARK: - Ring Buffer Constants
 
     /// Number of uniform buffers in the ring (triple buffering).
@@ -58,6 +63,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Pipeline for blitting the scaled texture to the drawable.
     private var blitPipeline: MTLRenderPipelineState?
 
+    /// Pipeline for frame interpolation blending.
+    private var interpolationPipeline: MTLRenderPipelineState?
+
+    /// Frame interpolator for caching and blending frames.
+    private var frameInterpolator = FrameInterpolator()
+
     /// The start time in CACurrentMediaTime's time base, computed from the shared Date-based start time.
     private let startTime: CFTimeInterval
     private let theme: LoadedTheme
@@ -89,6 +100,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     /// Cached LOD from thermal controller (updated periodically).
     private var cachedLOD: Float = 1.0
+
+    /// Cached interpolation enabled state from thermal controller (updated periodically).
+    private var cachedInterpolationEnabled: Bool = false
+
+    /// Cached shader FPS from thermal controller (updated periodically).
+    private var cachedShaderFPS: Float = 60.0
 
     // MARK: - Idle FPS Reduction
 
@@ -173,6 +190,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         // Set up upscale sampler for thermal throttling
         setUpUpscaleSampler(device: device)
         setUpBlitPipeline(device: device, pixelFormat: view.colorPixelFormat)
+        setUpInterpolationPipeline(device: device, pixelFormat: view.colorPixelFormat)
     }
 
     /// Pre-allocates uniform buffers to avoid per-frame allocation overhead.
@@ -202,6 +220,19 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         desc.colorAttachments[0].pixelFormat = pixelFormat
 
         blitPipeline = try? device.makeRenderPipelineState(descriptor: desc)
+    }
+
+    private func setUpInterpolationPipeline(device: MTLDevice, pixelFormat: MTLPixelFormat) {
+        guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else { return }
+        guard let vfn = library.makeFunction(name: "fullscreenVertex") else { return }
+        guard let ffn = library.makeFunction(name: "interpolateFragment") else { return }
+
+        let desc = MTLRenderPipelineDescriptor()
+        desc.vertexFunction = vfn
+        desc.fragmentFunction = ffn
+        desc.colorAttachments[0].pixelFormat = pixelFormat
+
+        interpolationPipeline = try? device.makeRenderPipelineState(descriptor: desc)
     }
 
     // MARK: - Pipeline Setup
@@ -334,12 +365,16 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         let resolutionScale: Float
         let targetFPS: Int
         let lod: Float
+        let interpolationEnabled: Bool
+        let shaderFPS: Float
 
         if let profile = qualityProfile {
             // Use fixed quality profile
             resolutionScale = profile.scale
             targetFPS = Int(profile.wallpaperFPS)
             lod = profile.lod
+            interpolationEnabled = profile.interpolationEnabled
+            shaderFPS = profile.shaderFPS
         } else {
             // Measure frame duration for FPS monitoring
             let frameStart = CACurrentMediaTime()
@@ -352,6 +387,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                     cachedResolutionScale = thermalController.effectiveScale
                     cachedTargetFPS = Int(thermalController.effectiveWallpaperFPS)
                     cachedLOD = thermalController.effectiveLOD
+                    cachedInterpolationEnabled = thermalController.effectiveInterpolationEnabled
+                    cachedShaderFPS = thermalController.effectiveShaderFPS
                 }
             }
             lastFrameStart = frameStart
@@ -363,8 +400,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             // Apply idle FPS reduction when in picker mode
             if isInPickerMode {
                 targetFPS = Self.idleFPS
+                interpolationEnabled = false
+                shaderFPS = Float(Self.idleFPS)
             } else {
                 targetFPS = cachedTargetFPS
+                interpolationEnabled = cachedInterpolationEnabled
+                shaderFPS = cachedShaderFPS
             }
 
             // Update FPS if changed
@@ -391,7 +432,20 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         guard let cmd = queue.makeCommandBuffer() else { return }
 
-        if resolutionScale < 1.0, let scaledTexture = scaledRenderTarget.renderTexture {
+        if interpolationEnabled {
+            // Frame interpolation mode: render shader at reduced rate, blend frames
+            drawWithInterpolation(
+                cmd: cmd,
+                drawable: drawable,
+                view: view,
+                time: t,
+                displayTime: now,
+                shaderFPS: shaderFPS,
+                resolutionScale: resolutionScale,
+                lod: lod,
+                uniformBuffer: uniformBuffer
+            )
+        } else if resolutionScale < 1.0, let scaledTexture = scaledRenderTarget.renderTexture {
             // Render to scaled texture, then upscale to drawable
             renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: t, lod: lod, uniformBuffer: uniformBuffer)
             blitToDrawable(cmd: cmd, texture: scaledTexture, drawable: drawable, view: view)
@@ -567,6 +621,198 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
+    }
+
+    // MARK: - Frame Interpolation
+
+    private func drawWithInterpolation(
+        cmd: MTLCommandBuffer,
+        drawable: CAMetalDrawable,
+        view: MTKView,
+        time: Float,
+        displayTime: CFTimeInterval,
+        shaderFPS: Float,
+        resolutionScale: Float,
+        lod: Float,
+        uniformBuffer: MTLBuffer
+    ) {
+        guard let interpolationPipeline, let upscaleSampler else {
+            // Fallback to non-interpolated rendering if pipeline not available
+            if resolutionScale < 1.0, let scaledTexture = scaledRenderTarget.renderTexture {
+                renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: time, lod: lod, uniformBuffer: uniformBuffer)
+                blitToDrawable(cmd: cmd, texture: scaledTexture, drawable: drawable, view: view)
+            } else if let rpd = view.currentRenderPassDescriptor {
+                renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: time, lod: lod, view: view, uniformBuffer: uniformBuffer)
+            }
+            return
+        }
+
+        // Determine render size (apply resolution scaling to interpolation frames)
+        let renderSize: CGSize
+        if resolutionScale < 1.0 {
+            renderSize = scaledRenderTarget.scaledSize
+        } else {
+            renderSize = view.drawableSize
+        }
+
+        // Update interpolator textures if needed
+        _ = frameInterpolator.updateTextures(
+            device: device,
+            size: renderSize,
+            pixelFormat: pixelFormat
+        )
+
+        // Update shader frame interval based on target shader FPS
+        frameInterpolator.shaderFrameInterval = 1.0 / CFTimeInterval(shaderFPS)
+
+        // Check if we need to render a new shader frame
+        if frameInterpolator.shouldRenderShaderFrame(at: displayTime) {
+            // Render shader to current frame texture
+            if let targetTexture = frameInterpolator.currentFrame {
+                renderToTexture(cmd: cmd, texture: targetTexture, size: renderSize, time: time, lod: lod, view: view, uniformBuffer: uniformBuffer)
+            }
+            // Swap frames and record timestamp
+            frameInterpolator.recordShaderFrame(at: displayTime)
+        }
+
+        // Check if we have enough valid frames to blend
+        if !frameInterpolator.isReady {
+            // Not enough frames yet - display the latest valid frame directly, or render fresh
+            if let latestFrame = frameInterpolator.latestValidFrame {
+                // Blit the single valid frame to drawable
+                blitToDrawable(cmd: cmd, texture: latestFrame, drawable: drawable, view: view)
+            } else {
+                // No valid frames at all - render directly to drawable
+                if let rpd = view.currentRenderPassDescriptor {
+                    renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: time, lod: lod, view: view, uniformBuffer: uniformBuffer)
+                }
+            }
+            return
+        }
+
+        // Blend previous and current frames to drawable
+        guard
+            let previousFrame = frameInterpolator.previousFrame,
+            let currentFrame = frameInterpolator.currentFrame
+        else {
+            return
+        }
+
+        let blendFactor = frameInterpolator.blendFactor(at: displayTime)
+
+        blendFramesToDrawable(
+            cmd: cmd,
+            previousFrame: previousFrame,
+            currentFrame: currentFrame,
+            blendFactor: blendFactor,
+            drawable: drawable,
+            pipeline: interpolationPipeline,
+            sampler: upscaleSampler
+        )
+    }
+
+    private func renderToTexture(
+        cmd: MTLCommandBuffer,
+        texture: MTLTexture,
+        size: CGSize,
+        time: Float,
+        lod: Float,
+        view: MTKView,
+        uniformBuffer: MTLBuffer
+    ) {
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = texture
+        rpd.colorAttachments[0].loadAction = .clear
+        rpd.colorAttachments[0].storeAction = .store
+        rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+
+        enc.setRenderPipelineState(pipeline)
+
+        let bufferPtr = uniformBuffer.contents()
+
+        if usesRawMetalMode {
+            var uniforms = RawMetalUniforms(
+                resolution: SIMD2(Float(size.width), Float(size.height)),
+                time: time,
+                lod: lod
+            )
+            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.stride)
+            enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+            enc.setFragmentTexture(noiseTex, index: 0)
+            enc.setFragmentSamplerState(sampler, index: 0)
+
+            setCustomParameters(encoder: enc, uniformBuffer: uniformBuffer, offset: MemoryLayout<RawMetalUniforms>.stride)
+        } else {
+            #if os(iOS) || os(tvOS)
+            let displayScale = Float(view.contentScaleFactor)
+            #else
+            let displayScale = Float(size.width / max(view.bounds.width, 1))
+            #endif
+
+            var uniforms = StitchableUniforms(
+                resolution: SIMD2(Float(size.width), Float(size.height)),
+                time: time,
+                displayScale: displayScale
+            )
+            memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.stride)
+            enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+
+            setCustomParameters(encoder: enc, uniformBuffer: uniformBuffer, offset: MemoryLayout<StitchableUniforms>.stride)
+        }
+
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    private func blendFramesToDrawable(
+        cmd: MTLCommandBuffer,
+        previousFrame: MTLTexture,
+        currentFrame: MTLTexture,
+        blendFactor: Float,
+        drawable: CAMetalDrawable,
+        pipeline: MTLRenderPipelineState,
+        sampler: MTLSamplerState
+    ) {
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = drawable.texture
+        rpd.colorAttachments[0].loadAction = .dontCare
+        rpd.colorAttachments[0].storeAction = .store
+
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+
+        enc.setRenderPipelineState(pipeline)
+        enc.setFragmentTexture(previousFrame, index: 0)
+        enc.setFragmentTexture(currentFrame, index: 1)
+        enc.setFragmentSamplerState(sampler, index: 0)
+
+        var uniforms = InterpolationUniforms(blendFactor: blendFactor)
+        enc.setFragmentBytes(&uniforms, length: MemoryLayout<InterpolationUniforms>.stride, index: 0)
+
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    /// Sets custom shader parameters on the encoder at buffer index 1.
+    private func setCustomParameters(encoder: MTLRenderCommandEncoder, uniformBuffer: MTLBuffer, offset: Int) {
+        let parameterStore = theme.parameterStore
+        let params = theme.manifest.parameters
+        guard !params.isEmpty else { return }
+
+        let bufferPtr = uniformBuffer.contents()
+        let paramPtr = bufferPtr.advanced(by: offset)
+
+        for (i, param) in params.prefix(8).enumerated() {
+            let value = parameterStore.floatValue(for: param.id)
+            paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
+        }
+        // Zero remaining slots
+        for i in params.count..<8 {
+            paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
+        }
+
+        encoder.setFragmentBuffer(uniformBuffer, offset: offset, index: 1)
     }
 
     // MARK: - Noise Texture
