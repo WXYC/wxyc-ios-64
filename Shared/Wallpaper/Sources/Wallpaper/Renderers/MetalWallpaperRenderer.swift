@@ -107,6 +107,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Cached shader FPS from thermal controller (updated periodically).
     private var cachedShaderFPS: Float = 60.0
 
+    /// Last seen profile reset count from thermal controller.
+    /// Used to detect when to reset the frame rate monitor.
+    private var lastSeenProfileResetCount: Int = 0
+
     // MARK: - Idle FPS Reduction
 
     /// Whether we're currently in theme picker mode.
@@ -376,6 +380,20 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             interpolationEnabled = profile.interpolationEnabled
             shaderFPS = profile.shaderFPS
         } else {
+            // Check if profile was reset - if so, reset frame rate monitor to avoid stale samples
+            let currentResetCount = thermalController.profileResetCount
+            if currentResetCount != lastSeenProfileResetCount {
+                lastSeenProfileResetCount = currentResetCount
+                frameRateMonitor.reset()
+                lastFrameStart = 0
+                // Immediately update cached values to reflect new profile settings
+                cachedResolutionScale = thermalController.effectiveScale
+                cachedTargetFPS = Int(thermalController.effectiveWallpaperFPS)
+                cachedLOD = thermalController.effectiveLOD
+                cachedInterpolationEnabled = thermalController.effectiveInterpolationEnabled
+                cachedShaderFPS = thermalController.effectiveShaderFPS
+            }
+
             // Measure frame duration for FPS monitoring
             let frameStart = CACurrentMediaTime()
             if lastFrameStart > 0 {

@@ -77,6 +77,10 @@ public final class AdaptiveThermalController {
     /// Active shader ID.
     public private(set) var activeShaderID: String?
 
+    /// Counter incremented each time the profile is reset.
+    /// Renderers can observe this to reset their frame rate monitors.
+    public private(set) var profileResetCount: Int = 0
+
     // MARK: - Debug Overrides
 
     /// Debug override for LOD. When set, this value is used instead of adaptive optimization.
@@ -167,6 +171,13 @@ public final class AdaptiveThermalController {
 
     /// FPS-based momentum boost (decays over time).
     private var fpsMomentumBoost: Float = 0
+
+    /// Timestamp of last profile reset (for grace period).
+    private var lastProfileResetTime: TimeInterval?
+
+    /// Grace period duration after profile reset during which critical throttle is disabled.
+    /// This allows gradual throttling instead of snap-to-minimum while the system learns.
+    private static let gracePeriodDuration: TimeInterval = 10.0
 
     /// Quality recovery step per optimization tick.
     private static let qualityRecoveryStep: Float = 0.01
@@ -325,6 +336,9 @@ public final class AdaptiveThermalController {
     ///
     /// This removes the persisted profile and resets to max quality (60 FPS, 1.0 scale, 1.0 LOD).
     /// Use this when you want a shader to re-learn its optimal thermal settings.
+    ///
+    /// A grace period is applied after reset during which critical throttle is disabled,
+    /// allowing gradual throttling instead of snap-to-minimum behavior.
     public func resetCurrentProfile() {
         guard let shaderID = activeShaderID else { return }
 
@@ -344,6 +358,12 @@ public final class AdaptiveThermalController {
         signal.reset()
         currentMomentum = 0
         fpsMomentumBoost = 0
+
+        // Start grace period for gradual learning
+        lastProfileResetTime = clock.now
+
+        // Notify observers (renderers) to reset their frame rate monitors
+        profileResetCount += 1
     }
 
     /// Reports the measured FPS from the renderer.
@@ -356,8 +376,12 @@ public final class AdaptiveThermalController {
     public func reportMeasuredFPS(_ fps: Float) {
         let severity = FrameRateMonitor.severity(for: fps)
 
+        // Check if we're in the grace period after a profile reset
+        let isInGracePeriod = lastProfileResetTime.map { clock.now - $0 < Self.gracePeriodDuration } ?? false
+
         // Critical FPS (< 25): immediately drop to minimum LOD and scale
-        if severity == .critical {
+        // But skip critical throttle during grace period to allow gradual learning
+        if severity == .critical && !isInGracePeriod {
             forceCriticalThrottle()
             return
         }
@@ -368,9 +392,13 @@ public final class AdaptiveThermalController {
         if fps < targetFPS {
             let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
 
+            // During grace period with critical FPS, use more aggressive proportional throttling
+            // to quickly find sustainable quality without snapping to minimum
+            let dampingFactor: Float = (severity == .critical && isInGracePeriod) ? 0.6 : 0.3
+
             // Apply reductions proportionally using optimizer weights (LOD 20%, Scale 60%, FPS 20%)
             // Scale the deficit so moderate drops don't over-throttle
-            let adjustedDeficit = deficit * 0.3  // Dampen to avoid oscillation
+            let adjustedDeficit = deficit * dampingFactor
 
             // Reduce LOD (20% weight, affects shader complexity)
             let lodReduction = adjustedDeficit * ThermalOptimizer.lodWeight * ThermalOptimizer.maxLODStep * 5
