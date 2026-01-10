@@ -21,46 +21,39 @@ public struct DominantColorExtractor: Sendable {
     /// Maximum dimension for downsampling (improves performance on large images).
     private let maxDimension = 100
 
+    /// Minimum Delta E for colors to be considered distinct (CIE76 formula).
+    private let minimumDeltaE: Double = 20.0
+
+    /// Minimum weight ratio (relative to max) for a bin to be considered.
+    private let minimumWeightRatio: Double = 0.01
+
+    /// LAB color space for perceptual color difference calculations.
+    private static let labColorSpace: CGColorSpace? = {
+        var whitePoint: [CGFloat] = [0.95047, 1.0, 1.08883]
+        var blackPoint: [CGFloat] = [0, 0, 0]
+        var range: [CGFloat] = [-128, 128, -128, 128]
+        return CGColorSpace(labWhitePoint: &whitePoint, blackPoint: &blackPoint, range: &range)
+    }()
+
     public init() {}
+
+    /// Represents a single bin in the HSB histogram with its weight.
+    private struct HistogramBin: Comparable {
+        let hueIndex: Int
+        let saturationIndex: Int
+        let brightnessIndex: Int
+        let weight: Double
+
+        static func < (lhs: HistogramBin, rhs: HistogramBin) -> Bool {
+            lhs.weight < rhs.weight
+        }
+    }
 
     /// Extracts the dominant HSB color from the given image.
     /// - Parameter image: The source image.
     /// - Returns: The dominant HSBColor, or nil if extraction fails.
     public func extractDominantColor(from image: Image) -> HSBColor? {
-        guard let cgImage = downsampledCGImage(from: image) else { return nil }
-
-        let width = cgImage.width
-        let height = cgImage.height
-
-        // Create vImage buffer
-        var sourceBuffer = vImage_Buffer()
-        defer { free(sourceBuffer.data) }
-
-        var format = vImage_CGImageFormat(
-            bitsPerComponent: 8,
-            bitsPerPixel: 32,
-            colorSpace: nil,
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue),
-            version: 0,
-            decode: nil,
-            renderingIntent: .defaultIntent
-        )
-
-        let error = vImageBuffer_InitWithCGImage(
-            &sourceBuffer,
-            &format,
-            nil,
-            cgImage,
-            vImage_Flags(kvImageNoFlags)
-        )
-
-        guard error == kvImageNoError else { return nil }
-
-        // Build HSB histogram
-        let histogram = buildHSBHistogram(from: sourceBuffer, width: width, height: height)
-
-        // Find dominant color from histogram
-        return findDominantColor(in: histogram)
+        extractDominantColors(from: image, count: 1).first
     }
 
     // MARK: - Private Methods
@@ -185,26 +178,148 @@ public struct DominantColorExtractor: Sendable {
         return (hue, saturation, brightness)
     }
 
-    private func findDominantColor(in histogram: [[[Double]]]) -> HSBColor {
-        var maxWeight = 0.0
-        var dominantBin = (h: 0, s: 0, b: 0)
+    // MARK: - Multi-Color Extraction
 
+    /// Extracts up to `count` dominant HSB colors from the given image.
+    /// Colors are selected to be perceptually distinct using CIELAB color difference.
+    /// - Parameters:
+    ///   - image: The source image.
+    ///   - count: Maximum number of colors to extract.
+    /// - Returns: Array of distinct HSBColors, may be fewer than `count` if not enough distinct colors exist.
+    public func extractDominantColors(from image: Image, count: Int) -> [HSBColor] {
+        guard count > 0 else { return [] }
+        guard let cgImage = downsampledCGImage(from: image) else { return [] }
+
+        let width = cgImage.width
+        let height = cgImage.height
+
+        var sourceBuffer = vImage_Buffer()
+        defer { free(sourceBuffer.data) }
+
+        var format = vImage_CGImageFormat(
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            colorSpace: nil,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue),
+            version: 0,
+            decode: nil,
+            renderingIntent: .defaultIntent
+        )
+
+        let error = vImageBuffer_InitWithCGImage(
+            &sourceBuffer,
+            &format,
+            nil,
+            cgImage,
+            vImage_Flags(kvImageNoFlags)
+        )
+
+        guard error == kvImageNoError else { return [] }
+
+        let histogram = buildHSBHistogram(from: sourceBuffer, width: width, height: height)
+        let candidates = extractSortedCandidates(from: histogram)
+
+        return selectDistinctColors(from: candidates, targetCount: count)
+    }
+
+    /// Extracts all non-trivial histogram bins, sorted by weight descending.
+    private func extractSortedCandidates(from histogram: [[[Double]]]) -> [HistogramBin] {
+        var bins: [HistogramBin] = []
+        var maxWeight = 0.0
+
+        // Find max weight first
         for h in 0..<hueBins {
             for s in 0..<saturationBins {
                 for b in 0..<brightnessBins {
-                    if histogram[h][s][b] > maxWeight {
-                        maxWeight = histogram[h][s][b]
-                        dominantBin = (h, s, b)
+                    maxWeight = max(maxWeight, histogram[h][s][b])
+                }
+            }
+        }
+
+        let threshold = maxWeight * minimumWeightRatio
+
+        // Collect bins above threshold
+        for h in 0..<hueBins {
+            for s in 0..<saturationBins {
+                for b in 0..<brightnessBins {
+                    let weight = histogram[h][s][b]
+                    if weight >= threshold {
+                        bins.append(HistogramBin(
+                            hueIndex: h,
+                            saturationIndex: s,
+                            brightnessIndex: b,
+                            weight: weight
+                        ))
                     }
                 }
             }
         }
 
-        // Convert bin indices back to HSB values (use center of bin)
-        let hue = (Double(dominantBin.h) + 0.5) / Double(hueBins) * 360.0
-        let saturation = (Double(dominantBin.s) + 0.5) / Double(saturationBins)
-        let brightness = (Double(dominantBin.b) + 0.5) / Double(brightnessBins)
+        return bins.sorted(by: >)
+    }
 
+    /// Converts a histogram bin to an HSBColor using bin center values.
+    private func binToHSBColor(_ bin: HistogramBin) -> HSBColor {
+        let hue = (Double(bin.hueIndex) + 0.5) / Double(hueBins) * 360.0
+        let saturation = (Double(bin.saturationIndex) + 0.5) / Double(saturationBins)
+        let brightness = (Double(bin.brightnessIndex) + 0.5) / Double(brightnessBins)
         return HSBColor(hue: hue, saturation: saturation, brightness: brightness)
+    }
+
+    /// Selects up to `targetCount` colors that are perceptually distinct.
+    private func selectDistinctColors(from candidates: [HistogramBin], targetCount: Int) -> [HSBColor] {
+        var selected: [HSBColor] = []
+        var selectedLAB: [(l: CGFloat, a: CGFloat, b: CGFloat)] = []
+
+        for bin in candidates {
+            if selected.count >= targetCount { break }
+
+            let color = binToHSBColor(bin)
+            guard let lab = toLABComponents(color) else { continue }
+
+            // Check if this color is sufficiently different from all selected colors
+            let isDistinct = selectedLAB.allSatisfy { existing in
+                deltaE(lab, existing) >= minimumDeltaE
+            }
+
+            if isDistinct {
+                selected.append(color)
+                selectedLAB.append(lab)
+            }
+        }
+
+        return selected
+    }
+
+    /// Converts an HSBColor to CIELAB components for perceptual comparison.
+    private func toLABComponents(_ color: HSBColor) -> (l: CGFloat, a: CGFloat, b: CGFloat)? {
+        guard let labColorSpace = Self.labColorSpace else { return nil }
+
+        #if canImport(UIKit)
+        let uiColor = color.uiColor
+        let cgColor = uiColor.cgColor
+        guard let labColor = cgColor.converted(to: labColorSpace, intent: .defaultIntent, options: nil),
+              let components = labColor.components,
+              components.count >= 3 else { return nil }
+        return (components[0], components[1], components[2])
+        #elseif canImport(AppKit)
+        let nsColor = color.nsColor
+        let cgColor = nsColor.cgColor
+        guard let labColor = cgColor.converted(to: labColorSpace, intent: .defaultIntent, options: nil),
+              let components = labColor.components,
+              components.count >= 3 else { return nil }
+        return (components[0], components[1], components[2])
+        #endif
+    }
+
+    /// Calculates Delta E (CIE76) between two LAB colors.
+    private func deltaE(
+        _ lab1: (l: CGFloat, a: CGFloat, b: CGFloat),
+        _ lab2: (l: CGFloat, a: CGFloat, b: CGFloat)
+    ) -> Double {
+        let dl = Double(lab1.l - lab2.l)
+        let da = Double(lab1.a - lab2.a)
+        let db = Double(lab1.b - lab2.b)
+        return sqrt(dl * dl + da * da + db * db)
     }
 }
