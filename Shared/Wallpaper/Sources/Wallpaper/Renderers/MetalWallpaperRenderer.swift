@@ -114,7 +114,27 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     // MARK: - Idle FPS Reduction
 
     /// Whether we're currently in theme picker mode.
-    public var isInPickerMode: Bool = false
+    public var isInPickerMode: Bool = false {
+        didSet {
+            // Track the main (non-picker) renderer for snapshot capture
+            if !isInPickerMode {
+                Self.activeMainRenderer = self
+            } else if Self.activeMainRenderer === self {
+                Self.activeMainRenderer = nil
+            }
+        }
+    }
+
+    // MARK: - Active Renderer Tracking
+
+    /// Weak reference to the main (non-picker) renderer for snapshot capture.
+    private static weak var activeMainRenderer: MetalWallpaperRenderer?
+
+    /// Captures a snapshot from the currently active main renderer.
+    /// - Returns: A UIImage snapshot, or nil if no main renderer is active.
+    public static func captureMainSnapshot() -> Image? {
+        activeMainRenderer?.captureSnapshot()
+    }
 
     /// FPS to use when in idle/picker mode.
     private static let idleFPS: Int = 30
@@ -195,6 +215,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         setUpUpscaleSampler(device: device)
         setUpBlitPipeline(device: device, pixelFormat: view.colorPixelFormat)
         setUpInterpolationPipeline(device: device, pixelFormat: view.colorPixelFormat)
+
+        // Register as the main renderer if not in picker mode (no quality profile override)
+        if qualityProfile == nil {
+            Self.activeMainRenderer = self
+        }
     }
 
     /// Pre-allocates uniform buffers to avoid per-frame allocation overhead.
@@ -831,6 +856,123 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         }
 
         encoder.setFragmentBuffer(uniformBuffer, offset: offset, index: 1)
+    }
+
+    // MARK: - Snapshot
+
+    /// Captures a snapshot of the current wallpaper as a UIImage.
+    /// Renders a single frame to an offscreen texture and converts it to UIImage.
+    /// - Parameter size: The size of the snapshot (default 100x100 for color extraction).
+    /// - Returns: A UIImage of the rendered wallpaper, or nil if rendering fails.
+    public func captureSnapshot(size: CGSize = CGSize(width: 100, height: 100)) -> UIImage? {
+        guard let device, let queue, let pipeline else { return nil }
+
+        // Create a texture descriptor for the snapshot
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: pixelFormat,
+            width: Int(size.width),
+            height: Int(size.height),
+            mipmapped: false
+        )
+        descriptor.usage = [.renderTarget, .shaderRead]
+
+        guard let snapshotTexture = device.makeTexture(descriptor: descriptor) else { return nil }
+
+        // Get uniform buffer
+        guard !uniformBuffers.isEmpty else { return nil }
+        let uniformBuffer = uniformBuffers[0]
+
+        // Calculate time
+        let now = CACurrentMediaTime()
+        let timeScale = theme.manifest.renderer.timeScale ?? 1.0
+        let time = Float(now - startTime) * timeScale
+
+        // Create render pass descriptor
+        let rpd = MTLRenderPassDescriptor()
+        rpd.colorAttachments[0].texture = snapshotTexture
+        rpd.colorAttachments[0].loadAction = .clear
+        rpd.colorAttachments[0].storeAction = .store
+        rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+
+        guard let commandBuffer = queue.makeCommandBuffer(),
+              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: rpd) else { return nil }
+
+        encoder.setRenderPipelineState(pipeline)
+
+        let bufferPtr = uniformBuffer.contents()
+
+        if usesRawMetalMode {
+            var uniforms = RawMetalUniforms(
+                resolution: SIMD2(Float(size.width), Float(size.height)),
+                time: time,
+                lod: 1.0
+            )
+            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.size)
+            encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+
+            if let sampler { encoder.setFragmentSamplerState(sampler, index: 0) }
+            if let noiseTex { encoder.setFragmentTexture(noiseTex, index: 0) }
+
+            setCustomParameters(
+                encoder: encoder,
+                uniformBuffer: uniformBuffer,
+                offset: MemoryLayout<RawMetalUniforms>.stride
+            )
+        } else {
+            var uniforms = StitchableUniforms(
+                resolution: SIMD2(Float(size.width), Float(size.height)),
+                time: time,
+                displayScale: 1.0
+            )
+            memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.size)
+            encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+        }
+
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        encoder.endEncoding()
+
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+
+        // Convert texture to UIImage
+        return textureToUIImage(snapshotTexture)
+    }
+
+    /// Converts an MTLTexture to a UIImage.
+    private func textureToUIImage(_ texture: MTLTexture) -> UIImage? {
+        let width = texture.width
+        let height = texture.height
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        let byteCount = bytesPerRow * height
+
+        var bytes = [UInt8](repeating: 0, count: byteCount)
+        texture.getBytes(
+            &bytes,
+            bytesPerRow: bytesPerRow,
+            from: MTLRegionMake2D(0, 0, width, height),
+            mipmapLevel: 0
+        )
+
+        // Create CGImage from bytes
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)
+            .union(.byteOrder32Little)
+
+        guard let context = CGContext(
+            data: &bytes,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo.rawValue
+        ),
+        let cgImage = context.makeImage() else {
+            return nil
+        }
+
+        return UIImage(cgImage: cgImage)
     }
 
     // MARK: - Noise Texture

@@ -16,6 +16,7 @@ let package = Package(
     dependencies: [
         .package(name: "Core", path: "../Core"),
         .package(name: "WXUI", path: "../WXUI"),
+        .package(name: "ColorPalette", path: "../ColorPalette"),
     ],
     targets: [
         .target(
@@ -23,6 +24,7 @@ let package = Package(
             dependencies: [
                 "Core",
                 "WXUI",
+                "ColorPalette",
             ],
             resources: [
                 .process("Resources/Wallpapers"),

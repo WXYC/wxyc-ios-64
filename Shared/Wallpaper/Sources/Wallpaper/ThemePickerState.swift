@@ -137,6 +137,12 @@ private struct CurrentLCDBrightnessOffsetKey: EnvironmentKey {
     static let defaultValue: Double = 0.0
 }
 
+/// Environment key for the wallpaper-derived mesh gradient palette.
+/// When set, AnimatedMeshGradient uses these colors instead of random colors.
+private struct WallpaperMeshGradientPaletteKey: EnvironmentKey {
+    static let defaultValue: [Color]? = nil
+}
+
 public extension EnvironmentValues {
     var isThemePickerActive: Bool {
         get { self[ThemePickerActiveKey.self] }
@@ -210,6 +216,13 @@ public extension EnvironmentValues {
     var currentLCDBrightnessOffset: Double {
         get { self[CurrentLCDBrightnessOffsetKey.self] }
         set { self[CurrentLCDBrightnessOffsetKey.self] = newValue }
+    }
+
+    /// The wallpaper-derived mesh gradient palette (16 colors).
+    /// When nil, AnimatedMeshGradient uses random colors.
+    var wallpaperMeshGradientPalette: [Color]? {
+        get { self[WallpaperMeshGradientPaletteKey.self] }
+        set { self[WallpaperMeshGradientPaletteKey.self] = newValue }
     }
 }
 

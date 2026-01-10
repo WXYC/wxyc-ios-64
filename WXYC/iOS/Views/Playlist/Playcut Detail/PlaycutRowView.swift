@@ -86,16 +86,23 @@ struct PlaycutRowView: View {
     @State private var isLoadingArtwork = true
     @State private var shadowYOffset: CGFloat = 0
 
-    /// Animated mesh gradient with random time offset for visual variety.
-    private let meshGradient = AnimatedMeshGradient(
-        timeOffset: TimeInterval((-10..<10).randomElement()!)
-    )
+    /// Stable time offset for animated mesh gradient (randomized once at init).
+    private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
 
     // Shadow offset configuration
     private let shadowOffsetAtTop: CGFloat = -3
     private let shadowOffsetAtBottom: CGFloat = 3
 
     @Environment(\.artworkService) private var artworkService
+    @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
+
+    /// Animated mesh gradient using wallpaper-derived palette when available.
+    private var meshGradient: AnimatedMeshGradient {
+        AnimatedMeshGradient(
+            colors: wallpaperPalette,
+            timeOffset: stableTimeOffset
+        )
+    }
 
     var body: some View {
             GeometryReader { proxy in

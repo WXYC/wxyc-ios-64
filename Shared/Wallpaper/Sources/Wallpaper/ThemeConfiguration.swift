@@ -5,8 +5,11 @@
 //  Created by Jake Bromberg on 12/18/25.
 //
 
+import ColorPalette
+import Core
 import Foundation
 import Observation
+import SwiftUI
 
 /// Main theme configuration - holds the selected theme ID.
 @Observable
@@ -60,6 +63,10 @@ public final class ThemeConfiguration {
 
     private func lcdMaxBrightnessKey(for themeID: String) -> String {
         "wallpaper.lcdMaxBrightness.\(themeID)"
+    }
+
+    private func meshGradientPaletteKey(for themeID: String) -> String {
+        "wallpaper.meshGradientPalette.\(themeID)"
     }
 
     // MARK: - Dependencies
@@ -227,6 +234,50 @@ public final class ThemeConfiguration {
             return 0.0
         }
         return theme.manifest.lcdBrightnessOffset
+    }
+
+    // MARK: - Mesh Gradient Palette
+
+    /// The interpolated mesh gradient palette (16 SwiftUI Colors) for the current theme.
+    /// Derived from cached HSB colors via MeshGradientPaletteInterpolator.
+    public private(set) var meshGradientPalette: [Color]?
+
+    /// Cached dominant HSB colors (3-5) extracted from wallpaper snapshot.
+    /// Persisted per-theme to UserDefaults as JSON.
+    private var cachedPaletteHSBColors: [HSBColor]? {
+        didSet {
+            // Persist to UserDefaults
+            let key = meshGradientPaletteKey(for: selectedThemeID)
+            if let colors = cachedPaletteHSBColors {
+                let encoder = JSONEncoder()
+                if let data = try? encoder.encode(colors) {
+                    defaults.set(data, forKey: key)
+                }
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+
+            // Recompute interpolated palette
+            if let colors = cachedPaletteHSBColors, !colors.isEmpty {
+                let interpolator = MeshGradientPaletteInterpolator()
+                meshGradientPalette = interpolator.interpolate(colors)
+            } else {
+                meshGradientPalette = nil
+            }
+        }
+    }
+
+    /// Extracts and caches the mesh gradient palette from a wallpaper snapshot.
+    /// - Parameter snapshot: UIImage snapshot of the current wallpaper.
+    public func extractAndCachePalette(from snapshot: Core.Image) {
+        let extractor = DominantColorExtractor()
+        let colors = extractor.extractDominantColors(from: snapshot, count: 5)
+        cachedPaletteHSBColors = colors.isEmpty ? nil : colors
+    }
+
+    /// Clears the cached palette for the current theme.
+    public func clearCachedPalette() {
+        cachedPaletteHSBColors = nil
     }
 
     /// Returns the effective accent color, applying any overrides to the current theme's accent.
@@ -411,6 +462,20 @@ public final class ThemeConfiguration {
         lcdMaxBrightness = defaults.object(forKey: maxBrightnessKey) != nil
             ? defaults.double(forKey: maxBrightnessKey)
             : Self.defaultLCDMaxBrightness
+
+        // Load cached mesh gradient palette
+        let paletteKey = meshGradientPaletteKey(for: themeID)
+        if let data = defaults.data(forKey: paletteKey) {
+            let decoder = JSONDecoder()
+            if let colors = try? decoder.decode([HSBColor].self, from: data), !colors.isEmpty {
+                let interpolator = MeshGradientPaletteInterpolator()
+                meshGradientPalette = interpolator.interpolate(colors)
+            } else {
+                meshGradientPalette = nil
+            }
+        } else {
+            meshGradientPalette = nil
+        }
     }
 
     // MARK: - Initialization
@@ -444,6 +509,7 @@ public final class ThemeConfiguration {
         lcdMinBrightness = Self.defaultLCDMinBrightness
         lcdMaxBrightness = Self.defaultLCDMaxBrightness
         lcdBrightnessOffsetOverride = nil
+        meshGradientPalette = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }
 
