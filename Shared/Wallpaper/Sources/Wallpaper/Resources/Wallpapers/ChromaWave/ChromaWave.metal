@@ -10,6 +10,23 @@
 using namespace metal;
 #include <SwiftUI/SwiftUI_Metal.h>
 
+// 1D gradient noise for time variation
+static float hash(float n) {
+    return fract(sin(n) * 43758.5453f);
+}
+
+static float noise1D(float x) {
+    float i = floor(x);
+    float f = fract(x);
+    float u = f * f * (3.0f - 2.0f * f);  // smoothstep
+    return mix(hash(i), hash(i + 1.0f), u);
+}
+
+// 2-octave noise for organic time variation
+static float noise2Octave(float x) {
+    return noise1D(x) * 0.667f + noise1D(x * 2.0f) * 0.333f;
+}
+
 // === MTKView Support ===
 struct Uniforms {
     float2 resolution;
@@ -31,7 +48,11 @@ struct VertexOut {
 // Core implementation (called by both stitchable and fragment versions)
 static half4 chromaWaveImpl(float2 position, float width, float height, float time, float highlightCompression, float lod) {
     float2 iResolution = float2(width, height);
-    float t = time / 32.0f;
+
+    // 2-octave noise oscillates time for organic variation in animation pace
+    float timeVariation = (noise2Octave(time * 0.03f) - 0.5f) * 8.0f;
+    float t = (time + timeVariation) / 32.0f;
+
     float3 col = float3(0.0f);
 
     // LOD-scaled iteration count: 3 at LOD 0.0, 7 at LOD 1.0
