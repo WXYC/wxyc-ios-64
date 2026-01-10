@@ -27,6 +27,9 @@ public struct DebugHUD: View {
                     MetricRow(label: "TMP", value: metrics.thermalState.description)
                     MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentWallpaperFPS))fps")
                     MetricRow(label: "MTM", value: String(format: "%.2f", thermal.currentMomentum))
+                    MetricRow(label: "INT", value: thermal.interpolationEnabled
+                              ? "ON (\(Int(thermal.shaderFPS))fps shader)"
+                              : "OFF")
                 }
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.white)
