@@ -189,6 +189,18 @@ public final actor CacheCoordinator {
     public func setDataPreservingMetadata(_ data: Data, metadata: CacheMetadata, for key: String) {
         cache.set(data, metadata: metadata, for: key)
     }
+
+    // MARK: - Storage Management
+
+    /// Removes all entries from this cache.
+    public func clearAll() {
+        cache.clearAll()
+    }
+
+    /// Returns the total size of all cached files in bytes.
+    public func totalSize() -> Int64 {
+        cache.totalSize()
+    }
 }
     
 #if false

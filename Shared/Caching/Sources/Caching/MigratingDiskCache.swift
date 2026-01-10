@@ -58,4 +58,13 @@ struct MigratingDiskCache: Cache, @unchecked Sendable {
         }
         return result.map { ($0.key, $0.value) }
     }
+
+    func clearAll() {
+        primary.clearAll()
+        legacy.clearAll()
+    }
+
+    func totalSize() -> Int64 {
+        primary.totalSize() + legacy.totalSize()
+    }
 }

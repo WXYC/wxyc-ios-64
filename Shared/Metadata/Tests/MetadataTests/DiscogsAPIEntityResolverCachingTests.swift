@@ -52,6 +52,15 @@ final class EntityResolverMockCache: Cache, @unchecked Sendable {
     func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
         metadataStorage.map { ($0.key, $0.value) }
     }
+
+    func clearAll() {
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
+    }
+
+    func totalSize() -> Int64 {
+        dataStorage.values.reduce(0) { $0 + Int64($1.count) }
+    }
 }
 
 // MARK: - Mock WebSession for Entity Resolver
@@ -76,7 +85,7 @@ final class EntityResolverMockWebSession: WebSession, @unchecked Sendable {
                 return data
             }
         }
-        
+    
         throw URLError(.resourceUnavailable)
     }
 }
@@ -122,7 +131,7 @@ struct DiscogsAPIEntityResolverCachingTests {
         }
         """.data(using: .utf8)!
         mockSession.responses["/artists/99999"] = artistResponse
-        
+    
         // When
         let result = try await resolver.resolveArtist(id: 99999)
         
@@ -168,7 +177,7 @@ struct DiscogsAPIEntityResolverCachingTests {
         }
         """.data(using: .utf8)!
         mockSession.responses["/releases/88888"] = releaseResponse
-        
+    
         // When
         let result = try await resolver.resolveRelease(id: 88888)
         
@@ -214,7 +223,7 @@ struct DiscogsAPIEntityResolverCachingTests {
         }
         """.data(using: .utf8)!
         mockSession.responses["/masters/77777"] = masterResponse
-        
+    
         // When
         let result = try await resolver.resolveMaster(id: 77777)
         
@@ -273,11 +282,10 @@ struct DiscogsAPIEntityResolverCachingTests {
         _ = try await resolver.resolveArtist(id: 1)
         _ = try await resolver.resolveRelease(id: 2)
         _ = try await resolver.resolveMaster(id: 3)
-        
+
         // Then
         #expect(mockCache.keysSet.contains("discogs-artist-1"))
         #expect(mockCache.keysSet.contains("discogs-release-2"))
         #expect(mockCache.keysSet.contains("discogs-master-3"))
     }
 }
-

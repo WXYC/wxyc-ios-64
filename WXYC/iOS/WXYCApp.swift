@@ -30,6 +30,11 @@ import WXUI
 import DebugPanel
 #endif
 
+// MARK: - Settings Bundle Keys
+
+private enum SettingsBundleKeys {
+    static let clearArtworkCache = "clear_artwork_cache"
+}
 
 // Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
@@ -93,12 +98,12 @@ final class Singletonia {
             }
         }
     }
-
+        
     /// Update the foreground state (called when scene phase changes)
     func setForegrounded(_ foregrounded: Bool) {
         widgetStateService.setForegrounded(foregrounded)
     }
-        
+
     /// Start the widget state service to observe playback and playlist updates
     func startWidgetStateService() {
         widgetStateService.start()
@@ -368,6 +373,8 @@ struct WXYCApp: App {
             // This ensures users see fresh data when returning to the app after
             // an extended period, rather than waiting for the next fetch cycle.
             refreshPlaylistIfCacheExpired()
+            // Check if user requested cache clear from Settings app
+            handleSettingsBundleCacheClear()
 
         @unknown default:
             break
@@ -430,6 +437,26 @@ struct WXYCApp: App {
                 Log(.info, "Cache expired while backgrounded - triggering foreground refresh")
                 _ = await appState.playlistService.fetchAndCachePlaylist()
             }
+        }
+    }
+
+    /// Checks if the user enabled the "Clear Artwork Cache" toggle in Settings.
+    /// If enabled, clears the cache and resets the toggle.
+    private func handleSettingsBundleCacheClear() {
+        guard UserDefaults.standard.bool(forKey: SettingsBundleKeys.clearArtworkCache) else {
+            return
+        }
+
+        Task {
+            let sizeBeforeClear = await CacheCoordinator.AlbumArt.totalSize()
+            await CacheCoordinator.AlbumArt.clearAll()
+            UserDefaults.standard.set(false, forKey: SettingsBundleKeys.clearArtworkCache)
+
+            Log(.info, "Cleared artwork cache via Settings toggle (\(sizeBeforeClear) bytes)")
+            PostHogSDK.shared.capture("Artwork cache cleared", properties: [
+                "source": "settings_toggle",
+                "size_bytes": sizeBeforeClear
+            ])
         }
     }
 

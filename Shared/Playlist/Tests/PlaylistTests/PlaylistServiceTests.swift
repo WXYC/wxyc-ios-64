@@ -58,6 +58,19 @@ final class PlaylistTestMockCache: Cache, @unchecked Sendable {
         defer { lock.unlock() }
         return metadataStorage.map { ($0.key, $0.value) }
     }
+
+    func clearAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
+    }
+
+    func totalSize() -> Int64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
+    }
 }
 
 /// Helper to create an isolated cache coordinator for testing
@@ -415,7 +428,7 @@ struct PlaylistServiceTests {
         var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Valid Song")
-        
+    
         // When - Fetcher starts returning empty (simulating network error)
         mockFetcher.playlistToReturn = .empty
         
@@ -454,7 +467,7 @@ struct PlaylistServiceTests {
         
         // First, establish valid data via fetchAndCachePlaylist
         _ = await service.fetchAndCachePlaylist()
-        
+    
         // When - Fetcher starts returning empty (simulating network error)
         mockFetcher.playlistToReturn = .empty
         let emptyResult = await service.fetchAndCachePlaylist()
@@ -475,7 +488,7 @@ struct PlaylistServiceTests {
         mockFetcher.playlistToReturn = .empty
         
         let service = PlaylistService(fetcher: mockFetcher, interval: 0.05, cacheCoordinator: makeTestCacheCoordinator())
-        
+    
         // When - First fetch returns empty
         var iterator = service.updates().makeAsyncIterator()
     
@@ -577,11 +590,11 @@ struct PlaylistServiceTests {
             interval: 30,
             cacheCoordinator: cacheCoordinator
         )
-        
+
         // Subscribe immediately (before cache load might complete)
         var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
-        
+
         // Then - Should receive the cached data (not empty, and not have to wait for network)
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Pre-cached Song")
     }

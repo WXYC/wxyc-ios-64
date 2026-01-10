@@ -53,6 +53,15 @@ final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
         metadataStorage.map { ($0.key, $0.value) }
     }
 
+    func clearAll() {
+        dataStorage.removeAll()
+        metadataStorage.removeAll()
+    }
+
+    func totalSize() -> Int64 {
+        dataStorage.values.reduce(0) { $0 + Int64($1.count) }
+    }
+
     func reset() {
         getCallCount = 0
         setCallCount = 0
@@ -60,9 +69,9 @@ final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
         setKeys.removeAll()
     }
 }
-    
-// MARK: - Mock WebSession for Metadata Service
 
+// MARK: - Mock WebSession for Metadata Service
+        
 final class MetadataMockWebSession: WebSession, @unchecked Sendable {
     var responses: [String: Data] = [:]
     var requestedURLs: [URL] = []
