@@ -61,11 +61,8 @@ public struct VisualizerDebugView: View {
                 } header: {
                     Text("Wallpaper")
                 } footer: {
-                    Text("Shows a floating button to access wallpaper picker and parameter controls.")
+                    Text("Shows a floating button to access wallpaper picker, parameter controls, and thermal throttling settings.")
                 }
-
-                // Thermal Throttling
-                ThermalThrottlingSection()
 
                 // Tip Views & Picker Usage
                 Section {
@@ -230,57 +227,4 @@ public struct VisualizerDebugView: View {
     }
 }
 
-// MARK: - Thermal Throttling Section
-
-private struct ThermalThrottlingSection: View {
-    var body: some View {
-        let thermal = AdaptiveThermalController.shared
-        Section {
-            HStack {
-                Text("System Thermal State")
-                Spacer()
-                Text(thermal.rawThermalState.description)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
-                Text("Target Wallpaper FPS")
-                Spacer()
-                Text("\(Int(thermal.currentWallpaperFPS))")
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
-                Text("Render Scale")
-                Spacer()
-                Text("\(Int(thermal.currentScale * 100))%")
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack {
-                Text("Thermal Momentum")
-                Spacer()
-                Text(String(format: "%.2f", thermal.currentMomentum))
-                    .foregroundStyle(.secondary)
-            }
-
-            if let shaderID = thermal.activeShaderID {
-                HStack {
-                    Text("Active Shader")
-                    Spacer()
-                    Text(shaderID)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Button("Reset Thermal Profiles") {
-                ThermalProfileStore.shared.removeAllProfiles()
-            }
-        } header: {
-            Text("Adaptive Thermal Throttling")
-        } footer: {
-            Text("Continuously optimizes FPS and resolution scale based on thermal state. Reset clears all learned profiles.")
-        }
-    }
-}
 #endif
