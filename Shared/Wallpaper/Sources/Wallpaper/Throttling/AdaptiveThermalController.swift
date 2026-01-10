@@ -169,9 +169,6 @@ public final class AdaptiveThermalController {
     private var contextObservationTask: Task<Void, Never>?
     private var backgroundedAt: TimeInterval?
 
-    /// FPS-based momentum boost (decays over time).
-    private var fpsMomentumBoost: Float = 0
-
     /// Timestamp of last profile reset (for grace period).
     private var lastProfileResetTime: TimeInterval?
 
@@ -382,97 +379,12 @@ public final class AdaptiveThermalController {
         // Reset thermal signal
         signal.reset()
         currentMomentum = 0
-        fpsMomentumBoost = 0
 
         // Start grace period for gradual learning
         lastProfileResetTime = clock.now
 
         // Notify observers (renderers) to reset their frame rate monitors
         profileResetCount += 1
-    }
-
-    /// Reports the measured FPS from the renderer.
-    ///
-    /// Call this periodically from the render loop when FPS measurements are available.
-    /// Reduces LOD/scale/FPS proportionally when below target - this is the primary optimization
-    /// mechanism for GPU-bound scenarios.
-    ///
-    /// - Parameter fps: The measured average FPS.
-    public func reportMeasuredFPS(_ fps: Float) {
-        let severity = FrameRateMonitor.severity(for: fps)
-
-        // Check if we're in the grace period after a profile reset
-        let isInGracePeriod = lastProfileResetTime.map { clock.now - $0 < Self.gracePeriodDuration } ?? false
-
-        // Critical FPS (< 25): immediately drop to minimum LOD and scale
-        // But skip critical throttle during grace period to allow gradual learning
-        if severity == .critical && !isInGracePeriod {
-            forceCriticalThrottle()
-            return
-        }
-
-        // Proportional FPS-based optimization
-        // Reduce all three axes together using optimizer weights
-        let targetFPS = currentWallpaperFPS
-        if fps < targetFPS {
-            let deficit = (targetFPS - fps) / targetFPS  // 0.0 to 1.0
-
-            // During grace period with critical FPS, use more aggressive proportional throttling
-            // to quickly find sustainable quality without snapping to minimum
-            let dampingFactor: Float = (severity == .critical && isInGracePeriod) ? 0.6 : 0.3
-
-            // Apply reductions proportionally using optimizer weights (LOD 20%, Scale 60%, FPS 20%)
-            // Scale the deficit so moderate drops don't over-throttle
-            let adjustedDeficit = deficit * dampingFactor
-
-            // Reduce LOD (20% weight, affects shader complexity)
-            let lodReduction = adjustedDeficit * ThermalOptimizer.lodWeight * ThermalOptimizer.maxLODStep * 5
-            currentLOD = max(currentLOD - lodReduction, ThermalProfile.lodRange.lowerBound)
-
-            // Reduce scale (60% weight, affects pixel count)
-            let scaleReduction = adjustedDeficit * ThermalOptimizer.scaleWeight * ThermalOptimizer.maxScaleStep * 5
-            currentScale = max(currentScale - scaleReduction, ThermalProfile.scaleRange.lowerBound)
-
-            // Reduce wallpaper FPS target (20% weight, last resort)
-            let fpsReduction = adjustedDeficit * ThermalOptimizer.wallpaperFPSWeight * ThermalOptimizer.maxWallpaperFPSStep * 5
-            currentWallpaperFPS = max(currentWallpaperFPS - fpsReduction, ThermalProfile.wallpaperFPSRange.lowerBound)
-
-            // Update profile
-            if var profile = currentProfile {
-                profile.update(wallpaperFPS: currentWallpaperFPS, scale: currentScale, lod: currentLOD)
-                currentProfile = profile
-            }
-
-            // Boost momentum to slow recovery
-            fpsMomentumBoost = max(fpsMomentumBoost, deficit)
-        }
-    }
-
-    /// Forces immediate aggressive throttling due to critical FPS.
-    ///
-    /// Drops LOD and scale to minimum while keeping FPS target high. Low measured FPS
-    /// means the GPU can't keep up with the workload - reducing LOD/scale (less work)
-    /// is the fix, not reducing FPS target.
-    private func forceCriticalThrottle() {
-        // Drop LOD and scale to reduce GPU workload, keep FPS target high
-        currentLOD = ThermalProfile.lodRange.lowerBound  // minimum LOD
-        currentScale = ThermalProfile.scaleRange.lowerBound  // 0.5 scale
-        // Keep currentWallpaperFPS unchanged - we want smooth animation
-
-        // Update profile so we remember this shader struggles
-        if var profile = currentProfile {
-            profile.update(wallpaperFPS: currentWallpaperFPS, scale: currentScale, lod: currentLOD)
-            currentProfile = profile
-
-            // Persist immediately - this shader needs aggressive settings
-            if !context.hasExternalFactors {
-                store.save(profile)
-            }
-        }
-
-        // Set high momentum so recovery is slow
-        currentMomentum = 1.0
-        fpsMomentumBoost = 0
     }
 
     // MARK: - Optimization Loop
@@ -519,22 +431,16 @@ public final class AdaptiveThermalController {
         let state = context.thermalState
         rawThermalState = state
         signal.record(state)
-
-        // Combine thermal momentum with FPS-based boost
-        let effectiveMomentum = min(signal.momentum + fpsMomentumBoost, 1.0)
-        currentMomentum = effectiveMomentum
-
-        // Decay FPS boost over time (so it doesn't persist indefinitely)
-        fpsMomentumBoost *= 0.8
+        currentMomentum = signal.momentum
 
         guard var profile = currentProfile else { return }
 
-        // Optimize using effective momentum
-        var (newWallpaperFPS, newScale, newLOD) = optimizer.optimize(current: profile, momentum: effectiveMomentum)
+        // Optimize using thermal momentum
+        var (newWallpaperFPS, newScale, newLOD) = optimizer.optimize(current: profile, momentum: signal.momentum)
 
         // Apply gradual quality recovery when thermal is stable
         // This allows the profile to drift back toward max quality over time
-        if effectiveMomentum < ThermalSignal.deadZone {
+        if signal.momentum < ThermalSignal.deadZone {
             newWallpaperFPS = min(newWallpaperFPS + Self.qualityRecoveryStep * 5, ThermalProfile.wallpaperFPSRange.upperBound)
             newScale = min(newScale + Self.qualityRecoveryStep, ThermalProfile.scaleRange.upperBound)
             newLOD = min(newLOD + Self.qualityRecoveryStep * 2, ThermalProfile.lodRange.upperBound)
@@ -551,7 +457,7 @@ public final class AdaptiveThermalController {
         currentLOD = newLOD
 
         // Update interpolation state based on current throttling tier
-        updateInterpolationState(scale: newScale, displayFPS: newWallpaperFPS, momentum: effectiveMomentum)
+        updateInterpolationState(scale: newScale, displayFPS: newWallpaperFPS, momentum: signal.momentum)
 
         // Record analytics event
         if let shaderID = activeShaderID {

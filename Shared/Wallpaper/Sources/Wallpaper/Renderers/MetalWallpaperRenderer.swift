@@ -131,7 +131,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private static weak var activeMainRenderer: MetalWallpaperRenderer?
 
     /// Captures a snapshot from the currently active main renderer.
-    /// - Returns: A UIImage snapshot, or nil if no main renderer is active.
+    /// - Returns: A Image snapshot, or nil if no main renderer is active.
     public static func captureMainSnapshot() -> Image? {
         activeMainRenderer?.captureSnapshot()
     }
@@ -419,14 +419,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 cachedShaderFPS = thermalController.effectiveShaderFPS
             }
 
-            // Measure frame duration for FPS monitoring
+            // Measure frame duration for periodic thermal value updates
             let frameStart = CACurrentMediaTime()
             if lastFrameStart > 0 {
                 let frameDuration = frameStart - lastFrameStart
-                // Only update cached thermal values when FPS is reported (every ~1 second)
-                if let measuredFPS = frameRateMonitor.recordFrame(duration: frameDuration) {
-                    thermalController.reportMeasuredFPS(measuredFPS)
-                    // Update cached values only when we report FPS
+                // Update cached thermal values periodically (every ~1 second)
+                if frameRateMonitor.recordFrame(duration: frameDuration) != nil {
                     cachedResolutionScale = thermalController.effectiveScale
                     cachedTargetFPS = Int(thermalController.effectiveWallpaperFPS)
                     cachedLOD = thermalController.effectiveLOD
@@ -860,11 +858,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     // MARK: - Snapshot
 
-    /// Captures a snapshot of the current wallpaper as a UIImage.
-    /// Renders a single frame to an offscreen texture and converts it to UIImage.
+    /// Captures a snapshot of the current wallpaper as a Image.
+    /// Renders a single frame to an offscreen texture and converts it to Image.
     /// - Parameter size: The size of the snapshot (default 100x100 for color extraction).
-    /// - Returns: A UIImage of the rendered wallpaper, or nil if rendering fails.
-    public func captureSnapshot(size: CGSize = CGSize(width: 100, height: 100)) -> UIImage? {
+    /// - Returns: A Image of the rendered wallpaper, or nil if rendering fails.
+    public func captureSnapshot(size: CGSize = CGSize(width: 100, height: 100)) -> Image? {
         guard let device, let queue, let pipeline else { return nil }
 
         // Create a texture descriptor for the snapshot
@@ -934,12 +932,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
-        // Convert texture to UIImage
-        return textureToUIImage(snapshotTexture)
+        // Convert texture to Image
+        return textureToImage(snapshotTexture)
     }
 
-    /// Converts an MTLTexture to a UIImage.
-    private func textureToUIImage(_ texture: MTLTexture) -> UIImage? {
+    /// Converts an MTLTexture to a Image.
+    private func textureToImage(_ texture: MTLTexture) -> Image? {
         let width = texture.width
         let height = texture.height
         let bytesPerPixel = 4
@@ -972,7 +970,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             return nil
         }
 
-        return UIImage(cgImage: cgImage)
+        return Image(cgImage: cgImage)
     }
 
     // MARK: - Noise Texture
