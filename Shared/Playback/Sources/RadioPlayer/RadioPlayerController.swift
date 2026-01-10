@@ -233,6 +233,16 @@ public final class RadioPlayerController: PlaybackController {
         }
     }
     
+    /// No-op: AVPlayer-based RadioPlayerController doesn't support render tap
+    public func installRenderTap() {
+        // AVPlayer doesn't expose raw audio buffers
+    }
+
+    /// No-op: AVPlayer-based RadioPlayerController doesn't support render tap
+    public func removeRenderTap() {
+        // AVPlayer doesn't expose raw audio buffers
+    }
+    
     #if os(iOS)
     public func handleAppDidEnterBackground() {
         applicationDidEnterBackground(Notification(name: UIApplication.didEnterBackgroundNotification))
@@ -303,7 +313,7 @@ private extension RadioPlayerController {
                     self.stop()
                 }
                 self.state = .interrupted
-
+    
             case .ended:
                 // Check shouldResume option to decide whether to resume
                 guard let optionsValue else { return }
@@ -380,7 +390,7 @@ private extension RadioPlayerController {
             guard !self.radioPlayer.isPlaying else {
                 return
             }
-
+    
             do {
                 try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
             } catch {

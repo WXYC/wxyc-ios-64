@@ -3,6 +3,7 @@
 import Foundation
 @preconcurrency import AVFoundation
 import AudioToolbox
+import DequeModule
 
 /// Errors that can occur during MP3 decoding
 enum MP3DecoderError: Error {
@@ -48,7 +49,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
 
     /// Accumulated packets waiting to be decoded
     private var packetData = Data()
-    private var packetDescriptions: [AudioStreamPacketDescription] = []
+    private var packetDescriptions: Deque<AudioStreamPacketDescription> = []
+
+    /// Tracks how many bytes from the start of packetData have been consumed.
+    /// Used to avoid O(n) Data.removeFirst() on every decode cycle.
+    private var consumedByteOffset: Int = 0
+
+    /// Threshold for compacting the data buffer (64KB).
+    /// When consumedByteOffset exceeds this, we perform the actual removal.
+    private let compactionThreshold = 65536
 
     // Output format: 44.1kHz, stereo, Float32
     private let outputFormat: AVAudioFormat
@@ -61,14 +70,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
         Self.nextInstanceID += 1
         self.decoderQueue = DispatchQueue(label: "com.avaudiostreamer.mp3decoder.\(instanceID)", qos: .userInitiated)
 
-        // Initialize buffer stream
+        // Initialize buffer stream with bounded buffer to prevent memory growth
+        // 32 buffers is enough to handle temporary consumer slowdowns
         var bufferCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        self.decodedBufferStream = AsyncStream(bufferingPolicy: .unbounded) { bufferCont = $0 }
+        self.decodedBufferStream = AsyncStream(bufferingPolicy: .bufferingOldest(32)) { bufferCont = $0 }
         self.bufferContinuation = bufferCont
 
-        // Initialize error stream
+        // Initialize error stream - errors are rare, small buffer is fine
         var errorCont: AsyncStream<Error>.Continuation!
-        self.errorStream = AsyncStream(bufferingPolicy: .unbounded) { errorCont = $0 }
+        self.errorStream = AsyncStream(bufferingPolicy: .bufferingNewest(4)) { errorCont = $0 }
         self.errorContinuation = errorCont
 
         // Standard output format for decoded audio
@@ -112,6 +122,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
             guard let self else { return }
             self.packetData.removeAll()
             self.packetDescriptions.removeAll()
+            self.consumedByteOffset = 0
             self.inputFormat = nil
 
             if let stream = self.audioFileStream {
@@ -264,106 +275,114 @@ final class MP3StreamDecoder: @unchecked Sendable {
             bufferListPtr[i].mDataByteSize = bytesPerChannel
         }
 
-        // Create context for the callback
-        let context = ConversionContext(
-            packetData: packetData,
-            packetDescriptions: packetDescriptions
-        )
-        let contextPointer = Unmanaged.passUnretained(context).toOpaque()
-
+        // Use withUnsafeBytes to avoid copying packetData into ConversionContext
+        // The callback is invoked synchronously, so the pointer remains valid
         var ioOutputDataPacketSize = frameCapacity
+        var status: OSStatus = noErr
+        var consumedPackets = 0
 
-        let status = AudioConverterFillComplexBuffer(
-            converter,
-            { (
-                inAudioConverter: AudioConverterRef,
-                ioNumberDataPackets: UnsafeMutablePointer<UInt32>,
-                ioData: UnsafeMutablePointer<AudioBufferList>,
-                outDataPacketDescription: UnsafeMutablePointer<UnsafeMutablePointer<AudioStreamPacketDescription>?>?,
-                inUserData: UnsafeMutableRawPointer?
-            ) -> OSStatus in
-                guard let userData = inUserData else {
-                    ioNumberDataPackets.pointee = 0
-                    return kAudioConverterErr_InvalidInputSize
-                }
+        packetData.withUnsafeBytes { dataBuffer in
+            guard let dataBaseAddress = dataBuffer.baseAddress else {
+                status = kAudioConverterErr_InvalidInputSize
+                return
+            }
 
-                let context = Unmanaged<ConversionContext>.fromOpaque(userData).takeUnretainedValue()
+            // Create context with pointer to data (no copy for data, but copy descriptions to Array)
+            let context = ConversionContext(
+                dataPointer: dataBaseAddress,
+                dataCount: dataBuffer.count,
+                packetDescriptions: Array(packetDescriptions)
+            )
+            let contextPointer = Unmanaged.passUnretained(context).toOpaque()
 
-                guard context.packetIndex < context.packetDescriptions.count else {
-                    ioNumberDataPackets.pointee = 0
+            status = AudioConverterFillComplexBuffer(
+                converter,
+                { (
+                    inAudioConverter: AudioConverterRef,
+                    ioNumberDataPackets: UnsafeMutablePointer<UInt32>,
+                    ioData: UnsafeMutablePointer<AudioBufferList>,
+                    outDataPacketDescription: UnsafeMutablePointer<UnsafeMutablePointer<AudioStreamPacketDescription>?>?,
+                    inUserData: UnsafeMutableRawPointer?
+                ) -> OSStatus in
+                    guard let userData = inUserData else {
+                        ioNumberDataPackets.pointee = 0
+                        return kAudioConverterErr_InvalidInputSize
+                    }
+
+                    let context = Unmanaged<ConversionContext>.fromOpaque(userData).takeUnretainedValue()
+
+                    guard context.packetIndex < context.packetDescriptions.count else {
+                        ioNumberDataPackets.pointee = 0
+                        return noErr
+                    }
+
+                    // Provide one packet at a time
+                    let desc = context.packetDescriptions[context.packetIndex]
+                    let packetSize = Int(desc.mDataByteSize)
+                    let packetOffset = Int(desc.mStartOffset)
+
+                    // Validate bounds carefully to avoid overflow
+                    guard packetSize > 0,
+                          packetOffset >= 0,
+                          packetOffset < context.dataCount,
+                          context.dataCount - packetOffset >= packetSize else {
+                        ioNumberDataPackets.pointee = 0
+                        return noErr
+                    }
+
+                    // Copy packet data to our buffer - source is already a pointer, no Data copy needed
+                    let bufferPointer = context.getBuffer(capacity: packetSize)
+                    memcpy(bufferPointer, context.dataPointer.advanced(by: packetOffset), packetSize)
+
+                    ioData.pointee.mNumberBuffers = 1
+                    ioData.pointee.mBuffers.mData = UnsafeMutableRawPointer(bufferPointer)
+                    ioData.pointee.mBuffers.mDataByteSize = UInt32(packetSize)
+                    ioData.pointee.mBuffers.mNumberChannels = 0
+
+                    // Provide packet description
+                    if let outDesc = outDataPacketDescription {
+                        let packetDesc = AudioStreamPacketDescription(
+                            mStartOffset: 0,
+                            mVariableFramesInPacket: desc.mVariableFramesInPacket,
+                            mDataByteSize: desc.mDataByteSize
+                        )
+                        outDesc.pointee = context.setCurrentPacketDescription(packetDesc)
+                    }
+
+                    ioNumberDataPackets.pointee = 1
+                    context.packetIndex += 1
+
                     return noErr
-                }
+                },
+                contextPointer,
+                &ioOutputDataPacketSize,
+                audioBufferList,
+                nil
+            )
 
-                // Provide one packet at a time
-                let desc = context.packetDescriptions[context.packetIndex]
-                let packetSize = Int(desc.mDataByteSize)
-                let packetOffset = Int(desc.mStartOffset)
-                let dataCount = context.packetData.count
-
-                // Validate bounds carefully to avoid overflow
-                guard packetSize > 0,
-                      packetOffset >= 0,
-                      packetOffset < dataCount,
-                      dataCount - packetOffset >= packetSize else {
-                    ioNumberDataPackets.pointee = 0
-                    return noErr
-                }
-
-                // Double-check: verify that the end of range <= count
-                let endIndex = packetOffset + packetSize
-                precondition(endIndex <= context.packetData.count,
-                       "Range end \(endIndex) exceeds data count \(context.packetData.count)")
-
-                // Copy packet data to our buffer using memcpy to avoid Data.copyBytes issues
-                let bufferPointer = context.getBuffer(capacity: packetSize)
-                context.packetData.withUnsafeBytes { rawBuffer in
-                    guard let baseAddress = rawBuffer.baseAddress else { return }
-                    memcpy(bufferPointer, baseAddress.advanced(by: packetOffset), packetSize)
-                }
-
-                ioData.pointee.mNumberBuffers = 1
-                ioData.pointee.mBuffers.mData = UnsafeMutableRawPointer(bufferPointer)
-                ioData.pointee.mBuffers.mDataByteSize = UInt32(packetSize)
-                ioData.pointee.mBuffers.mNumberChannels = 0
-
-                // Provide packet description
-                if let outDesc = outDataPacketDescription {
-                    let packetDesc = AudioStreamPacketDescription(
-                        mStartOffset: 0,
-                        mVariableFramesInPacket: desc.mVariableFramesInPacket,
-                        mDataByteSize: desc.mDataByteSize
-                    )
-                    outDesc.pointee = context.setCurrentPacketDescription(packetDesc)
-                }
-
-                ioNumberDataPackets.pointee = 1
-                context.packetIndex += 1
-
-                return noErr
-            },
-            contextPointer,
-            &ioOutputDataPacketSize,
-            audioBufferList,
-            nil
-        )
+            // Capture consumed packets before context goes out of scope
+            consumedPackets = context.packetIndex
+        }
 
         if status == noErr && ioOutputDataPacketSize > 0 {
             pcmBuffer.frameLength = ioOutputDataPacketSize
 
-            // Clear consumed packets
-            let consumedPackets = context.packetIndex
+            // Track consumed packets without O(n) data removal
             if consumedPackets > 0 && consumedPackets <= packetDescriptions.count {
                 // Find the end offset of consumed data
                 let lastConsumedDesc = packetDescriptions[consumedPackets - 1]
                 let consumedBytes = Int(lastConsumedDesc.mStartOffset + Int64(lastConsumedDesc.mDataByteSize))
 
                 if consumedBytes > 0 && consumedBytes <= packetData.count {
-                    packetData.removeFirst(consumedBytes)
+                    // O(1): Just update the offset instead of O(n) removeFirst
+                    consumedByteOffset = consumedBytes
 
-                    // Adjust remaining packet descriptions
+                    // Remove consumed packet descriptions (O(n) on descriptions array, but it's small)
                     packetDescriptions.removeFirst(consumedPackets)
-                    for i in 0..<packetDescriptions.count {
-                        packetDescriptions[i].mStartOffset -= Int64(consumedBytes)
+
+                    // Compact the data buffer periodically to avoid unbounded growth
+                    if consumedByteOffset >= compactionThreshold {
+                        compactDataBuffer()
                     }
                 }
             }
@@ -374,25 +393,51 @@ final class MP3StreamDecoder: @unchecked Sendable {
             // Only clear on non-recoverable errors
             packetDescriptions.removeAll()
             packetData.removeAll()
+            consumedByteOffset = 0
         }
+    }
+
+    /// Compacts the data buffer by removing consumed bytes.
+    /// This is O(n) but only called periodically when consumedByteOffset exceeds threshold.
+    private func compactDataBuffer() {
+        guard consumedByteOffset > 0 else { return }
+
+        // Remove the consumed bytes from the data buffer
+        packetData.removeFirst(consumedByteOffset)
+
+        // Adjust remaining packet descriptions to reflect the new base
+        for i in 0..<packetDescriptions.count {
+            packetDescriptions[i].mStartOffset -= Int64(consumedByteOffset)
+        }
+
+        consumedByteOffset = 0
     }
 }
 
 // MARK: - Supporting Types
 
+/// Context for the audio converter callback.
+/// Uses a raw pointer to avoid copying the packet data buffer.
 private final class ConversionContext {
-    let packetData: Data
+    /// Pointer to the packet data buffer (valid only during conversion)
+    let dataPointer: UnsafeRawPointer
+    /// Size of the data buffer
+    let dataCount: Int
+    /// Packet descriptions for the current conversion
     let packetDescriptions: [AudioStreamPacketDescription]
+    /// Current packet index being processed
     var packetIndex: Int = 0
 
     /// Storage for current packet description - must remain valid between callback invocations
     private var packetDescriptionStorage: UnsafeMutablePointer<AudioStreamPacketDescription>
 
+    /// Reusable buffer for packet data copy
     private var buffer: UnsafeMutablePointer<UInt8>?
     private var bufferCapacity: Int = 0
 
-    init(packetData: Data, packetDescriptions: [AudioStreamPacketDescription]) {
-        self.packetData = packetData
+    init(dataPointer: UnsafeRawPointer, dataCount: Int, packetDescriptions: [AudioStreamPacketDescription]) {
+        self.dataPointer = dataPointer
+        self.dataCount = dataCount
         self.packetDescriptions = packetDescriptions
         self.packetDescriptionStorage = .allocate(capacity: 1)
     }

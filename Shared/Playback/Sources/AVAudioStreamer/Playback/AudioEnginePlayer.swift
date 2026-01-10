@@ -1,6 +1,7 @@
 #if !os(watchOS)
 
 @preconcurrency import AVFoundation
+import os.lock
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 import UIKit
@@ -25,13 +26,17 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     // Track scheduled buffers to know when to request more
     private let scheduledBufferCount: ScheduledBufferCount
 
-    // Event stream
+    // Event stream - bounded to prevent unbounded growth
     let eventStream: AsyncStream<AudioPlayerEvent>
     private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
 
-    /// Stream of audio buffers from the render tap - yields at render rate (~60 times/sec)
+    /// Stream of audio buffers from the render tap.
+    /// Only yields buffers when tap is installed via `installRenderTap()`.
     let renderTapStream: AsyncStream<AVAudioPCMBuffer>
     private let renderTapContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+
+    /// Tracks whether the render tap is currently installed
+    private let renderTapState: RenderTapState
 
     var isPlaying: Bool {
         stateBox.isPlaying
@@ -49,13 +54,14 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         self.stateBox = PlayerStateBox()
         self.scheduledBufferCount = ScheduledBufferCount()
         self.schedulingQueue = DispatchQueue(label: "com.avaudiostreamer.scheduling", qos: .userInitiated)
+        self.renderTapState = RenderTapState()
 
-        // Initialize event stream
+        // Initialize event stream with bounded buffer to prevent unbounded growth
         var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
-        self.eventStream = AsyncStream(bufferingPolicy: .unbounded) { eventCont = $0 }
+        self.eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(16)) { eventCont = $0 }
         self.eventContinuation = eventCont
 
-        // Initialize render tap stream
+        // Initialize render tap stream - only keeps latest buffer for visualization
         var renderCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
         self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { renderCont = $0 }
         self.renderTapContinuation = renderCont
@@ -66,14 +72,25 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     private func setUpAudioEngine() {
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+        // Note: Render tap is NOT installed by default - call installRenderTap() when needed
+        engine.prepare()
+    }
 
-        // Install tap on player node to capture audio at render rate
+    // MARK: - Render Tap Management
+
+    func installRenderTap() {
+        guard renderTapState.install() else { return } // Already installed
+
         let continuation = renderTapContinuation
         playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             continuation.yield(buffer)
         }
+    }
 
-        engine.prepare()
+    func removeRenderTap() {
+        guard renderTapState.remove() else { return } // Already removed
+
+        playerNode.removeTap(onBus: 0)
     }
 
     func setUpAudioSession() throws {
@@ -121,34 +138,43 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     }
 
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
+        scheduleBuffers([buffer])
+    }
+
+    func scheduleBuffers(_ buffers: [AVAudioPCMBuffer]) {
+        guard !buffers.isEmpty else { return }
+
         schedulingQueue.async { [weak self] in
             guard let self else { return }
 
-            // If we were stalled and now have a buffer, we're recovering
+            // If we were stalled and now have buffers, we're recovering
             if self.stateBox.isStalled {
                 self.stateBox.isStalled = false
                 self.eventContinuation.yield(.recoveredFromStall)
             }
 
-            self.playerNode.scheduleBuffer(buffer) { [weak self] in
-                guard let self else { return }
+            // Schedule all buffers in a single dispatch for efficiency
+            for buffer in buffers {
+                self.playerNode.scheduleBuffer(buffer) { [weak self] in
+                    guard let self else { return }
 
-                // Buffer finished playing
-                self.scheduledBufferCount.decrement()
+                    // Buffer finished playing
+                    self.scheduledBufferCount.decrement()
 
-                // Detect stall: count hit zero while we were playing
-                if self.scheduledBufferCount.count == 0 && self.stateBox.isPlaying {
-                    self.stateBox.isStalled = true
-                    self.eventContinuation.yield(.stalled)
+                    // Detect stall: count hit zero while we were playing
+                    if self.scheduledBufferCount.count == 0 && self.stateBox.isPlaying {
+                        self.stateBox.isStalled = true
+                        self.eventContinuation.yield(.stalled)
+                    }
+
+                    // Request more buffers if running low
+                    if self.scheduledBufferCount.count < 3 && self.stateBox.isPlaying {
+                        self.eventContinuation.yield(.needsMoreBuffers)
+                    }
                 }
 
-                // Request more buffers if running low
-                if self.scheduledBufferCount.count < 3 && self.stateBox.isPlaying {
-                    self.eventContinuation.yield(.needsMoreBuffers)
-                }
+                self.scheduledBufferCount.increment()
             }
-
-            self.scheduledBufferCount.increment()
         }
     }
 }
@@ -156,64 +182,117 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 // MARK: - Thread-safe state management
 
 private final class PlayerStateBox: @unchecked Sendable {
-    private let lock = NSLock()
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
     private var _isPlaying = false
+    private var _isStalled = false
+
+    init() {
+        lock = .allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
+    }
+
+    deinit {
+        lock.deinitialize(count: 1)
+        lock.deallocate()
+    }
 
     var isPlaying: Bool {
         get {
-            lock.lock()
-            defer { lock.unlock() }
+            os_unfair_lock_lock(lock)
+            defer { os_unfair_lock_unlock(lock) }
             return _isPlaying
         }
         set {
-            lock.lock()
-            defer { lock.unlock() }
+            os_unfair_lock_lock(lock)
             _isPlaying = newValue
+            os_unfair_lock_unlock(lock)
         }
     }
 
     var isStalled: Bool {
         get {
-            lock.lock()
-            defer { lock.unlock() }
+            os_unfair_lock_lock(lock)
+            defer { os_unfair_lock_unlock(lock) }
             return _isStalled
         }
         set {
-            lock.lock()
-            defer { lock.unlock() }
+            os_unfair_lock_lock(lock)
             _isStalled = newValue
+            os_unfair_lock_unlock(lock)
         }
     }
-
-    private var _isStalled = false
 }
 
 private final class ScheduledBufferCount: @unchecked Sendable {
-    private let lock = NSLock()
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
     private var _count = 0
 
+    init() {
+        lock = .allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
+    }
+
+    deinit {
+        lock.deinitialize(count: 1)
+        lock.deallocate()
+    }
+
     var count: Int {
-        lock.lock()
-        defer { lock.unlock() }
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
         return _count
     }
 
     func increment() {
-        lock.lock()
-        defer { lock.unlock() }
+        os_unfair_lock_lock(lock)
         _count += 1
+        os_unfair_lock_unlock(lock)
     }
 
     func decrement() {
-        lock.lock()
-        defer { lock.unlock() }
+        os_unfair_lock_lock(lock)
         _count = max(0, _count - 1)
+        os_unfair_lock_unlock(lock)
     }
 
     func reset() {
-        lock.lock()
-        defer { lock.unlock() }
+        os_unfair_lock_lock(lock)
         _count = 0
+        os_unfair_lock_unlock(lock)
+    }
+}
+
+/// Thread-safe state for render tap installation
+private final class RenderTapState: @unchecked Sendable {
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
+    private var _isInstalled = false
+
+    init() {
+        lock = .allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
+    }
+
+    deinit {
+        lock.deinitialize(count: 1)
+        lock.deallocate()
+    }
+
+    /// Attempts to install the tap. Returns true if the tap was not already installed.
+    func install() -> Bool {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        if _isInstalled { return false }
+        _isInstalled = true
+        return true
+    }
+
+    /// Attempts to remove the tap. Returns true if the tap was installed.
+    func remove() -> Bool {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        if !_isInstalled { return false }
+        _isInstalled = false
+        return true
     }
 }
 

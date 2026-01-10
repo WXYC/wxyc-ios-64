@@ -31,7 +31,8 @@ public protocol AudioEnginePlayerProtocol: AnyObject, Sendable {
     /// Stream of player events
     var eventStream: AsyncStream<AudioPlayerEvent> { get }
 
-    /// Stream of audio buffers from the render tap for visualization
+    /// Stream of audio buffers from the render tap for visualization.
+    /// Only yields buffers when the tap is installed via `installRenderTap()`.
     var renderTapStream: AsyncStream<AVAudioPCMBuffer> { get }
 
     /// Start playback
@@ -45,6 +46,16 @@ public protocol AudioEnginePlayerProtocol: AnyObject, Sendable {
 
     /// Schedule a buffer for playback
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer)
+
+    /// Schedule multiple buffers for playback in a single batch (more efficient than individual calls)
+    func scheduleBuffers(_ buffers: [AVAudioPCMBuffer])
+
+    /// Install the render tap for audio visualization. Call this when visualization is needed.
+    /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
+    func installRenderTap()
+
+    /// Remove the render tap when visualization is no longer needed.
+    func removeRenderTap()
 }
 
 #endif

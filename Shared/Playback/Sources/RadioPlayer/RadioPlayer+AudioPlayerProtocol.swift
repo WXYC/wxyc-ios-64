@@ -22,4 +22,14 @@ extension RadioPlayer: AudioPlayerProtocol {
     public func stop() {
         pause()
     }
+
+    /// No-op: AVPlayer-based RadioPlayer doesn't expose raw audio buffers
+    public func installRenderTap() {
+        // RadioPlayer uses AVPlayer which doesn't provide render tap access
+    }
+
+    /// No-op: AVPlayer-based RadioPlayer doesn't expose raw audio buffers
+    public func removeRenderTap() {
+        // RadioPlayer uses AVPlayer which doesn't provide render tap access
+    }
 }

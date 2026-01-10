@@ -31,6 +31,16 @@ extension AVAudioStreamer: AudioPlayerProtocol {
     }
 
     // play() and stop() are already implemented directly in AVAudioStreamer
+
+    /// Install the render tap for audio visualization
+    public func installRenderTap() {
+        audioPlayer.installRenderTap()
+    }
+
+    /// Remove the render tap when visualization is no longer needed
+    public func removeRenderTap() {
+        audioPlayer.removeRenderTap()
+    }
 }
 
 #endif // !os(watchOS)

@@ -165,6 +165,101 @@ struct MP3StreamDecoderTests {
         // The main test is that it doesn't crash
     }
 
+    // MARK: - Packet Management Tests (Critical for Offset Tracking)
+
+    @Test("Extended streaming with small chunks produces valid buffers")
+    func testExtendedStreamingWithSmallChunks() async throws {
+        let decoder = MP3StreamDecoder()
+        let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
+
+        // Feed data in small chunks to stress packet accumulation/consumption
+        let chunkSize = 4096
+        var offset = 0
+        while offset < min(mp3Data.count, 200000) {
+            let end = min(offset + chunkSize, mp3Data.count)
+            let chunk = mp3Data.subdata(in: offset..<end)
+            decoder.decode(data: chunk)
+            offset = end
+            try await Task.sleep(for: .milliseconds(50))
+        }
+
+        // Verify we can get a valid buffer
+        let buffer = try await decoder.decodedBufferStream.first(timeout: 30)
+        #expect(buffer.frameLength > 0, "Buffer should have frames")
+        #expect(buffer.format.sampleRate == 44100, "Buffer should have correct sample rate")
+        #expect(buffer.format.channelCount == 2, "Buffer should be stereo")
+    }
+
+    @Test("Very small chunks (512 bytes) produce valid output")
+    func testVerySmallChunks() async throws {
+        let decoder = MP3StreamDecoder()
+        let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
+
+        // Use very small chunks to stress packet description offset adjustment
+        let chunkSize = 512
+        var offset = 0
+        let dataToProcess = min(mp3Data.count, 100_000)
+
+        while offset < dataToProcess {
+            let end = min(offset + chunkSize, dataToProcess)
+            let chunk = mp3Data.subdata(in: offset..<end)
+            decoder.decode(data: chunk)
+            offset = end
+        }
+
+        // Wait for processing and verify output
+        try await Task.sleep(for: .milliseconds(500))
+        let buffer = try await decoder.decodedBufferStream.first(timeout: 30)
+        #expect(buffer.frameLength > 0, "Each buffer should have valid frames")
+    }
+
+    @Test("Rapid consecutive decode calls without delays")
+    func testRapidDecodeCalls() async throws {
+        let decoder = MP3StreamDecoder()
+        let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
+
+        // Send many chunks rapidly without waiting
+        let chunkSize = 8192
+        var offset = 0
+        let dataToProcess = min(mp3Data.count, 150_000)
+
+        while offset < dataToProcess {
+            let end = min(offset + chunkSize, dataToProcess)
+            let chunk = mp3Data.subdata(in: offset..<end)
+            decoder.decode(data: chunk)
+            offset = end
+        }
+
+        // Wait for processing and verify output
+        try await Task.sleep(for: .milliseconds(500))
+        let buffer = try await decoder.decodedBufferStream.first(timeout: 30)
+
+        #expect(buffer.frameLength > 0 && buffer.frameLength <= 4096,
+               "Frame length should be in valid range")
+    }
+
+    @Test("Large data chunks produce valid output")
+    func testLargeChunks() async throws {
+        let decoder = MP3StreamDecoder()
+        let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
+
+        // Feed large chunks
+        let chunkSize = 32768
+        var offset = 0
+        while offset < mp3Data.count {
+            let end = min(offset + chunkSize, mp3Data.count)
+            let chunk = mp3Data.subdata(in: offset..<end)
+            decoder.decode(data: chunk)
+            offset = end
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        let buffer = try await decoder.decodedBufferStream.first(timeout: 30)
+
+        #expect(buffer.frameLength > 0, "Should decode valid frames from large chunks")
+        #expect(buffer.format.sampleRate == 44100)
+    }
+
     // MARK: - Performance Tests
 
     @Test("Decodes multiple chunks efficiently")

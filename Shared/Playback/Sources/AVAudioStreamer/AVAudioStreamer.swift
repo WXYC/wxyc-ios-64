@@ -68,7 +68,7 @@ public final class AVAudioStreamer {
     @ObservationIgnored
     private let bufferQueue: PCMBufferQueue
     @ObservationIgnored
-    private let audioPlayer: any AudioEnginePlayerProtocol
+    internal let audioPlayer: any AudioEnginePlayerProtocol
 
     @ObservationIgnored
     internal var backoffTimer: ExponentialBackoff
@@ -304,9 +304,11 @@ public final class AVAudioStreamer {
     }
 
     private func scheduleBuffers() {
-        // Schedule available buffers
-        while let buffer = bufferQueue.dequeue() {
-            audioPlayer.scheduleBuffer(buffer)
+        // Dequeue all available buffers at once and schedule as a batch
+        // This reduces dispatch overhead by batching into a single GCD call
+        let buffers = bufferQueue.dequeueAll()
+        if !buffers.isEmpty {
+            audioPlayer.scheduleBuffers(buffers)
         }
     }
 
