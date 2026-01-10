@@ -22,8 +22,11 @@ struct DebugHUD: View {
             MetricRow(label: "GPU", value: metrics.gpuMemoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "MEM", value: metrics.memoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "TMP", value: metrics.thermalState.description)
-            MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentFPS))fps")
+            MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentWallpaperFPS))fps")
             MetricRow(label: "MTM", value: String(format: "%.2f", thermal.currentMomentum))
+            MetricRow(label: "INT", value: thermal.interpolationEnabled
+                ? "ON (\(Int(thermal.shaderFPS))fps shader)"
+                : "OFF")
         }
         .font(.system(.caption, design: .monospaced))
         .foregroundStyle(.white)
