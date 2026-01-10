@@ -23,9 +23,6 @@ struct ContentView: View {
                 NavigationLink("OverlaySheet") {
                     OverlaySheetPreview()
                 }
-                NavigationLink("SiriTipView") {
-                    SiriTipViewPreview()
-                }
             }
             .navigationTitle("WXUI Components")
         }

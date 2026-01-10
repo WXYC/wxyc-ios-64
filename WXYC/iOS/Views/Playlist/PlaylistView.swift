@@ -128,6 +128,9 @@ struct PlaylistView: View {
                 selectedPlayerType: $selectedPlayerType,
                 onResetThemePickerState: {
                     appState.themePickerState.persistence.resetState()
+                },
+                onResetSiriTip: {
+                    SiriTipView.resetState()
                 }
             )
             .presentationDetents([.fraction(0.75)])
