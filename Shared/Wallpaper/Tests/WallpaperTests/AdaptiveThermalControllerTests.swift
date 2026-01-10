@@ -335,4 +335,133 @@ struct AdaptiveThermalControllerTests {
         #expect(controller.currentScale > throttledScale)
         #expect(controller.currentLOD > throttledLOD)
     }
+
+    // MARK: - Thermal Continuity Tests
+
+    @Test("Foreground seeds thermal state when device is hot")
+    func foregroundSeedsThermalState() async {
+        let context = MockThermalContext(thermalState: .serious)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Background and foreground with hot device
+        controller.handleBackgrounded()
+        controller.handleForegrounded()
+
+        // Should immediately reflect the serious thermal state
+        #expect(controller.rawThermalState == .serious)
+        // Momentum should be seeded (0.67 × 0.3 = 0.201)
+        #expect(controller.currentMomentum > 0.1)
+    }
+
+    @Test("Foreground with nominal device has zero momentum")
+    func foregroundWithNominalDevice() async {
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Heat up then cool down while backgrounded
+        context.thermalState = .critical
+        controller.checkNow()
+
+        controller.handleBackgrounded()
+
+        // Device cooled while backgrounded
+        context.thermalState = .nominal
+
+        controller.handleForegrounded()
+
+        // Should have zero momentum since device is nominal
+        #expect(controller.rawThermalState == .nominal)
+        #expect(controller.currentMomentum == 0)
+    }
+
+    @Test("Wallpaper switch while hot applies thermal adjustment")
+    func wallpaperSwitchWhileHot() async {
+        // Start with device already at elevated thermal state
+        let context = MockThermalContext(thermalState: .serious)
+        let controller = makeController(context: context)
+
+        // Set up first shader - device is already hot
+        await controller.setActiveShader("shader1")
+        controller.checkNow()
+
+        // Switch to a new shader while device is still hot
+        // The new shader has never been used, so its stored profile is max quality (60, 1.0, 1.0)
+        await controller.setActiveShader("shader2")
+
+        // New shader should NOT be at max quality - should be adjusted for thermal state
+        // With .serious state (0.67 normalized), should have noticeable reduction
+        #expect(controller.currentWallpaperFPS < 60.0, "Should not be at max FPS when device is hot")
+        #expect(controller.currentScale < 1.0, "Should not be at max scale when device is hot")
+        #expect(controller.currentLOD < 1.0, "Should not be at max LOD when device is hot")
+    }
+
+    @Test("Wallpaper switch while nominal uses stored profile")
+    func wallpaperSwitchWhileNominal() async {
+        let context = MockThermalContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("shader1")
+        controller.checkNow()
+
+        // Switch while device is cool
+        await controller.setActiveShader("shader2")
+
+        // Should use max quality since device is nominal
+        #expect(controller.currentWallpaperFPS == 60.0)
+        #expect(controller.currentScale == 1.0)
+        #expect(controller.currentLOD == 1.0)
+    }
+
+    @Test("Wallpaper switch preserves learned profile when device is hot")
+    func wallpaperSwitchPreservesLearnedProfile() async {
+        let suiteName = "LearnedProfile-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let store = ThermalProfileStore(defaults: defaults)
+        let context = MockThermalContext(thermalState: .nominal)
+
+        let controller = AdaptiveThermalController(
+            store: store,
+            context: context,
+            optimizationInterval: .milliseconds(10),
+            backgroundThreshold: 1
+        )
+
+        // Set up shader2 first and throttle it
+        await controller.setActiveShader("shader2")
+        controller.checkNow()
+
+        // Build thermal momentum on shader2
+        context.thermalState = .fair
+        controller.checkNow()
+        context.thermalState = .serious
+        controller.checkNow()
+        context.thermalState = .critical
+        controller.checkNow()
+        controller.checkNow()
+
+        let shader2ThrottledScale = controller.currentScale
+
+        // Background to persist the profile
+        controller.handleBackgrounded()
+
+        // Switch to shader1
+        context.thermalState = .nominal
+        controller.handleForegrounded()
+        await controller.setActiveShader("shader1")
+
+        // Heat up again
+        context.thermalState = .serious
+        controller.checkNow()
+        controller.checkNow()
+
+        // Switch back to shader2 while hot
+        await controller.setActiveShader("shader2")
+
+        // Should use the learned throttled profile (more conservative than default)
+        #expect(controller.currentScale <= shader2ThrottledScale)
+    }
 }

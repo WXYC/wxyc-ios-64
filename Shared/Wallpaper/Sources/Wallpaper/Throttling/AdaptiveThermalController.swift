@@ -253,6 +253,8 @@ public final class AdaptiveThermalController {
     /// Sets the active shader and loads its thermal profile.
     ///
     /// Call this when the wallpaper view appears with a specific shader.
+    /// If the device is not at nominal temperature, the loaded profile's quality
+    /// values are adjusted to prevent quality spikes when switching wallpapers.
     ///
     /// - Parameter shaderID: The shader identifier.
     public func setActiveShader(_ shaderID: String) async {
@@ -262,13 +264,32 @@ public final class AdaptiveThermalController {
         }
 
         activeShaderID = shaderID
-        currentProfile = store.load(shaderId: shaderID)
+        var profile = store.load(shaderId: shaderID)
 
-        if let profile = currentProfile {
-            currentWallpaperFPS = profile.wallpaperFPS
-            currentScale = profile.scale
-            currentLOD = profile.lod
+        // Apply current thermal state to loaded profile
+        // This prevents quality spikes when switching while device is hot
+        // Use the thermal state's normalized value as minimum momentum, since
+        // momentum represents change (delta) not absolute state
+        let thermalState = context.thermalState
+        if thermalState != .nominal {
+            let stateBasedMomentum = thermalState.normalizedValue
+            let effectiveMomentum = max(signal.momentum, stateBasedMomentum)
+            let (newFPS, newScale, newLOD) = optimizer.optimize(
+                current: profile,
+                momentum: effectiveMomentum
+            )
+            // Take the more conservative of stored vs thermally-adjusted values
+            profile.update(
+                wallpaperFPS: min(profile.wallpaperFPS, newFPS),
+                scale: min(profile.scale, newScale),
+                lod: min(profile.lod, newLOD)
+            )
         }
+
+        currentProfile = profile
+        currentWallpaperFPS = profile.wallpaperFPS
+        currentScale = profile.scale
+        currentLOD = profile.lod
 
         startOptimizationLoop()
         startPeriodicFlush()
@@ -276,15 +297,19 @@ public final class AdaptiveThermalController {
 
     /// Called when app returns to foreground.
     ///
-    /// Resets thermal signal (unknown state during background) and applies
+    /// Seeds thermal signal from current device state and applies
     /// conservative cooldown bonus if backgrounded long enough.
     public func handleForegrounded() {
         let wasBackgroundedLong = backgroundedAt.map {
             clock.now - $0 > backgroundThreshold
         } ?? false
 
-        // Reset signal - thermal state during background is unknown
-        signal.reset()
+        // Seed signal from current thermal state - device may be hot
+        // This ensures we respond immediately rather than waiting for first optimization tick
+        let currentState = context.thermalState
+        signal.seedFromCurrentState(currentState)
+        rawThermalState = currentState
+        currentMomentum = signal.momentum
 
         if wasBackgroundedLong, var profile = currentProfile {
             // Apply conservative cooldown bonus

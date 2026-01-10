@@ -65,12 +65,27 @@ public struct ThermalSignal: Sendable {
 
     /// Resets the signal to initial state.
     ///
-    /// Call this when resuming from background, as thermal state during
-    /// background is unknown.
+    /// Call this when thermal context is completely unknown and you want
+    /// to start fresh (e.g., testing scenarios).
     public mutating func reset() {
         momentum = 0
         lastState = nil
         lastUpdate = nil
+    }
+
+    /// Seeds the signal from the current thermal state without requiring history.
+    ///
+    /// Use this when resuming from background to immediately respond to device
+    /// temperature. Unlike `reset()`, this initializes momentum proportionally
+    /// to the current thermal level so hot devices start with reduced quality.
+    ///
+    /// - Parameter state: The current thermal state from ProcessInfo.
+    public mutating func seedFromCurrentState(_ state: ProcessInfo.ThermalState) {
+        // Initialize momentum based on absolute thermal level
+        // This ensures we respond immediately to elevated thermal states
+        momentum = state.normalizedValue * Self.smoothingFactor
+        lastState = state
+        lastUpdate = Date()
     }
 }
 
