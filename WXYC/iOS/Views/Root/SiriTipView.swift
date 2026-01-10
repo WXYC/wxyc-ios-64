@@ -1,34 +1,35 @@
 //
 //  SiriTipView.swift
-//  WXUI
+//  WXYC
 //
 //  Created by Jake Bromberg on 12/3/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
+import Wallpaper
 
 /// A custom Siri tip view that displays a suggestion to use voice commands.
 ///
 /// Display Logic:
 /// Shows after the second launch, until dismissed; never shows again once dismissed.
 /// Use the debug panel to reset tip state for testing.
-public struct SiriTipView: View {
-    public typealias Dismissal = () -> Void
+struct SiriTipView: View {
+    typealias Dismissal = () -> Void
 
     @Binding var isVisible: Bool
     private let onDismiss: Dismissal
 
-    public init(isVisible: Binding<Bool>, onDismiss: @escaping Dismissal = { }) {
+    init(isVisible: Binding<Bool>, onDismiss: @escaping Dismissal = { }) {
         self._isVisible = isVisible
         self.onDismiss = onDismiss
     }
 
-    public var body: some View {
+    var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "siri")
                 .font(.system(size: 32))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white)
 
             // Tip content
             VStack(alignment: .leading, spacing: 2) {
@@ -53,16 +54,13 @@ public struct SiriTipView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-        )
+        .background(BackgroundLayer(cornerRadius: 16))
         .transition(.asymmetric(
             insertion: .scale(scale: 0.9).combined(with: .opacity),
             removal: .scale(scale: 0.9).combined(with: .opacity)
@@ -78,7 +76,7 @@ extension SiriTipView {
 
     /// Call this at app launch to record that a launch has occurred.
     /// Returns whether the Siri tip should be shown.
-    public static func recordLaunchAndShouldShow() -> Bool {
+    static func recordLaunchAndShouldShow() -> Bool {
         let defaults = UserDefaults.standard
 
         // If user already dismissed, never show again
@@ -100,12 +98,12 @@ extension SiriTipView {
     }
 
     /// Call this when the user dismisses the tip to prevent future displays.
-    public static func recordDismissal() {
+    static func recordDismissal() {
         UserDefaults.standard.set(true, forKey: wasDismissedKey)
     }
 
     /// Resets the Siri tip state (useful for testing).
-    public static func resetState() {
+    static func resetState() {
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: hasLaunchedBeforeKey)
         defaults.removeObject(forKey: wasDismissedKey)

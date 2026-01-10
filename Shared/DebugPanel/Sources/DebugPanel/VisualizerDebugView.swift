@@ -11,7 +11,6 @@ import Playback
 import PlayerHeaderView
 import Playlist
 import Wallpaper
-import WXUI
 
 #if DEBUG
 public struct VisualizerDebugView: View {
@@ -24,15 +23,18 @@ public struct VisualizerDebugView: View {
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
     private var onResetThemePickerState: (() -> Void)?
+    private var onResetSiriTip: (() -> Void)?
 
     public init(
         visualizer: VisualizerDataSource,
         selectedPlayerType: Binding<PlayerControllerType>,
-        onResetThemePickerState: (() -> Void)? = nil
+        onResetThemePickerState: (() -> Void)? = nil,
+        onResetSiriTip: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._selectedPlayerType = selectedPlayerType
         self.onResetThemePickerState = onResetThemePickerState
+        self.onResetSiriTip = onResetSiriTip
     }
     
     public var body: some View {
@@ -68,8 +70,9 @@ public struct VisualizerDebugView: View {
                 // Tip Views & Picker Usage
                 Section {
                     Button("Reset Siri Tip") {
-                        SiriTipView.resetState()
+                        onResetSiriTip?()
                     }
+                    .disabled(onResetSiriTip == nil)
                     Button("Reset Theme Picker State") {
                         onResetThemePickerState?()
                     }
