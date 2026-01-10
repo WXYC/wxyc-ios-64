@@ -249,4 +249,227 @@ struct ThermalMetricsAggregatorTests {
         #expect(summary?.stableScale == nil)
         #expect(summary?.stableLOD == nil)
     }
+
+    // MARK: - Interpolation Metrics
+
+    @Test("Tracks interpolation enabled percentage")
+    func tracksInterpolationEnabledPercent() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        // 2 samples with interpolation on, 2 without = 50%
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 1.0,
+            lod: 1.0,
+            thermalState: .nominal,
+            momentum: 0,
+            interpolationEnabled: false,
+            shaderFPS: 60
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 1.0,
+            lod: 1.0,
+            thermalState: .nominal,
+            momentum: 0,
+            interpolationEnabled: false,
+            shaderFPS: 60
+        ))
+
+        aggregator.flush(reason: .periodic)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.interpolationEnabledPercent == 50.0)
+    }
+
+    @Test("Calculates average shader FPS while interpolating")
+    func calculatesAvgShaderFPS() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 20
+        ))
+
+        aggregator.flush(reason: .periodic)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.avgShaderFPSWhileInterpolating == 25)
+    }
+
+    @Test("avgShaderFPSWhileInterpolating is nil when never interpolating")
+    func avgShaderFPSNilWhenNoInterpolation() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 1.0,
+            lod: 1.0,
+            thermalState: .nominal,
+            momentum: 0,
+            interpolationEnabled: false,
+            shaderFPS: 60
+        ))
+
+        aggregator.flush(reason: .periodic)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.avgShaderFPSWhileInterpolating == nil)
+        #expect(summary?.interpolationEnabledPercent == 0)
+    }
+
+    @Test("Counts interpolation activations")
+    func countsInterpolationActivations() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        // Transition: off -> on -> off -> on = 2 activations
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 1.0,
+            lod: 1.0,
+            thermalState: .nominal,
+            momentum: 0,
+            interpolationEnabled: false,
+            shaderFPS: 60
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 1.0,
+            lod: 1.0,
+            thermalState: .nominal,
+            momentum: 0,
+            interpolationEnabled: false,
+            shaderFPS: 60
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.3,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+
+        aggregator.flush(reason: .periodic)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.interpolationActivationCount == 2)
+    }
+
+    @Test("Calculates estimated workload reduction")
+    func calculatesWorkloadReduction() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        // All samples with interpolation on at 30fps shader / 60fps display = 50% reduction
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+
+        aggregator.flush(reason: .periodic)
+
+        let summary = reporter.reportedSummaries.first
+        // 100% interpolation enabled * 50% reduction = 50%
+        #expect(summary?.estimatedWorkloadReductionPercent == 50.0)
+    }
+
+    @Test("Records interpolator resets")
+    func recordsInterpolatorResets() {
+        let reporter = MockThermalReporter()
+        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+
+        aggregator.record(ThermalAdjustmentEvent(
+            shaderId: "test",
+            wallpaperFPS: 60,
+            scale: 0.75,
+            lod: 1.0,
+            thermalState: .fair,
+            momentum: 0.2,
+            interpolationEnabled: true,
+            shaderFPS: 30
+        ))
+
+        aggregator.recordInterpolatorReset()
+        aggregator.recordInterpolatorReset()
+        aggregator.recordInterpolatorReset()
+
+        aggregator.flush(reason: .periodic)
+
+        let summary = reporter.reportedSummaries.first
+        #expect(summary?.interpolatorResetCount == 3)
+    }
 }

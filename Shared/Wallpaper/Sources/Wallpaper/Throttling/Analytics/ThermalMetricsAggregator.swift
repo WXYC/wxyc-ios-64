@@ -31,6 +31,14 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
     private var throttleEvents: Int = 0
     private var oscillations: Int = 0
 
+    // MARK: - Interpolation Aggregates
+
+    private var interpolationEnabledSamples: Int = 0
+    private var shaderFPSSum: Float = 0
+    private var interpolationActivations: Int = 0
+    private var interpolatorResets: Int = 0
+    private var wasInterpolating: Bool = false
+
     // MARK: - Tracking State
 
     private var lastWallpaperFPS: Float?
@@ -55,6 +63,13 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
 
     // MARK: - ThermalAnalytics
 
+    /// Records an interpolator reset event.
+    ///
+    /// Call this when the frame interpolator resets due to stale frames or texture recreation.
+    public func recordInterpolatorReset() {
+        interpolatorResets += 1
+    }
+
     public func record(_ event: ThermalAdjustmentEvent) {
         // Track shader changes
         if event.shaderId != currentShaderId {
@@ -78,6 +93,18 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
         if event.thermalState == .critical {
             timeInCritical += Self.tickInterval
         }
+
+        // Track interpolation metrics
+        if event.interpolationEnabled {
+            interpolationEnabledSamples += 1
+            shaderFPSSum += event.shaderFPS
+
+            // Detect activation (transition from off to on)
+            if !wasInterpolating {
+                interpolationActivations += 1
+            }
+        }
+        wasInterpolating = event.interpolationEnabled
 
         // Detect throttle events (quality reduced)
         if let lastWallpaperFPS, let lastScale, let lastLOD {
@@ -131,10 +158,28 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
         let reachedStability = hasReachedStability
         let outcome = determineOutcome(sessionDuration: sessionDuration, reachedStability: reachedStability)
 
+        // Calculate interpolation metrics
+        let interpolationEnabledPercent = Float(interpolationEnabledSamples) / Float(sampleCount) * 100
+        let avgShaderFPSWhileInterpolating: Float? = interpolationEnabledSamples > 0
+            ? shaderFPSSum / Float(interpolationEnabledSamples)
+            : nil
+
+        // Estimate workload reduction:
+        // When interpolating, we run shader at shaderFPS instead of displayFPS
+        // Reduction = (1 - shaderFPS/displayFPS) * percentTimeInterpolating
+        let avgDisplayFPS = wallpaperFPSSum / Float(sampleCount)
+        let estimatedWorkloadReduction: Float
+        if let avgShaderFPS = avgShaderFPSWhileInterpolating, avgDisplayFPS > 0 {
+            let reductionRatio = 1.0 - (avgShaderFPS / avgDisplayFPS)
+            estimatedWorkloadReduction = reductionRatio * interpolationEnabledPercent
+        } else {
+            estimatedWorkloadReduction = 0
+        }
+
         let summary = ThermalSessionSummary(
             shaderId: shaderId,
             flushReason: reason,
-            avgWallpaperFPS: wallpaperFPSSum / Float(sampleCount),
+            avgWallpaperFPS: avgDisplayFPS,
             avgScale: scaleSum / Float(sampleCount),
             avgLOD: lodSum / Float(sampleCount),
             sessionDurationSeconds: sessionDuration,
@@ -146,7 +191,12 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
             sessionOutcome: outcome,
             stableWallpaperFPS: reachedStability ? lastWallpaperFPS : nil,
             stableScale: reachedStability ? lastScale : nil,
-            stableLOD: reachedStability ? lastLOD : nil
+            stableLOD: reachedStability ? lastLOD : nil,
+            interpolationEnabledPercent: interpolationEnabledPercent,
+            avgShaderFPSWhileInterpolating: avgShaderFPSWhileInterpolating,
+            interpolationActivationCount: interpolationActivations,
+            estimatedWorkloadReductionPercent: estimatedWorkloadReduction,
+            interpolatorResetCount: interpolatorResets
         )
 
         reporter.report(summary)
@@ -235,6 +285,11 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
         timeInCritical = 0
         throttleEvents = 0
         oscillations = 0
+        interpolationEnabledSamples = 0
+        shaderFPSSum = 0
+        interpolationActivations = 0
+        interpolatorResets = 0
+        wasInterpolating = false
         lastWallpaperFPS = nil
         lastScale = nil
         lastLOD = nil

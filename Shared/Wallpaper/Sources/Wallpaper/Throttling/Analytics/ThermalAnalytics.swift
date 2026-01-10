@@ -37,7 +37,7 @@ public protocol ThermalAnalyticsEvent: Sendable, Equatable {}
 public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
     /// Identifier for the active shader
     public let shaderId: String
-    /// Current wallpaper FPS setting
+    /// Current wallpaper FPS setting (display rate)
     public let wallpaperFPS: Float
     /// Current scale setting
     public let scale: Float
@@ -47,6 +47,10 @@ public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
     public let thermalState: ProcessInfo.ThermalState
     /// Current thermal momentum
     public let momentum: Float
+    /// Whether frame interpolation is currently enabled
+    public let interpolationEnabled: Bool
+    /// Shader execution FPS (differs from wallpaperFPS when interpolating)
+    public let shaderFPS: Float
     /// When this adjustment occurred
     public let timestamp: Date
 
@@ -57,6 +61,8 @@ public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
         lod: Float,
         thermalState: ProcessInfo.ThermalState,
         momentum: Float,
+        interpolationEnabled: Bool = false,
+        shaderFPS: Float? = nil,
         timestamp: Date = Date()
     ) {
         self.shaderId = shaderId
@@ -65,6 +71,8 @@ public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
         self.lod = lod
         self.thermalState = thermalState
         self.momentum = momentum
+        self.interpolationEnabled = interpolationEnabled
+        self.shaderFPS = shaderFPS ?? wallpaperFPS
         self.timestamp = timestamp
     }
 }
@@ -118,6 +126,19 @@ public struct ThermalSessionSummary: Sendable, Equatable {
     /// Final LOD when stability was reached (nil if not stabilized)
     public let stableLOD: Float?
 
+    // MARK: Frame Interpolation
+
+    /// Percentage of session time with interpolation enabled (0-100)
+    public let interpolationEnabledPercent: Float
+    /// Average shader FPS while interpolating (nil if never interpolated)
+    public let avgShaderFPSWhileInterpolating: Float?
+    /// Number of times interpolation was activated during session
+    public let interpolationActivationCount: Int
+    /// Estimated shader workload reduction from interpolation (0-100%)
+    public let estimatedWorkloadReductionPercent: Float
+    /// Number of interpolator resets (potential visual glitches)
+    public let interpolatorResetCount: Int
+
     public init(
         shaderId: String,
         flushReason: ThermalFlushReason,
@@ -133,7 +154,12 @@ public struct ThermalSessionSummary: Sendable, Equatable {
         sessionOutcome: ThermalSessionOutcome,
         stableWallpaperFPS: Float?,
         stableScale: Float?,
-        stableLOD: Float?
+        stableLOD: Float?,
+        interpolationEnabledPercent: Float = 0,
+        avgShaderFPSWhileInterpolating: Float? = nil,
+        interpolationActivationCount: Int = 0,
+        estimatedWorkloadReductionPercent: Float = 0,
+        interpolatorResetCount: Int = 0
     ) {
         self.shaderId = shaderId
         self.flushReason = flushReason
@@ -150,6 +176,11 @@ public struct ThermalSessionSummary: Sendable, Equatable {
         self.stableWallpaperFPS = stableWallpaperFPS
         self.stableScale = stableScale
         self.stableLOD = stableLOD
+        self.interpolationEnabledPercent = interpolationEnabledPercent
+        self.avgShaderFPSWhileInterpolating = avgShaderFPSWhileInterpolating
+        self.interpolationActivationCount = interpolationActivationCount
+        self.estimatedWorkloadReductionPercent = estimatedWorkloadReductionPercent
+        self.interpolatorResetCount = interpolatorResetCount
     }
 }
 
@@ -172,3 +203,4 @@ public protocol ThermalAnalytics: AnyObject {
     /// Called on session boundaries (background, shader change, periodic).
     func flush(reason: ThermalFlushReason)
 }
+
