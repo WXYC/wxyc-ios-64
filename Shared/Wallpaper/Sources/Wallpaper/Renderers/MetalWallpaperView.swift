@@ -19,6 +19,8 @@ private typealias ViewRepresentable = UIViewRepresentable
 public struct MetalWallpaperView: ViewRepresentable {
     @Environment(\.wallpaperAnimationStartTime) private var animationStartTime
     @Environment(\.wallpaperQualityProfile) private var qualityProfile
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.isThemePickerActive) private var isThemePickerActive
 
     let theme: LoadedTheme
     let directiveStore: ShaderDirectiveStore?
@@ -39,10 +41,14 @@ public struct MetalWallpaperView: ViewRepresentable {
 
 #if os(macOS)
     public func makeNSView(context: Context) -> MTKView { makeView(context: context) }
-    public func updateNSView(_ nsView: MTKView, context: Context) { }
+    public func updateNSView(_ nsView: MTKView, context: Context) {
+        updateViewState(nsView, context: context)
+    }
 #else
     public func makeUIView(context: Context) -> MTKView { makeView(context: context) }
-    public func updateUIView(_ uiView: MTKView, context: Context) { }
+    public func updateUIView(_ uiView: MTKView, context: Context) {
+        updateViewState(uiView, context: context)
+    }
 #endif
 
     private func makeView(context: Context) -> MTKView {
@@ -61,5 +67,18 @@ public struct MetalWallpaperView: ViewRepresentable {
         view.delegate = context.coordinator
 
         return view
+    }
+
+    /// Updates the MTKView's paused state based on app lifecycle and picker state.
+    private func updateViewState(_ view: MTKView, context: Context) {
+        // Pause rendering when app is not active (backgrounded or inactive)
+        let shouldPause = scenePhase != .active
+
+        if view.isPaused != shouldPause {
+            view.isPaused = shouldPause
+        }
+
+        // Notify coordinator of picker state for idle FPS optimization
+        context.coordinator.isInPickerMode = isThemePickerActive
     }
 }

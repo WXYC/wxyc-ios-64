@@ -25,11 +25,29 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         var lod: Float = 1.0
     }
 
+    // MARK: - Ring Buffer Constants
+
+    /// Number of uniform buffers in the ring (triple buffering).
+    private static let uniformBufferCount = 3
+
+    /// Size of the uniform buffer (holds both uniform types + parameter floats).
+    private static let uniformBufferSize = 256 // Enough for uniforms + 8 floats padding
+
+    // MARK: - Core Metal Objects
+
     private var device: MTLDevice!
     private var queue: MTLCommandQueue!
     private var pipeline: MTLRenderPipelineState!
     private var sampler: MTLSamplerState?
     private var noiseTex: MTLTexture?
+
+    // MARK: - Pre-allocated Uniform Buffers (Ring Buffer)
+
+    /// Ring buffer of pre-allocated uniform buffers to avoid per-frame allocation.
+    private var uniformBuffers: [MTLBuffer] = []
+
+    /// Current index in the uniform buffer ring.
+    private var uniformBufferIndex = 0
 
     /// Intermediate texture for scaled rendering during thermal throttling.
     private var scaledRenderTarget = ScaledRenderTarget()
@@ -61,6 +79,25 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Timestamp of last frame start for duration measurement.
     private var lastFrameStart: CFTimeInterval = 0
 
+    // MARK: - Cached Thermal Values
+
+    /// Cached resolution scale from thermal controller (updated periodically).
+    private var cachedResolutionScale: Float = 1.0
+
+    /// Cached target FPS from thermal controller (updated periodically).
+    private var cachedTargetFPS: Int = 60
+
+    /// Cached LOD from thermal controller (updated periodically).
+    private var cachedLOD: Float = 1.0
+
+    // MARK: - Idle FPS Reduction
+
+    /// Whether we're currently in theme picker mode.
+    public var isInPickerMode: Bool = false
+
+    /// FPS to use when in idle/picker mode.
+    private static let idleFPS: Int = 30
+
     /// Whether this renderer uses rawMetal mode (noise texture, sampler, rawMetal uniforms).
     private var usesRawMetalMode: Bool {
         theme.manifest.renderer.type == .rawMetal
@@ -91,6 +128,9 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         self.device = device
         self.queue = device.makeCommandQueue()
         self.pixelFormat = view.colorPixelFormat
+
+        // Pre-allocate uniform buffers (ring buffer)
+        setUpUniformBuffers(device: device)
 
         // Set up thermal optimization only when no fixed quality profile is set
         if let profile = qualityProfile {
@@ -133,6 +173,13 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         // Set up upscale sampler for thermal throttling
         setUpUpscaleSampler(device: device)
         setUpBlitPipeline(device: device, pixelFormat: view.colorPixelFormat)
+    }
+
+    /// Pre-allocates uniform buffers to avoid per-frame allocation overhead.
+    private func setUpUniformBuffers(device: MTLDevice) {
+        uniformBuffers = (0..<Self.uniformBufferCount).compactMap { _ in
+            device.makeBuffer(length: Self.uniformBufferSize, options: .storageModeShared)
+        }
     }
 
     private func setUpUpscaleSampler(device: MTLDevice) {
@@ -279,7 +326,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         guard
             let pipeline,
             let queue,
-            let drawable = view.currentDrawable
+            let drawable = view.currentDrawable,
+            !uniformBuffers.isEmpty
         else { return }
 
         // Get quality values from fixed profile or thermal controller
@@ -297,16 +345,27 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let frameStart = CACurrentMediaTime()
             if lastFrameStart > 0 {
                 let frameDuration = frameStart - lastFrameStart
+                // Only update cached thermal values when FPS is reported (every ~1 second)
                 if let measuredFPS = frameRateMonitor.recordFrame(duration: frameDuration) {
                     thermalController.reportMeasuredFPS(measuredFPS)
+                    // Update cached values only when we report FPS
+                    cachedResolutionScale = thermalController.effectiveScale
+                    cachedTargetFPS = Int(thermalController.effectiveWallpaperFPS)
+                    cachedLOD = thermalController.effectiveLOD
                 }
             }
             lastFrameStart = frameStart
 
-            // Get current thermal optimization values (using effective values which respect debug overrides)
-            resolutionScale = thermalController.effectiveScale
-            targetFPS = Int(thermalController.effectiveWallpaperFPS)
-            lod = thermalController.effectiveLOD
+            // Use cached thermal values (updated every ~1 second)
+            resolutionScale = cachedResolutionScale
+            lod = cachedLOD
+
+            // Apply idle FPS reduction when in picker mode
+            if isInPickerMode {
+                targetFPS = Self.idleFPS
+            } else {
+                targetFPS = cachedTargetFPS
+            }
 
             // Update FPS if changed
             if view.preferredFramesPerSecond != targetFPS {
@@ -326,23 +385,27 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             pixelFormat: pixelFormat
         )
 
+        // Get next buffer from ring
+        let uniformBuffer = uniformBuffers[uniformBufferIndex]
+        uniformBufferIndex = (uniformBufferIndex + 1) % uniformBuffers.count
+
         guard let cmd = queue.makeCommandBuffer() else { return }
 
         if resolutionScale < 1.0, let scaledTexture = scaledRenderTarget.renderTexture {
             // Render to scaled texture, then upscale to drawable
-            renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: t, lod: lod)
+            renderToScaledTexture(cmd: cmd, texture: scaledTexture, time: t, lod: lod, uniformBuffer: uniformBuffer)
             blitToDrawable(cmd: cmd, texture: scaledTexture, drawable: drawable, view: view)
         } else {
             // Render directly to drawable
             guard let rpd = view.currentRenderPassDescriptor else { return }
-            renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: t, lod: lod, view: view)
+            renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: t, lod: lod, view: view, uniformBuffer: uniformBuffer)
         }
 
         cmd.present(drawable)
         cmd.commit()
     }
 
-    private func renderToScaledTexture(cmd: MTLCommandBuffer, texture: MTLTexture, time: Float, lod: Float) {
+    private func renderToScaledTexture(cmd: MTLCommandBuffer, texture: MTLTexture, time: Float, lod: Float, uniformBuffer: MTLBuffer) {
         let rpd = MTLRenderPassDescriptor()
         rpd.colorAttachments[0].texture = texture
         rpd.colorAttachments[0].loadAction = .clear
@@ -354,6 +417,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         enc.setRenderPipelineState(pipeline)
 
         let scaledSize = scaledRenderTarget.scaledSize
+        let bufferPtr = uniformBuffer.contents()
 
         if usesRawMetalMode {
             var uniforms = RawMetalUniforms(
@@ -361,24 +425,27 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 time: time,
                 lod: lod
             )
-            enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
+            // Copy uniforms to pre-allocated buffer
+            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.stride)
+            enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
             enc.setFragmentTexture(noiseTex, index: 0)
             enc.setFragmentSamplerState(sampler, index: 0)
 
-            // Pass custom parameters in buffer index 1 (up to 8 floats)
+            // Pass custom parameters in buffer (offset after uniforms)
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                var paramValues: [Float] = []
-                for param in params.prefix(8) {
-                    paramValues.append(parameterStore.floatValue(for: param.id))
+                let paramOffset = MemoryLayout<RawMetalUniforms>.stride
+                let paramPtr = bufferPtr.advanced(by: paramOffset)
+                for (i, param) in params.prefix(8).enumerated() {
+                    let value = parameterStore.floatValue(for: param.id)
+                    paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                while paramValues.count < 8 {
-                    paramValues.append(0)
+                // Zero remaining slots
+                for i in params.count..<8 {
+                    paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                paramValues.withUnsafeBytes { ptr in
-                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
-                }
+                enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
             }
         } else {
             var uniforms = StitchableUniforms(
@@ -386,22 +453,25 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 time: time,
                 displayScale: 1.0
             )
-            enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
+            // Copy uniforms to pre-allocated buffer
+            memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.stride)
+            enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
 
-            // Pass custom parameters in buffer index 1 for stitchable shaders too
+            // Pass custom parameters in buffer (offset after uniforms)
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                var paramValues: [Float] = []
-                for param in params.prefix(8) {
-                    paramValues.append(parameterStore.floatValue(for: param.id))
+                let paramOffset = MemoryLayout<StitchableUniforms>.stride
+                let paramPtr = bufferPtr.advanced(by: paramOffset)
+                for (i, param) in params.prefix(8).enumerated() {
+                    let value = parameterStore.floatValue(for: param.id)
+                    paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                while paramValues.count < 8 {
-                    paramValues.append(0)
+                // Zero remaining slots
+                for i in params.count..<8 {
+                    paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                paramValues.withUnsafeBytes { ptr in
-                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
-                }
+                enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
             }
         }
 
@@ -426,10 +496,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         enc.endEncoding()
     }
 
-    private func renderDirectly(cmd: MTLCommandBuffer, descriptor: MTLRenderPassDescriptor, drawableSize: CGSize, time: Float, lod: Float, view: MTKView) {
+    private func renderDirectly(cmd: MTLCommandBuffer, descriptor: MTLRenderPassDescriptor, drawableSize: CGSize, time: Float, lod: Float, view: MTKView, uniformBuffer: MTLBuffer) {
         guard let enc = cmd.makeRenderCommandEncoder(descriptor: descriptor) else { return }
 
         enc.setRenderPipelineState(pipeline)
+
+        let bufferPtr = uniformBuffer.contents()
 
         if usesRawMetalMode {
             var uniforms = RawMetalUniforms(
@@ -437,23 +509,27 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 time: time,
                 lod: lod
             )
-            enc.setFragmentBytes(&uniforms, length: MemoryLayout<RawMetalUniforms>.stride, index: 0)
+            // Copy uniforms to pre-allocated buffer
+            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.stride)
+            enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
             enc.setFragmentTexture(noiseTex, index: 0)
             enc.setFragmentSamplerState(sampler, index: 0)
 
+            // Pass custom parameters in buffer (offset after uniforms)
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                var paramValues: [Float] = []
-                for param in params.prefix(8) {
-                    paramValues.append(parameterStore.floatValue(for: param.id))
+                let paramOffset = MemoryLayout<RawMetalUniforms>.stride
+                let paramPtr = bufferPtr.advanced(by: paramOffset)
+                for (i, param) in params.prefix(8).enumerated() {
+                    let value = parameterStore.floatValue(for: param.id)
+                    paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                while paramValues.count < 8 {
-                    paramValues.append(0)
+                // Zero remaining slots
+                for i in params.count..<8 {
+                    paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                paramValues.withUnsafeBytes { ptr in
-                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
-                }
+                enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
             }
         } else {
             #if os(iOS) || os(tvOS)
@@ -467,22 +543,25 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 time: time,
                 displayScale: displayScale
             )
-            enc.setFragmentBytes(&uniforms, length: MemoryLayout<StitchableUniforms>.stride, index: 0)
+            // Copy uniforms to pre-allocated buffer
+            memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.stride)
+            enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
 
-            // Pass custom parameters in buffer index 1 for stitchable shaders too
+            // Pass custom parameters in buffer (offset after uniforms)
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                var paramValues: [Float] = []
-                for param in params.prefix(8) {
-                    paramValues.append(parameterStore.floatValue(for: param.id))
+                let paramOffset = MemoryLayout<StitchableUniforms>.stride
+                let paramPtr = bufferPtr.advanced(by: paramOffset)
+                for (i, param) in params.prefix(8).enumerated() {
+                    let value = parameterStore.floatValue(for: param.id)
+                    paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                while paramValues.count < 8 {
-                    paramValues.append(0)
+                // Zero remaining slots
+                for i in params.count..<8 {
+                    paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                paramValues.withUnsafeBytes { ptr in
-                    enc.setFragmentBytes(ptr.baseAddress!, length: 8 * MemoryLayout<Float>.stride, index: 1)
-                }
+                enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
             }
         }
 
