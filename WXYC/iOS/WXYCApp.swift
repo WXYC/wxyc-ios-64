@@ -60,6 +60,9 @@ final class Singletonia {
             boundsSize: CGSize(width: screenWidth, height: screenWidth)
         )
 
+        // Configure artwork cache to use screen-width scaled HEIF images
+        ArtworkCacheConfiguration.targetWidth = screenWidth * UIScreen.main.scale
+
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
             artworkService: artworkService
@@ -123,7 +126,7 @@ final class Singletonia {
             let observations = Observations {
                 AudioPlayerController.shared.isPlaying
             }
-
+        
             for await isPlaying in observations {
                 guard !Task.isCancelled else { break }
         
@@ -159,6 +162,13 @@ struct WXYCApp: App {
     init() {
         // Cache migration - purge if version changed
         CacheMigrationManager.migrateIfNeeded()
+        
+        #if DEBUG
+        // Migrate existing PNG artwork cache entries to HEIF for reduced size
+        Task {
+            await CacheCoordinator.migratePngCacheToHeif()
+        }
+        #endif
         
         // Seed OpenNSFW model to shared container for widget
         if let bundleURL = Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc") {
@@ -337,7 +347,7 @@ struct WXYCApp: App {
 
         case .inactive:
             appState.setForegrounded(false)
-
+        
         case .active:
             AudioPlayerController.shared.handleAppWillEnterForeground()
             AdaptiveThermalController.shared.handleForegrounded()

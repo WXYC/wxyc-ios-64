@@ -169,8 +169,28 @@ public final actor CacheCoordinator {
     public static func migrateLegacyMetadataCache() async {
         await CacheCoordinator.AlbumArt.removeEntries(withPrefix: "playcut-metadata-")
     }
-}
 
+    // MARK: - Cache Entry Iteration (for migrations)
+
+    /// Returns all cache entries with their metadata.
+    /// Useful for migrations that need to iterate and transform cache contents.
+    public func allEntries() -> [(key: String, metadata: CacheMetadata)] {
+        cache.allMetadata()
+    }
+                
+    /// Retrieves raw data for a key without expiry checks.
+    /// Useful for migrations where we want to process even expired entries.
+    public func rawData(for key: String) -> Data? {
+        cache.data(for: key)
+    }
+
+    /// Stores data with explicit metadata, preserving timestamp/lifespan.
+    /// Useful for migrations where we want to update content without resetting expiry.
+    public func setDataPreservingMetadata(_ data: Data, metadata: CacheMetadata, for key: String) {
+        cache.set(data, metadata: metadata, for: key)
+    }
+}
+    
 #if false
 extension FileManager {
     func nukeFileSystem() {
