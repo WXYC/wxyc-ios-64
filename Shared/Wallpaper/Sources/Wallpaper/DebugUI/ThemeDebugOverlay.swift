@@ -478,6 +478,25 @@ private struct PerformanceControls: View {
                     .foregroundStyle(.secondary)
             }
 
+            // Interpolation status
+            HStack {
+                Text("Interpolation:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if thermalController.interpolationEnabled {
+                    Text("ON")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                    Text("(\(Int(thermalController.shaderFPS)) fps shader → \(Int(thermalController.currentWallpaperFPS)) fps display)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("OFF")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Divider()
 
             // LOD slider
