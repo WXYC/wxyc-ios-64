@@ -19,7 +19,7 @@ struct ThermalProfileStoreTests {
         let profile = store.load(shaderId: "new_shader")
 
         #expect(profile.shaderId == "new_shader")
-        #expect(profile.fps == 60.0)
+        #expect(profile.wallpaperFPS == 60.0)
         #expect(profile.scale == 1.0)
         #expect(profile.lod == 1.0)
     }
@@ -28,7 +28,7 @@ struct ThermalProfileStoreTests {
     func saveAndLoad() {
         let store = makeTestStore()
 
-        var profile = ThermalProfile(shaderId: "test_shader", fps: 45, scale: 0.8, lod: 0.7)
+        var profile = ThermalProfile(shaderId: "test_shader", wallpaperFPS: 45, scale: 0.8, lod: 0.7)
         profile.thermalMomentum = 0.3
         profile.sampleCount = 5
 
@@ -39,7 +39,7 @@ struct ThermalProfileStoreTests {
 
         let loaded = store.load(shaderId: "test_shader")
 
-        #expect(loaded.fps == 45)
+        #expect(loaded.wallpaperFPS == 45)
         #expect(loaded.scale == 0.8)
         #expect(loaded.lod == 0.7)
         #expect(loaded.thermalMomentum == 0.3)
@@ -70,7 +70,7 @@ struct ThermalProfileStoreTests {
     func removeProfile() {
         let store = makeTestStore()
 
-        var profile = ThermalProfile(shaderId: "to_delete", fps: 30, scale: 0.6)
+        var profile = ThermalProfile(shaderId: "to_delete", wallpaperFPS: 30, scale: 0.6)
         store.save(profile)
 
         store.remove(shaderId: "to_delete")
@@ -79,7 +79,7 @@ struct ThermalProfileStoreTests {
         let loaded = store.load(shaderId: "to_delete")
 
         // Should get default profile back
-        #expect(loaded.fps == 60.0)
+        #expect(loaded.wallpaperFPS == 60.0)
         #expect(loaded.scale == 1.0)
     }
 
@@ -87,8 +87,8 @@ struct ThermalProfileStoreTests {
     func multipleShaders() {
         let store = makeTestStore()
 
-        let profile1 = ThermalProfile(shaderId: "shader1", fps: 30, scale: 0.6)
-        let profile2 = ThermalProfile(shaderId: "shader2", fps: 45, scale: 0.8)
+        let profile1 = ThermalProfile(shaderId: "shader1", wallpaperFPS: 30, scale: 0.6)
+        let profile2 = ThermalProfile(shaderId: "shader2", wallpaperFPS: 45, scale: 0.8)
 
         store.save(profile1)
         store.save(profile2)
@@ -97,7 +97,7 @@ struct ThermalProfileStoreTests {
         let loaded1 = store.load(shaderId: "shader1")
         let loaded2 = store.load(shaderId: "shader2")
 
-        #expect(loaded1.fps == 30)
-        #expect(loaded2.fps == 45)
+        #expect(loaded1.wallpaperFPS == 30)
+        #expect(loaded2.wallpaperFPS == 45)
     }
 }
