@@ -49,9 +49,15 @@ struct VertexOut {
 static half4 chromaWaveImpl(float2 position, float width, float height, float time, float highlightCompression, float lod) {
     float2 iResolution = float2(width, height);
 
+    // Wrap time to prevent floating-point precision loss over extended runtime.
+    // Using a large period (65536 * 2π ≈ 411775 seconds ≈ 4.7 days) ensures
+    // seamless looping while keeping values in a precision-safe range.
+    constexpr float timePeriod = 65536.0f * 2.0f * M_PI_F;
+    float wrappedTime = fmod(time, timePeriod);
+
     // 2-octave noise oscillates time for organic variation in animation pace
-    float timeVariation = (noise2Octave(time * 0.03f) - 0.5f) * 8.0f;
-    float t = (time + timeVariation) / 32.0f;
+    float timeVariation = (noise2Octave(wrappedTime * 0.03f) - 0.5f) * 8.0f;
+    float t = (wrappedTime + timeVariation) / 32.0f;
 
     float3 col = float3(0.0f);
 
