@@ -13,7 +13,8 @@
   "foreground": "light",
   "accent": {
     "hue": 23,
-    "saturation": 0.5
+    "saturation": 0.5,
+    "brightness": 1.0
   },
   "blurRadius": 8.0,
   "overlayOpacity": 0.0,

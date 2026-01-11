@@ -86,16 +86,9 @@ public struct ThemePickerContainer<Content: View>: View {
         effectiveAccentColor.saturation
     }
 
-    /// LCD brightness offset - interpolated during picker transitions, otherwise from configuration.
-    /// Uses effective values which respect user overrides for the selected theme.
-    private var effectiveLCDBrightnessOffset: Double {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromOffset = configuration.effectiveLCDBrightnessOffset(for: transition.fromTheme.id)
-            let toOffset = configuration.effectiveLCDBrightnessOffset(for: transition.toTheme.id)
-            return fromOffset + (toOffset - fromOffset) * transition.progress
-        } else {
-            return configuration.effectiveLCDBrightnessOffset
-        }
+    /// Accent brightness from interpolated accent color.
+    private var effectiveAccentBrightness: Double {
+        effectiveAccentColor.brightness
     }
 
     public init(
@@ -133,9 +126,9 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.currentOverlayIsDark, effectiveOverlayIsDark)
                     .environment(\.currentAccentHue, effectiveAccentHue)
                     .environment(\.currentAccentSaturation, effectiveAccentSaturation)
+                    .environment(\.currentAccentBrightness, effectiveAccentBrightness)
                     .environment(\.currentLCDMinBrightness, configuration.lcdMinBrightness)
                     .environment(\.currentLCDMaxBrightness, configuration.lcdMaxBrightness)
-                    .environment(\.currentLCDBrightnessOffset, effectiveLCDBrightnessOffset)
                     .environment(\.wallpaperMeshGradientPalette, configuration.meshGradientPalette)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)

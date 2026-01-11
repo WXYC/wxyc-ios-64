@@ -217,7 +217,7 @@ private struct ThemeDebugPopoverContent: View {
     #endif
 }
 
-/// Controls for adjusting the theme's accent color hue and saturation.
+/// Controls for adjusting the theme's accent color hue, saturation, and brightness.
 private struct AccentColorControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme
@@ -233,6 +233,13 @@ private struct AccentColorControls: View {
         Binding(
             get: { configuration.accentSaturationOverride ?? theme.manifest.accent.saturation },
             set: { configuration.accentSaturationOverride = $0 }
+        )
+    }
+
+    private var brightnessBinding: Binding<Double> {
+        Binding(
+            get: { configuration.accentBrightnessOverride ?? theme.manifest.accent.brightness },
+            set: { configuration.accentBrightnessOverride = $0 }
         )
     }
 
@@ -252,10 +259,23 @@ private struct AccentColorControls: View {
                 Slider(value: saturationBinding, in: 0...1)
             }
 
-            if configuration.accentHueOverride != nil || configuration.accentSaturationOverride != nil {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Brightness: \(brightnessBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: brightnessBinding, in: 0.5...1.5)
+            }
+
+            let hasOverrides =
+                configuration.accentHueOverride != nil ||
+                configuration.accentSaturationOverride != nil ||
+                configuration.accentBrightnessOverride != nil
+
+            if hasOverrides {
                 Button("Reset to Theme Default") {
                     configuration.accentHueOverride = nil
                     configuration.accentSaturationOverride = nil
+                    configuration.accentBrightnessOverride = nil
                 }
                 .font(.caption)
             }
@@ -335,19 +355,10 @@ private struct MaterialControls: View {
     }
 }
 
-/// Controls for adjusting the LCD visualizer brightness.
+/// Controls for adjusting the LCD visualizer brightness gradient.
 private struct LCDBrightnessControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme?
-
-    private var offsetBinding: Binding<Double> {
-        Binding(
-            get: {
-                configuration.lcdBrightnessOffsetOverride ?? theme?.manifest.lcdBrightnessOffset ?? 0.0
-            },
-            set: { configuration.lcdBrightnessOffsetOverride = $0 }
-        )
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -365,27 +376,18 @@ private struct LCDBrightnessControls: View {
                 Slider(value: $configuration.lcdMaxBrightness, in: 0...1.5)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Offset: \(offsetBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: offsetBinding, in: -0.5...0.5)
-            }
-
-            Text("Offset adjusts both min and max values per-theme")
+            Text("Min applies to top segments, max to bottom (gradient effect)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             let hasCustomValues =
                 configuration.lcdMinBrightness != ThemeConfiguration.defaultLCDMinBrightness ||
-                configuration.lcdMaxBrightness != ThemeConfiguration.defaultLCDMaxBrightness ||
-                configuration.lcdBrightnessOffsetOverride != nil
+                configuration.lcdMaxBrightness != ThemeConfiguration.defaultLCDMaxBrightness
 
             if hasCustomValues {
                 Button("Reset to Default") {
                     configuration.lcdMinBrightness = ThemeConfiguration.defaultLCDMinBrightness
                     configuration.lcdMaxBrightness = ThemeConfiguration.defaultLCDMaxBrightness
-                    configuration.lcdBrightnessOffsetOverride = nil
                 }
                 .font(.caption)
             }

@@ -45,8 +45,8 @@ public final class ThemeConfiguration {
         "wallpaper.overlayOpacityOverride.\(themeID)"
     }
 
-    private func lcdBrightnessOffsetOverrideKey(for themeID: String) -> String {
-        "wallpaper.lcdBrightnessOffsetOverride.\(themeID)"
+    private func accentBrightnessOverrideKey(for themeID: String) -> String {
+        "wallpaper.accentBrightnessOverride.\(themeID)"
     }
 
     private func blurRadiusOverrideKey(for themeID: String) -> String {
@@ -212,28 +212,17 @@ public final class ThemeConfiguration {
         }
     }
 
-    /// Optional LCD brightness offset override (-0.5 to 0.5). When nil, uses the theme's default.
+    /// Optional accent brightness override (0.5 to 1.5). When nil, uses the theme's default.
     /// Stored per-theme so each theme remembers its customizations.
-    public var lcdBrightnessOffsetOverride: Double? {
+    public var accentBrightnessOverride: Double? {
         didSet {
-            let key = lcdBrightnessOffsetOverrideKey(for: selectedThemeID)
-            if let offset = lcdBrightnessOffsetOverride {
-                defaults.set(offset, forKey: key)
+            let key = accentBrightnessOverrideKey(for: selectedThemeID)
+            if let brightness = accentBrightnessOverride {
+                defaults.set(brightness, forKey: key)
             } else {
                 defaults.removeObject(forKey: key)
             }
         }
-    }
-
-    /// Returns the effective LCD brightness offset, applying any override to the current theme's offset.
-    public var effectiveLCDBrightnessOffset: Double {
-        if let override = lcdBrightnessOffsetOverride {
-            return override
-        }
-        guard let theme = registry.theme(for: selectedThemeID) else {
-            return 0.0
-        }
-        return theme.manifest.lcdBrightnessOffset
     }
 
     // MARK: - Mesh Gradient Palette
@@ -283,12 +272,17 @@ public final class ThemeConfiguration {
     /// Returns the effective accent color, applying any overrides to the current theme's accent.
     public var effectiveAccentColor: AccentColor {
         guard let theme = registry.theme(for: selectedThemeID) else {
-            return AccentColor(hue: accentHueOverride ?? 0, saturation: accentSaturationOverride ?? 1.0)
+            return AccentColor(
+                hue: accentHueOverride ?? 0,
+                saturation: accentSaturationOverride ?? 1.0,
+                brightness: accentBrightnessOverride ?? 1.0
+            )
         }
         let baseAccent = theme.manifest.accent
         return AccentColor(
             hue: accentHueOverride ?? baseAccent.hue,
-            saturation: accentSaturationOverride ?? baseAccent.saturation
+            saturation: accentSaturationOverride ?? baseAccent.saturation,
+            brightness: accentBrightnessOverride ?? baseAccent.brightness
         )
     }
 
@@ -301,19 +295,22 @@ public final class ThemeConfiguration {
             return effectiveAccentColor
         }
         guard let theme = registry.theme(for: themeID) else {
-            return AccentColor(hue: 0, saturation: 1.0)
+            return AccentColor(hue: 0, saturation: 1.0, brightness: 1.0)
         }
         let baseAccent = theme.manifest.accent
 
         // Look up stored overrides for this theme
         let hueKey = accentHueOverrideKey(for: themeID)
         let satKey = accentSaturationOverrideKey(for: themeID)
+        let brightnessKey = accentBrightnessOverrideKey(for: themeID)
         let storedHue = defaults.object(forKey: hueKey) != nil ? defaults.double(forKey: hueKey) : nil
         let storedSat = defaults.object(forKey: satKey) != nil ? defaults.double(forKey: satKey) : nil
+        let storedBrightness = defaults.object(forKey: brightnessKey) != nil ? defaults.double(forKey: brightnessKey) : nil
 
         return AccentColor(
             hue: storedHue ?? baseAccent.hue,
-            saturation: storedSat ?? baseAccent.saturation
+            saturation: storedSat ?? baseAccent.saturation,
+            brightness: storedBrightness ?? baseAccent.brightness
         )
     }
 
@@ -335,23 +332,6 @@ public final class ThemeConfiguration {
         return theme.manifest.overlayOpacity
     }
 
-    /// Returns the effective LCD brightness offset for a given theme ID.
-    /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
-    public func effectiveLCDBrightnessOffset(for themeID: String) -> Double {
-        if themeID == selectedThemeID {
-            return effectiveLCDBrightnessOffset
-        }
-        guard let theme = registry.theme(for: themeID) else {
-            return 0.0
-        }
-
-        // Look up stored override for this theme
-        let offsetKey = lcdBrightnessOffsetOverrideKey(for: themeID)
-        if defaults.object(forKey: offsetKey) != nil {
-            return defaults.double(forKey: offsetKey)
-        }
-        return theme.manifest.lcdBrightnessOffset
-    }
 
     /// Returns the effective blur radius for a given theme ID.
     /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
@@ -429,10 +409,10 @@ public final class ThemeConfiguration {
             return ThemeOverrides(
                 accentHue: accentHueOverride,
                 accentSaturation: accentSaturationOverride,
+                accentBrightness: accentBrightnessOverride,
                 overlayOpacity: overlayOpacityOverride,
                 blurRadius: blurRadiusOverride,
                 overlayIsDark: overlayIsDarkOverride,
-                lcdBrightnessOffset: lcdBrightnessOffsetOverride,
                 lcdMinBrightness: lcdMinBrightness != Self.defaultLCDMinBrightness ? lcdMinBrightness : nil,
                 lcdMaxBrightness: lcdMaxBrightness != Self.defaultLCDMaxBrightness ? lcdMaxBrightness : nil
             )
@@ -442,10 +422,10 @@ public final class ThemeConfiguration {
         return ThemeOverrides(
             accentHue: loadOptionalDouble(accentHueOverrideKey(for: themeID)),
             accentSaturation: loadOptionalDouble(accentSaturationOverrideKey(for: themeID)),
+            accentBrightness: loadOptionalDouble(accentBrightnessOverrideKey(for: themeID)),
             overlayOpacity: loadOptionalDouble(overlayOpacityOverrideKey(for: themeID)),
             blurRadius: loadOptionalDouble(blurRadiusOverrideKey(for: themeID)),
             overlayIsDark: loadOptionalBool(overlayIsDarkOverrideKey(for: themeID)),
-            lcdBrightnessOffset: loadOptionalDouble(lcdBrightnessOffsetOverrideKey(for: themeID)),
             lcdMinBrightness: loadOptionalDouble(lcdMinBrightnessKey(for: themeID)),
             lcdMaxBrightness: loadOptionalDouble(lcdMaxBrightnessKey(for: themeID))
         )
@@ -475,14 +455,14 @@ public final class ThemeConfiguration {
             ? defaults.double(forKey: satKey)
             : nil
 
+        let brightnessKey = accentBrightnessOverrideKey(for: themeID)
+        accentBrightnessOverride = defaults.object(forKey: brightnessKey) != nil
+            ? defaults.double(forKey: brightnessKey)
+            : nil
+
         let opacityKey = overlayOpacityOverrideKey(for: themeID)
         overlayOpacityOverride = defaults.object(forKey: opacityKey) != nil
             ? defaults.double(forKey: opacityKey)
-            : nil
-
-        let offsetKey = lcdBrightnessOffsetOverrideKey(for: themeID)
-        lcdBrightnessOffsetOverride = defaults.object(forKey: offsetKey) != nil
-            ? defaults.double(forKey: offsetKey)
             : nil
 
         let blurKey = blurRadiusOverrideKey(for: themeID)
@@ -545,12 +525,12 @@ public final class ThemeConfiguration {
         selectedThemeID = defaultThemeID
         accentHueOverride = nil
         accentSaturationOverride = nil
+        accentBrightnessOverride = nil
         overlayOpacityOverride = nil
         blurRadiusOverride = nil
         overlayIsDarkOverride = nil
         lcdMinBrightness = Self.defaultLCDMinBrightness
         lcdMaxBrightness = Self.defaultLCDMaxBrightness
-        lcdBrightnessOffsetOverride = nil
         meshGradientPalette = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }

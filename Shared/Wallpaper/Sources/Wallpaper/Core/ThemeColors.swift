@@ -43,7 +43,7 @@ public enum ForegroundStyle: String, Codable, Sendable {
 // MARK: - Accent Color
 
 /// Accent color used for LCD analyzer and header item backgrounds.
-/// Uses HSB color model where brightness is computed dynamically by consumers.
+/// Uses HSB color model for full color specification.
 public struct AccentColor: Codable, Sendable, Equatable {
     /// Hue value in degrees (0-360).
     public let hue: Double
@@ -51,9 +51,14 @@ public struct AccentColor: Codable, Sendable, Equatable {
     /// Saturation value (0.0-1.0).
     public let saturation: Double
 
-    public init(hue: Double, saturation: Double) {
+    /// Brightness multiplier for LCD segments (default 1.0).
+    /// Values above 1.0 increase brightness, below 1.0 decrease it.
+    public let brightness: Double
+
+    public init(hue: Double, saturation: Double, brightness: Double = 1.0) {
         self.hue = hue
         self.saturation = saturation
+        self.brightness = brightness
     }
 
     /// Normalized hue for SwiftUI Color (0.0-1.0).
@@ -86,7 +91,10 @@ public struct AccentColor: Codable, Sendable, Equatable {
         // Convert back to HSB
         let (h, s, _) = rgbToHSB(r: r, g: g, b: b)
 
-        return AccentColor(hue: h * 360.0, saturation: s)
+        // Linearly interpolate brightness
+        let interpolatedBrightness = brightness + (other.brightness - brightness) * progress
+
+        return AccentColor(hue: h * 360.0, saturation: s, brightness: interpolatedBrightness)
     }
 
     // MARK: - Color Space Conversion

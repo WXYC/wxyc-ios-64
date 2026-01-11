@@ -35,19 +35,10 @@ public struct ThemeManifest: Codable, Sendable {
     /// Whether the overlay is dark (black) or light (white).
     public let overlayIsDark: Bool
 
-    /// Offset applied to LCD brightness values.
-    /// Positive values increase brightness, negative values decrease it.
-    /// Applied to both min and max brightness. Range: -0.5 to 0.5, default 0.0.
-    private let _lcdBrightnessOffset: Double?
-
-    /// Effective LCD brightness offset, defaulting to 0.0 if not specified.
-    public var lcdBrightnessOffset: Double { _lcdBrightnessOffset ?? 0.0 }
-
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
         case foreground, accent, buttonStyle
         case blurRadius, overlayOpacity, overlayIsDark
-        case _lcdBrightnessOffset = "lcdBrightnessOffset"
     }
 
     public init(
@@ -62,8 +53,7 @@ public struct ThemeManifest: Codable, Sendable {
         buttonStyle: ButtonStyle = .colored,
         blurRadius: Double = 8.0,
         overlayOpacity: Double = 0.0,
-        overlayIsDark: Bool = true,
-        lcdBrightnessOffset: Double = 0.0
+        overlayIsDark: Bool = true
     ) {
         self.id = id
         self.displayName = displayName
@@ -77,7 +67,6 @@ public struct ThemeManifest: Codable, Sendable {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
         self.overlayIsDark = overlayIsDark
-        self._lcdBrightnessOffset = lcdBrightnessOffset
     }
 }
 
@@ -371,13 +360,13 @@ extension ThemeManifest {
             foreground: foreground,
             accent: AccentColor(
                 hue: overrides.accentHue ?? accent.hue,
-                saturation: overrides.accentSaturation ?? accent.saturation
+                saturation: overrides.accentSaturation ?? accent.saturation,
+                brightness: overrides.accentBrightness ?? accent.brightness
             ),
             buttonStyle: buttonStyle ?? .colored,
             blurRadius: overrides.blurRadius ?? blurRadius,
             overlayOpacity: overrides.overlayOpacity ?? overlayOpacity,
-            overlayIsDark: overrides.overlayIsDark ?? overlayIsDark,
-            lcdBrightnessOffset: overrides.lcdBrightnessOffset ?? lcdBrightnessOffset
+            overlayIsDark: overrides.overlayIsDark ?? overlayIsDark
         )
     }
 }

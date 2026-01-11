@@ -13,7 +13,8 @@
   "foreground": "dark",
   "accent": {
     "hue": 23,
-    "saturation": 0.75
+    "saturation": 0.75,
+    "brightness": 1.0
   },
   "buttonStyle": "glass",
   "blurRadius": 4.0,

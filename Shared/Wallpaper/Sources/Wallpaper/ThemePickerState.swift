@@ -56,16 +56,6 @@ public struct ThemeTransition: Equatable {
         return fromSat + (toSat - fromSat) * progress
     }
 
-    // MARK: LCD Brightness Offset
-
-    public var fromLCDBrightnessOffset: Double { fromTheme.manifest.lcdBrightnessOffset }
-    public var toLCDBrightnessOffset: Double { toTheme.manifest.lcdBrightnessOffset }
-
-    /// Interpolated LCD brightness offset based on transition progress.
-    public var interpolatedLCDBrightnessOffset: Double {
-        fromLCDBrightnessOffset + (toLCDBrightnessOffset - fromLCDBrightnessOffset) * progress
-    }
-
     public static nonisolated func == (lhs: ThemeTransition, rhs: ThemeTransition) -> Bool {
         lhs.fromTheme.id == rhs.fromTheme.id &&
         lhs.toTheme.id == rhs.toTheme.id &&
@@ -132,9 +122,9 @@ private struct CurrentLCDMaxBrightnessKey: EnvironmentKey {
     static let defaultValue: Double = 1.0
 }
 
-/// Environment key for the current/interpolated LCD brightness offset.
-private struct CurrentLCDBrightnessOffsetKey: EnvironmentKey {
-    static let defaultValue: Double = 0.0
+/// Environment key for the current/interpolated accent brightness.
+private struct CurrentAccentBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 1.0
 }
 
 /// Environment key for the wallpaper-derived mesh gradient palette.
@@ -212,10 +202,10 @@ public extension EnvironmentValues {
         set { self[CurrentLCDMaxBrightnessKey.self] = newValue }
     }
 
-    /// The current/interpolated LCD brightness offset from the theme.
-    var currentLCDBrightnessOffset: Double {
-        get { self[CurrentLCDBrightnessOffsetKey.self] }
-        set { self[CurrentLCDBrightnessOffsetKey.self] = newValue }
+    /// The current/interpolated accent brightness from the theme.
+    var currentAccentBrightness: Double {
+        get { self[CurrentAccentBrightnessKey.self] }
+        set { self[CurrentAccentBrightnessKey.self] = newValue }
     }
 
     /// The wallpaper-derived mesh gradient palette (16 colors).
