@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import ImageIO
 @testable import Artwork
 @testable import Playlist
 @testable import Core
@@ -8,13 +9,13 @@ import Foundation
 // MARK: - Mock ArtworkService
 
 final class MockArtworkService: ArtworkService, @unchecked Sendable {
-    var artworkToReturn: Image?
+    var artworkToReturn: CGImage?
     var errorToThrow: Error?
     var fetchCount = 0
     var lastPlaycut: Playcut?
     var delaySeconds: Double = 0
 
-    func fetchArtwork(for playcut: Playcut) async throws -> Image {
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         fetchCount += 1
         lastPlaycut = playcut
 
@@ -39,14 +40,29 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
 actor MockCacheCoordinator {
     private var storage: [String: Data] = [:]
 
-    func set(artwork: Image, for key: String, lifespan: TimeInterval = .thirtyDays) {
-        if let data = artwork.pngDataCompatibility {
+    func set(artwork: CGImage, for key: String, lifespan: TimeInterval = .thirtyDays) {
+        if let data = encodeCGImageAsPNG(artwork) {
             storage[key] = data
         }
     }
 
     func hasKey(_ key: String) -> Bool {
         storage[key] != nil
+    }
+
+    private func encodeCGImageAsPNG(_ image: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data as CFMutableData,
+            "public.png" as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
     }
 }
 
@@ -55,28 +71,61 @@ actor MockCacheCoordinator {
 #if canImport(UIKit)
 import UIKit
 
-extension Image {
-    static func testImageWithColor(_ color: UIColor) -> Image {
+extension CGImage {
+    static func testImageWithColor(_ color: UIColor) -> CGImage {
         let size = CGSize(width: 10, height: 10)
         let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { context in
+        let uiImage = renderer.image { context in
             color.setFill()
             context.fill(CGRect(origin: .zero, size: size))
         }
+        return uiImage.cgImage!
+    }
+
+    /// Encodes CGImage to PNG data for comparison in tests.
+    var pngDataCompatibility: Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data as CFMutableData,
+            "public.png" as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, self, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
     }
 }
 #elseif canImport(AppKit)
 import AppKit
 
-extension Image {
-    static func testImageWithColor(_ color: NSColor) -> Image {
+extension CGImage {
+    static func testImageWithColor(_ color: NSColor) -> CGImage {
         let size = NSSize(width: 10, height: 10)
         let image = NSImage(size: size)
         image.lockFocus()
         color.setFill()
         NSRect(origin: .zero, size: size).fill()
         image.unlockFocus()
-        return image
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
+    }
+
+    /// Encodes CGImage to PNG data for comparison in tests.
+    var pngDataCompatibility: Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data as CFMutableData,
+            "public.png" as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, self, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
     }
 }
 #endif
@@ -95,10 +144,10 @@ struct ArtworkServiceTests {
         let fetcher2 = MockArtworkService()
         let fetcher3 = MockArtworkService()
 
-        let expectedArtwork = Image.testImageWithColor(.red)
+        let expectedArtwork = CGImage.testImageWithColor(.red)
         fetcher1.artworkToReturn = expectedArtwork
-        fetcher2.artworkToReturn = Image.testImageWithColor(.blue)
-        fetcher3.artworkToReturn = Image.testImageWithColor(.green)
+        fetcher2.artworkToReturn = CGImage.testImageWithColor(.blue)
+        fetcher3.artworkToReturn = CGImage.testImageWithColor(.green)
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2, fetcher3],
@@ -134,7 +183,7 @@ struct ArtworkServiceTests {
 
         fetcher1.errorToThrow = ServiceError.noResults
         fetcher2.errorToThrow = ServiceError.noResults
-        let expectedArtwork = Image.testImageWithColor(.green)
+        let expectedArtwork = CGImage.testImageWithColor(.green)
         fetcher3.artworkToReturn = expectedArtwork
 
         let service = MultisourceArtworkService(
@@ -201,7 +250,7 @@ struct ArtworkServiceTests {
     func deduplicatesConcurrentRequests() async throws {
         // Given
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.blue)
+        let artwork = CGImage.testImageWithColor(.blue)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.1 // Add delay to ensure concurrent execution
 
@@ -237,7 +286,7 @@ struct ArtworkServiceTests {
     func usesReleaseTitleAsKey() async throws {
         // Given
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.red)
+        let artwork = CGImage.testImageWithColor(.red)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.05
 
@@ -281,7 +330,7 @@ struct ArtworkServiceTests {
     func differentArtistsSameReleaseTitleNotDeduplicated() async throws {
         // Given
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.red)
+        let artwork = CGImage.testImageWithColor(.red)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.05
 
@@ -326,7 +375,7 @@ struct ArtworkServiceTests {
     func differentArtistsSameSongTitleNotDeduplicated() async throws {
         // Given
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.yellow)
+        let artwork = CGImage.testImageWithColor(.yellow)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.05
 
@@ -370,7 +419,7 @@ struct ArtworkServiceTests {
     func sameArtistSameSongTitleDeduplicated() async throws {
         // Given
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.yellow)
+        let artwork = CGImage.testImageWithColor(.yellow)
         fetcher.artworkToReturn = artwork
         fetcher.delaySeconds = 0.05
 
@@ -414,7 +463,7 @@ struct ArtworkServiceTests {
     func doesNotDeduplicateDifferentArtworks() async throws {
         // Given
         let fetcher = MockArtworkService()
-        fetcher.artworkToReturn = Image.testImageWithColor(.purple)
+        fetcher.artworkToReturn = CGImage.testImageWithColor(.purple)
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
@@ -457,7 +506,7 @@ struct ArtworkServiceTests {
         let mockCache = MockCacheCoordinator()
 
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.orange)
+        let artwork = CGImage.testImageWithColor(.orange)
         fetcher.artworkToReturn = artwork
 
         // Create a mock cache fetcher that reads from our mockCache
@@ -507,7 +556,7 @@ struct ArtworkServiceTests {
         failingFetcher.errorToThrow = NSError(domain: "test", code: -1)
 
         let successfulFetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.magenta)
+        let artwork = CGImage.testImageWithColor(.magenta)
         successfulFetcher.artworkToReturn = artwork
 
         let service = MultisourceArtworkService(
@@ -564,7 +613,7 @@ struct ArtworkServiceTests {
     func passesCorrectPlaycutToFetcher() async throws {
         // Given
         let fetcher = MockArtworkService()
-        fetcher.artworkToReturn = Image.testImageWithColor(.brown)
+        fetcher.artworkToReturn = CGImage.testImageWithColor(.brown)
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
@@ -598,7 +647,7 @@ struct ArtworkServiceTests {
     func handlesMultipleDifferentConcurrentRequests() async throws {
         // Given
         let fetcher = MockArtworkService()
-        fetcher.artworkToReturn = Image.testImageWithColor(.systemTeal)
+        fetcher.artworkToReturn = CGImage.testImageWithColor(.systemTeal)
         fetcher.delaySeconds = 0.05
 
         let service = MultisourceArtworkService(
@@ -619,7 +668,7 @@ struct ArtworkServiceTests {
         }
 
         // When - Request all concurrently
-        let results = try await withThrowingTaskGroup(of: (Int, Image).self) { group in
+        let results = try await withThrowingTaskGroup(of: (Int, CGImage).self) { group in
             for (index, playcut) in playcuts.enumerated() {
                 group.addTask {
                     let artwork = try await service.fetchArtwork(for: playcut)
@@ -627,7 +676,7 @@ struct ArtworkServiceTests {
                 }
             }
 
-            var collected: [(Int, Image)] = []
+            var collected: [(Int, CGImage)] = []
             for try await result in group {
                 collected.append(result)
             }
@@ -643,7 +692,7 @@ struct ArtworkServiceTests {
     func sequentialRequestsUseCachedTask() async throws {
         // Given
         let fetcher = MockArtworkService()
-        let artwork = Image.testImageWithColor(.systemIndigo)
+        let artwork = CGImage.testImageWithColor(.systemIndigo)
         fetcher.artworkToReturn = artwork
 
         let service = MultisourceArtworkService(

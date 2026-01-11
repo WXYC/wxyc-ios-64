@@ -1,20 +1,21 @@
 import Secrets
 import Foundation
 import Core
+import CoreGraphics
 import Playlist
 
 final class DiscogsArtworkService: ArtworkService {
     private static let key    = Secrets.discogsApiKeyV2_5
     private static let secret = Secrets.discogsApiSecretV2_5
-    
+
     private let session: WebSession
     private let decoder = JSONDecoder()
-    
+
     init(session: WebSession = URLSession.shared) {
         self.session = session
     }
-    
-    func fetchArtwork(for playcut: Playcut) async throws -> Image {
+
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         let url: URL
         if let albumArtURL = try await fetchAlbumArtURL(for: playcut) {
             url = albumArtURL
@@ -23,15 +24,14 @@ final class DiscogsArtworkService: ArtworkService {
         } else {
             throw ServiceError.noResults
         }
-        
+
         let imageData = try await session.data(from: url)
-        let image = Image(data: imageData)
         
-        guard let image else {
+        guard let cgImage = createCGImage(from: imageData) else {
             throw ServiceError.noResults
         }
         
-        return image
+        return cgImage
     }
     
     private func fetchAlbumArtURL(for playcut: Playcut) async throws -> URL? {

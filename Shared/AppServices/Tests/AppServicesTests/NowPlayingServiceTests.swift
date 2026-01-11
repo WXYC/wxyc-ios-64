@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import Artwork
 import Core
+import ImageIO
 @testable import Playlist
 @testable import AppServices
 @testable import Caching
@@ -82,14 +83,14 @@ func makeNowPlayingTestCacheCoordinator() -> CacheCoordinator {
 }
 
 final class MockArtworkService: ArtworkService, @unchecked Sendable {
-    var artworkToReturn: Image?
+    var artworkToReturn: CGImage?
     var errorToThrow: Error?
     var fetchCount = 0
     var lastPlaycut: Playcut?
     /// When true, returns a default image if artworkToReturn is nil instead of throwing
     var returnDefaultImageWhenNil = true
 
-    func fetchArtwork(for playcut: Playcut) async throws -> Image {
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         fetchCount += 1
         lastPlaycut = playcut
 
@@ -100,9 +101,9 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
         if let artwork = artworkToReturn {
             return artwork
         }
-        
+
         if returnDefaultImageWhenNil {
-            return Image.gradientImage()
+            return CGImage.gradientImage()
         }
 
         throw ArtworkServiceError.noResults
@@ -126,7 +127,7 @@ struct NowPlayingServiceTests {
         // Given
         let mockFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
-        let testImage = Image.gradientImage()
+        let testImage = CGImage.gradientImage()
         mockArtworkService.artworkToReturn = testImage
 
         let playcut = Playcut(
@@ -164,7 +165,9 @@ struct NowPlayingServiceTests {
         #expect(nowPlayingItem != nil)
         #expect(nowPlayingItem?.playcut.songTitle == "Test Song")
         #expect(nowPlayingItem?.playcut.artistName == "Test Artist")
-        #expect(nowPlayingItem?.artwork === testImage)
+        // Artwork is converted from CGImage to UIImage/NSImage, so check it's present and has expected dimensions
+        #expect(nowPlayingItem?.artwork != nil)
+        #expect(nowPlayingItem?.artwork?.size.width == 400) // Default gradient size is 400x400
         let artworkCallCount = mockArtworkService.fetchCount
         #expect(artworkCallCount == 1)
     }
@@ -402,47 +405,47 @@ struct NowPlayingServiceTests {
 
 // MARK: - Helper Extensions
 
-
 #if canImport(UIKit)
 import UIKit
 
-extension Image {
-    /// Creates a gradient image with the specified size and colors
+extension CGImage {
+    /// Creates a gradient CGImage with the specified size and colors
     static func gradientImage(
         size: CGSize = CGSize(width: 200, height: 200),
         colors: [UIColor] = [.systemBlue, .systemPurple],
         startPoint: CGPoint = CGPoint(x: 0, y: 0),
         endPoint: CGPoint = CGPoint(x: 1, y: 1)
-    ) -> Image {
+    ) -> CGImage {
         let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { context in
+        let uiImage = renderer.image { context in
             let cgContext = context.cgContext
-            
+
             // Create gradient
             let colorSpace = CGColorSpaceCreateDeviceRGB()
             let cgColors = colors.map { $0.cgColor } as CFArray
             guard let gradient = CGGradient(colorsSpace: colorSpace, colors: cgColors, locations: nil) else {
                 return
             }
-            
+
             // Draw gradient
             let start = CGPoint(x: startPoint.x * size.width, y: startPoint.y * size.height)
             let end = CGPoint(x: endPoint.x * size.width, y: endPoint.y * size.height)
             cgContext.drawLinearGradient(gradient, start: start, end: end, options: [])
         }
+        return uiImage.cgImage!
     }
 }
 #elseif canImport(AppKit)
 import AppKit
 
-extension Image {
-    /// Creates a gradient image with the specified size and colors
+extension CGImage {
+    /// Creates a gradient CGImage with the specified size and colors
     static func gradientImage(
         size: CGSize = CGSize(width: 200, height: 200),
         colors: [NSColor] = [.systemBlue, .systemPurple],
         startPoint: CGPoint = CGPoint(x: 0, y: 0),
         endPoint: CGPoint = CGPoint(x: 1, y: 1)
-    ) -> Image {
+    ) -> CGImage {
         let image = NSImage(size: size)
         image.lockFocus()
 
@@ -452,7 +455,8 @@ extension Image {
         guard let gradient = CGGradient(colorsSpace: colorSpace, colors: cgColors, locations: nil),
               let context = NSGraphicsContext.current?.cgContext else {
             image.unlockFocus()
-            return image
+            // Fallback: create a simple 1x1 image
+            return CGImage(width: 1, height: 1, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: 4, space: colorSpace, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: CGDataProvider(data: Data([255, 0, 0, 255]) as CFData)!, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
         }
 
         // Draw gradient
@@ -461,7 +465,7 @@ extension Image {
         context.drawLinearGradient(gradient, start: start, end: end, options: [])
 
         image.unlockFocus()
-        return image
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
     }
 }
 #endif

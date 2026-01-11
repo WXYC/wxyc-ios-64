@@ -209,12 +209,12 @@ struct PlaycutRowView: View {
             }
             return
         }
-        
+
         do {
-            let fetchedImage = try await artworkService.fetchArtwork(for: playcut)
+            let cgImage = try await artworkService.fetchArtwork(for: playcut)
             await MainActor.run {
                 withAnimation(.easeInOut(duration: 0.25)) {
-                    self.artwork = fetchedImage
+                    self.artwork = cgImage.toUIImage()
                     self.isLoadingArtwork = false
                 }
             }

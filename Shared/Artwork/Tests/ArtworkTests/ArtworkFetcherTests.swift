@@ -32,22 +32,23 @@ final class MockWebSession: WebSession, @unchecked Sendable {
 #if canImport(UIKit)
 import UIKit
 
-extension Image {
-    static var testImage: Image {
+extension CGImage {
+    static var testImage: CGImage {
         // Create a simple 1x1 red image for testing
         let size = CGSize(width: 1, height: 1)
         let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { context in
+        let uiImage = renderer.image { context in
             UIColor.red.setFill()
             context.fill(CGRect(origin: .zero, size: size))
         }
+        return uiImage.cgImage!
     }
 }
 #elseif canImport(AppKit)
 import AppKit
 
-extension Image {
-    static var testImage: Image {
+extension CGImage {
+    static var testImage: CGImage {
         // Create a simple 1x1 red image for testing
         let size = NSSize(width: 1, height: 1)
         let image = NSImage(size: size)
@@ -55,7 +56,7 @@ extension Image {
         NSColor.red.setFill()
         NSRect(origin: .zero, size: size).fill()
         image.unlockFocus()
-        return image
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)!
     }
 }
 #endif
@@ -98,7 +99,7 @@ struct iTunesArtworkServiceTests {
             ]
         )
         let searchData = try JSONEncoder().encode(searchResults)
-        let imageData = Image.testImage.pngDataCompatibility!
+        let imageData = CGImage.testImage.pngDataCompatibility!
 
         let sequentialSession = SequentialMockSession()
         sequentialSession.responses = [searchData, imageData]
@@ -148,7 +149,7 @@ struct iTunesArtworkServiceTests {
             ]
         )
         let searchData = try JSONEncoder().encode(searchResults)
-        let imageData = Image.testImage.pngDataCompatibility!
+        let imageData = CGImage.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchData, imageData]
 
@@ -262,7 +263,7 @@ struct LastFMArtworkServiceTests {
             )
         )
         let searchData = try JSONEncoder().encode(searchResponse)
-        let imageData = Image.testImage.pngDataCompatibility!
+        let imageData = CGImage.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchData, imageData]
 
@@ -382,7 +383,7 @@ struct DiscogsArtworkServiceTests {
         }
         """.data(using: .utf8)!
 
-        let imageData = Image.testImage.pngDataCompatibility!
+        let imageData = CGImage.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchResults, imageData]
 
@@ -442,7 +443,7 @@ struct DiscogsArtworkServiceTests {
         }
         """.data(using: .utf8)!
 
-        let imageData = Image.testImage.pngDataCompatibility!
+        let imageData = CGImage.testImage.pngDataCompatibility!
 
         mockSession.responses = [searchResults, imageData]
 
@@ -516,7 +517,7 @@ struct DiscogsArtworkServiceTests {
                 }
 
                 // Third request is for the actual image
-                return Image.testImage.pngDataCompatibility!
+                return CGImage.testImage.pngDataCompatibility!
             }
         }
 
@@ -582,7 +583,7 @@ struct CacheCoordinatorArtworkTests {
     func fetchesCachedArtworkWithReleaseTitle() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = Image.testImage
+        let testImage = CGImage.testImage
         let playcut = Playcut(
             id: 1,
             hour: 1000,
@@ -607,7 +608,7 @@ struct CacheCoordinatorArtworkTests {
     func fetchesCachedArtworkWithoutReleaseTitle() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = Image.testImage
+        let testImage = CGImage.testImage
         let playcut = Playcut(
             id: 1,
             hour: 1000,
@@ -652,7 +653,7 @@ struct CacheCoordinatorArtworkTests {
     func usesReleaseTitleAsCacheKey() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = Image.testImage
+        let testImage = CGImage.testImage
 
         // Set with correct key format: artistName-releaseTitle
         await cache.set(artwork: testImage, for: "Some Artist-My Album", lifespan: .thirtyDays)
@@ -679,7 +680,7 @@ struct CacheCoordinatorArtworkTests {
     func skipsEmptyReleaseTitle() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let testImage = Image.testImage
+        let testImage = CGImage.testImage
 
         // Set with correct key format: artistName-songTitle (empty release title is skipped)
         await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)

@@ -1,5 +1,6 @@
 import Foundation
 import Core
+import CoreGraphics
 import Playlist
 
 struct LastFM {
@@ -51,24 +52,23 @@ struct LastFM {
 final class LastFMArtworkService: ArtworkService {
     private let session: WebSession
     private let decoder = JSONDecoder()
-    
+
     init(session: WebSession = URLSession.shared) {
         self.session = session
     }
-    
-    func fetchArtwork(for playcut: Playcut) async throws -> Image {
+
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         let searchURL = makeSearchURL(for: playcut)
         let searchData = try await session.data(from: searchURL)
         let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: searchData)
-        
+
         let imageData = try await session.data(from: searchResponse.album.largestAlbumArt.url)
-        let image = Image(data: imageData)
         
-        guard let image = image else {
+        guard let cgImage = createCGImage(from: imageData) else {
             throw ServiceError.noResults
         }
         
-        return image
+        return cgImage
     }
     
     private func makeSearchURL(for playcut: Playcut) -> URL {

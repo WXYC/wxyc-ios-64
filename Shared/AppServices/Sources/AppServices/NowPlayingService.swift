@@ -11,6 +11,11 @@ import Logger
 import Playlist
 import Artwork
 import Core
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
@@ -74,7 +79,12 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             // Fetch artwork for the playcut
             let artwork: Image?
             do {
-                artwork = try await service.artworkService.fetchArtwork(for: playcut)
+                let cgImage = try await service.artworkService.fetchArtwork(for: playcut)
+                #if canImport(UIKit)
+                artwork = UIImage(cgImage: cgImage)
+                #else
+                artwork = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+                #endif
             } catch {
                 Log(.warning, "Artwork fetch failed for playcut \(playcut.id): \(error)")
                 artwork = nil
