@@ -285,6 +285,9 @@ struct WXYCApp: App {
                 scheduleBackgroundRefresh()
             }
         }
+        #if os(macOS)
+        .defaultSize(width: 440, height: 800)
+        #endif
         .commands {
                 CommandMenu("Playback") {
                     Button("Play/Pause") {
@@ -348,7 +351,7 @@ struct WXYCApp: App {
             AudioPlayerController.shared.handleAppDidEnterBackground()
             AdaptiveQualityController.shared.handleBackgrounded()
             appState.setForegrounded(false)
-
+        
         case .inactive:
             appState.setForegrounded(false)
         
