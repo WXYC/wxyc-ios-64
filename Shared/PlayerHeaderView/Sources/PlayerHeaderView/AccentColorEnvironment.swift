@@ -27,8 +27,8 @@ private struct LCDMaxBrightnessKey: EnvironmentKey {
     static let defaultValue: Double = ThemeConfiguration.defaultLCDMaxBrightness
 }
 
-private struct LCDBrightnessOffsetKey: EnvironmentKey {
-    static let defaultValue: Double = 0.0
+private struct AccentBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 1.0
 }
 
 // MARK: - Environment Values Extension
@@ -58,10 +58,10 @@ public extension EnvironmentValues {
         set { self[LCDMaxBrightnessKey.self] = newValue }
     }
 
-    /// Brightness offset applied to both min and max brightness values.
-    var lcdBrightnessOffset: Double {
-        get { self[LCDBrightnessOffsetKey.self] }
-        set { self[LCDBrightnessOffsetKey.self] = newValue }
+    /// Accent brightness multiplier for LCD segments.
+    var lcdAccentBrightness: Double {
+        get { self[AccentBrightnessKey.self] }
+        set { self[AccentBrightnessKey.self] = newValue }
     }
 }
 
@@ -72,22 +72,22 @@ public extension View {
     /// - Parameters:
     ///   - hue: Hue value (0.0-1.0, normalized). Use `AccentColor.normalizedHue`.
     ///   - saturation: Saturation value (0.0-1.0).
-    func lcdAccentColor(hue: Double, saturation: Double) -> some View {
+    ///   - brightness: Brightness multiplier (default 1.0). Values above 1.0 increase brightness.
+    func lcdAccentColor(hue: Double, saturation: Double, brightness: Double = 1.0) -> some View {
         self
             .environment(\.lcdAccentHue, hue)
             .environment(\.lcdAccentSaturation, saturation)
+            .environment(\.lcdAccentBrightness, brightness)
     }
 
     /// Sets the brightness range for LCD visualizer segments.
     /// - Parameters:
     ///   - min: Minimum brightness (applied to top segments). Default: 0.90.
     ///   - max: Maximum brightness (applied to bottom segments). Default: 1.0.
-    ///   - offset: Offset applied to both min and max brightness. Default: 0.0.
-    func lcdBrightness(min: Double, max: Double, offset: Double = 0.0) -> some View {
+    func lcdBrightness(min: Double, max: Double) -> some View {
         self
             .environment(\.lcdMinBrightness, min)
             .environment(\.lcdMaxBrightness, max)
-            .environment(\.lcdBrightnessOffset, offset)
     }
 }
 
