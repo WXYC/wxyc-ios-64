@@ -3,8 +3,8 @@
 //  WXYCTests
 //
 //  Unit tests for NowPlayingInfoCenterManager.
-//  These tests verify that now playing info and playback state
-//  are correctly propagated to MPNowPlayingInfoCenter.
+//  These tests verify that now playing info is correctly
+//  propagated to MPNowPlayingInfoCenter.
 //
 
 import Testing
@@ -20,7 +20,6 @@ import UIKit
 /// Mock implementation of NowPlayingInfoCenterProtocol for testing.
 @MainActor
 final class MockNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {
-    var playbackState: MPNowPlayingPlaybackState = .unknown
     var nowPlayingInfo: [String: Any]?
 }
     
@@ -59,60 +58,6 @@ private func makeNowPlayingItem(
         ),
         artwork: artwork
     )
-}
-
-// MARK: - Playback State Tests
-
-@Suite("Playback State Updates")
-@MainActor
-struct PlaybackStateTests {
-
-    @Test("Playback state is set to playing when isPlaying is true")
-    func playbackStateSetToPlaying() {
-        let mockInfoCenter = MockNowPlayingInfoCenter()
-        let manager = NowPlayingInfoCenterManager(
-            infoCenter: mockInfoCenter,
-            boundsSize: CGSize(width: 100, height: 100)
-        )
-
-        manager.handlePlaybackState(true)
-
-        #expect(mockInfoCenter.playbackState == .playing)
-    }
-
-    @Test("Playback state is set to paused when isPlaying is false")
-    func playbackStateSetToPaused() {
-        let mockInfoCenter = MockNowPlayingInfoCenter()
-        let manager = NowPlayingInfoCenterManager(
-            infoCenter: mockInfoCenter,
-            boundsSize: CGSize(width: 100, height: 100)
-        )
-
-        manager.handlePlaybackState(false)
-    
-        #expect(mockInfoCenter.playbackState == .paused)
-    }
-
-    @Test("Playback state updates correctly through multiple transitions")
-    func playbackStateMultipleTransitions() {
-        let mockInfoCenter = MockNowPlayingInfoCenter()
-        let manager = NowPlayingInfoCenterManager(
-            infoCenter: mockInfoCenter,
-            boundsSize: CGSize(width: 100, height: 100)
-        )
-
-        // Transition: stopped -> playing
-        manager.handlePlaybackState(true)
-        #expect(mockInfoCenter.playbackState == .playing)
-
-        // Transition: playing -> paused
-        manager.handlePlaybackState(false)
-        #expect(mockInfoCenter.playbackState == .paused)
-
-        // Transition: paused -> playing
-        manager.handlePlaybackState(true)
-        #expect(mockInfoCenter.playbackState == .playing)
-    }
 }
 
 // MARK: - Now Playing Info Tests
@@ -208,28 +153,6 @@ struct NowPlayingInfoTests {
 @Suite("Integration Tests")
 @MainActor
 struct NowPlayingIntegrationTests {
-
-    @Test("Playcut and playback state can update independently")
-    func playcutAndPlaybackStateIndependent() {
-        let mockInfoCenter = MockNowPlayingInfoCenter()
-        let manager = NowPlayingInfoCenterManager(
-            infoCenter: mockInfoCenter,
-            boundsSize: CGSize(width: 100, height: 100)
-        )
-    
-        // Update playback state first
-        manager.handlePlaybackState(true)
-        #expect(mockInfoCenter.playbackState == .playing)
-        #expect(mockInfoCenter.nowPlayingInfo == nil || mockInfoCenter.nowPlayingInfo?.isEmpty == true)
-
-        // Now update playcut
-        let item = makeNowPlayingItem(songTitle: "Test Song")
-        manager.handleNowPlayingItem(item)
-
-        // Both should now be set
-        #expect(mockInfoCenter.playbackState == .playing)
-        #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Test Song")
-    }
 
     @Test("BoundsSize is used for artwork")
     func boundsSizeUsedForArtwork() {
