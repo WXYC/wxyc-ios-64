@@ -12,7 +12,7 @@ import Accelerate
 
 /// Configuration constants for the audio visualizer
 enum VisualizerConstants {
-    static let updateInterval = 0.01
+    static let updateInterval = 1.0 / 60.0
     static let barAmount = 16
     static let historyLength = 8
     static let magnitudeLimit: Float = 64
