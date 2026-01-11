@@ -96,50 +96,51 @@ public final class RadioPlayer: Sendable {
         self.eventContinuation = eventContinuation
 
         // Observe rate changes to track playing state
-        self.rateObservation = notificationCenter.addObserver(
-            forName: AVPlayer.rateDidChangeNotification,
-            object: player as? AVPlayer,
-            queue: nil
-        ) { [weak self] notification in
+        self.rateObservation = notificationCenter.addMainActorObserver(
+            of: player as? AVPlayer,
+            for: PlayerRateDidChangeMessage.self
+        ) { [weak self] message in
             guard let self else { return }
-            Log(.info, "RadioPlayer did receive rate change notification", notification)
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                let isPlaying = self.player.rate > 0
-                if isPlaying {
-                    // Transition from loading/stalled to playing
-                    if self.state == .loading || self.state == .stalled {
-                        if self.state == .stalled {
-                            self.eventContinuation.yield(.recovery)
-                        }
-                        self.state = .playing
-                    }
-                    let timeToAudio = self.timer.duration()
-                    self.analytics?.capture("Time to first Audio", properties: [
-                        "timeToAudio": timeToAudio
-                    ])
-                } else if self.state == .playing {
-                    // Stopped playing but we didn't request it - could be a stall
-                    // Don't transition here; wait for stall notification or explicit pause
-                }
-            }
+            Log(.info, "RadioPlayer did receive rate change message", message)
+            self.handleRateChange(rate: message.rate)
         }
 
         // Observe playback stalls
-        self.stallObservation = notificationCenter.addObserver(
-            forName: .AVPlayerItemPlaybackStalled,
-            object: nil,
-            queue: nil
-        ) { [weak self] notification in
+        self.stallObservation = notificationCenter.addMainActorObserver(
+            for: PlaybackStalledMessage.self
+        ) { [weak self] _ in
             guard let self else { return }
-            Log(.error, "RadioPlayer playback stalled", notification)
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if self.state == .playing || self.state == .loading {
-                    self.state = .stalled
-                    self.eventContinuation.yield(.stall)
+            Log(.error, "RadioPlayer playback stalled")
+            self.handlePlaybackStalled()
+        }
+    }
+
+    // MARK: - Notification Handlers
+
+    private func handleRateChange(rate: Float) {
+        let isPlaying = rate > 0
+        if isPlaying {
+            // Transition from loading/stalled to playing
+            if state == .loading || state == .stalled {
+                if state == .stalled {
+                    eventContinuation.yield(.recovery)
                 }
+                state = .playing
             }
+            let timeToAudio = timer.duration()
+            analytics?.capture("Time to first Audio", properties: [
+                "timeToAudio": timeToAudio
+            ])
+        } else if state == .playing {
+            // Stopped playing but we didn't request it - could be a stall
+            // Don't transition here; wait for stall notification or explicit pause
+        }
+    }
+
+    private func handlePlaybackStalled() {
+        if state == .playing || state == .loading {
+            state = .stalled
+            eventContinuation.yield(.stall)
         }
     }
 
