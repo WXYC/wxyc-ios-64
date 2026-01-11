@@ -9,22 +9,20 @@ import AVFoundation
 
 @MainActor
 final class SoundPlayer {
-    private var player: AVAudioPlayer
+    private var player: AVAudioPlayer?
     
     init() {
-        try! AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try! AVAudioSession.sharedInstance().setActive(true)
-        
         guard let url = Bundle.module.url(forResource: "airhorn", withExtension: "mp3") else {
-            fatalError("Failed to find airhorn.mp3 resource in bundle")
+            return
         }
-        
-        player = try! AVAudioPlayer(contentsOf: url)
-        player.numberOfLoops = 0
-        player.prepareToPlay()
+
+        player = try? AVAudioPlayer(contentsOf: url)
+        player?.numberOfLoops = 0
+        player?.prepareToPlay()
     }
-    
+
     func play() {
+        guard let player else { return }
         player.currentTime = 0
         if !player.isPlaying {
             player.stop()
