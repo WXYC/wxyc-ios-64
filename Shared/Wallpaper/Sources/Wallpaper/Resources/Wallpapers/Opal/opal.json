@@ -6,9 +6,50 @@
     "type": "rawMetal",
     "vertexFunction": "fullscreenVertex",
     "fragmentFunction": "opalFragment",
-    "timeScale": 1.0
+    "timeScale": 1.0,
+    "maxScale": 0.75
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "smfOffset",
+      "type": "float",
+      "label": "Color Offset",
+      "group": "Saturation",
+      "default": 0.2,
+      "range": { "min": 0.1, "max": 0.8 }
+    },
+    {
+      "id": "smfIterations",
+      "type": "float",
+      "label": "Iterations",
+      "group": "Saturation",
+      "default": 10.0,
+      "range": { "min": 3.0, "max": 10.0 }
+    },
+    {
+      "id": "minSaturation",
+      "type": "float",
+      "label": "Min Saturation",
+      "group": "Saturation",
+      "default": 0.0,
+      "range": { "min": 0.0, "max": 0.5 }
+    },
+    {
+      "id": "saturationBoost",
+      "type": "float",
+      "label": "Saturation Boost",
+      "group": "Saturation",
+      "default": 1.0,
+      "range": { "min": 1.0, "max": 2.0 }
+    },
+    {
+      "id": "useFastTrig",
+      "type": "bool",
+      "label": "Fast Trig",
+      "group": "Performance",
+      "default": false
+    }
+  ],
   "shaderArguments": [],
   "foreground": "dark",
   "accent": {

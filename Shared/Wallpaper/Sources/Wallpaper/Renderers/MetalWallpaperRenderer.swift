@@ -465,11 +465,14 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         let timeScale = theme.manifest.renderer.timeScale ?? 1.0
         let t = Float(now - startTime) * timeScale
 
+        // Cap resolution scale by theme's maxScale (for expensive shaders)
+        let cappedScale = min(resolutionScale, theme.manifest.renderer.effectiveMaxScale)
+
         // Update scaled render target
         _ = scaledRenderTarget.update(
             device: device,
             viewSize: view.drawableSize,
-            scale: resolutionScale,
+            scale: cappedScale,
             pixelFormat: pixelFormat
         )
 

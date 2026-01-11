@@ -82,6 +82,10 @@ public struct RendererConfiguration: Codable, Sendable {
     public let timeScale: Float?
     public let passes: [PassConfiguration]?
 
+    /// Maximum render scale (0.5 to 1.0). Caps resolution for expensive shaders
+    /// to leave GPU headroom for UI rendering. Defaults to 1.0 (full resolution).
+    public let maxScale: Float?
+
     public init(
         type: RendererType,
         shaderFile: String? = nil,
@@ -90,7 +94,8 @@ public struct RendererConfiguration: Codable, Sendable {
         fragmentFunction: String? = nil,
         layers: [LayerConfiguration]? = nil,
         timeScale: Float? = nil,
-        passes: [PassConfiguration]? = nil
+        passes: [PassConfiguration]? = nil,
+        maxScale: Float? = nil
     ) {
         self.type = type
         self.shaderFile = shaderFile
@@ -100,6 +105,12 @@ public struct RendererConfiguration: Codable, Sendable {
         self.layers = layers
         self.timeScale = timeScale
         self.passes = passes
+        self.maxScale = maxScale
+    }
+
+    /// Effective maximum scale (defaults to 1.0)
+    public var effectiveMaxScale: Float {
+        maxScale ?? 1.0
     }
 }
 
