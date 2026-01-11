@@ -18,7 +18,6 @@ import Playlist
 /// Protocol abstracting MPNowPlayingInfoCenter for testability.
 @MainActor
 protocol NowPlayingInfoCenterProtocol {
-    var playbackState: MPNowPlayingPlaybackState { get set }
     var nowPlayingInfo: [String: Any]? { get set }
 }
 
@@ -44,11 +43,6 @@ final class NowPlayingInfoCenterManager {
 
     // MARK: - Public API
 
-    /// Update the playback state displayed in the Now Playing info center.
-    func handlePlaybackState(_ isPlaying: Bool) {
-        infoCenter.playbackState = isPlaying ? .playing : .paused
-    }
-
     /// Update the track metadata and artwork in the Now Playing info center.
     func handleNowPlayingItem(_ item: NowPlayingItem) {
         update(playcut: item.playcut)
@@ -72,7 +66,7 @@ final class NowPlayingInfoCenterManager {
         if infoCenter.nowPlayingInfo == nil {
             infoCenter.nowPlayingInfo = [:]
         }
-        
+
         infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork] =
             self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
     }
@@ -124,7 +118,7 @@ extension CGImage {
         Log(.info, "overlaying \(overlay.size) with \(size)")
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
-
+    
         guard let context = CGContext(
             data: nil,
             width: width,

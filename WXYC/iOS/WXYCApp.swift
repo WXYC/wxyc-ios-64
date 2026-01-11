@@ -52,7 +52,6 @@ final class Singletonia {
     let themePickerState = ThemePickerState()
 
     private var nowPlayingObservationTask: Task<Void, Never>?
-    private var playbackStateObservationTask: Task<Void, Never>?
 
     private init() {
         self.widgetStateService = WidgetStateService(
@@ -73,7 +72,6 @@ final class Singletonia {
             artworkService: artworkService
         )
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
-        startPlaybackStateObservation()
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
@@ -89,16 +87,6 @@ final class Singletonia {
         }
     }
 
-    private func startPlaybackStateObservation() {
-        playbackStateObservationTask = Task { [weak self] in
-            let observations = Observations { AudioPlayerController.shared.isPlaying }
-            for await isPlaying in observations {
-                guard !Task.isCancelled else { break }
-                self?.nowPlayingInfoCenterManager.handlePlaybackState(isPlaying)
-            }
-        }
-    }
-        
     /// Update the foreground state (called when scene phase changes)
     func setForegrounded(_ foregrounded: Bool) {
         widgetStateService.setForegrounded(foregrounded)
@@ -110,7 +98,7 @@ final class Singletonia {
     }
 
     // MARK: - Review Request Tracking
-
+        
     private var playbackObservationTask: Task<Void, Never>?
     private var requestSentObservationTask: Task<Void, Never>?
 
@@ -131,10 +119,10 @@ final class Singletonia {
             let observations = Observations {
                 AudioPlayerController.shared.isPlaying
             }
-        
+
             for await isPlaying in observations {
                 guard !Task.isCancelled else { break }
-        
+
                 // Track when playback starts (transition from not playing to playing)
                 if isPlaying && !wasPlaying {
                     self.reviewRequestService.recordPlaybackStarted()
@@ -143,10 +131,10 @@ final class Singletonia {
             }
         }
     }
-
+        
     private func startObservingRequestSent() {
         requestSentObservationTask?.cancel()
-
+        
         requestSentObservationTask = Task { [weak self] in
             guard let self else { return }
 
@@ -375,7 +363,7 @@ struct WXYCApp: App {
             refreshPlaylistIfCacheExpired()
             // Check if user requested cache clear from Settings app
             handleSettingsBundleCacheClear()
-
+        
         @unknown default:
             break
         }
@@ -412,7 +400,7 @@ struct WXYCApp: App {
     }
     
     // MARK: - Background Refresh
-        
+
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.wxyc.refresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
