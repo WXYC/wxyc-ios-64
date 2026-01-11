@@ -10,7 +10,6 @@ import UIKit
 /// Errors that can occur during audio playback
 enum AudioPlayerError: Error {
     case engineStartFailed
-    case audioSessionSetupFailed
     case invalidFormat
     case bufferSchedulingFailed
 }
@@ -93,22 +92,8 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         playerNode.removeTap(onBus: 0)
     }
 
-    func setUpAudioSession() throws {
-        #if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
-        let audioSession = AVAudioSession.sharedInstance()
-        do {
-            try audioSession.setCategory(.playback, mode: .default)
-            try audioSession.setActive(true)
-        } catch {
-            throw AudioPlayerError.audioSessionSetupFailed
-        }
-        #endif
-    }
-
     func play() throws {
         guard !stateBox.isPlaying else { return }
-
-        try setUpAudioSession()
 
         if !engine.isRunning {
             try engine.start()
