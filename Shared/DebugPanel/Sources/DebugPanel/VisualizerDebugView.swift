@@ -61,7 +61,7 @@ public struct VisualizerDebugView: View {
                 } header: {
                     Text("Wallpaper")
                 } footer: {
-                    Text("Shows a floating button to access wallpaper picker, parameter controls, and thermal throttling settings.")
+                    Text("Shows a floating button to access wallpaper picker, parameter controls, and quality throttling settings.")
                 }
 
                 // Tip Views & Picker Usage
