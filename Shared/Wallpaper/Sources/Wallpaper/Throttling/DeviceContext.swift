@@ -1,5 +1,5 @@
 //
-//  ThermalContext.swift
+//  DeviceContext.swift
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 1/3/26.
@@ -15,7 +15,7 @@ import Observation
 ///
 /// This protocol enables dependency injection for testing the thermal controller.
 @MainActor
-public protocol ThermalContextProtocol: AnyObject {
+public protocol DeviceContextProtocol: AnyObject {
     /// The current thermal state from the system.
     var thermalState: ProcessInfo.ThermalState { get }
 
@@ -43,10 +43,10 @@ public protocol ThermalContextProtocol: AnyObject {
 /// ```
 @Observable
 @MainActor
-public final class ThermalContext: ThermalContextProtocol {
+public final class DeviceContext: DeviceContextProtocol {
 
     /// Shared instance.
-    public static let shared = ThermalContext()
+    public static let shared = DeviceContext()
 
     /// The current thermal state from the system.
     public private(set) var thermalState: ProcessInfo.ThermalState = .nominal

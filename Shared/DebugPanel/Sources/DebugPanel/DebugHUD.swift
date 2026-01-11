@@ -16,7 +16,7 @@ public struct DebugHUD: View {
     public init() {}
 
     public var body: some View {
-        let thermal = AdaptiveThermalController.shared
+        let quality = AdaptiveQualityController.shared
         Group {
             if hudState.isVisible {
                 VStack(alignment: .leading, spacing: 2) {
@@ -25,10 +25,10 @@ public struct DebugHUD: View {
                     MetricRow(label: "GPU", value: String(format: "%.1f MB", metrics.gpuMemoryMB))
                     MetricRow(label: "MEM", value: String(format: "%.1f MB", metrics.memoryMB))
                     MetricRow(label: "TMP", value: metrics.thermalState.description)
-                    MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentWallpaperFPS))fps")
-                    MetricRow(label: "MTM", value: String(format: "%.2f", thermal.currentMomentum))
-                    MetricRow(label: "INT", value: thermal.interpolationEnabled
-                              ? "ON (\(Int(thermal.shaderFPS))fps shader)"
+                    MetricRow(label: "THR", value: "\(Int(quality.currentScale * 100))% @ \(Int(quality.currentWallpaperFPS))fps")
+                    MetricRow(label: "MTM", value: String(format: "%.2f", quality.currentMomentum))
+                    MetricRow(label: "INT", value: quality.interpolationEnabled
+                              ? "ON (\(Int(quality.shaderFPS))fps shader)"
                               : "OFF")
                 }
                 .font(.system(.caption, design: .monospaced))

@@ -5,7 +5,7 @@ import Foundation
 /// Stores the learned optimal wallpaper FPS and scale settings for a shader based on
 /// observed thermal behavior. Profiles are persisted across app launches
 /// to avoid re-learning optimal settings on each launch.
-public struct ThermalProfile: Codable, Sendable, Equatable {
+public struct AdaptiveProfile: Codable, Sendable, Equatable {
 
     /// Identifier for the shader this profile applies to.
     public let shaderId: String
@@ -20,7 +20,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     public var lod: Float
 
     /// Last recorded thermal momentum for this shader.
-    public var thermalMomentum: Float
+    public var qualityMomentum: Float
 
     /// When this profile was last updated.
     public var lastUpdated: Date
@@ -51,7 +51,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
         self.wallpaperFPS = Self.wallpaperFPSRange.upperBound
         self.scale = Self.scaleRange.upperBound
         self.lod = Self.lodRange.upperBound
-        self.thermalMomentum = 0
+        self.qualityMomentum = 0
         self.lastUpdated = Date()
         self.sampleCount = 0
         self.sessionsToStability = nil
@@ -64,7 +64,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
         wallpaperFPS: Float,
         scale: Float,
         lod: Float = 1.0,
-        thermalMomentum: Float = 0,
+        qualityMomentum: Float = 0,
         lastUpdated: Date = Date(),
         sampleCount: Int = 0,
         sessionsToStability: Int? = nil,
@@ -74,7 +74,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
         self.wallpaperFPS = wallpaperFPS.clamped(to: Self.wallpaperFPSRange)
         self.scale = scale.clamped(to: Self.scaleRange)
         self.lod = lod.clamped(to: Self.lodRange)
-        self.thermalMomentum = thermalMomentum
+        self.qualityMomentum = qualityMomentum
         self.lastUpdated = lastUpdated
         self.sampleCount = sampleCount
         self.sessionsToStability = sessionsToStability
@@ -109,7 +109,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case shaderId
         case wallpaperFPS = "fps"  // Keep "fps" key for backward compatibility
-        case scale, lod, thermalMomentum, lastUpdated, sampleCount
+        case scale, lod, qualityMomentum, lastUpdated, sampleCount
         case sessionsToStability, isStabilized
     }
 
@@ -120,7 +120,7 @@ public struct ThermalProfile: Codable, Sendable, Equatable {
         scale = try container.decode(Float.self, forKey: .scale)
         // Default to max LOD for profiles saved before LOD was added
         lod = try container.decodeIfPresent(Float.self, forKey: .lod) ?? Self.lodRange.upperBound
-        thermalMomentum = try container.decode(Float.self, forKey: .thermalMomentum)
+        qualityMomentum = try container.decode(Float.self, forKey: .qualityMomentum)
         lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
         sampleCount = try container.decode(Int.self, forKey: .sampleCount)
         sessionsToStability = try container.decodeIfPresent(Int.self, forKey: .sessionsToStability)

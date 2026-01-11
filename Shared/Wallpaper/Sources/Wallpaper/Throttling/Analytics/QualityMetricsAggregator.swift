@@ -5,7 +5,7 @@ import Foundation
 /// This layer accumulates statistics from frequent optimization ticks (every 5s)
 /// and only sends aggregated summaries to PostHog on session boundaries.
 @MainActor
-public final class ThermalMetricsAggregator: ThermalAnalytics {
+public final class QualityMetricsAggregator: QualityAnalytics {
 
     /// Threshold for considering optimization stable (no adjustments for this duration).
     public static let stabilityThreshold: TimeInterval = 30
@@ -13,7 +13,7 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
     /// Optimization tick interval (for calculating time in critical).
     public static let tickInterval: TimeInterval = 5
 
-    private let reporter: ThermalMetricsReporter
+    private let reporter: QualityMetricsReporter
 
     // MARK: - Session State
 
@@ -57,11 +57,11 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
     /// Creates an aggregator with the specified reporter.
     ///
     /// - Parameter reporter: The reporter to send session summaries to.
-    public init(reporter: ThermalMetricsReporter) {
+    public init(reporter: QualityMetricsReporter) {
         self.reporter = reporter
     }
 
-    // MARK: - ThermalAnalytics
+    // MARK: - QualityAnalytics
 
     /// Records an interpolator reset event.
     ///
@@ -70,7 +70,7 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
         interpolatorResets += 1
     }
 
-    public func record(_ event: ThermalAdjustmentEvent) {
+    public func record(_ event: QualityAdjustmentEvent) {
         // Track shader changes
         if event.shaderId != currentShaderId {
             if currentShaderId != nil {
@@ -145,7 +145,7 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
         }
     }
 
-    public func flush(reason: ThermalFlushReason) {
+    public func flush(reason: QualityFlushReason) {
         guard sampleCount > 0,
               let shaderId = currentShaderId,
               let start = sessionStart else {
@@ -176,7 +176,7 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
             estimatedWorkloadReduction = 0
         }
 
-        let summary = ThermalSessionSummary(
+        let summary = QualitySessionSummary(
             shaderId: shaderId,
             flushReason: reason,
             avgWallpaperFPS: avgDisplayFPS,
@@ -245,7 +245,7 @@ public final class ThermalMetricsAggregator: ThermalAnalytics {
     private func determineOutcome(
         sessionDuration: TimeInterval,
         reachedStability: Bool
-    ) -> ThermalSessionOutcome {
+    ) -> QualitySessionOutcome {
         if sessionDuration < 30 {
             return .tooBrief
         }

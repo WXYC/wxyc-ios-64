@@ -48,13 +48,13 @@ public struct QualityProfile: Equatable, Sendable {
         interpolationEnabled: Bool = false,
         shaderFPS: Float? = nil
     ) {
-        self.wallpaperFPS = wallpaperFPS.clamped(to: ThermalProfile.wallpaperFPSRange)
-        self.scale = scale.clamped(to: ThermalProfile.scaleRange)
-        self.lod = lod.clamped(to: ThermalProfile.lodRange)
+        self.wallpaperFPS = wallpaperFPS.clamped(to: AdaptiveProfile.wallpaperFPSRange)
+        self.scale = scale.clamped(to: AdaptiveProfile.scaleRange)
+        self.lod = lod.clamped(to: AdaptiveProfile.lodRange)
         self.interpolationEnabled = interpolationEnabled
         // Default shader FPS to half of display FPS when interpolating
         let defaultShaderFPS = interpolationEnabled ? wallpaperFPS / 2 : wallpaperFPS
-        self.shaderFPS = (shaderFPS ?? defaultShaderFPS).clamped(to: ThermalProfile.wallpaperFPSRange)
+        self.shaderFPS = (shaderFPS ?? defaultShaderFPS).clamped(to: AdaptiveProfile.wallpaperFPSRange)
     }
 
     /// Quality profile for wallpaper picker cards (30 FPS, 0.75 scale, 0.5 LOD).

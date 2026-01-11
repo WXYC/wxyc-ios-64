@@ -3,11 +3,11 @@ import PostHog
 import Wallpaper
 
 /// Reports thermal session summaries to PostHog.
-final class PostHogThermalReporter: ThermalMetricsReporter, @unchecked Sendable {
+final class PostHogQualityReporter: QualityMetricsReporter, @unchecked Sendable {
 
     init() {}
 
-    func report(_ summary: ThermalSessionSummary) {
+    func report(_ summary: QualitySessionSummary) {
         var properties: [String: Any] = [
             // Identity
             "shader_id": summary.shaderId,

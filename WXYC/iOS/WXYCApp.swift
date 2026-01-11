@@ -127,7 +127,7 @@ final class Singletonia {
             guard let self else { return }
 
             var wasPlaying = AudioPlayerController.shared.isPlaying
-
+        
             let observations = Observations {
                 AudioPlayerController.shared.isPlaying
             }
@@ -163,7 +163,7 @@ struct WXYCApp: App {
     @State private var appState = Singletonia.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.requestReview) private var requestReview
-
+        
     init() {
         // Cache migration - purge if version changed
         CacheMigrationManager.migrateIfNeeded()
@@ -181,11 +181,11 @@ struct WXYCApp: App {
         }
         
         // Enable battery monitoring for thermal context
-        ThermalContext.enableBatteryMonitoring()
+        DeviceContext.enableBatteryMonitoring()
 
         // Analytics setup
         setUpAnalytics()
-        setUpThermalAnalytics()
+        setUpQualityAnalytics()
         setUpThemePickerAnalytics()
         PostHogSDK.shared.capture("app launch", properties: [
             "has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker
@@ -193,7 +193,7 @@ struct WXYCApp: App {
                     
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
         // Setting it here at launch would interrupt other apps' audio unnecessarily.
-                    
+
         // UIKit appearance setup
         #if os(iOS)
         UINavigationBar.appearance().barStyle = .black
@@ -204,7 +204,7 @@ struct WXYCApp: App {
             window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
         }
         #endif
-
+        
         // Siri intent donation
         Self.donateSiriIntent()
     }
@@ -358,7 +358,7 @@ struct WXYCApp: App {
                 "Is Playing?": AudioPlayerController.shared.isPlaying
             ])
             AudioPlayerController.shared.handleAppDidEnterBackground()
-            AdaptiveThermalController.shared.handleBackgrounded()
+            AdaptiveQualityController.shared.handleBackgrounded()
             appState.setForegrounded(false)
 
         case .inactive:
@@ -366,7 +366,7 @@ struct WXYCApp: App {
         
         case .active:
             AudioPlayerController.shared.handleAppWillEnterForeground()
-            AdaptiveThermalController.shared.handleForegrounded()
+            AdaptiveQualityController.shared.handleForegrounded()
             appState.setForegrounded(true)
             scheduleBackgroundRefresh()
             // Refresh playlist if cache has expired while in background.
@@ -390,10 +390,10 @@ struct WXYCApp: App {
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
     }
 
-    private func setUpThermalAnalytics() {
-        let reporter = PostHogThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
-        AdaptiveThermalController.shared.setAnalytics(aggregator)
+    private func setUpQualityAnalytics() {
+        let reporter = PostHogQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        AdaptiveQualityController.shared.setAnalytics(aggregator)
     }
 
     private func setUpThemePickerAnalytics() {

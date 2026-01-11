@@ -11,17 +11,17 @@ import UIKit
 ///
 /// Keys use the format `thermal.profile.<shaderId>`.
 @MainActor
-public final class ThermalProfileStore: Sendable {
+public final class AdaptiveProfileStore: Sendable {
 
     /// Shared instance using standard UserDefaults.
-    public static let shared = ThermalProfileStore()
+    public static let shared = AdaptiveProfileStore()
 
     private let defaults: UserDefaults
     private let keyPrefix = "thermal.profile."
     private let deviceIdKey = "thermal.deviceIdentifier"
 
     /// In-memory cache for synchronous reads.
-    private var memoryCache: [String: ThermalProfile] = [:]
+    private var memoryCache: [String: AdaptiveProfile] = [:]
 
     /// Creates a store with the specified UserDefaults.
     ///
@@ -40,7 +40,7 @@ public final class ThermalProfileStore: Sendable {
     ///
     /// - Parameter shaderId: The shader identifier.
     /// - Returns: The thermal profile for the shader.
-    public func load(shaderId: String) -> ThermalProfile {
+    public func load(shaderId: String) -> AdaptiveProfile {
         if let cached = memoryCache[shaderId] {
             return cached
         }
@@ -48,13 +48,13 @@ public final class ThermalProfileStore: Sendable {
         let key = keyPrefix + shaderId
 
         if let data = defaults.data(forKey: key),
-           let profile = try? JSONDecoder().decode(ThermalProfile.self, from: data) {
+           let profile = try? JSONDecoder().decode(AdaptiveProfile.self, from: data) {
             memoryCache[shaderId] = profile
             return profile
         }
 
         // No cached profile, create default
-        let profile = ThermalProfile(shaderId: shaderId)
+        let profile = AdaptiveProfile(shaderId: shaderId)
         memoryCache[shaderId] = profile
         return profile
     }
@@ -63,14 +63,14 @@ public final class ThermalProfileStore: Sendable {
     ///
     /// - Parameter shaderId: The shader identifier.
     /// - Returns: The cached profile, or nil if not in memory.
-    public func cachedProfile(for shaderId: String) -> ThermalProfile? {
+    public func cachedProfile(for shaderId: String) -> AdaptiveProfile? {
         memoryCache[shaderId]
     }
 
     /// Saves a profile to disk and updates the cache.
     ///
     /// - Parameter profile: The profile to save.
-    public func save(_ profile: ThermalProfile) {
+    public func save(_ profile: AdaptiveProfile) {
         memoryCache[profile.shaderId] = profile
 
         let key = keyPrefix + profile.shaderId

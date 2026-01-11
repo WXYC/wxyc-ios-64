@@ -2,14 +2,14 @@ import Foundation
 import Testing
 @testable import Wallpaper
 
-@Suite("ThermalMetricsAggregator")
+@Suite("QualityMetricsAggregator")
 @MainActor
-struct ThermalMetricsAggregatorTests {
+struct QualityMetricsAggregatorTests {
 
     @Test("Flush does nothing without events")
     func flushWithoutEvents() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         aggregator.flush(reason: .periodic)
 
@@ -18,10 +18,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Records events and flushes summary")
     func recordAndFlush() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test_shader",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -39,10 +39,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Calculates average wallpaper FPS, scale, and LOD")
     func calculatesAverages() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -50,7 +50,7 @@ struct ThermalMetricsAggregatorTests {
             thermalState: .nominal,
             momentum: 0
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 40,
             scale: 0.8,
@@ -69,10 +69,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Tracks time in critical")
     func tracksTimeInCritical() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 30,
             scale: 0.5,
@@ -80,7 +80,7 @@ struct ThermalMetricsAggregatorTests {
             thermalState: .critical,
             momentum: 0.8
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 30,
             scale: 0.5,
@@ -88,7 +88,7 @@ struct ThermalMetricsAggregatorTests {
             thermalState: .critical,
             momentum: 0.8
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 45,
             scale: 0.7,
@@ -106,10 +106,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Shader change triggers flush")
     func shaderChangeFlushes() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "shader1",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -119,7 +119,7 @@ struct ThermalMetricsAggregatorTests {
         ))
 
         // Change shader
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "shader2",
             wallpaperFPS: 55,
             scale: 0.9,
@@ -135,10 +135,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Counts throttle events including LOD")
     func countsThrottleEvents() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -146,7 +146,7 @@ struct ThermalMetricsAggregatorTests {
             thermalState: .nominal,
             momentum: 0
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 55,  // Down
             scale: 0.9,  // Down
@@ -154,7 +154,7 @@ struct ThermalMetricsAggregatorTests {
             thermalState: .fair,
             momentum: 0.2
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 55,  // Same
             scale: 0.9,  // Same
@@ -171,13 +171,13 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Detects session outcome: neverThrottled")
     func sessionOutcomeNeverThrottled() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         // Record at max quality for long enough
         let baseTime = Date()
         for i in 0..<10 {
-            aggregator.record(ThermalAdjustmentEvent(
+            aggregator.record(QualityAdjustmentEvent(
                 shaderId: "efficient_shader",
                 wallpaperFPS: 60,
                 scale: 1.0,
@@ -196,13 +196,13 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Stable values set when stability reached")
     func stableValuesWhenStabilityReached() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         // Record stable values for longer than stability threshold (30s)
         let baseTime = Date()
         for i in 0..<10 {
-            aggregator.record(ThermalAdjustmentEvent(
+            aggregator.record(QualityAdjustmentEvent(
                 shaderId: "test",
                 wallpaperFPS: 45,
                 scale: 0.8,
@@ -224,13 +224,13 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Stable values nil when stability not reached")
     func stableValuesNilWhenUnstable() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         // Record values that keep changing (never stable)
         let baseTime = Date()
         for i in 0..<10 {
-            aggregator.record(ThermalAdjustmentEvent(
+            aggregator.record(QualityAdjustmentEvent(
                 shaderId: "test",
                 wallpaperFPS: Float(60 - i * 2),  // Constantly changing
                 scale: 1.0 - Float(i) * 0.05,
@@ -254,11 +254,11 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Tracks interpolation enabled percentage")
     func tracksInterpolationEnabledPercent() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         // 2 samples with interpolation on, 2 without = 50%
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -268,7 +268,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: false,
             shaderFPS: 60
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -278,7 +278,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: true,
             shaderFPS: 30
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -288,7 +288,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: true,
             shaderFPS: 30
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -307,10 +307,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Calculates average shader FPS while interpolating")
     func calculatesAvgShaderFPS() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -320,7 +320,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: true,
             shaderFPS: 30
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -339,10 +339,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("avgShaderFPSWhileInterpolating is nil when never interpolating")
     func avgShaderFPSNilWhenNoInterpolation() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -362,11 +362,11 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Counts interpolation activations")
     func countsInterpolationActivations() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         // Transition: off -> on -> off -> on = 2 activations
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -376,7 +376,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: false,
             shaderFPS: 60
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -386,7 +386,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: true,
             shaderFPS: 30
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 1.0,
@@ -396,7 +396,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: false,
             shaderFPS: 60
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -415,11 +415,11 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Calculates estimated workload reduction")
     func calculatesWorkloadReduction() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
         // All samples with interpolation on at 30fps shader / 60fps display = 50% reduction
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -429,7 +429,7 @@ struct ThermalMetricsAggregatorTests {
             interpolationEnabled: true,
             shaderFPS: 30
         ))
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,
@@ -449,10 +449,10 @@ struct ThermalMetricsAggregatorTests {
 
     @Test("Records interpolator resets")
     func recordsInterpolatorResets() {
-        let reporter = MockThermalReporter()
-        let aggregator = ThermalMetricsAggregator(reporter: reporter)
+        let reporter = MockQualityReporter()
+        let aggregator = QualityMetricsAggregator(reporter: reporter)
 
-        aggregator.record(ThermalAdjustmentEvent(
+        aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
             wallpaperFPS: 60,
             scale: 0.75,

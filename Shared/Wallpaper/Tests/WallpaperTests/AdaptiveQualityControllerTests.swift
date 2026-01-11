@@ -6,7 +6,7 @@ import Testing
 
 /// Mock clock for testing time-dependent behavior.
 @MainActor
-final class MockThermalClock: ThermalClock, @unchecked Sendable {
+final class MockQualityClock: QualityClock, @unchecked Sendable {
     private var _now: TimeInterval = 0
 
     nonisolated var now: TimeInterval {
@@ -22,25 +22,27 @@ final class MockThermalClock: ThermalClock, @unchecked Sendable {
     }
 }
 
-@Suite("AdaptiveThermalController")
+@Suite("AdaptiveQualityController")
 @MainActor
-struct AdaptiveThermalControllerTests {
+struct AdaptiveQualityControllerTests {
 
     /// Creates a test controller with injectable context and clock.
     func makeController(
-        context: ThermalContextProtocol = MockThermalContext(),
-        analytics: ThermalAnalytics? = nil,
-        clock: ThermalClock = SystemThermalClock()
-    ) -> AdaptiveThermalController {
-        let defaults = UserDefaults(suiteName: "AdaptiveThermalControllerTests-\(UUID().uuidString)")!
-        let store = ThermalProfileStore(defaults: defaults)
+        context: DeviceContextProtocol = MockDeviceContext(),
+        analytics: QualityAnalytics? = nil,
+        clock: QualityClock = SystemQualityClock(),
+        mode: ThrottlingMode = .normal
+    ) -> AdaptiveQualityController {
+        let defaults = UserDefaults(suiteName: "AdaptiveQualityControllerTests-\(UUID().uuidString)")!
+        let store = AdaptiveProfileStore(defaults: defaults)
 
-        return AdaptiveThermalController(
+        return AdaptiveQualityController(
             store: store,
-            optimizer: ThermalOptimizer(),
+            optimizer: QualityOptimizer(),
             analytics: analytics,
             context: context,
             clock: clock,
+            mode: mode,
             optimizationInterval: .milliseconds(10),
             periodicFlushInterval: .seconds(300),
             backgroundThreshold: 1  // 1 second for testing
@@ -71,7 +73,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Heating reduces quality")
     func heatingReducesQuality() async throws {
-        let context = MockThermalContext(thermalState: .nominal)
+        let context = MockDeviceContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
@@ -96,7 +98,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Background flushes analytics")
     func backgroundFlushesAnalytics() async {
-        let analytics = MockThermalAnalytics()
+        let analytics = MockQualityAnalytics()
         let controller = makeController(analytics: analytics)
 
         await controller.setActiveShader("test")
@@ -109,7 +111,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Shader change flushes previous session")
     func shaderChangeFlushes() async {
-        let analytics = MockThermalAnalytics()
+        let analytics = MockQualityAnalytics()
         let controller = makeController(analytics: analytics)
 
         await controller.setActiveShader("shader1")
@@ -122,8 +124,8 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Foreground after long background applies cooldown bonus")
     func foregroundAppliesCooldownBonus() async {
-        let context = MockThermalContext(thermalState: .critical)
-        let mockClock = MockThermalClock()
+        let context = MockDeviceContext(thermalState: .critical)
+        let mockClock = MockQualityClock()
         let controller = makeController(context: context, clock: mockClock)
 
         await controller.setActiveShader("test")
@@ -157,7 +159,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("checkNow updates thermal state")
     func checkNowUpdatesThermalState() async {
-        let context = MockThermalContext(thermalState: .nominal)
+        let context = MockDeviceContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
@@ -170,7 +172,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Analytics receives adjustment events")
     func analyticsReceivesEvents() async {
-        let analytics = MockThermalAnalytics()
+        let analytics = MockQualityAnalytics()
         let controller = makeController(analytics: analytics)
 
         await controller.setActiveShader("test")
@@ -185,25 +187,25 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Low power mode forces aggressive throttle")
     func lowPowerModeThrottle() async {
-        let context = MockThermalContext(thermalState: .nominal, isLowPowerMode: true)
+        let context = MockDeviceContext(thermalState: .nominal, isLowPowerMode: true)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
         controller.checkNow()
 
-        #expect(controller.currentWallpaperFPS == ThermalContext.lowPowerWallpaperFPS)
-        #expect(controller.currentScale == ThermalContext.lowPowerScale)
-        #expect(controller.currentLOD == ThermalProfile.lodRange.lowerBound)
+        #expect(controller.currentWallpaperFPS == DeviceContext.lowPowerWallpaperFPS)
+        #expect(controller.currentScale == DeviceContext.lowPowerScale)
+        #expect(controller.currentLOD == AdaptiveProfile.lodRange.lowerBound)
     }
 
     @Test("Charging suppresses profile persistence")
     func chargingSuppressesPersistence() async {
         let suiteName = "ChargingTest-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        let store = ThermalProfileStore(defaults: defaults)
-        let context = MockThermalContext(thermalState: .serious, isCharging: true)
+        let store = AdaptiveProfileStore(defaults: defaults)
+        let context = MockDeviceContext(thermalState: .serious, isCharging: true)
 
-        let controller = AdaptiveThermalController(
+        let controller = AdaptiveQualityController(
             store: store,
             context: context,
             optimizationInterval: .milliseconds(10),
@@ -225,7 +227,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Quality recovery when thermal stable")
     func qualityRecoveryWhenStable() async {
-        let context = MockThermalContext(thermalState: .nominal)
+        let context = MockDeviceContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
@@ -275,7 +277,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Foreground seeds thermal state when device is hot")
     func foregroundSeedsThermalState() async {
-        let context = MockThermalContext(thermalState: .serious)
+        let context = MockDeviceContext(thermalState: .serious)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
@@ -292,7 +294,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Foreground with nominal device has zero momentum")
     func foregroundWithNominalDevice() async {
-        let context = MockThermalContext(thermalState: .nominal)
+        let context = MockDeviceContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("test")
@@ -316,7 +318,7 @@ struct AdaptiveThermalControllerTests {
     @Test("Wallpaper switch while hot applies thermal adjustment")
     func wallpaperSwitchWhileHot() async {
         // Start with device already at elevated thermal state
-        let context = MockThermalContext(thermalState: .serious)
+        let context = MockDeviceContext(thermalState: .serious)
         let controller = makeController(context: context)
 
         // Set up first shader - device is already hot
@@ -336,7 +338,7 @@ struct AdaptiveThermalControllerTests {
 
     @Test("Wallpaper switch while nominal uses stored profile")
     func wallpaperSwitchWhileNominal() async {
-        let context = MockThermalContext(thermalState: .nominal)
+        let context = MockDeviceContext(thermalState: .nominal)
         let controller = makeController(context: context)
 
         await controller.setActiveShader("shader1")
@@ -355,10 +357,10 @@ struct AdaptiveThermalControllerTests {
     func wallpaperSwitchPreservesLearnedProfile() async {
         let suiteName = "LearnedProfile-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-        let store = ThermalProfileStore(defaults: defaults)
-        let context = MockThermalContext(thermalState: .nominal)
+        let store = AdaptiveProfileStore(defaults: defaults)
+        let context = MockDeviceContext(thermalState: .nominal)
 
-        let controller = AdaptiveThermalController(
+        let controller = AdaptiveQualityController(
             store: store,
             context: context,
             optimizationInterval: .milliseconds(10),
@@ -398,5 +400,27 @@ struct AdaptiveThermalControllerTests {
 
         // Should use the learned throttled profile (more conservative than default)
         #expect(controller.currentScale <= shader2ThrottledScale)
+    }
+
+    // MARK: - FPS Reporting Tests
+
+    @Test("reportMeasuredFPS boosts momentum when FPS significantly below target")
+    func fpsReportBoostsMomentum() async {
+        let context = MockDeviceContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Start at max quality
+        #expect(controller.currentWallpaperFPS == 60.0)
+        #expect(controller.currentScale == 1.0)
+        #expect(controller.currentLOD == 1.0)
+
+        // Report significantly low FPS (below target minus tolerance)
+        controller.reportMeasuredFPS(50.0)  // 10fps below target, exceeds 3fps tolerance
+        controller.checkNow()
+
+        // Should have boosted momentum (exact values depend on implementation)
+        #expect(controller.currentMomentum > 0)
     }
 }

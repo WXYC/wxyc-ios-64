@@ -88,7 +88,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     /// Reference to the adaptive thermal controller for continuous FPS/scale optimization.
     /// Only used when `qualityProfile` is nil.
-    private let thermalController = AdaptiveThermalController.shared
+    private let qualityController = AdaptiveQualityController.shared
 
     /// Frame rate monitor for early performance detection.
     private var frameRateMonitor = FrameRateMonitor()
@@ -186,7 +186,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         } else {
             // Set active shader for adaptive thermal optimization
             Task {
-                await thermalController.setActiveShader(theme.manifest.id)
+                await qualityController.setActiveShader(theme.manifest.id)
             }
         }
 
@@ -412,17 +412,17 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             shaderFPS = profile.shaderFPS
         } else {
             // Check if profile was reset - if so, reset frame rate monitor to avoid stale samples
-            let currentResetCount = thermalController.profileResetCount
+            let currentResetCount = qualityController.profileResetCount
             if currentResetCount != lastSeenProfileResetCount {
                 lastSeenProfileResetCount = currentResetCount
                 frameRateMonitor.reset()
                 lastFrameStart = 0
                 // Immediately update cached values to reflect new profile settings
-                cachedResolutionScale = thermalController.effectiveScale
-                cachedTargetFPS = Int(thermalController.effectiveWallpaperFPS)
-                cachedLOD = thermalController.effectiveLOD
-                cachedInterpolationEnabled = thermalController.effectiveInterpolationEnabled
-                cachedShaderFPS = thermalController.effectiveShaderFPS
+                cachedResolutionScale = qualityController.effectiveScale
+                cachedTargetFPS = Int(qualityController.effectiveWallpaperFPS)
+                cachedLOD = qualityController.effectiveLOD
+                cachedInterpolationEnabled = qualityController.effectiveInterpolationEnabled
+                cachedShaderFPS = qualityController.effectiveShaderFPS
             }
 
             // Measure frame duration for periodic thermal value updates
@@ -431,11 +431,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 let frameDuration = frameStart - lastFrameStart
                 // Update cached thermal values periodically (every ~1 second)
                 if frameRateMonitor.recordFrame(duration: frameDuration) != nil {
-                    cachedResolutionScale = thermalController.effectiveScale
-                    cachedTargetFPS = Int(thermalController.effectiveWallpaperFPS)
-                    cachedLOD = thermalController.effectiveLOD
-                    cachedInterpolationEnabled = thermalController.effectiveInterpolationEnabled
-                    cachedShaderFPS = thermalController.effectiveShaderFPS
+                    cachedResolutionScale = qualityController.effectiveScale
+                    cachedTargetFPS = Int(qualityController.effectiveWallpaperFPS)
+                    cachedLOD = qualityController.effectiveLOD
+                    cachedInterpolationEnabled = qualityController.effectiveInterpolationEnabled
+                    cachedShaderFPS = qualityController.effectiveShaderFPS
                 }
             }
             lastFrameStart = frameStart

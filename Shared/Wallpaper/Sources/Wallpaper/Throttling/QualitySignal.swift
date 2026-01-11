@@ -6,7 +6,7 @@ import Foundation
 /// - Positive momentum (> 0.1): device is heating up
 /// - Negative momentum (< -0.1): device is cooling down
 /// - Near zero (within dead zone): thermal state is stable
-public struct ThermalSignal: Sendable {
+public struct QualitySignal: Sendable {
 
     /// Threshold for considering the signal stable (dead zone).
     public static let deadZone: Float = 0.1
@@ -26,7 +26,7 @@ public struct ThermalSignal: Sendable {
     public init() {}
 
     /// The current thermal trend based on momentum.
-    public var trend: ThermalTrend {
+    public var trend: QualityTrend {
         if momentum > Self.deadZone {
             return .heating
         } else if momentum < -Self.deadZone {
@@ -89,10 +89,10 @@ public struct ThermalSignal: Sendable {
     }
 }
 
-// MARK: - ThermalTrend
+// MARK: - QualityTrend
 
 /// The direction of thermal change.
-public enum ThermalTrend: Sendable {
+public enum QualityTrend: Sendable {
     /// Device is heating up (momentum > dead zone).
     case heating
 

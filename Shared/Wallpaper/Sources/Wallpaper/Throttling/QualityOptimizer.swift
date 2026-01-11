@@ -1,12 +1,14 @@
 import Foundation
 
-/// Computes optimal wallpaper FPS, scale, and LOD adjustments based on thermal momentum.
+/// Computes optimal wallpaper FPS, scale, and LOD adjustments based on quality momentum.
 ///
-/// Uses a reactive control loop that:
-/// - Immediately reduces quality when heating (LOD first, then scale, then wallpaper FPS)
-/// - Slowly restores quality when cooling (half speed, scale first, then wallpaper FPS, then LOD)
+/// Uses a 3-axis (LOD, Scale, WallpaperFPS) reactive control loop that:
+/// - Immediately reduces quality when heating
+/// - Slowly restores quality when cooling (half speed)
 /// - Applies damping near equilibrium to prevent oscillation
-public struct ThermalOptimizer: Sendable {
+public struct QualityOptimizer: Sendable {
+
+    // MARK: - Constants
 
     /// Maximum wallpaper FPS adjustment per optimization tick.
     public static let maxWallpaperFPSStep: Float = 5.0
@@ -31,18 +33,21 @@ public struct ThermalOptimizer: Sendable {
 
     public init() {}
 
-    /// Computes the next wallpaper FPS, scale, and LOD values based on thermal momentum.
+    /// Computes the next wallpaper FPS, scale, and LOD values based on quality momentum.
     ///
-    /// Reduction order (least to most perceptible): LOD -> Scale -> Wallpaper FPS
-    /// Recovery order (reverse): Scale -> Wallpaper FPS -> LOD
+    /// - Reduction order (least to most perceptible): LOD -> Scale -> Wallpaper FPS
+    /// - Recovery order (reverse): Scale -> Wallpaper FPS -> LOD
     ///
     /// - Parameters:
-    ///   - current: The current thermal profile.
-    ///   - momentum: Current thermal momentum from ThermalSignal.
+    ///   - current: The current adaptive profile.
+    ///   - momentum: Current quality momentum from QualitySignal.
     /// - Returns: Tuple of (wallpaperFPS, scale, lod) with optimized values.
-    public func optimize(current: ThermalProfile, momentum: Float) -> (wallpaperFPS: Float, scale: Float, lod: Float) {
+    public func optimize(
+        current: AdaptiveProfile,
+        momentum: Float
+    ) -> (wallpaperFPS: Float, scale: Float, lod: Float) {
         // In dead zone - no adjustment needed
-        guard abs(momentum) > ThermalSignal.deadZone else {
+        guard abs(momentum) > QualitySignal.deadZone else {
             return (current.wallpaperFPS, current.scale, current.lod)
         }
 
@@ -73,15 +78,15 @@ public struct ThermalOptimizer: Sendable {
         }
 
         // Apply damping when close to boundaries to prevent oscillation
-        wallpaperFPS = applyDamping(wallpaperFPS, range: ThermalProfile.wallpaperFPSRange)
-        scale = applyDamping(scale, range: ThermalProfile.scaleRange)
-        lod = applyDamping(lod, range: ThermalProfile.lodRange)
+        wallpaperFPS = applyDamping(wallpaperFPS, range: AdaptiveProfile.wallpaperFPSRange)
+        scale = applyDamping(scale, range: AdaptiveProfile.scaleRange)
+        lod = applyDamping(lod, range: AdaptiveProfile.lodRange)
 
         // Clamp to valid ranges
         return (
-            wallpaperFPS.clamped(to: ThermalProfile.wallpaperFPSRange),
-            scale.clamped(to: ThermalProfile.scaleRange),
-            lod.clamped(to: ThermalProfile.lodRange)
+            wallpaperFPS.clamped(to: AdaptiveProfile.wallpaperFPSRange),
+            scale.clamped(to: AdaptiveProfile.scaleRange),
+            lod.clamped(to: AdaptiveProfile.lodRange)
         )
     }
 

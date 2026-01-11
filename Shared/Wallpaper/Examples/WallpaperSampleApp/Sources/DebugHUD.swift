@@ -15,17 +15,17 @@ struct DebugHUD: View {
     @State private var metrics = DebugMetricsProvider()
 
     var body: some View {
-        let thermal = AdaptiveThermalController.shared
+        let quality = AdaptiveQualityController.shared
         VStack(alignment: .leading, spacing: 2) {
             MetricRow(label: "FPS", value: "\(metrics.fps)")
             MetricRow(label: "CPU", value: metrics.cpuUsage.formatted(.number.precision(.fractionLength(1))) + "%")
             MetricRow(label: "GPU", value: metrics.gpuMemoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "MEM", value: metrics.memoryMB.formatted(.number.precision(.fractionLength(1))) + " MB")
             MetricRow(label: "TMP", value: metrics.thermalState.description)
-            MetricRow(label: "THR", value: "\(Int(thermal.currentScale * 100))% @ \(Int(thermal.currentWallpaperFPS))fps")
-            MetricRow(label: "MTM", value: String(format: "%.2f", thermal.currentMomentum))
-            MetricRow(label: "INT", value: thermal.interpolationEnabled
-                ? "ON (\(Int(thermal.shaderFPS))fps shader)"
+            MetricRow(label: "THR", value: "\(Int(quality.currentScale * 100))% @ \(Int(quality.currentWallpaperFPS))fps")
+            MetricRow(label: "MTM", value: String(format: "%.2f", quality.currentMomentum))
+            MetricRow(label: "INT", value: quality.interpolationEnabled
+                ? "ON (\(Int(quality.shaderFPS))fps shader)"
                 : "OFF")
         }
         .font(.system(.caption, design: .monospaced))

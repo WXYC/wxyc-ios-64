@@ -4,13 +4,13 @@ import Foundation
 // MARK: - Clock Protocol
 
 /// Protocol for providing the current time, enabling testable time-dependent code.
-public protocol ThermalClock: Sendable {
+public protocol QualityClock: Sendable {
     /// The current time as a TimeInterval since the reference date.
     var now: TimeInterval { get }
 }
 
 /// Default clock implementation that uses the system time.
-public struct SystemThermalClock: ThermalClock, Sendable {
+public struct SystemQualityClock: QualityClock, Sendable {
     public init() {}
 
     public var now: TimeInterval {
@@ -72,8 +72,8 @@ public enum ThrottlingMode: String, Sendable, CaseIterable {
     /// Lower values require more stability before quality recovery begins.
     var deadZoneThreshold: Float {
         switch self {
-        case .normal: ThermalSignal.deadZone
-        case .lowPower: ThermalSignal.deadZone * 0.5
+        case .normal: QualitySignal.deadZone
+        case .lowPower: QualitySignal.deadZone * 0.5
         }
     }
 }
@@ -86,7 +86,7 @@ public enum ThrottlingMode: String, Sendable, CaseIterable {
 ///
 /// ## Usage
 /// ```swift
-/// let controller = AdaptiveThermalController.shared
+/// let controller = AdaptiveQualityController.shared
 ///
 /// // When shader becomes active
 /// await controller.setActiveShader("pool_tiles")
@@ -101,10 +101,10 @@ public enum ThrottlingMode: String, Sendable, CaseIterable {
 /// ```
 @Observable
 @MainActor
-public final class AdaptiveThermalController {
+public final class AdaptiveQualityController {
 
     /// Shared instance using default dependencies.
-    public static let shared = AdaptiveThermalController()
+    public static let shared = AdaptiveQualityController()
 
     // MARK: - Published State
 
@@ -228,16 +228,16 @@ public final class AdaptiveThermalController {
 
     // MARK: - Dependencies
 
-    private let store: ThermalProfileStore
-    private let optimizer: ThermalOptimizer
-    private var analytics: ThermalAnalytics?
-    private let context: ThermalContextProtocol
-    private let clock: ThermalClock
+    private let store: AdaptiveProfileStore
+    private let optimizer: QualityOptimizer
+    private var analytics: QualityAnalytics?
+    private let context: DeviceContextProtocol
+    private let clock: QualityClock
 
     // MARK: - Internal State
 
-    private var signal = ThermalSignal()
-    private var currentProfile: ThermalProfile?
+    private var signal = QualitySignal()
+    private var currentProfile: AdaptiveProfile?
     private var optimizationTask: Task<Void, Never>?
     private var periodicFlushTask: Task<Void, Never>?
     private var contextObservationTask: Task<Void, Never>?
@@ -284,11 +284,11 @@ public final class AdaptiveThermalController {
     ///   - periodicFlushInterval: How often to flush analytics (default 5 minutes).
     ///   - backgroundThreshold: Time after which to apply cooldown bonus (default 5 minutes).
     public init(
-        store: ThermalProfileStore = .shared,
-        optimizer: ThermalOptimizer = ThermalOptimizer(),
-        analytics: ThermalAnalytics? = nil,
-        context: ThermalContextProtocol = ThermalContext.shared,
-        clock: ThermalClock = SystemThermalClock(),
+        store: AdaptiveProfileStore = .shared,
+        optimizer: QualityOptimizer = QualityOptimizer(),
+        analytics: QualityAnalytics? = nil,
+        context: DeviceContextProtocol = DeviceContext.shared,
+        clock: QualityClock = SystemQualityClock(),
         mode: ThrottlingMode = .normal,
         optimizationInterval: Duration = .seconds(5),
         periodicFlushInterval: Duration = .seconds(300),
@@ -322,7 +322,7 @@ public final class AdaptiveThermalController {
     ///
     /// Call this early in app initialization to enable thermal analytics.
     /// - Parameter analytics: The analytics implementation to use.
-    public func setAnalytics(_ analytics: ThermalAnalytics) {
+    public func setAnalytics(_ analytics: QualityAnalytics) {
         self.analytics = analytics
     }
 
@@ -391,9 +391,9 @@ public final class AdaptiveThermalController {
 
         if wasBackgroundedLong, var profile = currentProfile {
             // Apply conservative cooldown bonus
-            let fpsBonus = (ThermalProfile.wallpaperFPSRange.upperBound - profile.wallpaperFPS) * maxCooldownBonus
-            let scaleBonus = (ThermalProfile.scaleRange.upperBound - profile.scale) * maxCooldownBonus
-            let lodBonus = (ThermalProfile.lodRange.upperBound - profile.lod) * maxCooldownBonus
+            let fpsBonus = (AdaptiveProfile.wallpaperFPSRange.upperBound - profile.wallpaperFPS) * maxCooldownBonus
+            let scaleBonus = (AdaptiveProfile.scaleRange.upperBound - profile.scale) * maxCooldownBonus
+            let lodBonus = (AdaptiveProfile.lodRange.upperBound - profile.lod) * maxCooldownBonus
 
             profile.update(
                 wallpaperFPS: profile.wallpaperFPS + fpsBonus,
@@ -449,7 +449,7 @@ public final class AdaptiveThermalController {
         store.remove(shaderId: shaderID)
 
         // Create fresh default profile
-        let freshProfile = ThermalProfile(shaderId: shaderID)
+        let freshProfile = AdaptiveProfile(shaderId: shaderID)
         currentProfile = freshProfile
 
         // Reset to max quality
@@ -522,14 +522,14 @@ public final class AdaptiveThermalController {
     private func performOptimizationTick() {
         // Low power mode: force aggressive throttle to save battery
         if context.isLowPowerMode {
-            currentWallpaperFPS = ThermalContext.lowPowerWallpaperFPS
-            currentScale = ThermalContext.lowPowerScale
-            currentLOD = ThermalProfile.lodRange.lowerBound
+            currentWallpaperFPS = DeviceContext.lowPowerWallpaperFPS
+            currentScale = DeviceContext.lowPowerScale
+            currentLOD = AdaptiveProfile.lodRange.lowerBound
             rawThermalState = context.thermalState
             currentMomentum = 0
             // Enable interpolation in low power mode for additional savings
             interpolationEnabled = true
-            shaderFPS = ThermalContext.lowPowerWallpaperFPS / 2
+            shaderFPS = DeviceContext.lowPowerWallpaperFPS / 2
             // Don't update profile or persist - this is temporary
             return
         }
@@ -559,14 +559,14 @@ public final class AdaptiveThermalController {
         // Mode controls how quickly recovery happens (low power mode recovers more slowly)
         if effectiveMomentum < mode.deadZoneThreshold {
             let recoveryStep = Self.qualityRecoveryStep * mode.recoveryMultiplier
-            newWallpaperFPS = min(newWallpaperFPS + recoveryStep * 5, ThermalProfile.wallpaperFPSRange.upperBound)
-            newScale = min(newScale + recoveryStep, ThermalProfile.scaleRange.upperBound)
-            newLOD = min(newLOD + recoveryStep * 2, ThermalProfile.lodRange.upperBound)
+            newWallpaperFPS = min(newWallpaperFPS + recoveryStep * 5, AdaptiveProfile.wallpaperFPSRange.upperBound)
+            newScale = min(newScale + recoveryStep, AdaptiveProfile.scaleRange.upperBound)
+            newLOD = min(newLOD + recoveryStep * 2, AdaptiveProfile.lodRange.upperBound)
         }
 
         // Update profile
         profile.update(wallpaperFPS: newWallpaperFPS, scale: newScale, lod: newLOD)
-        profile.thermalMomentum = effectiveMomentum
+        profile.qualityMomentum = effectiveMomentum
         currentProfile = profile
 
         // Update published values
@@ -579,7 +579,7 @@ public final class AdaptiveThermalController {
 
         // Record analytics event
         if let shaderID = activeShaderID {
-            let event = ThermalAdjustmentEvent(
+            let event = QualityAdjustmentEvent(
                 shaderId: shaderID,
                 wallpaperFPS: newWallpaperFPS,
                 scale: newScale,

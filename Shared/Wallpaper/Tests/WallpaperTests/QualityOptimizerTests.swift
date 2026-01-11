@@ -2,14 +2,14 @@ import Foundation
 import Testing
 @testable import Wallpaper
 
-@Suite("ThermalOptimizer")
-struct ThermalOptimizerTests {
+@Suite("QualityOptimizer")
+struct QualityOptimizerTests {
 
-    let optimizer = ThermalOptimizer()
+    let optimizer = QualityOptimizer()
 
     @Test("No adjustment in dead zone")
     func noAdjustmentInDeadZone() {
-        let profile = ThermalProfile(shaderId: "test", wallpaperFPS: 50, scale: 0.8, lod: 0.7)
+        let profile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 50, scale: 0.8, lod: 0.7)
 
         // Momentum within dead zone
         let result = optimizer.optimize(current: profile, momentum: 0.05)
@@ -21,7 +21,7 @@ struct ThermalOptimizerTests {
 
     @Test("Heating reduces quality")
     func heatingReducesQuality() {
-        let profile = ThermalProfile(shaderId: "test", wallpaperFPS: 60, scale: 1.0, lod: 1.0)
+        let profile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 60, scale: 1.0, lod: 1.0)
 
         let result = optimizer.optimize(current: profile, momentum: 0.5)
 
@@ -33,7 +33,7 @@ struct ThermalOptimizerTests {
 
     @Test("Cooling restores quality")
     func coolingRestoresQuality() {
-        let profile = ThermalProfile(shaderId: "test", wallpaperFPS: 30, scale: 0.6, lod: 0.5)
+        let profile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 30, scale: 0.6, lod: 0.5)
 
         let result = optimizer.optimize(current: profile, momentum: -0.5)
 
@@ -44,7 +44,7 @@ struct ThermalOptimizerTests {
 
     @Test("Scale is adjusted more than wallpaper FPS on heating")
     func scalePreferredOnHeating() {
-        let profile = ThermalProfile(shaderId: "test", wallpaperFPS: 60, scale: 1.0, lod: 1.0)
+        let profile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 60, scale: 1.0, lod: 1.0)
 
         let result = optimizer.optimize(current: profile, momentum: 0.3)
 
@@ -61,25 +61,25 @@ struct ThermalOptimizerTests {
     @Test("Results are clamped to valid ranges")
     func resultsClamped() {
         // Test lower bounds
-        let lowProfile = ThermalProfile(shaderId: "test", wallpaperFPS: 16, scale: 0.51, lod: 0.1)
+        let lowProfile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 16, scale: 0.51, lod: 0.1)
         let lowResult = optimizer.optimize(current: lowProfile, momentum: 0.8)
 
-        #expect(lowResult.wallpaperFPS >= ThermalProfile.wallpaperFPSRange.lowerBound)
-        #expect(lowResult.scale >= ThermalProfile.scaleRange.lowerBound)
-        #expect(lowResult.lod >= ThermalProfile.lodRange.lowerBound)
+        #expect(lowResult.wallpaperFPS >= AdaptiveProfile.wallpaperFPSRange.lowerBound)
+        #expect(lowResult.scale >= AdaptiveProfile.scaleRange.lowerBound)
+        #expect(lowResult.lod >= AdaptiveProfile.lodRange.lowerBound)
 
         // Test upper bounds
-        let highProfile = ThermalProfile(shaderId: "test", wallpaperFPS: 59, scale: 0.99, lod: 0.95)
+        let highProfile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 59, scale: 0.99, lod: 0.95)
         let highResult = optimizer.optimize(current: highProfile, momentum: -0.8)
 
-        #expect(highResult.wallpaperFPS <= ThermalProfile.wallpaperFPSRange.upperBound)
-        #expect(highResult.scale <= ThermalProfile.scaleRange.upperBound)
-        #expect(highResult.lod <= ThermalProfile.lodRange.upperBound)
+        #expect(highResult.wallpaperFPS <= AdaptiveProfile.wallpaperFPSRange.upperBound)
+        #expect(highResult.scale <= AdaptiveProfile.scaleRange.upperBound)
+        #expect(highResult.lod <= AdaptiveProfile.lodRange.upperBound)
     }
 
     @Test("Recovery is slower than reduction")
     func recoverySlower() {
-        let profile = ThermalProfile(shaderId: "test", wallpaperFPS: 45, scale: 0.75, lod: 0.6)
+        let profile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 45, scale: 0.75, lod: 0.6)
 
         // Same magnitude momentum, opposite directions
         let heatingResult = optimizer.optimize(current: profile, momentum: 0.5)

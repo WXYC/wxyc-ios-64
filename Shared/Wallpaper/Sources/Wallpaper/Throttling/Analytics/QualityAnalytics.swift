@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Flush Reason
 
 /// Reason for flushing aggregated metrics.
-public enum ThermalFlushReason: String, Sendable {
+public enum QualityFlushReason: String, Sendable {
     /// App is entering background
     case background
     /// User switched to a different shader
@@ -15,7 +15,7 @@ public enum ThermalFlushReason: String, Sendable {
 // MARK: - Session Outcome
 
 /// Classification of how a thermal session concluded.
-public enum ThermalSessionOutcome: String, Sendable {
+public enum QualitySessionOutcome: String, Sendable {
     /// Session was too brief (< 30s) to meaningfully optimize
     case tooBrief
     /// Shader is efficient enough that throttling was never needed
@@ -31,10 +31,10 @@ public enum ThermalSessionOutcome: String, Sendable {
 // MARK: - Event Types
 
 /// Marker protocol for all thermal analytics events.
-public protocol ThermalAnalyticsEvent: Sendable, Equatable {}
+public protocol QualityAnalyticsEvent: Sendable, Equatable {}
 
 /// Event captured on each optimization tick (aggregated, not sent directly).
-public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
+public struct QualityAdjustmentEvent: QualityAnalyticsEvent {
     /// Identifier for the active shader
     public let shaderId: String
     /// Current wallpaper FPS setting (display rate)
@@ -82,14 +82,14 @@ public struct ThermalAdjustmentEvent: ThermalAnalyticsEvent {
 /// Aggregated metrics for a thermal optimization session.
 ///
 /// This is what gets sent to PostHog, not individual adjustment events.
-public struct ThermalSessionSummary: Sendable, Equatable {
+public struct QualitySessionSummary: Sendable, Equatable {
 
     // MARK: Identity
 
     /// Identifier for the shader
     public let shaderId: String
     /// Why this summary was flushed
-    public let flushReason: ThermalFlushReason
+    public let flushReason: QualityFlushReason
 
     // MARK: Quality Delivered
 
@@ -115,10 +115,10 @@ public struct ThermalSessionSummary: Sendable, Equatable {
 
     /// Whether optimization reached a stable point
     public let reachedStability: Bool
-    /// Sessions taken to reach stability (from ThermalProfile)
+    /// Sessions taken to reach stability (from AdaptiveProfile)
     public let sessionsToStability: Int?
     /// Classification of how the session concluded
-    public let sessionOutcome: ThermalSessionOutcome
+    public let sessionOutcome: QualitySessionOutcome
     /// Final wallpaper FPS when stability was reached (nil if not stabilized)
     public let stableWallpaperFPS: Float?
     /// Final scale when stability was reached (nil if not stabilized)
@@ -141,7 +141,7 @@ public struct ThermalSessionSummary: Sendable, Equatable {
 
     public init(
         shaderId: String,
-        flushReason: ThermalFlushReason,
+        flushReason: QualityFlushReason,
         avgWallpaperFPS: Float,
         avgScale: Float,
         avgLOD: Float,
@@ -151,7 +151,7 @@ public struct ThermalSessionSummary: Sendable, Equatable {
         oscillationCount: Int,
         reachedStability: Bool,
         sessionsToStability: Int?,
-        sessionOutcome: ThermalSessionOutcome,
+        sessionOutcome: QualitySessionOutcome,
         stableWallpaperFPS: Float?,
         stableScale: Float?,
         stableLOD: Float?,
@@ -184,23 +184,23 @@ public struct ThermalSessionSummary: Sendable, Equatable {
     }
 }
 
-// MARK: - ThermalAnalytics Protocol
+// MARK: - QualityAnalytics Protocol
 
 /// Protocol for capturing thermal optimization events.
 ///
 /// Implementations aggregate adjustment events in memory and flush
 /// session summaries to analytics on session boundaries.
 @MainActor
-public protocol ThermalAnalytics: AnyObject {
+public protocol QualityAnalytics: AnyObject {
 
     /// Records an optimization tick event (aggregated in memory).
     ///
     /// Called frequently (every 5 seconds) but not sent to analytics directly.
-    func record(_ event: ThermalAdjustmentEvent)
+    func record(_ event: QualityAdjustmentEvent)
 
     /// Flushes aggregated metrics to analytics.
     ///
     /// Called on session boundaries (background, shader change, periodic).
-    func flush(reason: ThermalFlushReason)
+    func flush(reason: QualityFlushReason)
 }
 

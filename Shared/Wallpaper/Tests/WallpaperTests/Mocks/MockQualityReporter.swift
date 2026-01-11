@@ -3,11 +3,11 @@ import Foundation
 
 /// Mock reporter for testing that captures reported summaries.
 @MainActor
-final class MockThermalReporter: ThermalMetricsReporter {
+final class MockQualityReporter: QualityMetricsReporter {
 
-    var reportedSummaries: [ThermalSessionSummary] = []
+    var reportedSummaries: [QualitySessionSummary] = []
 
-    func report(_ summary: ThermalSessionSummary) {
+    func report(_ summary: QualitySessionSummary) {
         reportedSummaries.append(summary)
     }
 
