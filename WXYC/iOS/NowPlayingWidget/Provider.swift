@@ -67,7 +67,7 @@ final class Provider: TimelineProvider, Sendable {
                 .asyncMap { playcut in
                     NowPlayingItem(
                         playcut: playcut,
-                        artwork: try? await self.artworkService.fetchArtwork(for: playcut)
+                        artwork: try? await self.artworkService.fetchArtwork(for: playcut).toUIImage()
                     )
                 }
 
@@ -112,7 +112,7 @@ final class Provider: TimelineProvider, Sendable {
                 nowPlayingItemsWithArtwork = await playcuts.asyncMap { playcut in
                     NowPlayingItem(
                         playcut: playcut,
-                        artwork: try? await self.artworkService.fetchArtwork(for: playcut)
+                        artwork: try? await self.artworkService.fetchArtwork(for: playcut).toUIImage()
                     )
                 }
             }

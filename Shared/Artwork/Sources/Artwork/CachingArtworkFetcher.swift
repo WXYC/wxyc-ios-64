@@ -10,6 +10,8 @@ import Caching
 import Core
 import Logger
 import Playlist
+import ImageIO
+import UniformTypeIdentifiers
 
 // TODO: Remove this and replace with `CachingArtworkService`.
 extension CacheCoordinator: ArtworkService {
@@ -18,23 +20,87 @@ extension CacheCoordinator: ArtworkService {
     func fetchError(for cacheKeyId: String) async throws -> MultisourceArtworkService.Error {
         try await self.value(for: cacheKeyId)
     }
-    
-    public func fetchArtwork(for playcut: Playcut) async throws -> Image {
+
+    public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         let cachedData: Data = try self.data(for: playcut.artworkCacheKey)
-        guard let artwork = Image(compatibilityData: cachedData) else {
+        guard let cgImage = createCGImage(from: cachedData) else {
             throw Error.noCachedResult
         }
-        
-        return artwork
+
+        return cgImage
     }
-        
-    func set(artwork: Image, for id: String, lifespan: TimeInterval) async {
-        let scaledArtwork = artwork.scaledToWidth(ArtworkCacheConfiguration.targetWidth)
-        let artworkData = scaledArtwork.heifData(
-            compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality
-        ) ?? scaledArtwork.pngDataCompatibility
+
+    func set(artwork: CGImage, for id: String, lifespan: TimeInterval) async {
+        let scaledArtwork = scaleCGImage(artwork, toWidth: ArtworkCacheConfiguration.targetWidth)
+        let artworkData = encodeCGImageAsHEIF(scaledArtwork, compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality)
+            ?? encodeCGImageAsPNG(scaledArtwork)
         self.setData(artworkData, for: id, lifespan: lifespan)
     }
+}
+
+// MARK: - CGImage Scaling and Encoding
+
+private func scaleCGImage(_ image: CGImage, toWidth targetWidth: CGFloat) -> CGImage {
+    let currentWidth = CGFloat(image.width)
+    guard currentWidth > targetWidth else { return image }
+
+    let scale = targetWidth / currentWidth
+    let targetHeight = CGFloat(image.height) * scale
+    let targetSize = CGSize(width: targetWidth, height: targetHeight)
+
+    let colorSpace = image.colorSpace ?? CGColorSpaceCreateDeviceRGB()
+    guard let context = CGContext(
+        data: nil,
+        width: Int(targetSize.width),
+        height: Int(targetSize.height),
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else {
+        return image
+    }
+
+    context.interpolationQuality = .high
+    context.draw(image, in: CGRect(origin: .zero, size: targetSize))
+
+    return context.makeImage() ?? image
+}
+
+private func encodeCGImageAsHEIF(_ image: CGImage, compressionQuality: CGFloat) -> Data? {
+    let data = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(
+        data as CFMutableData,
+        UTType.heic.identifier as CFString,
+        1,
+        nil
+    ) else {
+        return nil
+    }
+
+    CGImageDestinationAddImage(destination, image, [
+        kCGImageDestinationLossyCompressionQuality: compressionQuality
+    ] as CFDictionary)
+
+    guard CGImageDestinationFinalize(destination) else { return nil }
+    return data as Data
+}
+
+private func encodeCGImageAsPNG(_ image: CGImage) -> Data? {
+    let data = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(
+        data as CFMutableData,
+        UTType.png.identifier as CFString,
+        1,
+        nil
+    ) else {
+        return nil
+    }
+
+    CGImageDestinationAddImage(destination, image, nil)
+
+    guard CGImageDestinationFinalize(destination) else { return nil }
+    return data as Data
 }
 
 // MARK: - PNG to HEIF Migration (DEBUG only)

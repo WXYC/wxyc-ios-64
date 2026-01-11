@@ -178,10 +178,10 @@ extension CPListItem: @unchecked @retroactive Sendable {
         self.init(text: playcut.artistName, detailText: playcut.songTitle)
         Task {
             let artworkService = MultisourceArtworkService()
-            let artwork = try await artworkService.fetchArtwork(for: playcut)
+            let cgImage = try await artworkService.fetchArtwork(for: playcut)
 
             Task { @MainActor in
-                self.setImage(artwork)
+                self.setImage(cgImage.toUIImage())
             }
         }
     }

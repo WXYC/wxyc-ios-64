@@ -1,32 +1,32 @@
 import Foundation
 import Core
+import CoreGraphics
 import Playlist
 
 final class iTunesArtworkService: ArtworkService {
     private let session: WebSession
     private let decoder = JSONDecoder()
-    
+
     init(session: WebSession = URLSession.shared) {
         self.session = session
     }
-    
-    func fetchArtwork(for playcut: Playcut) async throws -> Image {
+
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         let searchURL = makeSearchURL(for: playcut)
         let searchData = try await session.data(from: searchURL)
         let results = try decoder.decode(iTunes.SearchResults.self, from: searchData)
-        
+
         guard let result = results.results.first else {
             throw ServiceError.noResults
         }
-        
+
         let imageData = try await session.data(from: result.artworkUrl100)
-        let image = Image(data: imageData)
         
-        guard let image = image else {
+        guard let cgImage = createCGImage(from: imageData) else {
             throw ServiceError.noResults
         }
         
-        return image
+        return cgImage
     }
     
     private func makeSearchURL(for playcut: Playcut) -> URL {
