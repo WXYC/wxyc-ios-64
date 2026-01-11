@@ -9,6 +9,12 @@ import Core
 import MetalKit
 import simd
 
+#if os(iOS) || os(tvOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
+
 @MainActor
 public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Uniforms for stitchable shaders (resolution, time, displayScale).
@@ -131,8 +137,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private static weak var activeMainRenderer: MetalWallpaperRenderer?
 
     /// Captures a snapshot from the currently active main renderer.
-    /// - Returns: A Image snapshot, or nil if no main renderer is active.
-    public static func captureMainSnapshot() -> Image? {
+    /// - Returns: A Core.Image snapshot (UIImage/NSImage), or nil if no main renderer is active.
+    public static func captureMainSnapshot() -> Core.Image? {
         activeMainRenderer?.captureSnapshot()
     }
 
@@ -858,11 +864,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     // MARK: - Snapshot
 
-    /// Captures a snapshot of the current wallpaper as a Image.
-    /// Renders a single frame to an offscreen texture and converts it to Image.
+    /// Captures a snapshot of the current wallpaper as a Core.Image.
+    /// Renders a single frame to an offscreen texture and converts it to Core.Image.
     /// - Parameter size: The size of the snapshot (default 100x100 for color extraction).
-    /// - Returns: A Image of the rendered wallpaper, or nil if rendering fails.
-    public func captureSnapshot(size: CGSize = CGSize(width: 100, height: 100)) -> Image? {
+    /// - Returns: A Core.Image (UIImage/NSImage) of the rendered wallpaper, or nil if rendering fails.
+    public func captureSnapshot(size: CGSize = CGSize(width: 100, height: 100)) -> Core.Image? {
         guard let device, let queue, let pipeline else { return nil }
 
         // Create a texture descriptor for the snapshot
@@ -936,8 +942,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         return textureToImage(snapshotTexture)
     }
 
-    /// Converts an MTLTexture to a Image.
-    private func textureToImage(_ texture: MTLTexture) -> Image? {
+    /// Converts an MTLTexture to a Core.Image (UIImage/NSImage).
+    private func textureToImage(_ texture: MTLTexture) -> Core.Image? {
         let width = texture.width
         let height = texture.height
         let bytesPerPixel = 4
@@ -970,7 +976,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             return nil
         }
 
-        return Image(cgImage: cgImage)
+        #if os(iOS) || os(tvOS)
+        return UIImage(cgImage: cgImage)
+        #elseif os(macOS)
+        return NSImage(cgImage: cgImage, size: NSSize(width: width, height: height))
+        #endif
     }
 
     // MARK: - Noise Texture
