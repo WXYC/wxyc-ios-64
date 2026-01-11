@@ -23,7 +23,6 @@ public struct ThemeManifest: Codable, Sendable {
     // Theme properties
     public let foreground: ForegroundStyle
     public let accent: AccentColor
-    public let appIconName: String?
     public let buttonStyle: ButtonStyle?
 
     /// The blur radius for material backgrounds.
@@ -46,7 +45,7 @@ public struct ThemeManifest: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
-        case foreground, accent, appIconName, buttonStyle
+        case foreground, accent, buttonStyle
         case blurRadius, overlayOpacity, overlayIsDark
         case _lcdBrightnessOffset = "lcdBrightnessOffset"
     }
@@ -60,7 +59,6 @@ public struct ThemeManifest: Codable, Sendable {
         shaderArguments: [ShaderArgument] = [],
         foreground: ForegroundStyle,
         accent: AccentColor,
-        appIconName: String? = nil,
         buttonStyle: ButtonStyle = .colored,
         blurRadius: Double = 8.0,
         overlayOpacity: Double = 0.0,
@@ -75,7 +73,6 @@ public struct ThemeManifest: Codable, Sendable {
         self.shaderArguments = shaderArguments
         self.foreground = foreground
         self.accent = accent
-        self.appIconName = appIconName
         self.buttonStyle = buttonStyle
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
@@ -376,7 +373,6 @@ extension ThemeManifest {
                 hue: overrides.accentHue ?? accent.hue,
                 saturation: overrides.accentSaturation ?? accent.saturation
             ),
-            appIconName: appIconName,
             buttonStyle: buttonStyle ?? .colored,
             blurRadius: overrides.blurRadius ?? blurRadius,
             overlayOpacity: overrides.overlayOpacity ?? overlayOpacity,

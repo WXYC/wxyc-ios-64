@@ -30,7 +30,6 @@ struct ThemeManifestTests {
                 "shaderArguments": [],
                 "foreground": "light",
                 "accent": { "hue": 23, "saturation": 0.75 },
-                "appIconName": null,
                 "blurRadius": 12.0,
                 "overlayOpacity": 0.25,
                 "overlayIsDark": true
@@ -57,7 +56,6 @@ struct ThemeManifestTests {
                 "shaderArguments": [],
                 "foreground": "light",
                 "accent": { "hue": 23, "saturation": 0.75 },
-                "appIconName": null,
                 "blurRadius": 8.0,
                 "overlayOpacity": 0.0,
                 "overlayIsDark": false
@@ -183,7 +181,6 @@ struct ThemeManifestTests {
                 renderer: RendererConfiguration(type: .swiftUI),
                 foreground: .dark,
                 accent: AccentColor(hue: 30, saturation: 0.8),
-                appIconName: "TestIcon",
                 buttonStyle: .glass,
                 blurRadius: 8.0,
                 overlayOpacity: 0.15,
@@ -197,7 +194,6 @@ struct ThemeManifestTests {
             #expect(result.displayName == "Test Theme")
             #expect(result.version == "2.0.0")
             #expect(result.foreground == .dark)
-            #expect(result.appIconName == "TestIcon")
             #expect(result.buttonStyle == .glass)
         }
     }

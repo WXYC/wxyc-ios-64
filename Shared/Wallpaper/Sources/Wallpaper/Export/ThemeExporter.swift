@@ -156,7 +156,6 @@ public final class ThemeExporter {
             shaderArguments: manifest.shaderArguments,
             foreground: manifest.foreground,
             accent: manifest.accent,
-            appIconName: manifest.appIconName,
             buttonStyle: manifest.buttonStyle ?? .colored,
             blurRadius: manifest.blurRadius,
             overlayOpacity: manifest.overlayOpacity,
