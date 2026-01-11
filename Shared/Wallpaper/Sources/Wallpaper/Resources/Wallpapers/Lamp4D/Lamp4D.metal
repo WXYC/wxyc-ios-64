@@ -101,23 +101,31 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time, 
     float2 p = position / iResolution;
     float2 uv = p * float2(iResolution.x / iResolution.y, 0.8f);
 
-    // Precompute all trig and log values
-    float logTime = fast::log(time + 3.0f);
-    float logTimePlus1 = fast::log(time + 1.0f);
+    // Single-octave noise adds continuous variation to prevent log-based
+    // calculations from stagnating at large time values (where d/dt log(t) → 0)
+    float timeVariation = simplexNoise(float2(time * 0.05f, 0.0f)) * 5.0f;
+    float variedTime = time + timeVariation;
+
+    // Precompute all trig and log values (using variedTime for logs)
+    float logTime = fast::log(variedTime + 3.0f);
+    float logTimePlus1 = fast::log(variedTime + 1.0f);
 
     // Precompute noise offset (moved out of loop)
 #ifdef ENABLE_NOISE_OFFSET_ROTATION
-    float offsetAngle = time / 9999.0f;
+    // Increased rotation speed and use variedTime for continuous motion
+    float offsetAngle = variedTime / 99.0f;
     float offsetS = fast::sin(offsetAngle);
     float offsetC = fast::cos(offsetAngle);
-    float2 baseOffset = float2(logTime, logTime / 999.0f);
+    float2 baseOffset = float2(logTime, logTimePlus1 * 0.1f);
     float2 noiseOffset = rotate(baseOffset, offsetS, offsetC);
 #else
-    float2 noiseOffset = float2(logTime, logTime / 999.0f);
+    float2 noiseOffset = float2(logTime, logTimePlus1 * 0.1f);
 #endif
 
 #ifdef ENABLE_UV_ROTATION
-    float uvAngle = fast::log(time) / -7.0f;
+    // Use variedTime to maintain animation even at large time values
+    // The log provides slow aesthetic rotation, linear term prevents stagnation
+    float uvAngle = (fast::log(variedTime + 1.0f) + variedTime * 0.01f) / -7.0f;
     float uvS = fast::sin(uvAngle);
     float uvC = fast::cos(uvAngle);
     uv = rotate(uv, uvS, uvC);
