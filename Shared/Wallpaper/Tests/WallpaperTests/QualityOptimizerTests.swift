@@ -99,4 +99,26 @@ struct QualityOptimizerTests {
         #expect(coolingScaleChange < heatingScaleChange)
         #expect(coolingLODChange < heatingLODChange)
     }
+
+    @Test("Fair thermal state produces meaningful throttling from max quality")
+    func fairThermalProducesMeaningfulThrottling() {
+        // Start at max quality
+        let profile = AdaptiveProfile(shaderId: "test", wallpaperFPS: 60, scale: 1.0, lod: 1.0)
+
+        // Fair thermal state momentum (~0.33)
+        let result = optimizer.optimize(current: profile, momentum: 0.33)
+
+        // At fair thermal, we should see meaningful reductions
+        // LOD should drop by at least 0.01 per tick
+        let lodReduction = profile.lod - result.lod
+        #expect(lodReduction >= 0.01, "LOD reduction \(lodReduction) should be at least 0.01")
+
+        // Scale should drop by at least 0.005 per tick
+        let scaleReduction = profile.scale - result.scale
+        #expect(scaleReduction >= 0.005, "Scale reduction \(scaleReduction) should be at least 0.005")
+
+        // FPS should drop by at least 0.2 per tick
+        let fpsReduction = profile.wallpaperFPS - result.wallpaperFPS
+        #expect(fpsReduction >= 0.2, "FPS reduction \(fpsReduction) should be at least 0.2")
+    }
 }
