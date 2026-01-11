@@ -18,6 +18,66 @@ public struct SystemThermalClock: ThermalClock, Sendable {
     }
 }
 
+// MARK: - Throttling Mode
+
+/// Throttling algorithm mode.
+///
+/// Controls how aggressively the thermal controller responds to thermal pressure.
+public enum ThrottlingMode: String, Sendable, CaseIterable {
+    /// Normal throttling mode.
+    ///
+    /// Balanced response to thermal pressure with gradual quality recovery.
+    /// Suitable for most usage scenarios.
+    case normal
+
+    /// Low power throttling mode.
+    ///
+    /// More aggressive throttling that responds faster to thermal pressure
+    /// and recovers quality more slowly. Useful for extending battery life
+    /// or when the device is already warm.
+    case lowPower
+
+    /// Momentum multiplier applied to thermal signals.
+    ///
+    /// Higher values cause faster throttling response.
+    var momentumMultiplier: Float {
+        switch self {
+        case .normal: 1.0
+        case .lowPower: 1.5
+        }
+    }
+
+    /// Quality recovery step multiplier.
+    ///
+    /// Lower values cause slower quality recovery when thermal is stable.
+    var recoveryMultiplier: Float {
+        switch self {
+        case .normal: 1.0
+        case .lowPower: 0.5
+        }
+    }
+
+    /// Scale threshold for enabling interpolation.
+    ///
+    /// Lower values enable interpolation earlier (more aggressive power saving).
+    var interpolationScaleThreshold: Float {
+        switch self {
+        case .normal: 0.85
+        case .lowPower: 0.95
+        }
+    }
+
+    /// Momentum dead zone threshold.
+    ///
+    /// Lower values require more stability before quality recovery begins.
+    var deadZoneThreshold: Float {
+        switch self {
+        case .normal: ThermalSignal.deadZone
+        case .lowPower: ThermalSignal.deadZone * 0.5
+        }
+    }
+}
+
 /// Adaptive thermal throttling controller with continuous wallpaper FPS × Scale optimization.
 ///
 /// Replaces the discrete 4-level `ThermalThrottleController` with continuous
@@ -77,9 +137,23 @@ public final class AdaptiveThermalController {
     /// Active shader ID.
     public private(set) var activeShaderID: String?
 
+    /// Whether the device is in Low Power Mode.
+    ///
+    /// When true, throttling values are forced to aggressive settings regardless
+    /// of thermal state or learned profile.
+    public var isLowPowerMode: Bool {
+        context.isLowPowerMode
+    }
+
     /// Counter incremented each time the profile is reset.
     /// Renderers can observe this to reset their frame rate monitors.
     public private(set) var profileResetCount: Int = 0
+
+    /// Current throttling mode.
+    ///
+    /// Controls how aggressively the controller responds to thermal pressure.
+    /// Can be changed at runtime.
+    public var mode: ThrottlingMode = .normal
 
     // MARK: - Debug Overrides
 
@@ -169,6 +243,10 @@ public final class AdaptiveThermalController {
     private var contextObservationTask: Task<Void, Never>?
     private var backgroundedAt: TimeInterval?
 
+    /// FPS-based momentum boost (decays over time).
+    /// Applied when measured FPS is significantly below target.
+    private var fpsMomentumBoost: Float = 0
+
     /// Timestamp of last profile reset (for grace period).
     private var lastProfileResetTime: TimeInterval?
 
@@ -201,6 +279,7 @@ public final class AdaptiveThermalController {
     ///   - analytics: Analytics for session tracking (optional).
     ///   - context: Thermal context for system state observation.
     ///   - clock: Clock for time-based calculations (default: system clock).
+    ///   - mode: Throttling mode controlling response aggressiveness (default: normal).
     ///   - optimizationInterval: How often to run optimization (default 5 seconds).
     ///   - periodicFlushInterval: How often to flush analytics (default 5 minutes).
     ///   - backgroundThreshold: Time after which to apply cooldown bonus (default 5 minutes).
@@ -210,6 +289,7 @@ public final class AdaptiveThermalController {
         analytics: ThermalAnalytics? = nil,
         context: ThermalContextProtocol = ThermalContext.shared,
         clock: ThermalClock = SystemThermalClock(),
+        mode: ThrottlingMode = .normal,
         optimizationInterval: Duration = .seconds(5),
         periodicFlushInterval: Duration = .seconds(300),
         backgroundThreshold: TimeInterval = 300
@@ -219,6 +299,7 @@ public final class AdaptiveThermalController {
         self.analytics = analytics
         self.context = context
         self.clock = clock
+        self.mode = mode
         self.optimizationInterval = optimizationInterval
         self.periodicFlushInterval = periodicFlushInterval
         self.backgroundThreshold = backgroundThreshold
@@ -379,12 +460,38 @@ public final class AdaptiveThermalController {
         // Reset thermal signal
         signal.reset()
         currentMomentum = 0
+        fpsMomentumBoost = 0
 
         // Start grace period for gradual learning
         lastProfileResetTime = clock.now
 
         // Notify observers (renderers) to reset their frame rate monitors
         profileResetCount += 1
+    }
+
+    // MARK: - FPS-Based Throttling
+
+    /// Tolerance for FPS measurements before triggering throttling.
+    /// FPS within this range of target is considered "on target" (accounts for vsync variance).
+    private static let fpsTolerance: Float = 3.0
+
+    /// Reports the measured FPS from the renderer.
+    ///
+    /// Boosts momentum when FPS is significantly below target, causing the optimizer
+    /// to reduce quality. This provides reactive throttling when the GPU can't keep up,
+    /// complementing the proactive thermal-based throttling.
+    ///
+    /// - Parameter fps: The measured average FPS.
+    public func reportMeasuredFPS(_ fps: Float) {
+        let targetFPS = currentWallpaperFPS
+        let deficit = targetFPS - fps
+
+        // Only apply FPS boost if deficit exceeds tolerance (ignore vsync variance)
+        guard deficit > Self.fpsTolerance else { return }
+
+        let normalizedDeficit = min((deficit - Self.fpsTolerance) / targetFPS, 1.0)
+        // FPS boost is secondary to thermal - use a gentler multiplier
+        fpsMomentumBoost = max(fpsMomentumBoost, normalizedDeficit * 0.5)
     }
 
     // MARK: - Optimization Loop
@@ -431,24 +538,35 @@ public final class AdaptiveThermalController {
         let state = context.thermalState
         rawThermalState = state
         signal.record(state)
-        currentMomentum = signal.momentum
+
+        // Combine thermal momentum with FPS-based boost, scaled by mode
+        let baseMomentum = signal.momentum * mode.momentumMultiplier
+        let effectiveMomentum = min(baseMomentum + fpsMomentumBoost, 1.0)
+        // Decay FPS boost over time (so it doesn't persist indefinitely)
+        fpsMomentumBoost *= 0.8
+        currentMomentum = effectiveMomentum
 
         guard var profile = currentProfile else { return }
 
-        // Optimize using thermal momentum
-        var (newWallpaperFPS, newScale, newLOD) = optimizer.optimize(current: profile, momentum: signal.momentum)
+        // Optimize using effective momentum (3-axis: LOD, Scale, FPS)
+        var (newWallpaperFPS, newScale, newLOD) = optimizer.optimize(
+            current: profile,
+            momentum: effectiveMomentum
+        )
 
         // Apply gradual quality recovery when thermal is stable
         // This allows the profile to drift back toward max quality over time
-        if signal.momentum < ThermalSignal.deadZone {
-            newWallpaperFPS = min(newWallpaperFPS + Self.qualityRecoveryStep * 5, ThermalProfile.wallpaperFPSRange.upperBound)
-            newScale = min(newScale + Self.qualityRecoveryStep, ThermalProfile.scaleRange.upperBound)
-            newLOD = min(newLOD + Self.qualityRecoveryStep * 2, ThermalProfile.lodRange.upperBound)
+        // Mode controls how quickly recovery happens (low power mode recovers more slowly)
+        if effectiveMomentum < mode.deadZoneThreshold {
+            let recoveryStep = Self.qualityRecoveryStep * mode.recoveryMultiplier
+            newWallpaperFPS = min(newWallpaperFPS + recoveryStep * 5, ThermalProfile.wallpaperFPSRange.upperBound)
+            newScale = min(newScale + recoveryStep, ThermalProfile.scaleRange.upperBound)
+            newLOD = min(newLOD + recoveryStep * 2, ThermalProfile.lodRange.upperBound)
         }
 
         // Update profile
         profile.update(wallpaperFPS: newWallpaperFPS, scale: newScale, lod: newLOD)
-        profile.thermalMomentum = signal.momentum
+        profile.thermalMomentum = effectiveMomentum
         currentProfile = profile
 
         // Update published values
@@ -457,7 +575,7 @@ public final class AdaptiveThermalController {
         currentLOD = newLOD
 
         // Update interpolation state based on current throttling tier
-        updateInterpolationState(scale: newScale, displayFPS: newWallpaperFPS, momentum: signal.momentum)
+        updateInterpolationState(scale: newScale, displayFPS: newWallpaperFPS, momentum: effectiveMomentum)
 
         // Record analytics event
         if let shaderID = activeShaderID {
@@ -467,7 +585,7 @@ public final class AdaptiveThermalController {
                 scale: newScale,
                 lod: newLOD,
                 thermalState: state,
-                momentum: signal.momentum,
+                momentum: effectiveMomentum,
                 interpolationEnabled: interpolationEnabled,
                 shaderFPS: shaderFPS
             )
@@ -491,10 +609,12 @@ public final class AdaptiveThermalController {
     ///
     /// This allows us to maintain smooth 60fps display while only executing the shader
     /// at a lower rate (e.g., 30fps), reducing GPU workload by ~50%.
+    ///
+    /// The scale threshold is mode-dependent: low power mode enables interpolation earlier.
     private func updateInterpolationState(scale: Float, displayFPS: Float, momentum: Float) {
-        // Thresholds for interpolation activation
-        let scaleThreshold: Float = 0.85  // Enable when scale drops below this
-        let fpsThreshold: Float = 50.0    // Only interpolate when display FPS is still high
+        // Thresholds for interpolation activation (mode-dependent)
+        let scaleThreshold = mode.interpolationScaleThreshold
+        let fpsThreshold: Float = 50.0  // Only interpolate when display FPS is still high
 
         // Enable interpolation when we've started throttling scale but FPS is still high
         // This is the "middle tier" of throttling
