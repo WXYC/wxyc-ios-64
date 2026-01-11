@@ -57,6 +57,14 @@ private struct ThemeDebugPopoverContent: View {
     @AppStorage("ThemeDebug.isShaderFeaturesExpanded") private var isShaderFeaturesExpanded = false
     @AppStorage("ThemeDebug.isPerformanceExpanded") private var isPerformanceExpanded = false
 
+    @State private var isExporting = false
+    @State private var exportError: Error?
+    @State private var showingExportError = false
+    #if canImport(UIKit) && !os(tvOS)
+    @State private var exportedFileURL: URL?
+    @State private var showingShareSheet = false
+    #endif
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -149,12 +157,64 @@ private struct ThemeDebugPopoverContent: View {
                     configuration.reset()
                 }
                 .foregroundStyle(.red)
+
+                #if canImport(UIKit) && !os(tvOS)
+                Divider()
+
+                // Export button
+                Button {
+                    Task {
+                        await exportAllThemes()
+                    }
+                } label: {
+                    HStack {
+                        if isExporting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                        Text("Export All Themes")
+                    }
+                }
+                .disabled(isExporting)
+                #endif
             }
             .padding()
         }
         .frame(minWidth: 300, minHeight: 200)
         .presentationCompactAdaptation(.popover)
+        #if canImport(UIKit) && !os(tvOS)
+        .sheet(isPresented: $showingShareSheet) {
+            if let url = exportedFileURL {
+                ShareSheet(items: [url])
+            }
+        }
+        #endif
+        .alert("Export Failed", isPresented: $showingExportError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError?.localizedDescription ?? "Unknown error")
+        }
     }
+
+    #if canImport(UIKit) && !os(tvOS)
+    private func exportAllThemes() async {
+        isExporting = true
+        defer { isExporting = false }
+
+        let exporter = ThemeExporter(configuration: configuration)
+
+        do {
+            let zipURL = try await exporter.exportAllThemes()
+            exportedFileURL = zipURL
+            showingShareSheet = true
+        } catch {
+            exportError = error
+            showingExportError = true
+        }
+    }
+    #endif
 }
 
 /// Controls for adjusting the theme's accent color hue and saturation.

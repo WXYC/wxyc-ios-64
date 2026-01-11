@@ -419,6 +419,48 @@ public final class ThemeConfiguration {
         return Self.defaultLCDMaxBrightness
     }
 
+    // MARK: - Bulk Override Access
+
+    /// Returns all overrides for a given theme as a ThemeOverrides struct.
+    /// Used for export and bulk operations.
+    public func overrides(for themeID: String) -> ThemeOverrides {
+        if themeID == selectedThemeID {
+            // Use in-memory values for selected theme
+            return ThemeOverrides(
+                accentHue: accentHueOverride,
+                accentSaturation: accentSaturationOverride,
+                overlayOpacity: overlayOpacityOverride,
+                blurRadius: blurRadiusOverride,
+                overlayIsDark: overlayIsDarkOverride,
+                lcdBrightnessOffset: lcdBrightnessOffsetOverride,
+                lcdMinBrightness: lcdMinBrightness != Self.defaultLCDMinBrightness ? lcdMinBrightness : nil,
+                lcdMaxBrightness: lcdMaxBrightness != Self.defaultLCDMaxBrightness ? lcdMaxBrightness : nil
+            )
+        }
+
+        // Load from UserDefaults for non-selected themes
+        return ThemeOverrides(
+            accentHue: loadOptionalDouble(accentHueOverrideKey(for: themeID)),
+            accentSaturation: loadOptionalDouble(accentSaturationOverrideKey(for: themeID)),
+            overlayOpacity: loadOptionalDouble(overlayOpacityOverrideKey(for: themeID)),
+            blurRadius: loadOptionalDouble(blurRadiusOverrideKey(for: themeID)),
+            overlayIsDark: loadOptionalBool(overlayIsDarkOverrideKey(for: themeID)),
+            lcdBrightnessOffset: loadOptionalDouble(lcdBrightnessOffsetOverrideKey(for: themeID)),
+            lcdMinBrightness: loadOptionalDouble(lcdMinBrightnessKey(for: themeID)),
+            lcdMaxBrightness: loadOptionalDouble(lcdMaxBrightnessKey(for: themeID))
+        )
+    }
+
+    private func loadOptionalDouble(_ key: String) -> Double? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return defaults.double(forKey: key)
+    }
+
+    private func loadOptionalBool(_ key: String) -> Bool? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return defaults.bool(forKey: key)
+    }
+
     // MARK: - Per-Theme Override Loading
 
     /// Loads overrides for a specific theme from UserDefaults.

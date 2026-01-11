@@ -357,3 +357,31 @@ public enum ParameterValue: Codable, Sendable {
         return nil
     }
 }
+
+// MARK: - Override Application
+
+extension ThemeManifest {
+    /// Creates a new manifest with the provided overrides applied.
+    /// Override values take precedence over the manifest's original values.
+    public func applying(_ overrides: ThemeOverrides) -> ThemeManifest {
+        ThemeManifest(
+            id: id,
+            displayName: displayName,
+            version: version,
+            renderer: renderer,
+            parameters: parameters,
+            shaderArguments: shaderArguments,
+            foreground: foreground,
+            accent: AccentColor(
+                hue: overrides.accentHue ?? accent.hue,
+                saturation: overrides.accentSaturation ?? accent.saturation
+            ),
+            appIconName: appIconName,
+            buttonStyle: buttonStyle ?? .colored,
+            blurRadius: overrides.blurRadius ?? blurRadius,
+            overlayOpacity: overrides.overlayOpacity ?? overlayOpacity,
+            overlayIsDark: overrides.overlayIsDark ?? overlayIsDark,
+            lcdBrightnessOffset: overrides.lcdBrightnessOffset ?? lcdBrightnessOffset
+        )
+    }
+}

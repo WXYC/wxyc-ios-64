@@ -530,4 +530,106 @@ struct ThemeConfigurationTests {
             #expect(mapped == expectedID || mapped == "wxyc_gradient")
         }
     }
+
+    // MARK: - Bulk Overrides Tests
+
+    @Suite("Bulk Overrides")
+    @MainActor
+    struct BulkOverridesTests {
+
+        private func makeTestDefaults() -> UserDefaults {
+            let suiteName = "ThemeConfigurationTests.\(UUID().uuidString)"
+            return UserDefaults(suiteName: suiteName)!
+        }
+
+        @Test("overrides(for:) returns in-memory values for selected theme")
+        func overridesReturnsInMemoryForSelectedTheme() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+            config.accentHueOverride = 180
+            config.accentSaturationOverride = 0.5
+            config.overlayOpacityOverride = 0.3
+            config.blurRadiusOverride = 12.0
+
+            let overrides = config.overrides(for: config.selectedThemeID)
+
+            #expect(overrides.accentHue == 180)
+            #expect(overrides.accentSaturation == 0.5)
+            #expect(overrides.overlayOpacity == 0.3)
+            #expect(overrides.blurRadius == 12.0)
+        }
+
+        @Test("overrides(for:) returns stored values for non-selected theme")
+        func overridesReturnsStoredForNonSelectedTheme() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            // Set overrides for wxyc_gradient
+            config.accentHueOverride = 120
+            config.overlayOpacityOverride = 0.4
+
+            // Switch to test_dark
+            config.selectedThemeID = "test_dark"
+
+            // Query overrides for wxyc_gradient (not selected)
+            let overrides = config.overrides(for: "wxyc_gradient")
+
+            #expect(overrides.accentHue == 120)
+            #expect(overrides.overlayOpacity == 0.4)
+        }
+
+        @Test("overrides(for:) returns nil for properties not set")
+        func overridesReturnsNilForUnsetProperties() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+            config.accentHueOverride = 180 // Only set hue
+
+            let overrides = config.overrides(for: config.selectedThemeID)
+
+            #expect(overrides.accentHue == 180)
+            #expect(overrides.accentSaturation == nil)
+            #expect(overrides.overlayOpacity == nil)
+            #expect(overrides.blurRadius == nil)
+            #expect(overrides.overlayIsDark == nil)
+        }
+
+        @Test("overrides(for:) includes LCD brightness only when changed from default")
+        func overridesIncludesLCDBrightnessWhenChanged() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            // Default values - should return nil
+            var overrides = config.overrides(for: config.selectedThemeID)
+            #expect(overrides.lcdMinBrightness == nil)
+            #expect(overrides.lcdMaxBrightness == nil)
+
+            // Change from default - should return values
+            config.lcdMinBrightness = 0.75
+            config.lcdMaxBrightness = 1.1
+
+            overrides = config.overrides(for: config.selectedThemeID)
+            #expect(overrides.lcdMinBrightness == 0.75)
+            #expect(overrides.lcdMaxBrightness == 1.1)
+        }
+
+        @Test("overrides(for:) isEmpty when no overrides set")
+        func overridesIsEmptyWhenNothingSet() {
+            let registry = MockThemeRegistry.withTestThemes()
+            let defaults = makeTestDefaults()
+
+            let config = ThemeConfiguration(registry: registry, defaults: defaults)
+
+            let overrides = config.overrides(for: config.selectedThemeID)
+
+            #expect(overrides.isEmpty)
+        }
+    }
 }
