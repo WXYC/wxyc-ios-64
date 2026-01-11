@@ -13,7 +13,7 @@ public struct WXYCLogo: View {
     public init() {}
     
     public var body: some View {
-        WXYCMeshAnimation()
+        AnimatedMeshGradient()
             .opacity(colorScheme == .light ? 0.25 : 0.40)
             .clipShape(WXYCLogoShape())
             .glassEffectClearTintedInteractiveIfAvailable(

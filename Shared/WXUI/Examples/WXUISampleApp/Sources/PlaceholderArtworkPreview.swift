@@ -11,7 +11,7 @@ struct PlaceholderArtworkPreview: View {
         PlaceholderArtworkView(
             cornerRadius: 12,
             shadowYOffset: 2,
-            meshGradient: WXYCMeshAnimation().meshGradient
+            meshGradient: AnimatedMeshGradient()
         )
         .background(WXYCBackground())
     }

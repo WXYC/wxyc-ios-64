@@ -112,7 +112,7 @@ struct PlaylistView: View {
                         }
                         .foregroundStyle(.white)
                         .fontWeight(.black)
-                        .foregroundStyle(WXYCMeshAnimation())
+                        .foregroundStyle(AnimatedMeshGradient())
                         .padding(.top, 20)
                         .safeAreaPadding(.bottom)
                     }
