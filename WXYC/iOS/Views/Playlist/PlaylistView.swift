@@ -114,6 +114,7 @@ struct PlaylistView: View {
                         .fontWeight(.black)
                         .foregroundStyle(AnimatedMeshGradient())
                         .padding(.top, 20)
+                        .padding(.bottom, 20)
                         .safeAreaPadding(.bottom)
                     }
                 }
