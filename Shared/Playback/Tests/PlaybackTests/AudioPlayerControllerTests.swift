@@ -9,15 +9,15 @@
 //  PlaybackTests/Behavior/ that test both RadioPlayerController and AudioPlayerController.
 //
 //  This file contains only AudioPlayerController-specific tests:
-//  - PlayerType switching
 //  - Audio session category configuration
 //  - Remote command center configuration
 //
-    
+
 import Testing
 import AVFoundation
 @testable import Playback
 @testable import PlaybackCore
+@testable import RadioPlayerModule
 
 @Suite("AudioPlayerController Tests")
 @MainActor
@@ -25,36 +25,16 @@ struct AudioPlayerControllerTests {
     
     #if os(iOS) || os(tvOS)
 
-    // MARK: - PlayerType Tests
-
-    @Test("Controller can change playerType")
-    func controllerCanChangePlayerType() {
-        let mockSession = MockAudioSession()
-        let mockCommandCenter = MockRemoteCommandCenter()
-
-        let controller = AudioPlayerController(
-            audioSession: mockSession,
-            remoteCommandCenter: mockCommandCenter,
-            notificationCenter: .default,
-            analytics: MockPlaybackAnalytics()
-        )
-
-        // Default is avAudioStreamer
-        #expect(controller.playerType == .avAudioStreamer)
-
-        // Change to radioPlayer
-        controller.playerType = .radioPlayer
-        #expect(controller.playerType == .radioPlayer)
-    }
-
     // MARK: - Audio Session Tests
 
     @Test("Audio session is configured on init")
     func audioSessionConfiguredOnInit() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockPlayer()
 
         _ = AudioPlayerController(
+            player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: .default,
@@ -72,8 +52,10 @@ struct AudioPlayerControllerTests {
     func remoteCommandsConfigured() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockPlayer()
 
         _ = AudioPlayerController(
+            player: mockPlayer,
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: .default,
@@ -94,7 +76,9 @@ struct AudioPlayerControllerTests {
 
     @Test("Controller initializes correctly on macOS")
     func controllerInitializesMacOS() {
+        let mockPlayer = MockPlayer()
         let controller = AudioPlayerController(
+            player: mockPlayer,
             notificationCenter: .default,
             analytics: MockPlaybackAnalytics()
         )
@@ -105,4 +89,43 @@ struct AudioPlayerControllerTests {
     }
 
     #endif
+}
+
+// MARK: - Mock Player for Tests
+
+/// Simple mock player that satisfies AudioPlayerProtocol for controller tests
+final class MockPlayer: AudioPlayerProtocol, @unchecked Sendable {
+    var state: PlayerState = .idle
+    var isPlaying: Bool = false
+
+    var stateStream: AsyncStream<PlayerState> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    var eventStream: AsyncStream<AudioPlayerInternalEvent> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    func play() {
+        isPlaying = true
+        state = .playing
+    }
+
+    func stop() {
+        isPlaying = false
+        state = .idle
+    }
+
+    func installRenderTap() {}
+    func removeRenderTap() {}
 }

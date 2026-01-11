@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import AVFoundation
 @testable import Playback
 @testable import PlaybackCore
 import Core
@@ -118,9 +119,11 @@ struct ObservationIntegrationTests {
     func noStateChangeNoNotification() async throws {
         var changeCount = 0
 
-        // Create a fresh controller to isolate from other tests
+        // Create a fresh controller with a mock player to avoid live stream connections
+        let mockPlayer = ObservationTestMockPlayer()
         #if os(iOS) || os(tvOS)
         let controller = AudioPlayerController(
+            player: mockPlayer,
             audioSession: MockAudioSession(),
             remoteCommandCenter: MockRemoteCommandCenter(),
             notificationCenter: NotificationCenter(),
@@ -128,6 +131,7 @@ struct ObservationIntegrationTests {
         )
         #else
         let controller = AudioPlayerController(
+            player: mockPlayer,
             notificationCenter: NotificationCenter(),
             analytics: MockPlaybackAnalytics()
         )
@@ -188,4 +192,43 @@ struct ObservationIntegrationTests {
         // Count should not increase (allow +1 for race condition)
         #expect(changeCount <= countBeforeCancel + 1, "Changes should stop after cancellation")
     }
+}
+
+// MARK: - Mock Player for Observation Tests
+
+/// Mock player that doesn't connect to any real stream
+final class ObservationTestMockPlayer: AudioPlayerProtocol, @unchecked Sendable {
+    var state: PlayerState = .idle
+    var isPlaying: Bool = false
+
+    var stateStream: AsyncStream<PlayerState> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    var eventStream: AsyncStream<AudioPlayerInternalEvent> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    func play() {
+        isPlaying = true
+        state = .playing
+    }
+
+    func stop() {
+        isPlaying = false
+        state = .idle
+    }
+
+    func installRenderTap() {}
+    func removeRenderTap() {}
 }
