@@ -108,6 +108,13 @@
         "identifier" : "PlaybackTests",
         "name" : "PlaybackTests"
       }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Wallpaper",
+        "identifier" : "WallpaperTests",
+        "name" : "WallpaperTests"
+      }
     }
   ],
   "version" : 1
