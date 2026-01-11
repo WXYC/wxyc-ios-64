@@ -5,6 +5,7 @@
 //  Floating button overlay that presents theme debug controls in a popover.
 //
 
+import ColorPalette
 import SwiftUI
 
 #if DEBUG
@@ -221,6 +222,7 @@ private struct ThemeDebugPopoverContent: View {
 private struct AccentColorControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme
+    @State private var generatedModeLabel: String?
 
     private var hueBinding: Binding<Double> {
         Binding(
@@ -266,6 +268,27 @@ private struct AccentColorControls: View {
                 Slider(value: brightnessBinding, in: 0.5...1.5)
             }
 
+            Divider()
+
+            // Generate accent color from wallpaper snapshot
+            Button {
+                generateAccentFromWallpaper()
+            } label: {
+                HStack {
+                    Image(systemName: "wand.and.stars")
+                    Text("Generate from Wallpaper")
+                }
+            }
+            .font(.caption)
+
+            if let modeLabel = generatedModeLabel {
+                Text("Generated using \(modeLabel) palette")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
             let hasOverrides =
                 configuration.accentHueOverride != nil ||
                 configuration.accentSaturationOverride != nil ||
@@ -276,10 +299,39 @@ private struct AccentColorControls: View {
                     configuration.accentHueOverride = nil
                     configuration.accentSaturationOverride = nil
                     configuration.accentBrightnessOverride = nil
+                    generatedModeLabel = nil
                 }
                 .font(.caption)
             }
         }
+    }
+
+    private func generateAccentFromWallpaper() {
+        // Capture snapshot from the active wallpaper renderer
+        guard let snapshot = MetalWallpaperRenderer.captureMainSnapshot() else { return }
+
+        // Extract dominant color
+        let extractor = DominantColorExtractor()
+        guard let dominantColor = extractor.extractDominantColor(from: snapshot) else { return }
+
+        // Pick a random palette mode
+        let allModes = PaletteMode.allCases
+        guard let randomMode = allModes.randomElement() else { return }
+
+        // Generate palette
+        let generator = PaletteGenerator()
+        let palette = generator.generatePalette(from: dominantColor, mode: randomMode)
+
+        // Pick a random color from the palette
+        guard let selectedColor = palette.colors.randomElement() else { return }
+
+        // Apply to accent color overrides
+        configuration.accentHueOverride = selectedColor.hue
+        configuration.accentSaturationOverride = selectedColor.saturation
+        configuration.accentBrightnessOverride = selectedColor.brightness
+
+        // Update label to show which mode was used
+        generatedModeLabel = randomMode.rawValue
     }
 }
 
