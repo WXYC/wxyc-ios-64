@@ -2,99 +2,93 @@
 //  AudioPlayerController.swift
 //  StreamingAudioPlayer
 //
-//  High-level audio player controller that handles system integration
+//  High-level audio player controller that handles system integration.
+//  Works with any AudioPlayerProtocol implementation (AVAudioStreamer, RadioPlayer, etc.)
 //
 
-import AVAudioStreamerModule
 import AVFoundation
-import Caching
 import Core
 import Foundation
 import MediaPlayer
 import PlaybackCore
-import RadioPlayerModule
+#if canImport(Intents)
+import Intents
+#endif
 #if os(iOS)
 import UIKit
 #endif
 
-
-// AudioPlayerController is not available on watchOS.
-// Use RadioPlayerController from the Core module on watchOS instead.
+// Platform-specific imports for default player
 #if !os(watchOS)
+import AVAudioStreamerModule
+#endif
+import RadioPlayerModule
 
-/// High-level controller for audio playback
-/// Handles audio session, remote commands, and system notifications
+/// High-level controller for audio playback.
+/// Handles audio session, remote commands, notifications, analytics, and system integration.
+/// Works with any AudioPlayerProtocol implementation.
 @MainActor
 @Observable
 public final class AudioPlayerController {
-    
+
     // MARK: - Singleton
-    
+
     #if os(iOS) || os(tvOS)
-    /// Shared singleton instance for app-wide usage (iOS/tvOS)
+    /// Shared singleton instance for iOS/tvOS using AVAudioStreamer
     public static let shared = AudioPlayerController(
+        player: AVAudioStreamer(
+            configuration: AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
+        ),
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
         analytics: PostHogPlaybackAnalytics.shared
     )
-    #else
-    /// Shared singleton instance for app-wide usage (macOS)
+    #elseif os(watchOS)
+    /// Shared singleton instance for watchOS using RadioPlayer
     public static let shared = AudioPlayerController(
+        player: RadioPlayer(),
+        notificationCenter: .default,
+        analytics: PostHogPlaybackAnalytics.shared
+    )
+    #else
+    /// Shared singleton instance for macOS using AVAudioStreamer
+    public static let shared = AudioPlayerController(
+        player: AVAudioStreamer(
+            configuration: AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
+        ),
         notificationCenter: .default,
         analytics: PostHogPlaybackAnalytics.shared
     )
     #endif
     
-    // MARK: - Player Factory
-    
-    /// Creates an audio player instance based on the controller type
-    private static func createPlayer(for type: PlayerControllerType) -> AudioPlayerProtocol {
-        switch type {
-        case .radioPlayer:
-            // RadioPlayer conforms to AudioPlayerProtocol directly
-            return RadioPlayer()
-
-        case .avAudioStreamer:
-            // AVAudioStreamer conforms to AudioPlayerProtocol directly
-            let config = AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
-            return AVAudioStreamer(configuration: config)
-        }
-    }
-    
     // MARK: - Public Properties
-    
-    public var playerType: PlayerControllerType = .avAudioStreamer {
-        didSet {
-            replacePlayer(Self.createPlayer(for: playerType))
-        }
-    }
     
     /// Whether audio is currently playing
     public var isPlaying: Bool {
         player.isPlaying
     }
-    
+
     /// Whether playback is loading (play initiated but not yet playing, or buffering)
     /// Excludes error and stopped states to prevent infinite loading
     public var isLoading: Bool {
         playbackIntended && (!isPlaying || player.state == .loading) && !player.state.isError
     }
-
+    
     // MARK: - Dependencies
     // These are nonisolated(unsafe) to allow cleanup in deinit
-    
+
     @ObservationIgnored private nonisolated(unsafe) var player: AudioPlayerProtocol
     @ObservationIgnored private nonisolated(unsafe) var notificationCenter: NotificationCenter
     @ObservationIgnored private nonisolated(unsafe) var analytics: PlaybackAnalytics
-    
+
     #if os(iOS) || os(tvOS)
     @ObservationIgnored private nonisolated(unsafe) var audioSession: AudioSessionProtocol?
     @ObservationIgnored private nonisolated(unsafe) var remoteCommandCenter: RemoteCommandCenterProtocol?
     #endif
-    
+
     // MARK: - State
-    
+
     private var wasPlayingBeforeInterruption = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
@@ -105,49 +99,76 @@ public final class AudioPlayerController {
     private var stallStartTime: Date?
     @ObservationIgnored private nonisolated(unsafe) var notificationObservers: [Any] = []
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
-    
+
     @ObservationIgnored private var eventTask: Task<Void, Never>?
+
+    // Exponential backoff for reconnection
+    @ObservationIgnored internal var backoffTimer: ExponentialBackoff
+    private var reconnectTask: Task<Void, Never>?
+    
+    // CPU Session Aggregation
+    @ObservationIgnored private var cpuAggregator: CPUSessionAggregator?
+    private var isForegrounded = true
     
     // MARK: - Initialization
-    
+
     #if os(iOS) || os(tvOS)
     /// Creates a controller with injected dependencies (iOS/tvOS)
-    /// - Parameter player: Optional player to use. If nil, creates default player using AudioPlayerProtocol.create(for:)
+    /// - Parameters:
+    ///   - player: The audio player implementation to use
+    ///   - audioSession: Audio session for managing system audio behavior
+    ///   - remoteCommandCenter: Remote command center for Lock Screen/Control Center integration
+    ///   - notificationCenter: Notification center for system notifications
+    ///   - analytics: Analytics service for playback events
+    ///   - backoffTimer: Exponential backoff timer for reconnection attempts
     public init(
-        player: AudioPlayerProtocol? = nil,
+        player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
         remoteCommandCenter: RemoteCommandCenterProtocol?,
         notificationCenter: NotificationCenter = .default,
-        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        backoffTimer: ExponentialBackoff = .default
     ) {
-        self.player = player ?? Self.createPlayer(for: .avAudioStreamer)
+        self.player = player
         self.audioSession = audioSession
         self.remoteCommandCenter = remoteCommandCenter
         self.notificationCenter = notificationCenter
         self.analytics = analytics
+        self.backoffTimer = backoffTimer
 
         setUpAudioSession()
         setUpRemoteCommandCenter()
         setUpNotifications()
         setUpPlayerObservation()
+        setUpCPUAggregator()
     }
     #else
-    /// Creates a controller with injected dependencies (macOS)
-    /// - Parameter player: Optional player to use. If nil, creates default player using AudioPlayerProtocol.create(for:)
+    /// Creates a controller with injected dependencies (macOS/watchOS)
+    /// - Parameters:
+    ///   - player: The audio player implementation to use
+    ///   - notificationCenter: Notification center for system notifications
+    ///   - analytics: Analytics service for playback events
+    ///   - backoffTimer: Exponential backoff timer for reconnection attempts
     public init(
-        player: AudioPlayerProtocol? = nil,
+        player: AudioPlayerProtocol,
         notificationCenter: NotificationCenter = .default,
-        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared
+        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        backoffTimer: ExponentialBackoff = .default
     ) {
-        self.player = player ?? Self.createPlayer(for: .avAudioStreamer)
+        self.player = player
         self.notificationCenter = notificationCenter
         self.analytics = analytics
+        self.backoffTimer = backoffTimer
+
+        setUpPlayerObservation()
+        setUpCPUAggregator()
     }
     #endif
-    
+
     @MainActor
     deinit {
         eventTask?.cancel()
+        reconnectTask?.cancel()
         for observer in notificationObservers {
             notificationCenter.removeObserver(observer)
         }
@@ -155,34 +176,9 @@ public final class AudioPlayerController {
         removeRemoteCommandTargets()
         #endif
     }
-    
+
     // MARK: - Public Methods
-    
-    /// Replace the underlying audio player with a new instance
-    /// The new player must be created with the same streamURL
-    private func replacePlayer(_ newPlayer: AudioPlayerProtocol) {
-        let wasPlaying = isPlaying
-        
-        // Stop current player
-        if wasPlaying {
-            player.stop()
-        }
-        
-        // Replace player
-        player = newPlayer
-        setUpPlayerObservation()
-        
-        // Restore playback state if it was playing
-        if wasPlaying {
-            playbackIntended = true
-            playbackStartTime = playbackStartTime ?? Date()
-            #if os(iOS) || os(tvOS)
-            activateAudioSession()
-            #endif
-            player.play()
-        }
-    }
-    
+
     /// Toggle playback state
     public func toggle() {
         if isPlaying {
@@ -192,9 +188,12 @@ public final class AudioPlayerController {
             play()
         }
     }
-    
+
     /// Start playback
     public func play(reason: String = "play") {
+        let context: PlaybackContext = isForegrounded ? .foreground : .background
+        cpuAggregator?.startSession(context: context)
+
         playbackIntended = true
         playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS)
@@ -204,6 +203,7 @@ public final class AudioPlayerController {
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
         analytics.capture(PlaybackStartedEvent(reason: reason))
+        donatePlayIntent()
     }
     
     /// Calculate how long playback has been active
@@ -215,6 +215,12 @@ public final class AudioPlayerController {
     /// Stop playback and disconnect from stream
     /// Note: Analytics should be captured at call sites BEFORE calling this method
     public func stop(reason: String? = nil) {
+        cpuAggregator?.endSession(reason: .userStopped)
+
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        backoffTimer.reset()
+
         playbackIntended = false
         player.stop()
         playbackStartTime = nil
@@ -222,9 +228,27 @@ public final class AudioPlayerController {
         deactivateAudioSession()
         #endif
     }
-    
+
+    // MARK: - CPU Session Aggregation
+
+    private func setUpCPUAggregator() {
+        #if !os(watchOS)
+        self.cpuAggregator = CPUSessionAggregator(
+            analytics: analytics,
+            playerTypeProvider: { [weak self] in
+                // Determine player type from the actual player instance
+                guard let self else { return .avAudioStreamer }
+                if self.player is RadioPlayer {
+                    return .radioPlayer
+                }
+                return .avAudioStreamer
+            }
+        )
+        #endif
+    }
+
     // MARK: - Audio Session (iOS/tvOS only)
-    
+
     #if os(iOS) || os(tvOS)
     private func setUpAudioSession() {
         guard let session = audioSession else { return }
@@ -256,13 +280,13 @@ public final class AudioPlayerController {
         }
     }
     #endif
-    
+
     // MARK: - Remote Command Center (iOS/tvOS only)
-    
+
     #if os(iOS) || os(tvOS)
     private func setUpRemoteCommandCenter() {
         guard let commandCenter = remoteCommandCenter else { return }
-        
+
         // Play command
         commandCenter.playCommand.isEnabled = true
         let playTarget = commandCenter.playCommand.addTarget { [weak self] _ in
@@ -273,7 +297,7 @@ public final class AudioPlayerController {
             return .success
         }
         commandTargets.append(playTarget)
-        
+
         // Pause command
         commandCenter.pauseCommand.isEnabled = true
         let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
@@ -285,7 +309,7 @@ public final class AudioPlayerController {
             return .success
         }
         commandTargets.append(pauseTarget)
-        
+
         // Toggle play/pause command
         commandCenter.togglePlayPauseCommand.isEnabled = true
         let toggleTarget = commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
@@ -296,7 +320,7 @@ public final class AudioPlayerController {
             return .success
         }
         commandTargets.append(toggleTarget)
-        
+
         // Disable unsupported commands for live streaming
         commandCenter.stopCommand.isEnabled = false
         commandCenter.skipForwardCommand.isEnabled = false
@@ -307,10 +331,10 @@ public final class AudioPlayerController {
         commandCenter.seekBackwardCommand.isEnabled = false
         commandCenter.changePlaybackPositionCommand.isEnabled = false
     }
-    
+
     private func removeRemoteCommandTargets() {
         guard let commandCenter = remoteCommandCenter else { return }
-    
+
         for target in commandTargets {
             commandCenter.playCommand.removeTarget(target)
             commandCenter.pauseCommand.removeTarget(target)
@@ -319,9 +343,9 @@ public final class AudioPlayerController {
         commandTargets.removeAll()
     }
     #endif
-    
+
     // MARK: - Notifications (iOS/tvOS only)
-    
+
     #if os(iOS) || os(tvOS)
     private func setUpNotifications() {
         // Handle audio interruptions
@@ -338,7 +362,7 @@ public final class AudioPlayerController {
             }
         }
         notificationObservers.append(interruptionObserver)
-        
+
         // Handle route changes
         let routeChangeObserver = notificationCenter.addObserver(
             forName: AVAudioSession.routeChangeNotification,
@@ -354,35 +378,43 @@ public final class AudioPlayerController {
         notificationObservers.append(routeChangeObserver)
     }
     #endif
-    
+
     // MARK: - App Lifecycle (iOS only)
     // These methods should be called from SwiftUI's scenePhase handler
     // rather than using UIApplication notifications, to avoid race conditions
-    
+        
     #if os(iOS)
     /// Call this when the app enters the background (from SwiftUI scenePhase)
     /// Only deactivates the audio session if playback is NOT intended
     public func handleAppDidEnterBackground() {
+        isForegrounded = false
+        if isPlaying {
+            cpuAggregator?.transitionContext(to: .background)
+        }
         guard !playbackIntended else { return }
         deactivateAudioSession()
     }
-    
+            
     /// Call this when the app enters the foreground (from SwiftUI scenePhase)
     /// Reactivates the audio session if playback is intended
     public func handleAppWillEnterForeground() {
+        isForegrounded = true
+        if isPlaying {
+            cpuAggregator?.transitionContext(to: .foreground)
+        }
         if playbackIntended {
             activateAudioSession()
         }
     }
     #endif
-    
+
     #if os(iOS) || os(tvOS)
     private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
         guard let typeValue = typeValue,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
             return
         }
-        
+
         switch type {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
@@ -394,7 +426,7 @@ public final class AudioPlayerController {
         case .ended:
             guard let optionsValue = optionsValue else { return }
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-            
+
             if options.contains(.shouldResume) && wasPlayingBeforeInterruption {
                 play()
             }
@@ -404,13 +436,13 @@ public final class AudioPlayerController {
             break
         }
     }
-            
+
     private func handleRouteChange(reasonValue: UInt?) {
         guard let reasonValue = reasonValue,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
             return
         }
-        
+
         switch reason {
         case .oldDeviceUnavailable:
             // Headphones unplugged - stop playback
@@ -418,20 +450,47 @@ public final class AudioPlayerController {
                 analytics.capture(PlaybackStoppedEvent(reason: "route disconnected", duration: playbackDuration))
                 stop()
             }
-            
+
         case .newDeviceAvailable:
             // New device connected - no action needed
             break
-            
+
         default:
             break
         }
     }
     #endif
+
+    // MARK: - Intent Donation
+
+    /// Donates an INPlayMediaIntent to Siri so WXYC appears in Lock Screen suggestions.
+    /// iOS learns from these donations to surface the app based on user listening patterns.
+    private func donatePlayIntent() {
+        #if canImport(Intents) && !os(macOS)
+        let mediaItem = INMediaItem(
+            identifier: RadioStation.WXYC.name,
+            title: "WXYC 89.3 FM",
+            type: .radioStation,
+            artwork: nil
+        )
+
+        let intent = INPlayMediaIntent(
+            mediaItems: [mediaItem],
+            mediaContainer: nil,
+            playShuffled: nil,
+            resumePlayback: true,
+            playbackQueueLocation: .now,
+            playbackSpeed: nil
+        )
+
+        let interaction = INInteraction(intent: intent, response: nil)
+        Task { try? await interaction.donate() }
+        #endif
+    }
 }
 
 // MARK: - Convenience for views
-            
+
 extension AudioPlayerController {
     /// Stream of audio buffers for visualization
     public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
@@ -470,22 +529,65 @@ extension AudioPlayerController {
     private func handleStall() {
         stallStartTime = Date()
         analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration))
+
+        // Attempt reconnection with exponential backoff
+        attemptReconnectWithExponentialBackoff()
     }
 
     private func handleRecovery() {
-        guard let stallStart = stallStartTime else { return }
+        captureRecoveryIfNeeded()
+    }
+
+    private func attemptReconnectWithExponentialBackoff() {
+        guard let waitTime = self.backoffTimer.nextWaitTime() else {
+            print("Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
+            self.backoffTimer.reset()
+            return
+        }
+
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+
+            if self.player.isPlaying {
+                self.captureRecoveryIfNeeded()
+                self.backoffTimer.reset()
+                return
+            }
+
+            do {
+                self.player.play()
+                try await Task.sleep(for: .seconds(waitTime))
+
+                guard !Task.isCancelled else { return }
+                if !player.isPlaying {
+                    attemptReconnectWithExponentialBackoff()
+                } else {
+                    captureRecoveryIfNeeded()
+                    self.backoffTimer.reset()
+                }
+            } catch {
+                self.backoffTimer.reset()
+            }
+        }
+    }
+
+    private func captureRecoveryIfNeeded() {
+        guard let stallStart = self.stallStartTime else { return }
+        let playerType: PlayerControllerType = player is RadioPlayer ? .radioPlayer : .avAudioStreamer
         analytics.capture(StallRecoveryEvent(
             playerType: playerType,
             successful: true,
-            attempts: 1,
+            attempts: Int(self.backoffTimer.numberOfAttempts),
             stallDuration: Date().timeIntervalSince(stallStart),
             reason: .bufferUnderrun,
-            recoveryMethod: .automaticReconnect
+            recoveryMethod: backoffTimer.numberOfAttempts > 0 ? .retryWithBackoff : .automaticReconnect
         ))
-        stallStartTime = nil
+        self.stallStartTime = nil
     }
 }
-    
+
+// MARK: - PlaybackController Conformance
+
 extension AudioPlayerController: PlaybackController {
 
     public var state: PlaybackState {
@@ -510,5 +612,3 @@ extension AudioPlayerController: PlaybackController {
         stop(reason: nil)
     }
 }
-
-#endif
