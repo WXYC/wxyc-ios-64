@@ -467,6 +467,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F07B8EB63012AED1DBF55448 /* Build configuration list for PBXNativeTarget "Request Share Extension" */;
 			buildPhases = (
+				SHARE_EXT_SECRETS_BUILD_PHASE /* Ensure Secrets XCFramework */,
 				121F040A2043328980F3406A /* Sources */,
 				B60696590E1538E245DAA075 /* Resources */,
 				5282D69CBC6C3EAF27DE8CBE /* Frameworks */,
@@ -735,6 +736,21 @@
 			name = "Ensure Secrets XCFramework";
 			outputPaths = (
 				" $(SRCROOT)/Shared/Secrets/Secrets.xcframework",
+			);
+			shellPath = /bin/sh;
+			shellScript = (
+				"\"${SRCROOT}/Shared/Secrets/Scripts/ensure-xcframework.sh\"",
+				"",
+			);
+		};
+		SHARE_EXT_SECRETS_BUILD_PHASE /* Ensure Secrets XCFramework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			inputFileListPaths = (
+				"$(SRCROOT)/Shared/Secrets/Scripts/ensure-xcframework.sh",
+			);
+			name = "Ensure Secrets XCFramework";
+			outputPaths = (
 			);
 			shellPath = /bin/sh;
 			shellScript = (
