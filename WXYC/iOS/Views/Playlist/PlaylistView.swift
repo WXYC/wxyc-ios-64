@@ -87,7 +87,15 @@ struct PlaylistView: View {
 
                 // Playlist entries
                 LazyVStack(spacing: 0) {
-                    ForEach(playlistEntries, id: \.id) { entry in
+                    ForEach(Array(playlistEntries.enumerated()), id: \.element.id) { index, entry in
+                        let playcutIndex = playcutIndex(for: index)
+
+                        if playcutIndex == 0 {
+                            PlaylistSectionHeader(text: "now playing")
+                        } else if playcutIndex == 1 {
+                            PlaylistSectionHeader(text: "recently played")
+                        }
+
                         playlistRow(for: entry)
                             .padding(.vertical, 8)
                             .transition(.asymmetric(
@@ -183,6 +191,25 @@ struct PlaylistView: View {
         } else {
             marker.isStart ? "Signed on" : "Signed off"
         }
+    }
+
+    /// Returns the playcut index (0-based) if the entry at the given index is a Playcut, or nil otherwise.
+    private func playcutIndex(for index: Int) -> Int? {
+        guard playlistEntries[index] is Playcut else { return nil }
+        return playlistEntries[..<index].filter { $0 is Playcut }.count
+    }
+}
+
+struct PlaylistSectionHeader: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold).smallCaps())
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.top, 16)
     }
 }
 
