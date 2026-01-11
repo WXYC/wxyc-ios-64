@@ -52,7 +52,7 @@ public struct AnimatedMeshGradient: View {
     }
 
     public var body: some View {
-        TimelineView(.animation) { context in
+        TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { context in
             // Reduce time to [0, 2π) in Double precision before converting to Float
             // This preserves animation detail for large timeIntervalSince1970 values
             let twoPi: Double = 2 * .pi
