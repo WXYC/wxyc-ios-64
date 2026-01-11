@@ -90,20 +90,19 @@ public struct QualityOptimizer: Sendable {
         )
     }
 
-    /// Applies damping when approaching range boundaries.
+    /// Applies damping when approaching the lower range boundary.
+    ///
+    /// Only dampens near the lower bound to prevent oscillation when quality is already
+    /// low. We deliberately don't dampen near the upper bound because we want throttling
+    /// to take effect immediately when starting from max quality.
     private func applyDamping(_ value: Float, range: ClosedRange<Float>) -> Float {
         let margin = (range.upperBound - range.lowerBound) * 0.1
         let lowerThreshold = range.lowerBound + margin
-        let upperThreshold = range.upperBound - margin
 
         if value < lowerThreshold {
-            // Near lower bound, slow down changes
+            // Near lower bound, slow down changes to prevent oscillation
             let factor = (value - range.lowerBound) / margin
             return range.lowerBound + (value - range.lowerBound) * max(factor, 0.3)
-        } else if value > upperThreshold {
-            // Near upper bound, slow down changes
-            let factor = (range.upperBound - value) / margin
-            return range.upperBound - (range.upperBound - value) * max(factor, 0.3)
         }
 
         return value

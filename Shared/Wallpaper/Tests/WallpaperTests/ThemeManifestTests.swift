@@ -149,28 +149,6 @@ struct ThemeManifestTests {
             #expect(result.overlayIsDark == false)
         }
 
-        @Test("applying(_:) merges LCD brightness offset override")
-        @MainActor
-        func applyingMergesLCDBrightnessOffset() {
-            let manifest = ThemeManifest(
-                id: "test",
-                displayName: "Test",
-                version: "1.0.0",
-                renderer: RendererConfiguration(type: .swiftUI),
-                foreground: .light,
-                accent: AccentColor(hue: 30, saturation: 0.8),
-                blurRadius: 8.0,
-                overlayOpacity: 0.15,
-                overlayIsDark: true,
-                lcdBrightnessOffset: 0.0
-            )
-
-            let overrides = ThemeOverrides(lcdBrightnessOffset: 0.2)
-            let result = manifest.applying(overrides)
-
-            #expect(result.lcdBrightnessOffset == 0.2)
-        }
-
         @Test("applying(_:) preserves non-overridable properties")
         @MainActor
         func applyingPreservesNonOverridableProperties() {
