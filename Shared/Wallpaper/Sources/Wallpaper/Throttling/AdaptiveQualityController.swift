@@ -540,7 +540,10 @@ public final class AdaptiveQualityController {
         signal.record(state)
 
         // Combine thermal momentum with FPS-based boost, scaled by mode
-        let baseMomentum = signal.momentum * mode.momentumMultiplier
+        // Use the absolute thermal state as a floor since momentum only tracks change (delta)
+        // This ensures we respond to elevated temperatures even when stable
+        let stateBasedMomentum = state.normalizedValue
+        let baseMomentum = max(signal.momentum, stateBasedMomentum) * mode.momentumMultiplier
         let effectiveMomentum = min(baseMomentum + fpsMomentumBoost, 1.0)
         // Decay FPS boost over time (so it doesn't persist indefinitely)
         fpsMomentumBoost *= 0.8
