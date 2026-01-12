@@ -117,21 +117,22 @@ final class MP3StreamDecoder: @unchecked Sendable {
         }
     }
 
+    /// Synchronously resets the decoder state.
+    /// Must complete before new data is processed to avoid frame misalignment.
     func reset() {
-        decoderQueue.async { [weak self] in
-            guard let self else { return }
-            self.packetData.removeAll()
-            self.packetDescriptions.removeAll()
-            self.consumedByteOffset = 0
-            self.inputFormat = nil
+        decoderQueue.sync {
+            packetData.removeAll()
+            packetDescriptions.removeAll()
+            consumedByteOffset = 0
+            inputFormat = nil
 
-            if let stream = self.audioFileStream {
+            if let stream = audioFileStream {
                 AudioFileStreamClose(stream)
-                self.audioFileStream = nil
+                audioFileStream = nil
             }
-            if let conv = self.converter {
+            if let conv = converter {
                 AudioConverterDispose(conv)
-                self.converter = nil
+                converter = nil
             }
         }
     }
@@ -287,11 +288,11 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 return
             }
 
-            // Create context with pointer to data (no copy for data, but copy descriptions to Array)
+            // Create context with pointer to data - Deque uses copy-on-write so no actual copy occurs
             let context = ConversionContext(
                 dataPointer: dataBaseAddress,
                 dataCount: dataBuffer.count,
-                packetDescriptions: Array(packetDescriptions)
+                packetDescriptions: packetDescriptions
             )
             let contextPointer = Unmanaged.passUnretained(context).toOpaque()
 
@@ -418,13 +419,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
 
 /// Context for the audio converter callback.
 /// Uses a raw pointer to avoid copying the packet data buffer.
+/// Accepts a Deque directly to avoid O(n) Array copy - Deque uses copy-on-write
+/// so no actual copy occurs since we don't mutate it.
 private final class ConversionContext {
     /// Pointer to the packet data buffer (valid only during conversion)
     let dataPointer: UnsafeRawPointer
     /// Size of the data buffer
     let dataCount: Int
-    /// Packet descriptions for the current conversion
-    let packetDescriptions: [AudioStreamPacketDescription]
+    /// Packet descriptions for the current conversion (Deque uses CoW, no copy if not mutated)
+    let packetDescriptions: Deque<AudioStreamPacketDescription>
     /// Current packet index being processed
     var packetIndex: Int = 0
 
@@ -435,7 +438,7 @@ private final class ConversionContext {
     private var buffer: UnsafeMutablePointer<UInt8>?
     private var bufferCapacity: Int = 0
 
-    init(dataPointer: UnsafeRawPointer, dataCount: Int, packetDescriptions: [AudioStreamPacketDescription]) {
+    init(dataPointer: UnsafeRawPointer, dataCount: Int, packetDescriptions: Deque<AudioStreamPacketDescription>) {
         self.dataPointer = dataPointer
         self.dataCount = dataCount
         self.packetDescriptions = packetDescriptions
