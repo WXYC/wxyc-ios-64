@@ -933,6 +933,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             )
             memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.size)
             encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+
+            setCustomParameters(
+                encoder: encoder,
+                uniformBuffer: uniformBuffer,
+                offset: MemoryLayout<StitchableUniforms>.stride
+            )
         }
 
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)

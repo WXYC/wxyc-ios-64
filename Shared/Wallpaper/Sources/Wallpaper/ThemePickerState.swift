@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Logger
 import Observation
 import SwiftUI
 
@@ -285,6 +286,13 @@ public final class ThemePickerState {
         let duration = enteredAt.map { Date().timeIntervalSince($0) } ?? 0
 
         configuration.selectedThemeID = selectedThemeID
+
+        // Log theme selection
+        if themeChanged {
+            Log(.info, "Theme changed from '\(previousID)' to '\(selectedThemeID)'")
+        } else {
+            Log(.info, "Theme confirmed: '\(selectedThemeID)' (unchanged)")
+        }
 
         // Record analytics event
         analytics?.record(ThemePickerSelectionEvent(
