@@ -106,7 +106,7 @@ struct WatchXYC: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView(radioPlayerController: RadioPlayerController.shared)
+            RootTabView(playbackController: RadioPlayerController.shared)
                 .environment(\.playlistService, playlistService)
         }
     }

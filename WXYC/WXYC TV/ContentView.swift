@@ -10,7 +10,7 @@ import Playback
 import Wallpaper
 
 struct ContentView: View {
-    let radioPlayerController: RadioPlayerController
+    let playbackController: any PlaybackController
     @State private var themeConfiguration: ThemeConfiguration = {
         let config = ThemeConfiguration()
         config.selectedThemeID = "neon_topology_iso"
@@ -21,11 +21,11 @@ struct ContentView: View {
         ZStack {
             WallpaperView(configuration: themeConfiguration)
                 .ignoresSafeArea()
-            PlayerPage(radioPlayerController: radioPlayerController)
+            PlayerPage(playbackController: playbackController)
         }
     }
 }
 
 #Preview {
-    ContentView(radioPlayerController: RadioPlayerController.shared)
+    ContentView(playbackController: AudioPlayerController.shared)
 }

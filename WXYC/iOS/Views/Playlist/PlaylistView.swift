@@ -35,7 +35,6 @@ struct PlaylistView: View {
     @Environment(\.currentLCDMaxBrightness) private var currentLCDMaxBrightness
 
     @State private var visualizer = VisualizerDataSource()
-    @State private var selectedPlayerType = PlayerControllerType.loadPersisted()
     @State private var showVisualizerDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
@@ -52,7 +51,6 @@ struct PlaylistView: View {
             ScrollView(showsIndicators: false) {
                 PlayerHeaderView(
                     visualizer: visualizer,
-                    selectedPlayerType: $selectedPlayerType,
                     onDebugTapped: {
                         #if DEBUG
                         showVisualizerDebug = true
@@ -134,7 +132,6 @@ struct PlaylistView: View {
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(
                 visualizer: visualizer,
-                selectedPlayerType: $selectedPlayerType,
                 onResetThemePickerState: {
                     appState.themePickerState.persistence.resetState()
                 },

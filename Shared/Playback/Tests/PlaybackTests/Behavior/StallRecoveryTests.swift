@@ -80,7 +80,13 @@ struct StallRecoveryTests {
         let config = AVAudioStreamerConfiguration(
             url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         )
-        let streamer = AVAudioStreamer(configuration: config)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        let streamer = AVAudioStreamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
 
         // Verify initial state
         #expect(streamer.state == .idle, "Should start in idle state")
