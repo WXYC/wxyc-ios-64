@@ -171,6 +171,13 @@ struct WXYCApp: App {
         // Enable battery monitoring for thermal context
         DeviceContext.enableBatteryMonitoring()
 
+        // Configure MusicShareKit for RequestService
+        MusicShareKit.configure(MusicShareKitConfiguration(
+            requestOMaticURL: Secrets.requestOMatic,
+            spotifyClientId: Secrets.spotifyClientId,
+            spotifyClientSecret: Secrets.spotifyClientSecret
+        ))
+
         // Analytics setup
         setUpAnalytics()
         setUpQualityAnalytics()
@@ -178,14 +185,14 @@ struct WXYCApp: App {
         PostHogSDK.shared.capture("app launch", properties: [
             "has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker
         ])
-                    
+
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
         // Setting it here at launch would interrupt other apps' audio unnecessarily.
 
         // UIKit appearance setup
         #if os(iOS)
         UINavigationBar.appearance().barStyle = .black
-
+        
         // Force light status bar style
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first {
@@ -321,7 +328,7 @@ struct WXYCApp: App {
         )
         UIApplication.shared.shortcutItems = [playShortcut]
     }
-            
+        
     private func handleURL(_ url: URL) {
         // Handle deep links and user activities
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {

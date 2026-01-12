@@ -5,11 +5,21 @@
 //  Created by Jake Bromberg on 11/25/25.
 //
 
+import Foundation
 import Testing
 @testable import MusicShareKit
 
 @Suite("RequestService Tests")
 struct RequestServiceTests {
+    
+    init() {
+        // Configure MusicShareKit before running tests
+        MusicShareKit.configure(MusicShareKitConfiguration(
+            requestOMaticURL: "https://example.com/request",
+            spotifyClientId: "test-client-id",
+            spotifyClientSecret: "test-client-secret"
+        ))
+    }
     
     @Test("Empty message throws error")
     func emptyMessageThrowsError() async {
@@ -18,6 +28,33 @@ struct RequestServiceTests {
             #expect(Bool(false), "Expected error to be thrown")
         } catch let error as RequestServiceError {
             #expect(error == .emptyMessage)
+        } catch {
+            #expect(Bool(false), "Unexpected error type: \(error)")
+        }
+    }
+    
+    @Test("Configuration is accessible after configure() is called")
+    func configurationIsAccessible() {
+        let config = MusicShareKit.configuration
+        #expect(config.requestOMaticURL == "https://example.com/request")
+        #expect(config.spotifyClientId == "test-client-id")
+        #expect(config.spotifyClientSecret == "test-client-secret")
+    }
+    
+    @Test("sendRequest uses configured URL")
+    func sendRequestUsesConfiguredURL() async {
+        // This test verifies that sendRequest accesses the configuration
+        // without crashing. The actual network request will fail (expected),
+        // but we verify it gets past the configuration access.
+        do {
+            try await RequestService.shared.sendRequest(message: "Test Song by Test Artist")
+            // If we get here without a network error, the test server responded
+        } catch RequestServiceError.networkError {
+            // Expected - the test URL doesn't exist
+        } catch RequestServiceError.invalidResponse {
+            // Also acceptable - server responded but not as expected
+        } catch RequestServiceError.serverError {
+            // Also acceptable - server responded with error status
         } catch {
             #expect(Bool(false), "Unexpected error type: \(error)")
         }
