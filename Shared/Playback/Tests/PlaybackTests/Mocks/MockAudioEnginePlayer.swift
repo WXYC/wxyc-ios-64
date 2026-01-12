@@ -2,12 +2,12 @@
 //  MockAudioEnginePlayer.swift
 //  PlaybackTests
 //
-//  Mock audio engine player for testing AVAudioStreamer
+//  Mock audio engine player for testing MP3Streamer
 //
 
 import Foundation
 @preconcurrency import AVFoundation
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 
 #if !os(watchOS)
 

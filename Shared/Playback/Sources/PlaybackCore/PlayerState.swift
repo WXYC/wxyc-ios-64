@@ -2,7 +2,7 @@
 //  PlayerState.swift
 //  PlaybackCore
 //
-//  State enum for low-level audio players (RadioPlayer, AVAudioStreamer).
+//  State enum for low-level audio players (RadioPlayer, MP3Streamer).
 //  Does not include .interrupted since that is a controller-level concern.
 //
 
@@ -10,7 +10,7 @@ import Foundation
 
 /// Represents the current state of a low-level audio player.
 ///
-/// This enum is for players (RadioPlayer, AVAudioStreamer) which handle
+/// This enum is for players (RadioPlayer, MP3Streamer) which handle
 /// stream connectivity and audio decoding. The `.interrupted` state is
 /// intentionally omitted as it's a controller-level concern handled by
 /// RadioPlayerController and AudioPlayerController.

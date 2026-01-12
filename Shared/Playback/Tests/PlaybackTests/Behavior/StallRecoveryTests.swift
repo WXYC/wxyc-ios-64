@@ -11,7 +11,7 @@ import AVFoundation
 @testable import PlaybackCore
 @testable import RadioPlayerModule
 #if !os(watchOS)
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 #endif
 
 // MARK: - Stall Recovery Tests
@@ -74,15 +74,15 @@ struct StallRecoveryTests {
         // That's the correct behavior - successful reconnection resets the backoff.
     }
 
-    @Test("AVAudioStreamer starts in idle state")
-    func avAudioStreamerStartsInIdleState() async {
+    @Test("MP3Streamer starts in idle state")
+    func mp3StreamerStartsInIdleState() async {
         #if !os(watchOS)
-        let config = AVAudioStreamerConfiguration(
+        let config = MP3StreamerConfiguration(
             url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         )
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
-        let streamer = AVAudioStreamer(
+        let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
             audioPlayer: mockPlayer

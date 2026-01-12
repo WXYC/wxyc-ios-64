@@ -12,7 +12,7 @@ import Caching
 /// Available PlaybackController implementations
 public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, Sendable {
     case radioPlayer = "RadioPlayer"
-    case avAudioStreamer = "AVAudioStreamer"
+    case mp3Streamer = "MP3Streamer"
 
     // MARK: - Persistence
 
@@ -25,7 +25,7 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     private static let experimentKey = "experiment_player_controller"
     
     /// The default player controller type
-    public static let defaultType: PlayerControllerType = .avAudioStreamer
+    public static let defaultType: PlayerControllerType = .mp3Streamer
     
     /// Loads the persisted player controller type, or returns default
     public static func loadPersisted() -> PlayerControllerType {
@@ -69,8 +69,8 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
         switch self {
         case .radioPlayer:
             "RadioPlayer (AVPlayer)"
-        case .avAudioStreamer:
-            "AVAudioStreamer (AudioToolbox)"
+        case .mp3Streamer:
+            "MP3Streamer (AudioToolbox)"
         }
     }
     
@@ -78,7 +78,7 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
         switch self {
         case .radioPlayer:
             "Uses AVPlayer for simple HTTP streaming"
-        case .avAudioStreamer:
+        case .mp3Streamer:
             "Uses URLSession + AudioToolbox for MP3 decoding"
         }
     }

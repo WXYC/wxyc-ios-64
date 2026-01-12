@@ -12,7 +12,7 @@ import AVFoundation
 @testable import PlaybackCore
 @testable import RadioPlayerModule
 #if !os(watchOS)
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 #endif
 
 // MARK: - Parameterized Behavior Tests
@@ -297,16 +297,16 @@ struct StopResumeLiveTests {
                "Stop should reset stream for live streaming so resume plays live audio, not stale buffered audio")
     }
 
-    /// Tests AVAudioStreamer's stop() resets stream by checking state transition.
+    /// Tests MP3Streamer's stop() resets stream by checking state transition.
     #if !os(watchOS)
-    @Test("AVAudioStreamer stop resets stream")
-    func avAudioStreamerStopResetsStream() async {
-        let config = AVAudioStreamerConfiguration(
+    @Test("MP3Streamer stop resets stream")
+    func mp3StreamerStopResetsStream() async {
+        let config = MP3StreamerConfiguration(
             url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         )
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
-        let streamer = AVAudioStreamer(
+        let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
             audioPlayer: mockPlayer

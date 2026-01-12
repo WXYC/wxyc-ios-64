@@ -3,7 +3,7 @@
 //  StreamingAudioPlayer
 //
 //  High-level audio player controller that handles system integration.
-//  Works with any AudioPlayerProtocol implementation (AVAudioStreamer, RadioPlayer, etc.)
+//  Works with any AudioPlayerProtocol implementation (MP3Streamer, RadioPlayer, etc.)
 //
 
 import AVFoundation
@@ -20,7 +20,7 @@ import UIKit
 
 // Platform-specific imports for default player
 #if !os(watchOS)
-import AVAudioStreamerModule
+import MP3StreamerModule
 #endif
 import RadioPlayerModule
 
@@ -34,10 +34,10 @@ public final class AudioPlayerController {
     // MARK: - Singleton
 
     #if os(iOS) || os(tvOS)
-    /// Shared singleton instance for iOS/tvOS using AVAudioStreamer
+    /// Shared singleton instance for iOS/tvOS using MP3Streamer
     public static let shared = AudioPlayerController(
-        player: AVAudioStreamer(
-            configuration: AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
+        player: MP3Streamer(
+            configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
         ),
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
@@ -52,10 +52,10 @@ public final class AudioPlayerController {
         analytics: PostHogPlaybackAnalytics.shared
     )
     #else
-    /// Shared singleton instance for macOS using AVAudioStreamer
+    /// Shared singleton instance for macOS using MP3Streamer
     public static let shared = AudioPlayerController(
-        player: AVAudioStreamer(
-            configuration: AVAudioStreamerConfiguration(url: RadioStation.WXYC.streamURL)
+        player: MP3Streamer(
+            configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
         ),
         notificationCenter: .default,
         analytics: PostHogPlaybackAnalytics.shared
@@ -237,11 +237,11 @@ public final class AudioPlayerController {
             analytics: analytics,
             playerTypeProvider: { [weak self] in
                 // Determine player type from the actual player instance
-                guard let self else { return .avAudioStreamer }
+                guard let self else { return .mp3Streamer }
                 if self.player is RadioPlayer {
                     return .radioPlayer
                 }
-                return .avAudioStreamer
+                return .mp3Streamer
             }
         )
         #endif
@@ -573,7 +573,7 @@ extension AudioPlayerController {
 
     private func captureRecoveryIfNeeded() {
         guard let stallStart = self.stallStartTime else { return }
-        let playerType: PlayerControllerType = player is RadioPlayer ? .radioPlayer : .avAudioStreamer
+        let playerType: PlayerControllerType = player is RadioPlayer ? .radioPlayer : .mp3Streamer
         analytics.capture(StallRecoveryEvent(
             playerType: playerType,
             successful: true,

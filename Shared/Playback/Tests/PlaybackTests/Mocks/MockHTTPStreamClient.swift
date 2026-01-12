@@ -2,11 +2,11 @@
 //  MockHTTPStreamClient.swift
 //  PlaybackTests
 //
-//  Mock HTTP stream client for testing AVAudioStreamer
+//  Mock HTTP stream client for testing MP3Streamer
 //
 
 import Foundation
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 
 #if !os(watchOS)
 
