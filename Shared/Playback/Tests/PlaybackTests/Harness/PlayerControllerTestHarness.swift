@@ -16,7 +16,7 @@ import MediaPlayer
 @testable import PlaybackCore
 @testable import RadioPlayerModule
 #if !os(watchOS)
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 #endif
 
 // MARK: - PlaybackController Test Convenience Extensions

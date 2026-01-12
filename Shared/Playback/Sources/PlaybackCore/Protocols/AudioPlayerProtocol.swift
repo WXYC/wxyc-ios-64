@@ -10,7 +10,7 @@ import AVFoundation
 
 /// Protocol defining the low-level audio player interface
 ///
-/// Players (RadioPlayer, AVAudioStreamer) implement this protocol.
+/// Players (RadioPlayer, MP3Streamer) implement this protocol.
 /// They use `PlayerState` which does not include `.interrupted`
 /// since that is a controller-level concern.
 @MainActor

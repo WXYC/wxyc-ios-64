@@ -3,7 +3,7 @@
 //  PlaybackTests
 //
 //  Shared test infrastructure for parameterized AudioPlayerProtocol tests.
-//  Provides a unified harness for testing both AVAudioStreamer and RadioPlayer.
+//  Provides a unified harness for testing both MP3Streamer and RadioPlayer.
 //
 
 import Testing
@@ -12,7 +12,7 @@ import AVFoundation
 @testable import PlaybackCore
 @testable import RadioPlayerModule
 #if !os(watchOS)
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 #endif
 
 // MARK: - Test Resources
@@ -34,8 +34,8 @@ private func loadTestMP3Data() -> Data? {
 /// Enumeration of audio player implementations to test
 enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
     #if !os(watchOS)
-    /// AVAudioStreamer - URLSession + AudioToolbox based player
-    case avAudioStreamer
+    /// MP3Streamer - URLSession + AudioToolbox based player
+    case mp3Streamer
     #endif
     /// RadioPlayer - AVPlayer based player
     case radioPlayer
@@ -43,8 +43,8 @@ enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
     var testDescription: String {
         switch self {
         #if !os(watchOS)
-        case .avAudioStreamer:
-            "AVAudioStreamer"
+        case .mp3Streamer:
+            "MP3Streamer"
         #endif
         case .radioPlayer:
             "RadioPlayer"
@@ -55,7 +55,7 @@ enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
     var supportsAudioBufferStream: Bool {
         switch self {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             true
         #endif
         case .radioPlayer:
@@ -78,7 +78,7 @@ final class AudioPlayerTestHarness {
     private let mockPlayer: MockPlayerForHarness?
 
     #if !os(watchOS)
-    // AVAudioStreamer mocks
+    // MP3Streamer mocks
     private let mockHTTPClient: MockHTTPStreamClient?
     private let mockAudioEngine: MockAudioEnginePlayer?
     #endif
@@ -88,7 +88,7 @@ final class AudioPlayerTestHarness {
     var playCallCount: Int {
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             mockAudioEngine?.playCallCount ?? 0
         #endif
         case .radioPlayer:
@@ -99,7 +99,7 @@ final class AudioPlayerTestHarness {
     var stopCallCount: Int {
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             mockAudioEngine?.stopCallCount ?? 0
         #endif
         case .radioPlayer:
@@ -147,7 +147,7 @@ final class AudioPlayerTestHarness {
 
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             let mockHTTPClient = MockHTTPStreamClient()
             let mockAudioEngine = MockAudioEnginePlayer()
 
@@ -160,11 +160,11 @@ final class AudioPlayerTestHarness {
             // Enable auto buffer requests for natural playback flow
             mockAudioEngine.immediatelyRequestMoreBuffers = true
 
-            let config = AVAudioStreamerConfiguration(
+            let config = MP3StreamerConfiguration(
                 url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
                 minimumBuffersBeforePlayback: 2 // Lower threshold for faster test transitions
             )
-            let streamer = AVAudioStreamer(
+            let streamer = MP3Streamer(
                 configuration: config,
                 httpClient: mockHTTPClient,
                 audioPlayer: mockAudioEngine
@@ -212,12 +212,12 @@ final class AudioPlayerTestHarness {
 
     /// Simulates playback starting successfully.
     /// For RadioPlayer: posts rate change message (synchronous on MainActor).
-    /// For AVAudioStreamer: waits for natural state transition via test MP3 data.
+    /// For MP3Streamer: waits for natural state transition via test MP3 data.
     func simulatePlaybackStarted() async {
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
-            // AVAudioStreamer transitions naturally when test MP3 data flows through.
+        case .mp3Streamer:
+            // MP3Streamer transitions naturally when test MP3 data flows through.
             // Wait for the state to reach .playing
             await waitUntil({ self.player.state == .playing }, timeout: .seconds(2))
         #endif
@@ -236,7 +236,7 @@ final class AudioPlayerTestHarness {
     func simulatePlaybackStopped() {
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             // stop() is called explicitly, state transitions to idle immediately
             break
         #endif
@@ -250,14 +250,14 @@ final class AudioPlayerTestHarness {
     func simulateStall() async {
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             // Stop buffer requests first to prevent auto-recovery
             mockAudioEngine?.immediatelyRequestMoreBuffers = false
             // Give any in-flight operations time to complete
             try? await Task.sleep(for: .milliseconds(100))
             // Now yield stall event
             mockAudioEngine?.simulateStall()
-            // Give AVAudioStreamer's internal task time to process
+            // Give MP3Streamer's internal task time to process
             try? await Task.sleep(for: .milliseconds(100))
         #endif
 
@@ -274,10 +274,10 @@ final class AudioPlayerTestHarness {
     func simulateRecovery() async {
         switch testCase {
         #if !os(watchOS)
-        case .avAudioStreamer:
+        case .mp3Streamer:
             // Yield recovery event to audio engine mock
             mockAudioEngine?.simulateRecovery()
-            // Give AVAudioStreamer's internal task time to process and re-yield the event
+            // Give MP3Streamer's internal task time to process and re-yield the event
             try? await Task.sleep(for: .milliseconds(50))
         #endif
 
@@ -291,10 +291,10 @@ final class AudioPlayerTestHarness {
         }
     }
 
-    /// Waits for async operations to complete (only needed for AVAudioStreamer)
+    /// Waits for async operations to complete (only needed for MP3Streamer)
     func waitForAsync() async {
         #if !os(watchOS)
-        if testCase == .avAudioStreamer {
+        if testCase == .mp3Streamer {
             try? await Task.sleep(for: .milliseconds(50))
         }
         #endif

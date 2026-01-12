@@ -12,7 +12,7 @@ import AVFoundation
 @testable import PlaybackCore
 @testable import RadioPlayerModule
 #if !os(watchOS)
-@testable import AVAudioStreamerModule
+@testable import MP3StreamerModule
 #endif
 
 // MARK: - Core State Tests
@@ -38,7 +38,7 @@ struct AudioPlayerCoreStateTests {
         let harness = AudioPlayerTestHarness.make(for: testCase)
         harness.player.play()
 
-        // Both players should transition from idle. With fast mocks, AVAudioStreamer
+        // Both players should transition from idle. With fast mocks, MP3Streamer
         // may already be in .playing, so accept either loading or playing.
         let validStates: [PlayerState] = [.loading, .playing]
         #expect(validStates.contains(harness.player.state), "play() should transition to loading or playing state")
@@ -325,7 +325,7 @@ struct AudioPlayerEventStreamTests {
         #expect(receivedStall, "eventStream should yield .stall event on stall")
     }
 
-    // Note: AVAudioStreamer has auto-recovery when buffers are available, so it may never
+    // Note: MP3Streamer has auto-recovery when buffers are available, so it may never
     // enter the stalled state needed for this test. This test focuses on RadioPlayer.
     @Test("eventStream yields recovery event (RadioPlayer)")
     func eventStreamYieldsRecoveryEvent() async throws {
@@ -377,7 +377,7 @@ struct AudioPlayerEventStreamTests {
 @MainActor
 struct AudioPlayerStallStateTests {
 
-    // Note: AVAudioStreamer has auto-recovery when buffers are available, so stall state
+    // Note: MP3Streamer has auto-recovery when buffers are available, so stall state
     // may be transient. The eventStream stall test verifies the stall event is emitted.
     // This test focuses on RadioPlayer which maintains stable stall state.
     @Test("Stall transitions to stalled state (RadioPlayer)")
@@ -396,7 +396,7 @@ struct AudioPlayerStallStateTests {
         #expect(harness.player.state == .stalled, "Stall should transition to .stalled state")
     }
 
-    // Note: For AVAudioStreamer, recovery may happen automatically when buffers are available.
+    // Note: For MP3Streamer, recovery may happen automatically when buffers are available.
     // This test focuses on RadioPlayer which requires explicit recovery.
     @Test("Recovery transitions back to playing (RadioPlayer)")
     func recoveryTransitionsToPlaying() async {
@@ -492,10 +492,10 @@ struct AudioPlayerAudioBufferStreamTests {
     }
 
     #if !os(watchOS)
-    @Test("AVAudioStreamer supports audio buffer streaming")
-    func avAudioStreamerSupportsAudioBufferStreaming() async {
-        let testCase = AudioPlayerTestCase.avAudioStreamer
-        #expect(testCase.supportsAudioBufferStream, "AVAudioStreamer should support audio buffer streaming")
+    @Test("MP3Streamer supports audio buffer streaming")
+    func mp3StreamerSupportsAudioBufferStreaming() async {
+        let testCase = AudioPlayerTestCase.mp3Streamer
+        #expect(testCase.supportsAudioBufferStream, "MP3Streamer should support audio buffer streaming")
     }
     #endif
 }

@@ -45,12 +45,12 @@ let package = Package(
 
         // AudioToolbox-based player (iOS/macOS/tvOS only, not watchOS)
         .target(
-            name: "AVAudioStreamerModule",
+            name: "MP3StreamerModule",
             dependencies: [
                 "PlaybackCore",
                 .product(name: "DequeModule", package: "swift-collections"),
             ],
-            path: "Sources/AVAudioStreamer"
+            path: "Sources/MP3Streamer"
         ),
 
         // MARK: - Public-Facing Targets
@@ -61,11 +61,11 @@ let package = Package(
             dependencies: [
                 "PlaybackCore",
                 "RadioPlayerModule",
-                "AVAudioStreamerModule",
+                "MP3StreamerModule",
             ]
         ),
 
-        // watchOS playback (RadioPlayer only, no AVAudioStreamer)
+        // watchOS playback (RadioPlayer only, no MP3Streamer)
         .target(
             name: "PlaybackWatchOS",
             dependencies: [
@@ -78,7 +78,7 @@ let package = Package(
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback", "RadioPlayerModule", "AVAudioStreamerModule"],
+            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule"],
             resources: [.process("Resources")]
         ),
         .testTarget(
@@ -86,8 +86,8 @@ let package = Package(
             dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core"]
         ),
         .testTarget(
-            name: "AVAudioStreamerTests",
-            dependencies: ["AVAudioStreamerModule", "PlaybackCore", "Core"],
+            name: "MP3StreamerTests",
+            dependencies: ["MP3StreamerModule", "PlaybackCore", "Core"],
             resources: [.process("Resources")]
         ),
     ]
