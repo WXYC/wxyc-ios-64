@@ -1,5 +1,5 @@
 @preconcurrency import AVFoundation
-import DequeModule
+import Core
 import os.lock
 
 /// Thread-safe queue for managing PCM audio buffers.

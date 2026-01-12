@@ -17,7 +17,6 @@ let package = Package(
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
         .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
-        .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.0"),
     ],
     targets: [
         // MARK: - Internal Targets
@@ -48,7 +47,7 @@ let package = Package(
             name: "MP3StreamerModule",
             dependencies: [
                 "PlaybackCore",
-                .product(name: "DequeModule", package: "swift-collections"),
+                "Core",
             ],
             path: "Sources/MP3Streamer"
         ),

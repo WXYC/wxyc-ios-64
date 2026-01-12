@@ -3,7 +3,7 @@
 import Foundation
 @preconcurrency import AVFoundation
 import AudioToolbox
-import DequeModule
+import Core
 
 /// Errors that can occur during MP3 decoding
 enum MP3DecoderError: Error {
