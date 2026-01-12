@@ -19,16 +19,18 @@ private struct AccentSaturationKey: EnvironmentKey {
     static let defaultValue: Double = 0.75
 }
 
-private struct LCDMinBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = ThemeConfiguration.defaultLCDMinBrightness
-}
-
-private struct LCDMaxBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = ThemeConfiguration.defaultLCDMaxBrightness
-}
-
 private struct AccentBrightnessKey: EnvironmentKey {
     static let defaultValue: Double = 1.0
+}
+
+// MARK: - LCD HSB Offset Environment Keys
+
+private struct LCDMinOffsetKey: EnvironmentKey {
+    static let defaultValue: HSBOffset = .defaultMin
+}
+
+private struct LCDMaxOffsetKey: EnvironmentKey {
+    static let defaultValue: HSBOffset = .defaultMax
 }
 
 // MARK: - Environment Values Extension
@@ -46,48 +48,46 @@ public extension EnvironmentValues {
         set { self[AccentSaturationKey.self] = newValue }
     }
 
-    /// Minimum brightness for LCD segments (applied to top segments).
-    var lcdMinBrightness: Double {
-        get { self[LCDMinBrightnessKey.self] }
-        set { self[LCDMinBrightnessKey.self] = newValue }
-    }
-
-    /// Maximum brightness for LCD segments (applied to bottom segments).
-    var lcdMaxBrightness: Double {
-        get { self[LCDMaxBrightnessKey.self] }
-        set { self[LCDMaxBrightnessKey.self] = newValue }
-    }
-
     /// Accent brightness multiplier for LCD segments.
     var lcdAccentBrightness: Double {
         get { self[AccentBrightnessKey.self] }
         set { self[AccentBrightnessKey.self] = newValue }
+    }
+
+    // MARK: - LCD HSB Offsets
+
+    /// HSB offset for LCD min (top) segments.
+    var lcdMinOffset: HSBOffset {
+        get { self[LCDMinOffsetKey.self] }
+        set { self[LCDMinOffsetKey.self] = newValue }
+    }
+
+    /// HSB offset for LCD max (bottom) segments.
+    var lcdMaxOffset: HSBOffset {
+        get { self[LCDMaxOffsetKey.self] }
+        set { self[LCDMaxOffsetKey.self] = newValue }
     }
 }
 
 // MARK: - View Extension
 
 public extension View {
-    /// Sets the accent color for LCD visualizer segments.
-    /// - Parameters:
-    ///   - hue: Hue value (0.0-1.0, normalized). Use `AccentColor.normalizedHue`.
-    ///   - saturation: Saturation value (0.0-1.0).
-    ///   - brightness: Brightness multiplier (default 1.0). Values above 1.0 increase brightness.
-    func lcdAccentColor(hue: Double, saturation: Double, brightness: Double = 1.0) -> some View {
+    /// Sets the accent color for LCD visualizer segments from an AccentColor.
+    /// - Parameter color: The accent color containing hue (0-360), saturation (0-1), and brightness.
+    func lcdAccentColor(_ color: AccentColor) -> some View {
         self
-            .environment(\.lcdAccentHue, hue)
-            .environment(\.lcdAccentSaturation, saturation)
-            .environment(\.lcdAccentBrightness, brightness)
+            .environment(\.lcdAccentHue, color.normalizedHue)
+            .environment(\.lcdAccentSaturation, color.saturation)
+            .environment(\.lcdAccentBrightness, color.brightness)
     }
 
-    /// Sets the brightness range for LCD visualizer segments.
+    /// Sets the HSB offsets for LCD visualizer segments.
     /// - Parameters:
-    ///   - min: Minimum brightness (applied to top segments). Default: 0.90.
-    ///   - max: Maximum brightness (applied to bottom segments). Default: 1.0.
-    func lcdBrightness(min: Double, max: Double) -> some View {
+    ///   - min: HSB offset for top segments.
+    ///   - max: HSB offset for bottom segments.
+    func lcdHSBOffsets(min: HSBOffset, max: HSBOffset) -> some View {
         self
-            .environment(\.lcdMinBrightness, min)
-            .environment(\.lcdMaxBrightness, max)
+            .environment(\.lcdMinOffset, min)
+            .environment(\.lcdMaxOffset, max)
     }
 }
-

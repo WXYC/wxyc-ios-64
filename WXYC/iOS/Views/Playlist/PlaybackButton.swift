@@ -195,8 +195,8 @@ struct HoleCutout<S: Shape>: Shape, Animatable {
     }
 }
 
-struct NoHighlightButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
+struct NoHighlightButtonStyle: SwiftUI.ButtonStyle {
+    func makeBody(configuration: SwiftUI.ButtonStyleConfiguration) -> some View {
         configuration.label   // exactly the same, pressed or not
     }
 }
