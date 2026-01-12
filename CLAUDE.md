@@ -100,7 +100,7 @@ The app uses a highly modular architecture with 19 local Swift packages in `Shar
 | **Playback** | Houses several playback engines. Eventually this will whittle down to 1 or 2, but is currently in an experimental phase. |
 | **PlayerHeaderView** | Now playing header UI component |
 | **Playlist** | Playlist service and data models |
-| **Secrets** | Generated file containing obfuscated API keys |
+| **Secrets** | Generated file containing obfuscated API keys. Uses a precompiled Secrets.xcframework to avoid recompiling when the build cache is cleared. |
 | **Wallpaper** | Metal shader-based animated backgrounds |
 | **WXUI** | Shared SwiftUI components |
 
@@ -132,7 +132,7 @@ Run WXYC.xctestplan.
 xcodebuild -scheme WXYC -destination 'generic/platform=iOS'
 
 # Build for simulator
-xcodebuild -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+xcodebuild -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone Air'
 ```
 
 ### UI Tests
