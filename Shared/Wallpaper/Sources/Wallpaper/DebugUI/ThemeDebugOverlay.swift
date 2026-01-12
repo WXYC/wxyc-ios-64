@@ -202,6 +202,7 @@ private struct ThemeDebugPopoverContent: View {
         }
         .frame(minWidth: 300, minHeight: 200, maxHeight: 600)
         .presentationCompactAdaptation(.popover)
+        .presentationBackgroundInteraction(.enabled)
         #if canImport(UIKit) && !os(tvOS)
         .sheet(isPresented: $showingShareSheet) {
             if let url = exportedFileURL {
