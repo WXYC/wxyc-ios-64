@@ -15,6 +15,18 @@ struct Uniforms {
     float lod;  // 0.0 to 1.0: scales layer count for thermal throttling
 };
 
+// Parameters passed in buffer 1 (up to 8 floats)
+struct Parameters {
+    float warmLightR;
+    float warmLightG;
+    float warmLightB;
+    float coolShadowR;
+    float coolShadowG;
+    float coolShadowB;
+    float maxBlur;
+    float minBlur;
+};
+
 struct VertexOut {
     float4 position [[position]];
     float2 uv;
@@ -32,8 +44,6 @@ constant float2 DROP_A_YX = float2(1.0, 6.0);   // a.yx
 constant float STATIC_DROPS_MULT = 2.0;   // S(-0.5, 1.0, 1.0) * 2.0
 constant float LAYER1_MULT = 1.0;         // S(0.25, 0.75, 1.0)
 constant float LAYER2_MULT = 1.0;         // S(0.0, 0.5, 1.0)
-constant float MAX_BLUR = 6.0;            // mix(3.0, 6.0, 1.0)
-constant float MIN_BLUR = 2.0;
 
 // Precomputed light positions for background (static bokeh lights)
 constant float2 LIGHT_POS_0 = float2(0.2867965, 0.06442177);
@@ -141,11 +151,7 @@ static inline float2 Drops(float2 uv, float t, float l0, float l1, float l2) {
 }
 
 // Procedural window light background - unrolled loop with precomputed positions
-static inline float3 windowBackground(float2 uv, float time, float lod) {
-    // Warm ambient light gradient (simulating city lights through rainy window)
-    const float3 warmLight = float3(1.0, 0.85, 0.6);
-    const float3 coolShadow = float3(0.15, 0.2, 0.35);
-
+static inline float3 windowBackground(float2 uv, float time, float3 warmLight, float3 coolShadow, float lod) {
     // Vertical gradient - lighter at top (sky/lights)
     float grad = smoothstep(-0.3, 0.8, uv.y);
 
@@ -168,8 +174,8 @@ static inline float3 windowBackground(float2 uv, float time, float lod) {
 }
 
 // Sample background with blur (simulated with fewer samples - background is already soft)
-static inline float3 sampleBlurred(float2 uv, float blur, float time, float lod) {
-    float3 col = windowBackground(uv, time, lod);
+static inline float3 sampleBlurred(float2 uv, float blur, float time, float3 warmLight, float3 coolShadow, float lod) {
+    float3 col = windowBackground(uv, time, warmLight, coolShadow, lod);
 
     // At low LOD, skip blur entirely
     if (lod < 0.5f) {
@@ -180,10 +186,10 @@ static inline float3 sampleBlurred(float2 uv, float blur, float time, float lod)
     float blurAmount = blur * 0.02;
 
     float3 blurred = col
-        + windowBackground(uv + float2(blurAmount, 0.0), time, lod)
-        + windowBackground(uv + float2(-blurAmount, 0.0), time, lod)
-        + windowBackground(uv + float2(0.0, blurAmount), time, lod)
-        + windowBackground(uv + float2(0.0, -blurAmount), time, lod);
+        + windowBackground(uv + float2(blurAmount, 0.0), time, warmLight, coolShadow, lod)
+        + windowBackground(uv + float2(-blurAmount, 0.0), time, warmLight, coolShadow, lod)
+        + windowBackground(uv + float2(0.0, blurAmount), time, warmLight, coolShadow, lod)
+        + windowBackground(uv + float2(0.0, -blurAmount), time, warmLight, coolShadow, lod);
     blurred *= 0.2;  // 1/5
 
     return mix(col, blurred, saturate(blur * 0.2));
@@ -191,8 +197,13 @@ static inline float3 sampleBlurred(float2 uv, float blur, float time, float lod)
 
 fragment float4 windowlightFragment(
     VertexOut in [[stage_in]],
-    constant Uniforms& u [[buffer(0)]]
+    constant Uniforms& u [[buffer(0)]],
+    constant Parameters& p [[buffer(1)]]
 ) {
+    // Extract parameters
+    float3 warmLight = float3(p.warmLightR, p.warmLightG, p.warmLightB);
+    float3 coolShadow = float3(p.coolShadowR, p.coolShadowG, p.coolShadowB);
+
     // Normalized coordinates (flip Y to match Shadertoy convention)
     float2 uv = (float2(in.uv.x, 1.0 - in.uv.y) - 0.5) * float2(u.resolution.x / u.resolution.y, 1.0) * 0.7;
 
@@ -211,10 +222,10 @@ fragment float4 windowlightFragment(
     // Cheap normals using derivatives
     float2 n = float2(dfdx(c.x), dfdy(c.x));
 
-    float focus = mix(MAX_BLUR - c.y, MIN_BLUR, S(0.1, 0.2, c.x));
+    float focus = mix(p.maxBlur - c.y, p.minBlur, S(0.1, 0.2, c.x));
 
     // Sample procedural background with refraction and blur (flip Y for background too)
-    float3 col = sampleBlurred(float2(in.uv.x, 1.0 - in.uv.y) + n, focus, T, u.lod);
+    float3 col = sampleBlurred(float2(in.uv.x, 1.0 - in.uv.y) + n, focus, T, warmLight, coolShadow, u.lod);
 
     // Apply precomputed color shift
     col *= COLOR_SHIFT_MIXED;

@@ -8,11 +8,68 @@
     "functionName": "plasma",
     "fragmentFunction": "plasmaFrag"
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "patternScale",
+      "type": "float",
+      "label": "Pattern Scale",
+      "default": 6.0,
+      "range": { "min": 2.0, "max": 12.0 }
+    },
+    {
+      "id": "colorAmplitude",
+      "type": "float",
+      "label": "Color Amplitude",
+      "default": 0.3,
+      "range": { "min": 0.1, "max": 0.5 }
+    },
+    {
+      "id": "colorOffsetR",
+      "type": "float",
+      "label": "Color Offset R",
+      "default": 0.0,
+      "range": { "min": 0.0, "max": 6.28 }
+    },
+    {
+      "id": "colorOffsetG",
+      "type": "float",
+      "label": "Color Offset G",
+      "default": 2.1,
+      "range": { "min": 0.0, "max": 6.28 }
+    },
+    {
+      "id": "colorOffsetB",
+      "type": "float",
+      "label": "Color Offset B",
+      "default": 4.2,
+      "range": { "min": 0.0, "max": 6.28 }
+    },
+    {
+      "id": "waveThreeAmplitude",
+      "type": "float",
+      "label": "Wave 3 Amplitude",
+      "default": 0.5,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "timeSpeed",
+      "type": "float",
+      "label": "Time Speed",
+      "default": 1.0,
+      "range": { "min": 0.5, "max": 2.0 }
+    }
+  ],
   "shaderArguments": [
     { "source": "viewWidth" },
     { "source": "viewHeight" },
-    { "source": "time" }
+    { "source": "time" },
+    { "source": "parameter", "id": "patternScale" },
+    { "source": "parameter", "id": "colorAmplitude" },
+    { "source": "parameter", "id": "colorOffsetR" },
+    { "source": "parameter", "id": "colorOffsetG" },
+    { "source": "parameter", "id": "colorOffsetB" },
+    { "source": "parameter", "id": "waveThreeAmplitude" },
+    { "source": "parameter", "id": "timeSpeed" }
   ],
   "foreground": "dark",
   "accent": {

@@ -37,7 +37,11 @@ struct Uniforms {
 // Parameters passed in buffer 1 (up to 8 floats)
 struct Parameters {
     float highlightCompression;
-    float pad[7];
+    float waveScale;
+    float iterationDivisor;
+    float colorEnhancement;
+    float timeSpeed;
+    float pad[3];
 };
 
 struct VertexOut {
@@ -46,7 +50,9 @@ struct VertexOut {
 };
 
 // Core implementation (called by both stitchable and fragment versions)
-static half4 chromaWaveImpl(float2 position, float width, float height, float time, float highlightCompression, float lod) {
+static half4 chromaWaveImpl(float2 position, float width, float height, float time,
+                            float highlightCompression, float waveScale, float iterationDivisor,
+                            float colorEnhancement, float timeSpeed, float lod) {
     float2 iResolution = float2(width, height);
 
     // Wrap time to prevent floating-point precision loss over extended runtime.
@@ -57,7 +63,7 @@ static half4 chromaWaveImpl(float2 position, float width, float height, float ti
 
     // 2-octave noise oscillates time for organic variation in animation pace
     float timeVariation = (noise2Octave(wrappedTime * 0.03f) - 0.5f) * 8.0f;
-    float t = (wrappedTime + timeVariation) / 32.0f;
+    float t = (wrappedTime + timeVariation) / timeSpeed;
 
     float3 col = float3(0.0f);
 
@@ -66,12 +72,12 @@ static half4 chromaWaveImpl(float2 position, float width, float height, float ti
 
     // Process each color channel separately
     for (int c = 0; c < 3; c++) {
-        float2 uv = (position * 20.0f - iResolution) / iResolution.y;
+        float2 uv = (position * waveScale - iResolution) / iResolution.y;
 
         // Iterative wave distortion
         for (int i = 1; i < 7; i++) {
             if (i >= maxIter) break;
-            uv /= 1.70f;
+            uv /= iterationDivisor;
             uv += ceil(col.yx);
             uv += float(i) + (cos(uv.x) * cos(uv.y) + sin(uv.y) * cos(t) + cos(t) * cos(uv.x));
         }
@@ -80,7 +86,7 @@ static half4 chromaWaveImpl(float2 position, float width, float height, float ti
     }
 
     // Apply slight color enhancement
-    col += 0.2f * clamp(col, 0.0f, 0.5f);
+    col += colorEnhancement * clamp(col, 0.0f, 0.5f);
     // Compress highlights using Reinhard tone curve: x / (1 + x * k)
     // At k=0: no compression (linear). Higher k rolls off highlights more.
     col = col / (1.0f + col * highlightCompression);
@@ -96,9 +102,14 @@ half4 chromaWave(float2 position,
                  float width,
                  float height,
                  float time,
-                 float highlightCompression)
+                 float highlightCompression,
+                 float waveScale,
+                 float iterationDivisor,
+                 float colorEnhancement,
+                 float timeSpeed)
 {
-    return chromaWaveImpl(position, width, height, time, highlightCompression, 1.0f);  // Full quality for SwiftUI
+    return chromaWaveImpl(position, width, height, time, highlightCompression,
+                          waveScale, iterationDivisor, colorEnhancement, timeSpeed, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
@@ -108,5 +119,7 @@ fragment half4 chromaWaveFrag(
     constant Parameters& p [[buffer(1)]]
 ) {
     float2 pos = in.uv * u.resolution;
-    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time, p.highlightCompression, u.lod);
+    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time,
+                          p.highlightCompression, p.waveScale, p.iterationDivisor,
+                          p.colorEnhancement, p.timeSpeed, u.lod);
 }

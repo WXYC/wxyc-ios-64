@@ -9,7 +9,36 @@
     "fragmentFunction": "lamp4DFrag",
     "timeScale": 1.0
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "timeSpeed",
+      "type": "float",
+      "label": "Time Speed",
+      "default": 9.0,
+      "range": { "min": 4.0, "max": 20.0 }
+    },
+    {
+      "id": "colorInterval",
+      "type": "float",
+      "label": "Color Interval",
+      "default": 10.0,
+      "range": { "min": 5.0, "max": 20.0 }
+    },
+    {
+      "id": "baseGray",
+      "type": "float",
+      "label": "Base Gray",
+      "default": 0.75,
+      "range": { "min": 0.5, "max": 1.0 }
+    },
+    {
+      "id": "hueShift",
+      "type": "float",
+      "label": "Hue Shift",
+      "default": 0.0,
+      "range": { "min": -180.0, "max": 180.0 }
+    }
+  ],
   "shaderArguments": [],
   "foreground": "dark",
   "accent": {

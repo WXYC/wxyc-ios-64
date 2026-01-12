@@ -21,6 +21,18 @@ struct Uniforms {
     float lod;  // 0.0 to 1.0: scales glow layers for thermal throttling
 };
 
+// Parameters passed in buffer 1 (up to 8 floats)
+struct Parameters {
+    float bandCount;
+    float lineWidthScale;
+    float glowBrightness;
+    float targetHue;
+    float hueRange;
+    float noiseFrequency;
+    float timeSpeed;
+    float pad;
+};
+
 struct VertexOut {
     float4 position [[position]];
     float2 uv;
@@ -141,7 +153,10 @@ static inline float perlinNoiseOctaves(float3 position, int freq, int octaves,
 }
 
 // Core implementation - isoline-based "topology" strokes (no neighbor samples)
-static half4 neonTopologyIsoImpl(float2 position, float width, float height, float time, float lod) {
+static half4 neonTopologyIsoImpl(float2 position, float width, float height, float time,
+                                  float bandCount, float lineWidthScale, float glowBrightnessParam,
+                                  float targetHueParam, float hueRangeParam, float noiseFrequency,
+                                  float timeSpeed, float lod) {
     float aspect = width / height;
     float invWidth = 1.0f / width;
     float invHeight = 1.0f / height;
@@ -149,8 +164,8 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
     float2 pos = float2(position.x * invWidth * aspect, position.y * invHeight);
 
     uint seed = 0x578437adU;
-    float z = time * 0.01f;
-    int freq = 5;
+    float z = time * timeSpeed;
+    int freq = int(noiseFrequency);
     int octave = 2;
     float persistence = 0.5f;
     float lacunarity = 2.0f;
@@ -158,15 +173,15 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
     float raw = perlinNoiseOctaves(float3(pos, z), freq, octave, persistence, lacunarity, seed);
     float valueback = (raw + 1.0f) * 0.5f; // [0,1]
 
-    // 10 bands -> draw strokes along band boundaries.
-    float t = valueback * 10.0f;
+    // bandCount bands -> draw strokes along band boundaries.
+    float t = valueback * bandCount;
     float ft = fract(t);
     float d = min(ft, 1.0f - ft); // distance to nearest boundary in "t-space"
 
     // Derivative-based AA / thickness in t-space.
     // (use abs(dfdx)+abs(dfdy) for compatibility; fwidth(t) would also work)
     float w = abs(dfdx(t)) + abs(dfdy(t));
-    w = clamp(w * 1.25f, 0.0025f, 0.05f);
+    w = clamp(w * lineWidthScale, 0.0025f, 0.05f);
 
     float edge = 1.0f - smoothstep(0.0f, w, d);
 
@@ -182,34 +197,35 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
     // Hue-based glow intensity
     // valueback controls purple(1.0) to cyan(0.0) blend
     // Target a hue range - glow peaks at center, drops to zero at edges
-    float targetHue = 0.7f;    // center of glow range
-    float hueRange = 0.3f;     // half-width of range
-    float glowBrightness = 0.5f; // 0.0 = no glow, 1.0 = full, >1.0 = overdriven
-    float hueWeight = 1.0f - smoothstep(0.0f, hueRange, abs(valueback - targetHue));
+    float hueWeight = 1.0f - smoothstep(0.0f, hueRangeParam, abs(valueback - targetHueParam));
 
     half3 purple = half3(1.0h, 0.0h, 1.0h);
     half3 cyan = half3(0.0h, 1.0h, 1.0h);
     half blend = half(valueback);
 
     half3 edgeColor = mix(cyan, purple, blend) * half(edge);
-    half3 glowColor = mix(cyan, purple, blend) * half(glow * hueWeight * glowBrightness);
+    half3 glowColor = mix(cyan, purple, blend) * half(glow * hueWeight * glowBrightnessParam);
 
-    float q = floor(valueback * 10.0f) * 0.1f;
+    float q = floor(valueback * bandCount) / bandCount;
     half3 baseColor = half3(0.0h, 0.0h, half(q) * 0.2h);
 
     return half4(edgeColor + glowColor + baseColor, 1.0h);
 }
 
 [[ stitchable ]]
-half4 neonTopologyIso(float2 position, half4 inColor, float width, float height, float time) {
-    return neonTopologyIsoImpl(position, width, height, time, 1.0f);  // Full quality for SwiftUI
+half4 neonTopologyIso(float2 position, half4 inColor, float width, float height, float time,
+                      float bandCount, float lineWidthScale, float glowBrightness,
+                      float targetHue, float hueRange, float noiseFrequency, float timeSpeed) {
+    return neonTopologyIsoImpl(position, width, height, time, bandCount, lineWidthScale,
+                               glowBrightness, targetHue, hueRange, noiseFrequency, timeSpeed, 1.0f);
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
+fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]],
+                                   constant Uniforms& u [[buffer(0)]],
+                                   constant Parameters& p [[buffer(1)]]) {
     float2 pos = in.uv * u.resolution;
-    return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time, u.lod);
+    return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time,
+                               p.bandCount, p.lineWidthScale, p.glowBrightness,
+                               p.targetHue, p.hueRange, p.noiseFrequency, p.timeSpeed, u.lod);
 }
-
-
-

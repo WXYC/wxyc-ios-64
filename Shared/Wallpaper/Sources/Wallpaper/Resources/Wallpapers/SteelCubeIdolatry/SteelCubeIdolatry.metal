@@ -18,7 +18,8 @@ struct Uniforms {
 // Custom parameters passed from debug UI
 // Order must match JSON parameter order:
 // [0] yellowIntensity, [1] magentaIntensity, [2] cyanIntensity,
-// [3] blueIntensity, [4] ambientLevel, [5] glowAmount
+// [3] blueIntensity, [4] ambientLevel, [5] glowAmount,
+// [6] voronoiScale, [7] cellAnimSpeed
 struct Parameters {
     float values[8];
 };
@@ -45,7 +46,7 @@ static inline float polygon(float2 p, float s) {
 }
 
 // Voronoi pattern with animated cells (optimized 2x2 neighborhood)
-static inline float voronoi(float2 p, float s, float time) {
+static inline float voronoi(float2 p, float s, float time, float cellAnimSpeed) {
     float2 i = floor(p * s);
     float2 f = fract(p * s);
     float2 current = i + f;
@@ -59,7 +60,7 @@ static inline float voronoi(float2 p, float s, float time) {
         for (int x = x0; x <= x0 + 1; x++) {
             float2 neighbor = i + float2(x, y);
             float2 point = r2D(neighbor);
-            point = 0.5 + 0.5 * fast::sin(time * 0.5 + 6.0 * point);
+            point = 0.5 + 0.5 * fast::sin(time * cellAnimSpeed + 6.0 * point);
             float dist = polygon(neighbor + point - current, 3.0);
             min_dist = min(min_dist, dist);
         }
@@ -132,6 +133,8 @@ fragment float4 steelCubeIdolatryFragment(
     float blueInt = p.values[3];
     float ambientLevel = p.values[4];
     float glowAmount = p.values[5];
+    float voronoiScale = p.values[6];
+    float cellAnimSpeed = p.values[7];
 
     // Flip Y for Shadertoy convention
     float2 fragCoord = float2(in.uv.x, 1.0 - in.uv.y) * u.resolution;
@@ -143,13 +146,12 @@ fragment float4 steelCubeIdolatryFragment(
 
     float2 e = float2(0.01, 0.0);
 
-    float s = 2.0;
     float t = u.time / 3.0;
 
     // Voronoi and derivatives for normal calculation
-    float vor = 1.0 - voronoi(uv, s, t);
-    float dx = 1.0 - voronoi(uv - e.xy, s, t);
-    float dy = 1.0 - voronoi(uv - e.yx, s, t);
+    float vor = 1.0 - voronoi(uv, voronoiScale, t, cellAnimSpeed);
+    float dx = 1.0 - voronoi(uv - e.xy, voronoiScale, t, cellAnimSpeed);
+    float dy = 1.0 - voronoi(uv - e.yx, voronoiScale, t, cellAnimSpeed);
     dx = (dx - vor) / e.x;
     dy = (dy - vor) / e.x;
 

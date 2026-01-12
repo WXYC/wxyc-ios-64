@@ -28,6 +28,15 @@ struct Uniforms {
     float lod;  // 0.0 to 1.0: scales octave counts for thermal throttling
 };
 
+// Parameters passed in buffer 1 (up to 8 floats)
+struct Parameters {
+    float timeSpeed;
+    float colorInterval;
+    float baseGray;
+    float hueShift;  // in degrees, -180 to 180
+    float pad[4];
+};
+
 struct VertexOut {
     float4 position [[position]];
     float2 uv;
@@ -76,6 +85,15 @@ static inline float2 rotate(float2 oldpoint, float s, float c) {
     return float2(left, right);
 }
 
+// Rotate color around the gray axis (1,1,1) using Rodrigues' formula
+static inline float3 rotateHue(float3 color, float angleRadians) {
+    float c = fast::cos(angleRadians);
+    float s = fast::sin(angleRadians);
+    // Unit vector along gray axis
+    const float3 k = float3(0.57735026919f); // 1/sqrt(3)
+    return color * c + cross(k, color) * s + k * dot(k, color) * (1.0f - c);
+}
+
 static inline float noise4(float2 uv, float time, float2 offset, int octaves) {
     float f = 0.5f;
     float frequency = 1.75f;
@@ -91,8 +109,9 @@ static inline float noise4(float2 uv, float time, float2 offset, int octaves) {
 }
 
 // Core implementation
-static half4 lamp4DImpl(float2 position, float width, float height, float time, float lod) {
-    time /= 9.0;
+static half4 lamp4DImpl(float2 position, float width, float height, float time,
+                        float timeSpeed, float colorInterval, float baseGray, float hueShift, float lod) {
+    time /= timeSpeed;
 
     // LOD-scaled octave count: 2 at LOD 0.0, MAX_NOISE_OCTAVES at LOD 1.0
     int octaves = int(mix(2.0f, float(MAX_NOISE_OCTAVES), lod));
@@ -144,12 +163,15 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time, 
     float magentaC = fast::cos(magentaAngle);
 #endif
 
-    float interval = 10.0f;
-    float3 dblue = interval * float3(1.8f, 2.6f, 2.6f);
-    float3 cyan = interval * float3(0.0f, 2.1f, 2.0f);
-    float3 magenta = interval * float3(1.8f, 1.0f, 1.8f);
+    // Convert hue shift from degrees to radians
+    float hueRadians = hueShift * (M_PI_F / 180.0f);
 
-    float3 color = float3(0.75f);
+    // Base color weights with hue rotation applied
+    float3 dblue = colorInterval * rotateHue(float3(1.8f, 2.6f, 2.6f), hueRadians);
+    float3 cyan = colorInterval * rotateHue(float3(0.0f, 2.1f, 2.0f), hueRadians);
+    float3 magenta = colorInterval * rotateHue(float3(1.8f, 1.0f, 1.8f), hueRadians);
+
+    float3 color = float3(baseGray);
 
     // Cache frequently used noise values
     float noiseUV = noise4(uv, time, noiseOffset, octaves);
@@ -185,11 +207,14 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time, 
 
 [[ stitchable ]]
 half4 lamp4D(float2 position, half4 inColor, float width, float height, float time) {
-    return lamp4DImpl(position, width, height, time, 1.0f);  // Full quality for SwiftUI
+    return lamp4DImpl(position, width, height, time, 9.0f, 10.0f, 0.75f, 0.0f, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 lamp4DFrag(VertexOut in [[stage_in]], constant Uniforms& u [[buffer(0)]]) {
+fragment half4 lamp4DFrag(VertexOut in [[stage_in]],
+                          constant Uniforms& u [[buffer(0)]],
+                          constant Parameters& p [[buffer(1)]]) {
     float2 pos = in.uv * u.resolution;
-    return lamp4DImpl(pos, u.resolution.x, u.resolution.y, u.time, u.lod);
+    return lamp4DImpl(pos, u.resolution.x, u.resolution.y, u.time,
+                      p.timeSpeed, p.colorInterval, p.baseGray, p.hueShift, u.lod);
 }

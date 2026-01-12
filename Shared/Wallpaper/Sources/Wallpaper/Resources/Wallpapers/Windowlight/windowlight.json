@@ -8,7 +8,64 @@
     "fragmentFunction": "windowlightFragment",
     "timeScale": 1.0
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "warmLightR",
+      "type": "float",
+      "label": "Warm Light Red",
+      "default": 1.0,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "warmLightG",
+      "type": "float",
+      "label": "Warm Light Green",
+      "default": 0.85,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "warmLightB",
+      "type": "float",
+      "label": "Warm Light Blue",
+      "default": 0.6,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "coolShadowR",
+      "type": "float",
+      "label": "Cool Shadow Red",
+      "default": 0.15,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "coolShadowG",
+      "type": "float",
+      "label": "Cool Shadow Green",
+      "default": 0.2,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "coolShadowB",
+      "type": "float",
+      "label": "Cool Shadow Blue",
+      "default": 0.35,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "maxBlur",
+      "type": "float",
+      "label": "Max Blur",
+      "default": 6.0,
+      "range": { "min": 3.0, "max": 10.0 }
+    },
+    {
+      "id": "minBlur",
+      "type": "float",
+      "label": "Min Blur",
+      "default": 2.0,
+      "range": { "min": 0.0, "max": 4.0 }
+    }
+  ],
   "shaderArguments": [],
   "foreground": "dark",
   "accent": {

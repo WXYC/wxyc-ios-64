@@ -50,6 +50,20 @@
       "label": "Glow",
       "default": 0.3,
       "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "voronoiScale",
+      "type": "float",
+      "label": "Cell Scale",
+      "default": 2.0,
+      "range": { "min": 1.0, "max": 4.0 }
+    },
+    {
+      "id": "cellAnimSpeed",
+      "type": "float",
+      "label": "Cell Anim Speed",
+      "default": 0.5,
+      "range": { "min": 0.2, "max": 1.0 }
     }
   ],
   "shaderArguments": [],

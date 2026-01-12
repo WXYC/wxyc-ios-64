@@ -8,7 +8,64 @@
     "fragmentFunction": "refractNoiseFrag",
     "timeScale": 1.0
   },
-  "parameters": [],
+  "parameters": [
+    {
+      "id": "tileColorR",
+      "type": "float",
+      "label": "Tile Red",
+      "default": 0.06,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "tileColorG",
+      "type": "float",
+      "label": "Tile Green",
+      "default": 0.76,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "tileColorB",
+      "type": "float",
+      "label": "Tile Blue",
+      "default": 0.78,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "refractIndex",
+      "type": "float",
+      "label": "Refract Index",
+      "default": 0.8,
+      "range": { "min": 0.5, "max": 1.0 }
+    },
+    {
+      "id": "cubeTintR",
+      "type": "float",
+      "label": "Cube Tint Red",
+      "default": 0.25,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "cubeTintG",
+      "type": "float",
+      "label": "Cube Tint Green",
+      "default": 0.75,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "cubeTintB",
+      "type": "float",
+      "label": "Cube Tint Blue",
+      "default": 1.0,
+      "range": { "min": 0.0, "max": 1.0 }
+    },
+    {
+      "id": "noiseStrength",
+      "type": "float",
+      "label": "Noise Strength",
+      "default": 0.15,
+      "range": { "min": 0.05, "max": 0.3 }
+    }
+  ],
   "shaderArguments": [],
   "foreground": "light",
   "accent": {
