@@ -15,24 +15,22 @@ import Wallpaper
 #if DEBUG
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
-    @Binding var selectedPlayerType: PlayerControllerType
     @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
     @State private var skipNextAPIVersionPersist = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
+    private var playbackControlsDebugState = PlaybackControlsDebugState.shared
     private var onResetThemePickerState: (() -> Void)?
     private var onResetSiriTip: (() -> Void)?
 
     public init(
         visualizer: VisualizerDataSource,
-        selectedPlayerType: Binding<PlayerControllerType>,
         onResetThemePickerState: (() -> Void)? = nil,
         onResetSiriTip: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
-        self._selectedPlayerType = selectedPlayerType
         self.onResetThemePickerState = onResetThemePickerState
         self.onResetSiriTip = onResetSiriTip
     }
@@ -80,22 +78,6 @@ public struct VisualizerDebugView: View {
                     Text("Resets tip dismissal state and theme picker usage tracking for testing analytics.")
                 }
 
-                // Player Controller Selection
-                Section {
-                    Picker("Player Controller", selection: $selectedPlayerType) {
-                        ForEach(PlayerControllerType.allCases) { type in
-                            Text(type.displayName).tag(type)
-                        }
-                    }
-                    .onChange(of: selectedPlayerType) { _, newValue in
-                        newValue.persist()
-                    }
-                } header: {
-                    Text("Player Controller")
-                } footer: {
-                    Text(selectedPlayerType.shortDescription)
-                }
-                        
                 // Playlist API Version
                 Section {
                     Picker("API Version", selection: $selectedAPIVersion) {
@@ -201,6 +183,22 @@ public struct VisualizerDebugView: View {
                     Text("Amplification")
                 } footer: {
                     Text("Amplify audio signal before processing. 1.0x = no boost.")
+                }
+                    
+                // Playback Button Blend Mode
+                Section {
+                    Picker("Blend Mode", selection: Binding(
+                        get: { playbackControlsDebugState.blendMode },
+                        set: { playbackControlsDebugState.blendMode = $0 }
+                    )) {
+                        ForEach(DebugBlendMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                } header: {
+                    Text("Playback Button")
+                } footer: {
+                    Text("Changes the blend mode applied to the play/pause button.")
                 }
                 
                 // Actions

@@ -17,7 +17,7 @@ struct WXYCTVApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(radioPlayerController: RadioPlayerController.shared)
+            ContentView(playbackController: AudioPlayerController.shared)
                 .environment(\.playlistService, playlistService)
         }
     }
@@ -47,5 +47,5 @@ struct WXYCTVApp: App {
 }
 
 #Preview {
-    ContentView(radioPlayerController: RadioPlayerController.shared)
+    ContentView(playbackController: AudioPlayerController.shared)
 }

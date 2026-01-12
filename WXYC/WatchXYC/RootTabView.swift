@@ -12,11 +12,11 @@ import PlaybackWatchOS
 import AppServices
 
 struct RootTabView: View {
-    let radioPlayerController: RadioPlayerController
+    let playbackController: any PlaybackController
     
     var body: some View {
         TabView {
-            PlayerPage(radioPlayerController: radioPlayerController)
+            PlayerPage(playbackController: playbackController)
                 .tag(0)
             PlaylistPage()
                 .tag(1)
@@ -28,6 +28,6 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(radioPlayerController: RadioPlayerController.shared)
+    RootTabView(playbackController: RadioPlayerController.shared)
         .environment(\.playlistService, PlaylistService())
 }

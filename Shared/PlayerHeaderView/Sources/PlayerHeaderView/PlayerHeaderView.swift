@@ -24,20 +24,15 @@ public struct PlayerHeaderView: View {
     /// 2D matrix tracking historical RMS values per bar
     @State var barHistory: [[Float]]
 
-    /// Selected player controller type for debug switching
-    @Binding var selectedPlayerType: PlayerControllerType
-
     /// Callback when debug tap occurs (DEBUG only)
     var onDebugTapped: (() -> Void)?
 
     public init(
         visualizer: VisualizerDataSource,
-        selectedPlayerType: Binding<PlayerControllerType>,
         previewValues: [Float]? = nil,
         onDebugTapped: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
-        self._selectedPlayerType = selectedPlayerType
         self.onDebugTapped = onDebugTapped
         if let values = previewValues {
             _barHistory = State(initialValue: values.map { value in
@@ -85,7 +80,7 @@ public struct PlayerHeaderView: View {
         .task(id: Self.controller.isPlaying) {
             // Only process buffers when playing
             guard Self.controller.isPlaying else { return }
-            
+
             // Get stream reference on MainActor, then process on background thread
             let stream = Self.controller.audioBufferStream
             let viz = visualizer
@@ -96,22 +91,6 @@ public struct PlayerHeaderView: View {
                     viz.processBuffer(buffer)
                 }
             }.value
-        }
-        .onChange(of: selectedPlayerType) { _, newType in
-            // Switch the player when type changes
-            Task { @MainActor in
-                Self.controller.playerType = newType
-                // Note: HeaderView relies on AudioPlayerController's internal bridging,
-                // so the existing stream loop in .task should continue to work or
-                // may need to be restarted if the iterator terminates?
-                // AudioPlayerController.audioBufferStream returns a bridged stream,
-                // so the stream itself shouldn't terminate unless AudioPlayerController explicitly ends it.
-                // Assuming AudioPlayerController keeps the same stream alive across replacements.
-
-                // If stream does terminate, we might need a way to restart the loop.
-                // But .task restarts if identity changes... local identity hasn't changed.
-                // If AudioPlayerController's stream implementation is robust, it shouldn't end on replace.
-            }
         }
     }
 }

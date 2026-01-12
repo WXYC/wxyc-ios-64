@@ -25,10 +25,10 @@ struct PlayerPage: View {
     @State private var playlist: Playlist = .empty
     @State private var elementHeights: CGFloat = 0
     private let placeholder: UIImage = UIImage(named: "logo")!
-    private let radioPlayerController: RadioPlayerController
+    private let playbackController: any PlaybackController
 
-    init(radioPlayerController: RadioPlayerController) {
-        self.radioPlayerController = radioPlayerController
+    init(playbackController: any PlaybackController) {
+        self.playbackController = playbackController
     }
     
     var content: NowPlayingEntry {
@@ -75,9 +75,9 @@ struct PlayerPage: View {
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        Task { try radioPlayerController.toggle(reason: "Watch play/pause tapped") }
+                        Task { try playbackController.toggle(reason: "Watch play/pause tapped") }
                     }) {
-                        Image(systemName: radioPlayerController.isPlaying ? "pause.fill" : "play.fill")
+                        Image(systemName: playbackController.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.white)
                             .padding(20)
@@ -93,10 +93,10 @@ struct PlayerPage: View {
             #if os(tvOS)
             .focusable(true)
             .onPlayPauseCommand {
-                try? radioPlayerController.toggle(reason: "tvOS play/pause command")
+                try? playbackController.toggle(reason: "tvOS play/pause command")
             }
             .task {
-                try? radioPlayerController.play(reason: "tvOS task")
+                try? playbackController.play(reason: "tvOS task")
             }
             #endif
             .task {
@@ -222,5 +222,5 @@ extension SwiftUI.Image {
 }
 
 #Preview {
-    PlayerPage(radioPlayerController: RadioPlayerController.shared)
+    PlayerPage(playbackController: RadioPlayerController.shared)
 }
