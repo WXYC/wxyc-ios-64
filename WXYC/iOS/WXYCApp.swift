@@ -36,122 +36,12 @@ private enum SettingsBundleKeys {
     static let clearArtworkCache = "clear_artwork_cache"
 }
 
-// Shared app state for cross-scene access (main UI and CarPlay)
-@MainActor
-@Observable
-final class Singletonia {
-    static let shared = Singletonia()
-
-    let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
-    let playlistService = PlaylistService()
-    let artworkService = MultisourceArtworkService()
-    let widgetStateService: WidgetStateService
-    let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
-
-    let themeConfiguration = ThemeConfiguration()
-    let themePickerState = ThemePickerState()
-
-    private var nowPlayingObservationTask: Task<Void, Never>?
-
-    private init() {
-        self.widgetStateService = WidgetStateService(
-            playbackController: AudioPlayerController.shared,
-            playlistService: playlistService
-        )
-
-        let screenWidth = UIScreen.main.bounds.size.width
-        nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
-            boundsSize: CGSize(width: screenWidth, height: screenWidth)
-        )
-
-        // Configure artwork cache to use screen-width scaled HEIF images
-        ArtworkCacheConfiguration.targetWidth = screenWidth * UIScreen.main.scale
-
-        let nowPlayingService = NowPlayingService(
-            playlistService: playlistService,
-            artworkService: artworkService
-        )
-        startNowPlayingObservation(nowPlayingService: nowPlayingService)
-    }
-
-    private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
-        nowPlayingObservationTask = Task { [weak self] in
-            do {
-                for try await item in nowPlayingService {
-                    guard !Task.isCancelled else { break }
-                    self?.nowPlayingInfoCenterManager.handleNowPlayingItem(item)
-                }
-            } catch {
-                Log(.error, "NowPlaying observation error: \(error)")
-            }
-        }
-    }
-
-    /// Update the foreground state (called when scene phase changes)
-    func setForegrounded(_ foregrounded: Bool) {
-        widgetStateService.setForegrounded(foregrounded)
-    }
-
-    /// Start the widget state service to observe playback and playlist updates
-    func startWidgetStateService() {
-        widgetStateService.start()
-    }
-
-    // MARK: - Review Request Tracking
-        
-    private var playbackObservationTask: Task<Void, Never>?
-    private var requestSentObservationTask: Task<Void, Never>?
-
-    /// Start observing playback state to track user engagement for review requests.
-    func startReviewRequestTracking() {
-        startObservingPlaybackState()
-        startObservingRequestSent()
-    }
-
-    private func startObservingPlaybackState() {
-        playbackObservationTask?.cancel()
-
-        playbackObservationTask = Task { [weak self] in
-            guard let self else { return }
-
-            var wasPlaying = AudioPlayerController.shared.isPlaying
-        
-            let observations = Observations {
-                AudioPlayerController.shared.isPlaying
-            }
-
-            for await isPlaying in observations {
-                guard !Task.isCancelled else { break }
-
-                // Track when playback starts (transition from not playing to playing)
-                if isPlaying && !wasPlaying {
-                    self.reviewRequestService.recordPlaybackStarted()
-                }
-                wasPlaying = isPlaying
-            }
-        }
-    }
-        
-    private func startObservingRequestSent() {
-        requestSentObservationTask?.cancel()
-        
-        requestSentObservationTask = Task { [weak self] in
-            guard let self else { return }
-
-            for await _ in NotificationCenter.default.messages(of: RequestServiceSubject.shared, for: RequestSentMessage.self) {
-                guard !Task.isCancelled else { break }
-                self.reviewRequestService.recordRequestSent()
-            }
-        }
-    }
-}
-
 @main
 struct WXYCApp: App {
     @State private var appState = Singletonia.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.requestReview) private var requestReview
-        
+
     init() {
         // Cache migration - purge if version changed
         CacheMigrationManager.migrateIfNeeded()
@@ -162,7 +52,7 @@ struct WXYCApp: App {
             await CacheCoordinator.migratePngCacheToHeif()
         }
         #endif
-        
+
         // Seed OpenNSFW model to shared container for widget
         if let bundleURL = Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc") {
             ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
@@ -247,7 +137,7 @@ struct WXYCApp: App {
                         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                             handleUserActivity(userActivity)
                         }
-                    
+
 #if DEBUG
                     DebugHUD()
                     
@@ -468,7 +358,7 @@ struct WXYCApp: App {
             for attempt in 1...5 {
                 let delay = 200 * attempt  // 200ms, 400ms, 600ms, 800ms, 1000ms
                 try? await Task.sleep(for: .milliseconds(delay))
-
+        
                 if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
                     appState.themeConfiguration.extractAndCachePalette(from: snapshot)
                     Log(.info, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID) (attempt \(attempt))")
