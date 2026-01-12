@@ -12,6 +12,7 @@ import Core
 import WXUI
 import PlayerHeaderView
 import Playback
+import Wallpaper
 
 struct PlaybackShape: InsettableShape {
     var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)
@@ -112,14 +113,14 @@ struct PlaybackShape: InsettableShape {
 }
 
 struct PlaybackButton: View {
-    @Environment(\.colorScheme) private var colorScheme
-    
+    @Environment(Singletonia.self) private var appState
+
     @State private var isPlaying: Bool = AudioPlayerController.shared.isPlaying
     @State private var isExpanded = false
 
     var animationDuration: Double
     var action: (() -> Void)?
-    
+
     init(
         animationDuration: Double = 0.24,
         action: (() -> Void)? = nil
@@ -127,12 +128,18 @@ struct PlaybackButton: View {
         self.animationDuration = animationDuration
         self.action = action
     }
-    
+
+    private var currentTheme: LoadedTheme? {
+        ThemeRegistry.shared.theme(for: appState.themeConfiguration.selectedThemeID)
+    }
+
     fileprivate func buttonColor() -> Color {
-        if colorScheme == .light {
-            Color(red: 57 / 255, green: 56 / 255, blue: 57 / 255)
-        } else {
-            .gray
+        let foregroundStyle = currentTheme?.manifest.foreground ?? .light
+        switch foregroundStyle {
+        case .light:
+            return .white
+        case .dark:
+            return Color(uiColor: .darkGray)
         }
     }
     
@@ -164,8 +171,9 @@ struct PlaybackButton: View {
     PlaybackButtonExample()
         .frame(width: 100, height: 100)
         .padding()
+        .environment(Singletonia.shared)
 }
-
+    
 enum PlaybackButtonState {
     case playing
     case paused
