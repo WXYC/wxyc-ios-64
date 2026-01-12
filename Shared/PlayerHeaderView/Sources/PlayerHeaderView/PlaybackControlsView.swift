@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Wallpaper
 
 // MARK: - Playback Controls View
 
@@ -14,14 +15,15 @@ struct PlaybackControlsView: View {
     var isPlaying: Bool
     var isLoading: Bool
     var onPlayTapped: () -> Void
-    private var debugState = PlaybackControlsDebugState.shared
     
+    @Environment(\.playbackBlendMode) private var blendMode
+
     init(isPlaying: Bool, isLoading: Bool = false, onPlayTapped: @escaping () -> Void) {
         self.isPlaying = isPlaying
         self.isLoading = isLoading
         self.onPlayTapped = onPlayTapped
     }
-    
+
     public var body: some View {
         Button(action: onPlayTapped) {
             image
@@ -33,7 +35,7 @@ struct PlaybackControlsView: View {
         .accessibilityIdentifier("playPauseButton")
         .accessibilityValue(isPlaying ? "playing" : "paused")
         .foregroundStyle(.secondary)
-        .blendMode(debugState.blendMode.blendMode)
+        .blendMode(blendMode)
     }
 
     var image: Image {

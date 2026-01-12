@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-@_exported import Wallpaper
 
 // MARK: - FPS Counter
 
