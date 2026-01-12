@@ -66,6 +66,14 @@ public struct VisualizerTimelineView: View {
     @State private var fpsCounter = FPSCounter()
     @State private var showModeIndicator = false
     
+    /// Cached showFPS value to avoid Observable access triggering rebuilds
+    @State private var cachedShowFPS = false
+    
+    /// Pre-allocated BarData array to avoid allocations each frame
+    @State private var barDataCache: [BarData] = (0..<VisualizerConstants.barAmount).map {
+        BarData(category: String($0), value: 0)
+    }
+    
     /// Animation runs during playback OR while dots are falling
     private var isAnimating: Bool {
         isPlaying || isFalling
@@ -94,25 +102,7 @@ public struct VisualizerTimelineView: View {
     public var body: some View {
         TimelineView(.animation(minimumInterval: VisualizerConstants.updateInterval, paused: !isAnimating)) { timeline in
             LCDSpectrumAnalyzerView(
-                data: barHistory.enumerated().map {
-                    index,
-                    history in
-                    if isPlaying {
-                        // Normal playback - show full bars
-                        return BarData(
-                            category: String(index),
-                            value: Int(history[0])
-                        )
-                    } else {
-                        // Stopped - show single falling dot (or nothing if at 0)
-                        let dotSegment = Int((fallingDots[index] / VisualizerConstants.magnitudeLimit) * 8) - 1
-                        return BarData(
-                            category: String(index),
-                            value: 0,
-                            singleDotPosition: dotSegment >= 0 ? dotSegment : nil
-                        )
-                    }
-                },
+                data: barDataCache,
                 maxValue: Double(VisualizerConstants.magnitudeLimit)
             )
             .frame(height: 75)
@@ -122,7 +112,7 @@ public struct VisualizerTimelineView: View {
             )
             .cornerRadius(10)
             .overlay(alignment: .topTrailing) {
-                if visualizer.showFPS {
+                if cachedShowFPS {
                     FPSDebugView(fps: fpsCounter.fps)
                         .padding(8)
                 }
@@ -143,6 +133,12 @@ public struct VisualizerTimelineView: View {
                 // Playback stopped - start falling animation
                 startFalling()
             }
+        }
+        .onChange(of: visualizer.showFPS) { _, newValue in
+            cachedShowFPS = newValue
+        }
+        .onAppear {
+            cachedShowFPS = visualizer.showFPS
         }
 #if DEBUG
         .onTapGesture {
@@ -171,15 +167,13 @@ public struct VisualizerTimelineView: View {
     /// Update visualizer with live audio data using frame-level smoothing
     /// This interpolates between audio buffer updates to achieve smooth 60 FPS animation
     private func updatePlaybackData() {
+        // Cache displayData to avoid repeated computed property access
+        let currentDisplayData = displayData
+        
         for barIndex in 0..<VisualizerConstants.barAmount {
-            // Shift history buffer
-            for historyIndex in stride(from: VisualizerConstants.historyLength - 1, through: 1, by: -1) {
-                barHistory[barIndex][historyIndex] = barHistory[barIndex][historyIndex - 1]
-            }
-            
             // Get target value from audio data
-            let targetValue = barIndex < displayData.count 
-                ? min(displayData[barIndex], VisualizerConstants.magnitudeLimit) 
+            let targetValue = barIndex < currentDisplayData.count 
+                ? min(currentDisplayData[barIndex], VisualizerConstants.magnitudeLimit) 
                 : Float(0)
             
             // Apply asymmetric smoothing: fast attack, slow decay
@@ -194,7 +188,14 @@ public struct VisualizerTimelineView: View {
             }
             smoothedValues[barIndex] = smoothedValue
             
+            // Update barHistory for external consumers (e.g., startFalling)
             barHistory[barIndex][0] = smoothedValue
+            
+            // Update pre-allocated BarData cache (avoids allocation each frame)
+            barDataCache[barIndex] = BarData(
+                category: String(barIndex),
+                value: Int(smoothedValue)
+            )
         }
     }
     
@@ -207,9 +208,22 @@ public struct VisualizerTimelineView: View {
                 // Decay exponentially
                 fallingDots[barIndex] *= fallDecayFactor
                 allZero = false
+                
+                // Update BarData with falling dot position
+                let dotSegment = Int((fallingDots[barIndex] / VisualizerConstants.magnitudeLimit) * 8) - 1
+                barDataCache[barIndex] = BarData(
+                    category: String(barIndex),
+                    value: 0,
+                    singleDotPosition: dotSegment >= 0 ? dotSegment : nil
+                )
             } else {
                 // Snap to zero when very small
                 fallingDots[barIndex] = 0
+                barDataCache[barIndex] = BarData(
+                    category: String(barIndex),
+                    value: 0,
+                    singleDotPosition: nil
+                )
             }
         }
         
@@ -218,7 +232,7 @@ public struct VisualizerTimelineView: View {
             isFalling = false
         }
     }
-    
+
     private func showModeIndicatorBriefly() {
         withAnimation(.easeIn(duration: 0.15)) {
             showModeIndicator = true
