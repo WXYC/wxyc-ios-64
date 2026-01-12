@@ -272,7 +272,7 @@ public final class AVAudioStreamer {
     private func handleDecodedBuffer(_ buffer: AVAudioPCMBuffer) async {
         bufferQueue.enqueue(buffer)
 
-        // Check if we should start playing
+        // Check if we should start playing (transition from buffering → playing)
         if case .buffering = streamingState, bufferQueue.hasMinimumBuffers {
             do {
                 try audioPlayer.play()
@@ -281,21 +281,15 @@ public final class AVAudioStreamer {
             } catch {
                 streamingState = .error(error)
             }
-        }
-
-        // If already playing, schedule this buffer
-        if case .playing = streamingState {
+        } else if case .playing = streamingState {
+            // Already playing - schedule the new buffer
             scheduleBuffers()
-        }
-
-        // Handle stall recovery - wait for minimum buffers then resume
-        if case .stalled = streamingState, bufferQueue.hasMinimumBuffers {
+        } else if case .stalled = streamingState, bufferQueue.hasMinimumBuffers {
+            // Stall recovery - have enough buffers to resume
             scheduleBuffers()
             streamingState = .playing
-        }
-
-        // Update buffering state
-        if case .buffering = streamingState {
+        } else if case .buffering = streamingState {
+            // Still buffering - update progress
             streamingState = .buffering(
                 bufferedCount: bufferQueue.count,
                 requiredCount: configuration.minimumBuffersBeforePlayback
