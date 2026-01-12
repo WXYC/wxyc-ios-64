@@ -21,12 +21,14 @@ public struct MaterialView: View {
     /// The opacity of the tint overlay (0.0 to 1.0).
     public var overlayOpacity: CGFloat
 
-    /// Whether the overlay is dark (black) or light (white).
-    public var isDark: Bool
+    /// How "dark" the overlay is (0.0 = fully light/white, 1.0 = fully dark/black).
+    /// Values between 0 and 1 will crossfade between white and black overlays.
+    public var darkProgress: CGFloat
 
     /// The corner radius of the material shape.
     public var cornerRadius: CGFloat
 
+    /// Convenience initializer using a boolean for dark/light.
     public init(
         blurRadius: CGFloat = 10,
         overlayOpacity: CGFloat = 0,
@@ -35,30 +37,40 @@ public struct MaterialView: View {
     ) {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
-        self.isDark = isDark
+        self.darkProgress = isDark ? 1.0 : 0.0
+        self.cornerRadius = cornerRadius
+    }
+
+    /// Initializer with explicit dark progress for smooth transitions.
+    public init(
+        blurRadius: CGFloat = 10,
+        overlayOpacity: CGFloat = 0,
+        darkProgress: CGFloat,
+        cornerRadius: CGFloat = 12
+    ) {
+        self.blurRadius = blurRadius
+        self.overlayOpacity = overlayOpacity
+        self.darkProgress = darkProgress
         self.cornerRadius = cornerRadius
     }
 
     public var body: some View {
-        Rectangle()
-            .fill(.clear)
-            .background(
-                // Base blur - extend beyond bounds so blur is consistent at edges
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .padding(-blurRadius) // extend beyond visible bounds
-                    .blur(radius: blurRadius)
-            )
+        // Use dark blur style - the overlay handles the visual tint
+        VariableBlurView(blurRadius: blurRadius, isDark: true)
             .overlay(
-                // Light / dark tint
-                Rectangle()
-                    .fill(isDark ? Color.black : Color.white)
-                    .opacity(overlayOpacity)
+                ZStack {
+                    // White overlay (visible when darkProgress is low)
+                    Rectangle()
+                        .fill(Color.white)
+                        .opacity(overlayOpacity * (1 - darkProgress))
+
+                    // Black overlay (visible when darkProgress is high)
+                    Rectangle()
+                        .fill(Color.black)
+                        .opacity(overlayOpacity * darkProgress)
+                }
             )
-            .clipShape(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            )
-            .compositingGroup()
+            .clipShape(.rect(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 
@@ -131,6 +143,12 @@ private struct VariableBlurView: UIViewRepresentable {
         var animator: UIViewPropertyAnimator?
         var visualEffectView: UIVisualEffectView?
         var currentStyle: UIBlurEffect.Style = .dark
+
+        deinit {
+            // Animators must be stopped and finished before deallocation
+            animator?.stopAnimation(true)
+            animator?.finishAnimation(at: .current)
+        }
     }
 }
 
@@ -141,7 +159,7 @@ private struct VariableBlurView: UIViewRepresentable {
 public struct MaterialView: View {
     public var blurRadius: CGFloat
     public var overlayOpacity: CGFloat
-    public var isDark: Bool
+    public var darkProgress: CGFloat
     public var cornerRadius: CGFloat
 
     public init(
@@ -152,7 +170,19 @@ public struct MaterialView: View {
     ) {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
-        self.isDark = isDark
+        self.darkProgress = isDark ? 1.0 : 0.0
+        self.cornerRadius = cornerRadius
+    }
+
+    public init(
+        blurRadius: CGFloat = 10,
+        overlayOpacity: CGFloat = 0,
+        darkProgress: CGFloat,
+        cornerRadius: CGFloat = 12
+    ) {
+        self.blurRadius = blurRadius
+        self.overlayOpacity = overlayOpacity
+        self.darkProgress = darkProgress
         self.cornerRadius = cornerRadius
     }
 
@@ -160,13 +190,16 @@ public struct MaterialView: View {
         Rectangle()
             .fill(.ultraThinMaterial)
             .overlay(
-                Rectangle()
-                    .fill(isDark ? Color.black : Color.white)
-                    .opacity(overlayOpacity)
+                ZStack {
+                    Rectangle()
+                        .fill(Color.white)
+                        .opacity(overlayOpacity * (1 - darkProgress))
+                    Rectangle()
+                        .fill(Color.black)
+                        .opacity(overlayOpacity * darkProgress)
+                }
             )
-            .clipShape(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            )
+            .clipShape(.rect(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 
