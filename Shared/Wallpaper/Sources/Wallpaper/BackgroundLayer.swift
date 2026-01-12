@@ -26,7 +26,9 @@ public struct BackgroundLayer: View {
     }
 
     public var body: some View {
-        if let transition = themeTransition {
+        if let transition = themeTransition,
+           abs(1 - transition.progress) > 0
+        {
             // During picker transitions: crossfade between two materials
             ZStack {
                 // From material (fades out)
@@ -37,7 +39,7 @@ public struct BackgroundLayer: View {
                     cornerRadius: cornerRadius
                 )
                 .opacity(1 - transition.progress)
-
+                
                 // To material (fades in)
                 MaterialView(
                     blurRadius: transition.toBlurRadius,
