@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Wallpaper
 
 // MARK: - Bar Data
 
@@ -16,7 +17,7 @@ public struct BarData: Identifiable, Equatable {
     public let value: Int
     /// When set, shows only a single segment at this position (for falling dot animation)
     public let singleDotPosition: Int?
-    
+
     public init(category: String, value: Int, singleDotPosition: Int? = nil) {
         self.category = category
         self.value = value
@@ -33,8 +34,8 @@ struct LCDSpectrumAnalyzerView: View {
     @Environment(\.lcdAccentHue) private var hue
     @Environment(\.lcdAccentSaturation) private var saturation
     @Environment(\.lcdAccentBrightness) private var accentBrightness
-    @Environment(\.lcdMinBrightness) private var minBrightness
-    @Environment(\.lcdMaxBrightness) private var maxBrightness
+    @Environment(\.lcdMinOffset) private var minOffset
+    @Environment(\.lcdMaxOffset) private var maxOffset
 
     let data: [BarData]
     let segmentsPerBar: Int
@@ -49,12 +50,12 @@ struct LCDSpectrumAnalyzerView: View {
         self.maxValue = maxValue
         self.segmentsPerBar = segmentsPerBar
     }
-    
+
     public var body: some View {
         Canvas { context, size in
             let barCount = data.count
             guard barCount > 0 else { return }
-            
+
             // Inset drawing area to prevent glow clipping at edges
             let glowRadius: CGFloat = 3
             let inset = glowRadius + 1
@@ -64,23 +65,23 @@ struct LCDSpectrumAnalyzerView: View {
                 width: size.width - inset * 2,
                 height: size.height - inset * 2
             )
-            
+
             // Calculate dimensions within the inset area
             let horizontalGap: CGFloat = 3.5
             let verticalGap: CGFloat = 5.5
             let barWidth = (drawingRect.width - horizontalGap * CGFloat(barCount - 1)) / CGFloat(barCount)
             let segmentHeight = (drawingRect.height - verticalGap * CGFloat(segmentsPerBar - 1)) / CGFloat(segmentsPerBar)
             let cornerRadius: CGFloat = min(barWidth, segmentHeight) * 0.2
-            
+
             // Pre-calculate colors for all segment positions (avoids recalculating 128+ times per frame)
             let activeColors = (0..<segmentsPerBar).map { segmentColor(isActive: true, segmentIndex: $0) }
             let inactiveColors = (0..<segmentsPerBar).map { segmentColor(isActive: false, segmentIndex: $0) }
             let glowColors = (0..<segmentsPerBar).map { glowColor(for: $0, isActive: true) }
-            
+
             // Create a single blur context for all glow effects
             var glowContext = context
             glowContext.addFilter(.blur(radius: glowRadius))
-            
+
             // Single pass: iterate once through all bars and segments
             // Use index-based loop to reduce iterator overhead
             for barIndex in 0..<barCount {
@@ -88,7 +89,7 @@ struct LCDSpectrumAnalyzerView: View {
                 let activeSegments = Int((Double(item.value) / maxValue) * Double(segmentsPerBar))
                 let x = drawingRect.minX + CGFloat(barIndex) * (barWidth + horizontalGap)
                 let dotPosition = item.singleDotPosition
-                
+
                 for segmentIndex in 0..<segmentsPerBar {
                     // Determine if this segment is active
                     let isActive: Bool
@@ -97,12 +98,12 @@ struct LCDSpectrumAnalyzerView: View {
                     } else {
                         isActive = segmentIndex < activeSegments
                     }
-                    
+
                     // Calculate position (draw from bottom up)
                     let y = drawingRect.maxY - CGFloat(segmentIndex + 1) * (segmentHeight + verticalGap) + verticalGap
                     let rect = CGRect(x: x, y: y, width: barWidth, height: segmentHeight)
                     let path = Path(roundedRect: rect, cornerRadius: cornerRadius)
-                    
+
                     if isActive {
                         // Active segment: draw glow first, then segment on top
                         glowContext.fill(path, with: .color(glowColors[segmentIndex]))
@@ -115,40 +116,57 @@ struct LCDSpectrumAnalyzerView: View {
             }
         }
     }
-    
-    /// Calculates brightness multiplier based on segment position (0 = bottom, segmentsPerBar-1 = top)
-    /// Returns a value from minBrightness at top to maxBrightness at bottom for a gradient effect.
-    /// The accent brightness is applied as a multiplier to both min and max values.
-    private func brightnessMultiplier(for segmentIndex: Int) -> Double {
-        let effectiveMin = minBrightness * accentBrightness
-        let effectiveMax = maxBrightness * accentBrightness
-        let brightnessSpan = effectiveMax - effectiveMin
-        let progress = Double(segmentIndex) / Double(max(segmentsPerBar - 1, 1))
-        return effectiveMax - (brightnessSpan * progress)
-    }
-    
-    private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {
-        let multiplier = brightnessMultiplier(for: segmentIndex)
 
+    /// Interpolates between max offset (bottom) and min offset (top) based on segment position.
+    /// Returns the interpolated HSB offset for the given segment index.
+    private func interpolatedOffset(for segmentIndex: Int) -> HSBOffset {
+        // Progress: 0 at bottom (index 0), 1 at top (index segmentsPerBar-1)
+        let progress = Double(segmentIndex) / Double(max(segmentsPerBar - 1, 1))
+
+        // Interpolate from max (bottom) to min (top)
+        return HSBOffset(
+            hue: maxOffset.hue + (minOffset.hue - maxOffset.hue) * progress,
+            saturation: maxOffset.saturation + (minOffset.saturation - maxOffset.saturation) * progress,
+            brightness: maxOffset.brightness + (minOffset.brightness - maxOffset.brightness) * progress
+        )
+    }
+
+    private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {
+        let offset = interpolatedOffset(for: segmentIndex)
+
+        // Base accent color with offset applied
+        let baseHue = hue + offset.hue / 360.0
+        let baseSaturation = max(0, min(1, saturation + offset.saturation))
+        let baseBrightness = max(0, min(1, accentBrightness + offset.brightness))
+
+        // Active/inactive brightness multipliers
         let activeBrightness = colorScheme == .light ? 1.5 : 1.24
         let inactiveBrightness = colorScheme == .light ? 1.15 : 0.90
-        
-        let brightness: Double
-        if isActive {
-            brightness = activeBrightness
-        } else {
-            brightness = inactiveBrightness
-        }
 
-        return Color(hue: hue, saturation: saturation, brightness: brightness * multiplier)
+        let brightness = isActive ? activeBrightness : inactiveBrightness
+
+        // Wrap hue to 0-1 range
+        var finalHue = baseHue
+        while finalHue < 0 { finalHue += 1 }
+        while finalHue >= 1 { finalHue -= 1 }
+
+        return Color(hue: finalHue, saturation: baseSaturation, brightness: brightness * baseBrightness)
     }
 
     private func glowColor(for segmentIndex: Int, isActive: Bool) -> Color {
         guard isActive else { return .clear }
 
-        let multiplier = brightnessMultiplier(for: segmentIndex)
-        let baseBrightness = 1.5 * multiplier
+        let offset = interpolatedOffset(for: segmentIndex)
 
-        return Color(hue: hue, saturation: saturation, brightness: baseBrightness).opacity(0.6)
+        let baseHue = hue + offset.hue / 360.0
+        let baseSaturation = max(0, min(1, saturation + offset.saturation))
+        let baseBrightness = max(0, min(1, accentBrightness + offset.brightness))
+
+        // Wrap hue to 0-1 range
+        var finalHue = baseHue
+        while finalHue < 0 { finalHue += 1 }
+        while finalHue >= 1 { finalHue -= 1 }
+
+        return Color(hue: finalHue, saturation: baseSaturation, brightness: 1.5 * baseBrightness).opacity(0.6)
     }
 }

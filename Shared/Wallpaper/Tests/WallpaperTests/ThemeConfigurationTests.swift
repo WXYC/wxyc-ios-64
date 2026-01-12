@@ -250,128 +250,102 @@ struct ThemeConfigurationTests {
             #expect(defaults.double(forKey: perThemeKey) == 0.3)
         }
 
-        @Test("Persists LCD min brightness with per-theme key")
-        func persistsLCDMinBrightness() {
+        @Test("Persists LCD min offset with per-theme key")
+        func persistsLCDMinOffset() throws {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
-            config.lcdMinBrightness = 0.75
+            config.lcdMinOffset = HSBOffset(hue: 10, saturation: 0.1, brightness: -0.2)
 
-            // Brightness is stored per-theme
-            let perThemeKey = "wallpaper.lcdMinBrightness.\(config.selectedThemeID)"
-            #expect(defaults.double(forKey: perThemeKey) == 0.75)
+            // Offset is stored per-theme as JSON
+            let perThemeKey = "wallpaper.lcdMinOffset.\(config.selectedThemeID)"
+            let data = defaults.data(forKey: perThemeKey)
+            #expect(data != nil)
+
+            let decoded = try JSONDecoder().decode(HSBOffset.self, from: data!)
+            #expect(decoded.hue == 10)
+            #expect(decoded.saturation == 0.1)
+            #expect(decoded.brightness == -0.2)
         }
 
-        @Test("Persists LCD max brightness with per-theme key")
-        func persistsLCDMaxBrightness() {
+        @Test("Persists LCD max offset with per-theme key")
+        func persistsLCDMaxOffset() throws {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
-            config.lcdMaxBrightness = 1.2
+            config.lcdMaxOffset = HSBOffset(hue: -20, saturation: -0.1, brightness: 0.1)
 
-            // Brightness is stored per-theme
-            let perThemeKey = "wallpaper.lcdMaxBrightness.\(config.selectedThemeID)"
-            #expect(defaults.double(forKey: perThemeKey) == 1.2)
+            // Offset is stored per-theme as JSON
+            let perThemeKey = "wallpaper.lcdMaxOffset.\(config.selectedThemeID)"
+            let data = defaults.data(forKey: perThemeKey)
+            #expect(data != nil)
+
+            let decoded = try JSONDecoder().decode(HSBOffset.self, from: data!)
+            #expect(decoded.hue == -20)
+            #expect(decoded.saturation == -0.1)
+            #expect(decoded.brightness == 0.1)
         }
 
-        @Test("Loads LCD brightness values from per-theme keys on init")
-        func loadsLCDBrightnessOnInit() {
-            let registry = MockThemeRegistry.withTestThemes()
-            let defaults = makeTestDefaults()
-            // Store per-theme brightness for the default theme (wxyc_gradient)
-            defaults.set(0.80, forKey: "wallpaper.lcdMinBrightness.wxyc_gradient")
-            defaults.set(1.10, forKey: "wallpaper.lcdMaxBrightness.wxyc_gradient")
-
-            let config = ThemeConfiguration(registry: registry, defaults: defaults)
-
-            #expect(config.lcdMinBrightness == 0.80)
-            #expect(config.lcdMaxBrightness == 1.10)
-        }
-
-        @Test("LCD brightness persists across sessions for same theme")
-        func lcdBrightnessPersistsAcrossSessions() {
+        @Test("LCD offset persists across sessions for same theme")
+        func lcdOffsetPersistsAcrossSessions() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
             // First session: set values
             let config1 = ThemeConfiguration(registry: registry, defaults: defaults)
-            config1.lcdMinBrightness = 0.65
-            config1.lcdMaxBrightness = 1.25
+            config1.lcdMinOffset = HSBOffset(hue: 15, saturation: 0.05, brightness: -0.15)
+            config1.lcdMaxOffset = HSBOffset(hue: -15, saturation: -0.05, brightness: 0.15)
 
             // Second session: create new config with same defaults
             let config2 = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            #expect(config2.lcdMinBrightness == 0.65)
-            #expect(config2.lcdMaxBrightness == 1.25)
+            #expect(config2.lcdMinOffset == HSBOffset(hue: 15, saturation: 0.05, brightness: -0.15))
+            #expect(config2.lcdMaxOffset == HSBOffset(hue: -15, saturation: -0.05, brightness: 0.15))
         }
 
-        @Test("LCD brightness persists when set via Bindable pattern")
-        func lcdBrightnessPersistsViaBindable() {
-            let registry = MockThemeRegistry.withTestThemes()
-            let defaults = makeTestDefaults()
-
-            // Simulate @Bindable access pattern
-            let config1 = ThemeConfiguration(registry: registry, defaults: defaults)
-
-            // Create a binding similar to what @Bindable would create
-            var minBrightnessBinding = Bindable(config1).lcdMinBrightness
-            minBrightnessBinding.wrappedValue = 0.72
-
-            // Verify the value was set on the object
-            #expect(config1.lcdMinBrightness == 0.72)
-
-            // Verify it was persisted to UserDefaults with per-theme key
-            let perThemeKey = "wallpaper.lcdMinBrightness.\(config1.selectedThemeID)"
-            #expect(defaults.double(forKey: perThemeKey) == 0.72)
-
-            // Verify it loads in a new instance
-            let config2 = ThemeConfiguration(registry: registry, defaults: defaults)
-            #expect(config2.lcdMinBrightness == 0.72)
-        }
-
-        @Test("Each theme remembers its own brightness settings")
-        func eachThemeRemembersBrightness() {
+        @Test("Each theme remembers its own LCD offset settings")
+        func eachThemeRemembersLCDOffset() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            // Set brightness for default theme (wxyc_gradient)
-            config.lcdMinBrightness = 0.70
-            config.lcdMaxBrightness = 1.10
+            // Set offset for default theme (wxyc_gradient)
+            config.lcdMinOffset = HSBOffset(hue: 10, saturation: 0, brightness: -0.1)
+            config.lcdMaxOffset = HSBOffset(hue: 20, saturation: 0.1, brightness: 0)
 
-            // Switch to test_dark and set different brightness
+            // Switch to test_dark and set different offset
             config.selectedThemeID = "test_dark"
-            config.lcdMinBrightness = 0.80
-            config.lcdMaxBrightness = 1.20
+            config.lcdMinOffset = HSBOffset(hue: -10, saturation: -0.1, brightness: 0.1)
+            config.lcdMaxOffset = HSBOffset(hue: -20, saturation: 0, brightness: 0.2)
 
-            // Switch back to default theme - should load its saved brightness
+            // Switch back to default theme - should load its saved offset
             config.selectedThemeID = "wxyc_gradient"
-            #expect(config.lcdMinBrightness == 0.70)
-            #expect(config.lcdMaxBrightness == 1.10)
+            #expect(config.lcdMinOffset == HSBOffset(hue: 10, saturation: 0, brightness: -0.1))
+            #expect(config.lcdMaxOffset == HSBOffset(hue: 20, saturation: 0.1, brightness: 0))
 
-            // Switch back to test_dark - should load its saved brightness
+            // Switch back to test_dark - should load its saved offset
             config.selectedThemeID = "test_dark"
-            #expect(config.lcdMinBrightness == 0.80)
-            #expect(config.lcdMaxBrightness == 1.20)
+            #expect(config.lcdMinOffset == HSBOffset(hue: -10, saturation: -0.1, brightness: 0.1))
+            #expect(config.lcdMaxOffset == HSBOffset(hue: -20, saturation: 0, brightness: 0.2))
         }
 
-        @Test("Theme without saved brightness uses defaults")
-        func themeWithoutBrightnessUsesDefaults() {
+        @Test("Theme without saved LCD offset uses defaults")
+        func themeWithoutLCDOffsetUsesDefaults() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            // Set brightness for default theme
-            config.lcdMinBrightness = 0.70
+            // Set offset for default theme
+            config.lcdMinOffset = HSBOffset(hue: 30, saturation: 0.2, brightness: -0.3)
 
-            // Switch to test_dark which has no saved brightness
+            // Switch to test_dark which has no saved offset
             config.selectedThemeID = "test_dark"
-            #expect(config.lcdMinBrightness == ThemeConfiguration.defaultLCDMinBrightness)
-            #expect(config.lcdMaxBrightness == ThemeConfiguration.defaultLCDMaxBrightness)
+            #expect(config.lcdMinOffset == ThemeConfiguration.defaultLCDMinOffset)
+            #expect(config.lcdMaxOffset == ThemeConfiguration.defaultLCDMaxOffset)
         }
     }
 
@@ -599,8 +573,8 @@ struct ThemeConfigurationTests {
             #expect(overrides.overlayIsDark == nil)
         }
 
-        @Test("overrides(for:) includes LCD brightness only when changed from default")
-        func overridesIncludesLCDBrightnessWhenChanged() {
+        @Test("overrides(for:) includes LCD offset only when changed from default")
+        func overridesIncludesLCDOffsetWhenChanged() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
 
@@ -608,16 +582,16 @@ struct ThemeConfigurationTests {
 
             // Default values - should return nil
             var overrides = config.overrides(for: config.selectedThemeID)
-            #expect(overrides.lcdMinBrightness == nil)
-            #expect(overrides.lcdMaxBrightness == nil)
+            #expect(overrides.lcdMinOffset == nil)
+            #expect(overrides.lcdMaxOffset == nil)
 
             // Change from default - should return values
-            config.lcdMinBrightness = 0.75
-            config.lcdMaxBrightness = 1.1
+            config.lcdMinOffset = HSBOffset(hue: 10, saturation: 0.1, brightness: -0.2)
+            config.lcdMaxOffset = HSBOffset(hue: -10, saturation: -0.1, brightness: 0.2)
 
             overrides = config.overrides(for: config.selectedThemeID)
-            #expect(overrides.lcdMinBrightness == 0.75)
-            #expect(overrides.lcdMaxBrightness == 1.1)
+            #expect(overrides.lcdMinOffset == HSBOffset(hue: 10, saturation: 0.1, brightness: -0.2))
+            #expect(overrides.lcdMaxOffset == HSBOffset(hue: -10, saturation: -0.1, brightness: 0.2))
         }
 
         @Test("overrides(for:) isEmpty when no overrides set")

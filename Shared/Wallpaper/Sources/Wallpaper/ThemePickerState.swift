@@ -102,29 +102,19 @@ private struct CurrentOverlayIsDarkKey: EnvironmentKey {
     static let defaultValue: Bool = true
 }
 
-/// Environment key for the current/interpolated accent hue (normalized 0.0-1.0).
-private struct CurrentAccentHueKey: EnvironmentKey {
-    static let defaultValue: Double = 23.0 / 360.0 // Default orange
+/// Environment key for the current/interpolated accent color.
+private struct CurrentAccentColorKey: EnvironmentKey {
+    static let defaultValue: AccentColor = AccentColor(hue: 23, saturation: 0.75, brightness: 1.0)
 }
 
-/// Environment key for the current/interpolated accent saturation.
-private struct CurrentAccentSaturationKey: EnvironmentKey {
-    static let defaultValue: Double = 0.75
+/// Environment key for the current LCD min HSB offset.
+private struct CurrentLCDMinOffsetKey: EnvironmentKey {
+    static let defaultValue: HSBOffset = .defaultMin
 }
 
-/// Environment key for the current LCD minimum brightness.
-private struct CurrentLCDMinBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 0.90
-}
-
-/// Environment key for the current LCD maximum brightness.
-private struct CurrentLCDMaxBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 1.0
-}
-
-/// Environment key for the current/interpolated accent brightness.
-private struct CurrentAccentBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 1.0
+/// Environment key for the current LCD max HSB offset.
+private struct CurrentLCDMaxOffsetKey: EnvironmentKey {
+    static let defaultValue: HSBOffset = .defaultMax
 }
 
 /// Environment key for the wallpaper-derived mesh gradient palette.
@@ -178,34 +168,22 @@ public extension EnvironmentValues {
         set { self[CurrentOverlayIsDarkKey.self] = newValue }
     }
 
-    /// The current/interpolated accent hue (normalized 0.0-1.0).
-    var currentAccentHue: Double {
-        get { self[CurrentAccentHueKey.self] }
-        set { self[CurrentAccentHueKey.self] = newValue }
+    /// The current/interpolated accent color.
+    var currentAccentColor: AccentColor {
+        get { self[CurrentAccentColorKey.self] }
+        set { self[CurrentAccentColorKey.self] = newValue }
     }
 
-    /// The current/interpolated accent saturation.
-    var currentAccentSaturation: Double {
-        get { self[CurrentAccentSaturationKey.self] }
-        set { self[CurrentAccentSaturationKey.self] = newValue }
+    /// The current LCD min HSB offset.
+    var currentLCDMinOffset: HSBOffset {
+        get { self[CurrentLCDMinOffsetKey.self] }
+        set { self[CurrentLCDMinOffsetKey.self] = newValue }
     }
 
-    /// The current LCD minimum brightness setting.
-    var currentLCDMinBrightness: Double {
-        get { self[CurrentLCDMinBrightnessKey.self] }
-        set { self[CurrentLCDMinBrightnessKey.self] = newValue }
-    }
-
-    /// The current LCD maximum brightness setting.
-    var currentLCDMaxBrightness: Double {
-        get { self[CurrentLCDMaxBrightnessKey.self] }
-        set { self[CurrentLCDMaxBrightnessKey.self] = newValue }
-    }
-
-    /// The current/interpolated accent brightness from the theme.
-    var currentAccentBrightness: Double {
-        get { self[CurrentAccentBrightnessKey.self] }
-        set { self[CurrentAccentBrightnessKey.self] = newValue }
+    /// The current LCD max HSB offset.
+    var currentLCDMaxOffset: HSBOffset {
+        get { self[CurrentLCDMaxOffsetKey.self] }
+        set { self[CurrentLCDMaxOffsetKey.self] = newValue }
     }
 
     /// The wallpaper-derived mesh gradient palette (16 colors).

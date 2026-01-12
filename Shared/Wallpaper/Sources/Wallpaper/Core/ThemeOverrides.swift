@@ -16,8 +16,10 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
     public var overlayOpacity: Double?
     public var blurRadius: Double?
     public var overlayIsDark: Bool?
-    public var lcdMinBrightness: Double?
-    public var lcdMaxBrightness: Double?
+
+    // LCD segment HSB offsets (applied to accent color)
+    public var lcdMinOffset: HSBOffset?
+    public var lcdMaxOffset: HSBOffset?
 
     public init(
         accentHue: Double? = nil,
@@ -26,8 +28,8 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
         overlayOpacity: Double? = nil,
         blurRadius: Double? = nil,
         overlayIsDark: Bool? = nil,
-        lcdMinBrightness: Double? = nil,
-        lcdMaxBrightness: Double? = nil
+        lcdMinOffset: HSBOffset? = nil,
+        lcdMaxOffset: HSBOffset? = nil
     ) {
         self.accentHue = accentHue
         self.accentSaturation = accentSaturation
@@ -35,8 +37,8 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
         self.overlayOpacity = overlayOpacity
         self.blurRadius = blurRadius
         self.overlayIsDark = overlayIsDark
-        self.lcdMinBrightness = lcdMinBrightness
-        self.lcdMaxBrightness = lcdMaxBrightness
+        self.lcdMinOffset = lcdMinOffset
+        self.lcdMaxOffset = lcdMaxOffset
     }
 
     /// Returns true if all override values are nil.
@@ -47,8 +49,8 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
         overlayOpacity == nil &&
         blurRadius == nil &&
         overlayIsDark == nil &&
-        lcdMinBrightness == nil &&
-        lcdMaxBrightness == nil
+        lcdMinOffset == nil &&
+        lcdMaxOffset == nil
     }
 
     /// Resets all overrides to nil.

@@ -57,6 +57,7 @@ private struct ThemeDebugPopoverContent: View {
     @AppStorage("ThemeDebug.isParametersExpanded") private var isParametersExpanded = false
     @AppStorage("ThemeDebug.isShaderFeaturesExpanded") private var isShaderFeaturesExpanded = false
     @AppStorage("ThemeDebug.isPerformanceExpanded") private var isPerformanceExpanded = false
+    @AppStorage("ThemeDebug.isPlaybackButtonExpanded") private var isPlaybackButtonExpanded = false
 
     @State private var isExporting = false
     @State private var exportError: Error?
@@ -140,6 +141,15 @@ private struct ThemeDebugPopoverContent: View {
                         theme: theme,
                         isExpanded: $isShaderFeaturesExpanded
                     )
+                }
+
+                // Playback Button Blend Mode
+                DisclosureGroup(isExpanded: $isPlaybackButtonExpanded) {
+                    PlaybackButtonControls()
+                        .padding(.top, 8)
+                } label: {
+                    Text("Playback Button")
+                        .font(.headline)
                 }
 
                 // Performance controls (always visible)
@@ -407,39 +417,56 @@ private struct MaterialControls: View {
     }
 }
 
-/// Controls for adjusting the LCD visualizer brightness gradient.
+/// Controls for adjusting the LCD visualizer HSB offsets.
 private struct LCDBrightnessControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme?
 
+    /// The base accent color to apply offsets to
+    private var baseAccent: AccentColor {
+        theme?.manifest.accent ?? AccentColor(hue: 23, saturation: 0.75, brightness: 1.0)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
+            // Top segments offset
             VStack(alignment: .leading, spacing: 4) {
-                Text("Min: \(configuration.lcdMinBrightness, format: .number.precision(.fractionLength(2)))")
+                Text("Top Segments")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Slider(value: $configuration.lcdMinBrightness, in: 0...1.5)
+                HSBOffsetPicker(
+                    hueOffset: $configuration.lcdMinOffset.hue,
+                    saturationOffset: $configuration.lcdMinOffset.saturation,
+                    brightnessOffset: $configuration.lcdMinOffset.brightness,
+                    baseHue: baseAccent.hue,
+                    baseSaturation: baseAccent.saturation,
+                    baseBrightness: baseAccent.brightness
+                )
             }
 
+            // Bottom segments offset
             VStack(alignment: .leading, spacing: 4) {
-                Text("Max: \(configuration.lcdMaxBrightness, format: .number.precision(.fractionLength(2)))")
+                Text("Bottom Segments")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Slider(value: $configuration.lcdMaxBrightness, in: 0...1.5)
+                HSBOffsetPicker(
+                    hueOffset: $configuration.lcdMaxOffset.hue,
+                    saturationOffset: $configuration.lcdMaxOffset.saturation,
+                    brightnessOffset: $configuration.lcdMaxOffset.brightness,
+                    baseHue: baseAccent.hue,
+                    baseSaturation: baseAccent.saturation,
+                    baseBrightness: baseAccent.brightness
+                )
             }
-
-            Text("Min applies to top segments, max to bottom (gradient effect)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
             let hasCustomValues =
-                configuration.lcdMinBrightness != ThemeConfiguration.defaultLCDMinBrightness ||
-                configuration.lcdMaxBrightness != ThemeConfiguration.defaultLCDMaxBrightness
+                configuration.lcdMinOffset != ThemeConfiguration.defaultLCDMinOffset ||
+                configuration.lcdMaxOffset != ThemeConfiguration.defaultLCDMaxOffset
 
             if hasCustomValues {
                 Button("Reset to Default") {
-                    configuration.lcdMinBrightness = ThemeConfiguration.defaultLCDMinBrightness
-                    configuration.lcdMaxBrightness = ThemeConfiguration.defaultLCDMaxBrightness
+                    configuration.lcdMinOffset = ThemeConfiguration.defaultLCDMinOffset
+                    configuration.lcdMaxOffset = ThemeConfiguration.defaultLCDMaxOffset
                 }
                 .font(.caption)
             }
@@ -722,6 +749,28 @@ private struct PerformanceControls: View {
         case .serious: .orange
         case .critical: .red
         @unknown default: .gray
+        }
+    }
+}
+
+/// Controls for adjusting the playback button blend mode.
+private struct PlaybackButtonControls: View {
+    private var playbackControlsDebugState = PlaybackControlsDebugState.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Blend Mode", selection: Binding(
+                get: { playbackControlsDebugState.blendMode },
+                set: { playbackControlsDebugState.blendMode = $0 }
+            )) {
+                ForEach(DebugBlendMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+
+            Text("Changes the blend mode applied to the play/pause button.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

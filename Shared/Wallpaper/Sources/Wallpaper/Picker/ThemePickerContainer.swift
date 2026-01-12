@@ -76,19 +76,26 @@ public struct ThemePickerContainer<Content: View>: View {
         }
     }
 
-    /// Accent hue (normalized 0.0-1.0) from interpolated accent color.
-    private var effectiveAccentHue: Double {
-        effectiveAccentColor.normalizedHue
+    /// LCD min offset - interpolated during picker transitions, otherwise from configuration.
+    private var effectiveLCDMinOffset: HSBOffset {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            let fromOffset = configuration.lcdMinOffset(for: transition.fromTheme.id)
+            let toOffset = configuration.lcdMinOffset(for: transition.toTheme.id)
+            return fromOffset.interpolated(to: toOffset, progress: transition.progress)
+        } else {
+            return configuration.lcdMinOffset
+        }
     }
 
-    /// Accent saturation from interpolated accent color.
-    private var effectiveAccentSaturation: Double {
-        effectiveAccentColor.saturation
-    }
-
-    /// Accent brightness from interpolated accent color.
-    private var effectiveAccentBrightness: Double {
-        effectiveAccentColor.brightness
+    /// LCD max offset - interpolated during picker transitions, otherwise from configuration.
+    private var effectiveLCDMaxOffset: HSBOffset {
+        if let transition = pickerState.themeTransition, pickerState.isActive {
+            let fromOffset = configuration.lcdMaxOffset(for: transition.fromTheme.id)
+            let toOffset = configuration.lcdMaxOffset(for: transition.toTheme.id)
+            return fromOffset.interpolated(to: toOffset, progress: transition.progress)
+        } else {
+            return configuration.lcdMaxOffset
+        }
     }
 
     public init(
@@ -124,11 +131,9 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.currentBlurRadius, effectiveBlurRadius)
                     .environment(\.currentOverlayOpacity, effectiveOverlayOpacity)
                     .environment(\.currentOverlayIsDark, effectiveOverlayIsDark)
-                    .environment(\.currentAccentHue, effectiveAccentHue)
-                    .environment(\.currentAccentSaturation, effectiveAccentSaturation)
-                    .environment(\.currentAccentBrightness, effectiveAccentBrightness)
-                    .environment(\.currentLCDMinBrightness, configuration.lcdMinBrightness)
-                    .environment(\.currentLCDMaxBrightness, configuration.lcdMaxBrightness)
+                    .environment(\.currentAccentColor, effectiveAccentColor)
+                    .environment(\.currentLCDMinOffset, effectiveLCDMinOffset)
+                    .environment(\.currentLCDMaxOffset, effectiveLCDMaxOffset)
                     .environment(\.wallpaperMeshGradientPalette, configuration.meshGradientPalette)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)

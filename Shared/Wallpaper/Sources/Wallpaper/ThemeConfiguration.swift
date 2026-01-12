@@ -16,15 +16,13 @@ import SwiftUI
 @MainActor
 public final class ThemeConfiguration {
 
-    // MARK: - LCD Brightness Defaults
+    // MARK: - LCD HSB Offset Defaults
 
-    /// Default minimum brightness for LCD segments (applied to top segments).
-    /// nonisolated(unsafe) needed for use in EnvironmentKey.defaultValue (nonisolated context).
-    public nonisolated(unsafe) static let defaultLCDMinBrightness: Double = 0.90
+    /// Default HSB offset for LCD min (top) segments.
+    public static let defaultLCDMinOffset: HSBOffset = .defaultMin
 
-    /// Default maximum brightness for LCD segments (applied to bottom segments).
-    /// nonisolated(unsafe) needed for use in EnvironmentKey.defaultValue (nonisolated context).
-    public nonisolated(unsafe) static let defaultLCDMaxBrightness: Double = 1.0
+    /// Default HSB offset for LCD max (bottom) segments.
+    public static let defaultLCDMaxOffset: HSBOffset = .defaultMax
 
     // MARK: - Storage Keys
 
@@ -57,12 +55,12 @@ public final class ThemeConfiguration {
         "wallpaper.overlayIsDarkOverride.\(themeID)"
     }
 
-    private func lcdMinBrightnessKey(for themeID: String) -> String {
-        "wallpaper.lcdMinBrightness.\(themeID)"
+    private func lcdMinOffsetKey(for themeID: String) -> String {
+        "wallpaper.lcdMinOffset.\(themeID)"
     }
 
-    private func lcdMaxBrightnessKey(for themeID: String) -> String {
-        "wallpaper.lcdMaxBrightness.\(themeID)"
+    private func lcdMaxOffsetKey(for themeID: String) -> String {
+        "wallpaper.lcdMaxOffset.\(themeID)"
     }
 
     private func meshGradientPaletteKey(for themeID: String) -> String {
@@ -192,23 +190,27 @@ public final class ThemeConfiguration {
         return theme.manifest.overlayOpacity
     }
 
-    // MARK: - LCD Brightness Settings
+    // MARK: - LCD HSB Offset Settings
 
-    /// Minimum brightness for LCD segments (applied to top segments). Default: 0.90.
+    /// HSB offset for LCD min (top) segments.
     /// Stored per-theme so each theme remembers its customizations.
-    public var lcdMinBrightness: Double = ThemeConfiguration.defaultLCDMinBrightness {
+    public var lcdMinOffset: HSBOffset = ThemeConfiguration.defaultLCDMinOffset {
         didSet {
-            let key = lcdMinBrightnessKey(for: selectedThemeID)
-            defaults.set(lcdMinBrightness, forKey: key)
+            let key = lcdMinOffsetKey(for: selectedThemeID)
+            if let data = try? JSONEncoder().encode(lcdMinOffset) {
+                defaults.set(data, forKey: key)
+            }
         }
     }
 
-    /// Maximum brightness for LCD segments (applied to bottom segments). Default: 1.0.
+    /// HSB offset for LCD max (bottom) segments.
     /// Stored per-theme so each theme remembers its customizations.
-    public var lcdMaxBrightness: Double = ThemeConfiguration.defaultLCDMaxBrightness {
+    public var lcdMaxOffset: HSBOffset = ThemeConfiguration.defaultLCDMaxOffset {
         didSet {
-            let key = lcdMaxBrightnessKey(for: selectedThemeID)
-            defaults.set(lcdMaxBrightness, forKey: key)
+            let key = lcdMaxOffsetKey(for: selectedThemeID)
+            if let data = try? JSONEncoder().encode(lcdMaxOffset) {
+                defaults.set(data, forKey: key)
+            }
         }
     }
 
@@ -369,34 +371,24 @@ public final class ThemeConfiguration {
         return theme.manifest.overlayIsDark
     }
 
-    /// Returns the LCD min brightness for a given theme ID.
-    /// For the selected theme, uses in-memory value. For other themes, looks up stored value.
-    public func lcdMinBrightness(for themeID: String) -> Double {
-        if themeID == selectedThemeID {
-            return lcdMinBrightness
-        }
-
-        // Look up stored value for this theme
-        let key = lcdMinBrightnessKey(for: themeID)
-        if defaults.object(forKey: key) != nil {
-            return defaults.double(forKey: key)
-        }
-        return Self.defaultLCDMinBrightness
+    /// Returns the LCD min offset for a given theme ID.
+    public func lcdMinOffset(for themeID: String) -> HSBOffset {
+        if themeID == selectedThemeID { return lcdMinOffset }
+        return loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)) ?? Self.defaultLCDMinOffset
     }
 
-    /// Returns the LCD max brightness for a given theme ID.
-    /// For the selected theme, uses in-memory value. For other themes, looks up stored value.
-    public func lcdMaxBrightness(for themeID: String) -> Double {
-        if themeID == selectedThemeID {
-            return lcdMaxBrightness
-        }
+    /// Returns the LCD max offset for a given theme ID.
+    public func lcdMaxOffset(for themeID: String) -> HSBOffset {
+        if themeID == selectedThemeID { return lcdMaxOffset }
+        return loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
+    }
 
-        // Look up stored value for this theme
-        let key = lcdMaxBrightnessKey(for: themeID)
-        if defaults.object(forKey: key) != nil {
-            return defaults.double(forKey: key)
+    private func loadHSBOffset(forKey key: String) -> HSBOffset? {
+        guard let data = defaults.data(forKey: key),
+              let offset = try? JSONDecoder().decode(HSBOffset.self, from: data) else {
+            return nil
         }
-        return Self.defaultLCDMaxBrightness
+        return offset
     }
 
     // MARK: - Bulk Override Access
@@ -413,8 +405,8 @@ public final class ThemeConfiguration {
                 overlayOpacity: overlayOpacityOverride,
                 blurRadius: blurRadiusOverride,
                 overlayIsDark: overlayIsDarkOverride,
-                lcdMinBrightness: lcdMinBrightness != Self.defaultLCDMinBrightness ? lcdMinBrightness : nil,
-                lcdMaxBrightness: lcdMaxBrightness != Self.defaultLCDMaxBrightness ? lcdMaxBrightness : nil
+                lcdMinOffset: lcdMinOffset != Self.defaultLCDMinOffset ? lcdMinOffset : nil,
+                lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil
             )
         }
 
@@ -426,8 +418,8 @@ public final class ThemeConfiguration {
             overlayOpacity: loadOptionalDouble(overlayOpacityOverrideKey(for: themeID)),
             blurRadius: loadOptionalDouble(blurRadiusOverrideKey(for: themeID)),
             overlayIsDark: loadOptionalBool(overlayIsDarkOverrideKey(for: themeID)),
-            lcdMinBrightness: loadOptionalDouble(lcdMinBrightnessKey(for: themeID)),
-            lcdMaxBrightness: loadOptionalDouble(lcdMaxBrightnessKey(for: themeID))
+            lcdMinOffset: loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)),
+            lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID))
         )
     }
 
@@ -475,15 +467,9 @@ public final class ThemeConfiguration {
             ? defaults.bool(forKey: isDarkKey)
             : nil
 
-        let minBrightnessKey = lcdMinBrightnessKey(for: themeID)
-        lcdMinBrightness = defaults.object(forKey: minBrightnessKey) != nil
-            ? defaults.double(forKey: minBrightnessKey)
-            : Self.defaultLCDMinBrightness
-
-        let maxBrightnessKey = lcdMaxBrightnessKey(for: themeID)
-        lcdMaxBrightness = defaults.object(forKey: maxBrightnessKey) != nil
-            ? defaults.double(forKey: maxBrightnessKey)
-            : Self.defaultLCDMaxBrightness
+        // Load LCD HSB offsets
+        lcdMinOffset = loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)) ?? Self.defaultLCDMinOffset
+        lcdMaxOffset = loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
 
         // Load cached mesh gradient palette
         let paletteKey = meshGradientPaletteKey(for: themeID)
@@ -529,8 +515,8 @@ public final class ThemeConfiguration {
         overlayOpacityOverride = nil
         blurRadiusOverride = nil
         overlayIsDarkOverride = nil
-        lcdMinBrightness = Self.defaultLCDMinBrightness
-        lcdMaxBrightness = Self.defaultLCDMaxBrightness
+        lcdMinOffset = Self.defaultLCDMinOffset
+        lcdMaxOffset = Self.defaultLCDMaxOffset
         meshGradientPalette = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }

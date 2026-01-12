@@ -146,3 +146,77 @@ public struct AccentColor: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - HSB Offset
+
+/// Represents an HSB offset that can be applied to an accent color.
+/// Used for LCD segment color gradients where min (top) and max (bottom) segments
+/// can have different color offsets from the base accent color.
+public struct HSBOffset: Codable, Sendable, Equatable {
+    /// Hue offset in degrees (-180 to 180).
+    public var hue: Double
+
+    /// Saturation offset (-1 to 1).
+    public var saturation: Double
+
+    /// Brightness offset (-1 to 1).
+    public var brightness: Double
+
+    /// No offset - all values are zero.
+    public static let zero = HSBOffset(hue: 0, saturation: 0, brightness: 0)
+
+    /// Default offset for LCD min (top) segments.
+    /// Slightly darker than max to create a gradient effect.
+    public static let defaultMin = HSBOffset(hue: 0, saturation: 0, brightness: -0.10)
+
+    /// Default offset for LCD max (bottom) segments.
+    public static let defaultMax = HSBOffset.zero
+
+    public init(hue: Double = 0, saturation: Double = 0, brightness: Double = 0) {
+        self.hue = hue
+        self.saturation = saturation
+        self.brightness = brightness
+    }
+
+    /// Returns true if all offsets are zero.
+    public var isZero: Bool {
+        hue == 0 && saturation == 0 && brightness == 0
+    }
+
+    /// Applies this offset to an accent color, returning the resulting HSB values.
+    /// - Parameter accent: The base accent color to offset.
+    /// - Returns: A tuple of (hue, saturation, brightness) with offset applied and clamped.
+    public func applied(to accent: AccentColor) -> (hue: Double, saturation: Double, brightness: Double) {
+        // Hue wraps around (0-360)
+        var resultHue = accent.hue + hue
+        while resultHue < 0 { resultHue += 360 }
+        while resultHue >= 360 { resultHue -= 360 }
+
+        // Saturation and brightness clamp to 0-1
+        let resultSaturation = max(0, min(1, accent.saturation + saturation))
+        let resultBrightness = max(0, min(1, accent.brightness + brightness))
+
+        return (resultHue, resultSaturation, resultBrightness)
+    }
+
+    /// Applies this offset to an accent color and returns a SwiftUI Color.
+    /// - Parameter accent: The base accent color to offset.
+    /// - Returns: A Color with the offset applied.
+    public func color(from accent: AccentColor) -> Color {
+        let (h, s, b) = applied(to: accent)
+        return Color(hue: h / 360.0, saturation: s, brightness: b)
+    }
+
+    /// Linearly interpolates between this offset and another.
+    /// - Parameters:
+    ///   - other: The target offset to interpolate towards.
+    ///   - progress: Progress from 0.0 (self) to 1.0 (other).
+    /// - Returns: A new HSBOffset with interpolated values.
+    public func interpolated(to other: HSBOffset, progress: Double) -> HSBOffset {
+        HSBOffset(
+            hue: hue + (other.hue - hue) * progress,
+            saturation: saturation + (other.saturation - saturation) * progress,
+            brightness: brightness + (other.brightness - brightness) * progress
+        )
+    }
+}
+

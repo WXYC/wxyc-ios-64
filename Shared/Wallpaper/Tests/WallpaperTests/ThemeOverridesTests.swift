@@ -35,10 +35,10 @@ struct ThemeOverridesTests {
         let withDark = ThemeOverrides(overlayIsDark: false)
         #expect(!withDark.isEmpty)
 
-        let withMin = ThemeOverrides(lcdMinBrightness: 0.8)
+        let withMin = ThemeOverrides(lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1))
         #expect(!withMin.isEmpty)
 
-        let withMax = ThemeOverrides(lcdMaxBrightness: 1.0)
+        let withMax = ThemeOverrides(lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0))
         #expect(!withMax.isEmpty)
     }
 
@@ -50,8 +50,8 @@ struct ThemeOverridesTests {
             overlayOpacity: 0.3,
             blurRadius: 12.0,
             overlayIsDark: false,
-            lcdMinBrightness: 0.8,
-            lcdMaxBrightness: 1.0
+            lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1),
+            lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0)
         )
 
         #expect(!overrides.isEmpty)
@@ -64,8 +64,8 @@ struct ThemeOverridesTests {
         #expect(overrides.overlayOpacity == nil)
         #expect(overrides.blurRadius == nil)
         #expect(overrides.overlayIsDark == nil)
-        #expect(overrides.lcdMinBrightness == nil)
-        #expect(overrides.lcdMaxBrightness == nil)
+        #expect(overrides.lcdMinOffset == nil)
+        #expect(overrides.lcdMaxOffset == nil)
     }
 
     @Test("Equatable conformance works correctly")
@@ -86,8 +86,8 @@ struct ThemeOverridesTests {
             overlayOpacity: 0.3,
             blurRadius: 12.0,
             overlayIsDark: false,
-            lcdMinBrightness: 0.8,
-            lcdMaxBrightness: 1.0
+            lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1),
+            lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0)
         )
 
         let encoder = JSONEncoder()
