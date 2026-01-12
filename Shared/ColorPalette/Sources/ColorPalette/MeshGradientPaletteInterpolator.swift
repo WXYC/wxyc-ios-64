@@ -22,7 +22,7 @@ public struct MeshGradientPaletteInterpolator: Sendable {
 
         // For each dominant color, generate analogous palette (5 colors each)
         for dominant in dominantColors {
-            let analogous = paletteGenerator.generatePalette(from: dominant, mode: .analogous)
+            let analogous = paletteGenerator.generatePalette(from: dominant, mode: .complementary)
             colors.append(contentsOf: analogous.colors)
         }
 
