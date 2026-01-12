@@ -14,6 +14,7 @@ struct PlaybackControlsView: View {
     var isPlaying: Bool
     var isLoading: Bool
     var onPlayTapped: () -> Void
+    private var debugState = PlaybackControlsDebugState.shared
     
     init(isPlaying: Bool, isLoading: Bool = false, onPlayTapped: @escaping () -> Void) {
         self.isPlaying = isPlaying
@@ -31,7 +32,8 @@ struct PlaybackControlsView: View {
         }
         .accessibilityIdentifier("playPauseButton")
         .accessibilityValue(isPlaying ? "playing" : "paused")
-        .foregroundColor(.secondary)
+        .foregroundStyle(.secondary)
+        .blendMode(debugState.blendMode.blendMode)
     }
 
     var image: Image {
