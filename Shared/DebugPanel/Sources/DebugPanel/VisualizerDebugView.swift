@@ -21,7 +21,6 @@ public struct VisualizerDebugView: View {
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
-    private var playbackControlsDebugState = PlaybackControlsDebugState.shared
     private var onResetThemePickerState: (() -> Void)?
     private var onResetSiriTip: (() -> Void)?
 
@@ -183,22 +182,6 @@ public struct VisualizerDebugView: View {
                     Text("Amplification")
                 } footer: {
                     Text("Amplify audio signal before processing. 1.0x = no boost.")
-                }
-                    
-                // Playback Button Blend Mode
-                Section {
-                    Picker("Blend Mode", selection: Binding(
-                        get: { playbackControlsDebugState.blendMode },
-                        set: { playbackControlsDebugState.blendMode = $0 }
-                    )) {
-                        ForEach(DebugBlendMode.allCases) { mode in
-                            Text(mode.displayName).tag(mode)
-                        }
-                    }
-                } header: {
-                    Text("Playback Button")
-                } footer: {
-                    Text("Changes the blend mode applied to the play/pause button.")
                 }
                 
                 // Actions
