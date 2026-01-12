@@ -26,29 +26,30 @@ public struct BackgroundLayer: View {
     }
 
     public var body: some View {
-        if let transition = themeTransition,
-           abs(1 - transition.progress) > 0
-        {
-            // During picker transitions: crossfade between two materials
-            ZStack {
-                // From material (fades out)
-                MaterialView(
-                    blurRadius: transition.fromBlurRadius,
-                    overlayOpacity: transition.fromOverlayOpacity,
-                    isDark: transition.fromOverlayIsDark,
-                    cornerRadius: cornerRadius
-                )
-                .opacity(1 - transition.progress)
-                
-                // To material (fades in)
-                MaterialView(
-                    blurRadius: transition.toBlurRadius,
-                    overlayOpacity: transition.toOverlayOpacity,
-                    isDark: transition.toOverlayIsDark,
-                    cornerRadius: cornerRadius
-                )
-                .opacity(transition.progress)
-            }
+        if let transition = themeTransition {
+            // During picker transitions: interpolate properties on a single material
+            let progress = transition.progress
+            let blurRadius = lerp(
+                from: transition.fromBlurRadius,
+                to: transition.toBlurRadius,
+                progress: progress
+            )
+            let overlayOpacity = lerp(
+                from: transition.fromOverlayOpacity,
+                to: transition.toOverlayOpacity,
+                progress: progress
+            )
+            // Interpolate dark progress: 1.0 = dark, 0.0 = light
+            let fromDarkProgress: CGFloat = transition.fromOverlayIsDark ? 1.0 : 0.0
+            let toDarkProgress: CGFloat = transition.toOverlayIsDark ? 1.0 : 0.0
+            let darkProgress = lerp(from: fromDarkProgress, to: toDarkProgress, progress: progress)
+
+            MaterialView(
+                blurRadius: blurRadius,
+                overlayOpacity: overlayOpacity,
+                darkProgress: darkProgress,
+                cornerRadius: cornerRadius
+            )
         } else {
             // Normal mode: single material from environment
             MaterialView(
@@ -58,5 +59,9 @@ public struct BackgroundLayer: View {
                 cornerRadius: cornerRadius
             )
         }
+    }
+
+    private func lerp(from: CGFloat, to: CGFloat, progress: CGFloat) -> CGFloat {
+        from + (to - from) * progress
     }
 }
