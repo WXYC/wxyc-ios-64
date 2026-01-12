@@ -192,8 +192,15 @@ private struct ThemeDebugPopoverContent: View {
                 #endif
             }
             .padding()
+            .animation(.easeInOut(duration: 0.2), value: isLCDBrightnessExpanded)
+            .animation(.easeInOut(duration: 0.2), value: isAccentColorExpanded)
+            .animation(.easeInOut(duration: 0.2), value: isMaterialExpanded)
+            .animation(.easeInOut(duration: 0.2), value: isParametersExpanded)
+            .animation(.easeInOut(duration: 0.2), value: isShaderFeaturesExpanded)
+            .animation(.easeInOut(duration: 0.2), value: isPerformanceExpanded)
+            .animation(.easeInOut(duration: 0.2), value: isPlaybackButtonExpanded)
         }
-        .frame(minWidth: 300, minHeight: 200)
+        .frame(minWidth: 300, minHeight: 200, maxHeight: 600)
         .presentationCompactAdaptation(.popover)
         #if canImport(UIKit) && !os(tvOS)
         .sheet(isPresented: $showingShareSheet) {
