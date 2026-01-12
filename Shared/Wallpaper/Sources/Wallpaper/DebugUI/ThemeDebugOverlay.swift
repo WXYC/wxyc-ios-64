@@ -145,7 +145,7 @@ private struct ThemeDebugPopoverContent: View {
 
                 // Playback Button Blend Mode
                 DisclosureGroup(isExpanded: $isPlaybackButtonExpanded) {
-                    PlaybackButtonControls()
+                    PlaybackButtonControls(configuration: configuration)
                         .padding(.top, 8)
                 } label: {
                     Text("Playback Button")
@@ -755,15 +755,12 @@ private struct PerformanceControls: View {
 
 /// Controls for adjusting the playback button blend mode.
 private struct PlaybackButtonControls: View {
-    private var playbackControlsDebugState = PlaybackControlsDebugState.shared
+    @Bindable var configuration: ThemeConfiguration
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Blend Mode", selection: Binding(
-                get: { playbackControlsDebugState.blendMode },
-                set: { playbackControlsDebugState.blendMode = $0 }
-            )) {
-                ForEach(DebugBlendMode.allCases) { mode in
+            Picker("Blend Mode", selection: $configuration.playbackBlendMode) {
+                ForEach(PlaybackBlendMode.allCases) { mode in
                     Text(mode.displayName).tag(mode)
                 }
             }

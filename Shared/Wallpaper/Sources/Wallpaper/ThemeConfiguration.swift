@@ -67,6 +67,10 @@ public final class ThemeConfiguration {
         "wallpaper.meshGradientPalette.\(themeID)"
     }
 
+    private func playbackBlendModeKey(for themeID: String) -> String {
+        "wallpaper.playbackBlendMode.\(themeID)"
+    }
+
     // MARK: - Dependencies
 
     private let registry: any ThemeRegistryProtocol
@@ -212,6 +216,22 @@ public final class ThemeConfiguration {
                 defaults.set(data, forKey: key)
             }
         }
+    }
+
+    // MARK: - Playback Blend Mode
+
+    /// The blend mode for playback controls.
+    /// Stored per-theme so each theme can have its own blend mode.
+    public var playbackBlendMode: PlaybackBlendMode = .default {
+        didSet {
+            let key = playbackBlendModeKey(for: selectedThemeID)
+            defaults.set(playbackBlendMode.rawValue, forKey: key)
+        }
+    }
+
+    /// Returns the effective blend mode as a SwiftUI BlendMode.
+    public var effectivePlaybackBlendMode: BlendMode {
+        playbackBlendMode.blendMode
     }
 
     /// Optional accent brightness override (0.5 to 1.5). When nil, uses the theme's default.
@@ -471,6 +491,15 @@ public final class ThemeConfiguration {
         lcdMinOffset = loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)) ?? Self.defaultLCDMinOffset
         lcdMaxOffset = loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
 
+        // Load playback blend mode
+        let blendModeKey = playbackBlendModeKey(for: themeID)
+        if let savedMode = defaults.string(forKey: blendModeKey),
+           let mode = PlaybackBlendMode(rawValue: savedMode) {
+            playbackBlendMode = mode
+        } else {
+            playbackBlendMode = .default
+        }
+
         // Load cached mesh gradient palette
         let paletteKey = meshGradientPaletteKey(for: themeID)
         if let data = defaults.data(forKey: paletteKey) {
@@ -517,6 +546,7 @@ public final class ThemeConfiguration {
         overlayIsDarkOverride = nil
         lcdMinOffset = Self.defaultLCDMinOffset
         lcdMaxOffset = Self.defaultLCDMaxOffset
+        playbackBlendMode = .default
         meshGradientPalette = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }

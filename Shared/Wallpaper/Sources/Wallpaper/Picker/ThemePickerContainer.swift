@@ -98,6 +98,11 @@ public struct ThemePickerContainer<Content: View>: View {
         }
     }
 
+    /// Playback blend mode - uses target theme during transitions (not interpolated).
+    private var effectivePlaybackBlendMode: BlendMode {
+        configuration.effectivePlaybackBlendMode
+    }
+
     public init(
         configuration: ThemeConfiguration,
         pickerState: ThemePickerState,
@@ -134,6 +139,7 @@ public struct ThemePickerContainer<Content: View>: View {
                     .environment(\.currentAccentColor, effectiveAccentColor)
                     .environment(\.currentLCDMinOffset, effectiveLCDMinOffset)
                     .environment(\.currentLCDMaxOffset, effectiveLCDMaxOffset)
+                    .environment(\.playbackBlendMode, effectivePlaybackBlendMode)
                     .environment(\.wallpaperMeshGradientPalette, configuration.meshGradientPalette)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)

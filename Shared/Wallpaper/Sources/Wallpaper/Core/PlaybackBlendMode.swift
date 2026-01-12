@@ -1,17 +1,17 @@
 //
-//  BlendModeDebug.swift
+//  PlaybackBlendMode.swift
 //  Wallpaper
 //
-//  Debug state for blend mode selection on playback controls
+//  Blend mode options for playback controls, stored per-theme
 //
 
 import SwiftUI
 
-#if DEBUG
-// MARK: - Blend Mode Debug State
+// MARK: - Playback Blend Mode
 
-/// All available SwiftUI blend modes for debug picker
-public enum DebugBlendMode: String, CaseIterable, Identifiable, Sendable {
+/// Available SwiftUI blend modes for the playback button.
+/// Stored per-theme in ThemeConfiguration.
+public enum PlaybackBlendMode: String, CaseIterable, Identifiable, Codable, Sendable {
     case normal
     case multiply
     case screen
@@ -87,29 +87,28 @@ public enum DebugBlendMode: String, CaseIterable, Identifiable, Sendable {
         case .plusLighter: .plusLighter
         }
     }
+
+    /// The default blend mode for playback controls
+    public static let `default`: PlaybackBlendMode = .colorDodge
 }
 
-/// Shared state for playback controls debug settings
-@MainActor
-@Observable
-public final class PlaybackControlsDebugState {
-    public static let shared = PlaybackControlsDebugState()
+// MARK: - Environment Key
 
-    private static let blendModeKey = "PlaybackControls.blendMode"
+private struct PlaybackBlendModeKey: EnvironmentKey {
+    static let defaultValue: BlendMode = PlaybackBlendMode.default.blendMode
+}
 
-    public var blendMode: DebugBlendMode {
-        didSet {
-            UserDefaults.standard.set(blendMode.rawValue, forKey: Self.blendModeKey)
-        }
-    }
-
-    private init() {
-        if let saved = UserDefaults.standard.string(forKey: Self.blendModeKey),
-           let mode = DebugBlendMode(rawValue: saved) {
-            self.blendMode = mode
-        } else {
-            self.blendMode = .colorDodge
-        }
+public extension EnvironmentValues {
+    /// The blend mode to apply to playback controls
+    var playbackBlendMode: BlendMode {
+        get { self[PlaybackBlendModeKey.self] }
+        set { self[PlaybackBlendModeKey.self] = newValue }
     }
 }
-#endif
+
+public extension View {
+    /// Sets the blend mode for playback controls in this view hierarchy
+    func playbackBlendMode(_ mode: BlendMode) -> some View {
+        environment(\.playbackBlendMode, mode)
+    }
+}
