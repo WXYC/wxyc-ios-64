@@ -22,6 +22,10 @@ private struct SheetDraggingKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }
 
+private struct LightboxActiveKey: EnvironmentKey {
+    static let defaultValue: Binding<Bool> = .constant(false)
+}
+
 extension EnvironmentValues {
     var scrolledToTopBinding: Binding<Bool> {
         get { self[ScrolledToTopKey.self] }
@@ -36,6 +40,11 @@ extension EnvironmentValues {
     public var overlaySheetDragging: Bool {
         get { self[SheetDraggingKey.self] }
         set { self[SheetDraggingKey.self] = newValue }
+    }
+
+    var lightboxActiveBinding: Binding<Bool> {
+        get { self[LightboxActiveKey.self] }
+        set { self[LightboxActiveKey.self] = newValue }
     }
 }
 
@@ -57,6 +66,7 @@ public struct OverlaySheet<Content: View>: View {
     @State private var scrolledToTop = true
     @State private var scrollIdle = true
     @State private var isDragging = false
+    @State private var lightboxActive = false
 
     private let dismissThreshold: CGFloat = 150
     private let springAnimation = Animation.spring(response: 0.4, dampingFraction: 0.85)
@@ -84,6 +94,7 @@ public struct OverlaySheet<Content: View>: View {
                     .environment(\.scrolledToTopBinding, $scrolledToTop)
                     .environment(\.scrollIdleBinding, $scrollIdle)
                     .environment(\.overlaySheetDragging, isDragging)
+                    .environment(\.lightboxActiveBinding, $lightboxActive)
                     .frame(maxWidth: .infinity)
                     .frame(height: geometry.size.height * 0.9)
                     .background(.ultraThinMaterial)
@@ -107,6 +118,9 @@ public struct OverlaySheet<Content: View>: View {
     private var dragGesture: some Gesture {
         DragGesture()
             .onChanged { gesture in
+                // Don't handle drag when a lightbox or similar overlay is active
+                guard !lightboxActive else { return }
+
                 // Only allow dragging down to dismiss when scrolled to top and scroll is idle
                 if scrolledToTop && scrollIdle && gesture.translation.height > 0 {
                     isDragging = true
@@ -197,5 +211,31 @@ extension View {
     /// drag-to-dismiss only when scrolled to the top.
     public func overlaySheetScrollTracking() -> some View {
         modifier(OverlaySheetScrollTracker())
+    }
+
+    /// Signals to the parent OverlaySheet that a lightbox or similar full-screen
+    /// overlay is active, preventing the sheet's drag-to-dismiss gesture.
+    public func overlaySheetLightboxActive(_ isActive: Bool) -> some View {
+        modifier(OverlaySheetLightboxModifier(isActive: isActive))
+    }
+}
+
+// MARK: - Lightbox Active Modifier
+
+private struct OverlaySheetLightboxModifier: ViewModifier {
+    let isActive: Bool
+    @Environment(\.lightboxActiveBinding) private var lightboxActiveBinding
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: isActive) { _, newValue in
+                lightboxActiveBinding.wrappedValue = newValue
+            }
+            .onAppear {
+                lightboxActiveBinding.wrappedValue = isActive
+            }
+            .onDisappear {
+                lightboxActiveBinding.wrappedValue = false
+            }
     }
 }

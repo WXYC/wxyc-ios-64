@@ -135,6 +135,7 @@ struct PlaycutDetailView: View {
                 .transition(.identity)
             }
         }
+        .overlaySheetLightboxActive(isLightboxActive)
     }
     
     private func loadMetadata() async {
