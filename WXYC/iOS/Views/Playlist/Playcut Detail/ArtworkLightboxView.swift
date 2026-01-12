@@ -29,8 +29,7 @@ struct ArtworkLightboxView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                Rectangle()
-                    .foregroundStyle(Material.ultraThinMaterial.opacity(backgroundOpacity))
+                Color.black.opacity(backgroundOpacity)
                     .onTapGesture {
                         dismiss()
                     }

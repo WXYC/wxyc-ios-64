@@ -84,8 +84,9 @@ public struct OverlaySheet<Content: View>: View {
             ZStack(alignment: .bottom) {
                 // Dimming backdrop
                 Color.black
-                    .opacity(appeared ? 0.3 : 0)
+                    .opacity(appeared ? (lightboxActive ? 1.0 : 0.3) : 0)
                     .ignoresSafeArea()
+                    .animation(.spring(response: 0.45, dampingFraction: 0.85), value: lightboxActive)
                     .onTapGesture {
                         dismiss()
                     }
