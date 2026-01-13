@@ -16,7 +16,7 @@ struct PlaybackControlsView: View {
     var isLoading: Bool
     var onPlayTapped: () -> Void
     
-    @Environment(\.playbackBlendMode) private var blendMode
+    @Environment(\.themeAppearance) private var appearance
 
     init(isPlaying: Bool, isLoading: Bool = false, onPlayTapped: @escaping () -> Void) {
         self.isPlaying = isPlaying
@@ -35,7 +35,7 @@ struct PlaybackControlsView: View {
         .accessibilityIdentifier("playPauseButton")
         .accessibilityValue(isPlaying ? "playing" : "paused")
         .foregroundStyle(.secondary)
-        .blendMode(blendMode)
+        .blendMode(appearance.playbackBlendMode)
     }
 
     var image: Image {

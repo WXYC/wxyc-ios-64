@@ -28,9 +28,7 @@ struct PlaylistView: View {
     @State private var playlistEntries: [any PlaylistEntry] = []
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
-    @Environment(\.currentAccentColor) private var currentAccentColor
-    @Environment(\.currentLCDMinOffset) private var currentLCDMinOffset
-    @Environment(\.currentLCDMaxOffset) private var currentLCDMaxOffset
+    @Environment(\.themeAppearance) private var appearance
 
     @State private var visualizer = VisualizerDataSource()
     @State private var showVisualizerDebug = false
@@ -55,10 +53,10 @@ struct PlaylistView: View {
                         #endif
                     }
                 )
-                .lcdAccentColor(currentAccentColor)
+                .lcdAccentColor(appearance.accentColor)
                 .lcdHSBOffsets(
-                    min: currentLCDMinOffset,
-                    max: currentLCDMaxOffset
+                    min: appearance.lcdMinOffset,
+                    max: appearance.lcdMaxOffset
                 )
 
                 // Siri tip
