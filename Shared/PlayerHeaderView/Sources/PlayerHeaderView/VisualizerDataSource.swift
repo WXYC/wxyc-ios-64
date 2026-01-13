@@ -6,9 +6,10 @@
 //  Separated from playback control as a dedicated observation layer
 //
 
-import Foundation
 import AVFoundation
 import Accelerate
+import Caching
+import Foundation
 
 /// Configuration constants for the audio visualizer
 enum VisualizerConstants {
@@ -96,20 +97,20 @@ public final class VisualizerDataSource: @unchecked Sendable {
             if signalBoost != clamped {
                 signalBoost = clamped
             } else {
-                UserDefaults.standard.set(signalBoost, forKey: DefaultsKeys.signalBoost)
+                defaults.set(signalBoost, forKey: DefaultsKeys.signalBoost)
             }
         }
     }
 
     /// Whether signal boost is applied (when false, boost is bypassed regardless of value)
     public var signalBoostEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(signalBoostEnabled, forKey: DefaultsKeys.signalBoostEnabled) }
+        didSet { defaults.set(signalBoostEnabled, forKey: DefaultsKeys.signalBoostEnabled) }
     }
 
     /// Normalization mode for FFT processor
     public var fftNormalizationMode: NormalizationMode = .perBandEMA {
         didSet {
-            UserDefaults.standard.set(fftNormalizationMode.rawValue, forKey: DefaultsKeys.fftNormalizationMode)
+            defaults.set(fftNormalizationMode.rawValue, forKey: DefaultsKeys.fftNormalizationMode)
             fftProcessor.setNormalizationMode(fftNormalizationMode)
         }
     }
@@ -118,7 +119,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
     /// 0 = raw/bass-heavy, 0.5 = balanced, 1.0+ = treble-emphasized
     public var fftFrequencyWeighting: Float = 1.0 {
         didSet {
-            UserDefaults.standard.set(fftFrequencyWeighting, forKey: DefaultsKeys.fftFrequencyWeighting)
+            defaults.set(fftFrequencyWeighting, forKey: DefaultsKeys.fftFrequencyWeighting)
             fftProcessor.setFrequencyWeightingExponent(fftFrequencyWeighting)
         }
     }
@@ -126,7 +127,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
     /// Normalization mode for RMS processor
     public var rmsNormalizationMode: NormalizationMode = .ema {
         didSet {
-            UserDefaults.standard.set(rmsNormalizationMode.rawValue, forKey: DefaultsKeys.rmsNormalizationMode)
+            defaults.set(rmsNormalizationMode.rawValue, forKey: DefaultsKeys.rmsNormalizationMode)
             rmsProcessor.setNormalizationMode(rmsNormalizationMode)
         }
     }
@@ -135,7 +136,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
     /// Automatically enables the required processor(s) when changed
     public var displayProcessor: ProcessorType = .fft {
         didSet {
-            UserDefaults.standard.set(displayProcessor.rawValue, forKey: DefaultsKeys.displayProcessor)
+            defaults.set(displayProcessor.rawValue, forKey: DefaultsKeys.displayProcessor)
             // Auto-enable required processors, disable unused ones to save CPU
             switch displayProcessor {
             case .fft:
@@ -153,17 +154,17 @@ public final class VisualizerDataSource: @unchecked Sendable {
 
     /// Whether FFT processing is enabled (saves CPU when disabled)
     public var fftProcessingEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(fftProcessingEnabled, forKey: DefaultsKeys.fftProcessingEnabled) }
+        didSet { defaults.set(fftProcessingEnabled, forKey: DefaultsKeys.fftProcessingEnabled) }
     }
 
     /// Whether RMS processing is enabled (saves CPU when disabled)
     public var rmsProcessingEnabled: Bool = true {
-        didSet { UserDefaults.standard.set(rmsProcessingEnabled, forKey: DefaultsKeys.rmsProcessingEnabled) }
+        didSet { defaults.set(rmsProcessingEnabled, forKey: DefaultsKeys.rmsProcessingEnabled) }
     }
 
     /// Whether to show the FPS debug overlay
     public var showFPS: Bool = false {
-        didSet { UserDefaults.standard.set(showFPS, forKey: DefaultsKeys.showFPS) }
+        didSet { defaults.set(showFPS, forKey: DefaultsKeys.showFPS) }
     }
 
     // MARK: - Private Properties (not persisted)
@@ -176,11 +177,14 @@ public final class VisualizerDataSource: @unchecked Sendable {
 
     @ObservationIgnored
     private let rmsProcessor: RMSProcessor
-    
+
+    @ObservationIgnored
+    private let defaults: DefaultsStorage
+
     // MARK: - Initialization
 
-    public init() {
-        let defaults = UserDefaults.standard
+    public init(defaults: DefaultsStorage = UserDefaults.standard) {
+        self.defaults = defaults
 
         // Load persisted values from UserDefaults
         let storedNormMode = defaults.string(forKey: DefaultsKeys.fftNormalizationMode)

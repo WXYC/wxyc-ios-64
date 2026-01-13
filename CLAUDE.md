@@ -34,8 +34,8 @@ Metal. It also supports tvOS, watchOS, and macOS (designed for iPad).
 - Avoid force unwraps and force `try` unless it is unrecoverable.
 - Avoid using the `return` keyword if you can.
 - For protecting simple accesses to a variable in a multithreaded context, prefer swift-atomics over NSLock.
-- When writing test suites, please put mocks and other ancilliary object below the tests.
-- Prefer Swift 6.2's
+- When writing test suites, please put mocks and other ancilliary objects below the tests.
+- Inject `DefaultsStorage` (from Caching) for persistence instead of accessing `UserDefaults.standard` or `.wxyc` directly. This enables parallel test execution via `InMemoryDefaults`. Exception: widgets may use `@AppStorage` with the app group store.
 
 ## SwiftUI instructions
 

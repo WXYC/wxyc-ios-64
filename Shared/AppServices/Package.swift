@@ -31,7 +31,7 @@ let package = Package(
         ),
         .testTarget(
             name: "AppServicesTests",
-            dependencies: ["AppServices", "Playlist", "Artwork"]
+            dependencies: ["AppServices", "Caching", "Playlist", "Artwork"]
         )
     ]
 )

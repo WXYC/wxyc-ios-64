@@ -10,22 +10,6 @@
 import Caching
 import Foundation
 
-/// Protocol for UserDefaults-like storage to enable testing.
-@MainActor
-public protocol ReviewRequestStorage: Sendable {
-    func integer(forKey key: String) -> Int
-    func set(_ value: Int, forKey key: String)
-    func string(forKey key: String) -> String?
-    func set(_ value: String?, forKey key: String)
-}
-
-extension UserDefaults: ReviewRequestStorage {
-    @MainActor
-    public func set(_ value: String?, forKey key: String) {
-        (self as UserDefaults).set(value as Any?, forKey: key)
-    }
-}
-
 /// Service that tracks user engagement actions and triggers review requests.
 @MainActor
 @Observable
@@ -49,19 +33,19 @@ public final class ReviewRequestService {
     /// When this becomes true, the UI should call `requestReview()` and then `didRequestReview()`.
     public private(set) var shouldRequestReview = false
 
-    private let storage: any ReviewRequestStorage
+    private let storage: DefaultsStorage
 
     // MARK: - Initialization
 
     /// Creates a new ReviewRequestService.
     /// - Parameters:
-    ///   - userDefaults: Storage for persisting action counts and version info. Uses app group defaults by default.
+    ///   - storage: Storage for persisting action counts and version info. Uses app group defaults by default.
     ///   - minimumVersionForReview: The minimum app version that should trigger reviews. Bump this to re-enable reviews.
     public init(
-        userDefaults: some ReviewRequestStorage = UserDefaults.wxyc,
+        storage: DefaultsStorage = UserDefaults.wxyc,
         minimumVersionForReview: String
     ) {
-        self.storage = userDefaults
+        self.storage = storage
         self.minimumVersionForReview = minimumVersionForReview
     }
 
