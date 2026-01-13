@@ -84,7 +84,7 @@ struct RadioPlayerControllerTests {
 
     // MARK: - State Observation Tests
 
-    @Test("Observes radio player state changes")
+    @Test("Observes radio player state changes", .timeLimit(.minutes(1)))
     func observesRadioPlayerStateChanges() async throws {
         // Given
         let mockPlayer = MockPlayer()
@@ -109,31 +109,32 @@ struct RadioPlayerControllerTests {
         // Wait for observers to be ready
         for await _ in observersReady.stream { break }
 
-        // When - Start playing via radio player
-        radioPlayer.play()
-
-        // Wait for state to propagate by observing isPlaying
-        let stateChanged = AsyncStream<Void>.makeStream()
-        let observationTask = Task {
-            let observations = Observations { radioPlayer.isPlaying }
-            for await isPlaying in observations {
-                if isPlaying {
-                    stateChanged.continuation.yield()
-                    stateChanged.continuation.finish()
-                    break
+        // Start listening to state stream BEFORE triggering state change
+        // to avoid race condition
+        let stateTask = Task {
+            for await state in radioPlayer.stateStream {
+                if state == .playing {
+                    return true
                 }
             }
+            return false
         }
+
+        // Give the task a moment to start listening
+        try await Task.sleep(for: .milliseconds(50))
+
+        // When - Start playing via radio player
+        radioPlayer.play()
 
         // Simulate rate change notification on the mock player
         mockPlayer.rate = 1.0
         notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
 
-        // Wait for state change
-        for await _ in stateChanged.stream { break }
-        observationTask.cancel()
+        // Wait for state change with timeout
+        let result = await stateTask.value
 
         // Then - Controller should observe the change
+        #expect(result == true, "State should have changed to playing")
         #expect(radioPlayer.isPlaying == true)
         #expect(controller.isPlaying == true)
     }
