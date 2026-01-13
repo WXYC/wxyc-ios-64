@@ -5,6 +5,7 @@
 //  Created by Jake Bromberg on 12/19/25.
 //
 
+import Caching
 import Foundation
 import Observation
 
@@ -17,9 +18,11 @@ import Observation
 public final class ParameterStore: Sendable {
     private var values: [String: Any] = [:]
     private let manifest: ThemeManifest
+    private let defaults: DefaultsStorage
 
-    public init(manifest: ThemeManifest) {
+    public init(manifest: ThemeManifest, defaults: DefaultsStorage = UserDefaults.standard) {
         self.manifest = manifest
+        self.defaults = defaults
         loadFromDefaults()
     }
 
@@ -170,7 +173,6 @@ public final class ParameterStore: Sendable {
     // MARK: - Private Helpers
 
     private func loadFromDefaults() {
-        let defaults = UserDefaults.standard
         for param in manifest.parameters {
             let key = storageKey(for: param)
             switch param.type {
@@ -200,18 +202,18 @@ public final class ParameterStore: Sendable {
 
     private func saveToDefaults(parameterId: String, value: Float) {
         guard let param = manifest.parameters.first(where: { $0.id == parameterId }) else { return }
-        UserDefaults.standard.set(value, forKey: storageKey(for: param))
+        defaults.set(value, forKey: storageKey(for: param))
     }
 
     private func saveToDefaults(parameterId: String, value: Bool) {
         guard let param = manifest.parameters.first(where: { $0.id == parameterId }) else { return }
-        UserDefaults.standard.set(value, forKey: storageKey(for: param))
+        defaults.set(value, forKey: storageKey(for: param))
     }
 
     private func saveColorComponentToDefaults(parameterId: String, componentId: String, value: Float) {
         guard let param = manifest.parameters.first(where: { $0.id == parameterId }),
               let component = param.components?.first(where: { $0.id == componentId }) else { return }
-        UserDefaults.standard.set(value, forKey: storageKey(for: param, component: component))
+        defaults.set(value, forKey: storageKey(for: param, component: component))
     }
 
     /// Returns the UserDefaults key for a parameter.

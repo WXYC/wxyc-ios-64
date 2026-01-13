@@ -14,15 +14,18 @@ let package = Package(
             targets: ["Wallpaper"]),
     ],
     dependencies: [
+        .package(name: "Caching", path: "../Caching"),
         .package(name: "Core", path: "../Core"),
         .package(name: "WXUI", path: "../WXUI"),
         .package(name: "ColorPalette", path: "../ColorPalette"),
         .package(name: "Logger", path: "../Logger"),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.0"),
     ],
     targets: [
         .target(
             name: "Wallpaper",
             dependencies: [
+                "Caching",
                 "Core",
                 "WXUI",
                 "ColorPalette",
@@ -35,7 +38,10 @@ let package = Package(
         ),
         .testTarget(
             name: "WallpaperTests",
-            dependencies: ["Wallpaper"]
+            dependencies: [
+                "Wallpaper",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+            ]
         ),
     ]
 )

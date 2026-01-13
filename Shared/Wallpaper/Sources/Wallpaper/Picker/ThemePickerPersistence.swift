@@ -3,6 +3,7 @@
 //  Wallpaper
 //
 
+import Caching
 import Foundation
 
 /// Persistence layer for theme picker state.
@@ -26,14 +27,14 @@ public final class ThemePickerPersistence: Sendable {
 
     // MARK: - Storage
 
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStorage
 
     // MARK: - Initialization
 
-    /// Creates a persistence instance with the specified UserDefaults.
+    /// Creates a persistence instance with the specified defaults storage.
     ///
-    /// - Parameter defaults: The UserDefaults instance to use for storage.
-    public init(defaults: UserDefaults = .standard) {
+    /// - Parameter defaults: The storage instance to use for persistence.
+    public init(defaults: DefaultsStorage = UserDefaults.standard) {
         self.defaults = defaults
     }
 

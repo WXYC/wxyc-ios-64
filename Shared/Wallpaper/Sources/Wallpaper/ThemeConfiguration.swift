@@ -5,6 +5,7 @@
 //  Created by Jake Bromberg on 12/18/25.
 //
 
+import Caching
 import ColorPalette
 import Core
 import Foundation
@@ -74,7 +75,7 @@ public final class ThemeConfiguration {
     // MARK: - Dependencies
 
     private let registry: any ThemeRegistryProtocol
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStorage
 
     /// Shared animation start time for all wallpaper renderers.
     /// This ensures picker previews and main view show synchronized animations.
@@ -555,7 +556,7 @@ public final class ThemeConfiguration {
     ///   - defaults: The UserDefaults instance for persistence.
     public init(
         registry: any ThemeRegistryProtocol = ThemeRegistry.shared,
-        defaults: UserDefaults = .standard
+        defaults: DefaultsStorage = UserDefaults.standard
     ) {
         self.registry = registry
         self.defaults = defaults
@@ -584,7 +585,7 @@ public final class ThemeConfiguration {
     }
 
     /// Clears any corrupted UserDefaults data for theme settings.
-    public static func nukeLegacyData(defaults: UserDefaults = .standard) {
+    public static func nukeLegacyData(defaults: DefaultsStorage = UserDefaults.standard) {
         defaults.removeObject(forKey: "wallpaper.selectedType.v3")
         defaults.removeObject(forKey: "wallpaper.selectedType")
     }

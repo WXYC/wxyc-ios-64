@@ -1,3 +1,4 @@
+import Caching
 import Foundation
 #if canImport(UIKit)
 import UIKit
@@ -16,19 +17,19 @@ public final class AdaptiveProfileStore: Sendable {
     /// Shared instance using standard UserDefaults.
     public static let shared = AdaptiveProfileStore()
 
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStorage
     private let keyPrefix = "thermal.profile."
     private let deviceIdKey = "thermal.deviceIdentifier"
 
     /// In-memory cache for synchronous reads.
     private var memoryCache: [String: AdaptiveProfile] = [:]
 
-    /// Creates a store with the specified UserDefaults.
+    /// Creates a store with the specified defaults storage.
     ///
     /// Checks for device migration on init and wipes profiles if needed.
     ///
-    /// - Parameter defaults: The UserDefaults instance to use for persistence.
-    public init(defaults: UserDefaults = .standard) {
+    /// - Parameter defaults: The storage instance to use for persistence.
+    public init(defaults: DefaultsStorage = UserDefaults.standard) {
         self.defaults = defaults
         checkDeviceMigration()
     }
