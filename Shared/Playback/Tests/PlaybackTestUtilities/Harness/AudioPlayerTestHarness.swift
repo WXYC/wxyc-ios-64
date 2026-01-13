@@ -73,6 +73,7 @@ public final class AudioPlayerTestHarness {
     public let player: any AudioPlayerProtocol
     public let testCase: AudioPlayerTestCase
     public let notificationCenter: NotificationCenter
+    public let mockAnalytics: MockAnalyticsService
 
     // RadioPlayer mocks
     private let mockPlayer: MockPlayer?
@@ -116,7 +117,8 @@ public final class AudioPlayerTestHarness {
         notificationCenter: NotificationCenter,
         mockPlayer: MockPlayer?,
         mockHTTPClient: MockHTTPStreamClient?,
-        mockAudioEngine: MockAudioEnginePlayer?
+        mockAudioEngine: MockAudioEnginePlayer?,
+        mockAnalytics: MockAnalyticsService
     ) {
         self.player = player
         self.testCase = testCase
@@ -124,18 +126,21 @@ public final class AudioPlayerTestHarness {
         self.mockPlayer = mockPlayer
         self.mockHTTPClient = mockHTTPClient
         self.mockAudioEngine = mockAudioEngine
+        self.mockAnalytics = mockAnalytics
     }
     #else
     private init(
         player: any AudioPlayerProtocol,
         testCase: AudioPlayerTestCase,
         notificationCenter: NotificationCenter,
-        mockPlayer: MockPlayer?
+        mockPlayer: MockPlayer?,
+        mockAnalytics: MockAnalyticsService
     ) {
         self.player = player
         self.testCase = testCase
         self.notificationCenter = notificationCenter
         self.mockPlayer = mockPlayer
+        self.mockAnalytics = mockAnalytics
     }
     #endif
 
@@ -144,12 +149,13 @@ public final class AudioPlayerTestHarness {
     /// Creates a test harness for the specified player type
     public static func make(for testCase: AudioPlayerTestCase) -> AudioPlayerTestHarness {
         let notificationCenter = NotificationCenter()
+        let mockAnalytics = MockAnalyticsService()
 
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
             let mockHTTPClient = MockHTTPStreamClient()
-            let mockAudioEngine = MockAudioEnginePlayer()
+            let mockAudioEngine = MockAudioEnginePlayer(analytics: mockAnalytics)
 
             // Load test MP3 data so state transitions happen naturally
             if let testData = loadTestMP3Data() {
@@ -167,7 +173,8 @@ public final class AudioPlayerTestHarness {
             let streamer = MP3Streamer(
                 configuration: config,
                 httpClient: mockHTTPClient,
-                audioPlayer: mockAudioEngine
+                audioPlayer: mockAudioEngine,
+                analytics: mockAnalytics
             )
 
             return AudioPlayerTestHarness(
@@ -176,7 +183,8 @@ public final class AudioPlayerTestHarness {
                 notificationCenter: notificationCenter,
                 mockPlayer: nil,
                 mockHTTPClient: mockHTTPClient,
-                mockAudioEngine: mockAudioEngine
+                mockAudioEngine: mockAudioEngine,
+                mockAnalytics: mockAnalytics
             )
         #endif
 
@@ -184,7 +192,7 @@ public final class AudioPlayerTestHarness {
             let mockPlayer = MockPlayer(autoSetRateOnPlay: false)
             let radioPlayer = RadioPlayer(
                 player: mockPlayer,
-                analytics: nil,
+                analytics: mockAnalytics,
                 notificationCenter: notificationCenter
             )
 
@@ -195,14 +203,16 @@ public final class AudioPlayerTestHarness {
                 notificationCenter: notificationCenter,
                 mockPlayer: mockPlayer,
                 mockHTTPClient: nil,
-                mockAudioEngine: nil
+                mockAudioEngine: nil,
+                mockAnalytics: mockAnalytics
             )
             #else
             return AudioPlayerTestHarness(
                 player: radioPlayer,
                 testCase: testCase,
                 notificationCenter: notificationCenter,
-                mockPlayer: mockPlayer
+                mockPlayer: mockPlayer,
+                mockAnalytics: mockAnalytics
             )
             #endif
         }
