@@ -56,8 +56,8 @@
     {
       "target" : {
         "containerPath" : "container:Shared\/Playback",
-        "identifier" : "AVAudioStreamerTests",
-        "name" : "AVAudioStreamerTests"
+        "identifier" : "MP3StreamerTests",
+        "name" : "MP3StreamerTests"
       }
     },
     {
@@ -114,6 +114,13 @@
         "containerPath" : "container:Shared\/Wallpaper",
         "identifier" : "WallpaperTests",
         "name" : "WallpaperTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/ColorPalette",
+        "identifier" : "ColorPaletteTests",
+        "name" : "ColorPaletteTests"
       }
     }
   ],

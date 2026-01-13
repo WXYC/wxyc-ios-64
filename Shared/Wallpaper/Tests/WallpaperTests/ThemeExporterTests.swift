@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import ZIPFoundation
 @testable import Wallpaper
 
 @Suite("ThemeExporter")
@@ -16,6 +17,12 @@ struct ThemeExporterTests {
     private func makeTestDefaults() -> UserDefaults {
         let suiteName = "ThemeExporterTests.\(UUID().uuidString)"
         return UserDefaults(suiteName: suiteName)!
+    }
+
+    /// Unzips a file to a destination directory using ZIPFoundation (iOS-compatible)
+    private func unzip(_ zipURL: URL, to destinationDir: URL) throws {
+        let fileManager = FileManager.default
+        try fileManager.unzipItem(at: zipURL, to: destinationDir)
     }
 
     @Test("Exports all themes to zip file")
@@ -47,11 +54,7 @@ struct ThemeExporterTests {
         let unzipDir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: unzipDir, withIntermediateDirectories: true)
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-q", zipURL.path, "-d", unzipDir.path]
-        try process.run()
-        process.waitUntilExit()
+        try unzip(zipURL, to: unzipDir)
 
         // Check for expected JSON files
         let wallpapersDir = unzipDir.appending(path: "Wallpapers")
@@ -83,11 +86,7 @@ struct ThemeExporterTests {
         let unzipDir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: unzipDir, withIntermediateDirectories: true)
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-q", zipURL.path, "-d", unzipDir.path]
-        try process.run()
-        process.waitUntilExit()
+        try unzip(zipURL, to: unzipDir)
 
         // Read the exported JSON
         let jsonURL = unzipDir.appending(path: "Wallpapers/test_dark.json")
@@ -116,11 +115,7 @@ struct ThemeExporterTests {
         let unzipDir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: unzipDir, withIntermediateDirectories: true)
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-q", zipURL.path, "-d", unzipDir.path]
-        try process.run()
-        process.waitUntilExit()
+        try unzip(zipURL, to: unzipDir)
 
         // Read the exported JSON
         let jsonURL = unzipDir.appending(path: "Wallpapers/test_dark.json")
@@ -150,11 +145,7 @@ struct ThemeExporterTests {
         let unzipDir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: unzipDir, withIntermediateDirectories: true)
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        process.arguments = ["-q", zipURL.path, "-d", unzipDir.path]
-        try process.run()
-        process.waitUntilExit()
+        try unzip(zipURL, to: unzipDir)
 
         // Read the exported JSON
         let jsonURL = unzipDir.appending(path: "Wallpapers/test_dark.json")

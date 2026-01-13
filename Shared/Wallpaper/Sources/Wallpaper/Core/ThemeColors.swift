@@ -61,6 +61,18 @@ public struct AccentColor: Codable, Sendable, Equatable {
         self.brightness = brightness
     }
 
+    // Custom decoder to provide default value for brightness when not present in JSON
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hue = try container.decode(Double.self, forKey: .hue)
+        saturation = try container.decode(Double.self, forKey: .saturation)
+        brightness = try container.decodeIfPresent(Double.self, forKey: .brightness) ?? 1.0
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case hue, saturation, brightness
+    }
+
     /// Normalized hue for SwiftUI Color (0.0-1.0).
     public var normalizedHue: Double {
         hue / 360.0
