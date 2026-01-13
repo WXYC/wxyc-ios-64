@@ -59,7 +59,7 @@ public enum PlaylistAPIVersion: String, CaseIterable, Identifiable, Hashable, Se
     /// Internal method with full dependency injection for testing.
     static func loadActive(
         featureFlagProvider: FeatureFlagProvider,
-        defaults: UserDefaults
+        defaults: DefaultsStorage
     ) -> PlaylistAPIVersion {
         // 1. Check if user manually selected a version in Debug View
         if defaults.bool(forKey: manualSelectionKey),
@@ -84,7 +84,7 @@ public enum PlaylistAPIVersion: String, CaseIterable, Identifiable, Hashable, Se
     }
 
     /// Persists a manual override selection to the specified defaults.
-    func persist(to defaults: UserDefaults) {
+    func persist(to defaults: DefaultsStorage) {
         defaults.set(rawValue, forKey: Self.userDefaultsKey)
         defaults.set(true, forKey: Self.manualSelectionKey)
     }
@@ -95,7 +95,7 @@ public enum PlaylistAPIVersion: String, CaseIterable, Identifiable, Hashable, Se
     }
 
     /// Clears the manual override from the specified defaults.
-    static func clearOverride(from defaults: UserDefaults) {
+    static func clearOverride(from defaults: DefaultsStorage) {
         defaults.removeObject(forKey: userDefaultsKey)
         defaults.removeObject(forKey: manualSelectionKey)
     }
