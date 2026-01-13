@@ -1,12 +1,12 @@
 //
 //  MockPlaybackAnalytics.swift
-//  PlaybackTests
+//  PlaybackTestUtilities
 //
 //  Mock implementation of PlaybackAnalytics for testing.
 //
 
 import Foundation
-@testable import PlaybackCore
+@testable import Playback
 
 /// Mock implementation of PlaybackAnalytics that captures events for verification in tests.
 @MainActor

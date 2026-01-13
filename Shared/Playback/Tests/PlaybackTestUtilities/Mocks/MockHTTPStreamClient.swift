@@ -1,38 +1,45 @@
+//
+//  MockHTTPStreamClient.swift
+//  PlaybackTestUtilities
+//
+//  Mock HTTP stream client for testing MP3Streamer
+//
+
 import Foundation
 @testable import MP3StreamerModule
 
 #if !os(watchOS)
 
 /// Mock HTTP stream client that feeds test data instantly without network access
-final class MockHTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
+public final class MockHTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
     private let continuation: AsyncStream<HTTPStreamEvent>.Continuation
-    let eventStream: AsyncStream<HTTPStreamEvent>
+    public let eventStream: AsyncStream<HTTPStreamEvent>
 
     /// Optional test data to feed when connect() is called
-    var testData: Data?
+    public var testData: Data?
 
     /// Chunk size for splitting test data
-    var chunkSize: Int = 4096
+    public var chunkSize: Int = 4096
 
     /// Whether connect should succeed
-    var shouldSucceed = true
+    public var shouldSucceed = true
 
     /// Error to throw if shouldSucceed is false
-    var errorToThrow: Error = HTTPStreamError.connectionFailed
+    public var errorToThrow: Error = HTTPStreamError.connectionFailed
 
     /// Track whether connect was called
-    private(set) var connectCallCount = 0
+    public private(set) var connectCallCount = 0
 
     /// Track whether disconnect was called
-    private(set) var disconnectCallCount = 0
+    public private(set) var disconnectCallCount = 0
 
-    init() {
+    public init() {
         var cont: AsyncStream<HTTPStreamEvent>.Continuation!
         self.eventStream = AsyncStream(bufferingPolicy: .unbounded) { cont = $0 }
         self.continuation = cont
     }
 
-    func connect() async throws {
+    public func connect() async throws {
         connectCallCount += 1
 
         guard shouldSucceed else {
@@ -54,7 +61,7 @@ final class MockHTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable 
         }
     }
 
-    func disconnect() {
+    public func disconnect() {
         disconnectCallCount += 1
         continuation.yield(.disconnected)
     }
@@ -62,12 +69,12 @@ final class MockHTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable 
     // MARK: - Test Helpers
 
     /// Manually yield an event for testing
-    func yield(_ event: HTTPStreamEvent) {
+    public func yield(_ event: HTTPStreamEvent) {
         continuation.yield(event)
     }
 
     /// Finish the stream
-    func finish() {
+    public func finish() {
         continuation.finish()
     }
 }

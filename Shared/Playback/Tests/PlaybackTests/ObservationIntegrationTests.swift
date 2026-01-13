@@ -6,6 +6,7 @@
 //
 
 import Testing
+import PlaybackTestUtilities
 import Foundation
 import AVFoundation
 @testable import Playback

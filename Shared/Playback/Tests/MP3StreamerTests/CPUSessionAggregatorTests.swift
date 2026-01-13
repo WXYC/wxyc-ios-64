@@ -6,6 +6,7 @@
 //
 
 import Testing
+import PlaybackTestUtilities
 import Foundation
 @testable import MP3StreamerModule
 @testable import PlaybackCore
@@ -23,7 +24,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -37,7 +38,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -57,7 +58,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -76,7 +77,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -110,7 +111,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -126,7 +127,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .background)
@@ -144,7 +145,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -162,7 +163,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .background)
@@ -180,7 +181,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -196,7 +197,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         // Start foreground session
@@ -239,7 +240,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -259,7 +260,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -276,7 +277,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         // Try to transition without starting a session
@@ -291,7 +292,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         // Try to end without starting
@@ -305,7 +306,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)
@@ -335,7 +336,7 @@ struct CPUSessionAggregatorTests {
         let analytics = MockPlaybackAnalytics()
         let aggregator = CPUSessionAggregator(
             analytics: analytics,
-            playerTypeProvider: { .avAudioStreamer }
+            playerTypeProvider: { .mp3Streamer }
         )
 
         aggregator._testStartSessionWithoutMonitor(context: .foreground)

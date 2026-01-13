@@ -36,11 +36,11 @@ struct PlayerControllerTypeTests {
         PlayerControllerType.clearPersisted()
         
         // Simulate user selection
-        var type = PlayerControllerType.avAudioStreamer
+        var type = PlayerControllerType.mp3Streamer
         type.persist() // This sets manual flag to true
         
         let loaded = PlayerControllerType.loadPersisted()
-        #expect(loaded == .avAudioStreamer)
+        #expect(loaded == .mp3Streamer)
     }
     
     @Test("Clearing persistence removes manual flag")
