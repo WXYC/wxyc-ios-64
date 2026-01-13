@@ -6,6 +6,7 @@
 //
 
 import Testing
+import PlaybackTestUtilities
 import Foundation
 @testable import PlaybackCore
 
@@ -114,7 +115,7 @@ struct PlaybackAnalyticsTests {
 
     @Test("Stall recovery events are Sendable", arguments: [
         StallRecoveryEvent(playerType: .radioPlayer, attempts: 1, stallDuration: 1.0),
-        StallRecoveryEvent(playerType: .avAudioStreamer, attempts: 5, stallDuration: 10.0)
+        StallRecoveryEvent(playerType: .mp3Streamer, attempts: 5, stallDuration: 10.0)
     ])
     func stallRecoveryEventsAreSendable(event: StallRecoveryEvent) async {
         await Task { @Sendable in _ = event }.value

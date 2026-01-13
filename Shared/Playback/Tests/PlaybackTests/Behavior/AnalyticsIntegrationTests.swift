@@ -7,6 +7,7 @@
 //
 
 import Testing
+import PlaybackTestUtilities
 import AVFoundation
 #if canImport(UIKit)
 import UIKit

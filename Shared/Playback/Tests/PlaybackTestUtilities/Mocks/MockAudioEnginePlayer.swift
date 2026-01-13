@@ -1,6 +1,6 @@
 //
 //  MockAudioEnginePlayer.swift
-//  PlaybackTests
+//  PlaybackTestUtilities
 //
 //  Mock audio engine player for testing MP3Streamer
 //
@@ -12,32 +12,32 @@ import Foundation
 #if !os(watchOS)
 
 /// Mock audio engine player that simulates playback instantly without real audio
-final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
+public final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
     private let renderContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
 
-    let eventStream: AsyncStream<AudioPlayerEvent>
-    let renderTapStream: AsyncStream<AVAudioPCMBuffer>
+    public let eventStream: AsyncStream<AudioPlayerEvent>
+    public let renderTapStream: AsyncStream<AVAudioPCMBuffer>
 
-    var volume: Float = 1.0
-    private(set) var isPlaying = false
+    public var volume: Float = 1.0
+    public private(set) var isPlaying = false
 
     /// Track scheduled buffers
-    private(set) var scheduledBuffers: [AVAudioPCMBuffer] = []
+    public private(set) var scheduledBuffers: [AVAudioPCMBuffer] = []
 
     /// Track method calls
-    private(set) var playCallCount = 0
-    private(set) var pauseCallCount = 0
-    private(set) var stopCallCount = 0
+    public private(set) var playCallCount = 0
+    public private(set) var pauseCallCount = 0
+    public private(set) var stopCallCount = 0
 
     /// Whether play() should throw
-    var shouldThrowOnPlay = false
-    var playError: Error = AudioPlayerError.engineStartFailed
+    public var shouldThrowOnPlay = false
+    public var playError: Error = AudioPlayerError.engineStartFailed
 
     /// If true, immediately call needsMoreBuffers after scheduling a buffer
-    var immediatelyRequestMoreBuffers = true
+    public var immediatelyRequestMoreBuffers = true
 
-    init() {
+    public init() {
         var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
         self.eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(16)) { eventCont = $0 }
         self.eventContinuation = eventCont
@@ -47,7 +47,7 @@ final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendabl
         self.renderContinuation = renderCont
     }
 
-    func play() throws {
+    public func play() throws {
         playCallCount += 1
 
         if shouldThrowOnPlay {
@@ -58,24 +58,24 @@ final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendabl
         eventContinuation.yield(.started)
     }
 
-    func pause() {
+    public func pause() {
         pauseCallCount += 1
         isPlaying = false
         eventContinuation.yield(.paused)
     }
 
-    func stop() {
+    public func stop() {
         stopCallCount += 1
         isPlaying = false
         scheduledBuffers.removeAll()
         eventContinuation.yield(.stopped)
     }
 
-    func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
+    public func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
         scheduleBuffers([buffer])
     }
 
-    func scheduleBuffers(_ buffers: [AVAudioPCMBuffer]) {
+    public func scheduleBuffers(_ buffers: [AVAudioPCMBuffer]) {
         scheduledBuffers.append(contentsOf: buffers)
 
         // Simulate instant "playback" - yield last buffer to render stream
@@ -89,33 +89,33 @@ final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendabl
         }
     }
 
-    func installRenderTap() {
+    public func installRenderTap() {
         // No-op in mock - render stream is always "available"
     }
 
-    func removeRenderTap() {
+    public func removeRenderTap() {
         // No-op in mock
     }
 
     // MARK: - Test Helpers
 
     /// Manually yield an event for testing
-    func yield(_ event: AudioPlayerEvent) {
+    public func yield(_ event: AudioPlayerEvent) {
         eventContinuation.yield(event)
     }
 
     /// Simulate a stall
-    func simulateStall() {
+    public func simulateStall() {
         eventContinuation.yield(.stalled)
     }
 
     /// Simulate recovery from stall
-    func simulateRecovery() {
+    public func simulateRecovery() {
         eventContinuation.yield(.recoveredFromStall)
     }
 
     /// Finish the streams
-    func finish() {
+    public func finish() {
         eventContinuation.finish()
         renderContinuation.finish()
     }

@@ -14,6 +14,7 @@
  */
 
 import Testing
+import PlaybackTestUtilities
 import Foundation
 import AVFoundation
 import MediaPlayer

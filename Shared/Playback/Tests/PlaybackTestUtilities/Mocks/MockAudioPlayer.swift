@@ -1,6 +1,6 @@
 //
 //  MockAudioPlayer.swift
-//  StreamingAudioPlayerTests
+//  PlaybackTestUtilities
 //
 //  Mock implementation of AudioPlayerProtocol for testing
 //
@@ -11,29 +11,29 @@ import AVFoundation
 @testable import PlaybackCore
 
 /// Mock audio player for testing
-final class MockAudioPlayer: AudioPlayerProtocol {
+public final class MockAudioPlayer: AudioPlayerProtocol {
 
     // MARK: - State Tracking
 
-    var playCallCount = 0
-    var stopCallCount = 0
+    public var playCallCount = 0
+    public var stopCallCount = 0
 
-    var shouldAutoUpdateState = true
+    public var shouldAutoUpdateState = true
 
     // MARK: - AudioPlayerProtocol
 
-    var isPlaying: Bool = false
-    var state: PlayerState = .idle
+    public var isPlaying: Bool = false
+    public var state: PlayerState = .idle
 
-    let stateStream: AsyncStream<PlayerState>
-    let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
-    let eventStream: AsyncStream<AudioPlayerInternalEvent>
+    public let stateStream: AsyncStream<PlayerState>
+    public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    public let eventStream: AsyncStream<AudioPlayerInternalEvent>
 
-    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
-    var onStateChange: ((PlayerState, PlayerState) -> Void)?
-    var onMetadata: (([String: String]) -> Void)?
-    var onStall: (() -> Void)?
-    var onRecovery: (() -> Void)?
+    public var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
+    public var onStateChange: ((PlayerState, PlayerState) -> Void)?
+    public var onMetadata: (([String: String]) -> Void)?
+    public var onStall: (() -> Void)?
+    public var onRecovery: (() -> Void)?
 
     // MARK: - Private Properties
 
@@ -41,7 +41,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     private var stateContinuation: AsyncStream<PlayerState>.Continuation?
     private var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation?
 
-    init(url: URL = URL(string: "https://example.com/stream")!) {
+    public init(url: URL = URL(string: "https://example.com/stream")!) {
         self.url = url
 
         var sC: AsyncStream<PlayerState>.Continuation!
@@ -55,7 +55,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         self.eventContinuation = eC
     }
 
-    func play() {
+    public func play() {
         playCallCount += 1
 
         if shouldAutoUpdateState {
@@ -67,7 +67,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         }
     }
 
-    func stop() {
+    public func stop() {
         stopCallCount += 1
 
         if shouldAutoUpdateState {
@@ -79,17 +79,17 @@ final class MockAudioPlayer: AudioPlayerProtocol {
         }
     }
 
-    func installRenderTap() {
+    public func installRenderTap() {
         // No-op for mock
     }
 
-    func removeRenderTap() {
+    public func removeRenderTap() {
         // No-op for mock
     }
 
     // MARK: - Test Helpers
 
-    func reset() {
+    public func reset() {
         playCallCount = 0
         stopCallCount = 0
         isPlaying = false
@@ -97,7 +97,7 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     }
 
     /// Simulate a state change and notify observers via stateStream
-    func simulateStateChange(to newState: PlayerState) {
+    public func simulateStateChange(to newState: PlayerState) {
         let oldState = state
         state = newState
         isPlaying = (newState == .playing || newState == .loading)
@@ -106,13 +106,13 @@ final class MockAudioPlayer: AudioPlayerProtocol {
     }
 
     /// Simulate a playback stall
-    func simulateStall() {
+    public func simulateStall() {
         onStall?()
         eventContinuation?.yield(.stall)
     }
 
     /// Simulate recovery from stall
-    func simulateRecovery() {
+    public func simulateRecovery() {
         onRecovery?()
         eventContinuation?.yield(.recovery)
     }

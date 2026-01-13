@@ -1,6 +1,6 @@
 //
 //  MockAudioSession.swift
-//  StreamingAudioPlayerTests
+//  PlaybackTestUtilities
 //
 //  Mock implementation of AudioSessionProtocol for testing
 //
@@ -12,56 +12,56 @@ import AVFoundation
 #if os(iOS) || os(tvOS) || os(watchOS)
 
 /// Mock audio session for testing (iOS/tvOS/watchOS)
-final class MockAudioSession: AudioSessionProtocol {
-    
+public final class MockAudioSession: AudioSessionProtocol {
+
     // MARK: - State Tracking
-    
-    var setCategoryCallCount = 0
-    var setActiveCallCount = 0
-    
-    var lastCategory: AVAudioSession.Category?
-    var lastMode: AVAudioSession.Mode?
-    var lastCategoryOptions: AVAudioSession.CategoryOptions?
-    var lastActiveState: Bool?
-    var lastActiveOptions: AVAudioSession.SetActiveOptions?
-    
-    var shouldThrowOnSetCategory = false
-    var shouldThrowOnSetActive = false
-    
-    init() {}
+
+    public var setCategoryCallCount = 0
+    public var setActiveCallCount = 0
+
+    public var lastCategory: AVAudioSession.Category?
+    public var lastMode: AVAudioSession.Mode?
+    public var lastCategoryOptions: AVAudioSession.CategoryOptions?
+    public var lastActiveState: Bool?
+    public var lastActiveOptions: AVAudioSession.SetActiveOptions?
+
+    public var shouldThrowOnSetCategory = false
+    public var shouldThrowOnSetActive = false
+
+    public init() {}
     
     // MARK: - AudioSessionProtocol
-    
-    func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
+
+    public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
         setCategoryCallCount += 1
         lastCategory = category
         lastMode = mode
         lastCategoryOptions = options
-        
+
         if shouldThrowOnSetCategory {
             throw MockAudioSessionError.setCategoryFailed
         }
     }
-    
-    func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
+
+    public func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
         setActiveCallCount += 1
         lastActiveState = active
         lastActiveOptions = options
-        
+
         if shouldThrowOnSetActive {
             throw MockAudioSessionError.setActiveFailed
         }
     }
-    
-    var currentRoute: AVAudioSessionRouteDescription {
+
+    public var currentRoute: AVAudioSessionRouteDescription {
         // Return the shared instance's route for basic compatibility
         // In tests, we typically don't care about the actual route
         AVAudioSession.sharedInstance().currentRoute
     }
 
     // MARK: - Test Helpers
-    
-    func reset() {
+
+    public func reset() {
         setCategoryCallCount = 0
         setActiveCallCount = 0
         lastCategory = nil
@@ -109,7 +109,7 @@ public final class MockAudioSession: AudioSessionProtocol {
 
 #endif
 
-enum MockAudioSessionError: Error {
+public enum MockAudioSessionError: Error {
     case setCategoryFailed
     case setActiveFailed
 }

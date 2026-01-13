@@ -1,6 +1,6 @@
 //
 //  AudioPlayerTestHarness.swift
-//  PlaybackTests
+//  PlaybackTestUtilities
 //
 //  Shared test infrastructure for parameterized AudioPlayerProtocol tests.
 //  Provides a unified harness for testing both MP3Streamer and RadioPlayer.
@@ -32,7 +32,7 @@ private func loadTestMP3Data() -> Data? {
 // MARK: - Test Case Enumeration
 
 /// Enumeration of audio player implementations to test
-enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
+public enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible, Sendable {
     #if !os(watchOS)
     /// MP3Streamer - URLSession + AudioToolbox based player
     case mp3Streamer
@@ -40,7 +40,7 @@ enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
     /// RadioPlayer - AVPlayer based player
     case radioPlayer
 
-    var testDescription: String {
+    public var testDescription: String {
         switch self {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -52,7 +52,7 @@ enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
     }
 
     /// Whether this player supports audio buffer streaming
-    var supportsAudioBufferStream: Bool {
+    public var supportsAudioBufferStream: Bool {
         switch self {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -69,10 +69,10 @@ enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertible {
 /// Unified test harness for all AudioPlayerProtocol implementations.
 /// Uses a factory method to create harnesses with mocked dependencies.
 @MainActor
-final class AudioPlayerTestHarness {
-    let player: any AudioPlayerProtocol
-    let testCase: AudioPlayerTestCase
-    let notificationCenter: NotificationCenter
+public final class AudioPlayerTestHarness {
+    public let player: any AudioPlayerProtocol
+    public let testCase: AudioPlayerTestCase
+    public let notificationCenter: NotificationCenter
 
     // RadioPlayer mocks
     private let mockPlayer: MockPlayerForHarness?
@@ -85,7 +85,7 @@ final class AudioPlayerTestHarness {
 
     // MARK: - Computed Properties
 
-    var playCallCount: Int {
+    public var playCallCount: Int {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -96,7 +96,7 @@ final class AudioPlayerTestHarness {
         }
     }
 
-    var stopCallCount: Int {
+    public var stopCallCount: Int {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -142,7 +142,7 @@ final class AudioPlayerTestHarness {
     // MARK: - Factory Method
 
     /// Creates a test harness for the specified player type
-    static func make(for testCase: AudioPlayerTestCase) -> AudioPlayerTestHarness {
+    public static func make(for testCase: AudioPlayerTestCase) -> AudioPlayerTestHarness {
         let notificationCenter = NotificationCenter()
 
         switch testCase {
@@ -213,7 +213,7 @@ final class AudioPlayerTestHarness {
     /// Simulates playback starting successfully.
     /// For RadioPlayer: posts rate change message (synchronous on MainActor).
     /// For MP3Streamer: waits for natural state transition via test MP3 data.
-    func simulatePlaybackStarted() async {
+    public func simulatePlaybackStarted() async {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -233,7 +233,7 @@ final class AudioPlayerTestHarness {
     }
 
     /// Simulates playback stopping
-    func simulatePlaybackStopped() {
+    public func simulatePlaybackStopped() {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -247,7 +247,7 @@ final class AudioPlayerTestHarness {
     }
 
     /// Simulates a playback stall
-    func simulateStall() async {
+    public func simulateStall() async {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -271,7 +271,7 @@ final class AudioPlayerTestHarness {
     }
 
     /// Simulates recovery from a stall
-    func simulateRecovery() async {
+    public func simulateRecovery() async {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
@@ -292,7 +292,7 @@ final class AudioPlayerTestHarness {
     }
 
     /// Waits for async operations to complete (only needed for MP3Streamer)
-    func waitForAsync() async {
+    public func waitForAsync() async {
         #if !os(watchOS)
         if testCase == .mp3Streamer {
             try? await Task.sleep(for: .milliseconds(50))
@@ -301,7 +301,7 @@ final class AudioPlayerTestHarness {
     }
 
     /// Polls until condition is met or timeout expires
-    func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(1)) async {
+    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(1)) async {
         let start = Date()
         let timeoutSeconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
         while !condition() {
@@ -313,7 +313,7 @@ final class AudioPlayerTestHarness {
     }
 
     /// Awaits a task with timeout, cancelling if timeout expires
-    func awaitTask<T: Sendable>(_ task: Task<T, Never>, timeout: Duration) async {
+    public func awaitTask<T: Sendable>(_ task: Task<T, Never>, timeout: Duration) async {
         let timeoutTask = Task {
             try? await Task.sleep(for: timeout)
             task.cancel()
@@ -327,26 +327,28 @@ final class AudioPlayerTestHarness {
 
 /// Mock for PlayerProtocol (AVPlayer abstraction) used by RadioPlayer
 @MainActor
-final class MockPlayerForHarness: PlayerProtocol, @unchecked Sendable {
-    nonisolated(unsafe) var rate: Float = 0
-    nonisolated(unsafe) var playCallCount = 0
-    nonisolated(unsafe) var pauseCallCount = 0
-    nonisolated(unsafe) var replaceCurrentItemCallCount = 0
+public final class MockPlayerForHarness: PlayerProtocol, @unchecked Sendable {
+    nonisolated(unsafe) public var rate: Float = 0
+    nonisolated(unsafe) public var playCallCount = 0
+    nonisolated(unsafe) public var pauseCallCount = 0
+    nonisolated(unsafe) public var replaceCurrentItemCallCount = 0
 
-    nonisolated func play() {
+    public init() {}
+
+    nonisolated public func play() {
         playCallCount += 1
     }
 
-    nonisolated func pause() {
+    nonisolated public func pause() {
         pauseCallCount += 1
         rate = 0
     }
 
-    nonisolated func replaceCurrentItem(with item: AVPlayerItem?) {
+    nonisolated public func replaceCurrentItem(with item: AVPlayerItem?) {
         replaceCurrentItemCallCount += 1
     }
 
-    func reset() {
+    public func reset() {
         rate = 0
         playCallCount = 0
         pauseCallCount = 0

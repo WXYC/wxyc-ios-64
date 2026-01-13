@@ -61,7 +61,8 @@ let package = Package(
                 "PlaybackCore",
                 "RadioPlayerModule",
                 "MP3StreamerModule",
-            ]
+            ],
+            path: "Sources/PlaybackAPI"
         ),
 
         // watchOS playback (RadioPlayer only, no MP3Streamer)
@@ -73,20 +74,34 @@ let package = Package(
             ]
         ),
 
+        // MARK: - Test Utilities
+
+        .target(
+            name: "PlaybackTestUtilities",
+            dependencies: [
+                "Playback",
+                "PlaybackCore",
+                "RadioPlayerModule",
+                "MP3StreamerModule",
+            ],
+            path: "Tests/PlaybackTestUtilities",
+            resources: [.process("Resources")]
+        ),
+
         // MARK: - Tests
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule"],
+            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities"],
             resources: [.process("Resources")]
         ),
         .testTarget(
             name: "RadioPlayerTests",
-            dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core"]
+            dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core", "PlaybackTestUtilities"]
         ),
         .testTarget(
             name: "MP3StreamerTests",
-            dependencies: ["MP3StreamerModule", "PlaybackCore", "Core"],
+            dependencies: ["MP3StreamerModule", "PlaybackCore", "Core", "PlaybackTestUtilities"],
             resources: [.process("Resources")]
         ),
     ]
