@@ -3,6 +3,7 @@ import Observation
 @preconcurrency import AVFoundation
 import Core
 import PlaybackCore
+import Analytics
 
 /// Main audio streaming player that coordinates all components
 @MainActor
@@ -78,6 +79,10 @@ public final class MP3Streamer {
     private var httpEventTask: Task<Void, Never>?
     @ObservationIgnored
     private var playerEventTask: Task<Void, Never>?
+    @ObservationIgnored
+    private let analytics: AnalyticsService?
+    @ObservationIgnored
+    private var playbackTimer = Timer.start()
 
     // Output format for decoded audio
     private static let outputFormat: AVAudioFormat = {
@@ -98,11 +103,13 @@ public final class MP3Streamer {
         configuration: MP3StreamerConfiguration,
         httpClient: (any HTTPStreamClientProtocol)? = nil,
         audioPlayer: (any AudioEnginePlayerProtocol)? = nil,
-        backoffTimer: ExponentialBackoff = .default
+        backoffTimer: ExponentialBackoff = .default,
+        analytics: AnalyticsService? = nil
     ) {
         self.configuration = configuration
         self.backoffTimer = backoffTimer
-        
+        self.analytics = analytics
+
         // Initialize state stream for AudioPlayerProtocol
         var stateContinuation: AsyncStream<PlayerState>.Continuation!
         self.stateStreamInternal = AsyncStream { continuation in
@@ -172,11 +179,17 @@ public final class MP3Streamer {
 
     /// Start streaming and playing audio
     public func play() {
+        if streamingState == .playing {
+            analytics?.capture("mp3Streamer already playing")
+            return
+        }
+        
         guard streamingState == .idle || streamingState == .paused else { return }
 
         // If paused, just resume playback
         if case .paused = streamingState {
             do {
+                analytics?.capture("mp3Streamer play")
                 try audioPlayer.play()
                 streamingState = .playing
             } catch {
@@ -187,6 +200,8 @@ public final class MP3Streamer {
         }
 
         // Otherwise, connect and start streaming
+        analytics?.capture("mp3Streamer play")
+        playbackTimer = Timer.start()
         streamingState = .connecting
         backoffTimer.reset()
 
@@ -276,6 +291,10 @@ public final class MP3Streamer {
         if case .buffering = streamingState, bufferQueue.hasMinimumBuffers {
             do {
                 try audioPlayer.play()
+                let timeToAudio = playbackTimer.duration()
+                analytics?.capture("Time to first Audio", properties: [
+                    "timeToAudio": timeToAudio
+                ])
                 streamingState = .playing
                 scheduleBuffers()
             } catch {

@@ -2,6 +2,7 @@
 
 @preconcurrency import AVFoundation
 import os.lock
+import Analytics
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 import UIKit
@@ -21,6 +22,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     private let format: AVAudioFormat
     private let stateBox: PlayerStateBox
     private let schedulingQueue: DispatchQueue
+    private let analytics: AnalyticsService?
 
     // Track scheduled buffers to know when to request more
     private let scheduledBufferCount: ScheduledBufferCount
@@ -46,8 +48,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         set { playerNode.volume = newValue }
     }
 
-    init(format: AVAudioFormat) {
+    init(format: AVAudioFormat, analytics: AnalyticsService? = nil) {
         self.format = format
+        self.analytics = analytics
         self.engine = AVAudioEngine()
         self.playerNode = AVAudioPlayerNode()
         self.stateBox = PlayerStateBox()
@@ -95,8 +98,13 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     }
 
     func play() throws {
-        guard !stateBox.isPlaying else { return }
+        if stateBox.isPlaying {
+            analytics?.capture("audioEnginePlayer already playing")
+            return
+        }
 
+        analytics?.capture("audioEnginePlayer play")
+        
         if !engine.isRunning {
             try engine.start()
         }
@@ -109,6 +117,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func pause() {
         guard stateBox.isPlaying else { return }
 
+        analytics?.capture("audioEnginePlayer pause")
         playerNode.pause()
         stateBox.isPlaying = false
         eventContinuation.yield(.paused)
@@ -117,6 +126,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func stop() {
         guard stateBox.isPlaying || engine.isRunning else { return }
 
+        analytics?.capture("audioEnginePlayer stop")
         playerNode.stop()
         engine.stop()
         stateBox.isPlaying = false
