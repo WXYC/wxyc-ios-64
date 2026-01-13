@@ -6,6 +6,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Caching
 import SwiftUI
 import Wallpaper
 import WXUI
@@ -45,9 +46,7 @@ extension SiriTipView {
 
     /// Call this at app launch to record that a launch has occurred.
     /// Returns whether the Siri tip should be shown.
-    static func recordLaunchAndShouldShow() -> Bool {
-        let defaults = UserDefaults.standard
-
+    static func recordLaunchAndShouldShow(defaults: DefaultsStorage = UserDefaults.standard) -> Bool {
         // If user already dismissed, never show again
         if defaults.bool(forKey: wasDismissedKey) {
             return false
@@ -67,13 +66,12 @@ extension SiriTipView {
     }
 
     /// Call this when the user dismisses the tip to prevent future displays.
-    static func recordDismissal() {
-        UserDefaults.standard.set(true, forKey: wasDismissedKey)
+    static func recordDismissal(defaults: DefaultsStorage = UserDefaults.standard) {
+        defaults.set(true, forKey: wasDismissedKey)
     }
 
     /// Resets the Siri tip state (useful for testing).
-    static func resetState() {
-        let defaults = UserDefaults.standard
+    static func resetState(defaults: DefaultsStorage = UserDefaults.standard) {
         defaults.removeObject(forKey: hasLaunchedBeforeKey)
         defaults.removeObject(forKey: wasDismissedKey)
     }

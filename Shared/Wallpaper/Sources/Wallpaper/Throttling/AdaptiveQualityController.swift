@@ -1,3 +1,4 @@
+import Caching
 import Core
 import Foundation
 
@@ -163,9 +164,9 @@ public final class AdaptiveQualityController {
         didSet {
             #if DEBUG
             if let lod = debugLODOverride {
-                UserDefaults.standard.set(lod, forKey: "wallpaper.debug.lodOverride")
+                defaults.set(lod, forKey: "wallpaper.debug.lodOverride")
             } else {
-                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.lodOverride")
+                defaults.removeObject(forKey: "wallpaper.debug.lodOverride")
             }
             #endif
         }
@@ -176,9 +177,9 @@ public final class AdaptiveQualityController {
         didSet {
             #if DEBUG
             if let scale = debugScaleOverride {
-                UserDefaults.standard.set(scale, forKey: "wallpaper.debug.scaleOverride")
+                defaults.set(scale, forKey: "wallpaper.debug.scaleOverride")
             } else {
-                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.scaleOverride")
+                defaults.removeObject(forKey: "wallpaper.debug.scaleOverride")
             }
             #endif
         }
@@ -189,9 +190,9 @@ public final class AdaptiveQualityController {
         didSet {
             #if DEBUG
             if let fps = debugWallpaperFPSOverride {
-                UserDefaults.standard.set(fps, forKey: "wallpaper.debug.wallpaperFPSOverride")
+                defaults.set(fps, forKey: "wallpaper.debug.wallpaperFPSOverride")
             } else {
-                UserDefaults.standard.removeObject(forKey: "wallpaper.debug.wallpaperFPSOverride")
+                defaults.removeObject(forKey: "wallpaper.debug.wallpaperFPSOverride")
             }
             #endif
         }
@@ -233,6 +234,7 @@ public final class AdaptiveQualityController {
     private var analytics: QualityAnalytics?
     private let context: DeviceContextProtocol
     private let clock: QualityClock
+    private let defaults: DefaultsStorage
 
     // MARK: - Internal State
 
@@ -280,6 +282,7 @@ public final class AdaptiveQualityController {
     ///   - context: Thermal context for system state observation.
     ///   - clock: Clock for time-based calculations (default: system clock).
     ///   - mode: Throttling mode controlling response aggressiveness (default: normal).
+    ///   - defaults: Storage for debug override persistence (default: UserDefaults.standard).
     ///   - optimizationInterval: How often to run optimization (default 5 seconds).
     ///   - periodicFlushInterval: How often to flush analytics (default 5 minutes).
     ///   - backgroundThreshold: Time after which to apply cooldown bonus (default 5 minutes).
@@ -290,6 +293,7 @@ public final class AdaptiveQualityController {
         context: DeviceContextProtocol = DeviceContext.shared,
         clock: QualityClock = SystemQualityClock(),
         mode: ThrottlingMode = .normal,
+        defaults: DefaultsStorage = UserDefaults.standard,
         optimizationInterval: Duration = .seconds(5),
         periodicFlushInterval: Duration = .seconds(300),
         backgroundThreshold: TimeInterval = 300
@@ -300,20 +304,21 @@ public final class AdaptiveQualityController {
         self.context = context
         self.clock = clock
         self.mode = mode
+        self.defaults = defaults
         self.optimizationInterval = optimizationInterval
         self.periodicFlushInterval = periodicFlushInterval
         self.backgroundThreshold = backgroundThreshold
 
         // Load persisted debug overrides
         #if DEBUG
-        if UserDefaults.standard.object(forKey: "wallpaper.debug.lodOverride") != nil {
-            self.debugLODOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.lodOverride")
+        if defaults.object(forKey: "wallpaper.debug.lodOverride") != nil {
+            self.debugLODOverride = defaults.float(forKey: "wallpaper.debug.lodOverride")
         }
-        if UserDefaults.standard.object(forKey: "wallpaper.debug.scaleOverride") != nil {
-            self.debugScaleOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.scaleOverride")
+        if defaults.object(forKey: "wallpaper.debug.scaleOverride") != nil {
+            self.debugScaleOverride = defaults.float(forKey: "wallpaper.debug.scaleOverride")
         }
-        if UserDefaults.standard.object(forKey: "wallpaper.debug.wallpaperFPSOverride") != nil {
-            self.debugWallpaperFPSOverride = UserDefaults.standard.float(forKey: "wallpaper.debug.wallpaperFPSOverride")
+        if defaults.object(forKey: "wallpaper.debug.wallpaperFPSOverride") != nil {
+            self.debugWallpaperFPSOverride = defaults.float(forKey: "wallpaper.debug.wallpaperFPSOverride")
         }
         #endif
     }
