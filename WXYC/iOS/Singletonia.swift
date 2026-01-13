@@ -36,9 +36,6 @@ final class Singletonia {
     private var nowPlayingObservationTask: Task<Void, Never>?
 
     private init() {
-        // Wire up picker state to configuration for appearance interpolation
-        themeConfiguration.pickerState = themePickerState
-
         self.widgetStateService = WidgetStateService(
             playbackController: AudioPlayerController.shared,
             playlistService: playlistService

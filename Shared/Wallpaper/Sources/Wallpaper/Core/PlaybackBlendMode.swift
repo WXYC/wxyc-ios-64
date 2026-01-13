@@ -11,6 +11,10 @@ import SwiftUI
 
 /// Available SwiftUI blend modes for the playback button.
 /// Stored per-theme in ThemeConfiguration.
+///
+/// Note: Compositing modes (sourceAtop, destinationOver, destinationOut,
+/// plusDarker, plusLighter) are excluded because they don't interpolate
+/// correctly with opacity crossfade during theme transitions.
 public enum PlaybackBlendMode: String, CaseIterable, Identifiable, Codable, Sendable {
     case normal
     case multiply
@@ -28,11 +32,6 @@ public enum PlaybackBlendMode: String, CaseIterable, Identifiable, Codable, Send
     case saturation
     case color
     case luminosity
-    case sourceAtop
-    case destinationOver
-    case destinationOut
-    case plusDarker
-    case plusLighter
 
     public var id: String { rawValue }
 
@@ -54,11 +53,6 @@ public enum PlaybackBlendMode: String, CaseIterable, Identifiable, Codable, Send
         case .saturation: "Saturation"
         case .color: "Color"
         case .luminosity: "Luminosity"
-        case .sourceAtop: "Source Atop"
-        case .destinationOver: "Destination Over"
-        case .destinationOut: "Destination Out"
-        case .plusDarker: "Plus Darker"
-        case .plusLighter: "Plus Lighter"
         }
     }
 
@@ -80,11 +74,6 @@ public enum PlaybackBlendMode: String, CaseIterable, Identifiable, Codable, Send
         case .saturation: .saturation
         case .color: .color
         case .luminosity: .luminosity
-        case .sourceAtop: .sourceAtop
-        case .destinationOver: .destinationOver
-        case .destinationOut: .destinationOut
-        case .plusDarker: .plusDarker
-        case .plusLighter: .plusLighter
         }
     }
 

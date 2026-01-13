@@ -12,6 +12,10 @@ import SwiftUI
 /// This struct consolidates the theme's appearance settings into a single value
 /// that can be computed once (with overrides applied) and passed through the
 /// environment. During picker transitions, appearances can be interpolated.
+///
+/// Properties fall into two categories:
+/// - **Continuous values** (blur, opacity, colors): Mathematically interpolated
+/// - **Discrete values** (blend modes): Use `DiscreteTransition` for crossfade support
 public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// The blur radius for material backgrounds.
     public var blurRadius: Double
@@ -31,8 +35,11 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// HSB offset for LCD max (bottom) segments.
     public var lcdMaxOffset: HSBOffset
 
-    /// The blend mode for playback controls.
-    public var playbackBlendMode: BlendMode
+    /// The blend mode transition for playback controls.
+    ///
+    /// Uses `DiscreteTransition` to support crossfade between blend modes
+    /// during theme picker scrolling.
+    public var playbackBlendMode: DiscreteTransition<BlendMode>
 
     public init(
         blurRadius: Double = 8.0,
@@ -41,7 +48,7 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         accentColor: AccentColor = AccentColor(hue: 23, saturation: 0.75, brightness: 1.0),
         lcdMinOffset: HSBOffset = .defaultMin,
         lcdMaxOffset: HSBOffset = .defaultMax,
-        playbackBlendMode: BlendMode = PlaybackBlendMode.default.blendMode
+        playbackBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(PlaybackBlendMode.default.blendMode)
     ) {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
@@ -53,6 +60,9 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
     }
 
     /// Creates an interpolated appearance between two appearances.
+    ///
+    /// Continuous values (blur, opacity, colors) are mathematically interpolated.
+    /// Discrete values (blend modes) use `DiscreteTransition` for crossfade support.
     ///
     /// - Parameters:
     ///   - from: The starting appearance.
@@ -67,8 +77,11 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
             accentColor: from.accentColor.interpolated(to: to.accentColor, progress: progress),
             lcdMinOffset: from.lcdMinOffset.interpolated(to: to.lcdMinOffset, progress: progress),
             lcdMaxOffset: from.lcdMaxOffset.interpolated(to: to.lcdMaxOffset, progress: progress),
-            // Blend mode snaps at midpoint (can't interpolate discrete values)
-            playbackBlendMode: progress > 0.5 ? to.playbackBlendMode : from.playbackBlendMode
+            playbackBlendMode: DiscreteTransition(
+                from: from.playbackBlendMode.snapped,
+                to: to.playbackBlendMode.snapped,
+                progress: progress
+            )
         )
     }
 }

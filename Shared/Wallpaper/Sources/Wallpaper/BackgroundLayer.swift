@@ -10,8 +10,7 @@ import SwiftUI
 /// A themed background layer that displays material effects.
 ///
 /// Reads the current theme appearance from the environment, which includes
-/// blur radius, overlay opacity, and dark progress. All interpolation during
-/// picker transitions is handled by `ThemeConfiguration.currentAppearance`.
+/// blur radius, overlay opacity, and dark progress.
 public struct BackgroundLayer: View {
     let cornerRadius: CGFloat
 

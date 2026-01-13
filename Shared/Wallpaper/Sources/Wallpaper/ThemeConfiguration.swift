@@ -421,9 +421,6 @@ public final class ThemeConfiguration {
 
     // MARK: - Theme Appearance
 
-    /// Optional reference to the picker state for computing interpolated appearances.
-    public weak var pickerState: ThemePickerState?
-
     /// Returns the appearance for a specific theme, with any user overrides applied.
     public func appearance(for themeID: String) -> ThemeAppearance {
         let isDark = effectiveOverlayIsDark(for: themeID)
@@ -434,26 +431,7 @@ public final class ThemeConfiguration {
             accentColor: effectiveAccentColor(for: themeID),
             lcdMinOffset: lcdMinOffset(for: themeID),
             lcdMaxOffset: lcdMaxOffset(for: themeID),
-            playbackBlendMode: effectivePlaybackBlendMode(for: themeID)
-        )
-    }
-
-    /// The current theme appearance, interpolated during picker transitions.
-    ///
-    /// When the picker is active and scrolling between themes, this returns an
-    /// interpolated appearance. Otherwise, returns the selected theme's appearance.
-    public var currentAppearance: ThemeAppearance {
-        guard let pickerState, pickerState.isActive,
-              let transition = pickerState.themeTransition else {
-            return appearance(for: selectedThemeID)
-        }
-
-        let fromAppearance = appearance(for: transition.fromTheme.id)
-        let toAppearance = appearance(for: transition.toTheme.id)
-        return ThemeAppearance.interpolated(
-            from: fromAppearance,
-            to: toAppearance,
-            progress: transition.progress
+            playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID))
         )
     }
 
