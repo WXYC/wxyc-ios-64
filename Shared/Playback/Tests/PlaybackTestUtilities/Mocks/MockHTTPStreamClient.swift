@@ -11,7 +11,8 @@ import Foundation
 #if !os(watchOS)
 
 /// Mock HTTP stream client that feeds test data instantly without network access
-public final class MockHTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
+@MainActor
+public final class MockHTTPStreamClient: @preconcurrency HTTPStreamClientProtocol {
     private let continuation: AsyncStream<HTTPStreamEvent>.Continuation
     public let eventStream: AsyncStream<HTTPStreamEvent>
 

@@ -32,7 +32,7 @@ struct AudioPlayerControllerTests {
     func audioSessionConfiguredOnInit() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
-        let mockPlayer = MockPlayer()
+        let mockPlayer = MockAudioPlayerForController()
 
         _ = AudioPlayerController(
             player: mockPlayer,
@@ -53,7 +53,7 @@ struct AudioPlayerControllerTests {
     func remoteCommandsConfigured() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
-        let mockPlayer = MockPlayer()
+        let mockPlayer = MockAudioPlayerForController()
 
         _ = AudioPlayerController(
             player: mockPlayer,
@@ -77,7 +77,7 @@ struct AudioPlayerControllerTests {
 
     @Test("Controller initializes correctly on macOS")
     func controllerInitializesMacOS() {
-        let mockPlayer = MockPlayer()
+        let mockPlayer = MockAudioPlayerForController()
         let controller = AudioPlayerController(
             player: mockPlayer,
             notificationCenter: .default,
@@ -94,8 +94,9 @@ struct AudioPlayerControllerTests {
 
 // MARK: - Mock Player for Tests
 
-/// Simple mock player that satisfies AudioPlayerProtocol for controller tests
-final class MockPlayer: AudioPlayerProtocol, @unchecked Sendable {
+/// Simple mock player that satisfies AudioPlayerProtocol for controller tests.
+/// Named differently to avoid conflict with MockPlayer in PlaybackTestUtilities.
+final class MockAudioPlayerForController: AudioPlayerProtocol, @unchecked Sendable {
     var state: PlayerState = .idle
     var isPlaying: Bool = false
 

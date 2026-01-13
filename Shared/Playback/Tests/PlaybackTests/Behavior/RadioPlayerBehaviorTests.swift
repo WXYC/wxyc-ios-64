@@ -18,7 +18,7 @@ struct RadioPlayerBehaviorTests {
 
     @Test("play() calls underlying player")
     func playCallsUnderlyingPlayer() async {
-        let mockPlayer = MockRadioPlayer()
+        let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
@@ -33,7 +33,7 @@ struct RadioPlayerBehaviorTests {
 
     @Test("RadioPlayer.stop() calls underlying player")
     func radioPlayerStopCallsUnderlyingPlayer() async {
-        let mockPlayer = MockRadioPlayer()
+        let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
@@ -49,7 +49,7 @@ struct RadioPlayerBehaviorTests {
 
     @Test("RadioPlayer.stop() resets stream")
     func radioPlayerStopResetsStream() async {
-        let mockPlayer = MockRadioPlayer()
+        let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,
@@ -65,7 +65,7 @@ struct RadioPlayerBehaviorTests {
 
     @Test("play() while playing is idempotent")
     func playWhilePlayingIsIdempotent() async throws {
-        let mockPlayer = MockRadioPlayer()
+        let mockPlayer = MockPlayer()
         let notificationCenter = NotificationCenter()
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
@@ -78,8 +78,12 @@ struct RadioPlayerBehaviorTests {
         let firstCount = mockPlayer.playCallCount
 
         // Simulate player started playing via notification
-        mockPlayer.rate = 1.0
-        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: nil)
+        // PlayerRateDidChangeMessage reads rate from userInfo when object isn't AVPlayer
+        notificationCenter.post(
+            name: AVPlayer.rateDidChangeNotification,
+            object: nil,
+            userInfo: ["rate": Float(1.0)]
+        )
         try await Task.sleep(for: .milliseconds(100))
 
         #expect(radioPlayer.isPlaying, "isPlaying should be true after notification")
@@ -90,7 +94,7 @@ struct RadioPlayerBehaviorTests {
 
     @Test("isPlaying starts as false")
     func isPlayingStartsAsFalse() async {
-        let mockPlayer = MockRadioPlayer()
+        let mockPlayer = MockPlayer()
         let radioPlayer = RadioPlayer(
             streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
             player: mockPlayer,

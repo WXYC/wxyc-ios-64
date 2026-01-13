@@ -12,7 +12,8 @@ import Foundation
 #if !os(watchOS)
 
 /// Mock audio engine player that simulates playback instantly without real audio
-public final class MockAudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
+@MainActor
+public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProtocol {
     private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
     private let renderContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
 

@@ -290,35 +290,3 @@ public final class PlayerControllerTestHarness {
     #endif
 }
 
-// MARK: - Mock Player for RadioPlayer Unit Tests
-
-/// Mock for PlayerProtocol (AVPlayer abstraction) - used for testing RadioPlayer internals
-public final class MockRadioPlayer: PlayerProtocol, @unchecked Sendable {
-    nonisolated(unsafe) public var rate: Float = 0
-    nonisolated(unsafe) public var playCallCount = 0
-    nonisolated(unsafe) public var pauseCallCount = 0
-    nonisolated(unsafe) public var replaceCurrentItemCallCount = 0
-
-    public init() {}
-
-    nonisolated public func play() {
-        playCallCount += 1
-        rate = 1.0
-    }
-
-    nonisolated public func pause() {
-        pauseCallCount += 1
-        rate = 0
-    }
-
-    nonisolated public func replaceCurrentItem(with item: AVPlayerItem?) {
-        replaceCurrentItemCallCount += 1
-    }
-
-    public func reset() {
-        rate = 0
-        playCallCount = 0
-        pauseCallCount = 0
-        replaceCurrentItemCallCount = 0
-    }
-}
