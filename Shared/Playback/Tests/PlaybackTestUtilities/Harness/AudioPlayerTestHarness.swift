@@ -75,7 +75,7 @@ public final class AudioPlayerTestHarness {
     public let notificationCenter: NotificationCenter
 
     // RadioPlayer mocks
-    private let mockPlayer: MockPlayerForHarness?
+    private let mockPlayer: MockPlayer?
 
     #if !os(watchOS)
     // MP3Streamer mocks
@@ -114,7 +114,7 @@ public final class AudioPlayerTestHarness {
         player: any AudioPlayerProtocol,
         testCase: AudioPlayerTestCase,
         notificationCenter: NotificationCenter,
-        mockPlayer: MockPlayerForHarness?,
+        mockPlayer: MockPlayer?,
         mockHTTPClient: MockHTTPStreamClient?,
         mockAudioEngine: MockAudioEnginePlayer?
     ) {
@@ -130,7 +130,7 @@ public final class AudioPlayerTestHarness {
         player: any AudioPlayerProtocol,
         testCase: AudioPlayerTestCase,
         notificationCenter: NotificationCenter,
-        mockPlayer: MockPlayerForHarness?
+        mockPlayer: MockPlayer?
     ) {
         self.player = player
         self.testCase = testCase
@@ -181,7 +181,7 @@ public final class AudioPlayerTestHarness {
         #endif
 
         case .radioPlayer:
-            let mockPlayer = MockPlayerForHarness()
+            let mockPlayer = MockPlayer(autoSetRateOnPlay: false)
             let radioPlayer = RadioPlayer(
                 player: mockPlayer,
                 analytics: nil,
@@ -320,38 +320,5 @@ public final class AudioPlayerTestHarness {
         }
         _ = await task.value
         timeoutTask.cancel()
-    }
-}
-
-// MARK: - Mock Player for RadioPlayer Testing
-
-/// Mock for PlayerProtocol (AVPlayer abstraction) used by RadioPlayer
-@MainActor
-public final class MockPlayerForHarness: PlayerProtocol, @unchecked Sendable {
-    nonisolated(unsafe) public var rate: Float = 0
-    nonisolated(unsafe) public var playCallCount = 0
-    nonisolated(unsafe) public var pauseCallCount = 0
-    nonisolated(unsafe) public var replaceCurrentItemCallCount = 0
-
-    public init() {}
-
-    nonisolated public func play() {
-        playCallCount += 1
-    }
-
-    nonisolated public func pause() {
-        pauseCallCount += 1
-        rate = 0
-    }
-
-    nonisolated public func replaceCurrentItem(with item: AVPlayerItem?) {
-        replaceCurrentItemCallCount += 1
-    }
-
-    public func reset() {
-        rate = 0
-        playCallCount = 0
-        pauseCallCount = 0
-        replaceCurrentItemCallCount = 0
     }
 }

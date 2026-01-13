@@ -2,43 +2,9 @@ import Testing
 import Foundation
 import AVFoundation
 import Analytics
+import PlaybackTestUtilities
 @testable import RadioPlayerModule
 @testable import PlaybackCore
-
-// MARK: - Mock Player
-
-@MainActor
-final class MockPlayer: PlayerProtocol, @unchecked Sendable {
-    nonisolated(unsafe) var rate: Float = 0
-    nonisolated(unsafe) var playCallCount = 0
-    nonisolated(unsafe) var pauseCallCount = 0
-    nonisolated(unsafe) var replaceCurrentItemCallCount = 0
-    nonisolated(unsafe) var lastReplacedItem: AVPlayerItem?
-
-    nonisolated func play() {
-        playCallCount += 1
-        rate = 1.0
-    }
-
-    nonisolated func pause() {
-        pauseCallCount += 1
-        rate = 0
-    }
-
-    nonisolated func replaceCurrentItem(with item: AVPlayerItem?) {
-        replaceCurrentItemCallCount += 1
-        lastReplacedItem = item
-        rate = 0
-    }
-
-    func reset() {
-        rate = 0
-        playCallCount = 0
-        pauseCallCount = 0
-        replaceCurrentItemCallCount = 0
-        lastReplacedItem = nil
-    }
-}
 
 // MARK: - Mock Analytics
 
