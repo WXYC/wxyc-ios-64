@@ -8,8 +8,13 @@
 import SwiftUI
 
 /// Container view that manages the theme picker mode.
-/// When inactive, displays a single wallpaper at full size.
-/// When active, displays a carousel of live themes with the content scaled down.
+///
+/// Responsibilities:
+/// - Switches between single wallpaper view and theme carousel
+/// - Scales and clips content when picker is active
+/// - Passes theme appearance to child views via environment
+///
+/// All appearance interpolation is handled by `ThemeConfiguration.currentAppearance`.
 public struct ThemePickerContainer<Content: View>: View {
     @Bindable var configuration: ThemeConfiguration
     @Bindable var pickerState: ThemePickerState
@@ -23,85 +28,6 @@ public struct ThemePickerContainer<Content: View>: View {
 
     /// Animation for picker mode transitions.
     private let pickerAnimation: Animation = .spring(duration: 0.5, bounce: 0.2)
-
-    /// Current theme looked up from registry.
-    private var currentTheme: LoadedTheme? {
-        ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
-    }
-
-    /// Blur radius - interpolated during picker transitions, otherwise from configuration.
-    /// Uses effective values which respect user overrides for the selected theme.
-    private var effectiveBlurRadius: Double {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromRadius = configuration.effectiveBlurRadius(for: transition.fromTheme.id)
-            let toRadius = configuration.effectiveBlurRadius(for: transition.toTheme.id)
-            return fromRadius + (toRadius - fromRadius) * transition.progress
-        } else {
-            return configuration.effectiveBlurRadius
-        }
-    }
-
-    /// Overlay opacity - interpolated during picker transitions, otherwise from configuration.
-    /// Uses effective values which respect user overrides for the selected theme.
-    private var effectiveOverlayOpacity: Double {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromOpacity = configuration.effectiveOverlayOpacity(for: transition.fromTheme.id)
-            let toOpacity = configuration.effectiveOverlayOpacity(for: transition.toTheme.id)
-            return fromOpacity + (toOpacity - fromOpacity) * transition.progress
-        } else {
-            return configuration.effectiveOverlayOpacity
-        }
-    }
-
-    /// Whether the overlay is dark - interpolated during picker transitions, otherwise from configuration.
-    /// Uses effective values which respect user overrides for the selected theme.
-    private var effectiveOverlayIsDark: Bool {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            // Use the target theme's isDark during transitions
-            return configuration.effectiveOverlayIsDark(for: transition.toTheme.id)
-        } else {
-            return configuration.effectiveOverlayIsDark
-        }
-    }
-
-    /// Interpolated accent color during picker transitions.
-    /// Uses RGB interpolation to avoid rainbow effects when transitioning between distant hues.
-    private var effectiveAccentColor: AccentColor {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromColor = configuration.effectiveAccentColor(for: transition.fromTheme.id)
-            let toColor = configuration.effectiveAccentColor(for: transition.toTheme.id)
-            return fromColor.interpolated(to: toColor, progress: transition.progress)
-        } else {
-            return configuration.effectiveAccentColor
-        }
-    }
-
-    /// LCD min offset - interpolated during picker transitions, otherwise from configuration.
-    private var effectiveLCDMinOffset: HSBOffset {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromOffset = configuration.lcdMinOffset(for: transition.fromTheme.id)
-            let toOffset = configuration.lcdMinOffset(for: transition.toTheme.id)
-            return fromOffset.interpolated(to: toOffset, progress: transition.progress)
-        } else {
-            return configuration.lcdMinOffset
-        }
-    }
-
-    /// LCD max offset - interpolated during picker transitions, otherwise from configuration.
-    private var effectiveLCDMaxOffset: HSBOffset {
-        if let transition = pickerState.themeTransition, pickerState.isActive {
-            let fromOffset = configuration.lcdMaxOffset(for: transition.fromTheme.id)
-            let toOffset = configuration.lcdMaxOffset(for: transition.toTheme.id)
-            return fromOffset.interpolated(to: toOffset, progress: transition.progress)
-        } else {
-            return configuration.lcdMaxOffset
-        }
-    }
-
-    /// Playback blend mode - uses target theme during transitions (not interpolated).
-    private var effectivePlaybackBlendMode: BlendMode {
-        configuration.effectivePlaybackBlendMode
-    }
 
     public init(
         configuration: ThemeConfiguration,
@@ -123,6 +49,7 @@ public struct ThemePickerContainer<Content: View>: View {
                         pickerState: pickerState,
                         screenSize: geometry.size
                     )
+                    .offset(y: 16) // Align with content offset
                     .transition(.opacity)
                 } else {
                     WallpaperView(configuration: configuration)
@@ -132,14 +59,7 @@ public struct ThemePickerContainer<Content: View>: View {
                 // Content overlay - scales and clips when picker is active
                 content()
                     .environment(\.isThemePickerActive, pickerState.isActive)
-                    .environment(\.previewThemeTransition, pickerState.isActive ? pickerState.themeTransition : nil)
-                    .environment(\.currentBlurRadius, effectiveBlurRadius)
-                    .environment(\.currentOverlayOpacity, effectiveOverlayOpacity)
-                    .environment(\.currentOverlayIsDark, effectiveOverlayIsDark)
-                    .environment(\.currentAccentColor, effectiveAccentColor)
-                    .environment(\.currentLCDMinOffset, effectiveLCDMinOffset)
-                    .environment(\.currentLCDMaxOffset, effectiveLCDMaxOffset)
-                    .environment(\.playbackBlendMode, effectivePlaybackBlendMode)
+                    .environment(\.themeAppearance, configuration.currentAppearance)
                     .environment(\.wallpaperMeshGradientPalette, configuration.meshGradientPalette)
                     .clipShape(RoundedRectangle(cornerRadius: pickerState.isActive ? activeCornerRadius : 0))
                     .scaleEffect(pickerState.isActive ? activeScale : 1.0)

@@ -103,6 +103,11 @@ private struct CurrentOverlayIsDarkKey: EnvironmentKey {
     static let defaultValue: Bool = true
 }
 
+/// Environment key for the interpolated dark progress (0.0 = light, 1.0 = dark).
+private struct CurrentDarkProgressKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1.0
+}
+
 /// Environment key for the current/interpolated accent color.
 private struct CurrentAccentColorKey: EnvironmentKey {
     static let defaultValue: AccentColor = AccentColor(hue: 23, saturation: 0.75, brightness: 1.0)
@@ -167,6 +172,12 @@ public extension EnvironmentValues {
     var currentOverlayIsDark: Bool {
         get { self[CurrentOverlayIsDarkKey.self] }
         set { self[CurrentOverlayIsDarkKey.self] = newValue }
+    }
+
+    /// Interpolated dark progress (0.0 = light, 1.0 = dark).
+    var currentDarkProgress: CGFloat {
+        get { self[CurrentDarkProgressKey.self] }
+        set { self[CurrentDarkProgressKey.self] = newValue }
     }
 
     /// The current/interpolated accent color.

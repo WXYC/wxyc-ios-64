@@ -45,6 +45,7 @@ struct ThemeCarouselView: View {
                     ForEach(Array(themes.enumerated()), id: \.element.id) { index, theme in
                         ThemeCardView(
                             theme: theme,
+                            configuration: configuration,
                             cardSize: cardSize,
                             cornerRadius: cardCornerRadius
                         )

@@ -403,6 +403,60 @@ public final class ThemeConfiguration {
         return loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
     }
 
+    /// Returns the effective playback blend mode for a given theme ID.
+    /// For the selected theme, uses in-memory value. For other themes, looks up stored override.
+    public func effectivePlaybackBlendMode(for themeID: String) -> BlendMode {
+        if themeID == selectedThemeID {
+            return effectivePlaybackBlendMode
+        }
+
+        // Look up stored override for this theme
+        let key = playbackBlendModeKey(for: themeID)
+        if let savedMode = defaults.string(forKey: key),
+           let mode = PlaybackBlendMode(rawValue: savedMode) {
+            return mode.blendMode
+        }
+        return PlaybackBlendMode.default.blendMode
+    }
+
+    // MARK: - Theme Appearance
+
+    /// Optional reference to the picker state for computing interpolated appearances.
+    public weak var pickerState: ThemePickerState?
+
+    /// Returns the appearance for a specific theme, with any user overrides applied.
+    public func appearance(for themeID: String) -> ThemeAppearance {
+        let isDark = effectiveOverlayIsDark(for: themeID)
+        return ThemeAppearance(
+            blurRadius: effectiveBlurRadius(for: themeID),
+            overlayOpacity: effectiveOverlayOpacity(for: themeID),
+            darkProgress: isDark ? 1.0 : 0.0,
+            accentColor: effectiveAccentColor(for: themeID),
+            lcdMinOffset: lcdMinOffset(for: themeID),
+            lcdMaxOffset: lcdMaxOffset(for: themeID),
+            playbackBlendMode: effectivePlaybackBlendMode(for: themeID)
+        )
+    }
+
+    /// The current theme appearance, interpolated during picker transitions.
+    ///
+    /// When the picker is active and scrolling between themes, this returns an
+    /// interpolated appearance. Otherwise, returns the selected theme's appearance.
+    public var currentAppearance: ThemeAppearance {
+        guard let pickerState, pickerState.isActive,
+              let transition = pickerState.themeTransition else {
+            return appearance(for: selectedThemeID)
+        }
+
+        let fromAppearance = appearance(for: transition.fromTheme.id)
+        let toAppearance = appearance(for: transition.toTheme.id)
+        return ThemeAppearance.interpolated(
+            from: fromAppearance,
+            to: toAppearance,
+            progress: transition.progress
+        )
+    }
+
     private func loadHSBOffset(forKey key: String) -> HSBOffset? {
         guard let data = defaults.data(forKey: key),
               let offset = try? JSONDecoder().decode(HSBOffset.self, from: data) else {

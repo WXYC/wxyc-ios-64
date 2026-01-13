@@ -28,16 +28,19 @@ struct InfoDetailView: View {
     var body: some View {
         VStack(alignment: .center) {
             Spacer()
-
+            
             FittingText("You're tuned in.")
                 .fontWeight(.black)
                 .foregroundStyle(.white)
                 .padding(.bottom)
-
+            
             Text(RadioStation.WXYC.description)
                 .font(.body.bold())
                 .foregroundStyle(.white)
-                .padding(.bottom)
+                .padding()
+                .background { BackgroundLayer() }
+                .padding(.horizontal)
+                .cornerRadius(12.0)
             
             VStack(spacing: 16) {
                 ActionButton(
