@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
-# Final synced folder setup with proper target assignments and exceptions
+# sync_folders_broad.rb
+# Creates 4 top-level synced folders (iOS, WatchXYC, WXYC TV, Configuration)
+# and uses membership exceptions to control which files each target sees.
+# Alternative: sync_folders_granular.rb creates per-subdirectory synced folders.
 
 require 'xcodeproj'
 

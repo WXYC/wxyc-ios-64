@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
-# Consolidate the project to use only synced folders
-# Removes duplicate PBXGroup entries where synced folders exist
+# cleanup_duplicate_groups.rb
+# Removes PBXGroup entries that are redundant with existing synced folders.
+# Run this after converting to synced folders to clean up leftover groups.
 
 require 'xcodeproj'
 

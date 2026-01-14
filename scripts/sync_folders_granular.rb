@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
-# Set up per-target synced folders with Info.plist exceptions
-# Each target gets its own specific synced folders
+# sync_folders_granular.rb
+# Creates separate synced folders for each target's subdirectory
+# (Assets, Views, NowPlayingWidget, etc.) - more folders, simpler exceptions.
+# Alternative: sync_folders_broad.rb creates fewer folders with membership exceptions.
 
 require 'xcodeproj'
 
