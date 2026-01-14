@@ -20,7 +20,7 @@ public struct DebugHUD: View {
         Group {
             if hudState.isVisible {
                 VStack(alignment: .leading, spacing: 2) {
-                    MetricRow(label: "FPS", value: "\(metrics.fps)")
+                    MetricRow(label: "FPS", value: "\(metrics.fps) app / \(Int(quality.lastMeasuredFPS)) shader")
                     MetricRow(label: "CPU", value: String(format: "%.1f%%", metrics.cpuUsage))
                     MetricRow(label: "GPU", value: String(format: "%.1f MB", metrics.gpuMemoryMB))
                     MetricRow(label: "MEM", value: String(format: "%.1f MB", metrics.memoryMB))
@@ -36,9 +36,9 @@ public struct DebugHUD: View {
                 .padding(8)
                 .background(.black.opacity(0.6))
                 .clipShape(.rect(cornerRadius: 8))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(.top, 50)
-                .padding(.trailing, 8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.bottom, 50)
+                .padding(.leading, 8)
                 .allowsHitTesting(false)
             }
         }

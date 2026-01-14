@@ -150,6 +150,10 @@ public final class AdaptiveQualityController {
     /// Renderers can observe this to reset their frame rate monitors.
     public private(set) var profileResetCount: Int = 0
 
+    /// Last measured FPS reported by the renderer (for debug display).
+    /// Updated when `reportMeasuredFPS(_:)` is called.
+    public private(set) var lastMeasuredFPS: Float = 60.0
+
     /// Current throttling mode.
     ///
     /// Controls how aggressively the controller responds to thermal pressure.
@@ -486,17 +490,90 @@ public final class AdaptiveQualityController {
     /// to reduce quality. This provides reactive throttling when the GPU can't keep up,
     /// complementing the proactive thermal-based throttling.
     ///
+    /// Uses aggressive scaling for severe FPS drops:
+    /// - Warning (< 50 FPS): Moderate boost
+    /// - Critical (< 25 FPS): Maximum boost for immediate throttling
+    ///
     /// - Parameter fps: The measured average FPS.
     public func reportMeasuredFPS(_ fps: Float) {
+        // Store for debug display
+        lastMeasuredFPS = fps
+
         let targetFPS = currentWallpaperFPS
         let deficit = targetFPS - fps
 
         // Only apply FPS boost if deficit exceeds tolerance (ignore vsync variance)
         guard deficit > Self.fpsTolerance else { return }
 
-        let normalizedDeficit = min((deficit - Self.fpsTolerance) / targetFPS, 1.0)
-        // FPS boost is secondary to thermal - use a gentler multiplier
-        fpsMomentumBoost = max(fpsMomentumBoost, normalizedDeficit * 0.5)
+        let severity = FrameRateMonitor.severity(for: fps)
+
+        // Pre-compute intermediate values for switch expression
+        let warningDeficit = (FrameRateMonitor.lowFPSThreshold - fps) /
+            (FrameRateMonitor.lowFPSThreshold - FrameRateMonitor.criticalFPSThreshold)
+        let normalizedDeficit = (deficit - Self.fpsTolerance) / targetFPS
+
+        // Use aggressive momentum based on severity
+        let boost: Float = switch severity {
+        case .critical:
+            // FPS < 25: Maximum momentum for immediate aggressive throttling
+            1.0 as Float
+        case .warning:
+            // FPS 25-50: Strong momentum, scaled by how far below 50 (0.6 to 0.9)
+            0.6 + (warningDeficit * 0.3)
+        case .normal:
+            // FPS >= 50 but below target: Gentle boost
+            normalizedDeficit * 0.4
+        }
+
+        fpsMomentumBoost = max(fpsMomentumBoost, boost)
+
+        // Emergency throttling: apply immediate quality reduction for critical/warning FPS
+        // The gradual optimizer is too slow when FPS is catastrophically low
+        if severity == .critical || severity == .warning {
+            applyEmergencyThrottle(for: severity, measuredFPS: fps)
+        }
+    }
+
+    /// Applies immediate quality reduction when FPS is critically low.
+    ///
+    /// Bypasses the gradual optimizer to quickly restore usable frame rates.
+    /// The reduction is proportional to the severity of the FPS drop.
+    private func applyEmergencyThrottle(for severity: PerformanceSeverity, measuredFPS: Float) {
+        guard var profile = currentProfile else { return }
+
+        let lodRange = AdaptiveProfile.lodRange
+        let scaleRange = AdaptiveProfile.scaleRange
+        let fpsRange = AdaptiveProfile.wallpaperFPSRange
+
+        let newLOD: Float
+        let newScale: Float
+        let newFPS: Float
+
+        switch severity {
+        case .critical:
+            // FPS < 25: Drop to minimum immediately
+            // The app is unusable at this point, prioritize recovery
+            newLOD = lodRange.lowerBound
+            newScale = scaleRange.lowerBound
+            newFPS = fpsRange.lowerBound
+        case .warning:
+            // FPS 25-50: Aggressive reduction (50% of remaining headroom)
+            let reductionFactor: Float = 0.5
+            newLOD = currentLOD - (currentLOD - lodRange.lowerBound) * reductionFactor
+            newScale = currentScale - (currentScale - scaleRange.lowerBound) * reductionFactor
+            newFPS = currentWallpaperFPS - (currentWallpaperFPS - fpsRange.lowerBound) * reductionFactor
+        case .normal:
+            return
+        }
+
+        // Apply the emergency reduction
+        currentLOD = max(newLOD, lodRange.lowerBound)
+        currentScale = max(newScale, scaleRange.lowerBound)
+        currentWallpaperFPS = max(newFPS, fpsRange.lowerBound)
+
+        // Update the profile
+        profile.update(wallpaperFPS: currentWallpaperFPS, scale: currentScale, lod: currentLOD)
+        currentProfile = profile
     }
 
     // MARK: - Optimization Loop

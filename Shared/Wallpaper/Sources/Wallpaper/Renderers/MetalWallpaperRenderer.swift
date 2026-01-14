@@ -332,7 +332,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     }
 
     private func setUpPrecompiledPipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
-        let vertexFn = renderer.vertexFunction ?? "vertexMain"
+        let vertexFn = renderer.vertexFunction ?? "fullscreenVertex"
         let fragmentFn = renderer.fragmentFunction ?? "fragmentMain"
 
         let library = try? device.makeDefaultLibrary(bundle: Bundle.module)
@@ -430,7 +430,9 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             if lastFrameStart > 0 {
                 let frameDuration = frameStart - lastFrameStart
                 // Update cached thermal values periodically (every ~1 second)
-                if frameRateMonitor.recordFrame(duration: frameDuration) != nil {
+                if let measuredFPS = frameRateMonitor.recordFrame(duration: frameDuration) {
+                    // Report measured FPS to trigger reactive throttling when GPU struggles
+                    qualityController.reportMeasuredFPS(measuredFPS)
                     cachedResolutionScale = qualityController.effectiveScale
                     cachedTargetFPS = Int(qualityController.effectiveWallpaperFPS)
                     cachedLOD = qualityController.effectiveLOD
