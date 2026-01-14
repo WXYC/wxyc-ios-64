@@ -74,6 +74,17 @@ public final class MockHTTPStreamClient: @preconcurrency HTTPStreamClientProtoco
         continuation.yield(event)
     }
 
+    /// Feed additional data through the stream (useful for testing mid-playback scenarios)
+    public func feedData(_ data: Data) {
+        var offset = 0
+        while offset < data.count {
+            let end = min(offset + chunkSize, data.count)
+            let chunk = data[offset..<end]
+            continuation.yield(.data(Data(chunk)))
+            offset = end
+        }
+    }
+
     /// Finish the stream
     public func finish() {
         continuation.finish()

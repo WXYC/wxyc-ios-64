@@ -263,6 +263,94 @@ struct AudioEnginePlayerTests {
 
         player.stop()
     }
+
+    // MARK: - Batch Scheduling Tests (Performance Optimization)
+
+    @Test("Batch scheduling multiple buffers works correctly", .tags(.batchScheduling))
+    func testBatchScheduleBuffers() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        // Schedule multiple buffers at once
+        let buffers = (0..<5).map { _ in
+            TestAudioBufferFactory.makeSilentBuffer(frameCount: 4096)
+        }
+
+        player.scheduleBuffers(buffers)
+
+        // Give time for buffers to be scheduled
+        try await Task.sleep(for: .milliseconds(100))
+
+        // Player should still be playing
+        #expect(player.isPlaying == true)
+
+        player.stop()
+    }
+
+    @Test("Batch scheduling empty array is a no-op", .tags(.batchScheduling))
+    func testBatchScheduleEmptyArray() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        // Schedule empty array - should not crash or emit events
+        player.scheduleBuffers([])
+
+        // Give time for any processing
+        try await Task.sleep(for: .milliseconds(50))
+
+        // Player should still be playing without issue
+        #expect(player.isPlaying == true)
+
+        player.stop()
+    }
+
+    @Test("Batch scheduling triggers stall recovery", .tags(.batchScheduling, .stall))
+    func testBatchSchedulingTriggersRecovery() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        // Schedule a very short buffer to trigger stall
+        let shortBuffer = TestAudioBufferFactory.makeSilentBuffer(frameCount: 1024)
+        player.scheduleBuffer(shortBuffer)
+
+        // Wait for stall
+        _ = try await player.eventStream.first(timeout: 5) { event in
+            if case .stalled = event { return true }
+            return false
+        }
+
+        // Batch schedule multiple buffers - should trigger recovery
+        let recoveryBuffers = (0..<3).map { _ in
+            TestAudioBufferFactory.makeSilentBuffer()
+        }
+        player.scheduleBuffers(recoveryBuffers)
+
+        let event = try await player.eventStream.first(timeout: 2) { event in
+            if case .recoveredFromStall = event { return true }
+            return false
+        }
+        guard case .recoveredFromStall = event else {
+            Issue.record("Expected .recoveredFromStall but got \(event)")
+            return
+        }
+
+        player.stop()
+    }
+}
+
+// MARK: - Additional Test Tags
+
+extension Tag {
+    @Tag static var batchScheduling: Self
 }
 
 // MARK: - AsyncStream Extension for Testing

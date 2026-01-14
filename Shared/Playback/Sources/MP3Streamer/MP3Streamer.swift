@@ -285,34 +285,47 @@ public final class MP3Streamer {
     }
 
     private func handleDecodedBuffer(_ buffer: AVAudioPCMBuffer) async {
-        bufferQueue.enqueue(buffer)
+        switch streamingState {
+        case .playing:
+            // Fast path: bypass queue entirely, schedule directly to audio player
+            // This eliminates all lock acquisitions during steady-state playback
+            audioPlayer.scheduleBuffer(buffer)
 
-        // Check if we should start playing (transition from buffering → playing)
-        if case .buffering = streamingState, bufferQueue.hasMinimumBuffers {
-            do {
-                try audioPlayer.play()
-                let timeToAudio = playbackTimer.duration()
-                analytics?.capture("Time to first Audio", properties: [
-                    "timeToAudio": timeToAudio
-                ])
-                streamingState = .playing
-                scheduleBuffers()
-            } catch {
-                streamingState = .error(error)
+        case .buffering:
+            // Use combined enqueue + state check (single lock acquisition)
+            let result = bufferQueue.enqueue(buffer)
+            if result.hasMinimumBuffers {
+                do {
+                    try audioPlayer.play()
+                    let timeToAudio = playbackTimer.duration()
+                    analytics?.capture("Time to first Audio", properties: [
+                        "timeToAudio": timeToAudio
+                    ])
+                    streamingState = .playing
+                    scheduleBuffers()
+                } catch {
+                    streamingState = .error(error)
+                }
+            } else {
+                // Still buffering - update progress using result from enqueue
+                streamingState = .buffering(
+                    bufferedCount: result.count,
+                    requiredCount: configuration.minimumBuffersBeforePlayback
+                )
             }
-        } else if case .playing = streamingState {
-            // Already playing - schedule the new buffer
-            scheduleBuffers()
-        } else if case .stalled = streamingState, bufferQueue.hasMinimumBuffers {
-            // Stall recovery - have enough buffers to resume
-            scheduleBuffers()
-            streamingState = .playing
-        } else if case .buffering = streamingState {
-            // Still buffering - update progress
-            streamingState = .buffering(
-                bufferedCount: bufferQueue.count,
-                requiredCount: configuration.minimumBuffersBeforePlayback
-            )
+
+        case .stalled:
+            // Use combined enqueue + state check (single lock acquisition)
+            let result = bufferQueue.enqueue(buffer)
+            if result.hasMinimumBuffers {
+                // Stall recovery - have enough buffers to resume
+                scheduleBuffers()
+                streamingState = .playing
+            }
+
+        default:
+            // idle, paused, connecting, reconnecting, error - ignore buffers
+            break
         }
     }
 

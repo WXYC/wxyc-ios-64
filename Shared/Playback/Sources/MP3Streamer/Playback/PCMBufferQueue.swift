@@ -2,6 +2,12 @@
 import Core
 import os.lock
 
+/// Result of enqueueing a buffer, providing queue state in a single lock acquisition.
+struct EnqueueResult: Sendable {
+    let count: Int
+    let hasMinimumBuffers: Bool
+}
+
 /// Thread-safe queue for managing PCM audio buffers.
 /// Uses os_unfair_lock for minimal lock overhead on hot paths.
 final class PCMBufferQueue: @unchecked Sendable {
@@ -43,14 +49,20 @@ final class PCMBufferQueue: @unchecked Sendable {
         lock.deallocate()
     }
 
-    /// Enqueue a buffer. If the queue is full, the oldest buffer is removed.
-    func enqueue(_ buffer: AVAudioPCMBuffer) {
+    /// Enqueue a buffer and return queue state in a single lock acquisition.
+    /// If the queue is full, the oldest buffer is removed.
+    @discardableResult
+    func enqueue(_ buffer: AVAudioPCMBuffer) -> EnqueueResult {
         os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
         if buffers.count >= capacity {
             buffers.removeFirst()
         }
         buffers.append(buffer)
-        os_unfair_lock_unlock(lock)
+        return EnqueueResult(
+            count: buffers.count,
+            hasMinimumBuffers: buffers.count >= minimumBuffersBeforePlayback
+        )
     }
 
     /// Dequeue the next buffer
