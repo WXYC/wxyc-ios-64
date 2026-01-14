@@ -1,8 +1,11 @@
 //
 //  RadioPlayerBehaviorTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Direct tests for RadioPlayer internals.
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

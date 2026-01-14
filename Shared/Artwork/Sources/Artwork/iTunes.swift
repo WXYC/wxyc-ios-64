@@ -1,3 +1,13 @@
+//
+//  iTunes.swift
+//  Artwork
+//
+//  iTunes Search API types and artwork service for fetching album art.
+//
+//  Created by Jake Bromberg on 11/03/17.
+//  Copyright © 2017 WXYC. All rights reserved.
+//
+
 import Foundation
 import Core
 import CoreGraphics
@@ -19,7 +29,7 @@ final class iTunesArtworkService: ArtworkService {
         guard let result = results.results.first else {
             throw ServiceError.noResults
         }
-
+        
         let imageData = try await session.data(from: result.artworkUrl100)
         
         guard let cgImage = createCGImage(from: imageData) else {
@@ -54,7 +64,7 @@ struct iTunes {
     
     struct SearchResults: Codable {
         let results: [Item]
-        
+
         struct Item: Codable {
             let artworkUrl100: URL
         }

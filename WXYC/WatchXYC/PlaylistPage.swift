@@ -1,8 +1,10 @@
 //
 //  PlaylistPage.swift
-//  WatchXYC App
+//  WXYC
 //
-//  Created by Jake Bromberg on 2/26/25.
+//  Playlist display page for watchOS.
+//
+//  Created by Jake Bromberg on 02/27/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
@@ -85,7 +87,7 @@ struct PlaycutView: View {
     
     init(playcut: Playcut) {
         self.playcut = playcut
-        
+    
     }
     
     var body: some View {

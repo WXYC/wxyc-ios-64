@@ -2,7 +2,10 @@
 //  Observations.swift
 //  Core
 //
+//  Backport of Swift 6's Observations type for iOS 18 compatibility.
+//
 //  Created by Jake Bromberg on 12/12/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

@@ -2,7 +2,9 @@
 //  StreamingLinksSection.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 11/26/25.
+//  Streaming service links (Spotify, Apple Music, etc.).
+//
+//  Created by Jake Bromberg on 12/06/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

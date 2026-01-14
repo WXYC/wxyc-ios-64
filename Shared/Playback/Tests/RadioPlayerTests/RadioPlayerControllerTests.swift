@@ -1,3 +1,13 @@
+//
+//  RadioPlayerControllerTests.swift
+//  Playback
+//
+//  Tests for RadioPlayerController behavior.
+//
+//  Created by Jake Bromberg on 11/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 /*
  RadioPlayerControllerTests.swift
 

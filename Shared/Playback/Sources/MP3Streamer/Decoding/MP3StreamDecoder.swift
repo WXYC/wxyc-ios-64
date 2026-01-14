@@ -1,3 +1,13 @@
+//
+//  MP3StreamDecoder.swift
+//  Playback
+//
+//  Decodes MP3 audio data into PCM buffers using AudioToolbox.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 #if !os(watchOS)
 
 import Foundation

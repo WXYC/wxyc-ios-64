@@ -1,8 +1,11 @@
 //
 //  DiscogsAPIEntityResolverCachingTests.swift
-//  MetadataTests
+//  Metadata
 //
 //  Tests for DiscogsAPIEntityResolver caching functionality
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

@@ -4,6 +4,9 @@
 //
 //  Fast Fourier Transform processor for frequency domain visualization
 //
+//  Created by Jake Bromberg on 12/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 import Accelerate
@@ -212,4 +215,3 @@ final class FFTProcessor: @unchecked Sendable, AudioProcessor {
         )
     }
 }
-

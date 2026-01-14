@@ -4,6 +4,9 @@
 //
 //  Converts v2 API flowsheet responses to canonical Playlist model.
 //
+//  Created by Jake Bromberg on 01/01/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Foundation
 
@@ -32,10 +35,10 @@ enum FlowsheetConverter {
                     id: id,
                     hour: hour,
                     chronOrderID: chronOrderID,
-                    songTitle: entry.track_title ?? "Unknown",
-                    labelName: entry.record_label,
-                    artistName: entry.artist_name ?? "Unknown",
-                    releaseTitle: entry.album_title,
+                    songTitle: (entry.track_title ?? "Unknown").htmlDecoded,
+                    labelName: entry.record_label?.htmlDecoded,
+                    artistName: (entry.artist_name ?? "Unknown").htmlDecoded,
+                    releaseTitle: entry.album_title?.htmlDecoded,
                     rotation: entry.rotation_id != nil
                 )
                 playcuts.append(playcut)

@@ -1,8 +1,11 @@
 //
 //  NowPlayingInfoCenterProtocol.swift
-//  StreamingAudioPlayer
+//  Playback
 //
 //  Protocol for now playing info center abstraction (wraps MPNowPlayingInfoCenter)
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

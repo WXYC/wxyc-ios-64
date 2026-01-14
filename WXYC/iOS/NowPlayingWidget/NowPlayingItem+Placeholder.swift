@@ -1,8 +1,11 @@
 //
 //  NowPlayingItem+Placeholder.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Placeholder data for widget previews.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import AppServices
@@ -73,4 +76,3 @@ extension NowPlayingItem {
         }
     }
 }
-

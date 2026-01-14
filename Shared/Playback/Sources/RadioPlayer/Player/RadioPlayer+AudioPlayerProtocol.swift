@@ -1,11 +1,11 @@
 //
 //  RadioPlayer+AudioPlayerProtocol.swift
-//  PlaybackCore
-//
-//  Created by Jake Bromberg on 12/16/2025.
-//  Copyright © 2025 wxyc.org. All rights reserved.
+//  Playback
 //
 //  Extension to conform RadioPlayer to AudioPlayerProtocol
+//
+//  Created by Jake Bromberg on 12/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

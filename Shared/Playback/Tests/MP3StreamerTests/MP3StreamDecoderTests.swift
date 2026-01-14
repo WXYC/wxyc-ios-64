@@ -1,3 +1,13 @@
+//
+//  MP3StreamDecoderTests.swift
+//  Playback
+//
+//  Tests for MP3StreamDecoder audio conversion.
+//
+//  Created by Jake Bromberg on 12/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import PlaybackTestUtilities
 import Foundation

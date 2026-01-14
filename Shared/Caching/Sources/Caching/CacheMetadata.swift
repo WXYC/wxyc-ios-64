@@ -1,3 +1,13 @@
+//
+//  CacheMetadata.swift
+//  Caching
+//
+//  Metadata for cached entries tracking creation time and TTL for expiration.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 // MARK: - CacheMetadata

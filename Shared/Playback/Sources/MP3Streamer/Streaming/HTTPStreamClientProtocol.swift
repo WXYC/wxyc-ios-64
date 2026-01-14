@@ -1,3 +1,13 @@
+//
+//  HTTPStreamClientProtocol.swift
+//  Playback
+//
+//  Protocol for HTTP streaming client abstraction.
+//
+//  Created by Jake Bromberg on 01/07/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Events emitted by an HTTP stream client

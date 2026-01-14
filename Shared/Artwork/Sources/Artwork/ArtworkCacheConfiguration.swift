@@ -2,7 +2,11 @@
 //  ArtworkCacheConfiguration.swift
 //  Artwork
 //
-//  Created by Jake Bromberg on 1/9/26.
+//  Global configuration for artwork caching dimensions and compression.
+//  Set at app launch based on screen size.
+//
+//  Created by Jake Bromberg on 01/09/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

@@ -4,6 +4,9 @@
 //
 //  SwiftUI environment values for LCD visualizer accent color.
 //
+//  Created by Jake Bromberg on 01/07/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import SwiftUI
 import Wallpaper

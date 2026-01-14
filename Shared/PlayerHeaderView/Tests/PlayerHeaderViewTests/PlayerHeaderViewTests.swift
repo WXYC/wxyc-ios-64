@@ -1,3 +1,13 @@
+//
+//  PlayerHeaderViewTests.swift
+//  PlayerHeaderView
+//
+//  Tests for PlayerHeaderView layout and behavior.
+//
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 @testable import PlayerHeaderView
 

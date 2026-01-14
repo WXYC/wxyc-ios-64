@@ -1,9 +1,12 @@
 //
 //  AudioPlayerTestHarness.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Shared test infrastructure for parameterized AudioPlayerProtocol tests.
 //  Provides a unified harness for testing both MP3Streamer and RadioPlayer.
+//
+//  Created by Jake Bromberg on 01/11/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

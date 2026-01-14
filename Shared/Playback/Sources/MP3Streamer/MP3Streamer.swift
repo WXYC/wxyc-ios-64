@@ -1,3 +1,13 @@
+//
+//  MP3Streamer.swift
+//  Playback
+//
+//  Low-latency MP3 streaming player using AVAudioEngine.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 import Observation
 @preconcurrency import AVFoundation
@@ -183,7 +193,7 @@ public final class MP3Streamer {
             analytics?.capture("mp3Streamer already playing")
             return
         }
-        
+
         guard streamingState == .idle || streamingState == .paused else { return }
 
         // If paused, just resume playback

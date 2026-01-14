@@ -2,7 +2,9 @@
 //  DiscogsMarkupParser.swift
 //  Metadata
 //
-//  Created by Jake Bromberg on 12/7/25.
+//  Parses Discogs-style markup (links, formatting) to plain text.
+//
+//  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
@@ -62,7 +64,7 @@ public struct DiscogsMarkupParser: Sendable {
 }
 
 // MARK: - Token Types
-
+    
 extension DiscogsMarkupParser {
     
     /// Entity types that can be resolved
@@ -98,7 +100,7 @@ extension DiscogsMarkupParser {
 }
 
 // MARK: - Regex Patterns
-
+    
 extension DiscogsMarkupParser {
     
     // Tag delimiter pattern - finds [...] (allows empty content)
@@ -115,7 +117,7 @@ extension DiscogsMarkupParser {
 }
 
 // MARK: - Phase 1: Tokenize
-
+    
 extension DiscogsMarkupParser {
     
     /// Tokenizes Discogs markup into a flat list of tokens
@@ -275,7 +277,7 @@ extension DiscogsMarkupParser {
 }
 
 // MARK: - Phase 2: Resolve
-
+    
 extension DiscogsMarkupParser {
     
     /// Resolves tokens without a resolver (skips ID-based tokens)
@@ -392,7 +394,7 @@ extension DiscogsMarkupParser {
 }
 
 // MARK: - Phase 3: Render
-
+    
 extension DiscogsMarkupParser {
     
     /// Renders resolved tokens to AttributedString

@@ -2,7 +2,9 @@
 //  PlaycutActivityItem.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 3/19/19.
+//  Share activity item for playcuts.
+//
+//  Created by Jake Bromberg on 03/19/19.
 //  Copyright © 2019 WXYC. All rights reserved.
 //
 

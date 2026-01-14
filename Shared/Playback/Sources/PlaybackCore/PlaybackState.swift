@@ -1,9 +1,12 @@
 //
 //  PlaybackState.swift
-//  PlaybackCore
+//  Playback
 //
 //  Unified state enum for playback controllers.
 //  Replaces scattered boolean properties (isPlaying, isLoading, isStalled).
+//
+//  Created by Jake Bromberg on 12/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

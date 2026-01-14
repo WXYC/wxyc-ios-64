@@ -4,6 +4,9 @@
 //
 //  Controls which playlist API version to use via PostHog feature flag.
 //
+//  Created by Jake Bromberg on 01/01/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Foundation
 import PostHog

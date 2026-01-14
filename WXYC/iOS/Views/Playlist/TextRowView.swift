@@ -1,6 +1,8 @@
 //
-//  BreakpointRowView.swift
+//  TextRowView.swift
 //  WXYC
+//
+//  Text row component for playlist display.
 //
 //  Created by Jake Bromberg on 11/15/25.
 //  Copyright © 2025 WXYC. All rights reserved.

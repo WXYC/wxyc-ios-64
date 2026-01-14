@@ -1,10 +1,13 @@
 //
 //  PlaylistServiceBackgroundRefreshTests.swift
-//  CoreTests
+//  Playlist
 //
 //  Tests for PlaylistService background refresh functionality:
 //  - fetchAndCachePlaylist always fetches fresh data (ignores cache)
 //  - Background refresh invalidates existing cache
+//
+//  Created by Jake Bromberg on 12/04/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -121,4 +124,3 @@ struct PlaylistServiceBackgroundRefreshTests {
         #expect(mockFetcher.callCount == 1)
     }
 }
-

@@ -1,9 +1,12 @@
 //
 //  AudioPlayerBehaviorTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Parameterized behavior tests for AudioPlayerProtocol implementations.
 //  These tests define the expected behavioral contract that all audio players must follow.
+//
+//  Created by Jake Bromberg on 01/11/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

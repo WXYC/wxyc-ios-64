@@ -2,7 +2,10 @@
 //  DebugMetricsProvider.swift
 //  DebugPanel
 //
+//  Protocol for providing debug metrics to the HUD.
+//
 //  Created by Jake Bromberg on 12/23/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

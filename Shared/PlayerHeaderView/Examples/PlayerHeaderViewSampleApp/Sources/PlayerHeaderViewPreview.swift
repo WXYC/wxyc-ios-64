@@ -1,6 +1,11 @@
 //
 //  PlayerHeaderViewPreview.swift
-//  PlayerHeaderViewSampleApp
+//  PlayerHeaderView
+//
+//  Preview host for PlayerHeaderView development.
+//
+//  Created by Jake Bromberg on 12/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

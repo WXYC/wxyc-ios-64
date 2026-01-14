@@ -1,8 +1,11 @@
 //
 //  StallRecoveryTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Stall detection and recovery tests for PlaybackController implementations.
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

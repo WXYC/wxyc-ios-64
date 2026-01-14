@@ -1,8 +1,10 @@
 //
 //  RadioPlayerController.swift
-//  WXYC
+//  Playback
 //
-//  Created by Jake Bromberg on 8/2/18.
+//  High-level controller for RadioPlayer with system integration.
+//
+//  Created by Jake Bromberg on 03/26/18.
 //  Copyright © 2018 WXYC. All rights reserved.
 //
 
@@ -30,7 +32,7 @@ public final class RadioPlayerController: PlaybackController {
     #endif
 
     // MARK: - PlaybackController Protocol
-
+    
     private let streamURL = RadioStation.WXYC.streamURL
     
     /// The current playback state
@@ -180,7 +182,7 @@ public final class RadioPlayerController: PlaybackController {
             }
         }
     }
-
+    
     // MARK: Public methods
     
     public func toggle(reason: String) throws {
@@ -252,7 +254,7 @@ public final class RadioPlayerController: PlaybackController {
         applicationWillEnterForeground(Notification(name: UIApplication.willEnterForegroundNotification))
     }
     #endif
-    
+
     // MARK: Private
 
     private let radioPlayer: any AudioPlayerProtocol

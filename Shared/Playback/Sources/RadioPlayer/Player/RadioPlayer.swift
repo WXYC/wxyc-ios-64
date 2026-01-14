@@ -1,9 +1,11 @@
 //
 //  RadioPlayer.swift
-//  WXYC
+//  Playback
 //
-//  Created by Jake Bromberg on 12/1/17.
-//  Copyright © 2017 wxyc.org. All rights reserved.
+//  AVPlayer-based radio streaming player.
+//
+//  Created by Jake Bromberg on 12/01/17.
+//  Copyright © 2017 WXYC. All rights reserved.
 //
 
 import Foundation

@@ -1,8 +1,11 @@
 //
 //  NowPlayingWidgetEntryView.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Shared widget entry view logic.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -38,4 +41,3 @@ extension NowPlayingWidgetEntryView {
             .ignoresSafeArea()
     }
 }
-

@@ -1,3 +1,13 @@
+//
+//  CPUMonitor.swift
+//  Playback
+//
+//  Monitors CPU usage during audio streaming for analytics.
+//
+//  Created by Jake Bromberg on 12/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 import Darwin
 
@@ -16,7 +26,7 @@ public final class CPUMonitor {
         self.interval = interval
         self.onUpdate = onUpdate
     }
-    
+                
     /// Starts monitoring CPU usage
     public func start() {
         stop()
@@ -88,7 +98,7 @@ public final class CPUMonitor {
             
             let flags = threadInfo.flags
             guard flags & TH_FLAGS_IDLE == 0 else { continue }
-            
+        
             totalUsageOfCPU += Double(threadInfo.cpu_usage) / Double(TH_USAGE_SCALE) * 100.0
         }
         
@@ -96,7 +106,7 @@ public final class CPUMonitor {
         let totalSize = Int(threadCount) * itemSize
         let address = unsafeBitCast(threadList, to: vm_address_t.self)
         vm_deallocate(mach_task_self_, address, vm_size_t(totalSize))
-        
+
         return totalUsageOfCPU
     }
 }

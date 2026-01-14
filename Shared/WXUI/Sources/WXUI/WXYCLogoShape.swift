@@ -2,7 +2,10 @@
 //  WXYCLogoShape.swift
 //  WXUI
 //
-//  Created by Jake Bromberg on 11/25/25.
+//  Shape definition for WXYC logo rendering.
+//
+//  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -2179,4 +2182,3 @@ struct WXYCLogoShape: Shape {
             )
     }
 }
-

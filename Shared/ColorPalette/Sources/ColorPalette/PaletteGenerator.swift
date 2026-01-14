@@ -1,4 +1,14 @@
-/// Generates color palettes using color wheel harmony algorithms.
+//
+//  PaletteGenerator.swift
+//  ColorPalette
+//
+//  Generates harmonious color palettes (triad, complementary, analogous, etc.)
+//  from a dominant color.
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 public struct PaletteGenerator: Sendable {
 
     public init() {}

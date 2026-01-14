@@ -1,3 +1,11 @@
+//
+//  FlowsheetConverterTests.swift
+//  Playlist
+//
+//  Created by Jake Bromberg on 01/01/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Playlist
@@ -234,6 +242,34 @@ struct FlowsheetConverterTests {
 
         let playcut = playlist.playcuts.first!
         #expect(playcut.hour > 0)
+    }
+
+    @Test("Decodes HTML entities in artist and track names")
+    func decodesHTMLEntities() {
+        let entry = FlowsheetEntry(
+            id: 200,
+            show_id: nil,
+            album_id: nil,
+            artist_name: "Raphael Rogi&#324;ski &amp; Ruzi&#269;njak Tajni",
+            album_title: "Test &lt;Album&gt;",
+            track_title: "Test &#8217;Song&#8217;",
+            record_label: "Label &quot;Name&quot;",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: nil,
+            message: nil,
+            play_order: 1,
+            add_time: "2024-01-15T14:00:00Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.playcuts.count == 1)
+        let playcut = playlist.playcuts.first!
+        #expect(playcut.artistName == "Raphael Rogiński & Ruzičnjak Tajni")
+        #expect(playcut.releaseTitle == "Test <Album>")
+        #expect(playcut.songTitle == "Test \u{2019}Song\u{2019}")
+        #expect(playcut.labelName == "Label \"Name\"")
     }
 
     @Test("Converts multiple entries of different types")

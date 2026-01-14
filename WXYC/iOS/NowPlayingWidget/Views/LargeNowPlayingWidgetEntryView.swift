@@ -1,8 +1,11 @@
 //
 //  LargeNowPlayingWidgetEntryView.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Large widget family layout.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -21,7 +24,7 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             
             VStack(alignment: .leading, spacing: 10) {
                 Spacer()
-                
+
                 Header(entry: entry)
 
                 Text("Recently Played")
@@ -41,4 +44,3 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
         .containerBackground(Color.clear, for: .widget)
     }
 }
-

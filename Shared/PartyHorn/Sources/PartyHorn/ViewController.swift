@@ -1,8 +1,11 @@
 //
 //  ViewController.swift
-//  Party Horn
+//  PartyHorn
 //
-//  Created by Jake Bromberg on 8/11/25.
+//  View controller hosting the party horn UI.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import UIKit

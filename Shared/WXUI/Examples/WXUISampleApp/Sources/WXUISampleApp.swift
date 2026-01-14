@@ -1,8 +1,11 @@
 //
 //  WXUISampleApp.swift
-//  WXUISampleApp
+//  WXUI
 //
 //  Sample app for previewing WXUI components.
+//
+//  Created by Jake Bromberg on 12/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

@@ -5,6 +5,9 @@
 //  Provides backwards-compatible wrappers for the iOS 26+ glassEffect modifier.
 //  On earlier OS versions, these methods simply return the view unchanged.
 //
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import SwiftUI
 

@@ -26,7 +26,7 @@ import StoreKit
 import SwiftUI
 import Wallpaper
 import WXUI
-#if DEBUG
+#if DEBUG || DEBUG_TESTFLIGHT
 import DebugPanel
 #endif
 
@@ -138,7 +138,7 @@ struct WXYCApp: App {
                             handleUserActivity(userActivity)
                         }
 
-#if DEBUG
+#if DEBUG || DEBUG_TESTFLIGHT
                     DebugHUD()
                     
                     if ThemeDebugState.shared.showOverlay {
@@ -192,7 +192,7 @@ struct WXYCApp: App {
                     }
                     .keyboardShortcut(.space, modifiers: [])
                 }
-            #if DEBUG
+            #if DEBUG || DEBUG_TESTFLIGHT
                 CommandMenu("Debug") {
                     Button("Trigger Background Refresh") {
                         Task {

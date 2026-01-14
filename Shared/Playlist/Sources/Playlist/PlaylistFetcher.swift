@@ -2,7 +2,10 @@
 //  PlaylistFetcher.swift
 //  Playlist
 //
-//  Created by Jake Bromberg on 11/8/25.
+//  Protocol and implementation for fetching playlist data.
+//
+//  Created by Jake Bromberg on 11/10/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

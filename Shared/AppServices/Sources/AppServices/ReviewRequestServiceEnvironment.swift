@@ -4,6 +4,9 @@
 //
 //  SwiftUI Environment support for ReviewRequestService.
 //
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import SwiftUI
 

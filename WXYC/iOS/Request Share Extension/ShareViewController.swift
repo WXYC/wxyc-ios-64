@@ -1,8 +1,11 @@
 //
 //  ShareViewController.swift
-//  Request Share Extension
+//  WXYC
+//
+//  View controller for share extension entry point.
 //
 //  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import UIKit

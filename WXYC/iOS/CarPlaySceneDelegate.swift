@@ -2,7 +2,10 @@
 //  CarPlaySceneDelegate.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 3/1/25.
+//  Scene delegate for CarPlay interface.
+//
+//  Created by dvd on 09/27/17.
+//  Copyright © 2017 WXYC. All rights reserved.
 //
 
 import Foundation

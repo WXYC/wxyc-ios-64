@@ -1,8 +1,11 @@
 //
 //  RequestService.swift
-//  RequestService
+//  MusicShareKit
+//
+//  Service for sending song requests to the DJ from shared tracks.
 //
 //  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Core

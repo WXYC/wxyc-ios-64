@@ -1,9 +1,12 @@
 //
-//  ArtworkService.swift
-//  Core
+//  MultisourceArtworkService.swift
+//  Artwork
 //
-//  Created by Jake Bromberg on 12/5/18.
-//  Copyright © 2018 WXYC. All rights reserved.
+//  Aggregates multiple artwork sources (iTunes, Last.fm, Discogs) with
+//  caching and NSFW filtering. Tries sources in order until artwork is found.
+//
+//  Created by Jake Bromberg on 04/12/23.
+//  Copyright © 2023 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -72,7 +75,7 @@ public final actor MultisourceArtworkService: ArtworkService {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
     }
-    
+
     public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
         let cacheKey = playcut.artworkCacheKey
 

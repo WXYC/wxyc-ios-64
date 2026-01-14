@@ -1,6 +1,11 @@
 //
 //  DequeTests.swift
-//  CoreTests
+//  Core
+//
+//  Tests for Deque double-ended queue operations.
+//
+//  Created by Jake Bromberg on 01/12/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

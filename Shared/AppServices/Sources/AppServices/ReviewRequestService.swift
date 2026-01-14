@@ -6,6 +6,9 @@
 //  Tracks three qualifying actions: playback started, request sent, song added to library.
 //  After any combination of 3 actions, triggers a one-time review request per version.
 //
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Caching
 import Foundation

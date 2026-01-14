@@ -2,7 +2,10 @@
 //  DebugHUDState.swift
 //  DebugPanel
 //
+//  Observable state for the debug HUD display.
+//
 //  Created by Jake Bromberg on 12/23/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

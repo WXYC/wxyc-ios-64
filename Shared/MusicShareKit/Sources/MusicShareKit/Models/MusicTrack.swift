@@ -2,7 +2,10 @@
 //  MusicTrack.swift
 //  MusicShareKit
 //
+//  Data model for a track shared from a music service.
+//
 //  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -81,4 +84,3 @@ public enum MusicServiceIdentifier: String, Sendable, CaseIterable {
         }
     }
 }
-

@@ -1,9 +1,12 @@
 //
 //  RadioPlayerMessages.swift
-//  RadioPlayer
+//  Playback
 //
 //  MainActorNotificationMessage types for RadioPlayer's notification handling.
 //  These enable synchronous, type-safe notification handling on the main actor.
+//
+//  Created by Jake Bromberg on 01/11/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

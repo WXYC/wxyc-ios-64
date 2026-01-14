@@ -4,6 +4,9 @@
 //
 //  Normalization algorithms for adaptive audio visualization
 //
+//  Created by Jake Bromberg on 12/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 import Accelerate
@@ -147,4 +150,3 @@ extension NormalizationMode {
         }
     }
 }
-

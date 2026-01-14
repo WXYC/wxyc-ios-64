@@ -1,9 +1,12 @@
 //
-//  PlaycutService.swift
-//  WXYC
+//  NowPlayingService.swift
+//  AppServices
 //
-//  Created by Jake Bromberg on 12/3/17.
-//  Copyright © 2017 wxyc.org. All rights reserved.
+//  Combines playlist and artwork services to provide NowPlayingItem updates.
+//  Exposes an AsyncSequence that yields items with fetched artwork.
+//
+//  Created by Jake Bromberg on 12/03/17.
+//  Copyright © 2017 WXYC. All rights reserved.
 //
 
 import Foundation

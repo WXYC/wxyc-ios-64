@@ -1,9 +1,11 @@
 //
-//  ServiceUtilities.swift
-//  WXYC
+//  URLSession+WebSession.swift
+//  Core
 //
-//  Created by Jake Bromberg on 12/16/18.
-//  Copyright © 2018 WXYC. All rights reserved.
+//  URLSession extension conforming to WebSession protocol.
+//
+//  Created by Jake Bromberg on 04/16/20.
+//  Copyright © 2020 WXYC. All rights reserved.
 //
 
 import Foundation

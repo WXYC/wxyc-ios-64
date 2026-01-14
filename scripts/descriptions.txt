@@ -1,0 +1,289 @@
+# Core package
+Shared/Core/Sources/Core/ExponentialBackoffTimer.swift|Exponential backoff algorithm for retry logic with configurable limits.
+Shared/Core/Sources/Core/Timer.swift|Simple elapsed time measurement utility for performance logging.
+Shared/Core/Sources/Core/Models and Services/ImageCompatability.swift|Cross-platform image type aliases and encoding utilities (UIKit/AppKit).
+Shared/Core/Sources/Core/Models and Services/RadioStation.swift|Data model for radio station configuration (name, stream URL, etc.).
+Shared/Core/Sources/Core/Models and Services/ServiceTypes.swift|Protocol definitions for web session and network service abstractions.
+Shared/Core/Sources/Core/Models and Services/URLSession+WebSession.swift|URLSession extension conforming to WebSession protocol.
+Shared/Core/Sources/Core/Observation/ApplicationWillTerminateMessage.swift|Notification message for app termination events.
+Shared/Core/Sources/Core/Observation/AsyncMessage.swift|Base protocol for type-safe async notification messages.
+Shared/Core/Sources/Core/Observation/MainActorMessage.swift|Base protocol for type-safe MainActor notification messages.
+Shared/Core/Sources/Core/Observation/Observations.swift|Backport of Swift 6's Observations type for iOS 18 compatibility.
+Shared/Core/Tests/CoreTests/AsyncMessageTests.swift|Tests for AsyncMessage notification handling.
+Shared/Core/Tests/CoreTests/DequeTests.swift|Tests for Deque double-ended queue operations.
+Shared/Core/Tests/CoreTests/ExponentialBackoffTests.swift|Tests for ExponentialBackoff retry algorithm.
+Shared/Core/Tests/CoreTests/ImageCompatibilityTests.swift|Tests for cross-platform image encoding utilities.
+Shared/Core/Tests/CoreTests/MainActorMessageTests.swift|Tests for MainActorMessage notification handling.
+
+# DebugPanel package
+Shared/DebugPanel/Sources/DebugPanel/DebugHUD.swift|Debug HUD overlay displaying performance metrics and state info.
+Shared/DebugPanel/Sources/DebugPanel/DebugHUDState.swift|Observable state for the debug HUD display.
+Shared/DebugPanel/Sources/DebugPanel/DebugMetricsProvider.swift|Protocol for providing debug metrics to the HUD.
+
+# Logger package
+Shared/Logger/Sources/Logger/Logger.swift|Unified logging API wrapping os.log for consistent debug output.
+
+# Metadata package
+Shared/Metadata/Sources/Metadata/DiscogsEntityResolver.swift|Resolves Discogs artist/release entities for playcut enrichment.
+Shared/Metadata/Sources/Metadata/DiscogsMarkupParser.swift|Parses Discogs-style markup (links, formatting) to plain text.
+Shared/Metadata/Sources/Metadata/MetadataCacheKey.swift|Cache key generation for playcut metadata lookups.
+Shared/Metadata/Sources/Metadata/PlaycutMetadata.swift|Extended metadata for a playcut (artist bio, release info, etc.).
+Shared/Metadata/Sources/Metadata/PlaycutMetadataService.swift|Service for fetching and caching extended playcut metadata.
+Shared/Metadata/Sources/Metadata/StreamingService.swift|Enumeration of music streaming services with URL generation.
+Shared/Metadata/Tests/MetadataTests/PlaycutMetadataTests.swift|Tests for PlaycutMetadata model and parsing.
+
+# MusicShareKit package
+Shared/MusicShareKit/Sources/MusicShareKit/Models/MusicTrack.swift|Data model for a track shared from a music service.
+Shared/MusicShareKit/Sources/MusicShareKit/MusicShareKitConfiguration.swift|Configuration for MusicShareKit endpoints and behavior.
+Shared/MusicShareKit/Sources/MusicShareKit/RequestSentHUD.swift|HUD view shown after successfully sending a song request.
+Shared/MusicShareKit/Sources/MusicShareKit/RequestService.swift|Service for sending song requests to the DJ from shared tracks.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/AppleMusicService.swift|Apple Music URL parsing and track metadata extraction.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/BandcampService.swift|Bandcamp URL parsing and track metadata extraction.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/MusicService.swift|Protocol for music service URL handlers.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/MusicServiceRegistry.swift|Registry of music service handlers for URL matching.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/SoundCloudService.swift|SoundCloud URL parsing and track metadata extraction.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/SpotifyService.swift|Spotify URL parsing and track metadata extraction.
+Shared/MusicShareKit/Sources/MusicShareKit/Services/YouTubeMusicService.swift|YouTube Music URL parsing and track metadata extraction.
+Shared/MusicShareKit/Sources/MusicShareKit/Views/ShareExtensionView.swift|SwiftUI view for the share extension interface.
+Shared/MusicShareKit/Tests/MusicShareKitTests/MusicShareKitTests.swift|Tests for music service URL parsing.
+Shared/MusicShareKit/Tests/MusicShareKitTests/RequestServiceTests.swift|Tests for RequestService song request behavior.
+
+# OpenNSFW package
+Shared/OpenNSFW/Sources/OpenNSFW/NSFWDetector.swift|NSFW content detection using CoreML model.
+Shared/OpenNSFW/Sources/OpenNSFW/OpenNSFWModel.swift|CoreML model wrapper for NSFW classification.
+
+# PartyHorn package (easter egg)
+Shared/PartyHorn/Sources/PartyHorn/ConfettiView.swift|Animated confetti particle effect view.
+Shared/PartyHorn/Sources/PartyHorn/Haptics.swift|Haptic feedback controller for party horn interactions.
+Shared/PartyHorn/Sources/PartyHorn/PartyHornView.swift|Main party horn easter egg view with animation.
+Shared/PartyHorn/Sources/PartyHorn/Queue.swift|Thread-safe queue for sequencing party horn events.
+Shared/PartyHorn/Sources/PartyHorn/RepeatingTimer.swift|Repeating timer utility for animation timing.
+Shared/PartyHorn/Sources/PartyHorn/SceneDelegate.swift|Scene delegate for party horn window management.
+Shared/PartyHorn/Sources/PartyHorn/SoundPlayer.swift|Audio player for party horn sound effects.
+Shared/PartyHorn/Sources/PartyHorn/ViewController.swift|View controller hosting the party horn UI.
+Shared/PartyHorn/Sources/PartyHorn/WipeDownRevealModifier.swift|SwiftUI modifier for wipe-down reveal animation.
+
+# Playback package - MP3Streamer
+Shared/Playback/Sources/MP3Streamer/CPUMonitor.swift|Monitors CPU usage during audio streaming for analytics.
+Shared/Playback/Sources/MP3Streamer/Configuration/MP3StreamerConfiguration.swift|Configuration for MP3 streaming buffer sizes and behavior.
+Shared/Playback/Sources/MP3Streamer/Decoding/MP3StreamDecoder.swift|Decodes MP3 audio data into PCM buffers using AudioToolbox.
+Shared/Playback/Sources/MP3Streamer/MP3Streamer.swift|Low-latency MP3 streaming player using AVAudioEngine.
+Shared/Playback/Sources/MP3Streamer/Playback/AudioEnginePlayer.swift|AVAudioEngine-based audio playback with buffer scheduling.
+Shared/Playback/Sources/MP3Streamer/Playback/AudioEnginePlayerProtocol.swift|Protocol for audio engine playback abstraction.
+Shared/Playback/Sources/MP3Streamer/Playback/PCMBufferQueue.swift|Thread-safe queue for PCM audio buffers.
+Shared/Playback/Sources/MP3Streamer/State/StreamingAudioState.swift|State machine for streaming audio lifecycle.
+Shared/Playback/Sources/MP3Streamer/Streaming/HTTPStreamClient.swift|HTTP streaming client for continuous audio data download.
+Shared/Playback/Sources/MP3Streamer/Streaming/HTTPStreamClientProtocol.swift|Protocol for HTTP streaming client abstraction.
+Shared/Playback/Sources/MP3Streamer/Streaming/URLSessionProtocol.swift|Protocol for URLSession abstraction in streaming.
+
+# Playback package - PlaybackAPI
+Shared/Playback/Sources/PlaybackAPI/Exports.swift|Public API exports for the Playback module.
+
+# Playback package - RadioPlayer
+Shared/Playback/Sources/RadioPlayer/Controller/RadioPlayerController.swift|High-level controller for RadioPlayer with system integration.
+Shared/Playback/Sources/RadioPlayer/Player/RadioPlayer.swift|AVPlayer-based radio streaming player.
+
+# Playback package - Tests
+Shared/Playback/Tests/MP3StreamerTests/AudioEnginePlayerTests.swift|Tests for AudioEnginePlayer buffer scheduling.
+Shared/Playback/Tests/MP3StreamerTests/HTTPStreamClientTests.swift|Tests for HTTPStreamClient data streaming.
+Shared/Playback/Tests/MP3StreamerTests/MP3StreamDecoderTests.swift|Tests for MP3StreamDecoder audio conversion.
+Shared/Playback/Tests/MP3StreamerTests/MP3StreamerTests.swift|Integration tests for MP3Streamer playback.
+Shared/Playback/Tests/MP3StreamerTests/PCMBufferQueueTests.swift|Tests for PCMBufferQueue thread safety.
+Shared/Playback/Tests/PlaybackTestUtilities/Factories/TestAudioBufferFactory.swift|Factory for creating test audio buffers.
+Shared/Playback/Tests/PlaybackTestUtilities/Harness/AudioPlayerTestHarness.swift|Test harness for audio player behavior testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Harness/PlayerControllerTestHarness.swift|Test harness for player controller testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockAnalyticsService.swift|Mock analytics service for testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockAudioEnginePlayer.swift|Mock audio engine player for testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockAudioPlayer.swift|Mock audio player for testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockAudioSession.swift|Mock audio session for testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockHTTPStreamClient.swift|Mock HTTP stream client for testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockPlaybackAnalytics.swift|Mock playback analytics for testing.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockPlayer.swift|Mock player for testing controller behavior.
+Shared/Playback/Tests/PlaybackTestUtilities/Mocks/MockRemoteCommandCenter.swift|Mock remote command center for testing.
+Shared/Playback/Tests/PlaybackTests/AudioPlayerControllerTests.swift|Tests for AudioPlayerController system integration.
+Shared/Playback/Tests/PlaybackTests/Behavior/AnalyticsIntegrationTests.swift|Integration tests for playback analytics.
+Shared/Playback/Tests/PlaybackTests/Behavior/AudioPlayerAnalyticsTests.swift|Tests for audio player analytics events.
+Shared/Playback/Tests/PlaybackTests/Behavior/BackgroundForegroundBehaviorTests.swift|Tests for background/foreground transitions.
+Shared/Playback/Tests/PlaybackTests/Behavior/PlayerControllerBehaviorTests.swift|Tests for player controller state transitions.
+Shared/Playback/Tests/PlaybackTests/Behavior/StallRecoveryTests.swift|Tests for playback stall recovery behavior.
+Shared/Playback/Tests/PlaybackTests/ObservationIntegrationTests.swift|Integration tests for playback state observation.
+Shared/Playback/Tests/PlaybackTests/PlaybackAnalyticsTests.swift|Tests for PlaybackAnalytics event capture.
+Shared/Playback/Tests/PlaybackTests/PlaybackMetricsTests.swift|Tests for playback metrics collection.
+Shared/Playback/Tests/PlaybackTests/PlaybackStateTests.swift|Tests for PlaybackState enum behavior.
+Shared/Playback/Tests/RadioPlayerTests/RadioPlayerControllerTests.swift|Tests for RadioPlayerController behavior.
+Shared/Playback/Tests/RadioPlayerTests/RadioPlayerTests.swift|Tests for RadioPlayer AVPlayer operations.
+
+# PlayerHeaderView package
+Shared/PlayerHeaderView/Examples/PlayerHeaderViewSampleApp/Sources/PlayerHeaderViewPreview.swift|Preview host for PlayerHeaderView development.
+Shared/PlayerHeaderView/Examples/PlayerHeaderViewSampleApp/Sources/PlayerHeaderViewSampleApp.swift|Sample app showcasing PlayerHeaderView features.
+Shared/PlayerHeaderView/PlayerHeaderViewApp/PlayerHeaderViewApp.swift|App entry point for PlayerHeaderView development.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/AccentColorEnvironment.swift|SwiftUI environment key for accent color theming.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/AudioProcessor.swift|Base protocol for audio signal processing.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/BackgroundStyles.swift|Background style configuration for the player header.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/DebugViews.swift|Debug views for visualizer development.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/Exports.swift|Public API exports for PlayerHeaderView.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/LCDSpectrumAnalyzerView.swift|LCD-style spectrum analyzer visualization.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/Normalizer.swift|Audio level normalization for consistent visualizations.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/PlaybackControlsView.swift|Play/pause and volume control view.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/PlayerHeaderView.swift|Main now-playing header with artwork and visualizer.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/RMSProcessor.swift|Root mean square audio level processor.
+Shared/PlayerHeaderView/Sources/PlayerHeaderView/VisualizerDataSource.swift|Data source providing audio samples for visualizations.
+Shared/PlayerHeaderView/Tests/PlayerHeaderViewTests/PlayerHeaderViewTests.swift|Tests for PlayerHeaderView layout and behavior.
+
+# Playlist package
+Shared/Playlist/Sources/Playlist/Bundle+Playlist.swift|Bundle extension for accessing playlist resources.
+Shared/Playlist/Sources/Playlist/PlaylistAPIVersion.swift|API version detection for playlist endpoint compatibility.
+Shared/Playlist/Sources/Playlist/PlaylistFetcher.swift|Protocol and implementation for fetching playlist data.
+Shared/Playlist/Sources/Playlist/V2/FlowsheetEntry.swift|Data model for V2 flowsheet playlist entries.
+Shared/Playlist/Sources/Playlist/V2/FlowsheetEntryType.swift|Entry type enumeration for V2 flowsheet (playcut, talkset, etc.).
+Shared/Playlist/Sources/Playlist/V2/PlaylistDataSourceV2.swift|V2 playlist data source using flowsheet API.
+Shared/Playlist/Tests/PlaylistTests/FlowsheetEntryTypeTests.swift|Tests for FlowsheetEntryType parsing.
+Shared/Playlist/Tests/PlaylistTests/PlaycutTests.swift|Tests for Playcut model and equality.
+Shared/Playlist/Tests/PlaylistTests/PlaylistAPIVersionTests.swift|Tests for PlaylistAPIVersion detection.
+Shared/Playlist/Tests/PlaylistTests/PlaylistFetcherTests.swift|Tests for PlaylistFetcher data retrieval.
+Shared/Playlist/Tests/PlaylistTests/PlaylistServiceBackgroundRefreshTests.swift|Tests for background playlist refresh behavior.
+Shared/Playlist/Tests/PlaylistTests/PlaylistServiceCachingTests.swift|Tests for playlist caching behavior.
+Shared/Playlist/Tests/PlaylistTests/PlaylistServiceRaceConditionTests.swift|Tests for playlist service race condition handling.
+Shared/Playlist/Tests/PlaylistTests/PlaylistServiceTests.swift|Tests for PlaylistService subscription behavior.
+
+# WXUI package
+Shared/WXUI/Examples/WXUISampleApp/Sources/OverlaySheetPreview.swift|Preview for overlay sheet component.
+Shared/WXUI/Examples/WXUISampleApp/Sources/PlaceholderArtworkPreview.swift|Preview for placeholder artwork view.
+Shared/WXUI/Examples/WXUISampleApp/Sources/WXUISampleApp.swift|Sample app showcasing WXUI components.
+Shared/WXUI/Examples/WXUISampleApp/Sources/WXYCLogoPreview.swift|Preview for WXYC logo component.
+Shared/WXUI/Sources/WXUI/AnimatedMeshGradient.swift|Animated mesh gradient background view.
+Shared/WXUI/Sources/WXUI/BackgroundGradient.swift|Gradient background configuration.
+Shared/WXUI/Sources/WXUI/FastTrig.swift|Fast trigonometric approximations for animations.
+Shared/WXUI/Sources/WXUI/GlassEffect+Compatibility.swift|Glass material effect with iOS version compatibility.
+Shared/WXUI/Sources/WXUI/PlaceholderArtworkView.swift|Placeholder view shown while artwork loads.
+Shared/WXUI/Sources/WXUI/TipView.swift|Tooltip-style hint view component.
+Shared/WXUI/Sources/WXUI/WXYCGradient.swift|WXYC brand gradient configuration.
+Shared/WXUI/Sources/WXUI/WXYCLogo.swift|WXYC logo view component.
+Shared/WXUI/Sources/WXUI/WXYCLogoShape.swift|Shape definition for WXYC logo rendering.
+
+# Wallpaper package - Examples
+Shared/Wallpaper/Examples/WallpaperSampleApp/Sources/DebugHUD.swift|Debug HUD for wallpaper sample app.
+Shared/Wallpaper/Examples/WallpaperSampleApp/Sources/WallpaperDetailView.swift|Detail view for inspecting wallpaper parameters.
+Shared/Wallpaper/Examples/WallpaperSampleApp/Sources/WallpaperListView.swift|List view for browsing available wallpapers.
+Shared/Wallpaper/Examples/WallpaperSampleApp/Sources/WallpaperSampleApp.swift|Sample app for wallpaper development and testing.
+
+# Wallpaper package - Core
+Shared/Wallpaper/Sources/Wallpaper/BackgroundLayer.swift|Root background layer compositing wallpaper and overlays.
+Shared/Wallpaper/Sources/Wallpaper/Core/ParameterStore.swift|Storage for shader parameter overrides.
+Shared/Wallpaper/Sources/Wallpaper/Core/PlaybackBlendMode.swift|Blend mode configuration for playback state transitions.
+Shared/Wallpaper/Sources/Wallpaper/Core/RuntimeShaderCompiler.swift|Compiles Metal shaders at runtime for live editing.
+Shared/Wallpaper/Sources/Wallpaper/Core/ShaderDirectiveStore.swift|Parses and stores shader directive comments.
+Shared/Wallpaper/Sources/Wallpaper/Core/ThemeColors.swift|Color definitions extracted from theme manifest.
+Shared/Wallpaper/Sources/Wallpaper/Core/ThemeManifest.swift|Theme manifest JSON model with shader parameters.
+Shared/Wallpaper/Sources/Wallpaper/ThemeAppearance.swift|Theme appearance configuration (light/dark modes).
+Shared/Wallpaper/Sources/Wallpaper/ThemeConfiguration.swift|Complete theme configuration combining manifest and overrides.
+Shared/Wallpaper/Sources/Wallpaper/ThemeDebugControls.swift|Debug UI control definitions for theme parameters.
+Shared/Wallpaper/Sources/Wallpaper/ThemePickerState.swift|Observable state for theme picker UI.
+
+# Wallpaper package - DebugUI
+Shared/Wallpaper/Sources/Wallpaper/DebugUI/ColorControl.swift|Debug color picker control for theme editing.
+Shared/Wallpaper/Sources/Wallpaper/DebugUI/FloatSliderControl.swift|Debug slider control for float parameters.
+Shared/Wallpaper/Sources/Wallpaper/DebugUI/HSBPicker.swift|HSB color picker for theme debug overlay.
+Shared/Wallpaper/Sources/Wallpaper/DebugUI/ThemeDebugControlsGenerator.swift|Generates debug controls from shader directives.
+
+# Wallpaper package - Export
+Shared/Wallpaper/Sources/Wallpaper/Export/ShareSheet.swift|Share sheet wrapper for exporting theme snapshots.
+Shared/Wallpaper/Sources/Wallpaper/Export/ThemeExporter.swift|Exports theme configuration as shareable files.
+
+# Wallpaper package - Picker
+Shared/Wallpaper/Sources/Wallpaper/MaterialView.swift|Material blur effect view for overlays.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemeCardView.swift|Card view for theme selection carousel.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemeCarouselView.swift|Horizontal carousel for browsing themes.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemePickerAnalytics.swift|Analytics protocol for theme picker events.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemePickerContainer.swift|Container view managing theme picker presentation.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemePickerGesture.swift|Gesture handling for theme picker interactions.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemePickerPersistence.swift|Persistence for selected theme preference.
+Shared/Wallpaper/Sources/Wallpaper/Picker/ThemeTipView.swift|Onboarding tip view for theme picker.
+
+# Wallpaper package - Renderers
+Shared/Wallpaper/Sources/Wallpaper/Renderers/CompositeWallpaperView.swift|Composites multiple wallpaper layers.
+Shared/Wallpaper/Sources/Wallpaper/Renderers/MetalWallpaperView.swift|SwiftUI wrapper for Metal shader rendering.
+Shared/Wallpaper/Sources/Wallpaper/Renderers/StitchableWallpaperView.swift|Wallpaper view supporting resolution stitching.
+Shared/Wallpaper/Sources/Wallpaper/Renderers/SwiftUIWallpaperView.swift|Pure SwiftUI wallpaper implementation.
+Shared/Wallpaper/Sources/Wallpaper/Renderers/WallpaperRendererFactory.swift|Factory for creating appropriate renderer types.
+Shared/Wallpaper/Sources/Wallpaper/WallpaperView.swift|Main wallpaper view with adaptive rendering.
+
+# Wallpaper package - Throttling
+Shared/Wallpaper/Sources/Wallpaper/Throttling/AdaptiveProfile.swift|Device-specific quality profile for adaptive rendering.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/AdaptiveProfileStore.swift|Persistent storage for learned adaptive profiles.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/Analytics/QualityAnalytics.swift|Analytics protocol for quality adjustment events.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/Analytics/QualityMetricsAggregator.swift|Aggregates quality metrics for analytics reporting.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/DeviceContext.swift|Device capability detection for quality decisions.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/FrameInterpolator.swift|Interpolates frames for smooth throttled rendering.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/QualityOptimizer.swift|Optimizes render quality based on performance signals.
+Shared/Wallpaper/Sources/Wallpaper/Throttling/QualityProfile.swift|Quality profile configuration (resolution, frame rate).
+Shared/Wallpaper/Sources/Wallpaper/Throttling/ScaledRenderTarget.swift|Render target with resolution scaling support.
+
+# Wallpaper package - Metal shaders
+Shared/Wallpaper/Sources/Wallpaper/Resources/Shaders/FullscreenVertex.metal|Vertex shader for fullscreen quad rendering.
+
+# Wallpaper package - Tests
+Shared/Wallpaper/Tests/WallpaperTests/AdaptiveProfileStoreTests.swift|Tests for AdaptiveProfileStore persistence.
+Shared/Wallpaper/Tests/WallpaperTests/AdaptiveQualityControllerTests.swift|Tests for AdaptiveQualityController decisions.
+Shared/Wallpaper/Tests/WallpaperTests/FrameInterpolatorTests.swift|Tests for FrameInterpolator smoothing.
+Shared/Wallpaper/Tests/WallpaperTests/Mocks/MockDeviceContext.swift|Mock device context for testing.
+Shared/Wallpaper/Tests/WallpaperTests/Mocks/MockQualityAnalytics.swift|Mock quality analytics for testing.
+Shared/Wallpaper/Tests/WallpaperTests/Mocks/MockQualityReporter.swift|Mock quality reporter for testing.
+Shared/Wallpaper/Tests/WallpaperTests/QualityOptimizerTests.swift|Tests for QualityOptimizer algorithm.
+Shared/Wallpaper/Tests/WallpaperTests/QualitySignalTests.swift|Tests for QualitySignal processing.
+Shared/Wallpaper/Tests/WallpaperTests/ScaledRenderTargetTests.swift|Tests for ScaledRenderTarget resolution handling.
+Shared/Wallpaper/Tests/WallpaperTests/ThemePickerPersistenceTests.swift|Tests for theme selection persistence.
+
+# WXYC app - TV
+WXYC/WXYC TV/ContentView.swift|Main content view for tvOS app.
+WXYC/WXYC TV/WXYCTVApp.swift|App entry point for tvOS.
+
+# WXYC app - Watch
+WXYC/WatchXYC/DialADJPage.swift|Dial-a-DJ request page for watchOS.
+WXYC/WatchXYC/PlayerPage.swift|Player controls page for watchOS.
+WXYC/WatchXYC/PlaylistPage.swift|Playlist display page for watchOS.
+WXYC/WatchXYC/RemoteImage.swift|Async image loading for watchOS.
+WXYC/WatchXYC/RootTabView.swift|Root tab navigation for watchOS.
+WXYC/WatchXYC/WatchXYCApp.swift|App entry point for watchOS.
+
+# WXYC app - iOS
+WXYC/iOS/CarPlaySceneDelegate.swift|Scene delegate for CarPlay interface.
+WXYC/iOS/Intents.swift|App Intent definitions for Siri and Shortcuts.
+WXYC/iOS/NowPlayingInfoCenterManager.swift|Manages MPNowPlayingInfoCenter metadata updates.
+WXYC/iOS/PostHogQualityReporter.swift|PostHog implementation for wallpaper quality analytics.
+WXYC/iOS/PostHogThemePickerAnalytics.swift|PostHog implementation for theme picker analytics.
+WXYC/iOS/Singletonia.swift|Observable singleton holding shared app state.
+
+# WXYC app - iOS Widget
+WXYC/iOS/NowPlayingWidget/Extensions.swift|Utility extensions for widget implementation.
+WXYC/iOS/NowPlayingWidget/NowPlayingItem+Placeholder.swift|Placeholder data for widget previews.
+WXYC/iOS/NowPlayingWidget/NowPlayingTimelineEntry.swift|Timeline entry model for widget updates.
+WXYC/iOS/NowPlayingWidget/NowPlayingWidget.swift|Main widget definition and configuration.
+WXYC/iOS/NowPlayingWidget/Provider.swift|Timeline provider for widget refresh.
+WXYC/iOS/NowPlayingWidget/Views/Header.swift|Header component for widget layouts.
+WXYC/iOS/NowPlayingWidget/Views/LargeNowPlayingWidgetEntryView.swift|Large widget family layout.
+WXYC/iOS/NowPlayingWidget/Views/MediumNowPlayingWidgetEntryView.swift|Medium widget family layout.
+WXYC/iOS/NowPlayingWidget/Views/NowPlayingWidgetEntryView.swift|Shared widget entry view logic.
+WXYC/iOS/NowPlayingWidget/Views/PlayButton.swift|Play/pause button for widget.
+WXYC/iOS/NowPlayingWidget/Views/RecentlyPlayedRow.swift|Row view for recently played tracks.
+WXYC/iOS/NowPlayingWidget/Views/SmallNowPlayingWidgetEntryView.swift|Small widget family layout.
+
+# WXYC app - iOS Share Extension
+WXYC/iOS/Request Share Extension/ShareViewController.swift|View controller for share extension entry point.
+
+# WXYC app - iOS Tests
+WXYC/iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift|Tests for ScaledRenderTarget in app context.
+
+# WXYC app - iOS Views
+WXYC/iOS/Views/Playlist/Playcut Detail/ArtistBioSection.swift|Artist biography section in playcut detail.
+WXYC/iOS/Views/Playlist/Playcut Detail/ArtworkLightboxView.swift|Fullscreen artwork lightbox view.
+WXYC/iOS/Views/Playlist/Playcut Detail/ExternalLinksSection.swift|External links section (Discogs, etc.).
+WXYC/iOS/Views/Playlist/Playcut Detail/PlaycutActivityItem.swift|Share activity item for playcuts.
+WXYC/iOS/Views/Playlist/Playcut Detail/PlaycutHeaderSection.swift|Header section showing artwork and track info.
+WXYC/iOS/Views/Playlist/Playcut Detail/PlaycutLoadingSection.swift|Loading placeholder for playcut detail.
+WXYC/iOS/Views/Playlist/Playcut Detail/PlaycutMetadataSection.swift|Detailed metadata section (label, catalog#, etc.).
+WXYC/iOS/Views/Playlist/Playcut Detail/StreamingLinksSection.swift|Streaming service links (Spotify, Apple Music, etc.).
+WXYC/iOS/Views/Playlist/SafariView.swift|SafariViewController wrapper for in-app browsing.
+WXYC/iOS/Views/Playlist/TextRowView.swift|Text row component for playlist display.
+WXYC/iOS/Views/Root/RootTabView.swift|Root tab navigation for iOS app.
+WXYC/iOS/Views/Root/SiriTipView.swift|Siri tip callout for voice control.

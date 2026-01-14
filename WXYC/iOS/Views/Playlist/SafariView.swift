@@ -2,7 +2,9 @@
 //  SafariView.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 12/6/25.
+//  SafariViewController wrapper for in-app browsing.
+//
+//  Created by Jake Bromberg on 12/06/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

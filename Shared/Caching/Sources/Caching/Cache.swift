@@ -1,3 +1,13 @@
+//
+//  Cache.swift
+//  Caching
+//
+//  Protocol defining the interface for cache implementations with TTL-based expiration.
+//
+//  Created by Jake Bromberg on 12/17/18.
+//  Copyright © 2018 WXYC. All rights reserved.
+//
+
 import Foundation
 
 // MARK: - Cache Protocol

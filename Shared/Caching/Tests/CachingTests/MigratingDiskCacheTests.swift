@@ -1,3 +1,13 @@
+//
+//  MigratingDiskCacheTests.swift
+//  Caching
+//
+//  Tests for MigratingDiskCache migration from legacy to shared container.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 /*
  MigratingDiskCacheTests.swift
 
@@ -69,7 +79,7 @@ struct MigratingDiskCacheTests {
         // Cleanup
         migratingCache.remove(for: key)
     }
-
+        
     @Test("Writes only to shared container")
     func writesOnlyToShared() async throws {
         // Given
@@ -148,7 +158,7 @@ struct MigratingDiskCacheTests {
     func handlesEmptyLegacy() async throws {
         // Given - No data in legacy
         let key = "nonexistent-\(UUID().uuidString)"
-        
+
         // When - Read via MigratingDiskCache
         let migratingCache = MigratingDiskCache()
         let retrieved = migratingCache.data(for: key)
@@ -179,7 +189,7 @@ struct MigratingDiskCacheTests {
         // But we verify the metadata is properly returned so CacheCoordinator can check isExpired
         #expect(metadata != nil)
         #expect(metadata?.isExpired == true)
-        
+
         // Cleanup
         migratingCache.remove(for: key)
     }

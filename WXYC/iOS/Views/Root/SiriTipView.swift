@@ -2,7 +2,9 @@
 //  SiriTipView.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 12/3/25.
+//  Siri tip callout for voice control.
+//
+//  Created by Jake Bromberg on 12/04/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

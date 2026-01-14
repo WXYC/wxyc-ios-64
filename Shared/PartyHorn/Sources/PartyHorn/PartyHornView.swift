@@ -1,8 +1,11 @@
 //
 //  PartyHornView.swift
-//  Party Horn
+//  PartyHorn
 //
-//  Created by Jake Bromberg on 8/16/25.
+//  Main party horn easter egg view with animation.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -201,7 +204,7 @@ final class PartyHornView: UIView, UIGestureRecognizerDelegate {
     }
     
     // MARK: - Energizing
-    
+
     static let threshold: TimeInterval = 0.25
 
     var lastTimeInterval: TimeInterval = 0
@@ -218,7 +221,7 @@ final class PartyHornView: UIView, UIGestureRecognizerDelegate {
         print("average \(queue.average())")
         return queue.average() < Self.threshold
     }
-    
+
     // MARK: Confetti
 
     private var confettiHost: UIHostingController<ConfettiView> =  {
@@ -260,7 +263,7 @@ final class PartyHornView: UIView, UIGestureRecognizerDelegate {
 
     func shake() {
         interruptShake()
-        
+
         imageView.transform = CGAffineTransform(rotationAngle: .pi / 8)
 
         shakeAnimator.addAnimations {

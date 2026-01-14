@@ -1,3 +1,13 @@
+//
+//  DominantColorExtractorTests.swift
+//  ColorPalette
+//
+//  Tests for DominantColorExtractor histogram-based color extraction.
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 @testable import ColorPalette
 @testable import Core

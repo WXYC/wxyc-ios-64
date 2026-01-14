@@ -1,9 +1,12 @@
 //
 //  AudioPlayerAnalyticsTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Analytics capture tests for all AudioPlayerProtocol implementations.
 //  Verifies that MP3Streamer and RadioPlayer have identical analytics behavior.
+//
+//  Created by Jake Bromberg on 01/13/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

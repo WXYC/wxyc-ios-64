@@ -1,8 +1,19 @@
+//
+//  Analytics.swift
+//  Analytics
+//
+//  Error types and PostHog extensions for analytics tracking.
+//  Provides structured error capture with context for debugging.
+//
+//  Created by Jake Bromberg on 03/12/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 import PostHog
 
 protocol AnalyticsError: Error { }
-
+    
 public struct AnalyticsDecoderError: AnalyticsError {
     let description: String
     
@@ -53,7 +64,7 @@ public extension PostHogSDK {
             "error",
             properties: defaultProperties)
     }
-    
+        
     func capture(error: String, code: Int, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = [
             "description": error,

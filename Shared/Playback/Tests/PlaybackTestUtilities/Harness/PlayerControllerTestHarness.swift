@@ -1,9 +1,12 @@
 //
 //  PlayerControllerTestHarness.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Shared test infrastructure for parameterized PlaybackController tests.
 //  Provides a unified harness for testing all controller implementations.
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -289,4 +292,3 @@ public final class PlayerControllerTestHarness {
     }
     #endif
 }
-

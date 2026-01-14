@@ -1,3 +1,11 @@
+//
+//  PlaylistEntry.swift
+//  Playlist
+//
+//  Created by Jake Bromberg on 04/16/20.
+//  Copyright © 2020 WXYC. All rights reserved.
+//
+
 import Foundation
 import Logger
 import PostHog
@@ -30,7 +38,7 @@ public extension PlaylistEntry {
     static func ==(lhs: Self, rhs: any PlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
-
+    
     static func !=(lhs: Self, rhs: any PlaylistEntry) -> Bool {
         lhs.id != rhs.id
     }
@@ -153,10 +161,10 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
 
         do {
-            self.songTitle = try container.decode(String.self, forKey: .songTitle)
-            self.labelName = try container.decodeIfPresent(String.self, forKey: .labelName)
-            self.artistName = try container.decode(String.self, forKey: .artistName)
-            self.releaseTitle = try container.decodeIfPresent(String.self, forKey: .releaseTitle)
+            self.songTitle = try container.decode(String.self, forKey: .songTitle).htmlDecoded
+            self.labelName = try container.decodeIfPresent(String.self, forKey: .labelName)?.htmlDecoded
+            self.artistName = try container.decode(String.self, forKey: .artistName).htmlDecoded
+            self.releaseTitle = try container.decodeIfPresent(String.self, forKey: .releaseTitle)?.htmlDecoded
 
             // V1 API returns rotation as a string ("true"/"false"), V2 converter uses Bool
             if let rotationBool = try? container.decodeIfPresent(Bool.self, forKey: .rotation) {
@@ -236,7 +244,7 @@ public extension Playlist {
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
     }
 }
-
+    
 public extension Playlist {
     static let marketingList = Playlist(
         playcuts: placeholderPlaycuts,

@@ -1,8 +1,10 @@
 //
 //  RootTabView.swift
-//  WatchXYC Watch App
+//  WXYC
 //
-//  Created by Jake Bromberg on 2/25/25.
+//  Root tab navigation for watchOS.
+//
+//  Created by Jake Bromberg on 02/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

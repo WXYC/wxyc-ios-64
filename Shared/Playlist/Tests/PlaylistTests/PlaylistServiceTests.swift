@@ -1,3 +1,13 @@
+//
+//  PlaylistServiceTests.swift
+//  Playlist
+//
+//  Tests for PlaylistService subscription behavior.
+//
+//  Created by Jake Bromberg on 11/10/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Playlist
@@ -392,7 +402,7 @@ struct PlaylistServiceTests {
 
         // When
         let formattedDate = breakpoint.formattedDate
-
+    
         // Then
         // The exact format will depend on timezone, but it should contain a time
         #expect(!formattedDate.isEmpty)
@@ -486,12 +496,12 @@ struct PlaylistServiceTests {
         // Given - A service with no data
         let mockFetcher = MockPlaylistFetcher()
         mockFetcher.playlistToReturn = .empty
-        
+    
         let service = PlaylistService(fetcher: mockFetcher, interval: 0.05, cacheCoordinator: makeTestCacheCoordinator())
     
         // When - First fetch returns empty
         var iterator = service.updates().makeAsyncIterator()
-    
+        
         // The iterator will wait for data, but since empty is the only thing available
         // and we have no prior data, it should eventually yield empty
         let result = await service.fetchAndCachePlaylist()
@@ -499,7 +509,7 @@ struct PlaylistServiceTests {
         // Then - Empty should be accepted since we have no prior data
         #expect(result == .empty)
     }
-        
+    
     // MARK: - Cache Expiration Tests
     
     @Test("isCacheExpired returns true when cache is empty", .timeLimit(.minutes(1)))

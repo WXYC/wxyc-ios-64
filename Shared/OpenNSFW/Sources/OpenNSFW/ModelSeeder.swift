@@ -5,6 +5,9 @@
 //  Seeds the OpenNSFW model to the shared app group container
 //  so widget extensions can access it without bundling their own copy.
 //
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 import Logger
@@ -91,4 +94,3 @@ public enum ModelSeeder {
         return version
     }
 }
-

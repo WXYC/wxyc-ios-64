@@ -4,6 +4,9 @@
 //
 //  Data source for the v2 flowsheet API.
 //
+//  Created by Jake Bromberg on 01/01/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Foundation
 import Analytics

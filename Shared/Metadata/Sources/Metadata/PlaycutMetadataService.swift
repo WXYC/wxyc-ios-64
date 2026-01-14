@@ -1,6 +1,8 @@
 //
 //  PlaycutMetadataService.swift
-//  Core
+//  Metadata
+//
+//  Service for fetching and caching extended playcut metadata.
 //
 //  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -82,7 +84,7 @@ public actor PlaycutMetadataService {
         guard let artistId = discogsArtistId else {
             return .empty
         }
-
+        
         let cacheKey = MetadataCacheKey.artist(discogsId: artistId)
         
         // Check cache

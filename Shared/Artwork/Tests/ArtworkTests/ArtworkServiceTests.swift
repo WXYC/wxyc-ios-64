@@ -1,3 +1,13 @@
+//
+//  ArtworkServiceTests.swift
+//  Artwork
+//
+//  Tests for MultisourceArtworkService aggregation, caching, and NSFW filtering.
+//
+//  Created by Jake Bromberg on 11/10/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 import ImageIO

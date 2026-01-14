@@ -2,7 +2,10 @@
 //  WXYCLogo.swift
 //  WXUI
 //
+//  WXYC logo view component.
+//
 //  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

@@ -1,8 +1,11 @@
 //
 //  PlaylistServiceEnvironment.swift
-//  Core
+//  AppServices
 //
 //  SwiftUI Environment support for PlaylistService
+//
+//  Created by Jake Bromberg on 11/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -32,4 +35,3 @@ public extension EnvironmentValues {
         set { self[ArtworkServiceKey.self] = newValue }
     }
 }
-

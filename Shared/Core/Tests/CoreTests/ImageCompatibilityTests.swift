@@ -1,8 +1,11 @@
 //
 //  ImageCompatibilityTests.swift
-//  CoreTests
+//  Core
 //
-//  Created by Jake Bromberg on 1/9/26.
+//  Tests for cross-platform image encoding utilities.
+//
+//  Created by Jake Bromberg on 01/09/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

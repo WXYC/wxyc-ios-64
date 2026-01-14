@@ -1,3 +1,13 @@
+//
+//  DiskCache.swift
+//  Caching
+//
+//  File-based cache using extended attributes (xattr) for metadata storage.
+//
+//  Created by Jake Bromberg on 12/17/18.
+//  Copyright © 2018 WXYC. All rights reserved.
+//
+
 import Foundation
 import Logger
 import PostHog

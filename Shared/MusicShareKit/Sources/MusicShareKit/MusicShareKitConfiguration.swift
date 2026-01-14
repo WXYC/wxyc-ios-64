@@ -2,7 +2,10 @@
 //  MusicShareKitConfiguration.swift
 //  MusicShareKit
 //
+//  Configuration for MusicShareKit endpoints and behavior.
+//
 //  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

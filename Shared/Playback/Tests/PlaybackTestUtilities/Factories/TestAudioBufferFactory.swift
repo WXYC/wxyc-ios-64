@@ -1,3 +1,13 @@
+//
+//  TestAudioBufferFactory.swift
+//  Playback
+//
+//  Factory for creating test audio buffers.
+//
+//  Created by Jake Bromberg on 12/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 @preconcurrency import AVFoundation
 

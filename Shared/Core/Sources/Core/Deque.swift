@@ -5,9 +5,13 @@
 //  A minimal double-ended queue implementation extracted from swift-collections
 //  to avoid the compilation overhead of the full package.
 //
+//  / A double-ended queue (deque) that provides efficient insertion and removal
+//  / at both ends. Uses a circular buffer for O(1) amortized operations.
+//
+//  Created by Jake Bromberg on 01/12/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
-/// A double-ended queue (deque) that provides efficient insertion and removal
-/// at both ends. Uses a circular buffer for O(1) amortized operations.
 public struct Deque<Element>: Sendable where Element: Sendable {
     @usableFromInline
     internal var _storage: _DequeStorage<Element>
@@ -108,7 +112,7 @@ public struct Deque<Element>: Sendable where Element: Sendable {
         }
     }
 }
-
+    
 // MARK: - Collection Conformance
 
 extension Deque: Collection {
@@ -117,7 +121,7 @@ extension Deque: Collection {
     
     @inlinable
     public var endIndex: Int { count }
-    
+
     @inlinable
     public func index(after i: Int) -> Int {
         i + 1
@@ -340,7 +344,7 @@ internal final class _DequeStorage<Element>: @unchecked Sendable {
             newBuffer.advanced(by: i).initialize(to: _buffer[oldIndex])
             _buffer.advanced(by: oldIndex).deinitialize(count: 1)
         }
-        
+    
         _buffer.deallocate()
         _buffer = newBuffer
         _capacity = newCapacity

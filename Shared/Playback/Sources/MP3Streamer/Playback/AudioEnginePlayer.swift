@@ -1,3 +1,13 @@
+//
+//  AudioEnginePlayer.swift
+//  Playback
+//
+//  AVAudioEngine-based audio playback with buffer scheduling.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 #if !os(watchOS)
 
 @preconcurrency import AVFoundation
@@ -96,13 +106,13 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 
         playerNode.removeTap(onBus: 0)
     }
-
+        
     func play() throws {
         if stateBox.isPlaying {
             analytics?.capture("audioEnginePlayer already playing")
             return
         }
-
+        
         analytics?.capture("audioEnginePlayer play")
         
         if !engine.isRunning {

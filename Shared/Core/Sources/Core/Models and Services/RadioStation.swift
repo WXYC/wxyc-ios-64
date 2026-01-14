@@ -1,3 +1,13 @@
+//
+//  RadioStation.swift
+//  Core
+//
+//  Data model for radio station configuration (name, stream URL, etc.).
+//
+//  Created by Jake Bromberg on 12/17/18.
+//  Copyright © 2018 WXYC. All rights reserved.
+//
+
 import Foundation
 
 public struct RadioStation: Sendable {
@@ -21,4 +31,3 @@ public extension RadioStation {
         merchURL: URL(string: "https://merch.wxyc.org")!
     )
 }
-

@@ -1,3 +1,13 @@
+//
+//  ColorPalette.swift
+//  ColorPalette
+//
+//  Data model for generated color palettes derived from dominant colors.
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import SwiftUI
 
 #if canImport(UIKit)

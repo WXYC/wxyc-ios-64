@@ -1,8 +1,11 @@
 //
 //  InterruptionHandlingTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Audio session interruption tests for all PlaybackController implementations (iOS).
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

@@ -1,8 +1,11 @@
 //
 //  Extensions.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Utility extensions for widget implementation.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -92,4 +95,3 @@ extension ShapeStyle where Self == Color {
         Color(white: 1, opacity: 0.25)
     }
 }
-

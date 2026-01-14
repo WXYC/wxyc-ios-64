@@ -1,3 +1,13 @@
+//
+//  ServiceTypes.swift
+//  Core
+//
+//  Protocol definitions for web session and network service abstractions.
+//
+//  Created by Jake Bromberg on 12/17/18.
+//  Copyright © 2018 WXYC. All rights reserved.
+//
+
 import Foundation
 
 public extension TimeInterval {

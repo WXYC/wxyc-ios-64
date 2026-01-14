@@ -1,8 +1,11 @@
 //
 //  WallpaperUITests.swift
-//  WXYCUITests
+//  WXYC
 //
 //  UI tests for wallpaper selection and display
+//
+//  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

@@ -1,9 +1,12 @@
 //
 //  PlayerState.swift
-//  PlaybackCore
+//  Playback
 //
 //  State enum for low-level audio players (RadioPlayer, MP3Streamer).
 //  Does not include .interrupted since that is a controller-level concern.
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

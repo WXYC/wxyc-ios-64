@@ -1,8 +1,11 @@
 //
 //  PlayerHeaderViewApp.swift
-//  PlayerHeaderViewApp
+//  PlayerHeaderView
 //
-//  Created by Jake Bromberg on November 29, 2025
+//  App entry point for PlayerHeaderView development.
+//
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

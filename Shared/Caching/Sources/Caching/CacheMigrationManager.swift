@@ -1,3 +1,13 @@
+//
+//  CacheMigrationManager.swift
+//  Caching
+//
+//  Manages cache invalidation when app version changes to prevent stale data issues.
+//
+//  Created by Jake Bromberg on 12/04/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 import Logger
 
@@ -96,4 +106,3 @@ private extension Bundle {
         infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
     }
 }
-

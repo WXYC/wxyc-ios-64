@@ -1,3 +1,13 @@
+//
+//  ArtworkFetcherTests.swift
+//  Artwork
+//
+//  Tests for individual artwork fetcher implementations (iTunes, Last.fm, Discogs).
+//
+//  Created by Jake Bromberg on 11/10/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Artwork

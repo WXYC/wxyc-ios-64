@@ -1,8 +1,11 @@
 //
 //  PlaybackStateTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Tests for PlaybackState enum and its convenience properties.
+//
+//  Created by Jake Bromberg on 12/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

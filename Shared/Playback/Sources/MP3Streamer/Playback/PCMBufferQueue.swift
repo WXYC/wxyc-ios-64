@@ -1,3 +1,13 @@
+//
+//  PCMBufferQueue.swift
+//  Playback
+//
+//  Thread-safe queue for PCM audio buffers.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 @preconcurrency import AVFoundation
 import Core
 import os.lock
