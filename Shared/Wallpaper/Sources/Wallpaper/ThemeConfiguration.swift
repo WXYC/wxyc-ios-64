@@ -72,6 +72,14 @@ public final class ThemeConfiguration {
         "wallpaper.playbackBlendMode.\(themeID)"
     }
 
+    private func playbackDarknessKey(for themeID: String) -> String {
+        "wallpaper.playbackDarkness.\(themeID)"
+    }
+
+    private func playbackAlphaKey(for themeID: String) -> String {
+        "wallpaper.playbackAlpha.\(themeID)"
+    }
+
     // MARK: - Dependencies
 
     private let registry: any ThemeRegistryProtocol
@@ -233,6 +241,28 @@ public final class ThemeConfiguration {
     /// Returns the effective blend mode as a SwiftUI BlendMode.
     public var effectivePlaybackBlendMode: BlendMode {
         playbackBlendMode.blendMode
+    }
+
+    // MARK: - Playback Darkness
+
+    /// The darkness level for playback controls (0.0 = original, 1.0 = fully dark).
+    /// Stored per-theme so each theme can have its own darkness level.
+    public var playbackDarkness: Double = 0.0 {
+        didSet {
+            let key = playbackDarknessKey(for: selectedThemeID)
+            defaults.set(playbackDarkness, forKey: key)
+        }
+    }
+
+    // MARK: - Playback Alpha
+
+    /// The alpha/opacity for playback controls (0.0 = transparent, 1.0 = opaque).
+    /// Stored per-theme so each theme can have its own alpha level.
+    public var playbackAlpha: Double = 1.0 {
+        didSet {
+            let key = playbackAlphaKey(for: selectedThemeID)
+            defaults.set(playbackAlpha, forKey: key)
+        }
     }
 
     /// Optional accent brightness override (0.5 to 1.5). When nil, uses the theme's default.
@@ -420,6 +450,34 @@ public final class ThemeConfiguration {
         return PlaybackBlendMode.default.blendMode
     }
 
+    /// Returns the playback darkness for a given theme ID.
+    /// For the selected theme, uses in-memory value. For other themes, looks up stored value.
+    public func playbackDarkness(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return playbackDarkness
+        }
+
+        let key = playbackDarknessKey(for: themeID)
+        if defaults.object(forKey: key) != nil {
+            return defaults.double(forKey: key)
+        }
+        return 0.0
+    }
+
+    /// Returns the playback alpha for a given theme ID.
+    /// For the selected theme, uses in-memory value. For other themes, looks up stored value.
+    public func playbackAlpha(for themeID: String) -> Double {
+        if themeID == selectedThemeID {
+            return playbackAlpha
+        }
+
+        let key = playbackAlphaKey(for: themeID)
+        if defaults.object(forKey: key) != nil {
+            return defaults.double(forKey: key)
+        }
+        return 1.0
+    }
+
     // MARK: - Theme Appearance
 
     /// Returns the appearance for a specific theme, with any user overrides applied.
@@ -432,7 +490,9 @@ public final class ThemeConfiguration {
             accentColor: effectiveAccentColor(for: themeID),
             lcdMinOffset: lcdMinOffset(for: themeID),
             lcdMaxOffset: lcdMaxOffset(for: themeID),
-            playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID))
+            playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID)),
+            playbackDarkness: playbackDarkness(for: themeID),
+            playbackAlpha: playbackAlpha(for: themeID)
         )
     }
 
@@ -533,6 +593,18 @@ public final class ThemeConfiguration {
             playbackBlendMode = .default
         }
 
+        // Load playback darkness
+        let darknessKey = playbackDarknessKey(for: themeID)
+        playbackDarkness = defaults.object(forKey: darknessKey) != nil
+            ? defaults.double(forKey: darknessKey)
+            : 0.0
+
+        // Load playback alpha
+        let alphaKey = playbackAlphaKey(for: themeID)
+        playbackAlpha = defaults.object(forKey: alphaKey) != nil
+            ? defaults.double(forKey: alphaKey)
+            : 1.0
+
         // Load cached mesh gradient palette
         let paletteKey = meshGradientPaletteKey(for: themeID)
         if let data = defaults.data(forKey: paletteKey) {
@@ -580,6 +652,8 @@ public final class ThemeConfiguration {
         lcdMinOffset = Self.defaultLCDMinOffset
         lcdMaxOffset = Self.defaultLCDMaxOffset
         playbackBlendMode = .default
+        playbackDarkness = 0.0
+        playbackAlpha = 1.0
         meshGradientPalette = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }

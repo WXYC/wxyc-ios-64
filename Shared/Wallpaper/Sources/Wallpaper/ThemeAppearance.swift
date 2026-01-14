@@ -41,6 +41,12 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// during theme picker scrolling.
     public var playbackBlendMode: DiscreteTransition<BlendMode>
 
+    /// The darkness level for playback controls (0.0 = original color, 1.0 = fully darkened).
+    public var playbackDarkness: Double
+
+    /// The alpha/opacity for playback controls (0.0 = transparent, 1.0 = opaque).
+    public var playbackAlpha: Double
+
     public init(
         blurRadius: Double = 8.0,
         overlayOpacity: Double = 0.0,
@@ -48,7 +54,9 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         accentColor: AccentColor = AccentColor(hue: 23, saturation: 0.75, brightness: 1.0),
         lcdMinOffset: HSBOffset = .defaultMin,
         lcdMaxOffset: HSBOffset = .defaultMax,
-        playbackBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(PlaybackBlendMode.default.blendMode)
+        playbackBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(PlaybackBlendMode.default.blendMode),
+        playbackDarkness: Double = 0.0,
+        playbackAlpha: Double = 1.0
     ) {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
@@ -57,6 +65,8 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         self.lcdMinOffset = lcdMinOffset
         self.lcdMaxOffset = lcdMaxOffset
         self.playbackBlendMode = playbackBlendMode
+        self.playbackDarkness = playbackDarkness
+        self.playbackAlpha = playbackAlpha
     }
 
     /// Creates an interpolated appearance between two appearances.
@@ -81,7 +91,9 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
                 from: from.playbackBlendMode.snapped,
                 to: to.playbackBlendMode.snapped,
                 progress: progress
-            )
+            ),
+            playbackDarkness: from.playbackDarkness + (to.playbackDarkness - from.playbackDarkness) * progress,
+            playbackAlpha: from.playbackAlpha + (to.playbackAlpha - from.playbackAlpha) * progress
         )
     }
 }

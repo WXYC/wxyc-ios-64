@@ -761,19 +761,39 @@ private struct PerformanceControls: View {
     }
 }
 
-/// Controls for adjusting the playback button blend mode.
+/// Controls for adjusting the playback button appearance.
 private struct PlaybackButtonControls: View {
     @Bindable var configuration: ThemeConfiguration
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Picker("Blend Mode", selection: $configuration.playbackBlendMode) {
                 ForEach(PlaybackBlendMode.allCases) { mode in
                     Text(mode.displayName).tag(mode)
                 }
             }
 
-            Text("Changes the blend mode applied to the play/pause button.")
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Darkness")
+                    Spacer()
+                    Text(configuration.playbackDarkness, format: .percent.precision(.fractionLength(0)))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $configuration.playbackDarkness, in: 0...1)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Alpha")
+                    Spacer()
+                    Text(configuration.playbackAlpha, format: .percent.precision(.fractionLength(0)))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $configuration.playbackAlpha, in: 0...1)
+            }
+
+            Text("Adjusts the blend mode, darkness, and opacity of the play/pause button.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
