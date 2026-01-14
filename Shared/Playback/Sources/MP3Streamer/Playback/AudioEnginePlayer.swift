@@ -173,9 +173,10 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
                         self.eventContinuation.yield(.needsMoreBuffers)
                     }
                 }
-
-                self.scheduledBufferCount.increment()
             }
+
+            // Batch increment: single lock acquisition for all buffers
+            self.scheduledBufferCount.incrementBy(buffers.count)
         }
     }
 }
@@ -278,6 +279,13 @@ private final class ScheduledBufferCount: @unchecked Sendable {
     func increment() {
         os_unfair_lock_lock(lock)
         _count += 1
+        os_unfair_lock_unlock(lock)
+    }
+
+    /// Increments the count by the specified amount in a single lock acquisition.
+    func incrementBy(_ amount: Int) {
+        os_unfair_lock_lock(lock)
+        _count += amount
         os_unfair_lock_unlock(lock)
     }
 
