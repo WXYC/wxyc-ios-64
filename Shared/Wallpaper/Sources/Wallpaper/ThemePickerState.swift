@@ -35,8 +35,8 @@ public struct ThemeTransition: Equatable {
     public var toBlurRadius: Double { toTheme.manifest.blurRadius }
     public var fromOverlayOpacity: Double { fromTheme.manifest.overlayOpacity }
     public var toOverlayOpacity: Double { toTheme.manifest.overlayOpacity }
-    public var fromOverlayIsDark: Bool { fromTheme.manifest.overlayIsDark }
-    public var toOverlayIsDark: Bool { toTheme.manifest.overlayIsDark }
+    public var fromOverlayDarkness: Double { fromTheme.manifest.overlayDarkness }
+    public var toOverlayDarkness: Double { toTheme.manifest.overlayDarkness }
 
     // MARK: Accent Color
 
@@ -98,9 +98,9 @@ private struct CurrentOverlayOpacityKey: EnvironmentKey {
     static let defaultValue: Double = 0.0
 }
 
-/// Environment key for whether the current overlay is dark.
-private struct CurrentOverlayIsDarkKey: EnvironmentKey {
-    static let defaultValue: Bool = true
+/// Environment key for the current overlay darkness (0.0 = white, 1.0 = black).
+private struct CurrentOverlayDarknessKey: EnvironmentKey {
+    static let defaultValue: Double = 1.0
 }
 
 /// Environment key for the interpolated dark progress (0.0 = light, 1.0 = dark).
@@ -168,10 +168,10 @@ public extension EnvironmentValues {
         set { self[CurrentOverlayOpacityKey.self] = newValue }
     }
 
-    /// Whether the current overlay is dark.
-    var currentOverlayIsDark: Bool {
-        get { self[CurrentOverlayIsDarkKey.self] }
-        set { self[CurrentOverlayIsDarkKey.self] = newValue }
+    /// The current overlay darkness (0.0 = white, 1.0 = black).
+    var currentOverlayDarkness: Double {
+        get { self[CurrentOverlayDarknessKey.self] }
+        set { self[CurrentOverlayDarknessKey.self] = newValue }
     }
 
     /// Interpolated dark progress (0.0 = light, 1.0 = dark).

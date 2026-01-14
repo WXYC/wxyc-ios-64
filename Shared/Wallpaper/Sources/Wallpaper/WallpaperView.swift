@@ -17,7 +17,7 @@ public struct WallpaperView: View {
 
     public var body: some View {
         Group {
-            if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
+            if let theme = configuration.selectedTheme {
                 WallpaperRendererFactory.makeView(for: theme)
                     .id(theme.id)
             } else if let first = ThemeRegistry.shared.themes.first {

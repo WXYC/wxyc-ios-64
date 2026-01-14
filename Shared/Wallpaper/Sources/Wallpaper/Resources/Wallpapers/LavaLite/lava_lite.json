@@ -75,5 +75,5 @@
   },
   "blurRadius": 12.0,
   "overlayOpacity": 0.1,
-  "overlayIsDark": true
+  "overlayDarkness": 1.0
 }

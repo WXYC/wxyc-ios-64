@@ -32,7 +32,7 @@ struct WallpaperDetailView: View {
                     MaterialView(
                         blurRadius: wallpaper.manifest.blurRadius,
                         overlayOpacity: wallpaper.manifest.overlayOpacity,
-                        isDark: wallpaper.manifest.overlayIsDark
+                        darkProgress: wallpaper.manifest.overlayDarkness
                     )
                 }
                 .preferredColorScheme(wallpaper.manifest.foreground.colorScheme)

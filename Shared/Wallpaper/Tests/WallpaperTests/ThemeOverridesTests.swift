@@ -32,7 +32,7 @@ struct ThemeOverridesTests {
         let withBlur = ThemeOverrides(blurRadius: 12.0)
         #expect(!withBlur.isEmpty)
 
-        let withDark = ThemeOverrides(overlayIsDark: false)
+        let withDark = ThemeOverrides(overlayDarkness: 0.0)
         #expect(!withDark.isEmpty)
 
         let withMin = ThemeOverrides(lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1))
@@ -49,7 +49,7 @@ struct ThemeOverridesTests {
             accentSaturation: 0.5,
             overlayOpacity: 0.3,
             blurRadius: 12.0,
-            overlayIsDark: false,
+            overlayDarkness: 0.0,
             lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1),
             lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0)
         )
@@ -63,7 +63,7 @@ struct ThemeOverridesTests {
         #expect(overrides.accentSaturation == nil)
         #expect(overrides.overlayOpacity == nil)
         #expect(overrides.blurRadius == nil)
-        #expect(overrides.overlayIsDark == nil)
+        #expect(overrides.overlayDarkness == nil)
         #expect(overrides.lcdMinOffset == nil)
         #expect(overrides.lcdMaxOffset == nil)
     }
@@ -85,7 +85,7 @@ struct ThemeOverridesTests {
             accentSaturation: 0.5,
             overlayOpacity: 0.3,
             blurRadius: 12.0,
-            overlayIsDark: false,
+            overlayDarkness: 0.25,
             lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1),
             lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0)
         )

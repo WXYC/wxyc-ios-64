@@ -52,8 +52,8 @@ public final class ThemeConfiguration {
         "wallpaper.blurRadiusOverride.\(themeID)"
     }
 
-    private func overlayIsDarkOverrideKey(for themeID: String) -> String {
-        "wallpaper.overlayIsDarkOverride.\(themeID)"
+    private func overlayDarknessOverrideKey(for themeID: String) -> String {
+        "wallpaper.overlayDarknessOverride.\(themeID)"
     }
 
     private func lcdMinOffsetKey(for themeID: String) -> String {
@@ -95,6 +95,11 @@ public final class ThemeConfiguration {
             // Load overrides for the newly selected theme
             loadOverrides(for: selectedThemeID)
         }
+    }
+
+    /// Returns the currently selected theme, if it exists.
+    public var selectedTheme: LoadedTheme? {
+        registry.theme(for: selectedThemeID)
     }
 
     // MARK: - Accent Color Override
@@ -166,30 +171,30 @@ public final class ThemeConfiguration {
         return theme.manifest.blurRadius
     }
 
-    // MARK: - Overlay Dark/Light Override
+    // MARK: - Overlay Darkness Override
 
-    /// Optional dark/light override. When nil, uses the theme's default.
+    /// Optional darkness override (0.0 = white, 1.0 = black). When nil, uses the theme's default.
     /// Stored per-theme so each theme remembers its customizations.
-    public var overlayIsDarkOverride: Bool? {
+    public var overlayDarknessOverride: Double? {
         didSet {
-            let key = overlayIsDarkOverrideKey(for: selectedThemeID)
-            if let isDark = overlayIsDarkOverride {
-                defaults.set(isDark, forKey: key)
+            let key = overlayDarknessOverrideKey(for: selectedThemeID)
+            if let darkness = overlayDarknessOverride {
+                defaults.set(darkness, forKey: key)
             } else {
                 defaults.removeObject(forKey: key)
             }
         }
     }
 
-    /// Returns whether the overlay is dark, applying any override to the current theme's setting.
-    public var effectiveOverlayIsDark: Bool {
-        if let override = overlayIsDarkOverride {
+    /// Returns the overlay darkness (0.0 = white, 1.0 = black), applying any override to the current theme's setting.
+    public var effectiveOverlayDarkness: Double {
+        if let override = overlayDarknessOverride {
             return override
         }
         guard let theme = registry.theme(for: selectedThemeID) else {
-            return true
+            return 1.0
         }
-        return theme.manifest.overlayIsDark
+        return theme.manifest.overlayDarkness
     }
 
     /// Returns the effective overlay opacity, applying any override to the current theme's opacity.
@@ -404,22 +409,22 @@ public final class ThemeConfiguration {
         return theme.manifest.blurRadius
     }
 
-    /// Returns whether the overlay is dark for a given theme ID.
+    /// Returns the overlay darkness for a given theme ID.
     /// For the selected theme, uses in-memory override. For other themes, looks up stored override.
-    public func effectiveOverlayIsDark(for themeID: String) -> Bool {
+    public func effectiveOverlayDarkness(for themeID: String) -> Double {
         if themeID == selectedThemeID {
-            return effectiveOverlayIsDark
+            return effectiveOverlayDarkness
         }
         guard let theme = registry.theme(for: themeID) else {
-            return true
+            return 1.0
         }
 
         // Look up stored override for this theme
-        let isDarkKey = overlayIsDarkOverrideKey(for: themeID)
-        if defaults.object(forKey: isDarkKey) != nil {
-            return defaults.bool(forKey: isDarkKey)
+        let darknessKey = overlayDarknessOverrideKey(for: themeID)
+        if defaults.object(forKey: darknessKey) != nil {
+            return defaults.double(forKey: darknessKey)
         }
-        return theme.manifest.overlayIsDark
+        return theme.manifest.overlayDarkness
     }
 
     /// Returns the LCD min offset for a given theme ID.
@@ -482,11 +487,10 @@ public final class ThemeConfiguration {
 
     /// Returns the appearance for a specific theme, with any user overrides applied.
     public func appearance(for themeID: String) -> ThemeAppearance {
-        let isDark = effectiveOverlayIsDark(for: themeID)
-        return ThemeAppearance(
+        ThemeAppearance(
             blurRadius: effectiveBlurRadius(for: themeID),
             overlayOpacity: effectiveOverlayOpacity(for: themeID),
-            darkProgress: isDark ? 1.0 : 0.0,
+            darkProgress: effectiveOverlayDarkness(for: themeID),
             accentColor: effectiveAccentColor(for: themeID),
             lcdMinOffset: lcdMinOffset(for: themeID),
             lcdMaxOffset: lcdMaxOffset(for: themeID),
@@ -517,7 +521,7 @@ public final class ThemeConfiguration {
                 accentBrightness: accentBrightnessOverride,
                 overlayOpacity: overlayOpacityOverride,
                 blurRadius: blurRadiusOverride,
-                overlayIsDark: overlayIsDarkOverride,
+                overlayDarkness: overlayDarknessOverride,
                 lcdMinOffset: lcdMinOffset != Self.defaultLCDMinOffset ? lcdMinOffset : nil,
                 lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil
             )
@@ -530,7 +534,7 @@ public final class ThemeConfiguration {
             accentBrightness: loadOptionalDouble(accentBrightnessOverrideKey(for: themeID)),
             overlayOpacity: loadOptionalDouble(overlayOpacityOverrideKey(for: themeID)),
             blurRadius: loadOptionalDouble(blurRadiusOverrideKey(for: themeID)),
-            overlayIsDark: loadOptionalBool(overlayIsDarkOverrideKey(for: themeID)),
+            overlayDarkness: loadOptionalDouble(overlayDarknessOverrideKey(for: themeID)),
             lcdMinOffset: loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)),
             lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID))
         )
@@ -575,9 +579,9 @@ public final class ThemeConfiguration {
             ? defaults.double(forKey: blurKey)
             : nil
 
-        let isDarkKey = overlayIsDarkOverrideKey(for: themeID)
-        overlayIsDarkOverride = defaults.object(forKey: isDarkKey) != nil
-            ? defaults.bool(forKey: isDarkKey)
+        let overlayDarknessKey = overlayDarknessOverrideKey(for: themeID)
+        overlayDarknessOverride = defaults.object(forKey: overlayDarknessKey) != nil
+            ? defaults.double(forKey: overlayDarknessKey)
             : nil
 
         // Load LCD HSB offsets
@@ -594,9 +598,9 @@ public final class ThemeConfiguration {
         }
 
         // Load playback darkness
-        let darknessKey = playbackDarknessKey(for: themeID)
-        playbackDarkness = defaults.object(forKey: darknessKey) != nil
-            ? defaults.double(forKey: darknessKey)
+        let playbackDarknessKeyValue = playbackDarknessKey(for: themeID)
+        playbackDarkness = defaults.object(forKey: playbackDarknessKeyValue) != nil
+            ? defaults.double(forKey: playbackDarknessKeyValue)
             : 0.0
 
         // Load playback alpha
@@ -648,7 +652,7 @@ public final class ThemeConfiguration {
         accentBrightnessOverride = nil
         overlayOpacityOverride = nil
         blurRadiusOverride = nil
-        overlayIsDarkOverride = nil
+        overlayDarknessOverride = nil
         lcdMinOffset = Self.defaultLCDMinOffset
         lcdMaxOffset = Self.defaultLCDMaxOffset
         playbackBlendMode = .default

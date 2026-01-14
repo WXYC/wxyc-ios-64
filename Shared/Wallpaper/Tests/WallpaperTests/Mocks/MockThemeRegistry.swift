@@ -55,7 +55,7 @@ extension ThemeManifest {
         accent: AccentColor(hue: 30, saturation: 0.8),
         blurRadius: 8.0,
         overlayOpacity: 0.15,
-        overlayIsDark: true
+        overlayDarkness: 1.0
     )
 
     /// A light test theme with blue accent and light overlay.
@@ -69,6 +69,6 @@ extension ThemeManifest {
         accent: AccentColor(hue: 210, saturation: 0.6),
         blurRadius: 12.0,
         overlayOpacity: 0.1,
-        overlayIsDark: false
+        overlayDarkness: 0.0
     )
 }

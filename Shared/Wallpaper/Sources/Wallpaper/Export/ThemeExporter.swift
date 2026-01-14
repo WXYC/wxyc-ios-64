@@ -159,7 +159,7 @@ public final class ThemeExporter {
             buttonStyle: manifest.buttonStyle ?? .colored,
             blurRadius: manifest.blurRadius,
             overlayOpacity: manifest.overlayOpacity,
-            overlayIsDark: manifest.overlayIsDark
+            overlayDarkness: manifest.overlayDarkness
         )
     }
 

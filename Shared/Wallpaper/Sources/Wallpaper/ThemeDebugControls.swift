@@ -23,7 +23,7 @@ public struct ThemeDebugControls: View {
                 }
             }
 
-            if let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID) {
+            if let theme = configuration.selectedTheme {
                 // Use id to force view recreation when theme changes
                 Group {
                     if !theme.manifest.parameters.isEmpty {

@@ -85,11 +85,11 @@ private struct ThemeDebugPopoverContent: View {
 
                 Divider()
 
-                let theme = ThemeRegistry.shared.theme(for: configuration.selectedThemeID)
+                let theme = configuration.selectedTheme
 
                 // LCD brightness controls
                 DisclosureGroup(isExpanded: $isLCDBrightnessExpanded) {
-                    LCDBrightnessControls(configuration: configuration, theme: theme)
+                    LCDBrightnessControls(configuration: configuration)
                         .padding(.top, 8)
                 } label: {
                     Text("LCD Brightness")
@@ -265,26 +265,11 @@ private struct AccentColorControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Hue: \(Int(hueBinding.wrappedValue))°")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: hueBinding, in: 0...360)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Saturation: \(Int(saturationBinding.wrappedValue * 100))%")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: saturationBinding, in: 0...1)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Brightness: \(brightnessBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: brightnessBinding, in: 0.5...1.5)
-            }
+            HSBPicker(
+                hueDegrees: hueBinding,
+                saturation: saturationBinding,
+                brightness: brightnessBinding
+            )
 
             Divider()
 
@@ -353,7 +338,7 @@ private struct AccentColorControls: View {
     }
 }
 
-/// Controls for adjusting the theme's material properties (blur, dark/light, opacity).
+/// Controls for adjusting the theme's material properties (blur, darkness, opacity).
 private struct MaterialControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme
@@ -365,10 +350,10 @@ private struct MaterialControls: View {
         )
     }
 
-    private var isDarkBinding: Binding<Bool> {
+    private var darknessBinding: Binding<Double> {
         Binding(
-            get: { configuration.overlayIsDarkOverride ?? theme.manifest.overlayIsDark },
-            set: { configuration.overlayIsDarkOverride = $0 }
+            get: { configuration.overlayDarknessOverride ?? theme.manifest.overlayDarkness },
+            set: { configuration.overlayDarknessOverride = $0 }
         )
     }
 
@@ -391,10 +376,12 @@ private struct MaterialControls: View {
 
             Divider()
 
-            // Dark/Light toggle
-            Toggle(isOn: isDarkBinding) {
-                Text(isDarkBinding.wrappedValue ? "Dark Overlay" : "Light Overlay")
+            // Darkness slider (0 = white, 1 = black)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Darkness: \(Int(darknessBinding.wrappedValue * 100))%")
                     .font(.caption)
+                    .foregroundStyle(.secondary)
+                Slider(value: darknessBinding, in: 0...1)
             }
 
             Divider()
@@ -410,13 +397,13 @@ private struct MaterialControls: View {
             // Reset button
             let hasOverrides =
                 configuration.blurRadiusOverride != nil ||
-                configuration.overlayIsDarkOverride != nil ||
+                configuration.overlayDarknessOverride != nil ||
                 configuration.overlayOpacityOverride != nil
 
             if hasOverrides {
                 Button("Reset to Theme Default") {
                     configuration.blurRadiusOverride = nil
-                    configuration.overlayIsDarkOverride = nil
+                    configuration.overlayDarknessOverride = nil
                     configuration.overlayOpacityOverride = nil
                 }
                 .font(.caption)
@@ -428,11 +415,10 @@ private struct MaterialControls: View {
 /// Controls for adjusting the LCD visualizer HSB offsets.
 private struct LCDBrightnessControls: View {
     @Bindable var configuration: ThemeConfiguration
-    let theme: LoadedTheme?
 
-    /// The base accent color to apply offsets to
+    /// The base accent color to apply offsets to (uses effective accent including user overrides)
     private var baseAccent: AccentColor {
-        theme?.manifest.accent ?? AccentColor(hue: 23, saturation: 0.75, brightness: 1.0)
+        configuration.effectiveAccentColor
     }
 
     var body: some View {

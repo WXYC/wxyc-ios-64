@@ -32,7 +32,7 @@ struct ThemeManifestTests {
                 "accent": { "hue": 23, "saturation": 0.75 },
                 "blurRadius": 12.0,
                 "overlayOpacity": 0.25,
-                "overlayIsDark": true
+                "overlayDarkness": 1.0
             }
             """
             let data = Data(json.utf8)
@@ -40,7 +40,7 @@ struct ThemeManifestTests {
 
             #expect(manifest.blurRadius == 12.0)
             #expect(manifest.overlayOpacity == 0.25)
-            #expect(manifest.overlayIsDark == true)
+            #expect(manifest.overlayDarkness == 1.0)
         }
 
         @Test("ThemeManifest decodes light overlay from JSON")
@@ -58,7 +58,7 @@ struct ThemeManifestTests {
                 "accent": { "hue": 23, "saturation": 0.75 },
                 "blurRadius": 8.0,
                 "overlayOpacity": 0.0,
-                "overlayIsDark": false
+                "overlayDarkness": 0.0
             }
             """
             let data = Data(json.utf8)
@@ -66,7 +66,7 @@ struct ThemeManifestTests {
 
             #expect(manifest.blurRadius == 8.0)
             #expect(manifest.overlayOpacity == 0.0)
-            #expect(manifest.overlayIsDark == false)
+            #expect(manifest.overlayDarkness == 0.0)
         }
     }
 
@@ -87,7 +87,7 @@ struct ThemeManifestTests {
                 accent: AccentColor(hue: 30, saturation: 0.8),
                 blurRadius: 8.0,
                 overlayOpacity: 0.15,
-                overlayIsDark: true
+                overlayDarkness: 1.0
             )
 
             let overrides = ThemeOverrides(accentHue: 180, accentSaturation: 0.5)
@@ -109,7 +109,7 @@ struct ThemeManifestTests {
                 accent: AccentColor(hue: 30, saturation: 0.8),
                 blurRadius: 8.0,
                 overlayOpacity: 0.15,
-                overlayIsDark: true
+                overlayDarkness: 1.0
             )
 
             let overrides = ThemeOverrides() // all nil
@@ -119,7 +119,7 @@ struct ThemeManifestTests {
             #expect(result.accent.saturation == 0.8)
             #expect(result.blurRadius == 8.0)
             #expect(result.overlayOpacity == 0.15)
-            #expect(result.overlayIsDark == true)
+            #expect(result.overlayDarkness == 1.0)
         }
 
         @Test("applying(_:) merges material property overrides")
@@ -134,19 +134,19 @@ struct ThemeManifestTests {
                 accent: AccentColor(hue: 30, saturation: 0.8),
                 blurRadius: 8.0,
                 overlayOpacity: 0.15,
-                overlayIsDark: true
+                overlayDarkness: 1.0
             )
 
             let overrides = ThemeOverrides(
                 overlayOpacity: 0.5,
                 blurRadius: 16.0,
-                overlayIsDark: false
+                overlayDarkness: 0.0
             )
             let result = manifest.applying(overrides)
 
             #expect(result.blurRadius == 16.0)
             #expect(result.overlayOpacity == 0.5)
-            #expect(result.overlayIsDark == false)
+            #expect(result.overlayDarkness == 0.0)
         }
 
         @Test("applying(_:) preserves non-overridable properties")
@@ -162,7 +162,7 @@ struct ThemeManifestTests {
                 buttonStyle: .glass,
                 blurRadius: 8.0,
                 overlayOpacity: 0.15,
-                overlayIsDark: true
+                overlayDarkness: 1.0
             )
 
             let overrides = ThemeOverrides(accentHue: 180)

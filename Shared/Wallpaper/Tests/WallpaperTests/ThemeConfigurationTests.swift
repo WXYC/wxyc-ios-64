@@ -570,7 +570,7 @@ struct ThemeConfigurationTests {
             #expect(overrides.accentSaturation == nil)
             #expect(overrides.overlayOpacity == nil)
             #expect(overrides.blurRadius == nil)
-            #expect(overrides.overlayIsDark == nil)
+            #expect(overrides.overlayDarkness == nil)
         }
 
         @Test("overrides(for:) includes LCD offset only when changed from default")

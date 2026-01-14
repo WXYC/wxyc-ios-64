@@ -32,13 +32,13 @@ public struct ThemeManifest: Codable, Sendable {
     /// The opacity of the overlay tint (0.0 to 1.0).
     public let overlayOpacity: Double
 
-    /// Whether the overlay is dark (black) or light (white).
-    public let overlayIsDark: Bool
+    /// The overlay darkness (0.0 = white, 1.0 = black).
+    public let overlayDarkness: Double
 
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
         case foreground, accent, buttonStyle
-        case blurRadius, overlayOpacity, overlayIsDark
+        case blurRadius, overlayOpacity, overlayDarkness
     }
 
     public init(
@@ -53,7 +53,7 @@ public struct ThemeManifest: Codable, Sendable {
         buttonStyle: ButtonStyle = .colored,
         blurRadius: Double = 8.0,
         overlayOpacity: Double = 0.0,
-        overlayIsDark: Bool = true
+        overlayDarkness: Double = 1.0
     ) {
         self.id = id
         self.displayName = displayName
@@ -66,7 +66,7 @@ public struct ThemeManifest: Codable, Sendable {
         self.buttonStyle = buttonStyle
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
-        self.overlayIsDark = overlayIsDark
+        self.overlayDarkness = overlayDarkness
     }
 }
 
@@ -377,7 +377,7 @@ extension ThemeManifest {
             buttonStyle: buttonStyle ?? .colored,
             blurRadius: overrides.blurRadius ?? blurRadius,
             overlayOpacity: overrides.overlayOpacity ?? overlayOpacity,
-            overlayIsDark: overrides.overlayIsDark ?? overlayIsDark
+            overlayDarkness: overrides.overlayDarkness ?? overlayDarkness
         )
     }
 }
