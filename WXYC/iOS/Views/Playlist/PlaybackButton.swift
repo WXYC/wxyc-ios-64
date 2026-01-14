@@ -12,7 +12,6 @@ import Core
 import WXUI
 import PlayerHeaderView
 import Playback
-import Wallpaper
 
 struct PlaybackShape: InsettableShape {
     var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)
@@ -113,42 +112,36 @@ struct PlaybackShape: InsettableShape {
 }
 
 struct PlaybackButton: View {
-    @Environment(Singletonia.self) private var appState
-
     @State private var isPlaying: Bool = AudioPlayerController.shared.isPlaying
     @State private var isExpanded = false
 
+    var brightness: Double
+    var alpha: Double
     var animationDuration: Double
     var action: (() -> Void)?
 
     init(
+        brightness: Double = 1.0,
+        alpha: Double = 1.0,
         animationDuration: Double = 0.24,
         action: (() -> Void)? = nil
     ) {
+        self.brightness = brightness
+        self.alpha = alpha
         self.animationDuration = animationDuration
         self.action = action
     }
 
-    private var currentTheme: LoadedTheme? {
-        ThemeRegistry.shared.theme(for: appState.themeConfiguration.selectedThemeID)
+    private var buttonColor: Color {
+        Color(white: brightness, opacity: alpha)
     }
 
-    fileprivate func buttonColor() -> Color {
-        let foregroundStyle = currentTheme?.manifest.foreground ?? .light
-        switch foregroundStyle {
-        case .light:
-            return .white
-        case .dark:
-            return Color(uiColor: .darkGray)
-        }
-    }
-    
     var body: some View {
         Button(action: {
             action?()
         }) {
             PlaybackShape(playbackValue: isPlaying ? 0.0 : 1.0)
-                .fill(buttonColor())
+                .fill(buttonColor)
         }
         .buttonStyle(NoHighlightButtonStyle())
         .animation(.spring(), value: isExpanded)
@@ -171,9 +164,8 @@ struct PlaybackButton: View {
     PlaybackButtonExample()
         .frame(width: 100, height: 100)
         .padding()
-        .environment(Singletonia.shared)
 }
-    
+
 enum PlaybackButtonState {
     case playing
     case paused
