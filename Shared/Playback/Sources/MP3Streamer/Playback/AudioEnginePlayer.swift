@@ -145,8 +145,8 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
             guard let self else { return }
 
             // If we were stalled and now have buffers, we're recovering
-            if self.stateBox.isStalled {
-                self.stateBox.isStalled = false
+            // Uses atomic check-and-clear to avoid redundant lock acquisitions
+            if self.stateBox.clearStalledIfSet() {
                 self.eventContinuation.yield(.recoveredFromStall)
             }
 
@@ -155,17 +155,21 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
                 self.playerNode.scheduleBuffer(buffer) { [weak self] in
                     guard let self else { return }
 
-                    // Buffer finished playing
-                    self.scheduledBufferCount.decrement()
+                    // Buffer finished playing - get count after decrement in single lock acquisition
+                    let count = self.scheduledBufferCount.decrementAndGet()
+
+                    // Get playing state once to avoid redundant lock acquisitions
+                    let isPlaying = self.stateBox.isPlaying
 
                     // Detect stall: count hit zero while we were playing
-                    if self.scheduledBufferCount.count == 0 && self.stateBox.isPlaying {
-                        self.stateBox.isStalled = true
-                        self.eventContinuation.yield(.stalled)
+                    if count == 0 && isPlaying {
+                        if self.stateBox.setStalledIfPlaying() {
+                            self.eventContinuation.yield(.stalled)
+                        }
                     }
 
                     // Request more buffers if running low
-                    if self.scheduledBufferCount.count < 3 && self.stateBox.isPlaying {
+                    if count < 3 && isPlaying {
                         self.eventContinuation.yield(.needsMoreBuffers)
                     }
                 }
@@ -218,6 +222,37 @@ private final class PlayerStateBox: @unchecked Sendable {
             os_unfair_lock_unlock(lock)
         }
     }
+
+    /// Atomically clears the stalled flag if it was set.
+    /// Returns true if stalled was true and is now false.
+    func clearStalledIfSet() -> Bool {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        if _isStalled {
+            _isStalled = false
+            return true
+        }
+        return false
+    }
+
+    /// Atomically sets the stalled flag if currently playing.
+    /// Returns true if stalled was set.
+    func setStalledIfPlaying() -> Bool {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        if _isPlaying && !_isStalled {
+            _isStalled = true
+            return true
+        }
+        return false
+    }
+
+    /// Returns a snapshot of both playing and stalled states in a single lock acquisition.
+    func snapshot() -> (isPlaying: Bool, isStalled: Bool) {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        return (_isPlaying, _isStalled)
+    }
 }
 
 private final class ScheduledBufferCount: @unchecked Sendable {
@@ -250,6 +285,14 @@ private final class ScheduledBufferCount: @unchecked Sendable {
         os_unfair_lock_lock(lock)
         _count = max(0, _count - 1)
         os_unfair_lock_unlock(lock)
+    }
+
+    /// Decrements the count and returns the new value in a single lock acquisition.
+    func decrementAndGet() -> Int {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        _count = max(0, _count - 1)
+        return _count
     }
 
     func reset() {
