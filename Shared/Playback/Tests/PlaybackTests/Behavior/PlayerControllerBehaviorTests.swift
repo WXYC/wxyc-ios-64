@@ -1,9 +1,12 @@
 //
 //  PlayerControllerBehaviorTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Core playback behavior tests (play/stop/toggle) for all PlaybackController implementations.
 //  These tests define the expected behavioral contract that all player controllers must follow.
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

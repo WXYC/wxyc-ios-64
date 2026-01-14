@@ -2,7 +2,9 @@
 //  NowPlayingInfoCenterManager.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 2/15/25.
+//  Manages MPNowPlayingInfoCenter metadata updates.
+//
+//  Created by Jake Bromberg on 02/15/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
@@ -48,7 +50,7 @@ final class NowPlayingInfoCenterManager {
         update(playcut: item.playcut)
         update(artwork: item.artwork)
     }
-
+        
     // MARK: - Private
         
     private func update(playcut: Playcut) {

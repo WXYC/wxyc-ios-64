@@ -1,8 +1,11 @@
 //
 //  RepeatingTimer.swift
-//  Party Horn
+//  PartyHorn
 //
-//  Created by Jake Bromberg on 8/17/25.
+//  Repeating timer utility for animation timing.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

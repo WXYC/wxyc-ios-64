@@ -48,7 +48,7 @@ struct PlaylistView: View {
                 PlayerHeaderView(
                     visualizer: visualizer,
                     onDebugTapped: {
-                        #if DEBUG
+                        #if DEBUG || DEBUG_TESTFLIGHT
                         showVisualizerDebug = true
                         #endif
                     }
@@ -120,7 +120,7 @@ struct PlaylistView: View {
                     PostHogSDK.shared.capture("party horn presented")
                 }
         }
-        #if DEBUG
+        #if DEBUG || DEBUG_TESTFLIGHT
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(
                 visualizer: visualizer,

@@ -1,8 +1,11 @@
 //
 //  MockPlayer.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Mock implementation of PlayerProtocol (AVPlayer abstraction) for testing RadioPlayer.
+//
+//  Created by Jake Bromberg on 01/13/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

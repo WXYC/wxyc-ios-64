@@ -2,8 +2,10 @@
 //  Singletonia.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 11/13/25.
-//  Copyright © 2025 WXYC. All rights reserved.
+//  Observable singleton holding shared app state.
+//
+//  Created by Jake Bromberg on 01/12/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import AppServices

@@ -2,7 +2,8 @@
 //  ThemeOverrides.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 1/11/26.
+//  Created by Jake Bromberg on 01/11/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

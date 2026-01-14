@@ -1,6 +1,11 @@
 //
 //  WallpaperDetailView.swift
-//  WallpaperSampleApp
+//  Wallpaper
+//
+//  Detail view for inspecting wallpaper parameters.
+//
+//  Created by Jake Bromberg on 12/23/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

@@ -1,3 +1,13 @@
+//
+//  ScaledRenderTargetTests.swift
+//  Wallpaper
+//
+//  Tests for ScaledRenderTarget resolution handling.
+//
+//  Created by Jake Bromberg on 01/02/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 import Metal
 import Testing

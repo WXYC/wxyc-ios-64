@@ -1,3 +1,14 @@
+//
+//  DiscogsArtworkService.swift
+//  Artwork
+//
+//  Fetches album artwork from Discogs API.
+//  Falls back to artist images when album art is unavailable.
+//
+//  Created by Jake Bromberg on 04/12/23.
+//  Copyright © 2023 WXYC. All rights reserved.
+//
+
 import Secrets
 import Foundation
 import Core
@@ -30,7 +41,7 @@ final class DiscogsArtworkService: ArtworkService {
         guard let cgImage = createCGImage(from: imageData) else {
             throw ServiceError.noResults
         }
-        
+    
         return cgImage
     }
     
@@ -61,7 +72,7 @@ final class DiscogsArtworkService: ArtworkService {
             "key" : Self.key,
             "secret" : Self.secret,
         ])
-        
+    
         return components.url!
     }
     
@@ -79,7 +90,7 @@ final class DiscogsArtworkService: ArtworkService {
             "key" : Self.key,
             "secret" : Self.secret,
         ])
-        
+    
         return components.url!
     }
     
@@ -159,7 +170,7 @@ public struct Discogs {
             guard let year = year else { return nil }
             return Int(year)
         }
-        
+    
         /// First label name if available
         public var primaryLabel: String? {
             label?.first
@@ -192,7 +203,7 @@ public struct Discogs {
     }
     
     // MARK: - Release Models (for detailed info)
-    
+        
     public struct Release: Codable {
         let id: Int
         let title: String
@@ -218,7 +229,7 @@ public struct Discogs {
         public var primaryArtistId: Int? {
             artists?.first?.id
         }
-        
+    
         public var discogsWebURL: URL? {
             guard let uri = uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")
@@ -242,7 +253,7 @@ public struct Discogs {
         public var primaryArtistId: Int? {
             artists?.first?.id
         }
-        
+
         public var discogsWebURL: URL? {
             guard let uri = uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")

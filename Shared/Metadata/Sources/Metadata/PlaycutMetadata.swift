@@ -1,6 +1,8 @@
 //
 //  PlaycutMetadata.swift
-//  Core
+//  Metadata
+//
+//  Extended metadata for a playcut (artist bio, release info, etc.).
 //
 //  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.

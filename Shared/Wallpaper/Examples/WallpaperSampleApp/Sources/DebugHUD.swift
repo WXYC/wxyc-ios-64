@@ -1,8 +1,11 @@
 //
 //  DebugHUD.swift
-//  WallpaperSampleApp
+//  Wallpaper
 //
 //  Copied from DebugPanel for shader performance testing.
+//
+//  Created by Jake Bromberg on 12/23/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

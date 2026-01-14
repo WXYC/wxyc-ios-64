@@ -4,6 +4,9 @@
 //
 //  Long press gesture to enter theme picker mode.
 //
+//  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 #if os(iOS)
 import SwiftUI

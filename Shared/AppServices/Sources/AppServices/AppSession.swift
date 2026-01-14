@@ -1,8 +1,11 @@
 //
 //  AppSession.swift
-//  WatchXYC App
+//  AppServices
 //
-//  Created by Jake Bromberg on 2/28/25.
+//  Session timing utilities for debugging app startup performance.
+//  Logs collection validation with elapsed time since app launch.
+//
+//  Created by Jake Bromberg on 02/28/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

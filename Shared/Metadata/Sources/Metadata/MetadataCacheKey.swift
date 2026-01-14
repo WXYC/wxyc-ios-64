@@ -2,6 +2,11 @@
 //  MetadataCacheKey.swift
 //  Metadata
 //
+//  Cache key generation for playcut metadata lookups.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Core
 import Foundation
@@ -46,4 +51,3 @@ public enum MetadataCacheKey {
         "streaming-\(artistName)-\(songTitle)"
     }
 }
-

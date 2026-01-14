@@ -4,6 +4,9 @@
 //
 //  Protocol for audio processing algorithms that produce visualization data
 //
+//  Created by Jake Bromberg on 12/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 import Accelerate
@@ -24,4 +27,3 @@ protocol AudioProcessor: Sendable {
     /// - Parameter mode: The normalization mode to use
     func setNormalizationMode(_ mode: NormalizationMode)
 }
-

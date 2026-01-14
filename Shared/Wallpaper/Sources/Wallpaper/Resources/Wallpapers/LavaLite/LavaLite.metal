@@ -5,6 +5,9 @@
 //  Translated from Shadertoy by Hazel Quantock - 2013
 //  License: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
 //
+//  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 #include <metal_stdlib>
 using namespace metal;

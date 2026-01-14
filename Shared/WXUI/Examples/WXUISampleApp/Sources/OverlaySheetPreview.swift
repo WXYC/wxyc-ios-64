@@ -1,8 +1,11 @@
 //
 //  OverlaySheetPreview.swift
-//  WXUISampleApp
+//  WXUI
 //
 //  Preview for OverlaySheet component.
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import SwiftUI

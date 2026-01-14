@@ -2,7 +2,10 @@
 //  ThemePickerAnalytics.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 1/6/26.
+//  Analytics protocol for theme picker events.
+//
+//  Created by Jake Bromberg on 01/07/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -67,4 +70,3 @@ public protocol ThemePickerAnalytics: AnyObject {
     /// Records when user dismisses the theme tip.
     func record(_ event: ThemeTipDismissedEvent)
 }
-

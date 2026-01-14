@@ -2,8 +2,10 @@
 //  ChromaWave.metal
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/18/25.
 //  Translated from https://www.shadertoy.com/view/clVGDc
+//
+//  Created by Jake Bromberg on 12/20/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 #include <metal_stdlib>

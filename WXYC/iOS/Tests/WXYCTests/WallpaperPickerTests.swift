@@ -1,8 +1,11 @@
 //
 //  WallpaperPickerTests.swift
-//  WXYCTests
+//  WXYC
 //
 //  Tests for theme picker state management.
+//
+//  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

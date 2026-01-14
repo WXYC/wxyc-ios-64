@@ -1,8 +1,11 @@
 //
 //  BackgroundForegroundBehaviorTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  iOS background/foreground lifecycle tests for all PlaybackController implementations.
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

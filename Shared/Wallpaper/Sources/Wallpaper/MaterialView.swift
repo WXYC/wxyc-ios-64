@@ -2,7 +2,10 @@
 //  MaterialView.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 1/8/26.
+//  Material blur effect view for overlays.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import SwiftUI

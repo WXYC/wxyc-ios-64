@@ -1,3 +1,13 @@
+//
+//  StreamingAudioState.swift
+//  Playback
+//
+//  State machine for streaming audio lifecycle.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Represents the current state of the audio streamer

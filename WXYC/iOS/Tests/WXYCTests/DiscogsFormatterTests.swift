@@ -1,6 +1,6 @@
 //
 //  DiscogsFormatterTests.swift
-//  WXYCTests
+//  WXYC
 //
 //  SwiftUI-specific tests for DiscogsFormatter
 //
@@ -8,6 +8,9 @@
 //  on top of the Foundation-based DiscogsMarkupParser.
 //
 //  Parser logic tests are in MetadataTests/DiscogsMarkupParserTests.swift
+//
+//  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -17,7 +20,7 @@ import SwiftUI
 @testable import Metadata
 
 // MARK: - Mock Entity Resolver
-
+    
 /// Mock resolver for testing async entity resolution
 struct MockDiscogsEntityResolver: DiscogsEntityResolver {
     var artists: [Int: String] = [:]
@@ -153,7 +156,7 @@ struct SwiftUILinkStylingTests {
     @Test("URL has all required SwiftUI attributes")
     func urlHasAllRequiredAttributes() {
         let result = DiscogsFormatter.parseToAttributedString("[url=https://test.com]link[/url]")
-        
+    
         var hasLink = false
         var hasSecondaryColor = false
         var hasUnderline = false
@@ -178,7 +181,7 @@ struct SwiftUILinkStylingTests {
     @Test("Plain text has no foreground color")
     func plainTextHasNoForegroundColor() {
         let result = DiscogsFormatter.parseToAttributedString("plain text")
-        
+    
         for run in result.runs {
             #expect(run.foregroundColor == nil)
         }
@@ -187,7 +190,7 @@ struct SwiftUILinkStylingTests {
     @Test("Non-link formatted text has no foreground color")
     func nonLinkFormattedTextHasNoForegroundColor() {
         let result = DiscogsFormatter.parseToAttributedString("[b]bold[/b] and [i]italic[/i]")
-        
+    
         for run in result.runs {
             #expect(run.foregroundColor == nil)
         }
@@ -209,7 +212,7 @@ struct SwiftUILinkStylingTests {
                 }
             }
         }
-        
+
         #expect(linkCount == 2)
         #expect(secondaryColorCount == 2)
     }

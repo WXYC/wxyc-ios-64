@@ -1,5 +1,11 @@
 //
-// https://github.com/OurBigAdventure/Swift_NSFW_Detector
+//  NSFWDetector.swift
+//  OpenNSFW
+//
+//  NSFW content detection using CoreML model.
+//
+//  Created by Jake Bromberg on 03/21/24.
+//  Copyright © 2024 WXYC. All rights reserved.
 //
 
 #if canImport(UIKit) && canImport(Vision)

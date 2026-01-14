@@ -2,7 +2,10 @@
 //  WipeDownRevealModifier.swift
 //  PartyHorn
 //
-//  Created by Jake Bromberg on 12/2/25.
+//  SwiftUI modifier for wipe-down reveal animation.
+//
+//  Created by Jake Bromberg on 12/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

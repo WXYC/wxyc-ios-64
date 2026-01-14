@@ -2,7 +2,10 @@
 //  ExponentialBackoffTimer.swift
 //  Core
 //
-//  Created by Jake Bromberg on 3/1/25.
+//  Exponential backoff algorithm for retry logic with configurable limits.
+//
+//  Created by Jake Bromberg on 03/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

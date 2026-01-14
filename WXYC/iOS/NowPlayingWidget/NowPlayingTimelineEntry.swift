@@ -1,8 +1,11 @@
 //
 //  NowPlayingTimelineEntry.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Timeline entry model for widget updates.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import AppServices
@@ -61,4 +64,3 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.family = family
     }
 }
-

@@ -1,3 +1,14 @@
+//
+//  CacheCoordinator.swift
+//  Caching
+//
+//  Thread-safe actor for caching operations with TTL-based expiration.
+//  Provides the primary public API for the caching system.
+//
+//  Created by Jake Bromberg on 12/17/18.
+//  Copyright © 2018 WXYC. All rights reserved.
+//
+
 import Foundation
 import Logger
 import PostHog

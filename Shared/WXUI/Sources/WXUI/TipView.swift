@@ -2,7 +2,10 @@
 //  TipView.swift
 //  WXUI
 //
-//  Created by Jake Bromberg on 1/12/26.
+//  Tooltip-style hint view component.
+//
+//  Created by Jake Bromberg on 01/12/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import SwiftUI

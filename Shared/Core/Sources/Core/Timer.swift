@@ -2,7 +2,10 @@
 //  Timer.swift
 //  Core
 //
-//  Created by Jake Bromberg on 3/2/25.
+//  Simple elapsed time measurement utility for performance logging.
+//
+//  Created by Jake Bromberg on 03/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

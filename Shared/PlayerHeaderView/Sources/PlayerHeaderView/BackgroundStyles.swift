@@ -4,6 +4,9 @@
 //
 //  Background shape styles for the player header
 //
+//  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import SwiftUI
 
@@ -22,4 +25,3 @@ struct HeaderItemBackgroundStyle: ShapeStyle {
         .shadow(.inner(radius: 10))
     }
 }
-

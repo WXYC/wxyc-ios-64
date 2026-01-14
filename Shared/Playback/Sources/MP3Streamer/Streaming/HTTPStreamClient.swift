@@ -1,3 +1,13 @@
+//
+//  HTTPStreamClient.swift
+//  Playback
+//
+//  HTTP streaming client for continuous audio data download.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Errors that can occur during HTTP streaming

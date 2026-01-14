@@ -1,8 +1,11 @@
 //
 //  MockRemoteCommandCenter.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Mock implementation of RemoteCommandCenterProtocol for testing
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -83,7 +86,7 @@ public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
         seekBackwardCommand = _seekBackwardCommand
         changePlaybackPositionCommand = _changePlaybackPositionCommand
     }
-    
+
     // MARK: - Test Helpers
 
     /// Access to concrete mock commands for assertions

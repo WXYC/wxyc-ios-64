@@ -5,6 +5,9 @@
 //  Centralized service for managing widget state.
 //  Observes playback state and playlist updates to keep widgets synchronized.
 //
+//  Created by Jake Bromberg on 01/02/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 #if canImport(WidgetKit)
 import Caching

@@ -1,8 +1,10 @@
 //
-//  DiscogsAPIEntityResolver.swift
-//  WXYC
+//  DiscogsEntityResolver.swift
+//  Metadata
 //
-//  Created by Jake Bromberg on 11/27/25.
+//  Resolves Discogs artist/release entities for playcut enrichment.
+//
+//  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

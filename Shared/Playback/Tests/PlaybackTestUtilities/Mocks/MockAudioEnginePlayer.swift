@@ -1,8 +1,11 @@
 //
 //  MockAudioEnginePlayer.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Mock audio engine player for testing MP3Streamer
+//
+//  Created by Jake Bromberg on 01/07/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

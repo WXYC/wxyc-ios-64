@@ -1,8 +1,11 @@
 //
 //  Header.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Header component for widget layouts.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -44,4 +47,3 @@ struct Header: View {
         }
     }
 }
-

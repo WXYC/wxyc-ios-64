@@ -1,9 +1,12 @@
 //
 //  NowPlayingWidgetTests.swift
-//  WXYCTests
+//  WXYC
 //
 //  Tests for NowPlayingWidget provider and utilities.
 //  These tests verify the empty playlist handling that was causing widget crashes.
+//
+//  Created by Jake Bromberg on 12/08/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -27,7 +30,7 @@ extension RangeReplaceableCollection {
 }
 
 // MARK: - popFirst() Extension Tests
-
+    
 @Suite("safePopFirst Extension Tests")
 struct SafePopFirstExtensionTests {
     
@@ -125,7 +128,7 @@ func makeTestNowPlayingItem(id: UInt64 = 1, songTitle: String = "Test Song", art
 }
 
 // MARK: - Empty Playlist Handling Tests
-
+    
 @Suite("Empty Playlist Handling Tests")
 struct EmptyPlaylistHandlingTests {
     
@@ -133,7 +136,7 @@ struct EmptyPlaylistHandlingTests {
     func emptyPlaylistReturnsNil() {
         var playcuts: [Playcut] = []
         let result = playcuts.safePopFirst()
-        
+    
         #expect(result == nil)
     }
     
@@ -147,7 +150,7 @@ struct EmptyPlaylistHandlingTests {
             #expect(true)
             return
         }
-        
+    
         Issue.record("Should not reach here with empty array")
     }
     
@@ -175,7 +178,7 @@ struct EmptyPlaylistHandlingTests {
         if let (_, _) = nowPlayingItemsWithArtwork.safePopFirst() {
             usedPlaceholder = false
         }
-        
+    
         #expect(usedPlaceholder == true)
     }
     
@@ -189,7 +192,7 @@ struct EmptyPlaylistHandlingTests {
         if let (_, _) = nowPlayingItemsWithArtwork.safePopFirst() {
             usedPlaceholder = false
         }
-        
+    
         #expect(usedPlaceholder == false)
     }
     
@@ -211,7 +214,7 @@ struct EmptyPlaylistHandlingTests {
 }
 
 // MARK: - Regression Tests
-
+    
 @Suite("Widget Crash Regression Tests")
 struct WidgetCrashRegressionTests {
     
@@ -224,7 +227,7 @@ struct WidgetCrashRegressionTests {
         // Before the fix, this would crash
         // After the fix, this returns nil safely
         let result = emptyArray.safePopFirst()
-        
+    
         #expect(result == nil)
     }
     

@@ -1,3 +1,13 @@
+//
+//  PlaycutTests.swift
+//  Playlist
+//
+//  Tests for Playcut model and equality.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Playlist
@@ -126,5 +136,30 @@ struct PlaycutTests {
         )
 
         #expect(playcut1.artworkCacheKey != playcut2.artworkCacheKey)
+    }
+
+    // MARK: - HTML Entity Decoding Tests
+
+    @Test("Decoder decodes HTML entities in string fields")
+    func decoderDecodesHTMLEntities() throws {
+        let json = """
+        {
+            "id": 123,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "songTitle": "Test &#8217;Song&#8217;",
+            "artistName": "Raphael Rogi&#324;ski &amp; Ruzi&#269;njak Tajni",
+            "releaseTitle": "Test &lt;Album&gt;",
+            "labelName": "Label &quot;Name&quot;",
+            "rotation": "false"
+        }
+        """
+        let data = Data(json.utf8)
+        let playcut = try JSONDecoder().decode(Playcut.self, from: data)
+
+        #expect(playcut.artistName == "Raphael Rogiński & Ruzičnjak Tajni")
+        #expect(playcut.releaseTitle == "Test <Album>")
+        #expect(playcut.songTitle == "Test \u{2019}Song\u{2019}")
+        #expect(playcut.labelName == "Label \"Name\"")
     }
 }

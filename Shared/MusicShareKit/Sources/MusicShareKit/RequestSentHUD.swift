@@ -1,8 +1,11 @@
 //
 //  RequestSentHUD.swift
-//  RequestService
+//  MusicShareKit
 //
-//  Created by Jake Bromberg on 12/1/25.
+//  HUD view shown after successfully sending a song request.
+//
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

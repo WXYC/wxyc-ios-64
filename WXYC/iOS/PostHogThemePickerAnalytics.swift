@@ -2,7 +2,9 @@
 //  PostHogThemePickerAnalytics.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 1/6/26.
+//  PostHog implementation for theme picker analytics.
+//
+//  Created by Jake Bromberg on 01/07/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
@@ -37,4 +39,3 @@ final class PostHogThemePickerAnalytics: ThemePickerAnalytics {
         ])
     }
 }
-

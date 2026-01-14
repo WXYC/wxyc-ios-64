@@ -2,7 +2,10 @@
 //  AsyncMessageTests.swift
 //  Core
 //
-//  Created by Jake Bromberg on 1/4/26.
+//  Tests for AsyncMessage notification handling.
+//
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

@@ -1,12 +1,15 @@
 //
 //  PlaylistServiceCachingTests.swift
-//  CoreTests
+//  Playlist
 //
 //  Tests for PlaylistService caching functionality including:
 //  - Loading cached playlists on initialization
 //  - Cache expiration handling
 //  - Background refresh always fetching fresh data
 //  - Regular fetching caching results
+//
+//  Created by Jake Bromberg on 12/04/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -22,13 +25,13 @@ final class PlaylistServiceMockCache: Cache, @unchecked Sendable {
     private var dataStorage: [String: Data] = [:]
     private var metadataStorage: [String: CacheMetadata] = [:]
     private let lock = NSLock()
-
+    
     func metadata(for key: String) -> CacheMetadata? {
         lock.lock()
         defer { lock.unlock() }
         return metadataStorage[key]
     }
-    
+
     func data(for key: String) -> Data? {
         lock.lock()
         defer { lock.unlock() }
@@ -77,7 +80,7 @@ final class PlaylistServiceMockCache: Cache, @unchecked Sendable {
 
 @Suite("PlaylistService Caching Tests")
 struct PlaylistServiceCachingTests {
-    
+
     // MARK: - Cache Loading Tests
     
     @Test("Loads cached playlist on initialization if available", .timeLimit(.minutes(1)))
@@ -175,7 +178,7 @@ struct PlaylistServiceCachingTests {
             talksets: []
         )
         mockFetcher.playlistToReturn = freshPlaylist
-        
+    
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 0.1,
@@ -184,11 +187,11 @@ struct PlaylistServiceCachingTests {
     
         // Wait for initial load attempt
         try await Task.sleep(for: .milliseconds(100))
-        
+    
         // Then - Should fetch fresh data, not use expired cache
         var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
-        
+    
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Fresh Song")
         #expect(firstPlaylist?.playcuts.first?.songTitle != "Expired Song")
     }

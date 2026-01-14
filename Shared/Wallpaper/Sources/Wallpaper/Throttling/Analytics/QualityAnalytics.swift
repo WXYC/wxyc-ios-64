@@ -1,3 +1,13 @@
+//
+//  QualityAnalytics.swift
+//  Wallpaper
+//
+//  Analytics protocol for quality adjustment events.
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 // MARK: - Flush Reason
@@ -203,4 +213,3 @@ public protocol QualityAnalytics: AnyObject {
     /// Called on session boundaries (background, shader change, periodic).
     func flush(reason: QualityFlushReason)
 }
-

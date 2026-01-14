@@ -1,3 +1,13 @@
+//
+//  CacheTests.swift
+//  Caching
+//
+//  Tests for DiskCache file operations and xattr metadata storage.
+//
+//  Created by Jake Bromberg on 11/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 /*
  CacheTests.swift
 
@@ -204,7 +214,7 @@ struct DiskCacheTests {
         // Cleanup
         cache.remove(for: key)
     }
-    
+
     @Test("Stores and retrieves metadata via xattr")
     func storesAndRetrievesMetadataViaXattr() async throws {
         // Given
@@ -216,7 +226,7 @@ struct DiskCacheTests {
         // When
         cache.set(testData, metadata: metadata, for: key)
         let retrievedMetadata = cache.metadata(for: key)
-
+    
         // Then
         #expect(retrievedMetadata != nil)
         #expect(retrievedMetadata?.lifespan == 7200)
@@ -249,7 +259,7 @@ struct DiskCacheTests {
         cache.remove(for: key1)
         cache.remove(for: key2)
     }
-    
+
     @Test("Purges old-format files without xattr")
     func purgesOldFormatFilesWithoutXattr() async throws {
         // Given - Create a file directly without xattr (simulating old format)

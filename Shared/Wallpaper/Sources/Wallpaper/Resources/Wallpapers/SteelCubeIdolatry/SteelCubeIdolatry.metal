@@ -5,6 +5,9 @@
 //  Voronoi reflections with procedural neon environment.
 //  Ported from Shadertoy, cube map replaced with procedural neon lights.
 //
+//  Created by Jake Bromberg on 12/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 #include <metal_stdlib>
 using namespace metal;

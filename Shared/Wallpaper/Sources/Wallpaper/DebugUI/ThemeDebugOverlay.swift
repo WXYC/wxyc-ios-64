@@ -4,6 +4,9 @@
 //
 //  Floating button overlay that presents theme debug controls in a popover.
 //
+//  Created by Jake Bromberg on 12/18/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import ColorPalette
 import SwiftUI
@@ -203,6 +206,11 @@ private struct ThemeDebugPopoverContent: View {
         .frame(minWidth: 300, minHeight: 200, maxHeight: 600)
         .presentationCompactAdaptation(.popover)
         .presentationBackgroundInteraction(.enabled)
+        .presentationBackground {
+            Rectangle()
+                .fill(.gray)
+                .opacity(0.5)
+        }
         #if canImport(UIKit) && !os(tvOS)
         .sheet(isPresented: $showingShareSheet) {
             if let url = exportedFileURL {

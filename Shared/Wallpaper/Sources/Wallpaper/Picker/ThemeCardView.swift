@@ -2,7 +2,10 @@
 //  ThemeCardView.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/20/25.
+//  Card view for theme selection carousel.
+//
+//  Created by Jake Bromberg on 12/21/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

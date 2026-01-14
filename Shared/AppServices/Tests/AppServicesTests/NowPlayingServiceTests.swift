@@ -1,3 +1,13 @@
+//
+//  NowPlayingServiceTests.swift
+//  AppServices
+//
+//  Tests for NowPlayingService async sequence behavior and artwork fetching.
+//
+//  Created by Jake Bromberg on 11/10/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 import Artwork

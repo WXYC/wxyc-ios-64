@@ -1,8 +1,11 @@
 //
 //  PlaycutMetadataServiceCachingTests.swift
-//  MetadataTests
+//  Metadata
 //
 //  Tests for PlaycutMetadataService multi-level caching functionality
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -69,7 +72,7 @@ final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
         setKeys.removeAll()
     }
 }
-
+        
 // MARK: - Mock WebSession for Metadata Service
         
 final class MetadataMockWebSession: WebSession, @unchecked Sendable {

@@ -2,8 +2,10 @@
 //  Windowlight.metal
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/18/25.
 //  Rain on window effect - translated from Shadertoy.
+//
+//  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 #include <metal_stdlib>

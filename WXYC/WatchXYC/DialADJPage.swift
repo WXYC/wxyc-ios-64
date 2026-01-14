@@ -1,8 +1,10 @@
 //
 //  DialADJPage.swift
-//  WatchXYC App
+//  WXYC
 //
-//  Created by Jake Bromberg on 2/27/25.
+//  Dial-a-DJ request page for watchOS.
+//
+//  Created by Jake Bromberg on 02/27/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

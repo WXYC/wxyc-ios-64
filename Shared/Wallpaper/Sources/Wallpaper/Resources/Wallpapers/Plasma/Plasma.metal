@@ -2,7 +2,8 @@
 //  Plasma.metal
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/18/25.
+//  Created by Jake Bromberg on 12/20/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 #include <metal_stdlib>

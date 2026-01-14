@@ -5,6 +5,9 @@
 //  A generic type for transitioning between discrete values that cannot be
 //  mathematically interpolated (e.g., enums, blend modes).
 //
+//  Created by Jake Bromberg on 01/12/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import SwiftUI
 

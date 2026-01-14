@@ -1,3 +1,13 @@
+//
+//  QualityMetricsAggregator.swift
+//  Wallpaper
+//
+//  Aggregates quality metrics for analytics reporting.
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Aggregates thermal adjustment events in memory and flushes summaries to a reporter.

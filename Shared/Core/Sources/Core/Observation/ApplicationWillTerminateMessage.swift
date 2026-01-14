@@ -2,7 +2,10 @@
 //  ApplicationWillTerminateMessage.swift
 //  Core
 //
-//  Created by Jake Bromberg on 1/5/26.
+//  Notification message for app termination events.
+//
+//  Created by Jake Bromberg on 01/05/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 #if canImport(UIKit) && !os(watchOS)

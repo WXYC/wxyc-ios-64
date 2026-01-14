@@ -1,3 +1,13 @@
+//
+//  FullscreenVertex.metal
+//  Wallpaper
+//
+//  Vertex shader for fullscreen quad rendering.
+//
+//  Created by Jake Bromberg on 12/20/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 #include <metal_stdlib>
 using namespace metal;
 

@@ -1,8 +1,10 @@
 //
 //  Logger.swift
-//  Core
+//  Logger
 //
-//  Created by Jake Bromberg on 2/20/25.
+//  Unified logging API wrapping os.log for consistent debug output.
+//
+//  Created by Jake Bromberg on 02/21/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

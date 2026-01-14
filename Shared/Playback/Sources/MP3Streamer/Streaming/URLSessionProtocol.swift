@@ -1,3 +1,13 @@
+//
+//  URLSessionProtocol.swift
+//  Playback
+//
+//  Protocol for URLSession abstraction in streaming.
+//
+//  Created by Jake Bromberg on 12/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 #if !os(watchOS)
 
 import Foundation

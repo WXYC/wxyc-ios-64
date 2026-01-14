@@ -1,3 +1,11 @@
+//
+//  AdaptiveProfileTests.swift
+//  Wallpaper
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 import Testing
 @testable import Wallpaper

@@ -1,3 +1,13 @@
+//
+//  AudioEnginePlayerTests.swift
+//  Playback
+//
+//  Tests for AudioEnginePlayer buffer scheduling.
+//
+//  Created by Jake Bromberg on 12/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import PlaybackTestUtilities
 import Foundation

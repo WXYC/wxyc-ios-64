@@ -1,3 +1,13 @@
+//
+//  PCMBufferQueueTests.swift
+//  Playback
+//
+//  Tests for PCMBufferQueue thread safety.
+//
+//  Created by Jake Bromberg on 01/14/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Testing
 import PlaybackTestUtilities
 import Foundation

@@ -1,4 +1,13 @@
-/// Defines the color harmony algorithm used to generate a palette.
+//
+//  PaletteMode.swift
+//  ColorPalette
+//
+//  Enumeration of color harmony modes (triad, complementary, analogous, etc.).
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 public enum PaletteMode: String, Codable, CaseIterable, Sendable {
     /// Three colors, 120 degrees apart on the color wheel.
     case triad

@@ -4,6 +4,9 @@
 //
 //  Fast trigonometry using lookup tables for animation performance.
 //
+//  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 

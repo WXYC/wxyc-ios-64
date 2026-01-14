@@ -1,8 +1,11 @@
 //
-// ConfettiView.swift
-// Vortex
-// https://www.github.com/twostraws/Vortex
-// See LICENSE for license information.
+//  ConfettiView.swift
+//  PartyHorn
+//
+//  Animated confetti particle effect view.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

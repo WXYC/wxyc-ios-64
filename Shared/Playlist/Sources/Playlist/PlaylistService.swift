@@ -1,8 +1,8 @@
 //
 //  PlaylistService.swift
-//  WXYC
+//  Playlist
 //
-//  Created by Jake Bromberg on 12/15/18.
+//  Created by Jake Bromberg on 12/17/18.
 //  Copyright © 2018 WXYC. All rights reserved.
 //
 
@@ -112,7 +112,7 @@ public final actor PlaylistService: Sendable {
                 broadcast(playlist)
             }
 
-            Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries")
+            Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries \(playlist.entries)")
         } else {
             Log(.warning, "Ignoring empty playlist from background refresh - keeping existing data with \(currentPlaylist.entries.count) entries")
         }

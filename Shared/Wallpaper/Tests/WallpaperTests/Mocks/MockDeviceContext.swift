@@ -1,8 +1,11 @@
 //
 //  MockDeviceContext.swift
-//  WallpaperTests
+//  Wallpaper
 //
-//  Created by Jake Bromberg on 1/3/26.
+//  Mock device context for testing.
+//
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

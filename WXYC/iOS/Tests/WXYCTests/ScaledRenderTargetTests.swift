@@ -1,3 +1,13 @@
+//
+//  ScaledRenderTargetTests.swift
+//  WXYC
+//
+//  Tests for ScaledRenderTarget in app context.
+//
+//  Created by Jake Bromberg on 01/02/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 import Metal
 import Testing

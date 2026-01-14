@@ -2,7 +2,10 @@
 //  ThemeCarouselView.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/20/25.
+//  Horizontal carousel for browsing themes.
+//
+//  Created by Jake Bromberg on 12/21/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

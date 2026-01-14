@@ -1,9 +1,12 @@
 //
 //  AudioPlayerController.swift
-//  StreamingAudioPlayer
+//  Playback
 //
 //  High-level audio player controller that handles system integration.
 //  Works with any AudioPlayerProtocol implementation (MP3Streamer, RadioPlayer, etc.)
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import AVFoundation
@@ -74,7 +77,7 @@ public final class AudioPlayerController {
     public var isLoading: Bool {
         playbackIntended && (!isPlaying || player.state == .loading) && !player.state.isError
     }
-    
+
     // MARK: - Dependencies
     // These are nonisolated(unsafe) to allow cleanup in deinit
 

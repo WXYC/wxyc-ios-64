@@ -1,3 +1,13 @@
+//
+//  UserDefaults+WXYC.swift
+//  Caching
+//
+//  Shared UserDefaults for App Group access from widgets and extensions.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 // MARK: - UserDefaults Extension

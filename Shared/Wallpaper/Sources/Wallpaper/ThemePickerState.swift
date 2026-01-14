@@ -2,7 +2,10 @@
 //  ThemePickerState.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/20/25.
+//  Observable state for theme picker UI.
+//
+//  Created by Jake Bromberg on 12/21/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

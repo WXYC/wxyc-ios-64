@@ -1,8 +1,10 @@
 //
 //  WatchXYCApp.swift
-//  WatchXYC Watch App
+//  WXYC
 //
-//  Created by Jake Bromberg on 2/26/25.
+//  App entry point for watchOS.
+//
+//  Created by Jake Bromberg on 02/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

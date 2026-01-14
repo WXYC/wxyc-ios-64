@@ -1,3 +1,13 @@
+//
+//  LastFM.swift
+//  Artwork
+//
+//  Last.fm API types and artwork service for fetching album art.
+//
+//  Created by Jake Bromberg on 11/03/17.
+//  Copyright © 2017 WXYC. All rights reserved.
+//
+    
 import Foundation
 import Core
 import CoreGraphics
@@ -19,7 +29,7 @@ struct LastFM {
                 case large
                 case extralarge
                 case mega
-                
+            
                 static func <(lhs: Size, rhs: Size) -> Bool {
                     let lIndex = self.allCases.firstIndex(of: lhs)!
                     let rIndex = self.allCases.firstIndex(of: rhs)!
@@ -30,7 +40,7 @@ struct LastFM {
             
             let url: URL
             let size: Size
-            
+        
             enum CodingKeys: String, CodingKey {
                 case url = "#text"
                 case size = "size"
@@ -61,7 +71,7 @@ final class LastFMArtworkService: ArtworkService {
         let searchURL = makeSearchURL(for: playcut)
         let searchData = try await session.data(from: searchURL)
         let searchResponse = try decoder.decode(LastFM.SearchResponse.self, from: searchData)
-
+        
         let imageData = try await session.data(from: searchResponse.album.largestAlbumArt.url)
         
         guard let cgImage = createCGImage(from: imageData) else {
@@ -83,7 +93,7 @@ final class LastFMArtworkService: ArtworkService {
             URLQueryItem(name: "album",   value: playcut.releaseTitle),
             URLQueryItem(name: "format",  value: "json")
         ]
-        
+
         return components.url!
     }
 }

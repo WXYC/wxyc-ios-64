@@ -2,7 +2,10 @@
 //  WallpaperView.swift
 //  Wallpaper
 //
+//  Main wallpaper view with adaptive rendering.
+//
 //  Created by Jake Bromberg on 12/18/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

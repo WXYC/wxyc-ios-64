@@ -1,10 +1,13 @@
 //
 //  NowPlayingInfoCenterManagerTests.swift
-//  WXYCTests
+//  WXYC
 //
 //  Unit tests for NowPlayingInfoCenterManager.
 //  These tests verify that now playing info is correctly
 //  propagated to MPNowPlayingInfoCenter.
+//
+//  Created by Jake Bromberg on 12/29/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -122,7 +125,7 @@ struct NowPlayingInfoTests {
 
         let item = makeNowPlayingItem(releaseTitle: nil)
         manager.handleNowPlayingItem(item)
-        
+
         let info = mockInfoCenter.nowPlayingInfo
         #expect(info?[MPMediaItemPropertyAlbumTitle] as? String == "")
     }

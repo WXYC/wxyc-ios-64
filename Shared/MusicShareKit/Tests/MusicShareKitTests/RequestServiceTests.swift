@@ -1,8 +1,11 @@
 //
 //  RequestServiceTests.swift
-//  RequestService
+//  MusicShareKit
+//
+//  Tests for RequestService song request behavior.
 //
 //  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -79,4 +82,3 @@ extension RequestServiceError: Equatable {
         }
     }
 }
-

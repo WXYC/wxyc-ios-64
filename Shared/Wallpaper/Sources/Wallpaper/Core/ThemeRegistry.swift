@@ -3,6 +3,7 @@
 //  Wallpaper
 //
 //  Created by Jake Bromberg on 12/19/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

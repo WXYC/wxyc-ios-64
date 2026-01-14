@@ -2,7 +2,10 @@
 //  AsyncMessage.swift
 //  Core
 //
-//  Created by Jake Bromberg on 1/4/26.
+//  Base protocol for type-safe async notification messages.
+//
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 @preconcurrency import Foundation

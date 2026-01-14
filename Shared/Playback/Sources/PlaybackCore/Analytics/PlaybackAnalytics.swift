@@ -1,9 +1,12 @@
 //
 //  PlaybackAnalytics.swift
-//  PlaybackCore
+//  Playback
 //
 //  Unified analytics protocol for playback events.
 //  Replaces the scattered AudioAnalyticsProtocol and PlaybackMetricsReporter.
+//
+//  Created by Jake Bromberg on 12/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

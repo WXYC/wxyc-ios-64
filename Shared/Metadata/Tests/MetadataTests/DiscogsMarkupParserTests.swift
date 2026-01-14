@@ -1,6 +1,6 @@
 //
 //  DiscogsMarkupParserTests.swift
-//  MetadataTests
+//  Metadata
 //
 //  Unit tests for DiscogsMarkupParser
 //
@@ -15,7 +15,10 @@
 //  - Orphaned closing tags
 //  - Edge cases and error handling
 //
-
+//  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+    
 import Testing
 import Foundation
 @testable import Metadata
@@ -76,7 +79,7 @@ struct ArtistTagTests {
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "The Beatles")
     }
-    
+
     @Test("Parses artist link with special characters")
     func parsesArtistLinkWithSpecialCharacters() {
         let input = "[a=Guns N' Roses]"
@@ -126,9 +129,9 @@ struct BoldTagTests {
     func parsesBoldText() {
         let input = "[b]bold text[/b]"
         let result = DiscogsMarkupParser.parse(input)
-        
+
         #expect(String(result.characters) == "bold text")
-        
+
         let range = result.startIndex..<result.endIndex
         let intent = result[range].inlinePresentationIntent
         #expect(intent == .stronglyEmphasized)
@@ -164,7 +167,7 @@ struct BoldTagTests {
 }
 
 // MARK: - Italic Tag Tests
-
+    
 @Suite("Italic Tag Tests")
 struct ItalicTagTests {
     
@@ -172,9 +175,9 @@ struct ItalicTagTests {
     func parsesItalicText() {
         let input = "[i]italic text[/i]"
         let result = DiscogsMarkupParser.parse(input)
-        
+
         #expect(String(result.characters) == "italic text")
-        
+
         let range = result.startIndex..<result.endIndex
         let intent = result[range].inlinePresentationIntent
         #expect(intent == .emphasized)
@@ -203,7 +206,7 @@ struct ItalicTagTests {
 }
 
 // MARK: - Underline Tag Tests
-
+    
 @Suite("Underline Tag Tests")
 struct UnderlineTagTests {
     
@@ -211,9 +214,9 @@ struct UnderlineTagTests {
     func parsesUnderlinedText() {
         let input = "[u]underlined text[/u]"
         let result = DiscogsMarkupParser.parse(input)
-        
+
         #expect(String(result.characters) == "underlined text")
-        
+
         let range = result.startIndex..<result.endIndex
         let style = result[range].underlineStyle
         #expect(style == .single)
@@ -242,7 +245,7 @@ struct UnderlineTagTests {
 }
 
 // MARK: - Label Tag Tests
-
+    
 @Suite("Label Tag Tests")
 struct LabelTagTests {
     
@@ -252,7 +255,7 @@ struct LabelTagTests {
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "Blue Note Records")
     }
-    
+
     @Test("Parses label link with special characters")
     func parsesLabelLinkWithSpecialCharacters() {
         let input = "[l=4AD]"
@@ -269,7 +272,7 @@ struct LabelTagTests {
 }
 
 // MARK: - URL Tag Tests
-
+    
 @Suite("URL Tag Tests")
 struct URLTagTests {
     
@@ -277,9 +280,9 @@ struct URLTagTests {
     func parsesURLLink() {
         let input = "[url=https://example.com]Click here[/url]"
         let result = DiscogsMarkupParser.parse(input)
-        
+
         #expect(String(result.characters) == "Click here")
-        
+
         let range = result.startIndex..<result.endIndex
         let link = result[range].link
         #expect(link == URL(string: "https://example.com"))
@@ -332,7 +335,7 @@ struct IDTagTests {
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "")
     }
-    
+
     @Test("Skips master link by ID in sync mode")
     func skipsMasterLinkById() {
         let input = "[m123]"
@@ -356,7 +359,7 @@ struct IDTagTests {
 }
 
 // MARK: - Edge Cases
-
+    
 @Suite("Edge Cases")
 struct EdgeCaseTests {
     
@@ -366,7 +369,7 @@ struct EdgeCaseTests {
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "Just plain text with no formatting")
     }
-    
+
     @Test("Handles empty string")
     func handlesEmptyString() {
         let input = ""
@@ -467,7 +470,7 @@ struct AttributeVerificationTests {
         }
         #expect(foundBold)
     }
-    
+        
     @Test("Italic text has correct presentation intent")
     func italicHasCorrectIntent() {
         let result = DiscogsMarkupParser.parse("[i]text[/i]")
@@ -481,7 +484,7 @@ struct AttributeVerificationTests {
         }
         #expect(foundItalic)
     }
-    
+        
     @Test("Underlined text has correct style")
     func underlineHasCorrectStyle() {
         let result = DiscogsMarkupParser.parse("[u]text[/u]")
@@ -495,14 +498,14 @@ struct AttributeVerificationTests {
         }
         #expect(foundUnderline)
     }
-    
+        
     @Test("URL has link and underline attributes")
     func urlHasLinkAndUnderline() {
         let result = DiscogsMarkupParser.parse("[url=https://test.com]link[/url]")
         
         var hasLink = false
         var hasUnderline = false
-        
+    
         for run in result.runs {
             if run.link != nil {
                 hasLink = true
@@ -519,7 +522,7 @@ struct AttributeVerificationTests {
     @Test("Plain text has no special attributes")
     func plainTextHasNoSpecialAttributes() {
         let result = DiscogsMarkupParser.parse("plain text")
-        
+    
         for run in result.runs {
             #expect(run.inlinePresentationIntent == nil)
             #expect(run.underlineStyle == nil)
@@ -527,9 +530,9 @@ struct AttributeVerificationTests {
         }
     }
 }
-
+        
 // MARK: - Async Entity Resolution Tests
-
+    
 @Suite("Entity Resolution Tests")
 struct EntityResolutionTests {
     
@@ -542,7 +545,7 @@ struct EntityResolutionTests {
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
         
         #expect(String(result.characters) == "Salamanda")
-        
+    
         let range = result.startIndex..<result.endIndex
         #expect(result[range].link == URL(string: "https://www.discogs.com/artist/8390436"))
         #expect(result[range].underlineStyle == .single)
@@ -556,7 +559,7 @@ struct EntityResolutionTests {
         resolver.artists[456] = "Artist Two"
         
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
+    
         #expect(String(result.characters) == "Featuring Artist One and Artist Two")
     }
     
@@ -569,7 +572,7 @@ struct EntityResolutionTests {
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
         
         #expect(String(result.characters) == "Abbey Road")
-        
+    
         let range = result.startIndex..<result.endIndex
         #expect(result[range].link == URL(string: "https://www.discogs.com/release/99999"))
     }
@@ -583,7 +586,7 @@ struct EntityResolutionTests {
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
         
         #expect(String(result.characters) == "Kind of Blue")
-        
+    
         let range = result.startIndex..<result.endIndex
         #expect(result[range].link == URL(string: "https://www.discogs.com/master/12345"))
     }
@@ -595,7 +598,7 @@ struct EntityResolutionTests {
         resolver.artists[999] = "Yoko Ono"
         
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
+    
         #expect(String(result.characters) == "John Lennon collaborated with Yoko Ono")
     }
     
@@ -628,7 +631,7 @@ struct EntityResolutionTests {
         resolver.releases[12345] = "Sgt. Pepper's"
         
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
+    
         #expect(String(result.characters) == "Written by John Lennon and Paul McCartney. Produced by George Martin. See release Sgt. Pepper's for credits.")
     }
     
@@ -641,7 +644,7 @@ struct EntityResolutionTests {
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
         
         #expect(String(result.characters) == "Bold by Test Artist")
-        
+    
         var foundBold = false
         for run in result.runs {
             if run.inlinePresentationIntent == .stronglyEmphasized {
@@ -661,10 +664,10 @@ struct EntityResolutionTests {
         resolver.masters[3] = "The Master"
         
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
+    
         #expect(String(result.characters) == "Artist The Artist, Release The Album, Master The Master")
     }
-    
+        
     @Test("Strips disambiguation suffix from artist names")
     func stripsDisambiguationSuffix() async {
         var resolver = MockDiscogsEntityResolver()
@@ -674,7 +677,7 @@ struct EntityResolutionTests {
         resolver.artists[4] = "Blink-182"
         resolver.artists[5] = "Level 42"
         resolver.artists[6] = "Test (Band)"
-        
+    
         let result1 = await DiscogsMarkupParser.parse("[a1]", resolver: resolver)
         #expect(String(result1.characters) == "Prince")
         
@@ -693,7 +696,7 @@ struct EntityResolutionTests {
         let result6 = await DiscogsMarkupParser.parse("[a6]", resolver: resolver)
         #expect(String(result6.characters) == "Test (Band)")
     }
-    
+        
     @Test("Does not strip suffix from release or master names")
     func doesNotStripSuffixFromNonArtists() async {
         var resolver = MockDiscogsEntityResolver()
@@ -709,25 +712,24 @@ struct EntityResolutionTests {
 }
 
 // MARK: - Utility Tests
-
+        
 @Suite("Utility Tests")
 struct UtilityTests {
-    
+        
     @Test("stripDisambiguationSuffix removes numeric suffix")
     func stripDisambiguationSuffixRemovesNumericSuffix() {
         #expect(DiscogsMarkupParser.stripDisambiguationSuffix(from: "Artist (2)") == "Artist")
         #expect(DiscogsMarkupParser.stripDisambiguationSuffix(from: "Artist (123)") == "Artist")
     }
-    
+
     @Test("stripDisambiguationSuffix preserves non-numeric parentheses")
     func stripDisambiguationSuffixPreservesNonNumeric() {
         #expect(DiscogsMarkupParser.stripDisambiguationSuffix(from: "Artist (Band)") == "Artist (Band)")
         #expect(DiscogsMarkupParser.stripDisambiguationSuffix(from: "Level 42") == "Level 42")
     }
-    
+
     @Test("stripDisambiguationSuffix handles no suffix")
     func stripDisambiguationSuffixHandlesNoSuffix() {
         #expect(DiscogsMarkupParser.stripDisambiguationSuffix(from: "Artist") == "Artist")
     }
 }
-

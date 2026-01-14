@@ -2,7 +2,10 @@
 //  MusicServiceRegistry.swift
 //  MusicShareKit
 //
+//  Registry of music service handlers for URL matching.
+//
 //  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -33,4 +36,3 @@ public final class MusicServiceRegistry: Sendable {
         return service.parse(url: url)
     }
 }
-

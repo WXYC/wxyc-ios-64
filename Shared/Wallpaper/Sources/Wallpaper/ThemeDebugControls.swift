@@ -2,7 +2,10 @@
 //  ThemeDebugControls.swift
 //  Wallpaper
 //
+//  Debug UI control definitions for theme parameters.
+//
 //  Created by Jake Bromberg on 12/18/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

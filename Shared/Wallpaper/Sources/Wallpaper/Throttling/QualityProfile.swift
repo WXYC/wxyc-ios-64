@@ -2,7 +2,10 @@
 //  QualityProfile.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 1/5/26.
+//  Quality profile configuration (resolution, frame rate).
+//
+//  Created by Jake Bromberg on 01/05/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

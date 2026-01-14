@@ -1,8 +1,11 @@
 //
 //  MockAudioPlayer.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Mock implementation of AudioPlayerProtocol for testing
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -117,4 +120,3 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
         eventContinuation?.yield(.recovery)
     }
 }
-

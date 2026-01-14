@@ -1,8 +1,11 @@
 //
 //  SoundPlayer.swift
-//  Party Horn
+//  PartyHorn
 //
-//  Created by Jake Bromberg on 8/13/25.
+//  Audio player for party horn sound effects.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import AVFoundation

@@ -1,8 +1,10 @@
 //
 //  NowPlayingWidget.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Created by Jake Bromberg on 1/13/22.
+//  Main widget definition and configuration.
+//
+//  Created by Jake Bromberg on 01/12/22.
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 

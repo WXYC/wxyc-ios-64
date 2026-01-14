@@ -1,3 +1,13 @@
+//
+//  RadioPlayerTests.swift
+//  Playback
+//
+//  Tests for RadioPlayer AVPlayer operations.
+//
+//  Created by Jake Bromberg on 11/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 import AVFoundation

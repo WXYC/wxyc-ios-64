@@ -1,8 +1,11 @@
 //
 //  MockAudioSession.swift
-//  PlaybackTestUtilities
+//  Playback
 //
 //  Mock implementation of AudioSessionProtocol for testing
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -27,9 +30,9 @@ public final class MockAudioSession: AudioSessionProtocol {
 
     public var shouldThrowOnSetCategory = false
     public var shouldThrowOnSetActive = false
-
-    public init() {}
     
+    public init() {}
+
     // MARK: - AudioSessionProtocol
 
     public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
@@ -84,9 +87,9 @@ public final class MockAudioSession: AudioSessionProtocol {
     public var setActiveCallCount = 0
     public var lastActiveState: Bool?
     public var shouldThrowOnSetActive = false
-    
-    public init() {}
         
+    public init() {}
+    
     // MARK: - AudioSessionProtocol
     
     public func setActive(_ active: Bool) throws {

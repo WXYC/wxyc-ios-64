@@ -2,7 +2,10 @@
 //  BackgroundGradient.swift
 //  WXUI
 //
-//  Created by Jake Bromberg on 11/25/25.
+//  Gradient background configuration.
+//
+//  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI
@@ -76,4 +79,3 @@ public struct WXYCBackground: ShapeStyle {
         )
     }
 }
-

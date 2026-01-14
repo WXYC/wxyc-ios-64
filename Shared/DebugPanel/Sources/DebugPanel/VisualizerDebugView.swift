@@ -4,6 +4,9 @@
 //
 //  Debug interface for toggling processors and normalization modes
 //
+//  Created by Jake Bromberg on 12/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import SwiftUI
 import AppServices
@@ -12,7 +15,7 @@ import PlayerHeaderView
 import Playlist
 import Wallpaper
 
-#if DEBUG
+#if DEBUG || DEBUG_TESTFLIGHT
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
@@ -112,7 +115,7 @@ public struct VisualizerDebugView: View {
                             Text(type.displayName).tag(type)
                         }
                     }
-                
+                    
                     Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
                     
                     // FFT Settings (shown for FFT or Both)

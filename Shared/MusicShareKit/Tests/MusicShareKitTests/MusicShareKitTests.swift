@@ -1,3 +1,13 @@
+//
+//  MusicShareKitTests.swift
+//  MusicShareKit
+//
+//  Tests for music service URL parsing.
+//
+//  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 import Testing
 @testable import MusicShareKit
@@ -111,7 +121,7 @@ struct AlternativeURLFormatTests {
         let track = service.parse(url: albumOnlyURL)
         #expect(track?.identifier == "1234567890")
     }
-    
+        
     // Spotify
     @Test("Spotify handles spotify: scheme URLs")
     func spotifyHandlesSpotifyScheme() {
@@ -190,7 +200,7 @@ struct MusicServiceRegistryTests {
         let track = registry.parse(url: url)
         #expect(track?.service == expectedService)
     }
-    
+
     @Test("Returns nil for unknown URLs")
     func returnsNilForUnknownURLs() {
         let unknownURL = URL(string: "https://example.com/some-page")!
@@ -234,9 +244,9 @@ struct MusicTrackDisplayTests {
         #expect(track.displayTitle == TestURLs.spotify.absoluteString)
     }
 }
-
+        
 // MARK: - API Response Parsing Tests
-
+        
 @Suite("API Response Parsing")
 struct APIResponseParsingTests {
     

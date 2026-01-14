@@ -2,7 +2,10 @@
 //  DeviceContext.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 1/3/26.
+//  Device capability detection for quality decisions.
+//
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 #if canImport(UIKit)

@@ -2,7 +2,10 @@
 //  ShaderDirectiveStore.swift
 //  Wallpaper
 //
+//  Parses and stores shader directive comments.
+//
 //  Created by Jake Bromberg on 12/22/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

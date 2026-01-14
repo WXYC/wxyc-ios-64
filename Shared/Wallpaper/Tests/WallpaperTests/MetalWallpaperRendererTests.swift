@@ -1,12 +1,15 @@
 //
 //  MetalWallpaperRendererTests.swift
-//  WallpaperTests
+//  Wallpaper
 //
 //  Tests for MetalWallpaperRenderer, particularly snapshot capture functionality.
 //
 //  Note: These tests require Metal shader compilation which only happens in Xcode builds.
 //  When running via `swift test`, the Metal library won't be available and tests will skip.
 //  Run these tests through Xcode for full coverage.
+//
+//  Created by Jake Bromberg on 01/12/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

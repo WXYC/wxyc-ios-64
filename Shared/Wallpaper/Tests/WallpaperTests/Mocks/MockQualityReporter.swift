@@ -1,3 +1,13 @@
+//
+//  MockQualityReporter.swift
+//  Wallpaper
+//
+//  Mock quality reporter for testing.
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 @testable import Wallpaper
 

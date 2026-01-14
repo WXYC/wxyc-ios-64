@@ -2,7 +2,10 @@
 //  ThemeConfiguration.swift
 //  Wallpaper
 //
+//  Complete theme configuration combining manifest and overrides.
+//
 //  Created by Jake Bromberg on 12/18/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Caching

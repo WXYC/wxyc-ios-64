@@ -2,7 +2,10 @@
 //  MusicService.swift
 //  MusicShareKit
 //
+//  Protocol for music service URL handlers.
+//
 //  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -30,4 +33,3 @@ extension MusicService {
         return track
     }
 }
-

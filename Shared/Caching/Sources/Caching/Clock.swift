@@ -1,3 +1,13 @@
+//
+//  Clock.swift
+//  Caching
+//
+//  Time abstraction for testable TTL-based cache expiration.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 // MARK: - Clock Protocol

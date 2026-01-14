@@ -2,7 +2,10 @@
 //  ShareExtensionView.swift
 //  MusicShareKit
 //
+//  SwiftUI view for the share extension interface.
+//
 //  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 #if canImport(UIKit)
@@ -153,7 +156,7 @@ public struct ShareExtensionView: View {
             Text("Send a request")
                 .font(.title3)
                 .fontWeight(.semibold)
-
+            
             artworkView
             
             VStack {

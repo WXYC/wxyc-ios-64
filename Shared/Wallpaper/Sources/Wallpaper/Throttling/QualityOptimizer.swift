@@ -1,3 +1,13 @@
+//
+//  QualityOptimizer.swift
+//  Wallpaper
+//
+//  Optimizes render quality based on performance signals.
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Computes optimal wallpaper FPS, scale, and LOD adjustments based on quality momentum.

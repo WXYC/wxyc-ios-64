@@ -1,10 +1,13 @@
 //
 //  PlaybackController.swift
-//  Core
+//  Playback
 //
 //  Protocol defining the common interface for audio playback controllers.
 //  Both RadioPlayerController and AudioPlayerController conform to this protocol,
 //  enabling dependency injection and swappable implementations.
+//
+//  Created by Jake Bromberg on 12/04/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -31,7 +34,7 @@ public protocol PlaybackController: AnyObject, Observable {
 
     /// Whether audio is currently playing
     var isPlaying: Bool { get }
-
+    
     /// Whether playback is loading (play initiated but not yet playing)
     /// Controllers without loading state should return `false`
     var isLoading: Bool { get }
@@ -45,7 +48,7 @@ public protocol PlaybackController: AnyObject, Observable {
     /// - Parameter reason: A description of why playback was toggled (for analytics)
     /// - Throws: If playback cannot be started when toggling from stopped to playing
     func toggle(reason: String) throws
-
+    
     /// Stops playback and disconnects from stream
     /// For live streaming, this resets the connection so resume plays live audio
     func stop()
@@ -60,7 +63,7 @@ public protocol PlaybackController: AnyObject, Observable {
     /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
     /// Controllers without render tap support should no-op.
     func installRenderTap()
-
+    
     /// Remove the render tap when visualization is no longer needed.
     /// Controllers without render tap support should no-op.
     func removeRenderTap()

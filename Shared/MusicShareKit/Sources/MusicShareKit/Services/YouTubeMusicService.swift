@@ -2,7 +2,10 @@
 //  YouTubeMusicService.swift
 //  MusicShareKit
 //
+//  YouTube Music URL parsing and track metadata extraction.
+//
 //  Created by Jake Bromberg on 11/24/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

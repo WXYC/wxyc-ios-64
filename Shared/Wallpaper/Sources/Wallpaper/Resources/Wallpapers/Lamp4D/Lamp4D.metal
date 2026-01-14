@@ -2,10 +2,11 @@
 //  Lamp4D.metal
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 12/18/25.
 //  Simplex noise based colorful lamp effect
 //  Ported from shadertoy https://www.shadertoy.com/view/3lKBD3
-//  Copyright © 2013 Inigo Quilez
+//
+//  Created by Jake Bromberg on 12/20/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 #include <metal_stdlib>

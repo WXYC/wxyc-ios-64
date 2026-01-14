@@ -5,6 +5,9 @@
 //  Processes audio buffers to produce FFT and RMS data for visualization
 //  Separated from playback control as a dedicated observation layer
 //
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import AVFoundation
 import Accelerate

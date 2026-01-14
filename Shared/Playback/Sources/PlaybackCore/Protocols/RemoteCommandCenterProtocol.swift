@@ -1,8 +1,11 @@
 //
 //  RemoteCommandCenterProtocol.swift
-//  StreamingAudioPlayer
+//  Playback
 //
 //  Protocol for remote command center abstraction (wraps MPRemoteCommandCenter)
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
@@ -57,4 +60,3 @@ public final class SystemRemoteCommandCenter: RemoteCommandCenterProtocol {
     public var changePlaybackPositionCommand: RemoteCommandProtocol { commandCenter.changePlaybackPositionCommand }
 }
 #endif
-

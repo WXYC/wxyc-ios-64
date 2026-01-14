@@ -4,6 +4,9 @@
 //
 //  Theme color configuration types.
 //
+//  Created by Jake Bromberg on 12/31/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import SwiftUI
 
@@ -231,4 +234,3 @@ public struct HSBOffset: Codable, Sendable, Equatable {
         )
     }
 }
-

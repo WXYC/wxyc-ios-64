@@ -2,7 +2,10 @@
 //  MainActorMessage.swift
 //  Core
 //
-//  Created by Jake Bromberg on 1/5/26.
+//  Base protocol for type-safe MainActor notification messages.
+//
+//  Created by Jake Bromberg on 01/05/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 @preconcurrency import Foundation

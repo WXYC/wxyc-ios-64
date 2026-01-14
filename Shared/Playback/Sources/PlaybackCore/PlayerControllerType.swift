@@ -4,6 +4,9 @@
 //
 //  Enumeration of available PlaybackController implementations
 //
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 import PostHog

@@ -4,6 +4,9 @@
 //
 //  Playback control button view
 //
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import SwiftUI
 import Wallpaper
@@ -15,7 +18,7 @@ struct PlaybackControlsView: View {
     var isPlaying: Bool
     var isLoading: Bool
     var onPlayTapped: () -> Void
-    
+
     @Environment(\.themeAppearance) private var appearance
 
     init(isPlaying: Bool, isLoading: Bool = false, onPlayTapped: @escaping () -> Void) {

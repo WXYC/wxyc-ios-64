@@ -1,9 +1,12 @@
 //
 //  AnalyticsIntegrationTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Analytics capture and reason string tests for all PlaybackController implementations.
 //  Verifies that all controllers have identical analytics behavior.
+//
+//  Created by Jake Bromberg on 12/27/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

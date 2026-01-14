@@ -5,6 +5,9 @@
 //  Protocol abstracting UserDefaults for testability.
 //  Enables parallel test execution via InMemoryDefaults.
 //
+//  Created by Jake Bromberg on 01/13/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Foundation
 

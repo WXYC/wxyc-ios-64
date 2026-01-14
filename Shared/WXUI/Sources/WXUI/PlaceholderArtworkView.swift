@@ -2,7 +2,10 @@
 //  PlaceholderArtworkView.swift
 //  WXUI
 //
+//  Placeholder view shown while artwork loads.
+//
 //  Created by Jake Bromberg on 11/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

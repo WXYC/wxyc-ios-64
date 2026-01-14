@@ -1,3 +1,13 @@
+//
+//  MP3StreamerConfiguration.swift
+//  Playback
+//
+//  Configuration for MP3 streaming buffer sizes and behavior.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Configuration for streaming audio playback

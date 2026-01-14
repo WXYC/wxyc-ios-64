@@ -1,8 +1,11 @@
 //
 //  AudioPlayerProtocol.swift
-//  StreamingAudioPlayer
+//  Playback
 //
 //  Protocol for low-level audio player abstraction
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

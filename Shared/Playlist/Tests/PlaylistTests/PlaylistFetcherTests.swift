@@ -1,3 +1,13 @@
+//
+//  PlaylistFetcherTests.swift
+//  Playlist
+//
+//  Tests for PlaylistFetcher data retrieval.
+//
+//  Created by Jake Bromberg on 12/08/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 import Analytics

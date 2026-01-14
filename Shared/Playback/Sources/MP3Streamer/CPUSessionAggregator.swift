@@ -1,8 +1,11 @@
 //
 //  CPUSessionAggregator.swift
-//  MP3Streamer
+//  Playback
 //
 //  Aggregates CPU samples into session-level events.
+//
+//  Created by Jake Bromberg on 01/09/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation

@@ -1,3 +1,13 @@
+//
+//  CacheCoordinatorTests.swift
+//  Caching
+//
+//  Tests for CacheCoordinator TTL, expiration, and concurrent access behavior.
+//
+//  Created by Jake Bromberg on 11/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 /*
  CacheCoordinatorTests.swift
 
@@ -50,7 +60,7 @@ final class MockClock: Clock, @unchecked Sendable {
         _now = time
     }
 }
-    
+
 // MARK: - Mock Cache
 
 final class MockCache: Cache, @unchecked Sendable {

@@ -5,6 +5,9 @@
 //  Ray-marched refractive SDF shapes with subtle FBM displacement.
 //  Ported from a Shadertoy snippet (environment-map sampling replaced with a procedural sky).
 //
+//  Created by Jake Bromberg on 12/23/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 #include <metal_stdlib>
 using namespace metal;

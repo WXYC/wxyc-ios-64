@@ -1,8 +1,11 @@
 //
 //  ContentView.swift
-//  WXYC TV
+//  WXYC
 //
-//  Created by Jake Bromberg on 3/1/25.
+//  Main content view for tvOS app.
+//
+//  Created by Jake Bromberg on 03/02/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

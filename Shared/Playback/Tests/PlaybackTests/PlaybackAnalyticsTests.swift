@@ -1,8 +1,11 @@
 //
 //  PlaybackAnalyticsTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Tests for PlaybackAnalytics protocol and MockPlaybackAnalytics.
+//
+//  Created by Jake Bromberg on 12/26/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

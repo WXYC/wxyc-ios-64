@@ -1,6 +1,8 @@
 //
 //  StreamingService.swift
-//  WXYC
+//  Metadata
+//
+//  Enumeration of music streaming services with URL generation.
 //
 //  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -71,4 +73,3 @@ public enum StreamingService {
         }
     }
 }
-

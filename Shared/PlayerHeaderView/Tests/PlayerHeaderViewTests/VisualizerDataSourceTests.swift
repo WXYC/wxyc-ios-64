@@ -1,8 +1,11 @@
 //
 //  VisualizerDataSourceTests.swift
-//  PlayerHeaderViewTests
+//  PlayerHeaderView
 //
 //  Tests for VisualizerDataSource FFT/RMS processing
+//
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

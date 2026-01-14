@@ -4,6 +4,9 @@
 //
 //  Animated mesh gradient with configurable colors and time offset.
 //
+//  Created by Jake Bromberg on 01/09/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import SwiftUI
 

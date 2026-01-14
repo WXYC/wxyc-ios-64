@@ -2,7 +2,10 @@
 //  BackgroundLayer.swift
 //  Wallpaper
 //
-//  Created by Jake Bromberg on 11/19/25.
+//  Root background layer compositing wallpaper and overlays.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import SwiftUI

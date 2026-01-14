@@ -1,3 +1,13 @@
+//
+//  HSBColor.swift
+//  ColorPalette
+//
+//  Hue-Saturation-Brightness color representation with SwiftUI conversion.
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import SwiftUI
 
 #if canImport(UIKit)

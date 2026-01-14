@@ -1,3 +1,13 @@
+//
+//  DiskCacheReproductionTests.swift
+//  Caching
+//
+//  Tests for cache behavior with corrupted or problematic data.
+//
+//  Created by Jake Bromberg on 12/06/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Caching
@@ -43,7 +53,7 @@ struct DiskCacheReproductionTests {
         // (value(for:) throws but does NOT delete on decode failure)
         #expect(mockCache.data(for: key) != nil, "Corrupted entry should persist after decode failure")
     }
-    
+        
     @Test("Corrupted data causes repeated failures on subsequent reads")
     func corruptedDataCausesRepeatedFailures() async {
         // Given: A mock cache with corrupted data
@@ -87,7 +97,7 @@ struct DiskCacheReproductionTests {
         
         // Verify expired data is present
         #expect(mockCache.data(for: expiredKey) != nil)
-        
+    
         // When: Create a new CacheCoordinator (which calls purgeExpiredEntries in init)
         let coordinator = CacheCoordinator(cache: mockCache)
         await coordinator.waitForPurge()
@@ -154,7 +164,7 @@ struct DiskCacheReproductionTests {
         
         // Then: Entry should still exist (we might want to read it as String later)
         #expect(mockCache.data(for: key) != nil, "Entry should persist after type mismatch error")
-        
+
         // And we CAN read it as the correct type
         let retrieved: String = try await coordinator.value(for: key)
         #expect(retrieved == "Not a number")

@@ -2,7 +2,10 @@
 //  ImageCompatability.swift
 //  Core
 //
-//  Created by Jake Bromberg on 3/1/25.
+//  Cross-platform image type aliases and encoding utilities (UIKit/AppKit).
+//
+//  Created by Jake Bromberg on 11/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

@@ -1,3 +1,13 @@
+//
+//  PlaycutMetadataTests.swift
+//  Metadata
+//
+//  Tests for PlaycutMetadata model and parsing.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Metadata

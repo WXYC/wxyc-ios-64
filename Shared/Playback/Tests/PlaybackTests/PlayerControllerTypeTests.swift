@@ -1,3 +1,11 @@
+//
+//  PlayerControllerTypeTests.swift
+//  Playback
+//
+//  Created by Jake Bromberg on 12/11/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 import PostHog
@@ -30,11 +38,11 @@ struct PlayerControllerTypeTests {
         // But for local unit testing it should be fine.
         #expect(PlayerControllerType.loadPersisted() == .defaultType)
     }
-
+        
     @Test("Manual selection overrides everything")
     func manualSelectionOverrides() {
         PlayerControllerType.clearPersisted()
-        
+    
         // Simulate user selection
         var type = PlayerControllerType.mp3Streamer
         type.persist() // This sets manual flag to true
@@ -49,10 +57,10 @@ struct PlayerControllerTypeTests {
         var type = PlayerControllerType.radioPlayer
         type.persist()
         #expect(PlayerControllerType.loadPersisted() == .radioPlayer)
-        
+
         // Act
         PlayerControllerType.clearPersisted()
-        
+
         // Assert
         #expect(PlayerControllerType.loadPersisted() == .defaultType)
     }

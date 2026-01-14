@@ -1,3 +1,13 @@
+//
+//  PlaylistAPIVersionTests.swift
+//  Playlist
+//
+//  Tests for PlaylistAPIVersion detection.
+//
+//  Created by Jake Bromberg on 01/01/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Testing
 import Foundation
 @testable import Playlist

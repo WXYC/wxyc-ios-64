@@ -1,8 +1,11 @@
 //
 //  Haptics.swift
-//  Party Horn
+//  PartyHorn
 //
-//  Created by Jake Bromberg on 8/16/25.
+//  Haptic feedback controller for party horn interactions.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import UIKit

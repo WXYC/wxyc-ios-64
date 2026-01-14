@@ -5,6 +5,9 @@
 //  Monitors frame rate by sampling frame times periodically.
 //  Provides early warning for GPU overload before thermal state changes.
 //
+//  Created by Jake Bromberg on 01/04/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Foundation
 import QuartzCore

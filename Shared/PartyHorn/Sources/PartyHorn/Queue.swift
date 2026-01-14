@@ -1,15 +1,18 @@
 //
 //  Queue.swift
-//  Party Horn
+//  PartyHorn
 //
-//  Created by Jake Bromberg on 8/15/25.
+//  Thread-safe queue for sequencing party horn events.
+//
+//  Created by Jake Bromberg on 11/30/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation
 
 internal struct Queue<T>: RandomAccessCollection {
     typealias Index = Array<T>.Index
-
+    
     let capacity: Int
     
     init(capacity: Int) {

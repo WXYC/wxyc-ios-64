@@ -1,3 +1,13 @@
+//
+//  DominantColorExtractor.swift
+//  ColorPalette
+//
+//  Extracts dominant colors from images using vImage histogram analysis.
+//
+//  Created by Jake Bromberg on 12/28/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
+
 import Accelerate
 import Core
 

@@ -1,8 +1,11 @@
 //
 //  Provider.swift
-//  NowPlayingWidget
+//  WXYC
 //
-//  Copyright © 2022 WXYC. All rights reserved.
+//  Timeline provider for widget refresh.
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import WidgetKit
@@ -133,4 +136,3 @@ final class Provider: TimelineProvider, Sendable {
         }
     }
 }
-

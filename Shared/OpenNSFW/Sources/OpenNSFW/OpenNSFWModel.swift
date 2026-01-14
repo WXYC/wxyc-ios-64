@@ -1,9 +1,11 @@
 //
-// OpenNSFWModel.swift
+//  OpenNSFWModel.swift
+//  OpenNSFW
 //
-// CoreML model wrapper for OpenNSFW classification.
-// Based on auto-generated code from Xcode, but manually included
-// to avoid bundling the model with the package.
+//  CoreML model wrapper for NSFW classification.
+//
+//  Created by Jake Bromberg on 12/07/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import CoreML

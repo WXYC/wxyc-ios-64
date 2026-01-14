@@ -1,3 +1,13 @@
+//
+//  AdaptiveProfile.swift
+//  Wallpaper
+//
+//  Device-specific quality profile for adaptive rendering.
+//
+//  Created by Jake Bromberg on 01/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
 import Foundation
 
 /// Persistent thermal optimization profile for a specific shader.

@@ -1,8 +1,11 @@
 //
 //  PlaylistServiceRaceConditionTests.swift
-//  WXYC
+//  Playlist
 //
 //  Unit tests to verify PlaylistService doesn't start multiple fetch tasks
+//
+//  Created by Jake Bromberg on 11/25/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing

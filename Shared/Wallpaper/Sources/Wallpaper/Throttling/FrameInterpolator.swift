@@ -2,6 +2,11 @@
 //  FrameInterpolator.swift
 //  Wallpaper
 //
+//  Interpolates frames for smooth throttled rendering.
+//
+//  Created by Jake Bromberg on 01/09/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Foundation
 import Metal

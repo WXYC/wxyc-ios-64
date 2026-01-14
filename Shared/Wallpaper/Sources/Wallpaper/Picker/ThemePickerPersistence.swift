@@ -2,6 +2,11 @@
 //  ThemePickerPersistence.swift
 //  Wallpaper
 //
+//  Persistence for selected theme preference.
+//
+//  Created by Jake Bromberg on 01/07/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
 
 import Caching
 import Foundation

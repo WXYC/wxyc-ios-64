@@ -1,8 +1,11 @@
 //
 //  ThemeConfigurationTests.swift
-//  WallpaperTests
+//  Wallpaper
 //
 //  Tests for ThemeConfiguration using mock registry and isolated UserDefaults.
+//
+//  Created by Jake Bromberg on 01/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Testing

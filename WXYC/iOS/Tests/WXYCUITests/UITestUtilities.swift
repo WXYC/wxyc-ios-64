@@ -1,8 +1,11 @@
 //
 //  UITestUtilities.swift
-//  WXYCUITests
+//  WXYC
 //
 //  Reusable utilities for UI tests with condition-based waiting.
+//
+//  Created by Jake Bromberg on 01/05/26.
+//  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import XCTest

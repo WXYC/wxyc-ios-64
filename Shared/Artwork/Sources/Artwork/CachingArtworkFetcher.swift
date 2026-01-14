@@ -1,8 +1,12 @@
 //
-//  CachingArtworkService.swift
-//  Core
+//  CachingArtworkFetcher.swift
+//  Artwork
 //
-//  Created by Jake Bromberg on 3/1/25.
+//  Extends CacheCoordinator with ArtworkService conformance for cached artwork retrieval.
+//  Handles HEIF/PNG encoding and image scaling for efficient storage.
+//
+//  Created by Jake Bromberg on 03/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

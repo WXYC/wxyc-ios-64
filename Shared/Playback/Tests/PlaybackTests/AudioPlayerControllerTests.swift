@@ -1,6 +1,6 @@
 //
 //  AudioPlayerControllerTests.swift
-//  PlaybackTests
+//  Playback
 //
 //  Unit tests for AudioPlayerController-specific functionality.
 //
@@ -11,6 +11,9 @@
 //  This file contains only AudioPlayerController-specific tests:
 //  - Audio session category configuration
 //  - Remote command center configuration
+//
+//  Created by Jake Bromberg on 12/14/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Testing
@@ -23,7 +26,7 @@ import AVFoundation
 @Suite("AudioPlayerController Tests")
 @MainActor
 struct AudioPlayerControllerTests {
-    
+
     #if os(iOS) || os(tvOS)
 
     // MARK: - Audio Session Tests

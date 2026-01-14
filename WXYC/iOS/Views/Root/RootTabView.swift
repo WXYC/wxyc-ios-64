@@ -2,7 +2,9 @@
 //  RootTabView.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 11/13/25.
+//  Root tab navigation for iOS app.
+//
+//  Created by Jake Bromberg on 11/22/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 

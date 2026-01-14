@@ -2,8 +2,10 @@
 //  Intents.swift
 //  WXYC
 //
-//  Created by Jake Bromberg on 1/10/23.
-//  Copyright © 2023 WXYC. All rights reserved.
+//  App Intent definitions for Siri and Shortcuts.
+//
+//  Created by Jake Bromberg on 06/12/22.
+//  Copyright © 2022 WXYC. All rights reserved.
 //
 
 import AppIntents

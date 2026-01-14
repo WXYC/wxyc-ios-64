@@ -2,7 +2,10 @@
 //  DebugHUD.swift
 //  DebugPanel
 //
+//  Debug HUD overlay displaying performance metrics and state info.
+//
 //  Created by Jake Bromberg on 12/23/25.
+//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import SwiftUI

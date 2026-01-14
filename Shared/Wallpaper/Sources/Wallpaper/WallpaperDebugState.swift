@@ -4,6 +4,9 @@
 //
 //  Manages state for the theme debug overlay.
 //
+//  Created by Jake Bromberg on 12/29/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import Foundation
 import Observation

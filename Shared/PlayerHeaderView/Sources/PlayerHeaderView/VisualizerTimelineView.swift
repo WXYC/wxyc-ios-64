@@ -4,6 +4,9 @@
 //
 //  TimelineView-based animated audio visualizer with falling dots on stop
 //
+//  Created by Jake Bromberg on 12/01/25.
+//  Copyright © 2025 WXYC. All rights reserved.
+//
 
 import SwiftUI
 import Playback
@@ -140,7 +143,7 @@ public struct VisualizerTimelineView: View {
         .onAppear {
             cachedShowFPS = visualizer.showFPS
         }
-#if DEBUG
+#if DEBUG || DEBUG_TESTFLIGHT
         .onTapGesture {
             onDebugTapped?()
         }
