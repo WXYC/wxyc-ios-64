@@ -311,8 +311,10 @@ fragment half4 refractNoiseFrag(
         float2 offset = (float2(float(i) + 0.5f, float(k) + 0.5f) / float(AA)) - 0.5f;
         float2 uv = (fragCoord + offset - u.resolution * 0.5f) / u.resolution.x;
         float3 rayDir = normalize(viewMat * float3(uv, -1.0f));
+        // Scale refract index toward 0.5 as LOD decreases
+        float effectiveRefractIndex = mix(0.5f, p.refractIndex, lod);
         totalColor += render(rayOri, rayDir, cubeHalfSize, floorZ, u.time,
-                             tileColor, p.refractIndex, cubeTint, p.noiseStrength,
+                             tileColor, effectiveRefractIndex, cubeTint, p.noiseStrength,
                              octaves, maxSteps, noiseTex, s);
     }
 
