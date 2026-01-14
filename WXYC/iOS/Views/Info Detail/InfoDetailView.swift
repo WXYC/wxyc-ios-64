@@ -39,7 +39,7 @@ struct InfoDetailView: View {
                 .foregroundStyle(.white)
                 .padding()
                 .background { BackgroundLayer() }
-                .padding(.horizontal)
+                .padding(.bottom, 16)
                 .cornerRadius(12.0)
             
             VStack(spacing: 16) {
@@ -138,15 +138,11 @@ struct ActionButton: View {
     @Environment(Singletonia.self) private var appState
 
     private var currentTheme: LoadedTheme? {
-        ThemeRegistry.shared.theme(for: appState.themeConfiguration.selectedThemeID)
+        appState.themeConfiguration.selectedTheme
     }
 
     private var useGlassStyle: Bool {
         (currentTheme?.manifest.buttonStyle ?? .colored) == .glass
-    }
-
-    private var foregroundColor: Color {
-        .white
     }
 
     var body: some View {
@@ -157,7 +153,7 @@ struct ActionButton: View {
                 Text(title)
                     .bold()
             }
-            .foregroundStyle(foregroundColor)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding()
             .background {
