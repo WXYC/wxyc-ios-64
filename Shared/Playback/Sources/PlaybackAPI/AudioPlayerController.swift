@@ -139,7 +139,9 @@ public final class AudioPlayerController {
         self.analytics = analytics
         self.backoffTimer = backoffTimer
 
-        setUpAudioSession()
+        // NOTE: We intentionally do NOT call configureAudioSessionIfNeeded() here.
+        // Setting the audio session category to .playback during init interrupts
+        // other apps' audio. Configuration is deferred until play() is called.
         setUpRemoteCommandCenter()
         setUpNotifications()
         setUpPlayerObservation()
@@ -253,8 +255,13 @@ public final class AudioPlayerController {
     // MARK: - Audio Session (iOS/tvOS only)
 
     #if os(iOS) || os(tvOS)
-    private func setUpAudioSession() {
-        guard let session = audioSession else { return }
+    /// Audio session category is configured lazily on first play() to avoid
+    /// interrupting other apps' audio during app launch.
+    private var audioSessionConfigured = false
+    
+    private func configureAudioSessionIfNeeded() {
+        guard !audioSessionConfigured, let session = audioSession else { return }
+        audioSessionConfigured = true
         do {
             try session.setCategory(.playback, mode: .default, options: [])
         } catch {
@@ -264,6 +271,8 @@ public final class AudioPlayerController {
     
     private func activateAudioSession() {
         guard let session = audioSession else { return }
+        // Configure the audio session category if not already done
+        configureAudioSessionIfNeeded()
         do {
             try session.setActive(true, options: [])
             audioSessionActivated = true

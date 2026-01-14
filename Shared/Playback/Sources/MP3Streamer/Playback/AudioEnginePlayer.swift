@@ -49,6 +49,12 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     /// Tracks whether the render tap is currently installed
     private let renderTapState: RenderTapState
 
+    /// Tracks whether the audio engine has been set up (deferred until first play)
+    private let engineSetUpState: EngineSetUpState
+    
+    /// Tracks whether render tap installation was requested before engine setup
+    private let pendingRenderTapState: RenderTapState
+
     var isPlaying: Bool {
         stateBox.isPlaying
     }
@@ -67,6 +73,8 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         self.scheduledBufferCount = ScheduledBufferCount()
         self.schedulingQueue = DispatchQueue(label: "com.avaudiostreamer.scheduling", qos: .userInitiated)
         self.renderTapState = RenderTapState()
+        self.engineSetUpState = EngineSetUpState()
+        self.pendingRenderTapState = RenderTapState()
 
         // Initialize event stream with bounded buffer to prevent unbounded growth
         var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
@@ -78,23 +86,42 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { renderCont = $0 }
         self.renderTapContinuation = renderCont
 
-        setUpAudioEngine()
+        // NOTE: We intentionally do NOT call setUpAudioEngine() here.
+        // Accessing engine.mainMixerNode during init implicitly activates the audio
+        // hardware and interrupts other apps' audio. Setup is deferred until play().
     }
 
-    private func setUpAudioEngine() {
+    /// Sets up the audio engine graph. Called lazily on first play() to avoid
+    /// interrupting other apps' audio during app launch.
+    private func setUpAudioEngineIfNeeded() {
+        guard engineSetUpState.setUpIfNeeded() else { return } // Already set up
+        
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
-        // Note: Render tap is NOT installed by default - call installRenderTap() when needed
-        // Note: We intentionally do NOT call engine.prepare() here because it implicitly
-        // activates the audio session, which would interrupt other apps' audio on launch.
-        // The engine will prepare automatically when start() is called.
+        
+        // Install any pending render tap that was requested before engine was ready
+        if pendingRenderTapState.remove() {
+            guard renderTapState.install() else { return }
+            let continuation = renderTapContinuation
+            playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
+                continuation.yield(buffer)
+            }
+        }
     }
 
     // MARK: - Render Tap Management
 
     func installRenderTap() {
+        // If engine isn't set up yet, just mark that we want a render tap.
+        // The tap will be installed when play() triggers engine setup.
+        // This avoids interrupting other apps' audio on launch.
+        guard engineSetUpState.isSetUp else {
+            _ = pendingRenderTapState.install()
+            return
+        }
+        
         guard renderTapState.install() else { return } // Already installed
-
+        
         let continuation = renderTapContinuation
         playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             continuation.yield(buffer)
@@ -114,6 +141,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         }
         
         analytics?.capture("audioEnginePlayer play")
+        
+        // Defer audio engine setup until first play to avoid interrupting other apps on launch
+        setUpAudioEngineIfNeeded()
         
         if !engine.isRunning {
             try engine.start()
@@ -350,6 +380,38 @@ private final class RenderTapState: @unchecked Sendable {
         defer { os_unfair_lock_unlock(lock) }
         if !_isInstalled { return false }
         _isInstalled = false
+        return true
+    }
+}
+
+/// Thread-safe state for deferred engine setup
+private final class EngineSetUpState: @unchecked Sendable {
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
+    private var _isSetUp = false
+
+    init() {
+        lock = .allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
+    }
+
+    deinit {
+        lock.deinitialize(count: 1)
+        lock.deallocate()
+    }
+
+    /// Whether the engine has been set up
+    var isSetUp: Bool {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        return _isSetUp
+    }
+
+    /// Attempts to mark the engine as set up. Returns true if this is the first call.
+    func setUpIfNeeded() -> Bool {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        if _isSetUp { return false }
+        _isSetUp = true
         return true
     }
 }
