@@ -11,6 +11,7 @@
 import Foundation
 @preconcurrency import AVFoundation
 import Analytics
+import AnalyticsTesting
 @testable import MP3StreamerModule
 
 #if !os(watchOS)
@@ -20,7 +21,7 @@ import Analytics
 public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProtocol {
     private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
     private let renderContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
-    public let analytics: MockAnalyticsService?
+    public let analytics: MockStructuredAnalytics?
 
     public let eventStream: AsyncStream<AudioPlayerEvent>
     public let renderTapStream: AsyncStream<AVAudioPCMBuffer>
@@ -43,7 +44,7 @@ public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProto
     /// If true, immediately call needsMoreBuffers after scheduling a buffer
     public var immediatelyRequestMoreBuffers = true
 
-    public init(analytics: MockAnalyticsService? = nil) {
+    public init(analytics: MockStructuredAnalytics? = nil) {
         self.analytics = analytics
         var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
         self.eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(16)) { eventCont = $0 }

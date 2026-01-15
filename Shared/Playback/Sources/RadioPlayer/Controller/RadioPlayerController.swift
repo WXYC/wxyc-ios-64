@@ -15,6 +15,7 @@ import Logger
 import SwiftUI
 import Core
 import PlaybackCore
+import Analytics
 #if os(iOS)
 import UIKit
 #endif
@@ -57,7 +58,7 @@ public final class RadioPlayerController: PlaybackController {
             radioPlayer: RadioPlayer(),
             audioSession: audioSession,
             notificationCenter: notificationCenter,
-            analytics: PostHogPlaybackAnalytics.shared,
+            analytics: StructuredPostHogAnalytics.shared,
             remoteCommandCenter: remoteCommandCenter
         )
     }
@@ -68,7 +69,7 @@ public final class RadioPlayerController: PlaybackController {
         self.init(
             radioPlayer: RadioPlayer(),
             notificationCenter: notificationCenter,
-            analytics: PostHogPlaybackAnalytics.shared
+            analytics: StructuredPostHogAnalytics.shared
         )
     }
     #endif
@@ -78,7 +79,7 @@ public final class RadioPlayerController: PlaybackController {
         radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
         audioSession: AudioSessionProtocol = AVAudioSession.sharedInstance(),
         notificationCenter: NotificationCenter = .default,
-        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared(),
         backoffTimer: ExponentialBackoff = .default
     ) {
@@ -96,7 +97,7 @@ public final class RadioPlayerController: PlaybackController {
     init(
         radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
         notificationCenter: NotificationCenter = .default,
-        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default
     ) {
         self.radioPlayer = radioPlayer
@@ -269,7 +270,7 @@ public final class RadioPlayerController: PlaybackController {
     internal var backoffTimer: ExponentialBackoff
     private var reconnectTask: Task<Void, Never>?
 
-    private let analytics: PlaybackAnalytics
+    private let analytics: AnalyticsService
     private var stallStartTime: Date?
     private var wasPlayingBeforeInterruption = false
 }

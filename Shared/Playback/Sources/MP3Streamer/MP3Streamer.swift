@@ -190,7 +190,7 @@ public final class MP3Streamer {
     /// Start streaming and playing audio
     public func play() {
         if streamingState == .playing {
-            analytics?.capture("mp3Streamer already playing")
+            analytics?.capture(PlaybackStartedEvent(reason: "already playing (local)"))
             return
         }
 
@@ -199,7 +199,7 @@ public final class MP3Streamer {
         // If paused, just resume playback
         if case .paused = streamingState {
             do {
-                analytics?.capture("mp3Streamer play")
+                analytics?.capture(PlaybackStartedEvent(reason: "mp3Streamer play"))
                 try audioPlayer.play()
                 streamingState = .playing
             } catch {
@@ -210,7 +210,7 @@ public final class MP3Streamer {
         }
 
         // Otherwise, connect and start streaming
-        analytics?.capture("mp3Streamer play")
+        analytics?.capture(PlaybackStartedEvent(reason: "mp3Streamer play"))
         playbackTimer = Timer.start()
         streamingState = .connecting
         backoffTimer.reset()
@@ -307,10 +307,11 @@ public final class MP3Streamer {
             if result.hasMinimumBuffers {
                 do {
                     try audioPlayer.play()
-                    let timeToAudio = playbackTimer.duration()
-                    analytics?.capture("Time to first Audio", properties: [
-                        "timeToAudio": timeToAudio
-                    ])
+                    _ = playbackTimer.duration()
+                    // Temporarily removed Time to first Audio event until we define a proper event for it
+                    // analytics?.capture("Time to first Audio", properties: [
+                    //    "timeToAudio": timeToAudio
+                    // ])
                     streamingState = .playing
                     scheduleBuffers()
                 } catch {

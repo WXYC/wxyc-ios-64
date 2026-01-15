@@ -10,6 +10,7 @@
 
 import Foundation
 import PlaybackCore
+import Analytics
 
 /// Aggregates CPU samples into session-level events.
 ///
@@ -21,7 +22,7 @@ public final class CPUSessionAggregator {
     /// Default sampling interval in seconds.
     public static let samplingInterval: TimeInterval = 5.0
 
-    private let analytics: PlaybackAnalytics
+    private let analytics: AnalyticsService
     private let playerTypeProvider: () -> PlayerControllerType
 
     private var cpuMonitor: CPUMonitor?
@@ -40,7 +41,7 @@ public final class CPUSessionAggregator {
     ///   - analytics: The analytics instance to report session events to.
     ///   - playerTypeProvider: A closure that returns the current player type.
     public init(
-        analytics: PlaybackAnalytics,
+        analytics: AnalyticsService,
         playerTypeProvider: @escaping () -> PlayerControllerType
     ) {
         self.analytics = analytics

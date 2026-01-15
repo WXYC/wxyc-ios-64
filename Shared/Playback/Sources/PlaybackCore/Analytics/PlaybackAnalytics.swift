@@ -14,24 +14,30 @@ import Foundation
 // MARK: - Interruption Type
 
 /// Type of audio session interruption.
-public enum InterruptionType: Sendable, Equatable {
-    /// Interruption began (e.g., phone call started)
+public enum InterruptionType: String, Sendable, Equatable {
     case began
-    /// Interruption ended, playback can resume
     case ended
-    /// Audio route was disconnected (e.g., Bluetooth headphones disconnected)
-    case routeDisconnected
+    case routeDisconnected = "route_disconnected"
 }
 
 // MARK: - Event Types
 
 /// Marker protocol for all playback analytics events.
-public protocol PlaybackAnalyticsEvent: Sendable, Equatable {}
+import Analytics
+
+// MARK: - Event Types
+
+/// Marker protocol for all playback analytics events.
+public protocol PlaybackAnalyticsEvent: AnalyticsEvent {}
 
 /// Event capturing that playback started.
 public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
-    /// Why playback was initiated (freeform string for PostHog compatibility)
+    public let name = "play"
     public let reason: String
+
+    public var properties: [String: Any]? {
+        ["reason": reason]
+    }
 
     public init(reason: String) {
         self.reason = reason
@@ -40,10 +46,15 @@ public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
 
 /// Event capturing that playback stopped.
 public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
-    /// Why playback was stopped (optional freeform string for PostHog compatibility)
+    public let name = "pause"
     public let reason: String?
-    /// How long playback lasted in seconds
     public let duration: TimeInterval
+
+    public var properties: [String: Any]? {
+        var props: [String: Any] = ["duration": duration]
+        if let reason { props["reason"] = reason }
+        return props
+    }
 
     public init(reason: String? = nil, duration: TimeInterval) {
         self.reason = reason
@@ -69,18 +80,25 @@ public enum RecoveryMethod: String, Sendable, Equatable {
 
 /// Event capturing recovery from a stall.
 public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
-    /// The type of player that recovered
+    public let name = "stall_recovery"
+
     public let playerType: PlayerControllerType
-    /// Whether recovery was successful
     public let successful: Bool
-    /// Number of reconnection attempts before recovery
     public let attempts: Int
-    /// How long the stall lasted in seconds
     public let stallDuration: TimeInterval
-    /// Why the stall occurred
     public let reason: StallReason
-    /// How recovery was achieved
     public let recoveryMethod: RecoveryMethod
+    
+    public var properties: [String: Any]? {
+        [
+            "player_type": playerType.rawValue,
+            "successful": successful,
+            "attempts": attempts,
+            "stall_duration": stallDuration,
+            "reason": reason.rawValue,
+            "recovery_method": recoveryMethod.rawValue
+        ]
+    }
 
     public init(
         playerType: PlayerControllerType,
@@ -101,8 +119,12 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
 
 /// Event capturing an audio session interruption.
 public struct InterruptionEvent: PlaybackAnalyticsEvent {
-    /// The type of interruption
+    public let name = "interruption"
     public let type: InterruptionType
+    
+    public var properties: [String: Any]? {
+        ["type": type.rawValue]
+    }
 
     public init(type: InterruptionType) {
         self.type = type
@@ -111,10 +133,13 @@ public struct InterruptionEvent: PlaybackAnalyticsEvent {
 
 /// Event capturing an error during playback.
 public struct ErrorEvent: PlaybackAnalyticsEvent {
-    /// Description of the error
+    public let name = "error"
     public let error: String
-    /// Context where the error occurred
     public let context: String
+    
+    public var properties: [String: Any]? {
+        ["error": error, "context": context]
+    }
 
     public init(error: Error, context: String) {
         self.error = error.localizedDescription
@@ -127,12 +152,17 @@ public struct ErrorEvent: PlaybackAnalyticsEvent {
     }
 }
 
-/// Event capturing CPU usage during playback.
 public struct CPUUsageEvent: PlaybackAnalyticsEvent {
-    /// The type of player being monitored
+    public let name = "cpu_usage"
     public let playerType: PlayerControllerType
-    /// CPU usage as a percentage (0.0 - 100.0)
     public let cpuUsage: Double
+    
+    public var properties: [String: Any]? {
+        [
+            "player_type": playerType.rawValue,
+            "cpu_usage": cpuUsage
+        ]
+    }
 
     public init(playerType: PlayerControllerType, cpuUsage: Double) {
         self.playerType = playerType
@@ -171,20 +201,27 @@ public enum PlaybackContext: String, Sendable, Equatable {
 /// Reports average and maximum CPU usage over a playback session,
 /// distinguishing between foreground and background playback.
 public struct CPUSessionEvent: PlaybackAnalyticsEvent {
-    /// The type of player being monitored
+    public let name = "cpu_session"
+    
     public let playerType: PlayerControllerType
-    /// Whether this was foreground or background playback
     public let context: PlaybackContext
-    /// Why this session ended
     public let endReason: CPUSessionEndReason
-    /// Average CPU usage over the session (0.0 - 100.0+)
     public let averageCPU: Double
-    /// Maximum CPU usage observed (0.0 - 100.0+)
     public let maxCPU: Double
-    /// Number of samples collected
     public let sampleCount: Int
-    /// Session duration in seconds
     public let durationSeconds: TimeInterval
+    
+    public var properties: [String: Any]? {
+        [
+            "player_type": playerType.rawValue,
+            "context": context.rawValue,
+            "end_reason": endReason.rawValue,
+            "average_cpu": averageCPU,
+            "max_cpu": maxCPU,
+            "sample_count": sampleCount,
+            "duration_seconds": durationSeconds
+        ]
+    }
 
     public init(
         playerType: PlayerControllerType,
@@ -203,34 +240,4 @@ public struct CPUSessionEvent: PlaybackAnalyticsEvent {
         self.sampleCount = sampleCount
         self.durationSeconds = durationSeconds
     }
-}
-
-// MARK: - PlaybackAnalytics Protocol
-
-/// Protocol for capturing playback analytics events.
-///
-/// This is the single source of truth for playback analytics,
-/// consolidating the previous AudioAnalyticsProtocol and PlaybackMetricsReporter.
-@MainActor
-public protocol PlaybackAnalytics: AnyObject {
-    /// Capture that playback started.
-    func capture(_ event: PlaybackStartedEvent)
-
-    /// Capture that playback stopped.
-    func capture(_ event: PlaybackStoppedEvent)
-
-    /// Capture recovery from a stall.
-    func capture(_ event: StallRecoveryEvent)
-
-    /// Capture an audio session interruption.
-    func capture(_ event: InterruptionEvent)
-
-    /// Capture an error that occurred during playback.
-    func capture(_ event: ErrorEvent)
-
-    /// Capture CPU usage during playback.
-    func capture(_ event: CPUUsageEvent)
-
-    /// Capture aggregated CPU session statistics.
-    func capture(_ event: CPUSessionEvent)
 }

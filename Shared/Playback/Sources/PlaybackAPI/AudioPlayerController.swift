@@ -14,6 +14,7 @@ import Core
 import Foundation
 import MediaPlayer
 import PlaybackCore
+import Analytics
 #if canImport(Intents)
 import Intents
 #endif
@@ -45,14 +46,14 @@ public final class AudioPlayerController {
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
-        analytics: PostHogPlaybackAnalytics.shared
+        analytics: StructuredPostHogAnalytics.shared
     )
     #elseif os(watchOS)
     /// Shared singleton instance for watchOS using RadioPlayer
     public static let shared = AudioPlayerController(
         player: RadioPlayer(),
         notificationCenter: .default,
-        analytics: PostHogPlaybackAnalytics.shared
+        analytics: StructuredPostHogAnalytics.shared
     )
     #else
     /// Shared singleton instance for macOS using MP3Streamer
@@ -61,7 +62,7 @@ public final class AudioPlayerController {
             configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
         ),
         notificationCenter: .default,
-        analytics: PostHogPlaybackAnalytics.shared
+        analytics: StructuredPostHogAnalytics.shared
     )
     #endif
     
@@ -83,7 +84,7 @@ public final class AudioPlayerController {
 
     @ObservationIgnored private nonisolated(unsafe) var player: AudioPlayerProtocol
     @ObservationIgnored private nonisolated(unsafe) var notificationCenter: NotificationCenter
-    @ObservationIgnored private nonisolated(unsafe) var analytics: PlaybackAnalytics
+    @ObservationIgnored private nonisolated(unsafe) var analytics: AnalyticsService
 
     #if os(iOS) || os(tvOS)
     @ObservationIgnored private nonisolated(unsafe) var audioSession: AudioSessionProtocol?
@@ -129,7 +130,7 @@ public final class AudioPlayerController {
         audioSession: AudioSessionProtocol?,
         remoteCommandCenter: RemoteCommandCenterProtocol?,
         notificationCenter: NotificationCenter = .default,
-        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default
     ) {
         self.player = player
@@ -157,7 +158,7 @@ public final class AudioPlayerController {
     public init(
         player: AudioPlayerProtocol,
         notificationCenter: NotificationCenter = .default,
-        analytics: PlaybackAnalytics = PostHogPlaybackAnalytics.shared,
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default
     ) {
         self.player = player

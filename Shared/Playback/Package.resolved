@@ -1,15 +1,6 @@
 {
-  "originHash" : "1b88ee79ec691c8779841c8969e6721fb3e1d138162df7e37fe059b97a6e5339",
+  "originHash" : "629e54863236402c626ca39bde07977972969d8d186f7a4e02c86581a2406e5a",
   "pins" : [
-    {
-      "identity" : "obfuscatemacro",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/p-x9/ObfuscateMacro.git",
-      "state" : {
-        "revision" : "5fd8dfe96142229d67aaeb8d274c584dec8f732b",
-        "version" : "0.12.0"
-      }
-    },
     {
       "identity" : "posthog-ios",
       "kind" : "remoteSourceControl",
@@ -17,51 +8,6 @@
       "state" : {
         "revision" : "fac9fc77380d2a38c3389f3cf4505a534921ee41",
         "version" : "3.35.1"
-      }
-    },
-    {
-      "identity" : "swift-algorithms",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-algorithms",
-      "state" : {
-        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
-        "version" : "1.2.1"
-      }
-    },
-    {
-      "identity" : "swift-asn1",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-asn1.git",
-      "state" : {
-        "revision" : "810496cf121e525d660cd0ea89a758740476b85f",
-        "version" : "1.5.1"
-      }
-    },
-    {
-      "identity" : "swift-crypto",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-crypto.git",
-      "state" : {
-        "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
-        "version" : "3.15.1"
-      }
-    },
-    {
-      "identity" : "swift-numerics",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-numerics.git",
-      "state" : {
-        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
-        "version" : "1.1.1"
-      }
-    },
-    {
-      "identity" : "swift-syntax",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-syntax.git",
-      "state" : {
-        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
-        "version" : "602.0.0"
       }
     }
   ],
