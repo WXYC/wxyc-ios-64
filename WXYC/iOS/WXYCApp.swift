@@ -285,9 +285,7 @@ struct WXYCApp: App {
     }
 
     private func setUpQualityAnalytics() {
-        let reporter = PostHogQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
-        AdaptiveQualityController.shared.setAnalytics(aggregator)
+        AdaptiveQualityController.shared.setAnalytics(StructuredPostHogAnalytics.shared)
     }
 
     private func setUpThemePickerAnalytics() {
@@ -305,7 +303,7 @@ struct WXYCApp: App {
     }
 
     // MARK: - Background Refresh
-
+    
     private func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: "com.wxyc.refresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes

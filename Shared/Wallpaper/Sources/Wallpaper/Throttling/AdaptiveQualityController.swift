@@ -12,6 +12,7 @@
 import Caching
 import Core
 import Foundation
+import Analytics
 
 // MARK: - Clock Protocol
 
@@ -248,7 +249,7 @@ public final class AdaptiveQualityController {
 
     private let store: AdaptiveProfileStore
     private let optimizer: QualityOptimizer
-    private var analytics: QualityAnalytics?
+    private var metricsAggregator: QualityMetricsAggregator?
     private let context: DeviceContextProtocol
     private let clock: QualityClock
     private let defaults: DefaultsStorage
@@ -295,7 +296,7 @@ public final class AdaptiveQualityController {
     /// - Parameters:
     ///   - store: Profile persistence store.
     ///   - optimizer: Optimization algorithm.
-    ///   - analytics: Analytics for session tracking (optional).
+    ///   - analytics: Analytics service for session tracking (optional).
     ///   - context: Thermal context for system state observation.
     ///   - clock: Clock for time-based calculations (default: system clock).
     ///   - mode: Throttling mode controlling response aggressiveness (default: normal).
@@ -306,7 +307,7 @@ public final class AdaptiveQualityController {
     public init(
         store: AdaptiveProfileStore = .shared,
         optimizer: QualityOptimizer = QualityOptimizer(),
-        analytics: QualityAnalytics? = nil,
+        analytics: AnalyticsService? = nil,
         context: DeviceContextProtocol = DeviceContext.shared,
         clock: QualityClock = SystemQualityClock(),
         mode: ThrottlingMode = .normal,
@@ -317,7 +318,7 @@ public final class AdaptiveQualityController {
     ) {
         self.store = store
         self.optimizer = optimizer
-        self.analytics = analytics
+        self.metricsAggregator = analytics.map { QualityMetricsAggregator(analytics: $0) }
         self.context = context
         self.clock = clock
         self.mode = mode
@@ -343,9 +344,9 @@ public final class AdaptiveQualityController {
     /// Configures analytics for session tracking.
     ///
     /// Call this early in app initialization to enable thermal analytics.
-    /// - Parameter analytics: The analytics implementation to use.
-    public func setAnalytics(_ analytics: QualityAnalytics) {
-        self.analytics = analytics
+    /// - Parameter analytics: The analytics service to use.
+    public func setAnalytics(_ analytics: AnalyticsService) {
+        self.metricsAggregator = QualityMetricsAggregator(analytics: analytics)
     }
 
     // MARK: - Public API
@@ -360,7 +361,7 @@ public final class AdaptiveQualityController {
     public func setActiveShader(_ shaderID: String) async {
         // Flush previous shader session if any
         if activeShaderID != nil && activeShaderID != shaderID {
-            analytics?.flush(reason: .shaderChanged)
+            metricsAggregator?.flush(reason: .shaderChanged)
         }
 
         activeShaderID = shaderID
@@ -442,7 +443,7 @@ public final class AdaptiveQualityController {
         stopPeriodicFlush()
 
         // Flush analytics
-        analytics?.flush(reason: .background)
+        metricsAggregator?.flush(reason: .background)
 
         // Persist current profile
         if let profile = currentProfile {
@@ -617,7 +618,7 @@ public final class AdaptiveQualityController {
                 interpolationEnabled: interpolationEnabled,
                 shaderFPS: shaderFPS
             )
-            analytics?.record(event)
+            metricsAggregator?.record(event)
         }
 
         // Persist periodically (every 12 ticks = ~1 minute)
@@ -676,7 +677,7 @@ public final class AdaptiveQualityController {
             while !Task.isCancelled {
                 do {
                     try await Task.sleep(for: self.periodicFlushInterval)
-                    self.analytics?.flush(reason: .periodic)
+                    self.metricsAggregator?.flush(reason: .periodic)
                 } catch {
                     break
                 }

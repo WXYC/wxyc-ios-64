@@ -12,6 +12,8 @@ import Testing
 import PlaybackTestUtilities
 import Foundation
 import AVFoundation
+import Analytics
+import AnalyticsTesting
 @testable import Playback
 @testable import PlaybackCore
 
@@ -23,13 +25,14 @@ struct PlaybackMetricsTests {
     @Test("CPUUsageEvent captures player type and usage")
     @MainActor
     func cpuUsageEvent() async throws {
-        let analytics = MockPlaybackAnalytics()
+        let analytics = MockStructuredAnalytics()
         let event = CPUUsageEvent(playerType: .radioPlayer, cpuUsage: 12.5)
 
         analytics.capture(event)
 
-        #expect(analytics.cpuUsageEvents.count == 1)
-        #expect(analytics.cpuUsageEvents.first?.playerType == .radioPlayer)
-        #expect(analytics.cpuUsageEvents.first?.cpuUsage == 12.5)
+        let cpuEvents = analytics.events.compactMap { $0 as? CPUUsageEvent }
+        #expect(cpuEvents.count == 1)
+        #expect(cpuEvents.first?.playerType == .radioPlayer)
+        #expect(cpuEvents.first?.cpuUsage == 12.5)
     }
 }

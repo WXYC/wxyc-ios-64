@@ -2,6 +2,9 @@
 //  QualityMetricsAggregatorTests.swift
 //  Wallpaper
 //
+//  Unit tests for QualityMetricsAggregator verifying event recording, aggregation,
+//  stability detection, and analytics summary generation for wallpaper performance.
+//
 //  Created by Jake Bromberg on 01/03/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -16,8 +19,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Flush does nothing without events")
     func flushWithoutEvents() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.flush(reason: .periodic)
 
@@ -26,8 +29,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Records events and flushes summary")
     func recordAndFlush() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test_shader",
@@ -47,8 +50,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Calculates average wallpaper FPS, scale, and LOD")
     func calculatesAverages() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
@@ -77,8 +80,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Tracks time in critical")
     func tracksTimeInCritical() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
@@ -114,8 +117,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Shader change triggers flush")
     func shaderChangeFlushes() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "shader1",
@@ -143,8 +146,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Counts throttle events including LOD")
     func countsThrottleEvents() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
@@ -179,8 +182,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Detects session outcome: neverThrottled")
     func sessionOutcomeNeverThrottled() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         // Record at max quality for long enough
         let baseTime = Date()
@@ -204,8 +207,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Stable values set when stability reached")
     func stableValuesWhenStabilityReached() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         // Record stable values for longer than stability threshold (30s)
         let baseTime = Date()
@@ -232,8 +235,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Stable values nil when stability not reached")
     func stableValuesNilWhenUnstable() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         // Record values that keep changing (never stable)
         let baseTime = Date()
@@ -262,8 +265,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Tracks interpolation enabled percentage")
     func tracksInterpolationEnabledPercent() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         // 2 samples with interpolation on, 2 without = 50%
         aggregator.record(QualityAdjustmentEvent(
@@ -315,8 +318,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Calculates average shader FPS while interpolating")
     func calculatesAvgShaderFPS() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
@@ -347,8 +350,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("avgShaderFPSWhileInterpolating is nil when never interpolating")
     func avgShaderFPSNilWhenNoInterpolation() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",
@@ -370,8 +373,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Counts interpolation activations")
     func countsInterpolationActivations() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         // Transition: off -> on -> off -> on = 2 activations
         aggregator.record(QualityAdjustmentEvent(
@@ -423,8 +426,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Calculates estimated workload reduction")
     func calculatesWorkloadReduction() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         // All samples with interpolation on at 30fps shader / 60fps display = 50% reduction
         aggregator.record(QualityAdjustmentEvent(
@@ -457,8 +460,8 @@ struct QualityMetricsAggregatorTests {
 
     @Test("Records interpolator resets")
     func recordsInterpolatorResets() {
-        let reporter = MockQualityReporter()
-        let aggregator = QualityMetricsAggregator(reporter: reporter)
+        let reporter = MockWallpaperAnalytics()
+        let aggregator = QualityMetricsAggregator(analytics: reporter)
 
         aggregator.record(QualityAdjustmentEvent(
             shaderId: "test",

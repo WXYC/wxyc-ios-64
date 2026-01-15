@@ -19,6 +19,8 @@
 import Testing
 import PlaybackTestUtilities
 import AVFoundation
+import Analytics
+import AnalyticsTesting
 @testable import Playback
 @testable import PlaybackCore
 @testable import RadioPlayerModule
@@ -42,7 +44,7 @@ struct AudioPlayerControllerTests {
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: .default,
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
 
         // Session category should NOT be set during init (deferred until play)
@@ -61,7 +63,7 @@ struct AudioPlayerControllerTests {
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: .default,
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
 
         // Before play - no configuration
@@ -87,7 +89,7 @@ struct AudioPlayerControllerTests {
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: .default,
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
 
         controller.play()
@@ -113,7 +115,7 @@ struct AudioPlayerControllerTests {
             audioSession: mockSession,
             remoteCommandCenter: mockCommandCenter,
             notificationCenter: .default,
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
 
         #expect(mockCommandCenter.playCommand.isEnabled)
@@ -134,7 +136,7 @@ struct AudioPlayerControllerTests {
         let controller = AudioPlayerController(
             player: mockPlayer,
             notificationCenter: .default,
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
 
         // Initial state should be not playing

@@ -237,15 +237,3 @@ public struct QualitySessionSummary: QualityAnalyticsEvent {
     }
 }
 
-// MARK: - QualityAnalytics Protocol
-
-/// Protocol for capturing thermal optimization events.
-///
-/// Implementations aggregate adjustment events in memory and flush
-/// session summaries to analytics on session boundaries.
-@MainActor
-@available(*, deprecated, message: "Use AnalyticsService instead")
-public protocol QualityAnalytics: AnyObject {
-    func record(_ event: QualityAdjustmentEvent)
-    func flush(reason: QualityFlushReason)
-}

@@ -10,6 +10,7 @@
 
 import Foundation
 import Testing
+import Analytics
 @testable import Wallpaper
 
 // MARK: - Mock Clock
@@ -39,7 +40,7 @@ struct AdaptiveQualityControllerTests {
     /// Creates a test controller with injectable context and clock.
     func makeController(
         context: DeviceContextProtocol = MockDeviceContext(),
-        analytics: QualityAnalytics? = nil,
+        analytics: AnalyticsService? = nil,
         clock: QualityClock = SystemQualityClock(),
         mode: ThrottlingMode = .normal
     ) -> AdaptiveQualityController {
@@ -108,7 +109,7 @@ struct AdaptiveQualityControllerTests {
 
     @Test("Background flushes analytics")
     func backgroundFlushesAnalytics() async {
-        let analytics = MockQualityAnalytics()
+        let analytics = MockWallpaperAnalytics()
         let controller = makeController(analytics: analytics)
 
         await controller.setActiveShader("test")
@@ -116,12 +117,14 @@ struct AdaptiveQualityControllerTests {
 
         controller.handleBackgrounded()
 
+        // Verify background triggered a flush that captured a summary
+        #expect(analytics.reportedSummaries.count == 1)
         #expect(analytics.flushReasons.contains(.background))
     }
 
     @Test("Shader change flushes previous session")
     func shaderChangeFlushes() async {
-        let analytics = MockQualityAnalytics()
+        let analytics = MockWallpaperAnalytics()
         let controller = makeController(analytics: analytics)
 
         await controller.setActiveShader("shader1")
@@ -129,6 +132,9 @@ struct AdaptiveQualityControllerTests {
 
         await controller.setActiveShader("shader2")
 
+        // Verify shader change triggered flush of shader1's session
+        #expect(analytics.reportedSummaries.count == 1)
+        #expect(analytics.reportedSummaries.first?.shaderId == "shader1")
         #expect(analytics.flushReasons.contains(.shaderChanged))
     }
 
@@ -182,15 +188,19 @@ struct AdaptiveQualityControllerTests {
 
     @Test("Analytics receives adjustment events")
     func analyticsReceivesEvents() async {
-        let analytics = MockQualityAnalytics()
+        let analytics = MockWallpaperAnalytics()
         let controller = makeController(analytics: analytics)
 
         await controller.setActiveShader("test")
         controller.checkNow()
         controller.checkNow()
 
-        #expect(analytics.recordedEvents.count == 2)
-        #expect(analytics.recordedEvents.first?.shaderId == "test")
+        // Trigger flush to send summary to analytics
+        controller.handleBackgrounded()
+
+        // Verify summary was captured with correct shader ID
+        #expect(analytics.reportedSummaries.count == 1)
+        #expect(analytics.reportedSummaries.first?.shaderId == "test")
     }
 
     // MARK: - External Factor Tests

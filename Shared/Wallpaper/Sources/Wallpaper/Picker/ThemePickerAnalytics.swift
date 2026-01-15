@@ -79,22 +79,3 @@ public struct ThemeTipDismissedEvent: AnalyticsEvent {
     }
 }
 
-// MARK: - ThemePickerAnalytics Protocol
-
-/// Protocol for theme picker analytics.
-///
-/// Implementations capture events to analytics backends.
-/// The Wallpaper package defines this protocol; the app layer provides
-/// the concrete implementation (e.g., PostHog).
-@MainActor
-@available(*, deprecated, message: "Use AnalyticsService instead")
-public protocol ThemePickerAnalytics: AnyObject {
-    /// Records when user enters theme picker mode.
-    func record(_ event: ThemePickerEnteredEvent)
-
-    /// Records when user confirms a theme selection.
-    func record(_ event: ThemePickerSelectionEvent)
-
-    /// Records when user dismisses the theme tip.
-    func record(_ event: ThemeTipDismissedEvent)
-}

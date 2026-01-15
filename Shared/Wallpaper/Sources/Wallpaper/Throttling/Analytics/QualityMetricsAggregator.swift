@@ -9,13 +9,14 @@
 //
 
 import Foundation
+import Analytics
 
-/// Aggregates thermal adjustment events in memory and flushes summaries to a reporter.
+/// Aggregates thermal adjustment events in memory and flushes summaries to analytics.
 ///
 /// This layer accumulates statistics from frequent optimization ticks (every 5s)
 /// and only sends aggregated summaries to PostHog on session boundaries.
 @MainActor
-public final class QualityMetricsAggregator: QualityAnalytics {
+public final class QualityMetricsAggregator {
 
     /// Threshold for considering optimization stable (no adjustments for this duration).
     public static let stabilityThreshold: TimeInterval = 30
@@ -23,7 +24,7 @@ public final class QualityMetricsAggregator: QualityAnalytics {
     /// Optimization tick interval (for calculating time in critical).
     public static let tickInterval: TimeInterval = 5
 
-    private let reporter: QualityMetricsReporter
+    private let analytics: AnalyticsService
 
     // MARK: - Session State
 
@@ -64,11 +65,11 @@ public final class QualityMetricsAggregator: QualityAnalytics {
         case down, up, none
     }
 
-    /// Creates an aggregator with the specified reporter.
+    /// Creates an aggregator with the specified analytics service.
     ///
-    /// - Parameter reporter: The reporter to send session summaries to.
-    public init(reporter: QualityMetricsReporter) {
-        self.reporter = reporter
+    /// - Parameter analytics: The analytics service to send session summaries to.
+    public init(analytics: AnalyticsService) {
+        self.analytics = analytics
     }
 
     // MARK: - QualityAnalytics
@@ -209,7 +210,7 @@ public final class QualityMetricsAggregator: QualityAnalytics {
             interpolatorResetCount: interpolatorResets
         )
 
-        reporter.report(summary)
+        analytics.capture(summary)
         resetAggregates()
     }
 
