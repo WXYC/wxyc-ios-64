@@ -740,8 +740,10 @@
 		23F742632F0AF0AA00333332 /* Ensure Secrets XCFramework */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
-			inputFileListPaths = (
+			inputPaths = (
 				"$(SRCROOT)/Shared/Secrets/Scripts/ensure-xcframework.sh",
+				"$(SRCROOT)/Shared/Secrets/Scripts/build-xcframework.sh",
+				"$(SRCROOT)/Shared/Secrets/Scripts/load-secrets-env.sh",
 			);
 			name = "Ensure Secrets XCFramework";
 			shellPath = /bin/sh;
@@ -753,8 +755,10 @@
 		SHARE_EXT_SECRETS_BUILD_PHASE /* Ensure Secrets XCFramework */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
-			inputFileListPaths = (
+			inputPaths = (
 				"$(SRCROOT)/Shared/Secrets/Scripts/ensure-xcframework.sh",
+				"$(SRCROOT)/Shared/Secrets/Scripts/build-xcframework.sh",
+				"$(SRCROOT)/Shared/Secrets/Scripts/load-secrets-env.sh",
 			);
 			name = "Ensure Secrets XCFramework";
 			shellPath = /bin/sh;
