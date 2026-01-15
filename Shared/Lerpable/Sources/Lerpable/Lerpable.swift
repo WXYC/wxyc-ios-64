@@ -10,6 +10,7 @@
 //
 
 import CoreGraphics
+import simd
 
 /// A type that can be linearly interpolated.
 public protocol Lerpable {
@@ -22,45 +23,53 @@ public protocol Lerpable {
     static func lerp(_ a: Self, _ b: Self, t: Double) -> Self
 }
 
-// MARK: - Standard Library Conformances
+// MARK: - Default Implementations via Protocol Extensions
 
-extension Double: Lerpable {
-    public static func lerp(_ a: Double, _ b: Double, t: Double) -> Double {
-        a + (b - a) * t
+extension Lerpable where Self: BinaryFloatingPoint {
+    public static func lerp(_ a: Self, _ b: Self, t: Double) -> Self {
+        a + (b - a) * Self(t)
     }
 }
 
-extension Float: Lerpable {
-    public static func lerp(_ a: Float, _ b: Float, t: Double) -> Float {
-        a + (b - a) * Float(t)
+extension Lerpable where Self: BinaryInteger {
+    public static func lerp(_ a: Self, _ b: Self, t: Double) -> Self {
+        Self((Double(a) + (Double(b) - Double(a)) * t).rounded())
     }
 }
 
-extension CGFloat: Lerpable {
-    public static func lerp(_ a: CGFloat, _ b: CGFloat, t: Double) -> CGFloat {
-        a + (b - a) * CGFloat(t)
+extension Lerpable where Self: SIMD, Self.Scalar: BinaryFloatingPoint {
+    public static func lerp(_ a: Self, _ b: Self, t: Double) -> Self {
+        a + (b - a) * Self.Scalar(t)
     }
 }
 
-// MARK: - Integer Conformances (with rounding)
+// MARK: - Floating Point Conformances
 
-extension Int: Lerpable {
-    public static func lerp(_ a: Int, _ b: Int, t: Double) -> Int {
-        Int((Double(a) + (Double(b) - Double(a)) * t).rounded())
-    }
-}
+extension Float: Lerpable {}
+extension Double: Lerpable {}
+extension CGFloat: Lerpable {}
+#if arch(x86_64)
+extension Float80: Lerpable {}
+#endif
 
-extension Int32: Lerpable {
-    public static func lerp(_ a: Int32, _ b: Int32, t: Double) -> Int32 {
-        Int32((Double(a) + (Double(b) - Double(a)) * t).rounded())
-    }
-}
+// MARK: - Integer Conformances
 
-extension UInt32: Lerpable {
-    public static func lerp(_ a: UInt32, _ b: UInt32, t: Double) -> UInt32 {
-        UInt32((Double(a) + (Double(b) - Double(a)) * t).rounded())
-    }
-}
+extension Int: Lerpable {}
+extension Int8: Lerpable {}
+extension Int16: Lerpable {}
+extension Int32: Lerpable {}
+extension Int64: Lerpable {}
+extension UInt: Lerpable {}
+extension UInt8: Lerpable {}
+extension UInt16: Lerpable {}
+extension UInt32: Lerpable {}
+extension UInt64: Lerpable {}
+
+// MARK: - SIMD Conformances
+
+extension SIMD2: Lerpable where Scalar: BinaryFloatingPoint {}
+extension SIMD3: Lerpable where Scalar: BinaryFloatingPoint {}
+extension SIMD4: Lerpable where Scalar: BinaryFloatingPoint {}
 
 // MARK: - Macro Declaration
 

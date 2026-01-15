@@ -2,6 +2,9 @@
 //  MetalWallpaperRenderer.swift
 //  Wallpaper
 //
+//  Main Metal-based renderer that executes wallpaper shaders with adaptive thermal optimization,
+//  resolution scaling, frame interpolation, and support for stitchable, rawMetal, and compute modes.
+//
 //  Created by Jake Bromberg on 12/19/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
