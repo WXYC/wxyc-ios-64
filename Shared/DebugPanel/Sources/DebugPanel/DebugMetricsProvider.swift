@@ -15,14 +15,14 @@ import QuartzCore
 /// Provides real-time performance metrics for the debug HUD.
 @MainActor
 @Observable
-public final class DebugMetricsProvider {
+final class DebugMetricsProvider {
     // MARK: - Published Metrics
 
-    public private(set) var fps: Int = 0
-    public private(set) var cpuUsage: Double = 0
-    public private(set) var gpuMemoryMB: Double = 0
-    public private(set) var memoryMB: Double = 0
-    public private(set) var thermalState: ProcessInfo.ThermalState = .nominal
+    private(set) var fps: Int = 0
+    private(set) var cpuUsage: Double = 0
+    private(set) var gpuMemoryMB: Double = 0
+    private(set) var memoryMB: Double = 0
+    private(set) var thermalState: ProcessInfo.ThermalState = .nominal
 
     // MARK: - Private State
 
@@ -38,7 +38,7 @@ public final class DebugMetricsProvider {
 
     // MARK: - Initialization
 
-    public init() {
+    init() {
         self.metalDevice = MTLCreateSystemDefaultDevice()
         setUpDisplayLink()
         setUpTimers()

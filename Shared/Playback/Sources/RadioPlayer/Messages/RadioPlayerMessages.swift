@@ -16,17 +16,17 @@ import Core
 // MARK: - Rate Change Message
 
 /// Message for AVPlayer rate changes, indicating playback state transitions.
-public struct PlayerRateDidChangeMessage: MainActorNotificationMessage {
-    public typealias Subject = AVPlayer
+struct PlayerRateDidChangeMessage: MainActorNotificationMessage {
+    typealias Subject = AVPlayer
 
-    public static var name: Notification.Name {
+    static var name: Notification.Name {
         AVPlayer.rateDidChangeNotification
     }
 
     /// The new playback rate (> 0 means playing)
-    public let rate: Float
+    let rate: Float
 
-    public static func makeMessage(_ notification: sending Notification) -> Self? {
+    static func makeMessage(_ notification: sending Notification) -> Self? {
         // Extract rate from the player object if available
         if let player = notification.object as? AVPlayer {
             return Self(rate: player.rate)
@@ -40,7 +40,7 @@ public struct PlayerRateDidChangeMessage: MainActorNotificationMessage {
     }
 
     @MainActor
-    public static func makeNotification(_ message: Self, object: AVPlayer?) -> Notification {
+    static func makeNotification(_ message: Self, object: AVPlayer?) -> Notification {
         Notification(
             name: name,
             object: object,
@@ -52,19 +52,19 @@ public struct PlayerRateDidChangeMessage: MainActorNotificationMessage {
 // MARK: - Playback Stalled Message
 
 /// Message for AVPlayerItem playback stalls.
-public struct PlaybackStalledMessage: MainActorNotificationMessage {
-    public typealias Subject = AVPlayerItem
+struct PlaybackStalledMessage: MainActorNotificationMessage {
+    typealias Subject = AVPlayerItem
 
-    public static var name: Notification.Name {
+    static var name: Notification.Name {
         .AVPlayerItemPlaybackStalled
     }
 
-    public static func makeMessage(_ notification: sending Notification) -> Self? {
+    static func makeMessage(_ notification: sending Notification) -> Self? {
         Self()
     }
 
     @MainActor
-    public static func makeNotification(_ message: Self, object: AVPlayerItem?) -> Notification {
+    static func makeNotification(_ message: Self, object: AVPlayerItem?) -> Notification {
         Notification(name: name, object: object)
     }
 }
