@@ -20,8 +20,6 @@ struct RootTabView: View {
 
     @State private var selectedPage = Page.playlist
     @State private var selectedPlaycut: PlaycutSelection?
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.isThemePickerActive) private var isPickerActive
 
     var body: some View {
         TabView(selection: $selectedPage) {

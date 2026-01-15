@@ -38,13 +38,6 @@ public struct FrameRateMonitor: Sendable {
     /// Number of frames to sample before computing average FPS.
     public static let sampleSize: Int = 30
 
-    /// FPS threshold below which we consider the GPU struggling.
-    /// Set slightly below 60 to account for normal variance.
-    public static let lowFPSThreshold: Float = 50.0
-
-    /// FPS threshold below which we consider severe performance issues.
-    public static let criticalFPSThreshold: Float = 25.0
-
     /// Minimum interval between FPS reports to avoid excessive updates.
     public static let reportInterval: TimeInterval = 1.0
 
@@ -101,42 +94,5 @@ public struct FrameRateMonitor: Sendable {
     public mutating func reset() {
         frameDurations.removeAll(keepingCapacity: true)
         lastReportTime = 0
-    }
-
-    /// Returns the severity of FPS performance issues.
-    ///
-    /// - Parameter fps: The measured FPS value.
-    /// - Returns: A performance severity level.
-    public static func severity(for fps: Float) -> PerformanceSeverity {
-        if fps < criticalFPSThreshold {
-            return .critical
-        } else if fps < lowFPSThreshold {
-            return .warning
-        } else {
-            return .normal
-        }
-    }
-}
-
-// MARK: - PerformanceSeverity
-
-/// Severity level of FPS performance issues.
-public enum PerformanceSeverity: Sendable {
-    /// FPS is acceptable (>= 50).
-    case normal
-
-    /// FPS is below target but not critical (25-50).
-    case warning
-
-    /// FPS is critically low (< 25).
-    case critical
-
-    /// Momentum boost to apply to thermal signal when FPS drops.
-    public var momentumBoost: Float {
-        switch self {
-        case .normal: 0
-        case .warning: 0.15
-        case .critical: 0.3
-        }
     }
 }

@@ -29,37 +29,6 @@ public struct ThemeTransition: Equatable {
         self.progress = progress
     }
 
-    public var fromColorScheme: ColorScheme { fromTheme.manifest.foreground.colorScheme }
-    public var toColorScheme: ColorScheme { toTheme.manifest.foreground.colorScheme }
-
-    // MARK: Material Properties
-
-    public var fromBlurRadius: Double { fromTheme.manifest.blurRadius }
-    public var toBlurRadius: Double { toTheme.manifest.blurRadius }
-    public var fromOverlayOpacity: Double { fromTheme.manifest.overlayOpacity }
-    public var toOverlayOpacity: Double { toTheme.manifest.overlayOpacity }
-    public var fromOverlayDarkness: Double { fromTheme.manifest.overlayDarkness }
-    public var toOverlayDarkness: Double { toTheme.manifest.overlayDarkness }
-
-    // MARK: Accent Color
-
-    public var fromAccent: AccentColor { fromTheme.manifest.accent }
-    public var toAccent: AccentColor { toTheme.manifest.accent }
-
-    /// Interpolated accent hue (normalized 0.0-1.0) based on transition progress.
-    public var interpolatedAccentHue: Double {
-        let fromHue = fromAccent.normalizedHue
-        let toHue = toAccent.normalizedHue
-        return fromHue + (toHue - fromHue) * progress
-    }
-
-    /// Interpolated accent saturation based on transition progress.
-    public var interpolatedAccentSaturation: Double {
-        let fromSat = fromAccent.saturation
-        let toSat = toAccent.saturation
-        return fromSat + (toSat - fromSat) * progress
-    }
-
     public static nonisolated func == (lhs: ThemeTransition, rhs: ThemeTransition) -> Bool {
         lhs.fromTheme.id == rhs.fromTheme.id &&
         lhs.toTheme.id == rhs.toTheme.id &&
@@ -84,46 +53,6 @@ private struct WallpaperAnimationStartTimeKey: EnvironmentKey {
 /// Environment key for a fixed quality profile that overrides adaptive thermal optimization.
 private struct WallpaperQualityProfileKey: EnvironmentKey {
     static let defaultValue: QualityProfile? = nil
-}
-
-/// Environment key for the current theme transition during picker scrolling.
-private struct PreviewThemeTransitionKey: EnvironmentKey {
-    static let defaultValue: ThemeTransition? = nil
-}
-
-/// Environment key for the current theme's blur radius.
-private struct CurrentBlurRadiusKey: EnvironmentKey {
-    static let defaultValue: Double = 8.0
-}
-
-/// Environment key for the current theme's overlay opacity.
-private struct CurrentOverlayOpacityKey: EnvironmentKey {
-    static let defaultValue: Double = 0.0
-}
-
-/// Environment key for the current overlay darkness (0.0 = white, 1.0 = black).
-private struct CurrentOverlayDarknessKey: EnvironmentKey {
-    static let defaultValue: Double = 1.0
-}
-
-/// Environment key for the interpolated dark progress (0.0 = light, 1.0 = dark).
-private struct CurrentDarkProgressKey: EnvironmentKey {
-    static let defaultValue: CGFloat = 1.0
-}
-
-/// Environment key for the current/interpolated accent color.
-private struct CurrentAccentColorKey: EnvironmentKey {
-    static let defaultValue: AccentColor = AccentColor(hue: 23, saturation: 0.75, brightness: 1.0)
-}
-
-/// Environment key for the current LCD min HSB offset.
-private struct CurrentLCDMinOffsetKey: EnvironmentKey {
-    static let defaultValue: HSBOffset = .defaultMin
-}
-
-/// Environment key for the current LCD max HSB offset.
-private struct CurrentLCDMaxOffsetKey: EnvironmentKey {
-    static let defaultValue: HSBOffset = .defaultMax
 }
 
 /// Environment key for the wallpaper-derived mesh gradient palette.
@@ -151,54 +80,6 @@ public extension EnvironmentValues {
     var wallpaperQualityProfile: QualityProfile? {
         get { self[WallpaperQualityProfileKey.self] }
         set { self[WallpaperQualityProfileKey.self] = newValue }
-    }
-
-    /// Theme transition state for preview during picker scrolling.
-    var previewThemeTransition: ThemeTransition? {
-        get { self[PreviewThemeTransitionKey.self] }
-        set { self[PreviewThemeTransitionKey.self] = newValue }
-    }
-
-    /// The current theme's blur radius.
-    var currentBlurRadius: Double {
-        get { self[CurrentBlurRadiusKey.self] }
-        set { self[CurrentBlurRadiusKey.self] = newValue }
-    }
-
-    /// The current theme's overlay opacity.
-    var currentOverlayOpacity: Double {
-        get { self[CurrentOverlayOpacityKey.self] }
-        set { self[CurrentOverlayOpacityKey.self] = newValue }
-    }
-
-    /// The current overlay darkness (0.0 = white, 1.0 = black).
-    var currentOverlayDarkness: Double {
-        get { self[CurrentOverlayDarknessKey.self] }
-        set { self[CurrentOverlayDarknessKey.self] = newValue }
-    }
-
-    /// Interpolated dark progress (0.0 = light, 1.0 = dark).
-    var currentDarkProgress: CGFloat {
-        get { self[CurrentDarkProgressKey.self] }
-        set { self[CurrentDarkProgressKey.self] = newValue }
-    }
-
-    /// The current/interpolated accent color.
-    var currentAccentColor: AccentColor {
-        get { self[CurrentAccentColorKey.self] }
-        set { self[CurrentAccentColorKey.self] = newValue }
-    }
-
-    /// The current LCD min HSB offset.
-    var currentLCDMinOffset: HSBOffset {
-        get { self[CurrentLCDMinOffsetKey.self] }
-        set { self[CurrentLCDMinOffsetKey.self] = newValue }
-    }
-
-    /// The current LCD max HSB offset.
-    var currentLCDMaxOffset: HSBOffset {
-        get { self[CurrentLCDMaxOffsetKey.self] }
-        set { self[CurrentLCDMaxOffsetKey.self] = newValue }
     }
 
     /// The wallpaper-derived mesh gradient palette (16 colors).

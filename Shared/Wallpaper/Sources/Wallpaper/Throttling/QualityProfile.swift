@@ -62,15 +62,4 @@ public struct QualityProfile: Equatable, Sendable {
 
     /// Quality profile for wallpaper picker cards (30 FPS, 0.75 scale, 0.5 LOD).
     public static let picker = QualityProfile(wallpaperFPS: 30, scale: 0.75, lod: 0.5)
-
-    /// Quality profile with interpolation enabled (60 display FPS, 30 shader FPS, 0.75 scale).
-    ///
-    /// This provides smooth 60 fps display while only executing the shader 30 times per second.
-    public static let interpolated = QualityProfile(
-        wallpaperFPS: 60,
-        scale: 0.75,
-        lod: 1.0,
-        interpolationEnabled: true,
-        shaderFPS: 30
-    )
 }

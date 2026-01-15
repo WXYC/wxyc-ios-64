@@ -33,7 +33,7 @@ struct TruncationDetector: View {
         .hidden()
     }
     
-    private func checkTruncation(fullHeight: CGFloat, availableWidth: CGFloat) {
+    private func checkTruncation(fullHeight: CGFloat, availableWidth _: CGFloat) {
         // Estimate line height based on body font
         let estimatedLineHeight: CGFloat = 20
         let maxCollapsedHeight = CGFloat(lineLimit) * estimatedLineHeight * 1.2 // 1.2 for line spacing

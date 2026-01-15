@@ -75,14 +75,6 @@ final class PCMBufferQueue: @unchecked Sendable {
         )
     }
 
-    /// Dequeue the next buffer
-    func dequeue() -> AVAudioPCMBuffer? {
-        os_unfair_lock_lock(lock)
-        defer { os_unfair_lock_unlock(lock) }
-        guard !buffers.isEmpty else { return nil }
-        return buffers.removeFirst()
-    }
-
     /// Dequeue all available buffers at once (more efficient for batch scheduling)
     func dequeueAll() -> [AVAudioPCMBuffer] {
         os_unfair_lock_lock(lock)
@@ -90,13 +82,6 @@ final class PCMBufferQueue: @unchecked Sendable {
         let result = Array(buffers)
         buffers.removeAll()
         return result
-    }
-
-    /// Peek at the next buffer without removing it
-    func peek() -> AVAudioPCMBuffer? {
-        os_unfair_lock_lock(lock)
-        defer { os_unfair_lock_unlock(lock) }
-        return buffers.first
     }
 
     /// Clear all buffers

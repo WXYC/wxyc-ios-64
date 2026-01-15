@@ -11,46 +11,6 @@
 
 import Foundation
 
-// MARK: - Start/Stop Reasons
-
-/// Reason why playback was started.
-public enum PlaybackStartReason: Sendable, Equatable {
-    /// User explicitly initiated playback (tap, button press)
-    case userInitiated
-    /// Automatic reconnection after network recovery
-    case autoReconnect
-    /// Resuming after system interruption ended
-    case interruptionEnded
-    /// Remote command (CarPlay, headphones, Control Center)
-    case remoteCommand
-
-    /// Creates a PlaybackStartReason from a legacy string reason.
-    public init(fromLegacyReason reason: String) {
-        switch reason.lowercased() {
-        case let r where r.contains("remote"):
-            self = .remoteCommand
-        case let r where r.contains("resume") || r.contains("interruption"):
-            self = .interruptionEnded
-        case let r where r.contains("reconnect") || r.contains("backoff"):
-            self = .autoReconnect
-        default:
-            self = .userInitiated
-        }
-    }
-}
-
-/// Reason why playback was stopped.
-public enum PlaybackStopReason: Sendable, Equatable {
-    /// User explicitly stopped playback
-    case userInitiated
-    /// Playback stopped due to an error
-    case error(PlaybackError)
-    /// System interruption began (phone call, Siri, etc.)
-    case interruptionBegan
-    /// Playback stalled due to buffer underrun
-    case stall
-}
-
 // MARK: - Interruption Type
 
 /// Type of audio session interruption.

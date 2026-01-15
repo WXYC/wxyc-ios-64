@@ -79,60 +79,11 @@ public struct DiscreteTransition<Value: Equatable>: Equatable {
     public var isTransitioning: Bool {
         from != to && progress > 0 && progress < 1
     }
-
-    /// Returns true if the transition has completed (progress >= 1.0).
-    public var isComplete: Bool {
-        progress >= 1.0
-    }
-
-    /// The current effective value based on progress.
-    ///
-    /// Returns `from` when progress < 1.0, `to` when progress >= 1.0.
-    /// For visual transitions, prefer using `fromOpacity`/`toOpacity` crossfade.
-    public var current: Value {
-        progress >= 1.0 ? to : from
-    }
 }
 
 // MARK: - Sendable Conformance
 
 extension DiscreteTransition: Sendable where Value: Sendable {}
-
-// MARK: - Interpolation
-
-extension DiscreteTransition {
-    /// Creates an interpolated transition between two transitions.
-    ///
-    /// When both transitions share the same from/to values, interpolates the progress.
-    /// When they differ, creates a new transition between the resolved values.
-    ///
-    /// - Parameters:
-    ///   - from: The starting transition state.
-    ///   - to: The ending transition state.
-    ///   - progress: The interpolation progress (0.0 to 1.0).
-    /// - Returns: An interpolated transition.
-    public static func interpolated(
-        from: DiscreteTransition<Value>,
-        to: DiscreteTransition<Value>,
-        progress: Double
-    ) -> DiscreteTransition<Value> {
-        // Resolve each transition to its current value at the given progress
-        let fromValue = from.snapped
-        let toValue = to.snapped
-
-        // If values are the same, return static transition
-        if fromValue == toValue {
-            return DiscreteTransition(fromValue)
-        }
-
-        // Create transition between the two resolved values
-        return DiscreteTransition(
-            from: fromValue,
-            to: toValue,
-            progress: progress
-        )
-    }
-}
 
 // MARK: - View Extension for Crossfade
 
