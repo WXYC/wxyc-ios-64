@@ -116,13 +116,16 @@ for i in "${!PLATFORMS[@]}"; do
     platform="${PLATFORMS[$i]}"
     log "Building for $platform..."
 
-    xcodebuild -project "$XCODEPROJ" \
+    # Note: BUILD_LIBRARY_FOR_DISTRIBUTION is intentionally omitted due to Swift 6 compatibility issues
+    # with transitive dependencies (swift-algorithms). The xcframework is only used within this project
+    # so ABI stability across Swift versions is not required.
+    if ! xcodebuild -project "$XCODEPROJ" \
         -scheme Secrets \
         -destination "$platform" \
         -configuration Release \
-        SKIP_INSTALL=NO \
-        -quiet \
-        2>&1 | grep -E "^(error:|warning:.*Secrets)" || true
+        SKIP_INSTALL=NO 2>&1 | tee /dev/stderr | grep -q "BUILD SUCCEEDED"; then
+        error "Build failed for $platform"
+    fi
 done
 
 log "All platforms built successfully"
