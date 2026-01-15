@@ -83,6 +83,10 @@ public final class ThemeConfiguration {
         "wallpaper.playbackAlpha.\(themeID)"
     }
 
+    private func materialBlendModeKey(for themeID: String) -> String {
+        "wallpaper.materialBlendMode.\(themeID)"
+    }
+
     // MARK: - Dependencies
 
     private let registry: any ThemeRegistryProtocol
@@ -271,6 +275,22 @@ public final class ThemeConfiguration {
             let key = playbackAlphaKey(for: selectedThemeID)
             defaults.set(playbackAlpha, forKey: key)
         }
+    }
+
+    // MARK: - Material Blend Mode
+
+    /// The blend mode for material overlays.
+    /// Stored per-theme so each theme can have its own blend mode.
+    public var materialBlendMode: MaterialBlendMode = .default {
+        didSet {
+            let key = materialBlendModeKey(for: selectedThemeID)
+            defaults.set(materialBlendMode.rawValue, forKey: key)
+        }
+    }
+
+    /// Returns the effective blend mode as a SwiftUI BlendMode.
+    public var effectiveMaterialBlendMode: BlendMode {
+        materialBlendMode.blendMode
     }
 
     /// Optional accent brightness override (0.5 to 1.5). When nil, uses the theme's default.
@@ -486,6 +506,22 @@ public final class ThemeConfiguration {
         return 1.0
     }
 
+    /// Returns the effective material blend mode for a given theme ID.
+    /// For the selected theme, uses in-memory value. For other themes, looks up stored override.
+    public func effectiveMaterialBlendMode(for themeID: String) -> BlendMode {
+        if themeID == selectedThemeID {
+            return effectiveMaterialBlendMode
+        }
+
+        // Look up stored override for this theme
+        let key = materialBlendModeKey(for: themeID)
+        if let savedMode = defaults.string(forKey: key),
+           let mode = MaterialBlendMode(rawValue: savedMode) {
+            return mode.blendMode
+        }
+        return MaterialBlendMode.default.blendMode
+    }
+
     // MARK: - Theme Appearance
 
     /// Returns the appearance for a specific theme, with any user overrides applied.
@@ -499,7 +535,8 @@ public final class ThemeConfiguration {
             lcdMaxOffset: lcdMaxOffset(for: themeID),
             playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID)),
             playbackDarkness: playbackDarkness(for: themeID),
-            playbackAlpha: playbackAlpha(for: themeID)
+            playbackAlpha: playbackAlpha(for: themeID),
+            materialBlendMode: DiscreteTransition(effectiveMaterialBlendMode(for: themeID))
         )
     }
 
@@ -612,6 +649,15 @@ public final class ThemeConfiguration {
             ? defaults.double(forKey: alphaKey)
             : 1.0
 
+        // Load material blend mode
+        let materialBlendModeKeyValue = materialBlendModeKey(for: themeID)
+        if let savedMode = defaults.string(forKey: materialBlendModeKeyValue),
+           let mode = MaterialBlendMode(rawValue: savedMode) {
+            materialBlendMode = mode
+        } else {
+            materialBlendMode = .default
+        }
+
         // Load cached mesh gradient palette
         let paletteKey = meshGradientPaletteKey(for: themeID)
         if let data = defaults.data(forKey: paletteKey) {
@@ -661,6 +707,7 @@ public final class ThemeConfiguration {
         playbackBlendMode = .default
         playbackDarkness = 0.0
         playbackAlpha = 1.0
+        materialBlendMode = .default
         meshGradientPalette = nil
         registry.themes.forEach { $0.parameterStore.reset() }
     }

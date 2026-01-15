@@ -67,6 +67,21 @@ struct MaterialControls: View {
                 Slider(value: opacityBinding, in: 0...1)
             }
 
+            Divider()
+
+            // Blend mode picker
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Blend Mode")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("Blend Mode", selection: $configuration.materialBlendMode) {
+                    ForEach(MaterialBlendMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
             // Reset button
             let hasOverrides =
                 configuration.blurRadiusOverride != nil ||

@@ -43,6 +43,12 @@ public struct ThemeDebugOverlay: View {
                 .popover(isPresented: $showingPopover) {
                     ThemeDebugPopoverContent(configuration: configuration)
                 }
+                .presentationBackground {
+                    Rectangle()
+                        .fill(.gray)
+                        .opacity(0.5)
+                }
+
                 #endif
             }
         }

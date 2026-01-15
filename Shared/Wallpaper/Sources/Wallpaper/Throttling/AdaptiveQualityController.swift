@@ -2,6 +2,9 @@
 //  AdaptiveQualityController.swift
 //  Wallpaper
 //
+//  Adaptive thermal throttling controller that continuously optimizes wallpaper rendering
+//  quality (FPS, scale, LOD) based on device thermal state and measured performance.
+//
 //  Created by Jake Bromberg on 01/03/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -194,6 +197,7 @@ public final class AdaptiveQualityController {
                 defaults.removeObject(forKey: "wallpaper.debug.scaleOverride")
             }
             #endif
+            updateInterpolationState()
         }
     }
 
@@ -207,6 +211,7 @@ public final class AdaptiveQualityController {
                 defaults.removeObject(forKey: "wallpaper.debug.wallpaperFPSOverride")
             }
             #endif
+            updateInterpolationState()
         }
     }
 
@@ -597,8 +602,8 @@ public final class AdaptiveQualityController {
         currentScale = newScale
         currentLOD = newLOD
 
-        // Update interpolation state based on current throttling tier
-        updateInterpolationState(scale: newScale, displayFPS: newWallpaperFPS, momentum: effectiveMomentum)
+        // Update interpolation state based on effective values (respects debug overrides)
+        updateInterpolationState()
 
         // Record analytics event
         if let shaderID = activeShaderID {
@@ -624,7 +629,7 @@ public final class AdaptiveQualityController {
 
     // MARK: - Interpolation State
 
-    /// Updates the interpolation state based on current throttling parameters.
+    /// Updates the interpolation state based on effective throttling parameters.
     ///
     /// Interpolation is enabled as a middle tier when:
     /// - Scale has been reduced below a threshold (thermal pressure exists)
@@ -634,7 +639,13 @@ public final class AdaptiveQualityController {
     /// at a lower rate (e.g., 30fps), reducing GPU workload by ~50%.
     ///
     /// The scale threshold is mode-dependent: low power mode enables interpolation earlier.
-    private func updateInterpolationState(scale: Float, displayFPS: Float, momentum: Float) {
+    ///
+    /// Uses effective values so debug overrides are respected.
+    private func updateInterpolationState() {
+        // Use effective values so debug overrides affect interpolation
+        let scale = effectiveScale
+        let displayFPS = effectiveWallpaperFPS
+
         // Thresholds for interpolation activation (mode-dependent)
         let scaleThreshold = mode.interpolationScaleThreshold
         let fpsThreshold: Float = 50.0  // Only interpolate when display FPS is still high

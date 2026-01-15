@@ -53,7 +53,7 @@ struct AdaptiveQualityControllerTests {
             context: context,
             clock: clock,
             mode: mode,
-            optimizationInterval: .milliseconds(10),
+            optimizationInterval: .seconds(1000),
             periodicFlushInterval: .seconds(300),
             backgroundThreshold: 1  // 1 second for testing
         )
@@ -438,5 +438,69 @@ struct AdaptiveQualityControllerTests {
 
         // Should have boosted momentum (exact values depend on implementation)
         #expect(controller.currentMomentum > 0)
+    }
+
+    // MARK: - Debug Override Interpolation Tests
+
+    @Test("Debug scale override below threshold enables interpolation")
+    func debugScaleOverrideEnablesInterpolation() async {
+        let context = MockDeviceContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // At nominal thermal, scale should be 1.0 and interpolation disabled
+        #expect(controller.currentScale == 1.0)
+        #expect(controller.interpolationEnabled == false)
+
+        controller.debugWallpaperFPSOverride = 60.0
+        // Set debug scale override below threshold (0.85 for normal mode)
+        controller.debugScaleOverride = 0.7
+
+        // Interpolation should now be enabled due to effective scale being below threshold
+        #expect(controller.effectiveScale == 0.7)
+        #expect(controller.effectiveWallpaperFPS == 60.0)
+        #expect(controller.interpolationEnabled == true)
+    }
+
+    @Test("Debug FPS override below threshold disables interpolation")
+    func debugFPSOverrideBelowThresholdDisablesInterpolation() async {
+        let context = MockDeviceContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Set scale below threshold to enable interpolation conditions
+        controller.debugWallpaperFPSOverride = 60.0
+        controller.debugScaleOverride = 0.7
+
+        #expect(controller.interpolationEnabled == true)
+
+        // Now set FPS override below 50 threshold - should disable interpolation
+        controller.debugWallpaperFPSOverride = 45.0
+
+        #expect(controller.effectiveWallpaperFPS == 45.0)
+        #expect(controller.interpolationEnabled == false)
+    }
+
+    @Test("Removing debug scale override updates interpolation state")
+    func removingDebugScaleOverrideUpdatesInterpolation() async {
+        let context = MockDeviceContext(thermalState: .nominal)
+        let controller = makeController(context: context)
+
+        await controller.setActiveShader("test")
+
+        // Enable interpolation via debug override
+        controller.debugWallpaperFPSOverride = 60.0
+        controller.debugScaleOverride = 0.7
+
+        #expect(controller.interpolationEnabled == true)
+
+        // Remove override - should return to adaptive value (1.0 at nominal)
+        controller.debugScaleOverride = nil
+
+        // With scale back at 1.0, interpolation should be disabled
+        #expect(controller.effectiveScale == 1.0)
+        #expect(controller.interpolationEnabled == false)
     }
 }

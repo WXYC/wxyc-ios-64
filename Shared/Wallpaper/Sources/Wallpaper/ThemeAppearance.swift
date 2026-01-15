@@ -50,6 +50,12 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// The alpha/opacity for playback controls (0.0 = transparent, 1.0 = opaque).
     public var playbackAlpha: Double
 
+    /// The blend mode transition for material overlays.
+    ///
+    /// Uses `DiscreteTransition` to support crossfade between blend modes
+    /// during theme picker scrolling.
+    public var materialBlendMode: DiscreteTransition<BlendMode>
+
     public init(
         blurRadius: Double = 8.0,
         overlayOpacity: Double = 0.0,
@@ -59,7 +65,8 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         lcdMaxOffset: HSBOffset = .defaultMax,
         playbackBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(PlaybackBlendMode.default.blendMode),
         playbackDarkness: Double = 0.0,
-        playbackAlpha: Double = 1.0
+        playbackAlpha: Double = 1.0,
+        materialBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(MaterialBlendMode.default.blendMode)
     ) {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
@@ -70,6 +77,7 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         self.playbackBlendMode = playbackBlendMode
         self.playbackDarkness = playbackDarkness
         self.playbackAlpha = playbackAlpha
+        self.materialBlendMode = materialBlendMode
     }
 
     /// Creates an interpolated appearance between two appearances.
@@ -96,7 +104,12 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
                 progress: progress
             ),
             playbackDarkness: from.playbackDarkness + (to.playbackDarkness - from.playbackDarkness) * progress,
-            playbackAlpha: from.playbackAlpha + (to.playbackAlpha - from.playbackAlpha) * progress
+            playbackAlpha: from.playbackAlpha + (to.playbackAlpha - from.playbackAlpha) * progress,
+            materialBlendMode: DiscreteTransition(
+                from: from.materialBlendMode.snapped,
+                to: to.materialBlendMode.snapped,
+                progress: progress
+            )
         )
     }
 }
