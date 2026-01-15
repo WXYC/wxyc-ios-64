@@ -38,6 +38,7 @@ let package = Package(
             name: "RadioPlayerModule",
             dependencies: [
                 "PlaybackCore",
+                "Analytics",
             ],
             path: "Sources/RadioPlayer"
         ),
@@ -48,6 +49,7 @@ let package = Package(
             dependencies: [
                 "PlaybackCore",
                 "Core",
+                "Analytics",
             ],
             path: "Sources/MP3Streamer"
         ),
@@ -83,6 +85,7 @@ let package = Package(
                 "PlaybackCore",
                 "RadioPlayerModule",
                 "MP3StreamerModule",
+                .product(name: "AnalyticsTesting", package: "Analytics"),
             ],
             path: "Tests/PlaybackTestUtilities",
             resources: [.process("Resources")]
@@ -92,16 +95,16 @@ let package = Package(
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities"],
+            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")],
             resources: [.process("Resources")]
         ),
         .testTarget(
             name: "RadioPlayerTests",
-            dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core", "PlaybackTestUtilities"]
+            dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")]
         ),
         .testTarget(
             name: "MP3StreamerTests",
-            dependencies: ["MP3StreamerModule", "PlaybackCore", "Core", "PlaybackTestUtilities"],
+            dependencies: ["MP3StreamerModule", "PlaybackCore", "Core", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")],
             resources: [.process("Resources")]
         ),
     ]

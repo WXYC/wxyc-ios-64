@@ -12,6 +12,7 @@ import Foundation
 import Logger
 import Observation
 import SwiftUI
+import Analytics
 
 // MARK: - Theme Transition
 
@@ -114,7 +115,7 @@ public final class ThemePickerState {
     private let registry: any ThemeRegistryProtocol
 
     /// Analytics handler for theme picker events.
-    private var analytics: ThemePickerAnalytics?
+    private var analytics: AnalyticsService?
 
     /// Persistence layer for picker state.
     public var persistence = ThemePickerPersistence()
@@ -134,7 +135,7 @@ public final class ThemePickerState {
     /// Sets the analytics handler for theme picker events.
     ///
     /// - Parameter analytics: The analytics implementation to use.
-    public func setAnalytics(_ analytics: ThemePickerAnalytics) {
+    public func setAnalytics(_ analytics: AnalyticsService) {
         self.analytics = analytics
     }
 
@@ -143,7 +144,7 @@ public final class ThemePickerState {
     /// This records both analytics and persistence. For auto-dismissal
     /// (when user enters the picker), use `enter(currentThemeID:)` instead.
     public func recordTipDismissedByUser() {
-        analytics?.record(ThemeTipDismissedEvent(
+        analytics?.capture(ThemeTipDismissedEvent(
             hadEverEnteredPicker: persistence.hasEverUsedPicker
         ))
         persistence.recordTipDismissed()
@@ -169,7 +170,7 @@ public final class ThemePickerState {
         persistence.recordTipDismissed()
 
         // Record analytics event
-        analytics?.record(ThemePickerEnteredEvent(fromThemeID: currentThemeID))
+        analytics?.capture(ThemePickerEnteredEvent(fromThemeID: currentThemeID))
     }
 
     /// Confirms the current centered theme as the selection and records analytics.
@@ -190,7 +191,7 @@ public final class ThemePickerState {
         }
 
         // Record analytics event
-        analytics?.record(ThemePickerSelectionEvent(
+        analytics?.capture(ThemePickerSelectionEvent(
             selectedThemeID: selectedThemeID,
             previousThemeID: previousID,
             themeChanged: themeChanged,

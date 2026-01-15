@@ -19,6 +19,7 @@ let package = Package(
         .package(name: "WXUI", path: "../WXUI"),
         .package(name: "ColorPalette", path: "../ColorPalette"),
         .package(name: "Logger", path: "../Logger"),
+        .package(name: "Analytics", path: "../Analytics"),
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.0"),
     ],
     targets: [
@@ -30,6 +31,7 @@ let package = Package(
                 "WXUI",
                 "ColorPalette",
                 "Logger",
+                "Analytics",
             ],
             resources: [
                 .process("Resources/Wallpapers"),
@@ -41,6 +43,7 @@ let package = Package(
             dependencies: [
                 "Wallpaper",
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+                .product(name: "AnalyticsTesting", package: "Analytics"),
             ]
         ),
     ]

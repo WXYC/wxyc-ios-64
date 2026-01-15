@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "Analytics", targets: ["Analytics"]),
+        .library(name: "AnalyticsTesting", targets: ["AnalyticsTesting"]),
     ],
     dependencies: [
         .package(path: "../Secrets"),
@@ -21,6 +22,10 @@ let package = Package(
                 "Secrets",
                 .product(name: "PostHog", package: "posthog-ios"),
             ]
+        ),
+        .target(
+            name: "AnalyticsTesting",
+            dependencies: ["Analytics"]
         ),
     ]
 )

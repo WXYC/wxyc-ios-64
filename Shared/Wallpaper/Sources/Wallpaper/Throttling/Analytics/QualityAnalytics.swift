@@ -40,11 +40,14 @@ public enum QualitySessionOutcome: String, Sendable {
 
 // MARK: - Event Types
 
-/// Marker protocol for all thermal analytics events.
-public protocol QualityAnalyticsEvent: Sendable, Equatable {}
+import Analytics
 
-/// Event captured on each optimization tick (aggregated, not sent directly).
+/// Marker protocol for all thermal analytics events.
+public protocol QualityAnalyticsEvent: AnalyticsEvent {}
+
 public struct QualityAdjustmentEvent: QualityAnalyticsEvent {
+    public let name = "quality_adjustment"
+
     /// Identifier for the active shader
     public let shaderId: String
     /// Current wallpaper FPS setting (display rate)
@@ -63,6 +66,20 @@ public struct QualityAdjustmentEvent: QualityAnalyticsEvent {
     public let shaderFPS: Float
     /// When this adjustment occurred
     public let timestamp: Date
+
+    public var properties: [String: Any]? {
+        [
+            "shader_id": shaderId,
+            "wallpaper_fps": wallpaperFPS,
+            "scale": scale,
+            "lod": lod,
+            "thermal_state": thermalState.rawValue,
+            "momentum": momentum,
+            "interpolation_enabled": interpolationEnabled,
+            "shader_fps": shaderFPS,
+            "timestamp": timestamp.timeIntervalSince1970
+        ]
+    }
 
     public init(
         shaderId: String,
@@ -89,10 +106,8 @@ public struct QualityAdjustmentEvent: QualityAnalyticsEvent {
 
 // MARK: - Session Summary
 
-/// Aggregated metrics for a thermal optimization session.
-///
-/// This is what gets sent to PostHog, not individual adjustment events.
-public struct QualitySessionSummary: Sendable, Equatable {
+public struct QualitySessionSummary: QualityAnalyticsEvent {
+    public let name = "quality_session_summary"
 
     // MARK: Identity
 
@@ -149,6 +164,34 @@ public struct QualitySessionSummary: Sendable, Equatable {
     /// Number of interpolator resets (potential visual glitches)
     public let interpolatorResetCount: Int
 
+    public var properties: [String: Any]? {
+        var props: [String: Any] = [
+            "shader_id": shaderId,
+            "flush_reason": flushReason.rawValue,
+            "avg_wallpaper_fps": avgWallpaperFPS,
+            "avg_scale": avgScale,
+            "avg_lod": avgLOD,
+            "session_duration_seconds": sessionDurationSeconds,
+            "time_in_critical_seconds": timeInCriticalSeconds,
+            "throttle_event_count": throttleEventCount,
+            "oscillation_count": oscillationCount,
+            "reached_stability": reachedStability,
+            "session_outcome": sessionOutcome.rawValue,
+            "interpolation_enabled_percent": interpolationEnabledPercent,
+            "interpolation_activation_count": interpolationActivationCount,
+            "estimated_workload_reduction_percent": estimatedWorkloadReductionPercent,
+            "interpolator_reset_count": interpolatorResetCount
+        ]
+        
+        if let sessionsToStability { props["sessions_to_stability"] = sessionsToStability }
+        if let stableWallpaperFPS { props["stable_wallpaper_fps"] = stableWallpaperFPS }
+        if let stableScale { props["stable_scale"] = stableScale }
+        if let stableLOD { props["stable_lod"] = stableLOD }
+        if let avgShaderFPSWhileInterpolating { props["avg_shader_fps_while_interpolating"] = avgShaderFPSWhileInterpolating }
+        
+        return props
+    }
+
     public init(
         shaderId: String,
         flushReason: QualityFlushReason,
@@ -201,15 +244,8 @@ public struct QualitySessionSummary: Sendable, Equatable {
 /// Implementations aggregate adjustment events in memory and flush
 /// session summaries to analytics on session boundaries.
 @MainActor
+@available(*, deprecated, message: "Use AnalyticsService instead")
 public protocol QualityAnalytics: AnyObject {
-
-    /// Records an optimization tick event (aggregated in memory).
-    ///
-    /// Called frequently (every 5 seconds) but not sent to analytics directly.
     func record(_ event: QualityAdjustmentEvent)
-
-    /// Flushes aggregated metrics to analytics.
-    ///
-    /// Called on session boundaries (background, shader change, periodic).
     func flush(reason: QualityFlushReason)
 }

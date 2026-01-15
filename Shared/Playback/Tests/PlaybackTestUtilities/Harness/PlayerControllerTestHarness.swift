@@ -21,6 +21,8 @@ import MediaPlayer
 #if !os(watchOS)
 @testable import MP3StreamerModule
 #endif
+import Analytics
+import AnalyticsTesting
 
 // MARK: - PlaybackController Test Convenience Extensions
 
@@ -77,7 +79,7 @@ public final class PlayerControllerTestHarness {
     public let mockPlayer: MockAudioPlayer
     public let mockSession: MockAudioSession
     public let mockCommandCenter: MockRemoteCommandCenter?
-    public let mockAnalytics: MockPlaybackAnalytics
+    public let mockAnalytics: MockStructuredAnalytics
 
     // For RadioPlayerController backoff access
     private let radioPlayerController: RadioPlayerController?
@@ -91,14 +93,23 @@ public final class PlayerControllerTestHarness {
     public var stopCallCount: Int { mockPlayer.stopCallCount }
     public var sessionActivated: Bool { mockSession.lastActiveState == true }
     public var sessionDeactivated: Bool { mockSession.lastActiveState == false }
-    public var analyticsPlayCallCount: Int { mockAnalytics.startedEvents.count }
-    public var analyticsStopCallCount: Int { mockAnalytics.stoppedEvents.count }
+    
+    public var analyticsPlayCallCount: Int { 
+        mockAnalytics.events.filter { $0 is PlaybackStartedEvent }.count 
+    }
+    
+    public var analyticsStopCallCount: Int { 
+        mockAnalytics.events.filter { $0 is PlaybackStoppedEvent }.count 
+    }
+    
     public var lastAnalyticsPlayReason: String? {
-        mockAnalytics.startedEvents.last.map { String(describing: $0.reason) }
+        (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStartedEvent }) as? PlaybackStartedEvent)?.reason
     }
+    
     public var lastAnalyticsStopDuration: TimeInterval? {
-        mockAnalytics.stoppedEvents.last?.duration
+        (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStoppedEvent }) as? PlaybackStoppedEvent)?.duration
     }
+    
     public var supportsStallSimulation: Bool { true }
 
     // MARK: - Private Initializer
@@ -109,7 +120,7 @@ public final class PlayerControllerTestHarness {
         mockPlayer: MockAudioPlayer,
         mockSession: MockAudioSession,
         mockCommandCenter: MockRemoteCommandCenter?,
-        mockAnalytics: MockPlaybackAnalytics,
+        mockAnalytics: MockStructuredAnalytics,
         radioPlayerController: RadioPlayerController? = nil
     ) {
         self.controller = controller
@@ -127,7 +138,7 @@ public final class PlayerControllerTestHarness {
     public static func make(for testCase: PlayerControllerTestCase) -> PlayerControllerTestHarness {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         let mockPlayer = MockAudioPlayer(url: streamURL)
-        let mockAnalytics = MockPlaybackAnalytics()
+        let mockAnalytics = MockStructuredAnalytics()
         let notificationCenter = NotificationCenter()
 
         switch testCase {

@@ -12,6 +12,8 @@
 import Testing
 import Foundation
 import AVFoundation
+import Analytics
+import AnalyticsTesting
 @testable import PlaybackCore
 @testable import RadioPlayerModule
 #if !os(watchOS)
@@ -76,7 +78,7 @@ public final class AudioPlayerTestHarness {
     public let player: any AudioPlayerProtocol
     public let testCase: AudioPlayerTestCase
     public let notificationCenter: NotificationCenter
-    public let mockAnalytics: MockAnalyticsService
+    public let mockAnalytics: MockStructuredAnalytics
 
     // RadioPlayer mocks
     private let mockPlayer: MockPlayer?
@@ -121,7 +123,7 @@ public final class AudioPlayerTestHarness {
         mockPlayer: MockPlayer?,
         mockHTTPClient: MockHTTPStreamClient?,
         mockAudioEngine: MockAudioEnginePlayer?,
-        mockAnalytics: MockAnalyticsService
+        mockAnalytics: MockStructuredAnalytics
     ) {
         self.player = player
         self.testCase = testCase
@@ -137,7 +139,7 @@ public final class AudioPlayerTestHarness {
         testCase: AudioPlayerTestCase,
         notificationCenter: NotificationCenter,
         mockPlayer: MockPlayer?,
-        mockAnalytics: MockAnalyticsService
+        mockAnalytics: MockStructuredAnalytics
     ) {
         self.player = player
         self.testCase = testCase
@@ -152,7 +154,7 @@ public final class AudioPlayerTestHarness {
     /// Creates a test harness for the specified player type
     public static func make(for testCase: AudioPlayerTestCase) -> AudioPlayerTestHarness {
         let notificationCenter = NotificationCenter()
-        let mockAnalytics = MockAnalyticsService()
+        let mockAnalytics = MockStructuredAnalytics()
 
         switch testCase {
         #if !os(watchOS)

@@ -13,6 +13,7 @@
 @preconcurrency import AVFoundation
 import os.lock
 import Analytics
+import PlaybackCore
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 import UIKit
@@ -136,11 +137,11 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         
     func play() throws {
         if stateBox.isPlaying {
-            analytics?.capture("audioEnginePlayer already playing")
+            analytics?.capture(PlaybackStartedEvent(reason: "audioEnginePlayer already playing"))
             return
         }
         
-        analytics?.capture("audioEnginePlayer play")
+        analytics?.capture(PlaybackStartedEvent(reason: "audioEnginePlayer play"))
         
         // Defer audio engine setup until first play to avoid interrupting other apps on launch
         setUpAudioEngineIfNeeded()
@@ -157,7 +158,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func pause() {
         guard stateBox.isPlaying else { return }
 
-        analytics?.capture("audioEnginePlayer pause")
+        analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer pause", duration: 0)) // Duration 0 as we don't track it here yet
         playerNode.pause()
         stateBox.isPlaying = false
         eventContinuation.yield(.paused)
@@ -166,7 +167,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func stop() {
         guard stateBox.isPlaying || engine.isRunning else { return }
 
-        analytics?.capture("audioEnginePlayer stop")
+        analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer stop", duration: 0))
         playerNode.stop()
         engine.stop()
         stateBox.isPlaying = false

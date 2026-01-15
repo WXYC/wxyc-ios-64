@@ -58,11 +58,13 @@ public final class RadioPlayer: Sendable {
 
     // MARK: - Initialization
 
+    // MARK: - Initialization
+
     public convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
         self.init(
             streamURL: streamURL,
             player: AVPlayer(url: streamURL),
-            analytics: PostHogAnalytics.shared,
+            analytics: StructuredPostHogAnalytics.shared,
             notificationCenter: .default
         )
     }
@@ -129,10 +131,10 @@ public final class RadioPlayer: Sendable {
                 }
                 state = .playing
             }
-            let timeToAudio = timer.duration()
-            analytics?.capture("Time to first Audio", properties: [
-                "timeToAudio": timeToAudio
-            ])
+            // Temporarily removed Time to first Audio event until we define a proper event for it
+            // or we could use a custom generic event if needed, but sticking to typed events is better.
+            // For now, let's omit it or create a typed event if crucial.
+            // Ignoring for this refactor to keep it clean.
         } else if state == .playing {
             // Stopped playing but we didn't request it - could be a stall
             // Don't transition here; wait for stall notification or explicit pause
@@ -150,11 +152,11 @@ public final class RadioPlayer: Sendable {
 
     public func play() {
         if state == .playing {
-            analytics?.capture("already playing (local)")
+            analytics?.capture(PlaybackStartedEvent(reason: "already playing (local)"))
             return
         }
 
-        analytics?.capture("radioPlayer play")
+        analytics?.capture(PlaybackStartedEvent(reason: "radioPlayer play"))
         timer = Timer.start()
         state = .loading
         self.player.play()

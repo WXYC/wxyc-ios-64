@@ -10,6 +10,7 @@
 //
 
 import AppServices
+import Analytics
 import Artwork
 import AVFoundation
 import BackgroundTasks
@@ -290,8 +291,7 @@ struct WXYCApp: App {
     }
 
     private func setUpThemePickerAnalytics() {
-        let analytics = PostHogThemePickerAnalytics()
-        appState.themePickerState.setAnalytics(analytics)
+        appState.themePickerState.setAnalytics(StructuredPostHogAnalytics.shared)
     }
 
     private func buildConfiguration() -> String {
