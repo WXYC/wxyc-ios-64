@@ -143,3 +143,54 @@ struct PlaylistFetcherTests {
         #expect(mockAnalytics.capturedErrors.isEmpty)
     }
 }
+
+// MARK: - Mojibake Repair Tests
+
+@Suite("Data Mojibake Repair Tests")
+struct DataMojibakeRepairTests {
+    @Test("repairs UTF-8 mojibake in JSON data")
+    func repairsMojibakeInJSON() {
+        // "Björk" encoded as UTF-8, then incorrectly decoded as Latin-1, then re-encoded as UTF-8
+        // Results in "BjÃ¶rk" in the JSON
+        let corruptedJSON = """
+        {"artistName":"BjÃ¶rk","songTitle":"Venus as a Boy"}
+        """
+        let corruptedData = corruptedJSON.data(using: .utf8)!
+
+        let repairedData = corruptedData.repairingMojibake()
+        let repairedString = String(data: repairedData, encoding: .utf8)!
+
+        #expect(repairedString.contains("Björk"))
+        #expect(!repairedString.contains("BjÃ¶rk"))
+    }
+
+    @Test("preserves ASCII-only data unchanged")
+    func preservesASCIIData() {
+        let asciiJSON = """
+        {"artistName":"The Beatles","songTitle":"Yesterday"}
+        """
+        let asciiData = asciiJSON.data(using: .utf8)!
+
+        let repairedData = asciiData.repairingMojibake()
+
+        #expect(repairedData == asciiData)
+    }
+
+    @Test("repairs multiple mojibake characters")
+    func repairsMultipleMojibakeCharacters() {
+        // Create proper mojibake by encoding UTF-8 string, then interpreting bytes as Latin-1
+        let original = """
+        {"artistName":"Sigur Rós","albumTitle":"Ágætis byrjun"}
+        """
+        // Simulate server bug: UTF-8 bytes interpreted as Latin-1, then served as UTF-8
+        let utf8Bytes = Array(original.utf8)
+        let mojibakeString = String(bytes: utf8Bytes, encoding: .isoLatin1)!
+        let corruptedData = mojibakeString.data(using: .utf8)!
+
+        let repairedData = corruptedData.repairingMojibake()
+        let repairedString = String(data: repairedData, encoding: .utf8)!
+
+        #expect(repairedString.contains("Sigur Rós"))
+        #expect(repairedString.contains("Ágætis byrjun"))
+    }
+}

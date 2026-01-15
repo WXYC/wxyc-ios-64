@@ -49,7 +49,8 @@ extension URLSession: PlaylistDataSource {
     public func getPlaylist() async throws -> Playlist {
         do {
             let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
-            return try decoder.decode(Playlist.self, from: playlistData)
+            let repairedData = playlistData.repairingMojibake()
+            return try decoder.decode(Playlist.self, from: repairedData)
         } catch let error as NSError {
             print(error.localizedDescription)
             throw AnalyticsOSError(
@@ -60,6 +61,23 @@ extension URLSession: PlaylistDataSource {
         } catch let error as DecodingError {
             throw AnalyticsDecoderError(description: error.localizedDescription)
         }
+    }
+}
+
+extension Data {
+    /// Repairs mojibake caused by UTF-8 text being stored/sent as Latin-1.
+    ///
+    /// The V1 API server has encoding issues where UTF-8 characters are corrupted
+    /// (e.g., "Björk" becomes "BjÃ¶rk"). This repairs by re-interpreting the
+    /// UTF-8 string as Latin-1 bytes, then decoding those bytes as UTF-8.
+    func repairingMojibake() -> Data {
+        guard let string = String(data: self, encoding: .utf8),
+              let latin1Data = string.data(using: .isoLatin1),
+              let repaired = String(data: latin1Data, encoding: .utf8),
+              let repairedData = repaired.data(using: .utf8) else {
+            return self
+        }
+        return repairedData
     }
 }
 
