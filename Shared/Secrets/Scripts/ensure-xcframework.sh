@@ -2,86 +2,37 @@
 #
 # ensure-xcframework.sh
 #
-# Checks if Secrets.xcframework needs to be (re)built and builds it if necessary.
+# Checks if Secrets.xcframework exists and is valid.
 # Intended to be called from an Xcode build phase.
 #
-# Rebuilds if:
-#   - Secrets.xcframework doesn't exist
-#   - Any source file is newer than the xcframework
-#   - Package.swift is newer than the xcframework
+# Note: Due to Xcode's sandboxed build phases, this script cannot rebuild
+# the xcframework automatically. If the xcframework is missing or invalid,
+# run build-xcframework.sh manually from the terminal.
 #
-# Environment:
-#   Secrets are loaded from secrets.txt if environment variables aren't set.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SECRETS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 XCFRAMEWORK="$SECRETS_DIR/Secrets.xcframework"
-SOURCES_DIR="$SECRETS_DIR/Sources/Secrets"
-PACKAGE_SWIFT="$SECRETS_DIR/Package.swift"
 
 log() {
     echo "[ensure-xcframework] $1"
 }
 
+error() {
+    echo "[ensure-xcframework] ERROR: $1" >&2
+    exit 1
+}
+
 # Check if xcframework exists
 if [ ! -d "$XCFRAMEWORK" ]; then
-    log "Secrets.xcframework not found, building..."
-    "$SCRIPT_DIR/build-xcframework.sh"
-    exit 0
+    error "Secrets.xcframework not found. Run 'Shared/Secrets/Scripts/build-xcframework.sh' manually."
 fi
 
-# Get xcframework modification time (use Info.plist as reference)
-XCFRAMEWORK_REF="$XCFRAMEWORK/Info.plist"
-if [ ! -f "$XCFRAMEWORK_REF" ]; then
-    log "Secrets.xcframework appears corrupted (no Info.plist), rebuilding..."
-    "$SCRIPT_DIR/build-xcframework.sh"
-    exit 0
+# Check if xcframework is valid (has Info.plist)
+if [ ! -f "$XCFRAMEWORK/Info.plist" ]; then
+    error "Secrets.xcframework appears corrupted (no Info.plist). Run 'Shared/Secrets/Scripts/build-xcframework.sh' manually."
 fi
 
-XCFRAMEWORK_MTIME=$(stat -f %m "$XCFRAMEWORK_REF" 2>/dev/null || echo "0")
-NEEDS_REBUILD=false
-
-# Check Package.swift
-if [ -f "$PACKAGE_SWIFT" ]; then
-    PACKAGE_MTIME=$(stat -f %m "$PACKAGE_SWIFT")
-    if [ "$PACKAGE_MTIME" -gt "$XCFRAMEWORK_MTIME" ]; then
-        log "Package.swift is newer than xcframework"
-        NEEDS_REBUILD=true
-    fi
-fi
-
-# Check source files (including generated Secrets.swift)
-if [ "$NEEDS_REBUILD" = false ] && [ -d "$SOURCES_DIR" ]; then
-    for file in "$SOURCES_DIR"/*.swift; do
-        if [ -f "$file" ]; then
-            FILE_MTIME=$(stat -f %m "$file")
-            if [ "$FILE_MTIME" -gt "$XCFRAMEWORK_MTIME" ]; then
-                log "$(basename "$file") is newer than xcframework"
-                NEEDS_REBUILD=true
-                break
-            fi
-        fi
-    done
-fi
-
-# Check build script itself
-BUILD_SCRIPT="$SCRIPT_DIR/build-xcframework.sh"
-if [ "$NEEDS_REBUILD" = false ] && [ -f "$BUILD_SCRIPT" ]; then
-    SCRIPT_MTIME=$(stat -f %m "$BUILD_SCRIPT")
-    if [ "$SCRIPT_MTIME" -gt "$XCFRAMEWORK_MTIME" ]; then
-        log "build-xcframework.sh is newer than xcframework"
-        NEEDS_REBUILD=true
-    fi
-fi
-
-if [ "$NEEDS_REBUILD" = true ]; then
-    log "Rebuilding Secrets.xcframework..."
-    "$SCRIPT_DIR/build-xcframework.sh"
-else
-    log "Secrets.xcframework is up to date"
-fi
-
-
-
+log "Secrets.xcframework is present"
