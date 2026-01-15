@@ -303,7 +303,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-    
+
     // MARK: - Background Refresh
 
     private func scheduleBackgroundRefresh() {
