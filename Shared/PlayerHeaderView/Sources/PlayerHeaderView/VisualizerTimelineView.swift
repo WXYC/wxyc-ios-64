@@ -17,8 +17,6 @@ public struct VisualizerTimelineView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var barHistory: [[Float]]
     var isPlaying: Bool
-    var rmsPerBar: [Float]
-    var onModeTapped: (() -> Void)?
     var onDebugTapped: (() -> Void)?
     
     /// Computed property to get the current display data based on displayProcessor
@@ -85,20 +83,12 @@ public struct VisualizerTimelineView: View {
         visualizer: VisualizerDataSource,
         barHistory: Binding<[[Float]]>,
         isPlaying: Bool,
-        rmsPerBar: [Float],
-        onModeTapped: (() -> Void)? = nil,
         onDebugTapped: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._barHistory = barHistory
         self.isPlaying = isPlaying
-        self.rmsPerBar = rmsPerBar
         self.onDebugTapped = onDebugTapped
-        #if DEBUG
-        self.onModeTapped = nil
-        #else
-        self.onModeTapped = onModeTapped
-        #endif
     }
     
     public var body: some View {
@@ -208,7 +198,7 @@ public struct VisualizerTimelineView: View {
                 // Decay exponentially
                 fallingDots[barIndex] *= fallDecayFactor
                 allZero = false
-                
+    
                 // Update BarData with falling dot position
                 let dotSegment = Int((fallingDots[barIndex] / VisualizerConstants.magnitudeLimit) * 8) - 1
                 barDataCache[barIndex] = BarData(
