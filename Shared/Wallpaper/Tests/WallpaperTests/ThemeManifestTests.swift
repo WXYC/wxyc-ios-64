@@ -238,7 +238,7 @@ struct ThemeManifestTests {
                 "accent": { "hue": 280, "saturation": 0.7, "brightness": 0.9 },
                 "blurRadius": 8.0,
                 "overlayOpacity": 0.15,
-                "overlayIsDark": true
+                "overlayDarkness": 0.9
             }
             """
             let data = Data(json.utf8)
@@ -324,6 +324,71 @@ struct ThemeManifestTests {
             #expect(ComputeTextureBinding.trailMap == "trailMap")
             #expect(ComputeTextureBinding.particleBuffer == "particleBuffer")
             #expect(ComputeTextureBinding.counterBuffer == "counterBuffer")
+        }
+
+        @Test("ComputeTextureBinding defaults to reading from previous buffer")
+        func computeTextureBindingDefaultsToReadPrevious() {
+            let binding = ComputeTextureBinding(index: 0, source: "trailMap")
+            #expect(binding.shouldReadFromCurrent == false)
+            #expect(binding.shouldWriteToPrevious == false)
+        }
+
+        @Test("ComputeTextureBinding respects readFromCurrent flag")
+        func computeTextureBindingRespectsReadFromCurrent() {
+            let binding = ComputeTextureBinding(index: 0, source: "trailMap", readFromCurrent: true)
+            #expect(binding.shouldReadFromCurrent == true)
+        }
+
+        @Test("ComputeTextureBinding respects writeToPrevious flag")
+        func computeTextureBindingRespectsWriteToPrevious() {
+            let binding = ComputeTextureBinding(index: 0, source: "trailMap", writeToPrevious: true)
+            #expect(binding.shouldWriteToPrevious == true)
+        }
+
+        @Test("ComputeTextureBinding decodes readFromCurrent from JSON")
+        func computeTextureBindingDecodesReadFromCurrent() throws {
+            let json = """
+            {
+                "passes": [
+                    {
+                        "name": "diffuse",
+                        "functionName": "diffuseKernel",
+                        "inputs": [
+                            { "index": 0, "source": "trailMap", "readFromCurrent": true }
+                        ]
+                    }
+                ],
+                "renderFunction": "render"
+            }
+            """
+            let data = Data(json.utf8)
+            let config = try JSONDecoder().decode(ComputeConfiguration.self, from: data)
+
+            let input = config.passes.first?.inputs?.first
+            #expect(input?.shouldReadFromCurrent == true)
+        }
+
+        @Test("ComputeTextureBinding decodes writeToPrevious from JSON")
+        func computeTextureBindingDecodesWriteToPrevious() throws {
+            let json = """
+            {
+                "passes": [
+                    {
+                        "name": "diffuse",
+                        "functionName": "diffuseKernel",
+                        "outputs": [
+                            { "index": 1, "source": "trailMap", "writeToPrevious": true }
+                        ]
+                    }
+                ],
+                "renderFunction": "render"
+            }
+            """
+            let data = Data(json.utf8)
+            let config = try JSONDecoder().decode(ComputeConfiguration.self, from: data)
+
+            let output = config.passes.first?.outputs?.first
+            #expect(output?.shouldWriteToPrevious == true)
         }
     }
 }

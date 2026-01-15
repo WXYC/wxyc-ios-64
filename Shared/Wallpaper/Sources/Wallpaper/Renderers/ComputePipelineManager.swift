@@ -158,16 +158,22 @@ final class ComputePipelineManager {
             encoder.setComputePipelineState(pass.pipeline)
             encoder.setBuffer(uniforms, offset: 0, index: 0)
 
-            // Bind input textures
+            // Bind input textures (read from previous frame unless readFromCurrent is set)
             for binding in pass.inputs {
-                if let texture = texture(for: binding.source) {
+                let texture = binding.shouldReadFromCurrent
+                    ? currentTexture(for: binding.source)
+                    : previousTexture(for: binding.source)
+                if let texture {
                     encoder.setTexture(texture, index: binding.index)
                 }
             }
 
-            // Bind output textures
+            // Bind output textures (write to current frame unless writeToPrevious is set)
             for binding in pass.outputs {
-                if let texture = texture(for: binding.source) {
+                let texture = binding.shouldWriteToPrevious
+                    ? previousTexture(for: binding.source)
+                    : currentTexture(for: binding.source)
+                if let texture {
                     encoder.setTexture(texture, index: binding.index)
                 }
             }
@@ -206,7 +212,9 @@ final class ComputePipelineManager {
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentBuffer(uniforms, offset: 0, index: 0)
 
-        // Bind trail map or other persistent textures for rendering
+        // Bind trail map for rendering.
+        // When diffuse uses writeToPrevious, the blurred result goes to .previous, then after
+        // swap it becomes .current. So we read from .current to get the final blurred result.
         if let trailMap = persistentTextures[ComputeTextureBinding.trailMap]?.current {
             encoder.setFragmentTexture(trailMap, index: 0)
         }
@@ -221,8 +229,16 @@ final class ComputePipelineManager {
 
     // MARK: - Helpers
 
-    private func texture(for source: String) -> MTLTexture? {
+    /// Returns the current texture for writing outputs.
+    private func currentTexture(for source: String) -> MTLTexture? {
         persistentTextures[source]?.current
+    }
+
+    /// Returns the previous texture for reading inputs.
+    /// For double-buffered textures, this is the texture from the previous frame.
+    /// For single-buffered textures, this returns the same texture as current.
+    private func previousTexture(for source: String) -> MTLTexture? {
+        persistentTextures[source]?.previous
     }
 
     private func pixelFormat(for formatString: String) -> MTLPixelFormat {

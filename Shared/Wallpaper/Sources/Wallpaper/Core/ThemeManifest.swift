@@ -241,9 +241,29 @@ public struct ComputeTextureBinding: Codable, Sendable {
     /// Source texture name (references a persistent texture or special value).
     public let source: String
 
-    public init(index: Int, source: String) {
+    /// For input bindings: if true, reads from the current buffer instead of previous.
+    /// Use this when a later pass needs to read what an earlier pass in the same frame wrote.
+    public let readFromCurrent: Bool?
+
+    /// For output bindings: if true, writes to the previous buffer instead of current.
+    /// Use this when you need to write to the "other" buffer (e.g., blur reads current, writes previous).
+    public let writeToPrevious: Bool?
+
+    public init(index: Int, source: String, readFromCurrent: Bool? = nil, writeToPrevious: Bool? = nil) {
         self.index = index
         self.source = source
+        self.readFromCurrent = readFromCurrent
+        self.writeToPrevious = writeToPrevious
+    }
+
+    /// Whether this input should read from current buffer (defaults to false = read from previous).
+    public var shouldReadFromCurrent: Bool {
+        readFromCurrent ?? false
+    }
+
+    /// Whether this output should write to previous buffer (defaults to false = write to current).
+    public var shouldWriteToPrevious: Bool {
+        writeToPrevious ?? false
     }
 
     /// Known special source values
