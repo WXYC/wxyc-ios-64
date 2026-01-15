@@ -33,20 +33,20 @@ import QuartzCore
 ///     }
 /// }
 /// ```
-public struct FrameRateMonitor: Sendable {
+struct FrameRateMonitor: Sendable {
 
     /// Number of frames to sample before computing average FPS.
-    public static let sampleSize: Int = 30
+    static let sampleSize: Int = 30
 
     /// Minimum interval between FPS reports to avoid excessive updates.
-    public static let reportInterval: TimeInterval = 1.0
+    static let reportInterval: TimeInterval = 1.0
 
     // MARK: - State
 
     private var frameDurations: [CFTimeInterval] = []
     private var lastReportTime: CFTimeInterval = 0
 
-    public init() {}
+    init() {}
 
     // MARK: - Public API
 
@@ -58,7 +58,7 @@ public struct FrameRateMonitor: Sendable {
     ///
     /// - Parameter duration: The frame's render duration in seconds.
     /// - Returns: Average FPS if sample is complete and report interval elapsed, nil otherwise.
-    public mutating func recordFrame(duration: CFTimeInterval) -> Float? {
+    mutating func recordFrame(duration: CFTimeInterval) -> Float? {
         frameDurations.append(duration)
 
         // Only report periodically
@@ -91,7 +91,7 @@ public struct FrameRateMonitor: Sendable {
     /// Resets the monitor state.
     ///
     /// Call this when the app returns from background or when switching shaders.
-    public mutating func reset() {
+    mutating func reset() {
         frameDurations.removeAll(keepingCapacity: true)
         lastReportTime = 0
     }

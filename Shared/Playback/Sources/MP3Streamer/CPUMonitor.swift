@@ -13,7 +13,7 @@ import Darwin
 
 /// Monitors CPU usage of the current process
 @MainActor
-public final class CPUMonitor {
+final class CPUMonitor {
     private var monitoringTask: Task<Void, Never>?
     private let interval: TimeInterval
     private let onUpdate: @MainActor (Double) -> Void
@@ -22,13 +22,13 @@ public final class CPUMonitor {
     /// - Parameters:
     ///   - interval: Sampling interval in seconds (default 5.0)
     ///   - onUpdate: Closure called with the CPU usage percentage (0.0 - 100.0+)
-    public init(interval: TimeInterval = 5.0, onUpdate: @escaping @MainActor (Double) -> Void) {
+    init(interval: TimeInterval = 5.0, onUpdate: @escaping @MainActor (Double) -> Void) {
         self.interval = interval
         self.onUpdate = onUpdate
     }
                 
     /// Starts monitoring CPU usage
-    public func start() {
+    func start() {
         stop()
         
         monitoringTask = Task { [weak self] in
@@ -43,7 +43,7 @@ public final class CPUMonitor {
     }
     
     /// Stops monitoring
-    public func stop() {
+    func stop() {
         monitoringTask?.cancel()
         monitoringTask = nil
     }

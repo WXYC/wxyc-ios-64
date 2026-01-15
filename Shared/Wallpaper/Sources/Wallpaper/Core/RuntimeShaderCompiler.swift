@@ -15,7 +15,7 @@ import Foundation
 ///
 /// This allows toggling shader features without passing runtime parameters,
 /// enabling zero-cost feature flags that are resolved at compile time.
-public final class RuntimeShaderCompiler {
+final class RuntimeShaderCompiler {
     private let device: MTLDevice
     private var shaderSource: String
     private var library: MTLLibrary?
@@ -26,7 +26,7 @@ public final class RuntimeShaderCompiler {
     /// All known directives in the shader source
     private(set) var availableDirectives: [String] = []
 
-    public init(device: MTLDevice, shaderSource: String) {
+    init(device: MTLDevice, shaderSource: String) {
         self.device = device
         self.shaderSource = shaderSource
         self.availableDirectives = parseDirectives(from: shaderSource)
@@ -34,7 +34,7 @@ public final class RuntimeShaderCompiler {
     }
 
     /// Loads shader source from a file in the bundle.
-    public convenience init?(device: MTLDevice, shaderName: String, bundle: Bundle) {
+    convenience init?(device: MTLDevice, shaderName: String, bundle: Bundle) {
         guard let url = bundle.url(forResource: shaderName, withExtension: "metal"),
               let source = try? String(contentsOf: url, encoding: .utf8) else {
             return nil
@@ -43,12 +43,12 @@ public final class RuntimeShaderCompiler {
     }
 
     /// Whether a specific directive is enabled.
-    public func isDirectiveEnabled(_ name: String) -> Bool {
+    func isDirectiveEnabled(_ name: String) -> Bool {
         enabledDirectives.contains(name)
     }
 
     /// Sets whether a directive is enabled and recompiles if needed.
-    public func setDirective(_ name: String, enabled: Bool) {
+    func setDirective(_ name: String, enabled: Bool) {
         let wasEnabled = enabledDirectives.contains(name)
         if enabled {
             enabledDirectives.insert(name)
@@ -63,7 +63,7 @@ public final class RuntimeShaderCompiler {
     }
 
     /// Compiles the shader with current directive settings.
-    public func compile() throws -> MTLLibrary {
+    func compile() throws -> MTLLibrary {
         if let library = library {
             return library
         }
@@ -83,7 +83,7 @@ public final class RuntimeShaderCompiler {
     }
 
     /// Gets a function from the compiled library.
-    public func makeFunction(name: String) throws -> MTLFunction {
+    func makeFunction(name: String) throws -> MTLFunction {
         let lib = try compile()
         guard let function = lib.makeFunction(name: name) else {
             throw CompilerError.functionNotFound(name)
@@ -146,7 +146,7 @@ public final class RuntimeShaderCompiler {
 
     // MARK: - Errors
 
-    public enum CompilerError: LocalizedError {
+    enum CompilerError: LocalizedError {
         case compilationFailed(String)
         case functionNotFound(String)
 

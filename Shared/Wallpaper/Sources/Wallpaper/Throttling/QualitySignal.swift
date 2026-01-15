@@ -2,6 +2,9 @@
 //  QualitySignal.swift
 //  Wallpaper
 //
+//  Tracks thermal state history using exponential moving average to compute momentum,
+//  enabling adaptive quality adjustment based on device heating/cooling trends.
+//
 //  Created by Jake Bromberg on 01/03/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -14,27 +17,27 @@ import Foundation
 /// - Positive momentum (> 0.1): device is heating up
 /// - Negative momentum (< -0.1): device is cooling down
 /// - Near zero (within dead zone): thermal state is stable
-public struct QualitySignal: Sendable {
+struct QualitySignal: Sendable {
 
     /// Threshold for considering the signal stable (dead zone).
-    public static let deadZone: Float = 0.1
+    static let deadZone: Float = 0.1
 
     /// EMA smoothing factor (0-1). Higher values respond faster to changes.
-    public static let smoothingFactor: Float = 0.3
+    static let smoothingFactor: Float = 0.3
 
     /// Current thermal momentum (-1.0 to 1.0).
-    public private(set) var momentum: Float = 0
+    private(set) var momentum: Float = 0
 
     /// Last recorded thermal state.
-    public private(set) var lastState: ProcessInfo.ThermalState?
+    private(set) var lastState: ProcessInfo.ThermalState?
 
     /// Timestamp of last update.
-    public private(set) var lastUpdate: Date?
+    private(set) var lastUpdate: Date?
 
-    public init() {}
+    init() {}
 
     /// The current thermal trend based on momentum.
-    public var trend: QualityTrend {
+    var trend: QualityTrend {
         if momentum > Self.deadZone {
             return .heating
         } else if momentum < -Self.deadZone {
@@ -47,7 +50,7 @@ public struct QualitySignal: Sendable {
     /// Records a new thermal state reading and updates momentum.
     ///
     /// - Parameter state: The current thermal state from ProcessInfo.
-    public mutating func record(_ state: ProcessInfo.ThermalState) {
+    mutating func record(_ state: ProcessInfo.ThermalState) {
         defer {
             lastState = state
             lastUpdate = Date()
@@ -75,7 +78,7 @@ public struct QualitySignal: Sendable {
     ///
     /// Call this when thermal context is completely unknown and you want
     /// to start fresh (e.g., testing scenarios).
-    public mutating func reset() {
+    mutating func reset() {
         momentum = 0
         lastState = nil
         lastUpdate = nil
@@ -88,7 +91,7 @@ public struct QualitySignal: Sendable {
     /// to the current thermal level so hot devices start with reduced quality.
     ///
     /// - Parameter state: The current thermal state from ProcessInfo.
-    public mutating func seedFromCurrentState(_ state: ProcessInfo.ThermalState) {
+    mutating func seedFromCurrentState(_ state: ProcessInfo.ThermalState) {
         // Initialize momentum based on absolute thermal level
         // This ensures we respond immediately to elevated thermal states
         momentum = state.normalizedValue * Self.smoothingFactor
@@ -100,7 +103,7 @@ public struct QualitySignal: Sendable {
 // MARK: - QualityTrend
 
 /// The direction of thermal change.
-public enum QualityTrend: Sendable {
+enum QualityTrend: Sendable {
     /// Device is heating up (momentum > dead zone).
     case heating
 
