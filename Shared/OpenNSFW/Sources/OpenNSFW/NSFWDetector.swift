@@ -2,18 +2,17 @@
 //  NSFWDetector.swift
 //  OpenNSFW
 //
-//  NSFW content detection using CoreML model.
+//  NSFW content detection using CoreML model. Uses an actor to cache the
+//  model instance, eliminating repeated loading warnings.
 //
 //  Created by Jake Bromberg on 03/21/24.
 //  Copyright © 2024 WXYC. All rights reserved.
 //
 
-#if canImport(UIKit) && canImport(Vision)
+#if canImport(Vision)
 import CoreML
 import Vision
-import ImageIO
 import Logger
-import UIKit
 
 public enum NSFW: Sendable {
     case sfw
@@ -21,121 +20,82 @@ public enum NSFW: Sendable {
 }
 
 public enum NSFWAnalysisError: Error, Sendable {
-    case invalidImage
+    case modelNotFound
     case coreMLError(_ error: any Error)
     case invalidObservationType
     case noObservations
     case unknown
 }
 
-extension CGImagePropertyOrientation {
-    init(_ orientation: UIImage.Orientation) {
-        switch orientation {
-        case .up: self = .up
-        case .upMirrored: self = .upMirrored
-        case .down: self = .down
-        case .downMirrored: self = .downMirrored
-        case .left: self = .left
-        case .leftMirrored: self = .leftMirrored
-        case .right: self = .right
-        case .rightMirrored: self = .rightMirrored
-        @unknown default:
-            self = .up
-            Log(.error, "Unknown UIImage Orientation. Set as .up by default.")
-        }
-    }
-}
-
 /// Returns the URL to the OpenNSFW model, checking the shared container first
 /// (for widgets/extensions), then falling back to the main app bundle.
 private func openNSFWModelURL() -> URL? {
-    // Check shared container first (for widgets that don't have the model bundled)
+    // Check shared container first (seeded by main app for extensions)
     if let sharedURL = ModelSeeder.sharedModelURL,
        FileManager.default.fileExists(atPath: sharedURL.path) {
         return sharedURL
     }
-    // Fall back to main app bundle (model is only included in main app target)
+    // Fall back to the bundle (main app or widget)
     return Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc")
 }
 
-/// Performs NSFW detection on images using the OpenNSFW CoreML model.
-/// This type is nonisolated to allow ML processing to run off the main actor.
-public struct NSFWDetector: Sendable {
-    public init() {}
+/// Actor that caches the loaded CoreML model and performs classification.
+/// Keeping the model inside the actor avoids Sendable issues with VNCoreMLModel.
+/// Loading the model once eliminates the "precisionRecallCurves" warnings
+/// that occur each time the model is loaded.
+public actor NSFWClassifier {
+    private let model: VNCoreMLModel
 
-    /// Analyzes a CGImage for NSFW content.
-    /// - Parameters:
-    ///   - cgImage: The image to analyze.
-    ///   - orientation: The image orientation for proper analysis.
-    /// - Returns: `.sfw` or `.nsfw` classification result.
-    public func checkNSFW(
-        cgImage: CGImage,
-        orientation: CGImagePropertyOrientation = .up
-    ) async throws -> NSFW {
-        // Check for model availability - return permissive fallback if not found
-        // (e.g., widget before main app seeds model to shared container)
+    public init() throws {
         guard let modelURL = openNSFWModelURL() else {
-            Log(.info, "OpenNSFW model not available, assuming SFW")
-            return .sfw
+            throw NSFWAnalysisError.modelNotFound
         }
 
-        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
         let modelConfig = MLModelConfiguration()
-        let model = try OpenNSFW(contentsOf: modelURL, configuration: modelConfig)
-        let visionModel = try VNCoreMLModel(for: model.model)
+        let openNSFWModel = try OpenNSFW(contentsOf: modelURL, configuration: modelConfig)
+        self.model = try VNCoreMLModel(for: openNSFWModel.model)
+        Log(.info, "OpenNSFW model loaded")
+    }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let vnRequest = VNCoreMLRequest(model: visionModel) { request, error in
-                if let error {
-                    Log(.error, "VNCoreMLRequest Error: \(error.localizedDescription)")
-                    continuation.resume(throwing: NSFWAnalysisError.coreMLError(error))
-                    return
-                }
-                guard let observations = request.results as? [VNClassificationObservation] else {
-                    Log(.error, "Unexpected result type from VNCoreMLRequest")
-                    continuation.resume(throwing: NSFWAnalysisError.invalidObservationType)
-                    return
-                }
-                guard let best = observations.first else {
-                    Log(.error, "Unable to retrieve NSFW observation")
-                    continuation.resume(throwing: NSFWAnalysisError.noObservations)
-                    return
-                }
-                switch best.identifier {
-                case "NSFW":
-                    continuation.resume(returning: .nsfw)
-                case "SFW":
-                    continuation.resume(returning: .sfw)
-                default:
-                    continuation.resume(throwing: NSFWAnalysisError.unknown)
-                }
+    public func classify(cgImage: CGImage) throws -> NSFW {
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
+
+        var classificationResult: Result<NSFW, any Error>?
+
+        let vnRequest = VNCoreMLRequest(model: model) { request, error in
+            if let error {
+                Log(.error, "VNCoreMLRequest Error: \(error.localizedDescription)")
+                classificationResult = .failure(NSFWAnalysisError.coreMLError(error))
+                return
             }
-
-            do {
-                try handler.perform([vnRequest])
-            } catch {
-                continuation.resume(throwing: NSFWAnalysisError.coreMLError(error))
+            guard let observations = request.results as? [VNClassificationObservation] else {
+                Log(.error, "Unexpected result type from VNCoreMLRequest")
+                classificationResult = .failure(NSFWAnalysisError.invalidObservationType)
+                return
+            }
+            guard let best = observations.first else {
+                Log(.error, "Unable to retrieve NSFW observation")
+                classificationResult = .failure(NSFWAnalysisError.noObservations)
+                return
+            }
+            switch best.identifier {
+            case "NSFW":
+                classificationResult = .success(.nsfw)
+            case "SFW":
+                classificationResult = .success(.sfw)
+            default:
+                classificationResult = .failure(NSFWAnalysisError.unknown)
             }
         }
+
+        try handler.perform([vnRequest])
+
+        guard let result = classificationResult else {
+            throw NSFWAnalysisError.unknown
+        }
+
+        return try result.get()
     }
 }
 
-/// Convenience extension for UIImage that delegates to NSFWDetector.
-public extension UIImage {
-    /// Analyzes the image for NSFW content.
-    /// The analysis runs off the main actor to avoid blocking the UI.
-    func checkNSFW() async throws -> NSFW {
-        guard let cgImage = self.cgImage?.copy() else {
-            Log(.error, "Could not get CGImage from UIImage")
-            throw NSFWAnalysisError.invalidImage
-        }
-
-        let orientation = CGImagePropertyOrientation(self.imageOrientation)
-
-        // Run the detection off the main actor
-        return try await Task.detached {
-            try await NSFWDetector().checkNSFW(cgImage: cgImage, orientation: orientation)
-        }.value
-    }
-}
 #endif
