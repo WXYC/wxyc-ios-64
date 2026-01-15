@@ -31,6 +31,66 @@ struct AudioEnginePlayerTests {
         #expect(player.volume == 1.0)
     }
 
+    // MARK: - Deferred Engine Setup Tests
+
+    @Test("Engine setup is deferred - installRenderTap before play marks as pending")
+    func testInstallRenderTapBeforePlayMarksPending() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        // Install render tap BEFORE play - should be marked as pending
+        player.installRenderTap()
+
+        // Player should not be playing yet
+        #expect(player.isPlaying == false)
+
+        // Now play - this should set up engine and install the pending tap
+        try player.play()
+        #expect(player.isPlaying == true)
+
+        // Consume the started event
+        _ = try await player.eventStream.first(timeout: 2)
+
+        player.stop()
+    }
+
+    @Test("Render tap installed after play works normally")
+    func testRenderTapAfterPlayWorksNormally() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        // Play first - sets up engine
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        // Now install render tap - should work immediately
+        player.installRenderTap()
+
+        // Should still be playing
+        #expect(player.isPlaying == true)
+
+        player.stop()
+    }
+
+    @Test("Multiple installRenderTap calls before play only install once")
+    func testMultipleRenderTapCallsBeforePlay() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        // Call installRenderTap multiple times before play
+        player.installRenderTap()
+        player.installRenderTap()
+        player.installRenderTap()
+
+        // Play - should install tap only once
+        try player.play()
+        #expect(player.isPlaying == true)
+
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        player.stop()
+    }
+
     // MARK: - Volume Control Tests
 
     @Test("Volume can be set and retrieved")

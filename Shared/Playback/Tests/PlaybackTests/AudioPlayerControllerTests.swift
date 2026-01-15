@@ -29,10 +29,10 @@ struct AudioPlayerControllerTests {
 
     #if os(iOS) || os(tvOS)
 
-    // MARK: - Audio Session Tests
+    // MARK: - Deferred Audio Session Tests
 
-    @Test("Audio session is configured on init")
-    func audioSessionConfiguredOnInit() {
+    @Test("Audio session category is NOT configured on init (deferred)")
+    func audioSessionNotConfiguredOnInit() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
         let mockPlayer = MockAudioPlayerForController()
@@ -45,9 +45,59 @@ struct AudioPlayerControllerTests {
             analytics: MockPlaybackAnalytics()
         )
 
-        // Session category should be set during init
+        // Session category should NOT be set during init (deferred until play)
+        #expect(mockSession.setCategoryCallCount == 0)
+        #expect(mockSession.setActiveCallCount == 0)
+    }
+
+    @Test("Audio session category is configured on first play")
+    func audioSessionConfiguredOnPlay() {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockAudioPlayerForController()
+
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: MockPlaybackAnalytics()
+        )
+
+        // Before play - no configuration
+        #expect(mockSession.setCategoryCallCount == 0)
+
+        // Play triggers configuration
+        controller.play()
+
         #expect(mockSession.setCategoryCallCount == 1)
         #expect(mockSession.lastCategory == .playback)
+        #expect(mockSession.setActiveCallCount == 1)
+        #expect(mockSession.lastActiveState == true)
+    }
+
+    @Test("Audio session category is configured only once across multiple plays")
+    func audioSessionConfiguredOnlyOnce() {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockAudioPlayerForController()
+
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: MockPlaybackAnalytics()
+        )
+
+        controller.play()
+        controller.stop()
+        controller.play()
+
+        // Category should only be set once (idempotent)
+        #expect(mockSession.setCategoryCallCount == 1)
+        // setActive is called: play(true), stop(false), play(true) = 3 times
+        #expect(mockSession.setActiveCallCount == 3)
     }
 
     // MARK: - Remote Command Center Tests
