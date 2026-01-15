@@ -14,6 +14,7 @@ import PlayerHeaderView
 import Playlist
 import Wallpaper
 
+#if DEBUG
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
@@ -208,3 +209,4 @@ public struct VisualizerDebugView: View {
         }
     }
 }
+#endif

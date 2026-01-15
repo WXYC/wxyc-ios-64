@@ -132,9 +132,11 @@ public struct VisualizerTimelineView: View {
         .onAppear {
             cachedShowFPS = visualizer.showFPS
         }
+#if DEBUG
         .onTapGesture {
             onDebugTapped?()
         }
+#endif
     }
     
     /// Capture current bar tops and start the falling animation

@@ -31,7 +31,7 @@ let package = Package(
                 "Playback",
                 "Wallpaper",
                 "WXUI",
-            ]
+            ],
         ),
         .testTarget(
             name: "PlayerHeaderViewTests",

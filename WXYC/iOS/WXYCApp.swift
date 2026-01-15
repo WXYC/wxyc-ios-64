@@ -29,7 +29,9 @@ import StoreKit
 import SwiftUI
 import Wallpaper
 import WXUI
+#if DEBUG
 import DebugPanel
+#endif
 
 // MARK: - Settings Bundle Keys
 
@@ -73,7 +75,6 @@ struct WXYCApp: App {
         setUpAnalytics()
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
-        setUpDebugPanel()
         PostHogSDK.shared.capture(
             "app launch",
             properties: ["has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker],
@@ -142,13 +143,13 @@ struct WXYCApp: App {
                             handleUserActivity(userActivity)
                         }
 
-                    if DebugPanelConfiguration.isEnabled {
-                        DebugHUD()
-                        
-                        if ThemeDebugState.shared.showOverlay {
-                            ThemeDebugOverlay(configuration: appState.themeConfiguration)
-                        }
+#if DEBUG
+                    DebugHUD()
+                    
+                    if ThemeDebugState.shared.showOverlay {
+                        ThemeDebugOverlay(configuration: appState.themeConfiguration)
                     }
+#endif
                 }
             }
         }
@@ -292,18 +293,7 @@ struct WXYCApp: App {
         let analytics = PostHogThemePickerAnalytics()
         appState.themePickerState.setAnalytics(analytics)
     }
-    
-    private func setUpDebugPanel() {
-        // Enable debug panel based on PostHog feature flag.
-        // Falls back to compile-time DEBUG flag if feature flag not set.
-        let featureFlagEnabled = PostHogSDK.shared.isFeatureEnabled(
-            DebugPanelConfiguration.featureFlagKey
-        )
-        if featureFlagEnabled {
-            DebugPanelConfiguration.isEnabled = true
-        }
-    }
-    
+
     private func buildConfiguration() -> String {
         #if DEBUG
         return "Debug"
@@ -313,7 +303,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-
+    
     // MARK: - Background Refresh
 
     private func scheduleBackgroundRefresh() {

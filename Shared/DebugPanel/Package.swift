@@ -33,7 +33,7 @@ let package = Package(
                 "Playlist",
                 "Wallpaper",
                 "PlayerHeaderView",
-            ]
+            ],
         ),
     ]
 )
