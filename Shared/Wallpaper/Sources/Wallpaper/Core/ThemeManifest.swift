@@ -89,6 +89,9 @@ public struct RendererConfiguration: Codable, Sendable {
     /// to leave GPU headroom for UI rendering. Defaults to 1.0 (full resolution).
     public let maxScale: Float?
 
+    /// Configuration for compute-based renderers (type == .compute).
+    public let compute: ComputeConfiguration?
+
     public init(
         type: RendererType,
         shaderFile: String? = nil,
@@ -98,7 +101,8 @@ public struct RendererConfiguration: Codable, Sendable {
         layers: [LayerConfiguration]? = nil,
         timeScale: Float? = nil,
         passes: [PassConfiguration]? = nil,
-        maxScale: Float? = nil
+        maxScale: Float? = nil,
+        compute: ComputeConfiguration? = nil
     ) {
         self.type = type
         self.shaderFile = shaderFile
@@ -109,6 +113,7 @@ public struct RendererConfiguration: Codable, Sendable {
         self.timeScale = timeScale
         self.passes = passes
         self.maxScale = maxScale
+        self.compute = compute
     }
 
     /// Effective maximum scale (defaults to 1.0)
@@ -159,11 +164,137 @@ public struct PassInput: Codable, Sendable {
     public static let noise = "noise"
 }
 
+// MARK: - Compute Shader Configuration
+
+/// Configuration for compute-based wallpapers (e.g., physarum simulation).
+public struct ComputeConfiguration: Codable, Sendable {
+    /// Compute passes to execute each frame, in order.
+    public let passes: [ComputePassConfiguration]
+
+    /// Fragment function for final rendering to screen.
+    public let renderFunction: String
+
+    /// Persistent textures that survive between frames.
+    public let persistentTextures: [PersistentTextureConfiguration]?
+
+    /// Base particle count (scaled by LOD at runtime).
+    public let particleCount: Int?
+
+    public init(
+        passes: [ComputePassConfiguration],
+        renderFunction: String,
+        persistentTextures: [PersistentTextureConfiguration]? = nil,
+        particleCount: Int? = nil
+    ) {
+        self.passes = passes
+        self.renderFunction = renderFunction
+        self.persistentTextures = persistentTextures
+        self.particleCount = particleCount
+    }
+}
+
+/// Configuration for a single compute pass.
+public struct ComputePassConfiguration: Codable, Sendable {
+    /// Name of this pass (for debugging and texture references).
+    public let name: String
+
+    /// Metal compute function name.
+    public let functionName: String
+
+    /// Thread group size (defaults to 32x32x1 if not specified).
+    public let threadGroupSize: [Int]?
+
+    /// Textures to bind as inputs (read-only).
+    public let inputs: [ComputeTextureBinding]?
+
+    /// Textures to bind as outputs (write-only or read-write).
+    public let outputs: [ComputeTextureBinding]?
+
+    public init(
+        name: String,
+        functionName: String,
+        threadGroupSize: [Int]? = nil,
+        inputs: [ComputeTextureBinding]? = nil,
+        outputs: [ComputeTextureBinding]? = nil
+    ) {
+        self.name = name
+        self.functionName = functionName
+        self.threadGroupSize = threadGroupSize
+        self.inputs = inputs
+        self.outputs = outputs
+    }
+
+    /// Effective thread group size (defaults to 32x32x1).
+    public var effectiveThreadGroupSize: (Int, Int, Int) {
+        guard let size = threadGroupSize, size.count >= 3 else {
+            return (32, 32, 1)
+        }
+        return (size[0], size[1], size[2])
+    }
+}
+
+/// Texture binding for compute passes.
+public struct ComputeTextureBinding: Codable, Sendable {
+    /// Texture index in the shader.
+    public let index: Int
+
+    /// Source texture name (references a persistent texture or special value).
+    public let source: String
+
+    public init(index: Int, source: String) {
+        self.index = index
+        self.source = source
+    }
+
+    /// Known special source values
+    public static let trailMap = "trailMap"
+    public static let particleBuffer = "particleBuffer"
+    public static let counterBuffer = "counterBuffer"
+}
+
+/// Configuration for a persistent texture.
+public struct PersistentTextureConfiguration: Codable, Sendable {
+    /// Unique name for this texture.
+    public let name: String
+
+    /// Pixel format (e.g., "rg16Float", "r32Uint").
+    public let format: String
+
+    /// Scale relative to screen size (1.0 = full resolution).
+    public let scale: Float?
+
+    /// Whether this texture uses ping-pong double buffering.
+    public let doubleBuffered: Bool?
+
+    public init(
+        name: String,
+        format: String,
+        scale: Float? = nil,
+        doubleBuffered: Bool? = nil
+    ) {
+        self.name = name
+        self.format = format
+        self.scale = scale
+        self.doubleBuffered = doubleBuffered
+    }
+
+    /// Effective scale (defaults to 1.0).
+    public var effectiveScale: Float {
+        scale ?? 1.0
+    }
+
+    /// Whether double buffering is enabled (defaults to false).
+    public var isDoubleBuffered: Bool {
+        doubleBuffered ?? false
+    }
+}
+
 public enum RendererType: String, Codable, Sendable {
     case stitchable
     case rawMetal
     case composite
     case swiftUI
+    case compute
 }
 
 public enum ButtonStyle: String, Codable, Sendable {

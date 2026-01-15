@@ -32,7 +32,7 @@ struct ThemeManifestTests {
                 "parameters": [],
                 "shaderArguments": [],
                 "foreground": "light",
-                "accent": { "hue": 23, "saturation": 0.75 },
+                "accent": { "hue": 23, "saturation": 0.75, "brightness": 1.0 },
                 "blurRadius": 12.0,
                 "overlayOpacity": 0.25,
                 "overlayDarkness": 1.0
@@ -58,7 +58,7 @@ struct ThemeManifestTests {
                 "parameters": [],
                 "shaderArguments": [],
                 "foreground": "light",
-                "accent": { "hue": 23, "saturation": 0.75 },
+                "accent": { "hue": 23, "saturation": 0.75, "brightness": 1.0 },
                 "blurRadius": 8.0,
                 "overlayOpacity": 0.0,
                 "overlayDarkness": 0.0
@@ -196,6 +196,134 @@ struct ThemeManifestTests {
                 #expect(blurRadius >= 0, "Theme '\(theme.manifest.id)' has negative blurRadius")
                 #expect(overlayOpacity >= 0 && overlayOpacity <= 1, "Theme '\(theme.manifest.id)' has invalid overlayOpacity")
             }
+        }
+    }
+
+    // MARK: - Compute Configuration Tests
+
+    @Suite("Compute Configuration")
+    struct ComputeConfigurationTests {
+
+        @Test("RendererType includes compute case")
+        func rendererTypeIncludesCompute() {
+            let computeType = RendererType.compute
+            #expect(computeType.rawValue == "compute")
+        }
+
+        @Test("ComputeConfiguration decodes from JSON")
+        @MainActor
+        func computeConfigurationDecodesFromJSON() throws {
+            let json = """
+            {
+                "id": "test_compute",
+                "displayName": "Test Compute",
+                "version": "1.0.0",
+                "renderer": {
+                    "type": "compute",
+                    "compute": {
+                        "passes": [
+                            {
+                                "name": "update",
+                                "functionName": "updateKernel",
+                                "threadGroupSize": [32, 32, 1]
+                            }
+                        ],
+                        "renderFunction": "renderFragment",
+                        "particleCount": 500000
+                    }
+                },
+                "parameters": [],
+                "shaderArguments": [],
+                "foreground": "dark",
+                "accent": { "hue": 280, "saturation": 0.7, "brightness": 0.9 },
+                "blurRadius": 8.0,
+                "overlayOpacity": 0.15,
+                "overlayIsDark": true
+            }
+            """
+            let data = Data(json.utf8)
+            let manifest = try JSONDecoder().decode(ThemeManifest.self, from: data)
+
+            #expect(manifest.renderer.type == .compute)
+            #expect(manifest.renderer.compute != nil)
+            #expect(manifest.renderer.compute?.passes.count == 1)
+            #expect(manifest.renderer.compute?.passes.first?.name == "update")
+            #expect(manifest.renderer.compute?.passes.first?.functionName == "updateKernel")
+            #expect(manifest.renderer.compute?.renderFunction == "renderFragment")
+            #expect(manifest.renderer.compute?.particleCount == 500000)
+        }
+
+        @Test("ComputePassConfiguration provides default thread group size")
+        func computePassConfigurationDefaultThreadGroupSize() {
+            let pass = ComputePassConfiguration(
+                name: "test",
+                functionName: "testKernel"
+            )
+
+            let (x, y, z) = pass.effectiveThreadGroupSize
+            #expect(x == 32)
+            #expect(y == 32)
+            #expect(z == 1)
+        }
+
+        @Test("ComputePassConfiguration uses custom thread group size")
+        func computePassConfigurationCustomThreadGroupSize() {
+            let pass = ComputePassConfiguration(
+                name: "test",
+                functionName: "testKernel",
+                threadGroupSize: [16, 16, 4]
+            )
+
+            let (x, y, z) = pass.effectiveThreadGroupSize
+            #expect(x == 16)
+            #expect(y == 16)
+            #expect(z == 4)
+        }
+
+        @Test("PersistentTextureConfiguration provides defaults")
+        func persistentTextureConfigurationDefaults() {
+            let texture = PersistentTextureConfiguration(
+                name: "trailMap",
+                format: "rg16Float"
+            )
+
+            #expect(texture.effectiveScale == 1.0)
+            #expect(texture.isDoubleBuffered == false)
+        }
+
+        @Test("PersistentTextureConfiguration decodes all fields")
+        @MainActor
+        func persistentTextureConfigurationDecodesAllFields() throws {
+            let json = """
+            {
+                "passes": [],
+                "renderFunction": "render",
+                "persistentTextures": [
+                    {
+                        "name": "trailMap",
+                        "format": "rg16Float",
+                        "scale": 0.5,
+                        "doubleBuffered": true
+                    }
+                ]
+            }
+            """
+            let data = Data(json.utf8)
+            let config = try JSONDecoder().decode(ComputeConfiguration.self, from: data)
+
+            #expect(config.persistentTextures?.count == 1)
+            let texture = config.persistentTextures?.first
+            #expect(texture?.name == "trailMap")
+            #expect(texture?.format == "rg16Float")
+            #expect(texture?.effectiveScale == 0.5)
+            #expect(texture?.isDoubleBuffered == true)
+        }
+
+        @Test("ComputeTextureBinding has expected static values")
+        func computeTextureBindingStaticValues() {
+            #expect(ComputeTextureBinding.trailMap == "trailMap")
+            #expect(ComputeTextureBinding.particleBuffer == "particleBuffer")
+            #expect(ComputeTextureBinding.counterBuffer == "counterBuffer")
         }
     }
 }
