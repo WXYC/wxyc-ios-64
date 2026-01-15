@@ -9,7 +9,6 @@
 //
 
 import SwiftUI
-import Playback
 
 // MARK: - Visualizer Timeline View
 
@@ -143,11 +142,9 @@ public struct VisualizerTimelineView: View {
         .onAppear {
             cachedShowFPS = visualizer.showFPS
         }
-#if DEBUG || DEBUG_TESTFLIGHT
         .onTapGesture {
             onDebugTapped?()
         }
-#endif
     }
     
     /// Capture current bar tops and start the falling animation
@@ -233,17 +230,6 @@ public struct VisualizerTimelineView: View {
         // Stop animation when all dots have fallen
         if allZero {
             isFalling = false
-        }
-    }
-
-    private func showModeIndicatorBriefly() {
-        withAnimation(.easeIn(duration: 0.15)) {
-            showModeIndicator = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            withAnimation(.easeOut(duration: 0.3)) {
-                showModeIndicator = false
-            }
         }
     }
 }

@@ -2,6 +2,9 @@
 //  PlaylistEntry.swift
 //  Playlist
 //
+//  Defines the core playlist data models including Playcut, Breakpoint, Talkset, ShowMarker,
+//  and the Playlist container type that aggregates all entry types from the WXYC API.
+//
 //  Created by Jake Bromberg on 04/16/20.
 //  Copyright © 2020 WXYC. All rights reserved.
 //
@@ -24,21 +27,10 @@ public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hasha
 }
 
 public extension PlaylistEntry {
-    var debugDescription: String {
-        let encoder = JSONEncoder()
-        let data = try! encoder.encode(self)
-        
-        let decoder = JSONDecoder()
-        let dictionary = try! decoder.decode(String.self, from: data)
-        return dictionary.debugDescription
-    }
-}
-
-public extension PlaylistEntry {
     static func ==(lhs: Self, rhs: any PlaylistEntry) -> Bool {
         lhs.id == rhs.id
     }
-    
+        
     static func !=(lhs: Self, rhs: any PlaylistEntry) -> Bool {
         lhs.id != rhs.id
     }
@@ -242,103 +234,5 @@ public extension Playlist {
     var entries: [any PlaylistEntry] {
         let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
-    }
-}
-    
-public extension Playlist {
-    static let marketingList = Playlist(
-        playcuts: placeholderPlaycuts,
-        breakpoints: [],
-        talksets: [],
-        showMarkers: []
-    )
-    
-    private struct PlaceholderSong {
-        let songTitle: String
-        let artistName: String
-        let releaseTitle: String
-    }
-    
-    nonisolated(unsafe) private static var placeholderSongs: [PlaceholderSong] = [
-        PlaceholderSong(
-            songTitle: "wetdoggs beat",
-            artistName: "wetdogg",
-            releaseTitle: "pssssssp..."
-        ),
-        PlaceholderSong(
-            songTitle: "Big Shot",
-            artistName: "Patric Cowley",
-            releaseTitle: "Afternooners"
-        ),
-        PlaceholderSong(
-            songTitle: "The Laarge Daark Aardvark Song",
-            artistName: "X-Cetra",
-            releaseTitle: "Summer 2000"
-        ),
-        PlaceholderSong(
-            songTitle: "VI Scose Poise",
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        ),
-        PlaceholderSong(
-            songTitle: "Come Inside",
-            artistName: "The Shades Of Love",
-            releaseTitle: "Mr Bongo Record Club, Vol. 7"
-        ),
-        PlaceholderSong(
-            songTitle: "Guinnevere",
-            artistName: "Miles Davis",
-            releaseTitle: "Bitches Brew"
-        ),
-        PlaceholderSong(
-            songTitle: "Render",
-            artistName: "Lyra Pramuk",
-            releaseTitle: "Hymna"
-        ),
-        PlaceholderSong(
-            songTitle: "Mevlana (Based On Turkish Religious Melody)",
-            artistName: "East New York Ensemble de Music",
-            releaseTitle: "At the Helm"
-        ),
-        PlaceholderSong(
-            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
-            artistName: "Harold Budd",
-            releaseTitle: "Pavilion of Dreams"
-        ),
-        PlaceholderSong(
-            songTitle: "Belleville",
-            artistName: "Laurel Halo",
-            releaseTitle: "Atlas"
-        ),
-        PlaceholderSong(
-            songTitle: "The Remembering Self",
-            artistName: "Barker",
-            releaseTitle: "Stochastic Drift"
-        ),
-        PlaceholderSong(
-            songTitle: "Nutrition",
-            artistName: "Carmen Villain",
-            releaseTitle: "Nutrition EP"
-        ),
-    ]
-
-    private static let placeholderPlaycuts: [Playcut] = placeholderSongs.shuffled().enumerated().map { index, song in
-        Playcut(
-            id: UInt64(index),
-            hour: 0,
-            chronOrderID: UInt64(index),
-            songTitle: song.songTitle,
-            labelName: nil,
-            artistName: song.artistName,
-            releaseTitle: song.releaseTitle
-        )
-    }
-}
-
-public struct PlaceholderFetcher: PlaylistDataSource {
-    public init() { }
-
-    public func getPlaylist() async throws -> Playlist {
-        Playlist.marketingList
     }
 }

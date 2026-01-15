@@ -34,16 +34,6 @@ extension View {
         }
     }
     
-    /// Applies a regular glass effect with a shape, falling back gracefully on earlier OS versions.
-    @ViewBuilder
-    public func glassEffectRegularIfAvailable<S: Shape>(in shape: S) -> some View {
-        if #available(iOS 26, watchOS 26, tvOS 26, visionOS 26, macOS 26, *) {
-            self.glassEffect(.clear, in: shape)
-        } else {
-            self
-        }
-    }
-    
     /// Applies a glass effect with just a shape (default style), falling back gracefully on earlier OS versions.
     @ViewBuilder
     public func glassEffectIfAvailable<S: Shape>(in shape: S) -> some View {

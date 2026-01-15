@@ -48,11 +48,6 @@ public struct HSBColor: Codable, Hashable, Sendable {
         HSBColor(hue: hue, saturation: saturation, brightness: newBrightness)
     }
 
-    /// Returns a new HSBColor with the specified saturation, preserving hue and brightness.
-    public func withSaturation(_ newSaturation: Double) -> HSBColor {
-        HSBColor(hue: hue, saturation: newSaturation, brightness: brightness)
-    }
-
     #if canImport(UIKit)
     /// Converts to UIColor for use in UIKit contexts.
     public var uiColor: UIColor {

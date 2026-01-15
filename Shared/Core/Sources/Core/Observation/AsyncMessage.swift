@@ -64,16 +64,6 @@ extension NotificationCenter {
         post(notification)
     }
 
-    /// Posts an async message with a metatype subject.
-    ///
-    /// - Parameters:
-    ///   - message: The message to post.
-    ///   - subject: The metatype that is the subject of this message.
-    public func post<M: AsyncNotificationMessage>(_ message: M, subject: M.Subject.Type) {
-        let notification = M.makeNotification(message, object: nil)
-        post(notification)
-    }
-
     /// Returns an async sequence of messages matching the given type and optional subject.
     ///
     /// - Parameters:
@@ -85,16 +75,6 @@ extension NotificationCenter {
         for messageType: M.Type
     ) -> AsyncNotificationMessageSequence<M> where M.Subject: AnyObject {
         AsyncNotificationMessageSequence(center: self, subject: subject)
-    }
-
-    /// Returns an async sequence of messages matching the given type.
-    ///
-    /// - Parameter messageType: The type of message to observe.
-    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
-    public func messages<M: AsyncNotificationMessage>(
-        for messageType: M.Type
-    ) -> AsyncNotificationMessageSequence<M> where M.Subject: AnyObject {
-        AsyncNotificationMessageSequence(center: self, subject: nil)
     }
 
     /// Returns an async sequence with a callback that fires when the observer is registered.

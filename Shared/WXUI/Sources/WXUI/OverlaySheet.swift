@@ -2,6 +2,9 @@
 //  OverlaySheet.swift
 //  WXUI
 //
+//  A custom sheet presentation that slides up from the bottom with drag-to-dismiss support.
+//  Coordinates with scroll views to allow dismissal only when scrolled to top and idle.
+//
 //  Created by Jake Bromberg on 12/31/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
@@ -45,15 +48,6 @@ extension EnvironmentValues {
     var lightboxActiveBinding: Binding<Bool> {
         get { self[LightboxActiveKey.self] }
         set { self[LightboxActiveKey.self] = newValue }
-    }
-}
-
-// MARK: - Scroll Offset Tracking
-
-private struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

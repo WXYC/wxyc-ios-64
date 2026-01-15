@@ -103,9 +103,6 @@ extension DiscogsMarkupParser {
     
 extension DiscogsMarkupParser {
     
-    // Tag delimiter pattern - finds [...] (allows empty content)
-    nonisolated(unsafe) private static let tagPattern = /\[([^\]]*)\]/
-    
     // Tag classification patterns (applied to tag content)
     nonisolated(unsafe) private static let artistNamePattern = /^a=(.+)$/
     nonisolated(unsafe) private static let artistIdPattern = /^a(\d+)$/
@@ -161,7 +158,7 @@ extension DiscogsMarkupParser {
         
         return tokens
     }
-    
+        
     /// Classifies a tag and returns the appropriate token
     private static func classifyTag(_ tag: String, remaining: inout Substring) -> DiscogsToken? {
         // Artist name: [a=Name]
@@ -271,7 +268,7 @@ extension DiscogsMarkupParser {
             
             searchStart = text.index(after: closeBracket)
         }
-        
+            
         return nil
     }
 }

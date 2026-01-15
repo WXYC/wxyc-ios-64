@@ -44,12 +44,6 @@ public final class DebugMetricsProvider {
         setUpTimers()
     }
 
-    func stop() {
-        displayLinkTask?.cancel()
-        metricsTimer?.invalidate()
-        thermalTimer?.invalidate()
-    }
-
     // MARK: - Setup
 
     private func setUpDisplayLink() {

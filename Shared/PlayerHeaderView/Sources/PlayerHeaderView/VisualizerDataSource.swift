@@ -305,7 +305,3 @@ public final class VisualizerDataSource: @unchecked Sendable {
         signalBoost = 1.0
     }
 }
-
-/// Legacy typealias for backwards compatibility
-@available(*, deprecated, renamed: "VisualizerDataSource")
-public typealias AudioVisualizer = VisualizerDataSource

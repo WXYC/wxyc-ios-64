@@ -219,7 +219,7 @@ public final class AudioPlayerController {
 
     /// Stop playback and disconnect from stream
     /// Note: Analytics should be captured at call sites BEFORE calling this method
-    public func stop(reason: String? = nil) {
+    public func stop(reason _: String? = nil) {
         cpuAggregator?.endSession(reason: .userStopped)
 
         reconnectTask?.cancel()

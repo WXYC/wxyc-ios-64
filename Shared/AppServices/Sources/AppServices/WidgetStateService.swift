@@ -69,15 +69,6 @@ public final class WidgetStateService {
         startObservingPlaylistUpdates()
     }
 
-    /// Stop all observations.
-    /// Call this when the service is no longer needed.
-    public func stop() {
-        playbackObservationTask?.cancel()
-        playbackObservationTask = nil
-        playlistObservationTask?.cancel()
-        playlistObservationTask = nil
-    }
-
     // MARK: - Foreground State
 
     /// Update the foreground state.
