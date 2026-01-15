@@ -21,9 +21,8 @@ import PlaybackTestUtilities
 final class MockAnalytics: AnalyticsService, @unchecked Sendable {
     private let capturedEvents = NSMutableArray()
 
-    func capture(_ event: String, properties: [String : Any]?) {
-        let capture = EventCapture(event: event, properties: properties)
-        capturedEvents.add(capture)
+    func capture(_ event: AnalyticsEvent) {
+        capturedEvents.add(event)
     }
 
     func reset() {
@@ -31,16 +30,11 @@ final class MockAnalytics: AnalyticsService, @unchecked Sendable {
     }
 
     func capturedEventNames() -> [String] {
-        return capturedEvents.compactMap { ($0 as? EventCapture)?.event }
+        return capturedEvents.compactMap { ($0 as? AnalyticsEvent)?.name }
     }
 
-    func capturedEvent(named: String) -> EventCapture? {
-        return capturedEvents.compactMap { $0 as? EventCapture }.first { $0.event == named }
-    }
-
-    struct EventCapture {
-        let event: String
-        let properties: [String: Any]?
+    func capturedEvent(named: String) -> AnalyticsEvent? {
+        return capturedEvents.compactMap { $0 as? AnalyticsEvent }.first { $0.name == named }
     }
 }
 

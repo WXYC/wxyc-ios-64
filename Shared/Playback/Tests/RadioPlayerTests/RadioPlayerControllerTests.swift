@@ -54,6 +54,9 @@ final class MockAudioSession: AudioSessionProtocol {
 
 // MARK: - RadioPlayerController Test Factory
 
+import Analytics
+import AnalyticsTesting
+
 extension RadioPlayerController {
     /// Creates a RadioPlayerController configured for testing with platform-appropriate mocks
     @MainActor
@@ -63,7 +66,7 @@ extension RadioPlayerController {
             analytics: nil
         ),
         notificationCenter: NotificationCenter = NotificationCenter(),
-        analytics: PlaybackAnalytics = MockPlaybackAnalytics(),
+        analytics: AnalyticsService = MockStructuredAnalytics(),
         backoffTimer: ExponentialBackoff = .default
     ) -> RadioPlayerController {
         #if os(iOS) || os(tvOS)

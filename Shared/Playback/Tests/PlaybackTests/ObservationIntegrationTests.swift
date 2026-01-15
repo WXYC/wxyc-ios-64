@@ -12,6 +12,8 @@ import Testing
 import PlaybackTestUtilities
 import Foundation
 import AVFoundation
+import Analytics
+import AnalyticsTesting
 @testable import Playback
 @testable import PlaybackCore
 import Core
@@ -34,13 +36,13 @@ struct ObservationIntegrationTests {
             audioSession: MockAudioSession(),
             remoteCommandCenter: MockRemoteCommandCenter(),
             notificationCenter: NotificationCenter(),
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
         #else
         return AudioPlayerController(
             player: mockPlayer,
             notificationCenter: NotificationCenter(),
-            analytics: MockPlaybackAnalytics()
+            analytics: MockStructuredAnalytics()
         )
         #endif
     }
