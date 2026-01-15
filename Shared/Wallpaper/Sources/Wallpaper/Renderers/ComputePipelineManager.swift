@@ -227,6 +227,8 @@ final class ComputePipelineManager {
 
     private func pixelFormat(for formatString: String) -> MTLPixelFormat {
         switch formatString.lowercased() {
+        case "r8unorm", "r8":
+            return .r8Unorm
         case "rg16float", "rg16f":
             return .rg16Float
         case "rgba16float", "rgba16f":
