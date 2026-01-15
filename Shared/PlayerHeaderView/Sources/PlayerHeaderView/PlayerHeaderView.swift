@@ -64,8 +64,6 @@ public struct PlayerHeaderView: View {
                 visualizer: visualizer,
                 barHistory: $barHistory,
                 isPlaying: Self.controller.isPlaying,
-                rmsPerBar: visualizer.rmsPerBar,
-                onModeTapped: nil,
                 onDebugTapped: onDebugTapped
             )
         }
