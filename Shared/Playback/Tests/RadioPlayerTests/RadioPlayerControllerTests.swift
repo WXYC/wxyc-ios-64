@@ -138,7 +138,11 @@ struct RadioPlayerControllerTests {
 
         // Simulate rate change notification on the mock player
         mockPlayer.rate = 1.0
-        notificationCenter.post(name: AVPlayer.rateDidChangeNotification, object: mockPlayer)
+        notificationCenter.post(
+            name: AVPlayer.rateDidChangeNotification,
+            object: mockPlayer,
+            userInfo: ["rate": Float(1.0)]
+        )
 
         // Wait for state change with timeout
         let result = await stateTask.value

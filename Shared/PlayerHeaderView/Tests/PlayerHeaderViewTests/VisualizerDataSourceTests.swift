@@ -148,6 +148,6 @@ struct VisualizerConstantsTests {
         #expect(VisualizerConstants.barAmount == 16)
         #expect(VisualizerConstants.historyLength == 8)
         #expect(VisualizerConstants.magnitudeLimit == 64)
-        #expect(VisualizerConstants.updateInterval == 0.01)
+        #expect(VisualizerConstants.updateInterval == 1.0 / 60.0)
     }
 }
