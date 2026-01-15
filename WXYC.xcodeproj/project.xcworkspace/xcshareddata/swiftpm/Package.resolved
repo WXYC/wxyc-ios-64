@@ -1,5 +1,5 @@
 {
-  "originHash" : "45f249cd0577cd4f5cc283b0c8ad7026d1bc75c63054b88b98dba477d92980e4",
+  "originHash" : "03028e3a1cf7eab419622b5ecbd083c2b06151dfe9bf186617de0686fd2a9a9c",
   "pins" : [
     {
       "identity" : "posthog-ios",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "6d1186fe0471f76d9b87b83e96bcb8ff5db72732",
         "version" : "3.37.2"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax.git",
+      "state" : {
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
       }
     },
     {
