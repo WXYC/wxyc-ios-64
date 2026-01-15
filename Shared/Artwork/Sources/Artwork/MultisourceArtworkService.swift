@@ -54,6 +54,10 @@ public final actor MultisourceArtworkService: ArtworkService {
     private let cacheCoordinator: CacheCoordinator
     private var inflightTasks: [String: Task<CGImage?, Never>] = [:]
 
+#if canImport(Vision)
+    private let nsfwClassifier: NSFWClassifier?
+#endif
+
     // Public convenience initializer with default fetchers
     public init() {
         self.init(
@@ -74,6 +78,14 @@ public final actor MultisourceArtworkService: ArtworkService {
     ) {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
+#if canImport(Vision)
+        do {
+            self.nsfwClassifier = try NSFWClassifier()
+        } catch {
+            Log(.error, "Failed to initialize NSFW classifier: \(error)")
+            self.nsfwClassifier = nil
+        }
+#endif
     }
 
     public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
@@ -117,12 +129,14 @@ public final actor MultisourceArtworkService: ArtworkService {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
     
-#if canImport(UIKit) && canImport(Vision)
-                guard try await NSFWDetector().checkNSFW(cgImage: artwork) == .sfw else {
-                    Log(.info, "Inappropriate artwork found for \(cacheKey) using fetcher \(fetcher)")
-                    await self.cacheCoordinator.set(value: Error.nsfw, for: errorCacheKey, lifespan: .thirtyDays)
+#if canImport(Vision)
+                if let nsfwClassifier {
+                    guard try await nsfwClassifier.classify(cgImage: artwork) == .sfw else {
+                        Log(.info, "Inappropriate artwork found for \(cacheKey) using fetcher \(fetcher)")
+                        await self.cacheCoordinator.set(value: Error.nsfw, for: errorCacheKey, lifespan: .thirtyDays)
 
-                    return nil
+                        return nil
+                    }
                 }
 #endif
 
