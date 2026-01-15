@@ -17,31 +17,25 @@ struct PlaybackButtonControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Blend Mode", selection: $configuration.playbackBlendMode) {
+            LabeledPicker(label: "Blend Mode", selection: $configuration.playbackBlendMode) {
                 ForEach(PlaybackBlendMode.allCases) { mode in
                     Text(mode.displayName).tag(mode)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Darkness")
-                    Spacer()
-                    Text(configuration.playbackDarkness, format: .percent.precision(.fractionLength(0)))
-                        .foregroundStyle(.secondary)
-                }
-                Slider(value: $configuration.playbackDarkness, in: 0...1)
-            }
+            LabeledSlider(
+                label: "Darkness",
+                value: $configuration.playbackDarkness,
+                range: 0...1,
+                format: .percentage
+            )
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Alpha")
-                    Spacer()
-                    Text(configuration.playbackAlpha, format: .percent.precision(.fractionLength(0)))
-                        .foregroundStyle(.secondary)
-                }
-                Slider(value: $configuration.playbackAlpha, in: 0...1)
-            }
+            LabeledSlider(
+                label: "Alpha",
+                value: $configuration.playbackAlpha,
+                range: 0...1,
+                format: .percentage
+            )
 
             Text("Adjusts the blend mode, darkness, and opacity of the play/pause button.")
                 .font(.caption)

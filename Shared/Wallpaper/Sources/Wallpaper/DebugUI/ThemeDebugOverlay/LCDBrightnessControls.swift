@@ -22,7 +22,6 @@ struct LCDBrightnessControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Top segments offset
             VStack(alignment: .leading, spacing: 4) {
                 Text("Top Segments")
                     .font(.caption)
@@ -37,7 +36,6 @@ struct LCDBrightnessControls: View {
                 )
             }
 
-            // Bottom segments offset
             VStack(alignment: .leading, spacing: 4) {
                 Text("Bottom Segments")
                     .font(.caption)
@@ -52,16 +50,13 @@ struct LCDBrightnessControls: View {
                 )
             }
 
-            let hasCustomValues =
-                configuration.lcdMinOffset != ThemeConfiguration.defaultLCDMinOffset ||
-                configuration.lcdMaxOffset != ThemeConfiguration.defaultLCDMaxOffset
-
-            if hasCustomValues {
-                Button("Reset to Default") {
-                    configuration.lcdMinOffset = ThemeConfiguration.defaultLCDMinOffset
-                    configuration.lcdMaxOffset = ThemeConfiguration.defaultLCDMaxOffset
-                }
-                .font(.caption)
+            ConditionalResetButton(
+                hasOverrides: configuration.lcdMinOffset != ThemeConfiguration.defaultLCDMinOffset ||
+                              configuration.lcdMaxOffset != ThemeConfiguration.defaultLCDMaxOffset,
+                label: "Reset to Default"
+            ) {
+                configuration.lcdMinOffset = ThemeConfiguration.defaultLCDMinOffset
+                configuration.lcdMaxOffset = ThemeConfiguration.defaultLCDMaxOffset
             }
         }
     }

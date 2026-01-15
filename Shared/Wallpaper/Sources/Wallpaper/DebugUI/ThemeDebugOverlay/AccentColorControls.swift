@@ -18,38 +18,28 @@ struct AccentColorControls: View {
     let theme: LoadedTheme
     @State private var generatedModeLabel: String?
 
-    private var hueBinding: Binding<Double> {
-        Binding(
-            get: { configuration.accentHueOverride ?? theme.manifest.accent.hue },
-            set: { configuration.accentHueOverride = $0 }
-        )
-    }
-
-    private var saturationBinding: Binding<Double> {
-        Binding(
-            get: { configuration.accentSaturationOverride ?? theme.manifest.accent.saturation },
-            set: { configuration.accentSaturationOverride = $0 }
-        )
-    }
-
-    private var brightnessBinding: Binding<Double> {
-        Binding(
-            get: { configuration.accentBrightnessOverride ?? theme.manifest.accent.brightness },
-            set: { configuration.accentBrightnessOverride = $0 }
-        )
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HSBPicker(
-                hueDegrees: hueBinding,
-                saturation: saturationBinding,
-                brightness: brightnessBinding
+                hueDegrees: overrideBinding(
+                    get: configuration.accentHueOverride,
+                    fallback: theme.manifest.accent.hue,
+                    set: { configuration.accentHueOverride = $0 }
+                ),
+                saturation: overrideBinding(
+                    get: configuration.accentSaturationOverride,
+                    fallback: theme.manifest.accent.saturation,
+                    set: { configuration.accentSaturationOverride = $0 }
+                ),
+                brightness: overrideBinding(
+                    get: configuration.accentBrightnessOverride,
+                    fallback: theme.manifest.accent.brightness,
+                    set: { configuration.accentBrightnessOverride = $0 }
+                )
             )
 
             Divider()
 
-            // Generate accent color from wallpaper snapshot
             Button {
                 generateAccentFromWallpaper()
             } label: {
@@ -68,19 +58,16 @@ struct AccentColorControls: View {
 
             Divider()
 
-            let hasOverrides =
-                configuration.accentHueOverride != nil ||
-                configuration.accentSaturationOverride != nil ||
-                configuration.accentBrightnessOverride != nil
-
-            if hasOverrides {
-                Button("Reset to Theme Default") {
-                    configuration.accentHueOverride = nil
-                    configuration.accentSaturationOverride = nil
-                    configuration.accentBrightnessOverride = nil
-                    generatedModeLabel = nil
-                }
-                .font(.caption)
+            ConditionalResetButton(
+                hasOverrides: configuration.accentHueOverride != nil ||
+                              configuration.accentSaturationOverride != nil ||
+                              configuration.accentBrightnessOverride != nil,
+                label: "Reset to Theme Default"
+            ) {
+                configuration.accentHueOverride = nil
+                configuration.accentSaturationOverride = nil
+                configuration.accentBrightnessOverride = nil
+                generatedModeLabel = nil
             }
         }
     }

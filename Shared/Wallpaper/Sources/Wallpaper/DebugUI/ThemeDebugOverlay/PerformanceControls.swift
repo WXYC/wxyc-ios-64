@@ -87,64 +87,48 @@ struct PerformanceControls: View {
 
             Divider()
 
-            // LOD slider
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("LOD: \(lodBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if qualityController.debugLODOverride != nil {
-                        Text("(override)")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
-                }
-                Slider(value: lodBinding, in: Float(AdaptiveProfile.lodRange.lowerBound)...Float(AdaptiveProfile.lodRange.upperBound))
-            }
+            OverridableSlider(
+                label: "LOD",
+                value: Binding(
+                    get: { Double(lodBinding.wrappedValue) },
+                    set: { lodBinding.wrappedValue = Float($0) }
+                ),
+                range: Double(AdaptiveProfile.lodRange.lowerBound)...Double(AdaptiveProfile.lodRange.upperBound),
+                format: .decimal(precision: 2),
+                isOverridden: qualityController.debugLODOverride != nil
+            )
 
-            // Scale slider
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Scale: \(scaleBinding.wrappedValue, format: .number.precision(.fractionLength(2)))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if qualityController.debugScaleOverride != nil {
-                        Text("(override)")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
-                }
-                Slider(value: scaleBinding, in: Float(AdaptiveProfile.scaleRange.lowerBound)...Float(AdaptiveProfile.scaleRange.upperBound))
-            }
+            OverridableSlider(
+                label: "Scale",
+                value: Binding(
+                    get: { Double(scaleBinding.wrappedValue) },
+                    set: { scaleBinding.wrappedValue = Float($0) }
+                ),
+                range: Double(AdaptiveProfile.scaleRange.lowerBound)...Double(AdaptiveProfile.scaleRange.upperBound),
+                format: .decimal(precision: 2),
+                isOverridden: qualityController.debugScaleOverride != nil
+            )
 
-            // Wallpaper FPS slider
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Wallpaper FPS: \(Int(wallpaperFPSBinding.wrappedValue))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if qualityController.debugWallpaperFPSOverride != nil {
-                        Text("(override)")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
-                }
-                Slider(value: wallpaperFPSBinding, in: Float(AdaptiveProfile.wallpaperFPSRange.lowerBound)...Float(AdaptiveProfile.wallpaperFPSRange.upperBound), step: 1)
-            }
+            OverridableSlider(
+                label: "Wallpaper FPS",
+                value: Binding(
+                    get: { Double(wallpaperFPSBinding.wrappedValue) },
+                    set: { wallpaperFPSBinding.wrappedValue = Float($0) }
+                ),
+                range: Double(AdaptiveProfile.wallpaperFPSRange.lowerBound)...Double(AdaptiveProfile.wallpaperFPSRange.upperBound),
+                format: .integer,
+                isOverridden: qualityController.debugWallpaperFPSOverride != nil
+            )
 
-            // Reset buttons
-            let hasOverrides =
-                qualityController.debugLODOverride != nil ||
-                qualityController.debugScaleOverride != nil ||
-                qualityController.debugWallpaperFPSOverride != nil
-
-            if hasOverrides {
-                Button("Clear Overrides") {
-                    qualityController.debugLODOverride = nil
-                    qualityController.debugScaleOverride = nil
-                    qualityController.debugWallpaperFPSOverride = nil
-                }
-                .font(.caption)
+            ConditionalResetButton(
+                hasOverrides: qualityController.debugLODOverride != nil ||
+                              qualityController.debugScaleOverride != nil ||
+                              qualityController.debugWallpaperFPSOverride != nil,
+                label: "Clear Overrides"
+            ) {
+                qualityController.debugLODOverride = nil
+                qualityController.debugScaleOverride = nil
+                qualityController.debugWallpaperFPSOverride = nil
             }
 
             Divider()

@@ -16,85 +16,62 @@ struct MaterialControls: View {
     @Bindable var configuration: ThemeConfiguration
     let theme: LoadedTheme
 
-    private var blurRadiusBinding: Binding<Double> {
-        Binding(
-            get: { configuration.blurRadiusOverride ?? theme.manifest.blurRadius },
-            set: { configuration.blurRadiusOverride = $0 }
-        )
-    }
-
-    private var darknessBinding: Binding<Double> {
-        Binding(
-            get: { configuration.overlayDarknessOverride ?? theme.manifest.overlayDarkness },
-            set: { configuration.overlayDarknessOverride = $0 }
-        )
-    }
-
-    private var opacityBinding: Binding<Double> {
-        Binding(
-            get: { configuration.overlayOpacityOverride ?? theme.manifest.overlayOpacity },
-            set: { configuration.overlayOpacityOverride = $0 }
-        )
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Blur radius slider
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Blur Radius: \(blurRadiusBinding.wrappedValue, format: .number.precision(.fractionLength(1)))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: blurRadiusBinding, in: 0...30)
-            }
+            LabeledSlider(
+                label: "Blur Radius",
+                value: overrideBinding(
+                    get: configuration.blurRadiusOverride,
+                    fallback: theme.manifest.blurRadius,
+                    set: { configuration.blurRadiusOverride = $0 }
+                ),
+                range: 0...30,
+                format: .decimal(precision: 1)
+            )
 
             Divider()
 
-            // Darkness slider (0 = white, 1 = black)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Darkness: \(Int(darknessBinding.wrappedValue * 100))%")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: darknessBinding, in: 0...1)
-            }
+            LabeledSlider(
+                label: "Darkness",
+                value: overrideBinding(
+                    get: configuration.overlayDarknessOverride,
+                    fallback: theme.manifest.overlayDarkness,
+                    set: { configuration.overlayDarknessOverride = $0 }
+                ),
+                range: 0...1,
+                format: .percentage
+            )
 
             Divider()
 
-            // Opacity slider
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Opacity: \(Int(opacityBinding.wrappedValue * 100))%")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Slider(value: opacityBinding, in: 0...1)
-            }
+            LabeledSlider(
+                label: "Opacity",
+                value: overrideBinding(
+                    get: configuration.overlayOpacityOverride,
+                    fallback: theme.manifest.overlayOpacity,
+                    set: { configuration.overlayOpacityOverride = $0 }
+                ),
+                range: 0...1,
+                format: .percentage
+            )
 
             Divider()
 
-            // Blend mode picker
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Blend Mode")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("Blend Mode", selection: $configuration.materialBlendMode) {
-                    ForEach(MaterialBlendMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
+            LabeledPicker(label: "Blend Mode", selection: $configuration.materialBlendMode) {
+                ForEach(MaterialBlendMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
                 }
-                .pickerStyle(.menu)
             }
 
-            // Reset button
-            let hasOverrides =
-                configuration.blurRadiusOverride != nil ||
-                configuration.overlayDarknessOverride != nil ||
-                configuration.overlayOpacityOverride != nil
-
-            if hasOverrides {
-                Button("Reset to Theme Default") {
-                    configuration.blurRadiusOverride = nil
-                    configuration.overlayDarknessOverride = nil
-                    configuration.overlayOpacityOverride = nil
-                }
-                .font(.caption)
+            ConditionalResetButton(
+                hasOverrides: configuration.blurRadiusOverride != nil ||
+                              configuration.overlayDarknessOverride != nil ||
+                              configuration.overlayOpacityOverride != nil,
+                label: "Reset to Theme Default"
+            ) {
+                configuration.blurRadiusOverride = nil
+                configuration.overlayDarknessOverride = nil
+                configuration.overlayOpacityOverride = nil
             }
         }
     }
