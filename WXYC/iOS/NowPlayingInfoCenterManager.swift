@@ -12,7 +12,6 @@ import AppServices
 import Foundation
 import Logger
 import MediaPlayer
-import PlayerHeaderView
 import Playlist
 
 // MARK: - NowPlayingInfoCenter Protocol

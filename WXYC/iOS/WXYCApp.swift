@@ -2,6 +2,9 @@
 //  WXYCApp.swift
 //  WXYC
 //
+//  Main app entry point defining the SwiftUI App lifecycle, service initialization,
+//  background refresh scheduling, and environment injection for shared dependencies.
+//
 //  Created by Jake Bromberg on 11/13/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
@@ -26,9 +29,7 @@ import StoreKit
 import SwiftUI
 import Wallpaper
 import WXUI
-#if DEBUG || DEBUG_TESTFLIGHT
 import DebugPanel
-#endif
 
 // MARK: - Settings Bundle Keys
 
@@ -72,6 +73,7 @@ struct WXYCApp: App {
         setUpAnalytics()
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
+        setUpDebugPanel()
         PostHogSDK.shared.capture("app launch", properties: [
             "has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker
         ])
@@ -138,13 +140,13 @@ struct WXYCApp: App {
                             handleUserActivity(userActivity)
                         }
 
-#if DEBUG || DEBUG_TESTFLIGHT
-                    DebugHUD()
-                    
-                    if ThemeDebugState.shared.showOverlay {
-                        ThemeDebugOverlay(configuration: appState.themeConfiguration)
+                    if DebugPanelConfiguration.isEnabled {
+                        DebugHUD()
+                        
+                        if ThemeDebugState.shared.showOverlay {
+                            ThemeDebugOverlay(configuration: appState.themeConfiguration)
+                        }
                     }
-#endif
                 }
             }
         }
@@ -239,7 +241,7 @@ struct WXYCApp: App {
         }
     }
 
-    private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
+    private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .background:
             PostHogSDK.shared.capture("App entered background", properties: [
@@ -288,7 +290,18 @@ struct WXYCApp: App {
         let analytics = PostHogThemePickerAnalytics()
         appState.themePickerState.setAnalytics(analytics)
     }
-
+    
+    private func setUpDebugPanel() {
+        // Enable debug panel based on PostHog feature flag.
+        // Falls back to compile-time DEBUG flag if feature flag not set.
+        let featureFlagEnabled = PostHogSDK.shared.isFeatureEnabled(
+            DebugPanelConfiguration.featureFlagKey
+        )
+        if featureFlagEnabled {
+            DebugPanelConfiguration.isEnabled = true
+        }
+    }
+    
     private func buildConfiguration() -> String {
         #if DEBUG
         return "Debug"
@@ -358,7 +371,7 @@ struct WXYCApp: App {
             for attempt in 1...5 {
                 let delay = 200 * attempt  // 200ms, 400ms, 600ms, 800ms, 1000ms
                 try? await Task.sleep(for: .milliseconds(delay))
-        
+
                 if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
                     appState.themeConfiguration.extractAndCachePalette(from: snapshot)
                     Log(.info, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID) (attempt \(attempt))")

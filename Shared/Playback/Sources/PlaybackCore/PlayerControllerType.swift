@@ -65,24 +65,4 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     // MARK: - Identifiable
     
     public var id: String { rawValue }
-    
-    // MARK: - Display
-    
-    public var displayName: String {
-        switch self {
-        case .radioPlayer:
-            "RadioPlayer (AVPlayer)"
-        case .mp3Streamer:
-            "MP3Streamer (AudioToolbox)"
-        }
-    }
-    
-    public var shortDescription: String {
-        switch self {
-        case .radioPlayer:
-            "Uses AVPlayer for simple HTTP streaming"
-        case .mp3Streamer:
-            "Uses URLSession + AudioToolbox for MP3 decoding"
-        }
-    }
 }

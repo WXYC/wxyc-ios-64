@@ -288,12 +288,6 @@ private final class PlayerStateBox: @unchecked Sendable {
         return false
     }
 
-    /// Returns a snapshot of both playing and stalled states in a single lock acquisition.
-    func snapshot() -> (isPlaying: Bool, isStalled: Bool) {
-        os_unfair_lock_lock(lock)
-        defer { os_unfair_lock_unlock(lock) }
-        return (_isPlaying, _isStalled)
-    }
 }
 
 private final class ScheduledBufferCount: @unchecked Sendable {
@@ -310,28 +304,10 @@ private final class ScheduledBufferCount: @unchecked Sendable {
         lock.deallocate()
     }
 
-    var count: Int {
-        os_unfair_lock_lock(lock)
-        defer { os_unfair_lock_unlock(lock) }
-        return _count
-    }
-
-    func increment() {
-        os_unfair_lock_lock(lock)
-        _count += 1
-        os_unfair_lock_unlock(lock)
-    }
-
     /// Increments the count by the specified amount in a single lock acquisition.
     func incrementBy(_ amount: Int) {
         os_unfair_lock_lock(lock)
         _count += amount
-        os_unfair_lock_unlock(lock)
-    }
-
-    func decrement() {
-        os_unfair_lock_lock(lock)
-        _count = max(0, _count - 1)
         os_unfair_lock_unlock(lock)
     }
 

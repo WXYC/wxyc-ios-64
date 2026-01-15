@@ -2,6 +2,9 @@
 //  PlaybackButton.swift
 //  WXYC
 //
+//  Custom animated button that morphs between play (triangle) and pause (two bars) states.
+//  Uses InsettableShape for smooth transitions and integrates with AudioPlayerController.
+//
 //  Created by Jake Bromberg on 11/13/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
@@ -181,17 +184,6 @@ struct PlaybackButtonExample: View {
             }
         )
         .background(WXYCBackground())
-    }
-}
-
-struct HoleCutout<S: Shape>: Shape, Animatable {
-    var hole: S
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.addRect(rect)
-        path.addPath(hole.path(in: rect))
-        return path
     }
 }
 
