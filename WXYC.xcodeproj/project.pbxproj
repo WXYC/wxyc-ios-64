@@ -135,6 +135,7 @@
 		0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MusicShareKit; path = Shared/MusicShareKit; sourceTree = SOURCE_ROOT; };
 		21C88FF06CCC47E090003EAD /* Logger */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logger; path = Shared/Logger; sourceTree = SOURCE_ROOT; };
+		LERPABLE0FILEREF0000001 /* Lerpable */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Lerpable; path = Shared/Lerpable; sourceTree = SOURCE_ROOT; };
 		236B51CE2EFC651A0058AD01 /* NowPlayingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NowPlayingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		236B51CF2EFC651A0058AD01 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = /System/Library/Frameworks/WidgetKit.framework; sourceTree = "<absolute>"; };
 		236B51D12EFC651A0058AD01 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
@@ -416,6 +417,7 @@
 				DEBUGPNL0FILEREF0000001 /* DebugPanel */,
 				INTENTSPKGFILEREF000001 /* Intents */,
 				21C88FF06CCC47E090003EAD /* Logger */,
+				LERPABLE0FILEREF0000001 /* Lerpable */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
 				8D0C09BCD2BFEC26D122542E /* OpenNSFW */,
