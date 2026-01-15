@@ -562,6 +562,7 @@ public final class ThemeConfiguration {
                 overlayOpacity: overlayOpacityOverride,
                 blurRadius: blurRadiusOverride,
                 overlayDarkness: overlayDarknessOverride,
+                materialBlendMode: materialBlendMode != .default ? materialBlendMode.rawValue : nil,
                 lcdMinOffset: lcdMinOffset != Self.defaultLCDMinOffset ? lcdMinOffset : nil,
                 lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil
             )
@@ -575,6 +576,7 @@ public final class ThemeConfiguration {
             overlayOpacity: loadOptionalDouble(overlayOpacityOverrideKey(for: themeID)),
             blurRadius: loadOptionalDouble(blurRadiusOverrideKey(for: themeID)),
             overlayDarkness: loadOptionalDouble(overlayDarknessOverrideKey(for: themeID)),
+            materialBlendMode: loadOptionalString(materialBlendModeKey(for: themeID)),
             lcdMinOffset: loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)),
             lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID))
         )
@@ -588,6 +590,10 @@ public final class ThemeConfiguration {
     private func loadOptionalBool(_ key: String) -> Bool? {
         guard defaults.object(forKey: key) != nil else { return nil }
         return defaults.bool(forKey: key)
+    }
+
+    private func loadOptionalString(_ key: String) -> String? {
+        defaults.string(forKey: key)
     }
 
     // MARK: - Per-Theme Override Loading

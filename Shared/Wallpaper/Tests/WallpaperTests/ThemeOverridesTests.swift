@@ -43,6 +43,9 @@ struct ThemeOverridesTests {
 
         let withMax = ThemeOverrides(lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0))
         #expect(!withMax.isEmpty)
+
+        let withBlendMode = ThemeOverrides(materialBlendMode: "multiply")
+        #expect(!withBlendMode.isEmpty)
     }
 
     @Test("reset clears all properties")
@@ -53,6 +56,7 @@ struct ThemeOverridesTests {
             overlayOpacity: 0.3,
             blurRadius: 12.0,
             overlayDarkness: 0.0,
+            materialBlendMode: "multiply",
             lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1),
             lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0)
         )
@@ -67,6 +71,7 @@ struct ThemeOverridesTests {
         #expect(overrides.overlayOpacity == nil)
         #expect(overrides.blurRadius == nil)
         #expect(overrides.overlayDarkness == nil)
+        #expect(overrides.materialBlendMode == nil)
         #expect(overrides.lcdMinOffset == nil)
         #expect(overrides.lcdMaxOffset == nil)
     }
@@ -89,6 +94,7 @@ struct ThemeOverridesTests {
             overlayOpacity: 0.3,
             blurRadius: 12.0,
             overlayDarkness: 0.25,
+            materialBlendMode: "multiply",
             lcdMinOffset: HSBOffset(hue: 10, saturation: 0, brightness: -0.1),
             lcdMaxOffset: HSBOffset(hue: 0, saturation: 0.1, brightness: 0)
         )

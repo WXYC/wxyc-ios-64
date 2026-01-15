@@ -30,5 +30,6 @@ public struct BackgroundLayer: View {
             darkProgress: appearance.darkProgress,
             cornerRadius: cornerRadius
         )
+        .blendMode(appearance.materialBlendMode.snapped)
     }
 }

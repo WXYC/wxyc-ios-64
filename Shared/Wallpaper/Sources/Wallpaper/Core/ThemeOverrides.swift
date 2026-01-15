@@ -2,6 +2,9 @@
 //  ThemeOverrides.swift
 //  Wallpaper
 //
+//  Container for per-theme override values for accent colors, overlay properties,
+//  and LCD segment offsets. Enables bulk operations like export without boilerplate.
+//
 //  Created by Jake Bromberg on 01/11/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -18,6 +21,8 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
     public var blurRadius: Double?
     /// Overlay darkness (0.0 = white, 1.0 = black).
     public var overlayDarkness: Double?
+    /// Material blend mode override.
+    public var materialBlendMode: String?
 
     // LCD segment HSB offsets (applied to accent color)
     public var lcdMinOffset: HSBOffset?
@@ -30,6 +35,7 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
         overlayOpacity: Double? = nil,
         blurRadius: Double? = nil,
         overlayDarkness: Double? = nil,
+        materialBlendMode: String? = nil,
         lcdMinOffset: HSBOffset? = nil,
         lcdMaxOffset: HSBOffset? = nil
     ) {
@@ -39,6 +45,7 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
         self.overlayOpacity = overlayOpacity
         self.blurRadius = blurRadius
         self.overlayDarkness = overlayDarkness
+        self.materialBlendMode = materialBlendMode
         self.lcdMinOffset = lcdMinOffset
         self.lcdMaxOffset = lcdMaxOffset
     }
@@ -51,6 +58,7 @@ public struct ThemeOverrides: Codable, Sendable, Equatable {
         overlayOpacity == nil &&
         blurRadius == nil &&
         overlayDarkness == nil &&
+        materialBlendMode == nil &&
         lcdMinOffset == nil &&
         lcdMaxOffset == nil
     }
