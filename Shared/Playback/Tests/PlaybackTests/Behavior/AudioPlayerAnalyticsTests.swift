@@ -221,9 +221,15 @@ struct MP3StreamerAnalyticsTests {
         streamer.play()
 
         // Wait for state to reach playing
-        try await Task.sleep(for: .milliseconds(200))
-
+        var attempts = 0
+        while streamer.state != .playing && attempts < 20 {
+            try await Task.sleep(for: .milliseconds(50))
+            attempts += 1
+        }
+        
         // Reset and call play again
+        // Note: Time to first Audio might be captured late, so we don't strict-reset if it races,
+        // but we definitely want to ensure we're playing first.
         mockAnalytics.reset()
         streamer.play()
         try await Task.sleep(for: .milliseconds(50))
