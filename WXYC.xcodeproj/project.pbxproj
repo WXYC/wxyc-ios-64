@@ -135,7 +135,6 @@
 		0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MusicShareKit; path = Shared/MusicShareKit; sourceTree = SOURCE_ROOT; };
 		21C88FF06CCC47E090003EAD /* Logger */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logger; path = Shared/Logger; sourceTree = SOURCE_ROOT; };
-		LERPABLE0FILEREF0000001 /* Lerpable */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Lerpable; path = Shared/Lerpable; sourceTree = SOURCE_ROOT; };
 		236B51CE2EFC651A0058AD01 /* NowPlayingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NowPlayingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		236B51CF2EFC651A0058AD01 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = /System/Library/Frameworks/WidgetKit.framework; sourceTree = "<absolute>"; };
 		236B51D12EFC651A0058AD01 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
@@ -156,6 +155,7 @@
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
 		INTENTSPKGFILEREF000001 /* Intents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Intents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
+		LERPABLE0FILEREF0000001 /* Lerpable */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Lerpable; path = Shared/Lerpable; sourceTree = SOURCE_ROOT; };
 		SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Secrets.xcframework; path = Shared/Secrets/Secrets.xcframework; sourceTree = SOURCE_ROOT; };
 		WALLPAPER0FILEREF0000001 /* Wallpaper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Wallpaper; path = Shared/Wallpaper; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -164,6 +164,7 @@
 		236B51F22EFC656A0058AD01 /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Assets/OpenNSFW.mlmodelc,
 				iOS/NowPlayingWidget/Assets.xcassets,
 				iOS/NowPlayingWidget/Extensions.swift,
 				"iOS/NowPlayingWidget/NowPlayingItem+Placeholder.swift",
@@ -693,6 +694,7 @@
 				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
 				23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */,
 				WXYCINTENTS00000004 /* XCLocalSwiftPackageReference "Shared/Intents" */,
+				2332850E2F19A9A000E83199 /* XCLocalSwiftPackageReference "Shared/Lerpable" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 6393B8DD84BA2FE9EA639E2D /* Products */;
@@ -2385,6 +2387,10 @@
 		1A4C4581DF37FFB7A421BDE7 /* XCLocalSwiftPackageReference "Shared/AppServices" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/AppServices;
+		};
+		2332850E2F19A9A000E83199 /* XCLocalSwiftPackageReference "Shared/Lerpable" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/Lerpable;
 		};
 		23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */ = {
 			isa = XCLocalSwiftPackageReference;
