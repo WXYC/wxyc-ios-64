@@ -42,8 +42,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Number of uniform buffers in the ring (triple buffering).
     private static let uniformBufferCount = 3
 
-    /// Size of the uniform buffer (holds both uniform types + parameter floats).
-    private static let uniformBufferSize = 256 // Enough for uniforms + 8 floats padding
+    /// Size of the uniform buffer (holds uniforms at offset 0, parameters at offset 256).
+    /// Metal requires constant buffer offsets to be 256-byte aligned.
+    private static let uniformBufferSize = 512
+
+    /// Offset for custom shader parameters (must be 256-byte aligned for Metal).
+    private static let parameterBufferOffset = 256
 
     // MARK: - Core Metal Objects
 
@@ -542,7 +546,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                let paramOffset = MemoryLayout<RawMetalUniforms>.stride
+                let paramOffset = Self.parameterBufferOffset
                 let paramPtr = bufferPtr.advanced(by: paramOffset)
                 for (i, param) in params.prefix(8).enumerated() {
                     let value = parameterStore.floatValue(for: param.id)
@@ -568,7 +572,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                let paramOffset = MemoryLayout<StitchableUniforms>.stride
+                let paramOffset = Self.parameterBufferOffset
                 let paramPtr = bufferPtr.advanced(by: paramOffset)
                 for (i, param) in params.prefix(8).enumerated() {
                     let value = parameterStore.floatValue(for: param.id)
@@ -626,7 +630,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                let paramOffset = MemoryLayout<RawMetalUniforms>.stride
+                let paramOffset = Self.parameterBufferOffset
                 let paramPtr = bufferPtr.advanced(by: paramOffset)
                 for (i, param) in params.prefix(8).enumerated() {
                     let value = parameterStore.floatValue(for: param.id)
@@ -658,7 +662,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let parameterStore = theme.parameterStore
             let params = theme.manifest.parameters
             if !params.isEmpty {
-                let paramOffset = MemoryLayout<StitchableUniforms>.stride
+                let paramOffset = Self.parameterBufferOffset
                 let paramPtr = bufferPtr.advanced(by: paramOffset)
                 for (i, param) in params.prefix(8).enumerated() {
                     let value = parameterStore.floatValue(for: param.id)
@@ -796,7 +800,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             enc.setFragmentTexture(noiseTex, index: 0)
             enc.setFragmentSamplerState(sampler, index: 0)
 
-            setCustomParameters(encoder: enc, uniformBuffer: uniformBuffer, offset: MemoryLayout<RawMetalUniforms>.stride)
+            setCustomParameters(encoder: enc, uniformBuffer: uniformBuffer, offset: Self.parameterBufferOffset)
         } else {
             #if os(iOS) || os(tvOS)
             let displayScale = Float(view.contentScaleFactor)
@@ -812,7 +816,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.stride)
             enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
 
-            setCustomParameters(encoder: enc, uniformBuffer: uniformBuffer, offset: MemoryLayout<StitchableUniforms>.stride)
+            setCustomParameters(encoder: enc, uniformBuffer: uniformBuffer, offset: Self.parameterBufferOffset)
         }
 
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -926,7 +930,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             setCustomParameters(
                 encoder: encoder,
                 uniformBuffer: uniformBuffer,
-                offset: MemoryLayout<RawMetalUniforms>.stride
+                offset: Self.parameterBufferOffset
             )
         } else {
             var uniforms = StitchableUniforms(
