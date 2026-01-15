@@ -2,10 +2,9 @@
 //  DebugHUDState.swift
 //  DebugPanel
 //
-//  Observable state for the debug HUD display.
+//  Observable singleton managing debug HUD visibility state with persistence to UserDefaults.
 //
 //  Created by Jake Bromberg on 12/23/25.
-//  Copyright © 2025 WXYC. All rights reserved.
 //
 
 import Foundation

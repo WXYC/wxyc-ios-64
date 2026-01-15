@@ -74,9 +74,11 @@ struct WXYCApp: App {
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
         setUpDebugPanel()
-        PostHogSDK.shared.capture("app launch", properties: [
-            "has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker
-        ])
+        PostHogSDK.shared.capture(
+            "app launch",
+            properties: ["has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker],
+            userPropertiesSetOnce: ["build_type": buildConfiguration()]
+        )
 
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
         // Setting it here at launch would interrupt other apps' audio unnecessarily.
@@ -207,7 +209,7 @@ struct WXYCApp: App {
             #endif
             }
     }
-            
+
     // MARK: - Setup
 
     private func setUpQuickActions() {
@@ -311,7 +313,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-    
+
     // MARK: - Background Refresh
 
     private func scheduleBackgroundRefresh() {
