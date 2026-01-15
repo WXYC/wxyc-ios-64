@@ -94,17 +94,6 @@ public extension PostHogSDK {
         )
     }
     
-    func capture(error: NSError, context: String) {
-        PostHogSDK.shared.capture(
-            "error",
-            properties: [
-                "domain": error.domain,
-                "code": "\(error.code)",
-                "description": error.localizedDescription,
-                "context": context
-            ])
-    }
-    
     func capture(_ event: String, context: String? = nil, additionalData: [String: String] = [:]) {
         var defaultProperties = ["context": context]
         defaultProperties.merge(with: additionalData)
@@ -115,7 +104,7 @@ public extension PostHogSDK {
         )
     }
 }
-
+    
 extension Dictionary {
     mutating func merge(with dict: Dictionary<Key, Value>) {
         for (key, value) in dict {

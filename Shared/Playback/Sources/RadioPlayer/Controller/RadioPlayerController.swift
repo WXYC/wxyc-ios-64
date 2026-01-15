@@ -445,15 +445,3 @@ private extension RadioPlayerController {
         }
     }
 }
-
-// MARK: - AVAudioSession Convenience
-
-#if os(watchOS)
-extension AVAudioSession {
-    func activate() async throws -> Bool {
-        let activated = try await AVAudioSession.sharedInstance().activate(options: [])
-        Log(.info, "Session activated, current route: \(AVAudioSession.sharedInstance().currentRoute)")
-        return activated
-    }
-}
-#endif

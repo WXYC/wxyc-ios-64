@@ -8,7 +8,6 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Core
 import Foundation
 
 /// Utility for generating consistent cache keys for metadata at different granularity levels.

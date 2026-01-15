@@ -1,3 +1,59 @@
 project: WXYC.xcodeproj
 schemes:
-- WXYC
+  # App targets
+  - WXYC
+  - WXYC TV
+  - WatchXYC
+  - NowPlayingWidget
+  - Request Share Extension
+  # Shared packages
+  - Analytics
+  - AppServices
+  - Artwork
+  - Caching
+  - ColorPalette
+  - Core
+  - DebugPanel
+  - Logger
+  - Metadata
+  - MusicShareKit
+  - OpenNSFW
+  - PartyHorn
+  - Playback
+  - PlaybackCore
+  - PlaybackWatchOS
+  - PlayerHeaderView
+  - Playlist
+  - Secrets
+  - Wallpaper
+  - WXUI
+  - WXYCIntents
+  # Test schemes
+  - AppServicesTests
+  - ArtworkTests
+  - ColorPaletteTests
+  - CoreTests
+  - MetadataTests
+  - MP3StreamerTests
+  - MusicShareKitTests
+  - PlayerHeaderViewTests
+  - PlaylistTests
+  - RadioPlayerTests
+  - WallpaperTests
+  - WXYCTests
+  - WXYCUITests
+
+# Reduce false positives
+retain_unused_protocol_func_params: true
+retain_codable_properties: true
+retain_objc_annotated: true
+retain_swift_ui_previews: true
+
+# Exclude from results (still indexed, but not reported)
+report_exclude:
+  - "**/Secrets/**"
+  - "**/Vendor/**"
+  - "**/LaminatedGlass/**"
+
+# Output format
+format: json

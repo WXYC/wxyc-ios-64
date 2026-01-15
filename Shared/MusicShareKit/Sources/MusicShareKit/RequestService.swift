@@ -103,7 +103,7 @@ public struct RequestService: Sendable {
     ///   - title: The song title
     ///   - artist: The artist name
     ///   - url: Optional URL to the track (e.g., Spotify, Apple Music link)
-    public func sendRequest(title: String, artist: String, album: String? = nil) async throws {
+    public func sendRequest(title: String, artist: String, album _: String? = nil) async throws {
         let message = "\(title) by \(artist)"
         try await sendRequest(message: message)
     }

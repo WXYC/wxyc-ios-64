@@ -281,40 +281,6 @@ public final actor CacheCoordinator {
         await purgeTask.value
     }
 
-    // MARK: - Migration Support
-
-    /// Removes all entries with keys matching a specified prefix.
-    ///
-    /// This method is useful for cleaning up legacy cache entries when
-    /// migrating to a new key naming scheme.
-    ///
-    /// - Parameter prefix: The key prefix to match for removal.
-    public func removeEntries(withPrefix prefix: String) async {
-        // Wait for initial purge to complete first
-        await waitForPurge()
-
-        // Iterate through all entries and remove matching ones
-        for (key, _) in cache.allMetadata() {
-            if key.hasPrefix(prefix) {
-                cache.remove(for: key)
-                Log(.info, "Removed cache entry with prefix '\(prefix)': \(key)")
-            }
-        }
-    }
-
-    /// Migrates legacy playcut metadata from the AlbumArt cache.
-    ///
-    /// In older versions, playcut metadata was stored in `CacheCoordinator.AlbumArt`
-    /// with keys prefixed by `playcut-metadata-`. This method removes those entries
-    /// since metadata is now stored in `CacheCoordinator.Metadata` with more
-    /// granular keys (artist, album, streaming links).
-    ///
-    /// - Note: Legacy entries have a 7-day TTL, so they will eventually expire
-    ///   naturally even if this migration is not run.
-    public static func migrateLegacyMetadataCache() async {
-        await CacheCoordinator.AlbumArt.removeEntries(withPrefix: "playcut-metadata-")
-    }
-
     // MARK: - Low-Level Access (for Migrations)
 
     /// Returns all cache entries with their metadata.

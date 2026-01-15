@@ -71,17 +71,6 @@ public extension NotificationCenter {
         post(notification)
     }
 
-    /// Posts a main actor message with a metatype subject.
-    ///
-    /// - Parameters:
-    ///   - message: The message to post.
-    ///   - subject: The metatype that is the subject of this message.
-    @MainActor
-    func post<M: MainActorNotificationMessage>(_ message: M, subject: M.Subject.Type) {
-        let notification = M.makeNotification(message, object: nil)
-        post(notification)
-    }
-
     /// Adds an observer for a main actor message type.
     ///
     /// The observer closure is guaranteed to be called on the main actor.
@@ -112,33 +101,6 @@ public extension NotificationCenter {
                 }
             }
         }
-    }
-
-    /// Returns an async sequence of main actor messages matching the given type and optional subject.
-    ///
-    /// Messages are delivered on the main actor.
-    ///
-    /// - Parameters:
-    ///   - subject: The object to filter messages by, or `nil` to receive all messages of this type.
-    ///   - messageType: The type of message to observe.
-    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
-    func messages<M: MainActorNotificationMessage>(
-        of subject: M.Subject? = nil,
-        for messageType: M.Type
-    ) -> MainActorNotificationMessageSequence<M> where M.Subject: AnyObject {
-        MainActorNotificationMessageSequence(center: self, subject: subject)
-    }
-
-    /// Returns an async sequence of main actor messages matching the given type.
-    ///
-    /// Messages are delivered on the main actor.
-    ///
-    /// - Parameter messageType: The type of message to observe.
-    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
-    func messages<M: MainActorNotificationMessage>(
-        for messageType: M.Type
-    ) -> MainActorNotificationMessageSequence<M> where M.Subject: AnyObject {
-        MainActorNotificationMessageSequence(center: self, subject: nil)
     }
 
     /// Returns an async sequence with a callback that fires when the observer is registered.
