@@ -3,9 +3,11 @@
 import PackageDescription
 import Foundation
 
-// Check if pre-built XCFramework exists
-let xcframeworkPath = "Secrets.xcframework"
-let useXCFramework = FileManager.default.fileExists(atPath: xcframeworkPath)
+// Check if pre-built XCFramework exists using absolute path derived from Package.swift location.
+// This ensures the check works regardless of the current working directory when SwiftPM evaluates this manifest.
+let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let xcframeworkAbsolutePath = packageDir.appendingPathComponent("Secrets.xcframework").path
+let useXCFramework = FileManager.default.fileExists(atPath: xcframeworkAbsolutePath)
 
 let package = Package(
     name: "Secrets",
@@ -24,7 +26,7 @@ let package = Package(
     targets: useXCFramework ? [
         .binaryTarget(
             name: "Secrets",
-            path: xcframeworkPath
+            path: "Secrets.xcframework"  // Relative path works here since it's resolved from package root
         ),
     ] : [
         .target(

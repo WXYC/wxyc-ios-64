@@ -956,6 +956,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Shared/Secrets",
+				);
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1022,7 +1026,7 @@
 				);
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/WXYC/Shared",
+					"$(SRCROOT)/Shared/Secrets",
 				);
 				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
@@ -1468,7 +1472,7 @@
 				);
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/WXYC/Shared",
+					"$(SRCROOT)/Shared/Secrets",
 				);
 				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
@@ -1503,6 +1507,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Shared/Secrets",
+				);
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -1755,7 +1763,7 @@
 				);
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/WXYC/Shared",
+					"$(SRCROOT)/Shared/Secrets",
 				);
 				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
@@ -2043,6 +2051,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Shared/Secrets",
+				);
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -2084,7 +2096,7 @@
 				);
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/WXYC/Shared",
+					"$(SRCROOT)/Shared/Secrets",
 				);
 				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
@@ -2120,6 +2132,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Shared/Secrets",
+				);
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -2229,7 +2245,7 @@
 				);
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/WXYC/Shared",
+					"$(SRCROOT)/Shared/Secrets",
 				);
 				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
@@ -2264,6 +2280,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 92V374HC38;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Shared/Secrets",
+				);
 				INFOPLIST_FILE = "WXYC/iOS/Request Share Extension/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Request Share Extension";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
