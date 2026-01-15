@@ -33,9 +33,8 @@ public enum WallpaperRendererFactory {
             SwiftUIWallpaperView(theme: theme)
 
         case .compute:
-            // TODO: Phase 2 - Implement compute shader support in MetalWallpaperView
-            // For now, fall back to rawMetal rendering (fragment shader fallback)
-            MetalWallpaperView(theme: theme, directiveStore: theme.directiveStore)
+            // Compute-based wallpapers (particle simulations, physarum, etc.)
+            MetalWallpaperView(theme: theme)
         }
     }
 }

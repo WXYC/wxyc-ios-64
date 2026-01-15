@@ -57,6 +57,9 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     private var sampler: MTLSamplerState?
     private var noiseTex: MTLTexture?
 
+    /// Compute pipeline manager for compute-based wallpapers (physarum, etc.)
+    private var computeManager: ComputePipelineManager?
+
     // MARK: - Pre-allocated Uniform Buffers (Ring Buffer)
 
     /// Ring buffer of pre-allocated uniform buffers to avoid per-frame allocation.
@@ -155,6 +158,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         theme.manifest.renderer.type == .rawMetal
     }
 
+    /// Whether this renderer uses compute shaders (particle simulations, etc.)
+    private var usesComputeMode: Bool {
+        theme.manifest.renderer.type == .compute
+    }
+
     init(
         theme: LoadedTheme,
         directiveStore: ShaderDirectiveStore? = nil,
@@ -197,7 +205,18 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         let renderer = theme.manifest.renderer
 
-        if usesRawMetalMode {
+        if usesComputeMode {
+            // Compute mode: particle simulations, physarum, etc.
+            setUpComputePipeline(device: device, renderer: renderer, pixelFormat: view.colorPixelFormat)
+
+            // Set up sampler for trail map rendering
+            let sDesc = MTLSamplerDescriptor()
+            sDesc.minFilter = .linear
+            sDesc.magFilter = .linear
+            sDesc.sAddressMode = .clampToEdge
+            sDesc.tAddressMode = .clampToEdge
+            self.sampler = device.makeSamplerState(descriptor: sDesc)
+        } else if usesRawMetalMode {
             // RawMetal mode: check for runtime compilation, set up noise texture and sampler
             if let shaderFile = renderer.shaderFile,
                let shaderURL = Bundle.module.url(forResource: shaderFile.replacing(".metal", with: ""), withExtension: "metal"),
@@ -276,6 +295,28 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     }
 
     // MARK: - Pipeline Setup
+
+    private func setUpComputePipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
+        guard let computeConfig = renderer.compute else {
+            print("MetalWallpaperRenderer: Compute configuration missing for compute renderer type")
+            return
+        }
+
+        guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else {
+            print("MetalWallpaperRenderer: Failed to load Metal library from bundle")
+            return
+        }
+
+        // Create compute pipeline manager
+        let manager = ComputePipelineManager(device: device)
+
+        do {
+            try manager.setUp(config: computeConfig, library: library, pixelFormat: pixelFormat)
+            self.computeManager = manager
+        } catch {
+            print("MetalWallpaperRenderer: Failed to set up compute pipeline: \(error)")
+        }
+    }
 
     private func setUpStitchablePipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
         guard let fragmentFn = renderer.fragmentFunction else {
@@ -394,8 +435,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) { }
 
     public func draw(in view: MTKView) {
+        // Compute mode uses computeManager instead of pipeline
+        let hasValidPipeline = pipeline != nil || (usesComputeMode && computeManager?.isReady == true)
+
         guard
-            let pipeline,
+            hasValidPipeline,
             let queue,
             let drawable = view.currentDrawable,
             !uniformBuffers.isEmpty
@@ -488,6 +532,44 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         uniformBufferIndex = (uniformBufferIndex + 1) % uniformBuffers.count
 
         guard let cmd = queue.makeCommandBuffer() else { return }
+
+        // Compute mode: execute compute passes and render
+        if usesComputeMode, let manager = computeManager {
+            // Set up persistent textures if size changed
+            manager.setUpPersistentTextures(
+                configs: theme.manifest.renderer.compute?.persistentTextures,
+                size: view.drawableSize
+            )
+
+            // Populate uniforms for compute shaders
+            let bufferPtr = uniformBuffer.contents()
+            var uniforms = RawMetalUniforms(
+                resolution: SIMD2(Float(view.drawableSize.width), Float(view.drawableSize.height)),
+                time: t,
+                lod: lod
+            )
+            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.stride)
+
+            // Execute compute passes
+            manager.executeComputePasses(
+                commandBuffer: cmd,
+                uniforms: uniformBuffer,
+                size: view.drawableSize
+            )
+
+            // Render to screen
+            guard let rpd = view.currentRenderPassDescriptor else { return }
+            manager.render(
+                commandBuffer: cmd,
+                renderPassDescriptor: rpd,
+                uniforms: uniformBuffer,
+                sampler: sampler
+            )
+
+            cmd.present(drawable)
+            cmd.commit()
+            return
+        }
 
         if interpolationEnabled {
             // Frame interpolation mode: render shader at reduced rate, blend frames
