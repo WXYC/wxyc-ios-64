@@ -1,0 +1,48 @@
+{
+  "id": "towers_of_creation",
+  "displayName": "Towers of Creation",
+  "version": "1.0.0",
+  "renderer": {
+    "type": "rawMetal",
+    "vertexFunction": "fullscreenVertex",
+    "fragmentFunction": "towersOfCreationFrag",
+    "timeScale": 1.0
+  },
+  "parameters": [
+    {
+      "id": "speed",
+      "type": "float",
+      "label": "Speed",
+      "default": 1.0,
+      "range": { "min": 0.2, "max": 3.0 }
+    },
+    {
+      "id": "colorShift",
+      "type": "float",
+      "label": "Color Shift",
+      "default": 0.0,
+      "range": { "min": -3.14, "max": 3.14 }
+    },
+    {
+      "id": "brightness",
+      "type": "float",
+      "label": "Brightness",
+      "default": 1.0,
+      "range": { "min": 0.5, "max": 2.0 }
+    }
+  ],
+  "shaderArguments": [],
+  "accent": {
+    "hue": 280,
+    "saturation": 0.7,
+    "brightness": 0.9
+  },
+  "material": {
+    "foreground": "dark",
+    "blurRadius": 12.0,
+    "overlay": {
+      "opacity": 0.15,
+      "darkness": 0.8
+    }
+  }
+}
