@@ -1,8 +1,18 @@
 #!/bin/zsh
 
+# Get the directory where this script is located and the repo root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+echo "🔧 CI Post-Clone Script"
+echo "   Script directory: $SCRIPT_DIR"
+echo "   Repository root: $REPO_ROOT"
+
 # Set up Swift macro trust for ObfuscateMacro
+echo "📋 Setting up Swift macro trust..."
 mkdir -p ~/Library/org.swift.swiftpm/security/
-cp macros.json ~/Library/org.swift.swiftpm/security/
+cp "$SCRIPT_DIR/macros.json" ~/Library/org.swift.swiftpm/security/
+echo "   Copied macros.json to Swift security directory"
 
 # Build Secrets XCFramework from environment variables
 # Expected environment variables:
@@ -33,6 +43,6 @@ if [[ ${#missing_vars[@]} -gt 0 ]]; then
 fi
 
 # Build the XCFramework
-./Shared/Secrets/Scripts/build-xcframework.sh
+"$REPO_ROOT/Shared/Secrets/Scripts/build-xcframework.sh"
 
 echo "✅ Built Secrets XCFramework successfully"
