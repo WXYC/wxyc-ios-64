@@ -1,0 +1,108 @@
+//
+//  TowersOfCreation.metal
+//  Wallpaper
+//
+//  Procedural ray-marched "towers" effect with flowing color accumulation.
+//  Ported from a Shadertoy snippet - creates ethereal vertical tower structures.
+//
+//  Created by Claude on 01/16/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+#include <metal_stdlib>
+using namespace metal;
+
+struct Uniforms {
+    float2 resolution;
+    float time;
+    float lod;  // 0.0 = minimum quality, 1.0 = full quality
+};
+
+struct Parameters {
+    float speed;
+    float colorShift;
+    float brightness;
+    float pad3, pad4, pad5, pad6, pad7;
+};
+
+struct VertexOut {
+    float4 position [[position]];
+    float2 uv;
+};
+
+static inline half4 towersOfCreationImpl(
+    float2 fragCoord,
+    float2 resolution,
+    float time,
+    int maxIterations,
+    float speed,
+    float colorShift,
+    float brightness
+) {
+    float d = 0.0f;
+    float4 o = float4(0.0f);
+    float t = time * speed;
+
+    for (int iter = 0; iter < maxIterations; iter++) {
+        // Ray direction: normalize((2*fragCoord, 0) - (resolution.x, resolution.y, resolution.y))
+        float3 rayTarget = float3(fragCoord * 2.0f, 0.0f) - float3(resolution.x, resolution.y, resolution.y);
+        float3 p = d * normalize(rayTarget);
+
+        // Animate along z-axis
+        p.z -= t;
+
+        // Inner perturbation loop - creates the fractal structure
+        float s = 0.1f;
+        while (s < 2.0f) {
+            // Apply cosine-based displacement
+            float3 cosVal = cos(t + p * s * 16.0f);
+            float displacement = dot(cosVal, float3(0.01f));
+            p -= displacement / s;
+
+            // Add sinusoidal swirl (yzx swizzle)
+            p += sin(float3(p.y, p.z, p.x) * 0.9f) * 0.3f;
+
+            s *= 1.42f;
+        }
+
+        // Distance estimation - creates cylindrical "tower" shapes
+        float dist = 0.02f + abs(3.0f - length(float2(p.y, p.x))) * 0.1f;
+        d += dist;
+        s = dist;
+
+        // Color accumulation with phase-shifted cosines
+        float4 colorPhase = float4(4.0f, 2.0f, 1.0f, 0.0f) + colorShift;
+        o += (1.0f + cos(d + colorPhase)) / s;
+    }
+
+    // Tone mapping with tanh and brightness adjustment
+    o = tanh(o * brightness / 2000.0f);
+
+    return half4(half3(o.rgb), 1.0h);
+}
+
+fragment half4 towersOfCreationFrag(
+    VertexOut in [[stage_in]],
+    constant Uniforms& u [[buffer(0)]],
+    constant Parameters& p [[buffer(1)]],
+    texture2d<float> noiseTex [[texture(0)]],
+    sampler s [[sampler(0)]]
+) {
+    // LOD-based iteration count
+    // LOD 1.0 = 100 iterations (full quality)
+    // LOD 0.0 = 30 iterations (minimum quality)
+    float lod = clamp(u.lod, 0.0f, 1.0f);
+    int maxIterations = int(mix(30.0f, 100.0f, lod) + 0.5f);
+
+    float2 fragCoord = in.uv * u.resolution;
+
+    return towersOfCreationImpl(
+        fragCoord,
+        u.resolution,
+        u.time,
+        maxIterations,
+        p.speed,
+        p.colorShift,
+        p.brightness
+    );
+}

@@ -1,0 +1,208 @@
+//
+//  TowersOfCreationFast.metal
+//  Wallpaper
+//
+//  Aggressively optimized variant of Towers of Creation for A/B testing.
+//  Optimizations: LUT for color gradient, half precision, fast:: math,
+//  LOD-scaled inner loop, reduced accumulation at low LOD, early termination.
+//
+//  Created by Claude on 01/16/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+#include <metal_stdlib>
+using namespace metal;
+
+struct Uniforms {
+    float2 resolution;
+    float time;
+    float lod;  // 0.0 = minimum quality, 1.0 = full quality
+};
+
+struct Parameters {
+    float speed;
+    float colorShift;
+    float brightness;
+    float pad3, pad4, pad5, pad6, pad7;
+};
+
+struct VertexOut {
+    float4 position [[position]];
+    float2 uv;
+};
+
+// Precomputed color gradient LUT: colorLUT[i] = half4(1+cos(x+4), 1+cos(x+2), 1+cos(x+1), 1+cos(x))
+// where x = i * 2π / 64
+constant half4 colorLUT[64] = {
+    half4(0.346356h, 0.583853h, 1.540302h, 2.000000h),  // i=0
+    half4(0.423683h, 0.496730h, 1.455222h, 1.995185h),  // i=1
+    half4(0.506561h, 0.414454h, 1.365758h, 1.980785h),  // i=2
+    half4(0.594190h, 0.337817h, 1.272771h, 1.956940h),  // i=3
+    half4(0.685728h, 0.267557h, 1.177157h, 1.923880h),  // i=4
+    half4(0.780292h, 0.204351h, 1.079837h, 1.881921h),  // i=5
+    half4(0.876972h, 0.148808h, 0.981749h, 1.831470h),  // i=6
+    half4(0.974837h, 0.101462h, 0.883836h, 1.773010h),  // i=7
+    half4(1.072944h, 0.062769h, 0.787042h, 1.707107h),  // i=8
+    half4(1.170349h, 0.033103h, 0.692298h, 1.634393h),  // i=9
+    half4(1.266113h, 0.012748h, 0.600518h, 1.555570h),  // i=10
+    half4(1.359315h, 0.001901h, 0.512586h, 1.471397h),  // i=11
+    half4(1.449056h, 0.000666h, 0.429347h, 1.382683h),  // i=12
+    half4(1.534472h, 0.009056h, 0.351604h, 1.290285h),  // i=13
+    half4(1.614741h, 0.026988h, 0.280105h, 1.195090h),  // i=14
+    half4(1.689090h, 0.054292h, 0.215540h, 1.098017h),  // i=15
+    half4(1.756802h, 0.090703h, 0.158529h, 1.000000h),  // i=16
+    half4(1.817227h, 0.135871h, 0.109622h, 0.901983h),  // i=17
+    half4(1.869780h, 0.189361h, 0.069290h, 0.804910h),  // i=18
+    half4(1.913958h, 0.250658h, 0.037921h, 0.709715h),  // i=19
+    half4(1.949333h, 0.319171h, 0.015817h, 0.617317h),  // i=20
+    half4(1.975566h, 0.394242h, 0.003192h, 0.528603h),  // i=21
+    half4(1.992403h, 0.475146h, 0.000167h, 0.444430h),  // i=22
+    half4(1.999683h, 0.561104h, 0.006770h, 0.365607h),  // i=23
+    half4(1.997336h, 0.651290h, 0.022939h, 0.292893h),  // i=24
+    half4(1.985384h, 0.744834h, 0.048517h, 0.226990h),  // i=25
+    half4(1.963942h, 0.840835h, 0.083259h, 0.168530h),  // i=26
+    half4(1.933216h, 0.938369h, 0.126829h, 0.118079h),  // i=27
+    half4(1.893504h, 1.036496h, 0.178809h, 0.076120h),  // i=28
+    half4(1.845186h, 1.134273h, 0.238697h, 0.043060h),  // i=29
+    half4(1.788729h, 1.230756h, 0.305917h, 0.019215h),  // i=30
+    half4(1.724676h, 1.325016h, 0.379821h, 0.004815h),  // i=31
+    half4(1.653644h, 1.416147h, 0.459698h, 0.000000h),  // i=32
+    half4(1.576317h, 1.503270h, 0.544778h, 0.004815h),  // i=33
+    half4(1.493439h, 1.585546h, 0.634242h, 0.019215h),  // i=34
+    half4(1.405810h, 1.662183h, 0.727229h, 0.043060h),  // i=35
+    half4(1.314272h, 1.732443h, 0.822843h, 0.076120h),  // i=36
+    half4(1.219708h, 1.795649h, 0.920163h, 0.118079h),  // i=37
+    half4(1.123028h, 1.851192h, 1.018251h, 0.168530h),  // i=38
+    half4(1.025163h, 1.898538h, 1.116164h, 0.226990h),  // i=39
+    half4(0.927056h, 1.937231h, 1.212958h, 0.292893h),  // i=40
+    half4(0.829651h, 1.966897h, 1.307702h, 0.365607h),  // i=41
+    half4(0.733887h, 1.987252h, 1.399482h, 0.444430h),  // i=42
+    half4(0.640685h, 1.998099h, 1.487414h, 0.528603h),  // i=43
+    half4(0.550944h, 1.999334h, 1.570653h, 0.617317h),  // i=44
+    half4(0.465528h, 1.990944h, 1.648396h, 0.709715h),  // i=45
+    half4(0.385259h, 1.973012h, 1.719895h, 0.804910h),  // i=46
+    half4(0.310910h, 1.945708h, 1.784460h, 0.901983h),  // i=47
+    half4(0.243198h, 1.909297h, 1.841471h, 1.000000h),  // i=48
+    half4(0.182773h, 1.864129h, 1.890378h, 1.098017h),  // i=49
+    half4(0.130220h, 1.810639h, 1.930710h, 1.195090h),  // i=50
+    half4(0.086042h, 1.749342h, 1.962079h, 1.290285h),  // i=51
+    half4(0.050667h, 1.680829h, 1.984183h, 1.382683h),  // i=52
+    half4(0.024434h, 1.605758h, 1.996808h, 1.471397h),  // i=53
+    half4(0.007597h, 1.524854h, 1.999833h, 1.555570h),  // i=54
+    half4(0.000317h, 1.438896h, 1.993230h, 1.634393h),  // i=55
+    half4(0.002664h, 1.348710h, 1.977061h, 1.707107h),  // i=56
+    half4(0.014616h, 1.255166h, 1.951483h, 1.773010h),  // i=57
+    half4(0.036058h, 1.159165h, 1.916741h, 1.831470h),  // i=58
+    half4(0.066784h, 1.061631h, 1.873171h, 1.881921h),  // i=59
+    half4(0.106496h, 0.963504h, 1.821191h, 1.923880h),  // i=60
+    half4(0.154814h, 0.865727h, 1.761303h, 1.956940h),  // i=61
+    half4(0.211271h, 0.769244h, 1.694083h, 1.980785h),  // i=62
+    half4(0.275324h, 0.674984h, 1.620179h, 1.995185h)   // i=63
+};
+
+// Sample color LUT with linear interpolation and color shift
+static inline half4 sampleColorLUT(float d, float colorShift) {
+    // Apply color shift and wrap to [0, 2π)
+    float phase = d + colorShift;
+    float t = fract(phase * 0.159155f) * 64.0f;  // 0.159155 ≈ 1/(2π)
+    int i = int(t);
+    int j = (i + 1) & 63;  // Wrap around
+    return mix(colorLUT[i], colorLUT[j], half(fract(t)));
+}
+
+static inline half4 towersOfCreationFastImpl(
+    float2 fragCoord,
+    float2 resolution,
+    float time,
+    float lod,
+    int maxIterations,
+    float speed,
+    float colorShift,
+    float brightness
+) {
+    float d = 0.0f;
+    half4 o = half4(0.0h);  // Half precision accumulator
+    float t = time * speed;
+
+    // Pre-compute ray direction (constant for all iterations)
+    float3 rayTarget = float3(fragCoord * 2.0f, 0.0f) - float3(resolution.x, resolution.y, resolution.y);
+    float3 rayDir = normalize(rayTarget);
+
+    // LOD-scaled inner loop iterations (3-5)
+    int innerIters = int(mix(3.0f, 5.0f, lod) + 0.5f);
+
+    // Threshold for skipping accumulation at low LOD
+    bool skipAlternate = lod < 0.5f;
+
+    for (int iter = 0; iter < maxIterations; iter++) {
+        float3 p = d * rayDir;
+
+        // Animate along z-axis
+        p.z -= t;
+
+        // Inner perturbation loop with fast:: math
+        float s = 0.1f;
+        for (int j = 0; j < innerIters; j++) {
+            // Apply cosine-based displacement using fast:: approximation
+            float3 cosVal = fast::cos(t + p * s * 16.0f);
+            float displacement = dot(cosVal, float3(0.01f));
+            p -= displacement / s;
+
+            // Add sinusoidal swirl using fast:: approximation
+            p += fast::sin(float3(p.y, p.z, p.x) * 0.9f) * 0.3f;
+
+            s *= 1.42f;
+        }
+
+        // Distance estimation - creates cylindrical "tower" shapes
+        float dist = 0.02f + abs(3.0f - length(float2(p.y, p.x))) * 0.1f;
+        d += dist;
+
+        // Skip every other accumulation at low LOD for performance
+        if (!skipAlternate || (iter & 1) == 0) {
+            // Color accumulation using LUT (replaces 4 cosines with 1 lookup + lerp)
+            o += sampleColorLUT(d, colorShift) / half(dist);
+        }
+
+        // Early termination when color saturates (half precision threshold)
+        // tanh(3) ≈ 0.995, so we terminate when we'd saturate
+        if (o.x > 3000.0h && o.y > 3000.0h && o.z > 3000.0h) {
+            break;
+        }
+    }
+
+    // Tone mapping with tanh and brightness adjustment
+    // Scale factor accounts for potential skipped iterations at low LOD
+    float scale = skipAlternate ? 2.0f : 1.0f;
+    float4 result = float4(o) * scale;
+    result = tanh(result * brightness / 2000.0f);
+
+    return half4(half3(result.rgb), 1.0h);
+}
+
+fragment half4 towersOfCreationFastFrag(
+    VertexOut in [[stage_in]],
+    constant Uniforms& u [[buffer(0)]],
+    constant Parameters& p [[buffer(1)]],
+    texture2d<float> noiseTex [[texture(0)]],
+    sampler s [[sampler(0)]]
+) {
+    // LOD-based iteration count
+    // LOD 1.0 = 100 iterations (full quality)
+    // LOD 0.0 = 30 iterations (minimum quality)
+    float lod = clamp(u.lod, 0.0f, 1.0f);
+    int maxIterations = int(mix(30.0f, 100.0f, lod) + 0.5f);
+
+    float2 fragCoord = in.uv * u.resolution;
+
+    return towersOfCreationFastImpl(
+        fragCoord,
+        u.resolution,
+        u.time,
+        lod,
+        maxIterations,
+        p.speed,
+        p.colorShift,
+        p.brightness
+    );
+}
