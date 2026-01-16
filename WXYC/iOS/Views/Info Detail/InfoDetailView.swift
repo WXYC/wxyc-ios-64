@@ -142,7 +142,10 @@ struct ActionButton: View {
     }
 
     private var useGlassStyle: Bool {
-        (currentTheme?.manifest.buttonStyle ?? .colored) == .glass
+        if case .glass = currentTheme?.manifest.button {
+            return true
+        }
+        return false
     }
 
     var body: some View {
