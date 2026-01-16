@@ -1,0 +1,84 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  SCHEME: WXYC
+  TEST_PLAN: WXYC
+  DESTINATION: platform=iOS Simulator,name=iPhone 16 Pro
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Set up Swift macro trust
+        run: |
+          mkdir -p ~/Library/org.swift.swiftpm/security/
+          cp ci_scripts/macros.json ~/Library/org.swift.swiftpm/security/
+
+      - name: Build Secrets XCFramework
+        env:
+          # Use GitHub Secrets if available, otherwise use stub values for CI
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          DISCOGS_API_KEY_V2_5: ${{ secrets.DISCOGS_API_KEY_V2_5 }}
+          DISCOGS_API_SECRET_V2_5: ${{ secrets.DISCOGS_API_SECRET_V2_5 }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          REQUEST_O_MATIC: ${{ secrets.REQUEST_O_MATIC }}
+        run: |
+          # Provide stub values if secrets aren't configured
+          export POSTHOG_API_KEY="${POSTHOG_API_KEY:-ci-stub-posthog}"
+          export DISCOGS_API_KEY_V2_5="${DISCOGS_API_KEY_V2_5:-ci-stub-discogs-key}"
+          export DISCOGS_API_SECRET_V2_5="${DISCOGS_API_SECRET_V2_5:-ci-stub-discogs-secret}"
+          export SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID:-ci-stub-spotify-id}"
+          export SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET:-ci-stub-spotify-secret}"
+          export REQUEST_O_MATIC="${REQUEST_O_MATIC:-ci-stub-request-o-matic}"
+          ./Shared/Secrets/Scripts/build-xcframework.sh
+
+      - name: List available simulators
+        run: xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | xcpretty
+
+      - name: Run Tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME" \
+            -testPlan "$TEST_PLAN" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | xcpretty --report junit --output test-results.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
