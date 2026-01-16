@@ -73,7 +73,8 @@ jobs:
         run: |
           xcodebuild -resolvePackageDependencies \
             -project WXYC.xcodeproj \
-            -scheme "$SCHEME"
+            -scheme "$SCHEME" \
+            -skipMacroValidation
 
       - name: Build
         run: |
@@ -82,6 +83,7 @@ jobs:
             -scheme "$SCHEME" \
             -destination "$DESTINATION" \
             -configuration Debug \
+            -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Run Tests
@@ -92,6 +94,7 @@ jobs:
             -testPlan "$TEST_PLAN" \
             -destination "$DESTINATION" \
             -configuration Debug \
+            -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath TestResults.xcresult
 
