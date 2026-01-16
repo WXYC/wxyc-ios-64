@@ -65,7 +65,7 @@ jobs:
 
           cd Shared/Secrets
 
-          # Build for iOS Simulator only (device SDKs not available on GitHub runners)
+          # Build for iOS and watchOS Simulators (device SDKs not available on GitHub runners)
           xcodebuild -project SecretsFramework.xcodeproj \
             -scheme Secrets \
             -destination "generic/platform=iOS Simulator" \
@@ -73,14 +73,23 @@ jobs:
             -skipMacroValidation \
             SKIP_INSTALL=NO
 
-          # Find the built framework
+          xcodebuild -project SecretsFramework.xcodeproj \
+            -scheme Secrets \
+            -destination "generic/platform=watchOS Simulator" \
+            -configuration Release \
+            -skipMacroValidation \
+            SKIP_INSTALL=NO
+
+          # Find the built frameworks
           DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
           BUILD_DIR=$(find "$DERIVED_DATA" -maxdepth 1 -name "SecretsFramework-*" -type d | head -1)
-          FRAMEWORK_PATH="$BUILD_DIR/Build/Products/Release-iphonesimulator/Secrets.framework"
+          IOS_FRAMEWORK="$BUILD_DIR/Build/Products/Release-iphonesimulator/Secrets.framework"
+          WATCHOS_FRAMEWORK="$BUILD_DIR/Build/Products/Release-watchsimulator/Secrets.framework"
 
-          # Create XCFramework from simulator build only
+          # Create XCFramework with both simulator platforms
           xcodebuild -create-xcframework \
-            -framework "$FRAMEWORK_PATH" \
+            -framework "$IOS_FRAMEWORK" \
+            -framework "$WATCHOS_FRAMEWORK" \
             -output Secrets.xcframework
 
           echo "Created Secrets.xcframework for CI"
