@@ -5,6 +5,7 @@ on:
     branches: [master, fix/github-actions-ci]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 env:
   SCHEME: WXYC
