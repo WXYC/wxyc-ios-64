@@ -19,14 +19,8 @@ struct Uniforms {
 };
 
 struct Parameters {
-    float blobColor1R;
-    float blobColor1G;
-    float blobColor1B;
-    float blobColor2R;
-    float blobColor2G;
-    float blobColor2B;
-    float noiseScale;
-    float blobThreshold;
+    float brightness;
+    float pad1, pad2, pad3, pad4, pad5, pad6, pad7;
 };
 
 struct VertexOut {
@@ -66,31 +60,34 @@ fragment float4 lavaLiteFragment(
     // Centered UV with aspect correction
     float2 uv = (in.uv - 0.5f) * float2(1.0f, u.resolution.y / u.resolution.x);
 
-    // Build noise coordinate with parameterized scale
-    float3 noiseCoord = float3(uv.x, uv.y * SQRT3_HALF, uv.y * 0.5f) * p.noiseScale;
+    // Build noise coordinate
+    float3 noiseCoord = float3(uv.x, uv.y * SQRT3_HALF, uv.y * 0.5f) * 4.0f;
     noiseCoord.yz += u.time * float2(-0.1f, 0.1f);
 
     float2 blob = Noise(noiseCoord, noiseTex, s);
 
-    // Lava lamp ink colors from parameters
-    float3 ink1 = float3(p.blobColor1R, p.blobColor1G, p.blobColor1B);
-    float3 ink2 = float3(p.blobColor2R, p.blobColor2G, p.blobColor2B);
+    // Lava lamp ink colors
+    const float3 ink1 = float3(0.1f, 0.9f, 0.8f);
+    const float3 ink2 = float3(0.9f, 0.1f, 0.6f);
 
-    // Create colored blobs with soft edges using parameterized threshold
+    // Create colored blobs with soft edges
     // Use fast::sqrt and powr (positive base) for performance
-    float exp1 = 4.0f * fast::sqrt(max(0.0f, (blob.x - p.blobThreshold) * 2.0f));
+    float exp1 = 4.0f * fast::sqrt(max(0.0f, (blob.x - 0.6f) * 2.0f));
     float3 col1 = powr(ink1, float3(exp1));
 
     float3 color;
     if (u.lod >= 0.5f) {
         // Full quality: both blob colors with gamma correction
-        float exp2 = 4.0f * fast::sqrt(max(0.0f, (blob.y - p.blobThreshold) * 2.0f));
+        float exp2 = 4.0f * fast::sqrt(max(0.0f, (blob.y - 0.6f) * 2.0f));
         float3 col2 = powr(ink2, float3(exp2));
         color = powr(1.0f - col1 * col2, float3(INV_GAMMA));
     } else {
         // Low LOD: skip second blob, simplified output
         color = powr(1.0f - col1, float3(INV_GAMMA));
     }
+
+    // Apply brightness adjustment
+    color *= p.brightness;
 
     return float4(color, 1.0f);
 }
