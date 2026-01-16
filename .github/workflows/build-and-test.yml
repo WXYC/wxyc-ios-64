@@ -66,20 +66,23 @@ jobs:
       - name: List available simulators
         run: xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
 
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME"
+
       - name: Build
         run: |
-          set -o pipefail
           xcodebuild build \
             -project WXYC.xcodeproj \
             -scheme "$SCHEME" \
             -destination "$DESTINATION" \
             -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | xcpretty
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Run Tests
         run: |
-          set -o pipefail
           xcodebuild test \
             -project WXYC.xcodeproj \
             -scheme "$SCHEME" \
@@ -87,11 +90,11 @@ jobs:
             -destination "$DESTINATION" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO \
-            2>&1 | xcpretty --report junit --output test-results.xml
+            -resultBundlePath TestResults.xcresult
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: test-results.xml
+          path: TestResults.xcresult
