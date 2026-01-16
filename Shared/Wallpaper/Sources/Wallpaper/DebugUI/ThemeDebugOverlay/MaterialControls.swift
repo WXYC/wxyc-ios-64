@@ -22,7 +22,7 @@ struct MaterialControls: View {
                 label: "Blur Radius",
                 value: overrideBinding(
                     get: configuration.blurRadiusOverride,
-                    fallback: theme.manifest.blurRadius,
+                    fallback: theme.manifest.material.blurRadius,
                     set: { configuration.blurRadiusOverride = $0 }
                 ),
                 range: 0...30,
@@ -35,7 +35,7 @@ struct MaterialControls: View {
                 label: "Darkness",
                 value: overrideBinding(
                     get: configuration.overlayDarknessOverride,
-                    fallback: theme.manifest.overlayDarkness,
+                    fallback: theme.manifest.material.overlay.darkness,
                     set: { configuration.overlayDarknessOverride = $0 }
                 ),
                 range: 0...1,
@@ -48,7 +48,7 @@ struct MaterialControls: View {
                 label: "Opacity",
                 value: overrideBinding(
                     get: configuration.overlayOpacityOverride,
-                    fallback: theme.manifest.overlayOpacity,
+                    fallback: theme.manifest.material.overlay.opacity,
                     set: { configuration.overlayOpacityOverride = $0 }
                 ),
                 range: 0...1,

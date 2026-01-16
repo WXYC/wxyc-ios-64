@@ -7,13 +7,17 @@
   },
   "parameters": [],
   "shaderArguments": [],
-  "foreground": "light",
   "accent": {
     "hue": 23,
     "saturation": 0.75,
     "brightness": 1.0
   },
-  "blurRadius": 8.0,
-  "overlayOpacity": 0.25,
-  "overlayDarkness": 1.0
+  "material": {
+    "foreground": "light",
+    "blurRadius": 8.0,
+    "overlay": {
+      "opacity": 0.25,
+      "darkness": 1.0
+    }
+  }
 }

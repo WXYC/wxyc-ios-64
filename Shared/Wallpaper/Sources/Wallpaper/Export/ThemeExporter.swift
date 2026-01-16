@@ -157,12 +157,9 @@ public final class ThemeExporter {
             renderer: manifest.renderer,
             parameters: updatedParameters,
             shaderArguments: manifest.shaderArguments,
-            foreground: manifest.foreground,
             accent: manifest.accent,
-            buttonStyle: manifest.buttonStyle ?? .colored,
-            blurRadius: manifest.blurRadius,
-            overlayOpacity: manifest.overlayOpacity,
-            overlayDarkness: manifest.overlayDarkness
+            material: manifest.material,
+            button: manifest.button ?? .colored
         )
     }
 

@@ -175,7 +175,7 @@ public final class ThemeConfiguration {
         guard let theme = registry.theme(for: selectedThemeID) else {
             return 8.0
         }
-        return theme.manifest.blurRadius
+        return theme.manifest.material.blurRadius
     }
 
     // MARK: - Overlay Darkness Override
@@ -201,7 +201,7 @@ public final class ThemeConfiguration {
         guard let theme = registry.theme(for: selectedThemeID) else {
             return 1.0
         }
-        return theme.manifest.overlayDarkness
+        return theme.manifest.material.overlay.darkness
     }
 
     /// Returns the effective overlay opacity, applying any override to the current theme's opacity.
@@ -212,7 +212,7 @@ public final class ThemeConfiguration {
         guard let theme = registry.theme(for: selectedThemeID) else {
             return 0.0
         }
-        return theme.manifest.overlayOpacity
+        return theme.manifest.material.overlay.opacity
     }
 
     // MARK: - LCD HSB Offset Settings
@@ -410,7 +410,7 @@ public final class ThemeConfiguration {
         if defaults.object(forKey: opacityKey) != nil {
             return defaults.double(forKey: opacityKey)
         }
-        return theme.manifest.overlayOpacity
+        return theme.manifest.material.overlay.opacity
     }
 
 
@@ -429,7 +429,7 @@ public final class ThemeConfiguration {
         if defaults.object(forKey: blurKey) != nil {
             return defaults.double(forKey: blurKey)
         }
-        return theme.manifest.blurRadius
+        return theme.manifest.material.blurRadius
     }
 
     /// Returns the overlay darkness for a given theme ID.
@@ -447,7 +447,7 @@ public final class ThemeConfiguration {
         if defaults.object(forKey: darknessKey) != nil {
             return defaults.double(forKey: darknessKey)
         }
-        return theme.manifest.overlayDarkness
+        return theme.manifest.material.overlay.darkness
     }
 
     /// Returns the LCD min offset for a given theme ID.

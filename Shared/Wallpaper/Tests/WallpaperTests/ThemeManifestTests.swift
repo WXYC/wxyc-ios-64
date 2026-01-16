@@ -20,9 +20,9 @@ struct ThemeManifestTests {
     @Suite("Material Properties")
     struct MaterialPropertiesTests {
 
-        @Test("ThemeManifest decodes blur radius from JSON")
+        @Test("ThemeManifest decodes material from JSON")
         @MainActor
-        func themeManifestDecodesBlurRadius() throws {
+        func themeManifestDecodesMaterial() throws {
             let json = """
             {
                 "id": "test_theme",
@@ -31,19 +31,24 @@ struct ThemeManifestTests {
                 "renderer": { "type": "swiftUI" },
                 "parameters": [],
                 "shaderArguments": [],
-                "foreground": "light",
                 "accent": { "hue": 23, "saturation": 0.75, "brightness": 1.0 },
-                "blurRadius": 12.0,
-                "overlayOpacity": 0.25,
-                "overlayDarkness": 1.0
+                "material": {
+                    "foreground": "light",
+                    "blurRadius": 12.0,
+                    "overlay": {
+                        "opacity": 0.25,
+                        "darkness": 1.0
+                    }
+                }
             }
             """
             let data = Data(json.utf8)
             let manifest = try JSONDecoder().decode(ThemeManifest.self, from: data)
 
-            #expect(manifest.blurRadius == 12.0)
-            #expect(manifest.overlayOpacity == 0.25)
-            #expect(manifest.overlayDarkness == 1.0)
+            #expect(manifest.material.foreground == .light)
+            #expect(manifest.material.blurRadius == 12.0)
+            #expect(manifest.material.overlay.opacity == 0.25)
+            #expect(manifest.material.overlay.darkness == 1.0)
         }
 
         @Test("ThemeManifest decodes light overlay from JSON")
@@ -57,19 +62,23 @@ struct ThemeManifestTests {
                 "renderer": { "type": "swiftUI" },
                 "parameters": [],
                 "shaderArguments": [],
-                "foreground": "light",
                 "accent": { "hue": 23, "saturation": 0.75, "brightness": 1.0 },
-                "blurRadius": 8.0,
-                "overlayOpacity": 0.0,
-                "overlayDarkness": 0.0
+                "material": {
+                    "foreground": "light",
+                    "blurRadius": 8.0,
+                    "overlay": {
+                        "opacity": 0.0,
+                        "darkness": 0.0
+                    }
+                }
             }
             """
             let data = Data(json.utf8)
             let manifest = try JSONDecoder().decode(ThemeManifest.self, from: data)
 
-            #expect(manifest.blurRadius == 8.0)
-            #expect(manifest.overlayOpacity == 0.0)
-            #expect(manifest.overlayDarkness == 0.0)
+            #expect(manifest.material.blurRadius == 8.0)
+            #expect(manifest.material.overlay.opacity == 0.0)
+            #expect(manifest.material.overlay.darkness == 0.0)
         }
     }
 
@@ -86,11 +95,12 @@ struct ThemeManifestTests {
                 displayName: "Test",
                 version: "1.0.0",
                 renderer: RendererConfiguration(type: .swiftUI),
-                foreground: .light,
                 accent: AccentColor(hue: 30, saturation: 0.8),
-                blurRadius: 8.0,
-                overlayOpacity: 0.15,
-                overlayDarkness: 1.0
+                material: MaterialConfiguration(
+                    foreground: .light,
+                    blurRadius: 8.0,
+                    overlay: OverlayConfiguration(opacity: 0.15, darkness: 1.0)
+                )
             )
 
             let overrides = ThemeOverrides(accentHue: 180, accentSaturation: 0.5)
@@ -108,11 +118,12 @@ struct ThemeManifestTests {
                 displayName: "Test",
                 version: "1.0.0",
                 renderer: RendererConfiguration(type: .swiftUI),
-                foreground: .light,
                 accent: AccentColor(hue: 30, saturation: 0.8),
-                blurRadius: 8.0,
-                overlayOpacity: 0.15,
-                overlayDarkness: 1.0
+                material: MaterialConfiguration(
+                    foreground: .light,
+                    blurRadius: 8.0,
+                    overlay: OverlayConfiguration(opacity: 0.15, darkness: 1.0)
+                )
             )
 
             let overrides = ThemeOverrides() // all nil
@@ -120,9 +131,9 @@ struct ThemeManifestTests {
 
             #expect(result.accent.hue == 30)
             #expect(result.accent.saturation == 0.8)
-            #expect(result.blurRadius == 8.0)
-            #expect(result.overlayOpacity == 0.15)
-            #expect(result.overlayDarkness == 1.0)
+            #expect(result.material.blurRadius == 8.0)
+            #expect(result.material.overlay.opacity == 0.15)
+            #expect(result.material.overlay.darkness == 1.0)
         }
 
         @Test("applying(_:) merges material property overrides")
@@ -133,11 +144,12 @@ struct ThemeManifestTests {
                 displayName: "Test",
                 version: "1.0.0",
                 renderer: RendererConfiguration(type: .swiftUI),
-                foreground: .light,
                 accent: AccentColor(hue: 30, saturation: 0.8),
-                blurRadius: 8.0,
-                overlayOpacity: 0.15,
-                overlayDarkness: 1.0
+                material: MaterialConfiguration(
+                    foreground: .light,
+                    blurRadius: 8.0,
+                    overlay: OverlayConfiguration(opacity: 0.15, darkness: 1.0)
+                )
             )
 
             let overrides = ThemeOverrides(
@@ -147,9 +159,9 @@ struct ThemeManifestTests {
             )
             let result = manifest.applying(overrides)
 
-            #expect(result.blurRadius == 16.0)
-            #expect(result.overlayOpacity == 0.5)
-            #expect(result.overlayDarkness == 0.0)
+            #expect(result.material.blurRadius == 16.0)
+            #expect(result.material.overlay.opacity == 0.5)
+            #expect(result.material.overlay.darkness == 0.0)
         }
 
         @Test("applying(_:) preserves non-overridable properties")
@@ -160,12 +172,13 @@ struct ThemeManifestTests {
                 displayName: "Test Theme",
                 version: "2.0.0",
                 renderer: RendererConfiguration(type: .swiftUI),
-                foreground: .dark,
                 accent: AccentColor(hue: 30, saturation: 0.8),
-                buttonStyle: .glass,
-                blurRadius: 8.0,
-                overlayOpacity: 0.15,
-                overlayDarkness: 1.0
+                material: MaterialConfiguration(
+                    foreground: .dark,
+                    blurRadius: 8.0,
+                    overlay: OverlayConfiguration(opacity: 0.15, darkness: 1.0)
+                ),
+                button: .glass(OverlayConfiguration(opacity: 0.15, darkness: 0.5))
             )
 
             let overrides = ThemeOverrides(accentHue: 180)
@@ -174,8 +187,12 @@ struct ThemeManifestTests {
             #expect(result.id == "test")
             #expect(result.displayName == "Test Theme")
             #expect(result.version == "2.0.0")
-            #expect(result.foreground == .dark)
-            #expect(result.buttonStyle == .glass)
+            #expect(result.material.foreground == .dark)
+            if case .glass = result.button {
+                // Expected
+            } else {
+                Issue.record("Expected button to be .glass")
+            }
         }
     }
 
@@ -190,8 +207,8 @@ struct ThemeManifestTests {
             let themes = ThemeRegistry.shared.themes
 
             for theme in themes {
-                let blurRadius = theme.manifest.blurRadius
-                let overlayOpacity = theme.manifest.overlayOpacity
+                let blurRadius = theme.manifest.material.blurRadius
+                let overlayOpacity = theme.manifest.material.overlay.opacity
 
                 #expect(blurRadius >= 0, "Theme '\(theme.manifest.id)' has negative blurRadius")
                 #expect(overlayOpacity >= 0 && overlayOpacity <= 1, "Theme '\(theme.manifest.id)' has invalid overlayOpacity")
@@ -234,11 +251,15 @@ struct ThemeManifestTests {
                 },
                 "parameters": [],
                 "shaderArguments": [],
-                "foreground": "dark",
                 "accent": { "hue": 280, "saturation": 0.7, "brightness": 0.9 },
-                "blurRadius": 8.0,
-                "overlayOpacity": 0.15,
-                "overlayDarkness": 0.9
+                "material": {
+                    "foreground": "dark",
+                    "blurRadius": 8.0,
+                    "overlay": {
+                        "opacity": 0.15,
+                        "darkness": 0.9
+                    }
+                }
             }
             """
             let data = Data(json.utf8)

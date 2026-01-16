@@ -54,11 +54,12 @@ extension ThemeManifest {
         displayName: "Test Dark",
         version: "1.0.0",
         renderer: RendererConfiguration(type: .swiftUI),
-        foreground: .light,
         accent: AccentColor(hue: 30, saturation: 0.8),
-        blurRadius: 8.0,
-        overlayOpacity: 0.15,
-        overlayDarkness: 1.0
+        material: MaterialConfiguration(
+            foreground: .light,
+            blurRadius: 8.0,
+            overlay: OverlayConfiguration(opacity: 0.15, darkness: 1.0)
+        )
     )
 
     /// A light test theme with blue accent and light overlay.
@@ -68,10 +69,11 @@ extension ThemeManifest {
         displayName: "Test Light",
         version: "1.0.0",
         renderer: RendererConfiguration(type: .swiftUI),
-        foreground: .dark,
         accent: AccentColor(hue: 210, saturation: 0.6),
-        blurRadius: 12.0,
-        overlayOpacity: 0.1,
-        overlayDarkness: 0.0
+        material: MaterialConfiguration(
+            foreground: .dark,
+            blurRadius: 12.0,
+            overlay: OverlayConfiguration(opacity: 0.1, darkness: 0.0)
+        )
     )
 }

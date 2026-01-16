@@ -24,24 +24,13 @@ public struct ThemeManifest: Codable, Sendable {
     public let shaderArguments: [ShaderArgument]
 
     // Theme properties
-    public let foreground: ForegroundStyle
     public let accent: AccentColor
-    public let buttonStyle: ButtonStyle?
-
-    /// The blur radius for material backgrounds.
-    /// Higher values create more blur. Typical range: 4.0 to 20.0.
-    public let blurRadius: Double
-
-    /// The opacity of the overlay tint (0.0 to 1.0).
-    public let overlayOpacity: Double
-
-    /// The overlay darkness (0.0 = white, 1.0 = black).
-    public let overlayDarkness: Double
+    public let material: MaterialConfiguration
+    public let button: ButtonConfiguration?
 
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
-        case foreground, accent, buttonStyle
-        case blurRadius, overlayOpacity, overlayDarkness
+        case accent, material, button
     }
 
     public init(
@@ -51,12 +40,9 @@ public struct ThemeManifest: Codable, Sendable {
         renderer: RendererConfiguration,
         parameters: [ParameterDefinition] = [],
         shaderArguments: [ShaderArgument] = [],
-        foreground: ForegroundStyle,
         accent: AccentColor,
-        buttonStyle: ButtonStyle = .colored,
-        blurRadius: Double = 8.0,
-        overlayOpacity: Double = 0.0,
-        overlayDarkness: Double = 1.0
+        material: MaterialConfiguration,
+        button: ButtonConfiguration = .colored
     ) {
         self.id = id
         self.displayName = displayName
@@ -64,12 +50,9 @@ public struct ThemeManifest: Codable, Sendable {
         self.renderer = renderer
         self.parameters = parameters
         self.shaderArguments = shaderArguments
-        self.foreground = foreground
         self.accent = accent
-        self.buttonStyle = buttonStyle
-        self.blurRadius = blurRadius
-        self.overlayOpacity = overlayOpacity
-        self.overlayDarkness = overlayDarkness
+        self.material = material
+        self.button = button
     }
 }
 
@@ -317,9 +300,91 @@ public enum RendererType: String, Codable, Sendable {
     case compute
 }
 
-public enum ButtonStyle: String, Codable, Sendable {
-    case colored   // Default: solid colored capsule backgrounds
-    case glass     // Glass effect, no color background
+// MARK: - Overlay Configuration
+
+/// Shared overlay configuration used by both materials and buttons.
+public struct OverlayConfiguration: Codable, Sendable, Equatable {
+    /// The opacity of the overlay tint (0.0 to 1.0).
+    public let opacity: Double
+
+    /// The overlay darkness (0.0 = white, 1.0 = black).
+    public let darkness: Double
+
+    public init(opacity: Double = 0.0, darkness: Double = 1.0) {
+        self.opacity = opacity
+        self.darkness = darkness
+    }
+}
+
+// MARK: - Material Configuration
+
+/// Configuration for material/glass backgrounds.
+public struct MaterialConfiguration: Codable, Sendable, Equatable {
+    /// Whether content on top should use light or dark appearance.
+    public let foreground: ForegroundStyle
+
+    /// The blur radius for material backgrounds.
+    /// Higher values create more blur. Typical range: 4.0 to 20.0.
+    public let blurRadius: Double
+
+    /// Overlay tint applied on top of the blur.
+    public let overlay: OverlayConfiguration
+
+    public init(
+        foreground: ForegroundStyle,
+        blurRadius: Double = 8.0,
+        overlay: OverlayConfiguration = OverlayConfiguration()
+    ) {
+        self.foreground = foreground
+        self.blurRadius = blurRadius
+        self.overlay = overlay
+    }
+}
+
+// MARK: - Button Configuration
+
+/// Button appearance configuration as an enum with associated values.
+/// Colored buttons have solid capsule backgrounds; glass buttons have overlay settings.
+public enum ButtonConfiguration: Codable, Sendable, Equatable {
+    case colored
+    case glass(OverlayConfiguration)
+
+    private enum CodingKeys: String, CodingKey {
+        case style, opacity, darkness
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let style = try container.decode(String.self, forKey: .style)
+
+        switch style {
+        case "colored":
+            self = .colored
+        case "glass":
+            let opacity = try container.decodeIfPresent(Double.self, forKey: .opacity) ?? 0.0
+            let darkness = try container.decodeIfPresent(Double.self, forKey: .darkness) ?? 1.0
+            self = .glass(OverlayConfiguration(opacity: opacity, darkness: darkness))
+        default:
+            throw DecodingError.dataCorruptedError(
+                forKey: .style,
+                in: container,
+                debugDescription: "Unknown button style: \(style)"
+            )
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .colored:
+            try container.encode("colored", forKey: .style)
+        case .glass(let overlay):
+            try container.encode("glass", forKey: .style)
+            try container.encode(overlay.opacity, forKey: .opacity)
+            try container.encode(overlay.darkness, forKey: .darkness)
+        }
+    }
 }
 
 /// Configuration for a layer in a composite wallpaper.
@@ -522,16 +587,20 @@ extension ThemeManifest {
             renderer: renderer,
             parameters: parameters,
             shaderArguments: shaderArguments,
-            foreground: foreground,
             accent: AccentColor(
                 hue: overrides.accentHue ?? accent.hue,
                 saturation: overrides.accentSaturation ?? accent.saturation,
                 brightness: overrides.accentBrightness ?? accent.brightness
             ),
-            buttonStyle: buttonStyle ?? .colored,
-            blurRadius: overrides.blurRadius ?? blurRadius,
-            overlayOpacity: overrides.overlayOpacity ?? overlayOpacity,
-            overlayDarkness: overrides.overlayDarkness ?? overlayDarkness
+            material: MaterialConfiguration(
+                foreground: material.foreground,
+                blurRadius: overrides.blurRadius ?? material.blurRadius,
+                overlay: OverlayConfiguration(
+                    opacity: overrides.overlayOpacity ?? material.overlay.opacity,
+                    darkness: overrides.overlayDarkness ?? material.overlay.darkness
+                )
+            ),
+            button: button ?? .colored
         )
     }
 }

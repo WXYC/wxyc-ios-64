@@ -67,14 +67,18 @@
     }
   ],
   "shaderArguments": [],
-  "foreground": "dark",
   "accent": {
     "hue": 23,
     "saturation": 0.75,
     "brightness": 1.0
   },
-  "buttonStyle": "glass",
-  "blurRadius": 4.0,
-  "overlayOpacity": 0.1,
-  "overlayDarkness": 1.0
+  "material": {
+    "foreground": "dark",
+    "blurRadius": 4.0,
+    "overlay": {
+      "opacity": 0.1,
+      "darkness": 1.0
+    }
+  },
+  "button": { "style": "glass", "opacity": 0.15, "darkness": 0.5 }
 }

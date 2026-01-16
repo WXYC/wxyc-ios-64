@@ -98,7 +98,7 @@ struct ThemeExporterTests {
 
         // Verify overrides are merged
         #expect(manifest.accent.hue == 200)
-        #expect(manifest.overlayOpacity == 0.5)
+        #expect(manifest.material.overlay.opacity == 0.5)
 
         // Clean up
         try? FileManager.default.removeItem(at: zipURL)
@@ -158,8 +158,8 @@ struct ThemeExporterTests {
         // Verify original values from testDarkTheme
         #expect(manifest.accent.hue == 30)
         #expect(manifest.accent.saturation == 0.8)
-        #expect(manifest.blurRadius == 8.0)
-        #expect(manifest.overlayOpacity == 0.15)
+        #expect(manifest.material.blurRadius == 8.0)
+        #expect(manifest.material.overlay.opacity == 0.15)
 
         // Clean up
         try? FileManager.default.removeItem(at: zipURL)

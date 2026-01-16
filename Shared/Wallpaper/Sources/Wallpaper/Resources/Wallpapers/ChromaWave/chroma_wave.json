@@ -55,13 +55,17 @@
     { "source": "parameter", "id": "colorEnhancement" },
     { "source": "parameter", "id": "timeSpeed" }
   ],
-  "foreground": "dark",
   "accent": {
     "hue": 23,
     "saturation": 0.75,
     "brightness": 1.0
   },
-  "blurRadius": 8.0,
-  "overlayOpacity": 0.1,
-  "overlayDarkness": 1.0
+  "material": {
+    "foreground": "dark",
+    "blurRadius": 8.0,
+    "overlay": {
+      "opacity": 0.1,
+      "darkness": 1.0
+    }
+  }
 }
