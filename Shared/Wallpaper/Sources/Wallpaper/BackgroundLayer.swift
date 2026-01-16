@@ -24,12 +24,30 @@ public struct BackgroundLayer: View {
     }
 
     public var body: some View {
+        let transition = appearance.materialBlendMode
+
+        if transition.isTransitioning {
+            ZStack {
+                materialView
+                    .blendMode(transition.from)
+                    .opacity(transition.fromOpacity)
+
+                materialView
+                    .blendMode(transition.to)
+                    .opacity(transition.toOpacity)
+            }
+        } else {
+            materialView
+                .blendMode(transition.snapped)
+        }
+    }
+
+    private var materialView: some View {
         MaterialView(
             blurRadius: appearance.blurRadius,
             overlayOpacity: appearance.overlayOpacity,
             darkProgress: appearance.darkProgress,
             cornerRadius: cornerRadius
         )
-        .blendMode(appearance.materialBlendMode.snapped)
     }
 }
