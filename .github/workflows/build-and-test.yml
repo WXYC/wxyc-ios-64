@@ -37,11 +37,9 @@ jobs:
           mkdir -p ~/Library/org.swift.swiftpm/security/
           cp ci_scripts/macros.json ~/Library/org.swift.swiftpm/security/
 
-      - name: Create Secrets stub for CI
+      - name: Build Secrets XCFramework for CI
         run: |
-          # Create a simple Secrets stub for CI builds
-          # This avoids needing to build the full XCFramework (which requires device SDKs)
-          # The stub provides the same public API but with placeholder values
+          # Create Secrets.swift stub with placeholder values
           mkdir -p Shared/Secrets/Sources/Secrets
           cat > Shared/Secrets/Sources/Secrets/Secrets.swift << 'EOF'
           //
@@ -64,7 +62,29 @@ jobs:
               public static let requestOMatic = "ci-stub-request-o-matic"
           }
           EOF
-          echo "Created Secrets.swift stub for CI"
+
+          cd Shared/Secrets
+
+          # Build for iOS Simulator only (device SDKs not available on GitHub runners)
+          xcodebuild -project SecretsFramework.xcodeproj \
+            -scheme Secrets \
+            -destination "generic/platform=iOS Simulator" \
+            -configuration Release \
+            -skipMacroValidation \
+            SKIP_INSTALL=NO
+
+          # Find the built framework
+          DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
+          BUILD_DIR=$(find "$DERIVED_DATA" -maxdepth 1 -name "SecretsFramework-*" -type d | head -1)
+          FRAMEWORK_PATH="$BUILD_DIR/Build/Products/Release-iphonesimulator/Secrets.framework"
+
+          # Create XCFramework from simulator build only
+          xcodebuild -create-xcframework \
+            -framework "$FRAMEWORK_PATH" \
+            -output Secrets.xcframework
+
+          echo "Created Secrets.xcframework for CI"
+          ls -la Secrets.xcframework
 
       - name: List available simulators
         run: xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
