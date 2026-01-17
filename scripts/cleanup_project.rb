@@ -1,14 +1,25 @@
 #!/usr/bin/env ruby
-# Clean up duplicate groups in the Xcode project
-# Remove regular PBXGroup entries where synced folders exist
+#
+#  cleanup_project.rb
+#  WXYC
+#
+#  Cleans up duplicate groups in the Xcode project. Removes regular PBXGroup
+#  entries where synced folders exist.
+#
+#  Created by Jake Bromberg on 12/23/24.
+#  Copyright © 2024 WXYC. All rights reserved.
+#
 
 require 'xcodeproj'
+require_relative 'lib/wxyc_utils'
 
-PROJECT_PATH = ARGV[0] || '/Users/jake/Developer/wxyc-ios-64-copy/WXYC.xcodeproj'
+DRY_RUN = WXYCUtils.dry_run?
+PROJECT_PATH = ARGV[0] || WXYCUtils.project_path(__FILE__)
 
 project = Xcodeproj::Project.open(PROJECT_PATH)
 
 puts "Opened project: #{PROJECT_PATH}"
+puts "[DRY RUN MODE]" if DRY_RUN
 
 # Find all synced folder paths
 synced_paths = Set.new
@@ -24,7 +35,7 @@ wxyc_group = project.main_group.children.find { |c| c.respond_to?(:name) && c.na
 
 if wxyc_group
   puts "\nCleaning up WXYC group..."
-  
+
   # Groups to remove (those that have synced folder equivalents)
   groups_to_remove = []
   
@@ -38,16 +49,18 @@ if wxyc_group
       end
     end
   end
-  
+
   # Remove the duplicate groups
-  groups_to_remove.each do |group|
-    group.remove_from_project
-    puts "  Removed: #{group.display_name}"
+  unless DRY_RUN
+    groups_to_remove.each do |group|
+      group.remove_from_project
+      puts "  Removed: #{group.display_name}"
+    end
   end
 end
 
 # Remove duplicate synced folders from main group (keep only under their proper parent)
-main_group_synced = project.main_group.children.select do |c| 
+main_group_synced = project.main_group.children.select do |c|
   c.isa == 'PBXFileSystemSynchronizedRootGroup'
 end
 
@@ -60,12 +73,15 @@ end
 # they're not duplicated
 
 # Save the project
-project.save
-puts "\nProject saved."
+if DRY_RUN
+  puts "\n[DRY RUN] Would save project to #{PROJECT_PATH}"
+else
+  project.save
+  puts "\nProject saved."
+end
 
 # Show final structure
 puts "\nFinal main group structure:"
 project.main_group.children.each do |child|
   puts "  - #{child.display_name} (#{child.isa})"
 end
-

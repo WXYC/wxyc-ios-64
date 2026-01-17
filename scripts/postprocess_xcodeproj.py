@@ -137,9 +137,24 @@ def add_exception_sets(content: str, project_root: Path) -> str:
     return content
 
 
+def get_project_root() -> Path:
+    """Detect project root from git or script location."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'],
+            capture_output=True, text=True, check=True
+        )
+        return Path(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        # Fallback to script's directory parent
+        return Path(__file__).parent.parent.resolve()
+    
+
 def main():
     if len(sys.argv) < 2:
-        project_path = Path("/Users/jake/Developer/wxyc-ios-64-copy/WXYC.xcodeproj/project.pbxproj")
+        project_root = get_project_root()
+        project_path = project_root / "WXYC.xcodeproj" / "project.pbxproj"
     else:
         project_path = Path(sys.argv[1]).resolve()
     
@@ -149,16 +164,16 @@ def main():
     if not project_path.exists():
         print(f"Error: {project_path} not found")
         sys.exit(1)
-    
+
     content = project_path.read_text()
     
     # Check if already processed
     if "PBXFileSystemSynchronizedBuildFileExceptionSet" in content:
         print("Info.plist exception sets already present, skipping")
         return
-    
+
     new_content = add_exception_sets(content, project_root)
-    
+
     if new_content != content:
         project_path.write_text(new_content)
         print("Added Info.plist exception sets to synced folders")
@@ -168,4 +183,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
