@@ -372,7 +372,19 @@ private extension RadioPlayerController {
 
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
+            // Backoff exhausted - capture error analytics
+            let stallDuration = stallStartTime.map { Date().timeIntervalSince($0) }
+            analytics.capture(StreamErrorEvent(
+                playerType: .radioPlayer,
+                errorType: .backoffExhausted,
+                errorDescription: "Maximum reconnection attempts (\(backoffTimer.maximumAttempts)) exhausted",
+                reconnectAttempts: Int(backoffTimer.numberOfAttempts),
+                sessionDuration: playbackTimer.duration(),
+                stallDuration: stallDuration,
+                recoveryMethod: .retryWithBackoff
+            ))
             Log(.info, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
+            self.state = .error(.maxReconnectAttemptsExceeded)
             self.backoffTimer.reset()
             return
         }
