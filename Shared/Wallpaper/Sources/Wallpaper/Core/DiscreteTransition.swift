@@ -9,6 +9,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Lerpable
 import SwiftUI
 
 /// Represents a transition between two discrete values.
@@ -84,6 +85,14 @@ public struct DiscreteTransition<Value: Equatable>: Equatable {
 // MARK: - Sendable Conformance
 
 extension DiscreteTransition: Sendable where Value: Sendable {}
+
+// MARK: - Lerpable Conformance
+
+extension DiscreteTransition: Lerpable {
+    public static func lerp(_ a: Self, _ b: Self, t: Double) -> Self {
+        DiscreteTransition(from: a.snapped, to: b.snapped, progress: CGFloat(t))
+    }
+}
 
 // MARK: - View Extension for Crossfade
 

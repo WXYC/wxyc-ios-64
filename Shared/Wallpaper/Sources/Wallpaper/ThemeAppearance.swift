@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Lerpable
 import SwiftUI
 
 /// A snapshot of all interpolatable theme visual properties.
@@ -19,6 +20,7 @@ import SwiftUI
 /// Properties fall into two categories:
 /// - **Continuous values** (blur, opacity, colors): Mathematically interpolated
 /// - **Discrete values** (blend modes): Use `DiscreteTransition` for crossfade support
+@Lerpable
 public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// The blur radius for material backgrounds.
     public var blurRadius: Double
@@ -85,40 +87,6 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         self.playbackDarkness = playbackDarkness
         self.playbackAlpha = playbackAlpha
         self.materialBlendMode = materialBlendMode
-    }
-
-    /// Creates an interpolated appearance between two appearances.
-    ///
-    /// Continuous values (blur, opacity, colors) are mathematically interpolated.
-    /// Discrete values (blend modes) use `DiscreteTransition` for crossfade support.
-    ///
-    /// - Parameters:
-    ///   - from: The starting appearance.
-    ///   - to: The ending appearance.
-    ///   - progress: The interpolation progress (0.0 = from, 1.0 = to).
-    /// - Returns: An interpolated appearance.
-    public static func interpolated(from: ThemeAppearance, to: ThemeAppearance, progress: Double) -> ThemeAppearance {
-        ThemeAppearance(
-            blurRadius: from.blurRadius + (to.blurRadius - from.blurRadius) * progress,
-            overlayOpacity: from.overlayOpacity + (to.overlayOpacity - from.overlayOpacity) * progress,
-            darkProgress: from.darkProgress + (to.darkProgress - from.darkProgress) * progress,
-            accentColor: from.accentColor.interpolated(to: to.accentColor, progress: progress),
-            lcdMinOffset: from.lcdMinOffset.interpolated(to: to.lcdMinOffset, progress: progress),
-            lcdMaxOffset: from.lcdMaxOffset.interpolated(to: to.lcdMaxOffset, progress: progress),
-            lcdActiveBrightness: from.lcdActiveBrightness + (to.lcdActiveBrightness - from.lcdActiveBrightness) * progress,
-            playbackBlendMode: DiscreteTransition(
-                from: from.playbackBlendMode.snapped,
-                to: to.playbackBlendMode.snapped,
-                progress: progress
-            ),
-            playbackDarkness: from.playbackDarkness + (to.playbackDarkness - from.playbackDarkness) * progress,
-            playbackAlpha: from.playbackAlpha + (to.playbackAlpha - from.playbackAlpha) * progress,
-            materialBlendMode: DiscreteTransition(
-                from: from.materialBlendMode.snapped,
-                to: to.materialBlendMode.snapped,
-                progress: progress
-            )
-        )
     }
 }
 
