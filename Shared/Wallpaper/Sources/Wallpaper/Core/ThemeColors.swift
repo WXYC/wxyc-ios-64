@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Lerpable
 import SwiftUI
 
 // MARK: - Foreground Style
@@ -161,6 +162,14 @@ public struct AccentColor: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - AccentColor + Lerpable
+
+extension AccentColor: Lerpable {
+    public static func lerp(_ a: Self, _ b: Self, t: Double) -> Self {
+        a.interpolated(to: b, progress: t)
+    }
+}
+
 // MARK: - HSB Offset
 
 /// Represents an HSB offset that can be applied to an accent color.
@@ -232,5 +241,13 @@ public struct HSBOffset: Codable, Sendable, Equatable {
             saturation: saturation + (other.saturation - saturation) * progress,
             brightness: brightness + (other.brightness - brightness) * progress
         )
+    }
+}
+
+// MARK: - HSBOffset + Lerpable
+
+extension HSBOffset: Lerpable {
+    public static func lerp(_ a: Self, _ b: Self, t: Double) -> Self {
+        a.interpolated(to: b, progress: t)
     }
 }

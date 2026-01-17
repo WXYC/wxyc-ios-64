@@ -1,6 +1,15 @@
 {
-  "originHash" : "c527c504c660cd9aa583734a9e68b07be3e07871a81c04d25615ed15b3b63cce",
+  "originHash" : "331bfdc336086429b44d9118b4bfd824cbd94e7946c3e3c416241866613b3576",
   "pins" : [
+    {
+      "identity" : "lerpable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jakebromberg/Lerpable.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "a2a6f2fd4b0ecd8ea7540fc92514d1728d4c65f6"
+      }
+    },
     {
       "identity" : "posthog-ios",
       "kind" : "remoteSourceControl",
