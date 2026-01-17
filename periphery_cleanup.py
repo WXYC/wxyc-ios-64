@@ -63,10 +63,23 @@ class Issue:
         )
 
 
+def get_project_root() -> str:
+    """Detect project root from git or script location."""
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # Fallback to script's directory
+        return os.path.dirname(os.path.abspath(__file__))
+
+    
 class PeripheryCleanup:
     """Main class for applying Periphery fixes."""
-    
-    PROJECT_ROOT = "/Users/jake/Developer/wxyc-ios-64"
+
+    PROJECT_ROOT = get_project_root()
     XCODEPROJ = "WXYC.xcodeproj"
     
     # Paths to exclude from modifications
@@ -126,7 +139,7 @@ class PeripheryCleanup:
         # This ensures we process from bottom to top, avoiding line number shifts
         for file_path in grouped:
             grouped[file_path].sort(key=lambda x: x.line, reverse=True)
-        
+    
         return dict(grouped)
     
     def filter_issues(self, hint: Optional[str] = None, kind: Optional[str] = None) -> list[Issue]:
@@ -187,7 +200,7 @@ class PeripheryCleanup:
             return lines, False
         
         line = lines[line_idx]
-        
+    
         # Verify this is an import line
         import_pattern = rf"^\s*import\s+{re.escape(issue.name)}\s*$"
         if not re.match(import_pattern, line):
@@ -200,7 +213,7 @@ class PeripheryCleanup:
         # Remove the line
         new_lines = lines[:line_idx] + lines[line_idx + 1:]
         return new_lines, True
-    
+        
     def fix_redundant_public(self, lines: list[str], issue: Issue) -> tuple[list[str], bool]:
         """Remove redundant 'public' access modifier."""
         line_idx = issue.line - 1
@@ -221,7 +234,7 @@ class PeripheryCleanup:
         
         lines[line_idx] = new_line
         return lines, True
-    
+        
     def fix_assign_only_property(self, lines: list[str], issue: Issue) -> tuple[list[str], bool]:
         """Remove a property that is only assigned but never read."""
         line_idx = issue.line - 1
@@ -311,12 +324,12 @@ class PeripheryCleanup:
                     end_idx = i + 1
                     break
                 end_idx = i + 1
-            
+        
             # Remove any leading blank line if present before the declaration
             start_idx = line_idx
             if start_idx > 0 and lines[start_idx - 1].strip() == '':
                 start_idx -= 1
-            
+        
             new_lines = lines[:start_idx] + lines[end_idx:]
             return new_lines, True
         
@@ -333,7 +346,7 @@ class PeripheryCleanup:
         if self.verbose:
             print(f"  Warning: Unknown kind '{kind}' for '{issue.name}'")
         return lines, False
-    
+        
     def fix_redundant_conformance(self, lines: list[str], issue: Issue) -> tuple[list[str], bool]:
         """Remove a redundant protocol conformance."""
         line_idx = issue.line - 1
@@ -366,7 +379,7 @@ class PeripheryCleanup:
     def fix_redundant_protocol(self, lines: list[str], issue: Issue) -> tuple[list[str], bool]:
         """Remove a redundant protocol definition."""
         return self.fix_unused_declaration(lines, issue)
-    
+        
     def apply_fix(self, lines: list[str], issue: Issue) -> tuple[list[str], bool]:
         """Apply the appropriate fix for an issue."""
         hint = issue.hint
@@ -393,7 +406,7 @@ class PeripheryCleanup:
             if self.verbose:
                 print(f"  Unknown hint type: {hint}")
             return lines, False
-    
+        
     def process_file(self, file_path: str, issues: list[Issue]) -> bool:
         """Process all issues in a single file."""
         print(f"\nProcessing {file_path}")
@@ -488,7 +501,7 @@ class PeripheryCleanup:
             print("\nChanges made:")
             for change in self.changes_made:
                 print(f"  - {change}")
-
+    
 
 def main():
     parser = argparse.ArgumentParser(description="Clean up Periphery issues")
@@ -497,20 +510,14 @@ def main():
     parser.add_argument("--hint", help="Filter by hint type (unused, redundantPublicAccessibility, etc.)")
     parser.add_argument("--kind", help="Filter by kind (module, function.method.instance, etc.)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    
+
     args = parser.parse_args()
-    
-    json_path = os.path.join("/Users/jake/Developer/wxyc-ios-64", args.json)
-    
+
+    json_path = os.path.join(get_project_root(), args.json)
+
     cleanup = PeripheryCleanup(json_path, dry_run=args.dry_run, verbose=args.verbose)
     cleanup.run(hint=args.hint, kind=args.kind)
 
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
