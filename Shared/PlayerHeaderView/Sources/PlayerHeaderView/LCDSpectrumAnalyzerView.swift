@@ -39,6 +39,7 @@ struct LCDSpectrumAnalyzerView: View {
     @Environment(\.lcdAccentBrightness) private var accentBrightness
     @Environment(\.lcdMinOffset) private var minOffset
     @Environment(\.lcdMaxOffset) private var maxOffset
+    @Environment(\.lcdActiveBrightness) private var activeBrightnessMultiplier
 
     let data: [BarData]
     let segmentsPerBar: Int
@@ -143,7 +144,8 @@ struct LCDSpectrumAnalyzerView: View {
         let baseBrightness = max(0, min(1, accentBrightness + offset.brightness))
 
         // Active/inactive brightness multipliers
-        let activeBrightness = colorScheme == .light ? 1.5 : 1.24
+        // Light mode adds a boost factor on top of the configurable active brightness
+        let activeBrightness = colorScheme == .light ? activeBrightnessMultiplier * 1.21 : activeBrightnessMultiplier
         let inactiveBrightness = colorScheme == .light ? 1.15 : 0.90
 
         let brightness = isActive ? activeBrightness : inactiveBrightness

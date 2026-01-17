@@ -105,6 +105,7 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
             accentColor: from.accentColor.interpolated(to: to.accentColor, progress: progress),
             lcdMinOffset: from.lcdMinOffset.interpolated(to: to.lcdMinOffset, progress: progress),
             lcdMaxOffset: from.lcdMaxOffset.interpolated(to: to.lcdMaxOffset, progress: progress),
+            lcdActiveBrightness: from.lcdActiveBrightness + (to.lcdActiveBrightness - from.lcdActiveBrightness) * progress,
             playbackBlendMode: DiscreteTransition(
                 from: from.playbackBlendMode.snapped,
                 to: to.playbackBlendMode.snapped,
