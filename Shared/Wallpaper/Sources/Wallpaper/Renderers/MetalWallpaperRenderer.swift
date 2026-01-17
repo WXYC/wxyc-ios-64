@@ -1029,7 +1029,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             setCustomParameters(
                 encoder: encoder,
                 uniformBuffer: uniformBuffer,
-                offset: MemoryLayout<StitchableUniforms>.stride
+                offset: Self.parameterBufferOffset
             )
         }
 
