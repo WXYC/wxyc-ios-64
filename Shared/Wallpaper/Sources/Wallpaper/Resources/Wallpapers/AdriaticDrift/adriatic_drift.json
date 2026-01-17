@@ -1,0 +1,51 @@
+{
+    "id": "adriatic_drift",
+    "displayName": "Adriatic Drift",
+    "version": "1.0.0",
+    "renderer": {
+        "type": "stitchable",
+        "shaderFile": "AdriaticDrift.metal",
+        "functionName": "adriaticDrift",
+        "fragmentFunction": "adriaticDriftFrag"
+    },
+    "parameters": [
+        {
+            "id": "timeScale",
+            "type": "float",
+            "label": "Time Scale",
+            "default": 1.0,
+            "range": {
+                "min": 0.25,
+                "max": 2.0
+            }
+        }
+    ],
+    "shaderArguments": [
+        {
+            "source": "viewWidth"
+        },
+        {
+            "source": "viewHeight"
+        },
+        {
+            "source": "time"
+        },
+        {
+            "source": "parameter",
+            "id": "timeScale"
+        }
+    ],
+    "accent": {
+        "hue": 190,
+        "saturation": 0.7,
+        "brightness": 0.9
+    },
+    "material": {
+        "foreground": "dark",
+        "blurRadius": 12.0,
+        "overlay": {
+            "opacity": 0.2,
+            "darkness": 0.9
+        }
+    }
+}
