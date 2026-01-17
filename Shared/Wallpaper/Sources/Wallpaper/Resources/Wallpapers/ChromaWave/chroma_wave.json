@@ -7,7 +7,7 @@
   "button" : {
     "style" : "colored"
   },
-  "displayName" : "Polychrominance",
+  "displayName" : "Prismism",
   "id" : "chroma_wave",
   "material" : {
     "blurRadius" : 19.179105162620544,
