@@ -2,6 +2,9 @@
 //  PlaylistView.swift
 //  WXYC
 //
+//  Main playlist view displaying now playing and recent tracks with animated header,
+//  visualizer, and support for tips, theme picker gesture, and easter egg access.
+//
 //  Created by Jake Bromberg on 11/13/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
@@ -58,6 +61,7 @@ struct PlaylistView: View {
                     min: appearance.lcdMinOffset,
                     max: appearance.lcdMaxOffset
                 )
+                .lcdActiveBrightness(appearance.lcdActiveBrightness)
 
                 // Siri tip
                 if showingSiriTip {
