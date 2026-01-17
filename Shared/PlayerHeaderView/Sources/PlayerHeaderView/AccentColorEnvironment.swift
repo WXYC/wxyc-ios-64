@@ -36,6 +36,10 @@ private struct LCDMaxOffsetKey: EnvironmentKey {
     static let defaultValue: HSBOffset = .defaultMax
 }
 
+private struct LCDActiveBrightnessKey: EnvironmentKey {
+    static let defaultValue: Double = 1.24
+}
+
 // MARK: - Environment Values Extension
 
 public extension EnvironmentValues {
@@ -70,6 +74,12 @@ public extension EnvironmentValues {
         get { self[LCDMaxOffsetKey.self] }
         set { self[LCDMaxOffsetKey.self] = newValue }
     }
+
+    /// Brightness multiplier for active (lit) LCD segments.
+    var lcdActiveBrightness: Double {
+        get { self[LCDActiveBrightnessKey.self] }
+        set { self[LCDActiveBrightnessKey.self] = newValue }
+    }
 }
 
 // MARK: - View Extension
@@ -92,5 +102,11 @@ public extension View {
         self
             .environment(\.lcdMinOffset, min)
             .environment(\.lcdMaxOffset, max)
+    }
+
+    /// Sets the brightness multiplier for active (lit) LCD segments.
+    /// - Parameter brightness: Values above 1.0 make segments brighter; below 1.0 makes them dimmer.
+    func lcdActiveBrightness(_ brightness: Double) -> some View {
+        self.environment(\.lcdActiveBrightness, brightness)
     }
 }

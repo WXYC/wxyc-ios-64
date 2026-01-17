@@ -50,13 +50,31 @@ struct LCDBrightnessControls: View {
                 )
             }
 
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Active Brightness")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(configuration.lcdActiveBrightness, format: .number.precision(.fractionLength(2)))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Slider(
+                    value: $configuration.lcdActiveBrightness,
+                    in: 0.5...2.0
+                )
+            }
+
             ConditionalResetButton(
                 hasOverrides: configuration.lcdMinOffset != ThemeConfiguration.defaultLCDMinOffset ||
-                              configuration.lcdMaxOffset != ThemeConfiguration.defaultLCDMaxOffset,
+                              configuration.lcdMaxOffset != ThemeConfiguration.defaultLCDMaxOffset ||
+                              configuration.lcdActiveBrightness != ThemeConfiguration.defaultLCDActiveBrightness,
                 label: "Reset to Default"
             ) {
                 configuration.lcdMinOffset = ThemeConfiguration.defaultLCDMinOffset
                 configuration.lcdMaxOffset = ThemeConfiguration.defaultLCDMaxOffset
+                configuration.lcdActiveBrightness = ThemeConfiguration.defaultLCDActiveBrightness
             }
         }
     }

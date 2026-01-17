@@ -34,7 +34,7 @@ public final class ThemeConfiguration {
     // MARK: - Storage Keys
 
     private let storageKey = "wallpaper.selectedType.v3"
-    private let defaultThemeID = "wxyc_1983"
+    private let defaultThemeID = "wxyc_gradient"
 
     // MARK: - Per-Theme Storage Keys
 
@@ -774,7 +774,7 @@ public final class ThemeConfiguration {
         // Map legacy class names to new manifest IDs
         let mapping: [String: String] = [
             "WXYCGradientWithNoiseWallpaper": "wxyc_gradient_noise",
-            "WXYCGradientWallpaperImplementation": "wxyc_1983",
+            "WXYCGradientWallpaperImplementation": "wxyc_gradient",
             "WaterTurbulenceWallpaper": "water_turbulence",
             "WaterCausticsWallpaper": "water_caustics",
             "SpiralWallpaper": "spiral",
