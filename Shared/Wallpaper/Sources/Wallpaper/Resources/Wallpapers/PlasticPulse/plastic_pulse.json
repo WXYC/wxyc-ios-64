@@ -8,7 +8,7 @@
     "style" : "colored"
   },
   "displayName" : "The Plastic Pulse",
-  "id" : "steel_cube_idolatry",
+  "id" : "plastic_pulse",
   "material" : {
     "blurRadius" : 8,
     "foreground" : "dark",
@@ -100,7 +100,7 @@
     }
   ],
   "renderer" : {
-    "fragmentFunction" : "steelCubeIdolatryFragment",
+    "fragmentFunction" : "plasticPulseFragment",
     "timeScale" : 1,
     "type" : "rawMetal",
     "vertexFunction" : "fullscreenVertex"

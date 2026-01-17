@@ -1,7 +1,8 @@
 //
-//  NeonTopologyIso.metal
+//  SpaceMountain.metal
 //  Wallpaper
 //
+//  Neon isoline topology effect with glow.
 //  Translated from https://www.shadertoy.com/view/dtccWB
 //
 //  Strategy: single-sample isolines (no neighbor-based edge detection)
@@ -155,7 +156,7 @@ static inline float perlinNoiseOctaves(float3 position, int freq, int octaves,
 }
 
 // Core implementation - isoline-based "topology" strokes (no neighbor samples)
-static half4 neonTopologyIsoImpl(float2 position, float width, float height, float time,
+static half4 spaceMountainImpl(float2 position, float width, float height, float time,
                                   float bandCount, float lineWidthScale, float glowBrightnessParam,
                                   float targetHueParam, float hueRangeParam, float noiseFrequency,
                                   float timeSpeed, float lod) {
@@ -215,19 +216,19 @@ static half4 neonTopologyIsoImpl(float2 position, float width, float height, flo
 }
 
 [[ stitchable ]]
-half4 neonTopologyIso(float2 position, half4 inColor, float width, float height, float time,
+half4 spaceMountain(float2 position, half4 inColor, float width, float height, float time,
                       float bandCount, float lineWidthScale, float glowBrightness,
                       float targetHue, float hueRange, float noiseFrequency, float timeSpeed) {
-    return neonTopologyIsoImpl(position, width, height, time, bandCount, lineWidthScale,
+    return spaceMountainImpl(position, width, height, time, bandCount, lineWidthScale,
                                glowBrightness, targetHue, hueRange, noiseFrequency, timeSpeed, 1.0f);
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 neonTopologyIsoFrag(VertexOut in [[stage_in]],
+fragment half4 spaceMountainFrag(VertexOut in [[stage_in]],
                                    constant Uniforms& u [[buffer(0)]],
                                    constant Parameters& p [[buffer(1)]]) {
     float2 pos = in.uv * u.resolution;
-    return neonTopologyIsoImpl(pos, u.resolution.x, u.resolution.y, u.time,
+    return spaceMountainImpl(pos, u.resolution.x, u.resolution.y, u.time,
                                p.bandCount, p.lineWidthScale, p.glowBrightness,
                                p.targetHue, p.hueRange, p.noiseFrequency, p.timeSpeed, u.lod);
 }

@@ -8,7 +8,7 @@
     "style" : "colored"
   },
   "displayName" : "Pool Suite",
-  "id" : "refract_noise",
+  "id" : "pool_suite",
   "material" : {
     "blurRadius" : 8,
     "foreground" : "light",
@@ -100,7 +100,7 @@
     }
   ],
   "renderer" : {
-    "fragmentFunction" : "refractNoiseFrag",
+    "fragmentFunction" : "poolSuiteFrag",
     "timeScale" : 1,
     "type" : "rawMetal",
     "vertexFunction" : "fullscreenVertex"

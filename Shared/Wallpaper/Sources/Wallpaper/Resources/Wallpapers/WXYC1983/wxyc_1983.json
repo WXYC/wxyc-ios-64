@@ -8,7 +8,7 @@
     "style" : "colored"
   },
   "displayName" : "WXYC 1983",
-  "id" : "wxyc_gradient",
+  "id" : "wxyc_1983",
   "material" : {
     "blurRadius" : 8,
     "foreground" : "light",

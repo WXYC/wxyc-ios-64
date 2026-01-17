@@ -1,7 +1,8 @@
 //
-//  ChromaWave.metal
+//  Prismism.metal
 //  Wallpaper
 //
+//  Colorful iterative wave distortion effect.
 //  Translated from https://www.shadertoy.com/view/clVGDc
 //
 //  Created by Jake Bromberg on 12/20/25.
@@ -52,7 +53,7 @@ struct VertexOut {
 };
 
 // Core implementation (called by both stitchable and fragment versions)
-static half4 chromaWaveImpl(float2 position, float width, float height, float time,
+static half4 prismismImpl(float2 position, float width, float height, float time,
                             float highlightCompression, float waveScale, float iterationDivisor,
                             float colorEnhancement, float timeSpeed, float lod) {
     float2 iResolution = float2(width, height);
@@ -99,7 +100,7 @@ static half4 chromaWaveImpl(float2 position, float width, float height, float ti
 }
 
 [[ stitchable ]]
-half4 chromaWave(float2 position,
+half4 prismism(float2 position,
                  half4 inColor,
                  float width,
                  float height,
@@ -110,18 +111,18 @@ half4 chromaWave(float2 position,
                  float colorEnhancement,
                  float timeSpeed)
 {
-    return chromaWaveImpl(position, width, height, time, highlightCompression,
+    return prismismImpl(position, width, height, time, highlightCompression,
                           waveScale, iterationDivisor, colorEnhancement, timeSpeed, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 chromaWaveFrag(
+fragment half4 prismismFrag(
     VertexOut in [[stage_in]],
     constant Uniforms& u [[buffer(0)]],
     constant Parameters& p [[buffer(1)]]
 ) {
     float2 pos = in.uv * u.resolution;
-    return chromaWaveImpl(pos, u.resolution.x, u.resolution.y, u.time,
+    return prismismImpl(pos, u.resolution.x, u.resolution.y, u.time,
                           p.highlightCompression, p.waveScale, p.iterationDivisor,
                           p.colorEnhancement, p.timeSpeed, u.lod);
 }

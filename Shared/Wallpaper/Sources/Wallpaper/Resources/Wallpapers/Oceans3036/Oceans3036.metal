@@ -1,8 +1,8 @@
 //
-//  Lamp4D.metal
+//  Oceans3036.metal
 //  Wallpaper
 //
-//  Simplex noise based colorful lamp effect
+//  Colorful simplex noise layered effect.
 //  Ported from shadertoy https://www.shadertoy.com/view/3lKBD3
 //
 //  Created by Jake Bromberg on 12/20/25.
@@ -110,7 +110,7 @@ static inline float noise4(float2 uv, float time, float2 offset, int octaves) {
 }
 
 // Core implementation
-static half4 lamp4DImpl(float2 position, float width, float height, float time,
+static half4 oceans3036Impl(float2 position, float width, float height, float time,
                         float timeSpeed, float colorInterval, float baseGray, float hueShift, float lod) {
     time /= timeSpeed;
 
@@ -207,15 +207,15 @@ static half4 lamp4DImpl(float2 position, float width, float height, float time,
 }
 
 [[ stitchable ]]
-half4 lamp4D(float2 position, half4 inColor, float width, float height, float time) {
-    return lamp4DImpl(position, width, height, time, 9.0f, 10.0f, 0.75f, 0.0f, 1.0f);  // Full quality for SwiftUI
+half4 oceans3036(float2 position, half4 inColor, float width, float height, float time) {
+    return oceans3036Impl(position, width, height, time, 9.0f, 10.0f, 0.75f, 0.0f, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
-fragment half4 lamp4DFrag(VertexOut in [[stage_in]],
+fragment half4 oceans3036Frag(VertexOut in [[stage_in]],
                           constant Uniforms& u [[buffer(0)]],
                           constant Parameters& p [[buffer(1)]]) {
     float2 pos = in.uv * u.resolution;
-    return lamp4DImpl(pos, u.resolution.x, u.resolution.y, u.time,
+    return oceans3036Impl(pos, u.resolution.x, u.resolution.y, u.time,
                       p.timeSpeed, p.colorInterval, p.baseGray, p.hueShift, u.lod);
 }

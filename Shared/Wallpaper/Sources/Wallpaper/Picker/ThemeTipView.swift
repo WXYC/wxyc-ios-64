@@ -21,7 +21,7 @@ public struct ThemeTipView: View {
 
     /// The Space Mountain theme used as the background.
     private var spaceMountainTheme: LoadedTheme? {
-        ThemeRegistry.shared.theme(for: "neon_topology_iso")
+        ThemeRegistry.shared.theme(for: "space_mountain")
     }
 
     public init(isVisible: Binding<Bool>, onDismiss: @escaping () -> Void = { }) {

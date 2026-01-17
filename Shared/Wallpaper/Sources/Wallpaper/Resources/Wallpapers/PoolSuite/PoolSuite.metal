@@ -1,8 +1,8 @@
 //
-//  RefractNoise.metal
+//  PoolSuite.metal
 //  Wallpaper
 //
-//  Ray-marched refractive SDF shapes with subtle FBM displacement.
+//  Refractive pool tiles effect with ray-marched SDF shapes.
 //  Ported from a Shadertoy snippet (environment-map sampling replaced with a procedural sky).
 //
 //  Created by Jake Bromberg on 12/23/25.
@@ -269,7 +269,7 @@ static inline float3 render(float3 rayOri, float3 rayDir, float cubeHalfSize, fl
 // === Fragment ===
 #define AA 1
 
-fragment half4 refractNoiseFrag(
+fragment half4 poolSuiteFrag(
     VertexOut in [[stage_in]],
     constant Uniforms& u [[buffer(0)]],
     constant Parameters& p [[buffer(1)]],

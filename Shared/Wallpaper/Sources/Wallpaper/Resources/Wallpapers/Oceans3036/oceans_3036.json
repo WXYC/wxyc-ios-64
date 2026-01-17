@@ -1,12 +1,12 @@
 {
-  "id": "lamp_4d",
+  "id": "oceans_3036",
   "displayName": "Oceans 3036",
   "version": "1.0.0",
   "renderer": {
     "type": "rawMetal",
-    "shaderFile": "Lamp4D.metal",
+    "shaderFile": "Oceans3036.metal",
     "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "lamp4DFrag",
+    "fragmentFunction": "oceans3036Frag",
     "timeScale": 1.0
   },
   "parameters": [

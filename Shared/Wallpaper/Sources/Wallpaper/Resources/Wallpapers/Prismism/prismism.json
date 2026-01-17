@@ -8,7 +8,7 @@
     "style" : "colored"
   },
   "displayName" : "Prismism",
-  "id" : "chroma_wave",
+  "id" : "prismism",
   "material" : {
     "blurRadius" : 19.179105162620544,
     "foreground" : "dark",
@@ -70,9 +70,9 @@
     }
   ],
   "renderer" : {
-    "fragmentFunction" : "chromaWaveFrag",
-    "functionName" : "chromaWave",
-    "shaderFile" : "ChromaWave.metal",
+    "fragmentFunction" : "prismismFrag",
+    "functionName" : "prismism",
+    "shaderFile" : "Prismism.metal",
     "type" : "stitchable"
   },
   "shaderArguments" : [
