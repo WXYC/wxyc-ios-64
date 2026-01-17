@@ -30,7 +30,7 @@ extension View {
         if #available(iOS 26, watchOS 26, tvOS 26, visionOS 26, macOS 26, *) {
             self.glassEffect(.clear, in: shape)
         } else {
-            self
+            self.background(.ultraThinMaterial, in: shape)
         }
     }
     
