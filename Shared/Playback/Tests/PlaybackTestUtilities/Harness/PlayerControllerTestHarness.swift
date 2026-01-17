@@ -301,5 +301,26 @@ public final class PlayerControllerTestHarness {
             userInfo: userInfo
         )
     }
+
+    /// Posts a route change notification with the specified reason
+    public func postRouteChange(reason: AVAudioSession.RouteChangeReason) {
+        let userInfo: [AnyHashable: Any] = [
+            AVAudioSessionRouteChangeReasonKey: NSNumber(value: reason.rawValue)
+        ]
+        notificationCenter.post(
+            name: AVAudioSession.routeChangeNotification,
+            object: nil,
+            userInfo: userInfo
+        )
+    }
+
+    /// Simulates the audio engine stopping unexpectedly (as happens on some route changes)
+    /// This simulates what happens when AVAudioEngine stops due to a route change
+    public func simulateEngineStoppedDueToRouteChange() {
+        // The mock player stops playing but doesn't go through the normal stop() path
+        // This simulates the engine stopping without the controller knowing
+        mockPlayer.isPlaying = false
+        mockPlayer.state = .idle
+    }
     #endif
 }

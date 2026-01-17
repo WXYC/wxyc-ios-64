@@ -198,12 +198,14 @@ public final class RadioPlayerController: PlaybackController {
     public func play(reason: String) throws {
         self.state = .loading
         self.playbackTimer = Timer.start()
-    
+        self.playbackIntended = true
+
         #if os(iOS) || os(tvOS)
         do {
             try audioSession.setActive(true, options: [])
         } catch {
             self.state = .error(.audioSessionActivationFailed(error.localizedDescription))
+            self.playbackIntended = false
             analytics.capture(PlaybackStoppedEvent(
                 reason: "audio session activation failed",
                 duration: 0
@@ -224,6 +226,7 @@ public final class RadioPlayerController: PlaybackController {
         reconnectTask?.cancel()
         reconnectTask = nil
         backoffTimer.reset()
+        self.playbackIntended = false
         self.radioPlayer.stop()
         self.state = .idle
     }
@@ -273,6 +276,7 @@ public final class RadioPlayerController: PlaybackController {
     private let analytics: AnalyticsService
     private var stallStartTime: Date?
     private var wasPlayingBeforeInterruption = false
+    private var playbackIntended = false
 }
 
 private extension RadioPlayerController {
@@ -337,6 +341,32 @@ private extension RadioPlayerController {
     nonisolated func routeChanged(_ notification: Notification) {
 #if os(iOS) || os(tvOS)
         Log(.info, "Session route changed: \(notification)")
+
+        let userInfo = notification.userInfo
+        let reasonValue = userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+
+        Task { @MainActor in
+            guard let reasonValue,
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+                return
+            }
+
+            switch reason {
+            case .oldDeviceUnavailable:
+                // Headphones unplugged - stop playback per Apple HIG
+                if isPlaying {
+                    analytics.capture(PlaybackStoppedEvent(reason: "route disconnected", duration: playbackTimer.duration()))
+                    self.stop()
+                }
+
+            default:
+                // For all other route changes, check if playback was intended but
+                // the player stopped unexpectedly. Restart if needed.
+                if playbackIntended && !radioPlayer.isPlaying {
+                    radioPlayer.play()
+                }
+            }
+        }
 #endif
     }
 
@@ -423,14 +453,14 @@ private extension RadioPlayerController {
             return .commandFailed
         }
     }
-    
+
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
         self.stop()
 
         return .success
     }
-    
+
     func remoteTogglePlayPauseCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
             if self.radioPlayer.isPlaying {
