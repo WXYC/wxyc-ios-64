@@ -34,7 +34,7 @@ public final class ThemeConfiguration {
     // MARK: - Storage Keys
 
     private let storageKey = "wallpaper.selectedType.v3"
-    private let defaultThemeID = "wxyc_gradient"
+    private let defaultThemeID = "wxyc_1983"
 
     // MARK: - Per-Theme Storage Keys
 
