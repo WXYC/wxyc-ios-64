@@ -43,7 +43,7 @@ struct ThemeConfigurationTests {
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            #expect(config.selectedThemeID == "wxyc_gradient")
+            #expect(config.selectedThemeID == "wxyc_1983")
         }
 
         @Test("Loads stored theme ID from UserDefaults")
@@ -61,9 +61,9 @@ struct ThemeConfigurationTests {
         func loadsAccentOverrides() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
-            // Use per-theme keys for the default theme (wxyc_gradient)
-            defaults.set(180.0, forKey: "wallpaper.accentHueOverride.wxyc_gradient")
-            defaults.set(0.5, forKey: "wallpaper.accentSaturationOverride.wxyc_gradient")
+            // Use per-theme keys for the default theme (wxyc_1983)
+            defaults.set(180.0, forKey: "wallpaper.accentHueOverride.wxyc_1983")
+            defaults.set(0.5, forKey: "wallpaper.accentSaturationOverride.wxyc_1983")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
@@ -75,8 +75,8 @@ struct ThemeConfigurationTests {
         func loadsOverlayOpacityOverride() {
             let registry = MockThemeRegistry.withTestThemes()
             let defaults = makeTestDefaults()
-            // Use per-theme key for the default theme (wxyc_gradient)
-            defaults.set(0.5, forKey: "wallpaper.overlayOpacityOverride.wxyc_gradient")
+            // Use per-theme key for the default theme (wxyc_1983)
+            defaults.set(0.5, forKey: "wallpaper.overlayOpacityOverride.wxyc_1983")
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
@@ -315,7 +315,7 @@ struct ThemeConfigurationTests {
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            // Set offset for default theme (wxyc_gradient)
+            // Set offset for default theme (wxyc_1983)
             config.lcdMinOffset = HSBOffset(hue: 10, saturation: 0, brightness: -0.1)
             config.lcdMaxOffset = HSBOffset(hue: 20, saturation: 0.1, brightness: 0)
 
@@ -325,7 +325,7 @@ struct ThemeConfigurationTests {
             config.lcdMaxOffset = HSBOffset(hue: -20, saturation: 0, brightness: 0.2)
 
             // Switch back to default theme - should load its saved offset
-            config.selectedThemeID = "wxyc_gradient"
+            config.selectedThemeID = "wxyc_1983"
             #expect(config.lcdMinOffset == HSBOffset(hue: 10, saturation: 0, brightness: -0.1))
             #expect(config.lcdMaxOffset == HSBOffset(hue: 20, saturation: 0.1, brightness: 0))
 
@@ -370,7 +370,7 @@ struct ThemeConfigurationTests {
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            // Set override for default theme (wxyc_gradient)
+            // Set override for default theme (wxyc_1983)
             config.accentHueOverride = 120
 
             // Switch to test_dark and set different override
@@ -378,7 +378,7 @@ struct ThemeConfigurationTests {
             config.accentHueOverride = 240
 
             // Switch back to default theme - should load its saved override
-            config.selectedThemeID = "wxyc_gradient"
+            config.selectedThemeID = "wxyc_1983"
             #expect(config.accentHueOverride == 120)
 
             // Switch back to test_dark - should load its saved override
@@ -420,7 +420,7 @@ struct ThemeConfigurationTests {
             #expect(config2.accentHueOverride == 200)
 
             // Switch to default theme and verify its override
-            config2.selectedThemeID = "wxyc_gradient"
+            config2.selectedThemeID = "wxyc_1983"
             #expect(config2.accentHueOverride == 100)
         }
 
@@ -468,7 +468,7 @@ struct ThemeConfigurationTests {
 
             config.reset()
 
-            #expect(config.selectedThemeID == "wxyc_gradient")
+            #expect(config.selectedThemeID == "wxyc_1983")
             #expect(config.accentHueOverride == nil)
             #expect(config.accentSaturationOverride == nil)
             #expect(config.overlayOpacityOverride == nil)
@@ -545,15 +545,15 @@ struct ThemeConfigurationTests {
 
             let config = ThemeConfiguration(registry: registry, defaults: defaults)
 
-            // Set overrides for wxyc_gradient
+            // Set overrides for wxyc_1983
             config.accentHueOverride = 120
             config.overlayOpacityOverride = 0.4
 
             // Switch to test_dark
             config.selectedThemeID = "test_dark"
 
-            // Query overrides for wxyc_gradient (not selected)
-            let overrides = config.overrides(for: "wxyc_gradient")
+            // Query overrides for wxyc_1983 (not selected)
+            let overrides = config.overrides(for: "wxyc_1983")
 
             #expect(overrides.accentHue == 120)
             #expect(overrides.overlayOpacity == 0.4)
