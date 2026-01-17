@@ -38,6 +38,11 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// HSB offset for LCD max (bottom) segments.
     public var lcdMaxOffset: HSBOffset
 
+    /// Brightness multiplier for active (lit) LCD segments.
+    /// Values above 1.0 make segments brighter; below 1.0 makes them dimmer.
+    /// Default is 1.24 for dark mode appearance.
+    public var lcdActiveBrightness: Double
+
     /// The blend mode transition for playback controls.
     ///
     /// Uses `DiscreteTransition` to support crossfade between blend modes
@@ -63,6 +68,7 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         accentColor: AccentColor = AccentColor(hue: 23, saturation: 0.75, brightness: 1.0),
         lcdMinOffset: HSBOffset = .defaultMin,
         lcdMaxOffset: HSBOffset = .defaultMax,
+        lcdActiveBrightness: Double = 1.24,
         playbackBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(PlaybackBlendMode.default.blendMode),
         playbackDarkness: Double = 0.0,
         playbackAlpha: Double = 1.0,
@@ -74,6 +80,7 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         self.accentColor = accentColor
         self.lcdMinOffset = lcdMinOffset
         self.lcdMaxOffset = lcdMaxOffset
+        self.lcdActiveBrightness = lcdActiveBrightness
         self.playbackBlendMode = playbackBlendMode
         self.playbackDarkness = playbackDarkness
         self.playbackAlpha = playbackAlpha
