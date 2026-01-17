@@ -1,87 +1,138 @@
 {
-  "id": "neon_topology_iso",
-  "displayName": "Space Mountain",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "stitchable",
-    "shaderFile": "NeonTopologyIso.metal",
-    "functionName": "neonTopologyIso",
-    "fragmentFunction": "neonTopologyIsoFrag"
+  "accent" : {
+    "brightness" : 1,
+    "hue" : 23,
+    "saturation" : 0.75
   },
-  "parameters": [
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Space Mountain",
+  "id" : "neon_topology_iso",
+  "material" : {
+    "blurRadius" : 11.126260757446289,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 0.8420398235321045,
+      "opacity" : 0.611940324306488
+    }
+  },
+  "parameters" : [
     {
-      "id": "bandCount",
-      "type": "float",
-      "label": "Band Count",
-      "default": 10.0,
-      "range": { "min": 5.0, "max": 20.0 }
+      "default" : 10,
+      "id" : "bandCount",
+      "label" : "Band Count",
+      "range" : {
+        "max" : 20,
+        "min" : 5
+      },
+      "type" : "float"
     },
     {
-      "id": "lineWidthScale",
-      "type": "float",
-      "label": "Line Width",
-      "default": 1.25,
-      "range": { "min": 0.5, "max": 3.0 }
+      "default" : 1.25,
+      "id" : "lineWidthScale",
+      "label" : "Line Width",
+      "range" : {
+        "max" : 3,
+        "min" : 0.5
+      },
+      "type" : "float"
     },
     {
-      "id": "glowBrightness",
-      "type": "float",
-      "label": "Glow Brightness",
-      "default": 0.5,
-      "range": { "min": 0.0, "max": 2.0 }
+      "default" : 0.5,
+      "id" : "glowBrightness",
+      "label" : "Glow Brightness",
+      "range" : {
+        "max" : 2,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "targetHue",
-      "type": "float",
-      "label": "Target Hue",
-      "default": 0.7,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.7,
+      "id" : "targetHue",
+      "label" : "Target Hue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "hueRange",
-      "type": "float",
-      "label": "Hue Range",
-      "default": 0.3,
-      "range": { "min": 0.1, "max": 0.5 }
+      "default" : 0.3,
+      "id" : "hueRange",
+      "label" : "Hue Range",
+      "range" : {
+        "max" : 0.5,
+        "min" : 0.1
+      },
+      "type" : "float"
     },
     {
-      "id": "noiseFrequency",
-      "type": "float",
-      "label": "Noise Frequency",
-      "default": 5.0,
-      "range": { "min": 2.0, "max": 10.0 }
+      "default" : 5,
+      "id" : "noiseFrequency",
+      "label" : "Noise Frequency",
+      "range" : {
+        "max" : 10,
+        "min" : 2
+      },
+      "type" : "float"
     },
     {
-      "id": "timeSpeed",
-      "type": "float",
-      "label": "Time Speed",
-      "default": 0.01,
-      "range": { "min": 0.005, "max": 0.05 }
+      "default" : 0.01,
+      "id" : "timeSpeed",
+      "label" : "Time Speed",
+      "range" : {
+        "max" : 0.05,
+        "min" : 0.005
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [
-    { "source": "viewWidth" },
-    { "source": "viewHeight" },
-    { "source": "time" },
-    { "source": "parameter", "id": "bandCount" },
-    { "source": "parameter", "id": "lineWidthScale" },
-    { "source": "parameter", "id": "glowBrightness" },
-    { "source": "parameter", "id": "targetHue" },
-    { "source": "parameter", "id": "hueRange" },
-    { "source": "parameter", "id": "noiseFrequency" },
-    { "source": "parameter", "id": "timeSpeed" }
-  ],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.75,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "neonTopologyIsoFrag",
+    "functionName" : "neonTopologyIso",
+    "shaderFile" : "NeonTopologyIso.metal",
+    "type" : "stitchable"
   },
-  "material": {
-    "foreground": "dark",
-    "blurRadius": 8.0,
-    "overlay": {
-      "opacity": 0.25,
-      "darkness": 1.0
+  "shaderArguments" : [
+    {
+      "source" : "viewWidth"
+    },
+    {
+      "source" : "viewHeight"
+    },
+    {
+      "source" : "time"
+    },
+    {
+      "id" : "bandCount",
+      "source" : "parameter"
+    },
+    {
+      "id" : "lineWidthScale",
+      "source" : "parameter"
+    },
+    {
+      "id" : "glowBrightness",
+      "source" : "parameter"
+    },
+    {
+      "id" : "targetHue",
+      "source" : "parameter"
+    },
+    {
+      "id" : "hueRange",
+      "source" : "parameter"
+    },
+    {
+      "id" : "noiseFrequency",
+      "source" : "parameter"
+    },
+    {
+      "id" : "timeSpeed",
+      "source" : "parameter"
     }
-  }
+  ],
+  "version" : "1.0.0"
 }

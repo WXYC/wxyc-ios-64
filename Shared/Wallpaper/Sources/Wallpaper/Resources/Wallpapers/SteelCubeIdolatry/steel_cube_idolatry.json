@@ -1,83 +1,112 @@
 {
-  "id": "steel_cube_idolatry",
-  "displayName": "The Plastic Pulse",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "rawMetal",
-    "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "steelCubeIdolatryFragment",
-    "timeScale": 1.0
+  "accent" : {
+    "brightness" : 0.4918032786885246,
+    "hue" : 171.14754098360655,
+    "saturation" : 0.85
   },
-  "parameters": [
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "The Plastic Pulse",
+  "id" : "steel_cube_idolatry",
+  "material" : {
+    "blurRadius" : 8,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 1,
+      "opacity" : 0.41044774651527405
+    }
+  },
+  "parameters" : [
     {
-      "id": "yellowIntensity",
-      "type": "float",
-      "label": "Yellow",
-      "default": 1.2,
-      "range": { "min": 0.0, "max": 3.0 }
+      "default" : 1.2,
+      "id" : "yellowIntensity",
+      "label" : "Yellow",
+      "range" : {
+        "max" : 3,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "magentaIntensity",
-      "type": "float",
-      "label": "Magenta",
-      "default": 0.7,
-      "range": { "min": 0.0, "max": 3.0 }
+      "default" : 0.7,
+      "id" : "magentaIntensity",
+      "label" : "Magenta",
+      "range" : {
+        "max" : 3,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "cyanIntensity",
-      "type": "float",
-      "label": "Cyan",
-      "default": 0.6,
-      "range": { "min": 0.0, "max": 3.0 }
+      "default" : 0.6,
+      "id" : "cyanIntensity",
+      "label" : "Cyan",
+      "range" : {
+        "max" : 3,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "blueIntensity",
-      "type": "float",
-      "label": "Blue",
-      "default": 0.0,
-      "range": { "min": 0.0, "max": 3.0 }
+      "default" : 0,
+      "id" : "blueIntensity",
+      "label" : "Blue",
+      "range" : {
+        "max" : 3,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "ambientLevel",
-      "type": "float",
-      "label": "Ambient",
-      "default": 0.0,
-      "range": { "min": 0.0, "max": 2.0 }
+      "default" : 0,
+      "id" : "ambientLevel",
+      "label" : "Ambient",
+      "range" : {
+        "max" : 2,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "glowAmount",
-      "type": "float",
-      "label": "Glow",
-      "default": 0.3,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.14079604,
+      "id" : "glowAmount",
+      "label" : "Glow",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "voronoiScale",
-      "type": "float",
-      "label": "Cell Scale",
-      "default": 2.0,
-      "range": { "min": 1.0, "max": 4.0 }
+      "default" : 2,
+      "id" : "voronoiScale",
+      "label" : "Cell Scale",
+      "range" : {
+        "max" : 4,
+        "min" : 1
+      },
+      "type" : "float"
     },
     {
-      "id": "cellAnimSpeed",
-      "type": "float",
-      "label": "Cell Anim Speed",
-      "default": 0.5,
-      "range": { "min": 0.2, "max": 1.0 }
+      "default" : 0.5,
+      "id" : "cellAnimSpeed",
+      "label" : "Cell Anim Speed",
+      "range" : {
+        "max" : 1,
+        "min" : 0.2
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.75,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "steelCubeIdolatryFragment",
+    "timeScale" : 1,
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
   },
-  "material": {
-    "foreground": "dark",
-    "blurRadius": 8.0,
-    "overlay": {
-      "opacity": 0.25,
-      "darkness": 1.0
-    }
-  }
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
 }

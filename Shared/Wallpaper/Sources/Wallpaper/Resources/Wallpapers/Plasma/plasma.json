@@ -1,87 +1,138 @@
 {
-  "id": "plasma",
-  "displayName": "Plasma",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "stitchable",
-    "shaderFile": "Plasma.metal",
-    "functionName": "plasma",
-    "fragmentFunction": "plasmaFrag"
+  "accent" : {
+    "brightness" : 1,
+    "hue" : 23,
+    "saturation" : 0.55
   },
-  "parameters": [
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Plasma",
+  "id" : "plasma",
+  "material" : {
+    "blurRadius" : 12,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 1,
+      "opacity" : 0.25
+    }
+  },
+  "parameters" : [
     {
-      "id": "patternScale",
-      "type": "float",
-      "label": "Pattern Scale",
-      "default": 6.0,
-      "range": { "min": 2.0, "max": 12.0 }
+      "default" : 6,
+      "id" : "patternScale",
+      "label" : "Pattern Scale",
+      "range" : {
+        "max" : 12,
+        "min" : 2
+      },
+      "type" : "float"
     },
     {
-      "id": "colorAmplitude",
-      "type": "float",
-      "label": "Color Amplitude",
-      "default": 0.3,
-      "range": { "min": 0.1, "max": 0.5 }
+      "default" : 0.3,
+      "id" : "colorAmplitude",
+      "label" : "Color Amplitude",
+      "range" : {
+        "max" : 0.5,
+        "min" : 0.1
+      },
+      "type" : "float"
     },
     {
-      "id": "colorOffsetR",
-      "type": "float",
-      "label": "Color Offset R",
-      "default": 0.0,
-      "range": { "min": 0.0, "max": 6.28 }
+      "default" : 0,
+      "id" : "colorOffsetR",
+      "label" : "Color Offset R",
+      "range" : {
+        "max" : 6.28,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "colorOffsetG",
-      "type": "float",
-      "label": "Color Offset G",
-      "default": 2.1,
-      "range": { "min": 0.0, "max": 6.28 }
+      "default" : 2.1,
+      "id" : "colorOffsetG",
+      "label" : "Color Offset G",
+      "range" : {
+        "max" : 6.28,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "colorOffsetB",
-      "type": "float",
-      "label": "Color Offset B",
-      "default": 4.2,
-      "range": { "min": 0.0, "max": 6.28 }
+      "default" : 4.2,
+      "id" : "colorOffsetB",
+      "label" : "Color Offset B",
+      "range" : {
+        "max" : 6.28,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "waveThreeAmplitude",
-      "type": "float",
-      "label": "Wave 3 Amplitude",
-      "default": 0.5,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.5,
+      "id" : "waveThreeAmplitude",
+      "label" : "Wave 3 Amplitude",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "timeSpeed",
-      "type": "float",
-      "label": "Time Speed",
-      "default": 1.0,
-      "range": { "min": 0.5, "max": 2.0 }
+      "default" : 1,
+      "id" : "timeSpeed",
+      "label" : "Time Speed",
+      "range" : {
+        "max" : 2,
+        "min" : 0.5
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [
-    { "source": "viewWidth" },
-    { "source": "viewHeight" },
-    { "source": "time" },
-    { "source": "parameter", "id": "patternScale" },
-    { "source": "parameter", "id": "colorAmplitude" },
-    { "source": "parameter", "id": "colorOffsetR" },
-    { "source": "parameter", "id": "colorOffsetG" },
-    { "source": "parameter", "id": "colorOffsetB" },
-    { "source": "parameter", "id": "waveThreeAmplitude" },
-    { "source": "parameter", "id": "timeSpeed" }
-  ],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.55,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "plasmaFrag",
+    "functionName" : "plasma",
+    "shaderFile" : "Plasma.metal",
+    "type" : "stitchable"
   },
-  "material": {
-    "foreground": "dark",
-    "blurRadius": 12.0,
-    "overlay": {
-      "opacity": 0.25,
-      "darkness": 1.0
+  "shaderArguments" : [
+    {
+      "source" : "viewWidth"
+    },
+    {
+      "source" : "viewHeight"
+    },
+    {
+      "source" : "time"
+    },
+    {
+      "id" : "patternScale",
+      "source" : "parameter"
+    },
+    {
+      "id" : "colorAmplitude",
+      "source" : "parameter"
+    },
+    {
+      "id" : "colorOffsetR",
+      "source" : "parameter"
+    },
+    {
+      "id" : "colorOffsetG",
+      "source" : "parameter"
+    },
+    {
+      "id" : "colorOffsetB",
+      "source" : "parameter"
+    },
+    {
+      "id" : "waveThreeAmplitude",
+      "source" : "parameter"
+    },
+    {
+      "id" : "timeSpeed",
+      "source" : "parameter"
     }
-  }
+  ],
+  "version" : "1.0.0"
 }

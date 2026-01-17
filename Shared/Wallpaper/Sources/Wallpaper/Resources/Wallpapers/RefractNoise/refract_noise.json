@@ -1,83 +1,112 @@
 {
-  "id": "refract_noise",
-  "displayName": "Pool Suite",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "rawMetal",
-    "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "refractNoiseFrag",
-    "timeScale": 1.0
+  "accent" : {
+    "brightness" : 1,
+    "hue" : 23,
+    "saturation" : 0.5
   },
-  "parameters": [
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Pool Suite",
+  "id" : "refract_noise",
+  "material" : {
+    "blurRadius" : 8,
+    "foreground" : "light",
+    "overlay" : {
+      "darkness" : 0,
+      "opacity" : 0
+    }
+  },
+  "parameters" : [
     {
-      "id": "tileColorR",
-      "type": "float",
-      "label": "Tile Red",
-      "default": 0.06,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.06,
+      "id" : "tileColorR",
+      "label" : "Tile Red",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "tileColorG",
-      "type": "float",
-      "label": "Tile Green",
-      "default": 0.76,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.76,
+      "id" : "tileColorG",
+      "label" : "Tile Green",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "tileColorB",
-      "type": "float",
-      "label": "Tile Blue",
-      "default": 0.78,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.78,
+      "id" : "tileColorB",
+      "label" : "Tile Blue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "refractIndex",
-      "type": "float",
-      "label": "Refract Index",
-      "default": 0.8,
-      "range": { "min": 0.5, "max": 1.0 }
+      "default" : 0.8,
+      "id" : "refractIndex",
+      "label" : "Refract Index",
+      "range" : {
+        "max" : 1,
+        "min" : 0.5
+      },
+      "type" : "float"
     },
     {
-      "id": "cubeTintR",
-      "type": "float",
-      "label": "Cube Tint Red",
-      "default": 0.25,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.25,
+      "id" : "cubeTintR",
+      "label" : "Cube Tint Red",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "cubeTintG",
-      "type": "float",
-      "label": "Cube Tint Green",
-      "default": 0.75,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.75,
+      "id" : "cubeTintG",
+      "label" : "Cube Tint Green",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "cubeTintB",
-      "type": "float",
-      "label": "Cube Tint Blue",
-      "default": 1.0,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 1,
+      "id" : "cubeTintB",
+      "label" : "Cube Tint Blue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "noiseStrength",
-      "type": "float",
-      "label": "Noise Strength",
-      "default": 0.15,
-      "range": { "min": 0.05, "max": 0.3 }
+      "default" : 0.15,
+      "id" : "noiseStrength",
+      "label" : "Noise Strength",
+      "range" : {
+        "max" : 0.3,
+        "min" : 0.05
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.5,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "refractNoiseFrag",
+    "timeScale" : 1,
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
   },
-  "material": {
-    "foreground": "light",
-    "blurRadius": 8.0,
-    "overlay": {
-      "opacity": 0.0,
-      "darkness": 0.0
-    }
-  }
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
 }
