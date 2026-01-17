@@ -23,6 +23,7 @@ import MediaPlayer
 #endif
 import Analytics
 import AnalyticsTesting
+import Core
 
 // MARK: - PlaybackController Test Convenience Extensions
 
@@ -81,8 +82,9 @@ public final class PlayerControllerTestHarness {
     public let mockCommandCenter: MockRemoteCommandCenter?
     public let mockAnalytics: MockStructuredAnalytics
 
-    // For RadioPlayerController backoff access
+    // For controller-specific backoff access
     private let radioPlayerController: RadioPlayerController?
+    private let audioPlayerController: AudioPlayerController?
 
     /// Tracks stop count at start of last play to detect stream reset
     private var stopCountAtLastPlay = 0
@@ -109,7 +111,7 @@ public final class PlayerControllerTestHarness {
     public var lastAnalyticsStopDuration: TimeInterval? {
         (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStoppedEvent }) as? PlaybackStoppedEvent)?.duration
     }
-    
+
     public var supportsStallSimulation: Bool { true }
 
     // MARK: - Private Initializer
@@ -121,7 +123,8 @@ public final class PlayerControllerTestHarness {
         mockSession: MockAudioSession,
         mockCommandCenter: MockRemoteCommandCenter?,
         mockAnalytics: MockStructuredAnalytics,
-        radioPlayerController: RadioPlayerController? = nil
+        radioPlayerController: RadioPlayerController? = nil,
+        audioPlayerController: AudioPlayerController? = nil
     ) {
         self.controller = controller
         self.notificationCenter = notificationCenter
@@ -130,12 +133,19 @@ public final class PlayerControllerTestHarness {
         self.mockCommandCenter = mockCommandCenter
         self.mockAnalytics = mockAnalytics
         self.radioPlayerController = radioPlayerController
+        self.audioPlayerController = audioPlayerController
     }
 
     // MARK: - Factory Method
 
     /// Creates a test harness for the specified controller type
-    public static func make(for testCase: PlayerControllerTestCase) -> PlayerControllerTestHarness {
+    /// - Parameters:
+    ///   - testCase: The type of controller to create
+    ///   - backoffTimer: Optional custom backoff timer for testing exhaustion scenarios
+    public static func make(
+        for testCase: PlayerControllerTestCase,
+        backoffTimer: ExponentialBackoff = .default
+    ) -> PlayerControllerTestHarness {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         let mockPlayer = MockAudioPlayer(url: streamURL)
         let mockAnalytics = MockStructuredAnalytics()
@@ -147,21 +157,23 @@ public final class PlayerControllerTestHarness {
             let mockSession = MockAudioSession()
             let mockCommandCenter = MockRemoteCommandCenter()
 
-            let controller = AudioPlayerController(
+            let audioController = AudioPlayerController(
                 player: mockPlayer,
                 audioSession: mockSession,
                 remoteCommandCenter: mockCommandCenter,
                 notificationCenter: notificationCenter,
-                analytics: mockAnalytics
+                analytics: mockAnalytics,
+                backoffTimer: backoffTimer
             )
 
             return PlayerControllerTestHarness(
-                controller: controller,
+                controller: audioController,
                 notificationCenter: notificationCenter,
                 mockPlayer: mockPlayer,
                 mockSession: mockSession,
                 mockCommandCenter: mockCommandCenter,
-                mockAnalytics: mockAnalytics
+                mockAnalytics: mockAnalytics,
+                audioPlayerController: audioController
             )
         #endif
 
@@ -173,7 +185,8 @@ public final class PlayerControllerTestHarness {
                 audioSession: mockSession,
                 notificationCenter: notificationCenter,
                 analytics: mockAnalytics,
-                remoteCommandCenter: .shared()
+                remoteCommandCenter: .shared(),
+                backoffTimer: backoffTimer
             )
 
             return PlayerControllerTestHarness(
@@ -190,7 +203,8 @@ public final class PlayerControllerTestHarness {
             let radioController = RadioPlayerController(
                 radioPlayer: mockPlayer,
                 notificationCenter: notificationCenter,
-                analytics: mockAnalytics
+                analytics: mockAnalytics,
+                backoffTimer: backoffTimer
             )
 
             return PlayerControllerTestHarness(
@@ -253,6 +267,9 @@ public final class PlayerControllerTestHarness {
 
     /// Simulates a playback stall
     public func simulateStall() {
+        // Disable auto-update so subsequent play() calls don't auto-recover
+        // This simulates a persistent network issue where reconnection attempts fail
+        mockPlayer.shouldAutoUpdateState = false
         mockPlayer.simulateStall()
         // For RadioPlayerController, post the stall notification
         if radioPlayerController != nil {
@@ -262,7 +279,23 @@ public final class PlayerControllerTestHarness {
 
     /// Returns the number of backoff attempts, if applicable
     public func getBackoffAttempts() -> UInt? {
-        radioPlayerController?.backoffTimer.numberOfAttempts
+        if let radioPlayerController {
+            return radioPlayerController.backoffTimer.numberOfAttempts
+        }
+        if let audioPlayerController {
+            return audioPlayerController.backoffTimer.numberOfAttempts
+        }
+        return nil
+    }
+
+    /// Simulates an error event from the player
+    public func simulateError(_ error: Error) {
+        mockPlayer.simulateError(error)
+    }
+
+    /// Returns all captured stream error events
+    public var streamErrorEvents: [StreamErrorEvent] {
+        mockAnalytics.events.compactMap { $0 as? StreamErrorEvent }
     }
 
     #if os(iOS)

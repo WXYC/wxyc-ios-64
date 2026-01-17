@@ -109,7 +109,10 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     }
 
     /// Simulate a playback stall
+    /// Sets isPlaying to false to simulate real stall behavior where playback stops
     public func simulateStall() {
+        isPlaying = false
+        state = .stalled
         onStall?()
         eventContinuation?.yield(.stall)
     }
@@ -118,5 +121,33 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     public func simulateRecovery() {
         onRecovery?()
         eventContinuation?.yield(.recovery)
+    }
+
+    /// Simulate an error event
+    public func simulateError(_ error: Error) {
+        eventContinuation?.yield(.error(error))
+    }
+}
+
+// MARK: - Test Errors
+
+/// Standard test errors for simulating different failure scenarios
+public enum TestStreamError: Error, LocalizedError, Sendable {
+    case networkFailure
+    case decodingFailure
+    case playerFailure
+    case unknown
+
+    public var errorDescription: String? {
+        switch self {
+        case .networkFailure:
+            "Network connection failed"
+        case .decodingFailure:
+            "Audio decoding failed"
+        case .playerFailure:
+            "Player encountered an error"
+        case .unknown:
+            "Unknown error occurred"
+        }
     }
 }

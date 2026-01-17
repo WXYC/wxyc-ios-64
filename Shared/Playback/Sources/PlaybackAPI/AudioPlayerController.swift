@@ -529,7 +529,18 @@ extension AudioPlayerController {
                 case .recovery:
                     handleRecovery()
                 case .error(let error):
-                    // Log error but don't crash
+                    // Capture analytics for the error
+                    let playerType: PlayerControllerType = self.player is RadioPlayer ? .radioPlayer : .mp3Streamer
+                    self.analytics.capture(StreamErrorEvent(
+                        playerType: playerType,
+                        errorType: self.classifyError(error),
+                        errorDescription: error.localizedDescription,
+                        reconnectAttempts: Int(self.backoffTimer.numberOfAttempts),
+                        sessionDuration: self.playbackDuration,
+                        stallDuration: self.stallStartTime.map { Date().timeIntervalSince($0) },
+                        recoveryMethod: .automaticReconnect
+                    ))
+                    self.cpuAggregator?.endSession(reason: .error)
                     print("AudioPlayerController received error: \(error)")
                 }
             }
@@ -550,6 +561,19 @@ extension AudioPlayerController {
 
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
+            // Backoff exhausted - capture error analytics
+            let playerType: PlayerControllerType = player is RadioPlayer ? .radioPlayer : .mp3Streamer
+            let stallDuration = stallStartTime.map { Date().timeIntervalSince($0) }
+            analytics.capture(StreamErrorEvent(
+                playerType: playerType,
+                errorType: .backoffExhausted,
+                errorDescription: "Maximum reconnection attempts (\(backoffTimer.maximumAttempts)) exhausted",
+                reconnectAttempts: Int(backoffTimer.numberOfAttempts),
+                sessionDuration: playbackDuration,
+                stallDuration: stallDuration,
+                recoveryMethod: .retryWithBackoff
+            ))
+            cpuAggregator?.endSession(reason: .error)
             print("Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
             self.backoffTimer.reset()
             return
@@ -593,6 +617,35 @@ extension AudioPlayerController {
             recoveryMethod: backoffTimer.numberOfAttempts > 0 ? .retryWithBackoff : .automaticReconnect
         ))
         self.stallStartTime = nil
+    }
+
+    /// Classifies an error into a StreamErrorType for analytics
+    private func classifyError(_ error: Error) -> StreamErrorType {
+        let nsError = error as NSError
+
+        // Check for URL/network errors
+        if nsError.domain == NSURLErrorDomain {
+            return .networkError
+        }
+
+        // Check for AVFoundation errors
+        if nsError.domain == AVFoundationErrorDomain {
+            switch nsError.code {
+            case AVError.decoderNotFound.rawValue,
+                 AVError.decoderTemporarilyUnavailable.rawValue,
+                 AVError.failedToParse.rawValue:
+                return .decodingError
+            default:
+                return .playerError
+            }
+        }
+
+        // Check for CoreMedia errors (often decoding-related)
+        if nsError.domain == "CoreMediaErrorDomain" {
+            return .decodingError
+        }
+
+        return .unknown
     }
 }
 

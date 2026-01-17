@@ -70,6 +70,53 @@ struct PlaybackAnalyticsTests {
         #expect(stallRecoveryEvents[0].stallDuration == 5.2)
     }
 
+    @Test("Mock captures stream error events")
+    @MainActor
+    func mockCapturesStreamError() {
+        let mock = MockStructuredAnalytics()
+
+        mock.capture(StreamErrorEvent(
+            playerType: .mp3Streamer,
+            errorType: .backoffExhausted,
+            errorDescription: "Max attempts exceeded",
+            reconnectAttempts: 10,
+            sessionDuration: 120.5,
+            stallDuration: 5.0,
+            recoveryMethod: .retryWithBackoff
+        ))
+
+        let streamErrorEvents = mock.events.compactMap { $0 as? StreamErrorEvent }
+
+        #expect(streamErrorEvents.count == 1)
+        #expect(streamErrorEvents[0].playerType == .mp3Streamer)
+        #expect(streamErrorEvents[0].errorType == .backoffExhausted)
+        #expect(streamErrorEvents[0].errorDescription == "Max attempts exceeded")
+        #expect(streamErrorEvents[0].reconnectAttempts == 10)
+        #expect(streamErrorEvents[0].sessionDuration == 120.5)
+        #expect(streamErrorEvents[0].stallDuration == 5.0)
+        #expect(streamErrorEvents[0].recoveryMethod == .retryWithBackoff)
+    }
+
+    @Test("Stream error event without stall duration")
+    @MainActor
+    func streamErrorWithoutStallDuration() {
+        let mock = MockStructuredAnalytics()
+
+        mock.capture(StreamErrorEvent(
+            playerType: .radioPlayer,
+            errorType: .networkError,
+            errorDescription: "Network connection failed",
+            reconnectAttempts: 3,
+            sessionDuration: 60.0
+        ))
+
+        let streamErrorEvents = mock.events.compactMap { $0 as? StreamErrorEvent }
+
+        #expect(streamErrorEvents.count == 1)
+        #expect(streamErrorEvents[0].stallDuration == nil)
+        #expect(streamErrorEvents[0].recoveryMethod == .retryWithBackoff) // default
+    }
+
     @Test("Mock captures interruption events")
     @MainActor
     func mockCapturesInterruption() {
@@ -137,5 +184,37 @@ struct PlaybackAnalyticsTests {
     ])
     func interruptionEventsAreSendable(event: InterruptionEvent) async {
         await Task { @Sendable in _ = event }.value
+    }
+
+    @Test("Stream error events are Sendable", arguments: [
+        StreamErrorEvent(
+            playerType: .radioPlayer,
+            errorType: .backoffExhausted,
+            errorDescription: "Backoff exhausted",
+            reconnectAttempts: 10,
+            sessionDuration: 60.0
+        ),
+        StreamErrorEvent(
+            playerType: .mp3Streamer,
+            errorType: .networkError,
+            errorDescription: "Network failed",
+            reconnectAttempts: 3,
+            sessionDuration: 30.0,
+            stallDuration: 5.0
+        )
+    ])
+    func streamErrorEventsAreSendable(event: StreamErrorEvent) async {
+        await Task { @Sendable in _ = event }.value
+    }
+
+    @Test("StreamErrorType raw values", arguments: [
+        (StreamErrorType.backoffExhausted, "backoff_exhausted"),
+        (StreamErrorType.networkError, "network_error"),
+        (StreamErrorType.decodingError, "decoding_error"),
+        (StreamErrorType.playerError, "player_error"),
+        (StreamErrorType.unknown, "unknown")
+    ])
+    func streamErrorTypeRawValues(errorType: StreamErrorType, expectedRawValue: String) {
+        #expect(errorType.rawValue == expectedRawValue)
     }
 }

@@ -117,6 +117,76 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Type of stream error that occurred.
+public enum StreamErrorType: String, Sendable, Equatable {
+    /// All reconnection attempts with exponential backoff exhausted
+    case backoffExhausted = "backoff_exhausted"
+    /// Network connectivity error
+    case networkError = "network_error"
+    /// Audio decoding failed
+    case decodingError = "decoding_error"
+    /// Player-level error (AVPlayer, AudioEngine, etc.)
+    case playerError = "player_error"
+    /// Unclassified error
+    case unknown = "unknown"
+}
+
+/// Event capturing a stream error that could not be recovered from.
+///
+/// This event complements `StallRecoveryEvent`: while stall recovery tracks successful
+/// recoveries, this event captures failures where playback could not be restored.
+public struct StreamErrorEvent: PlaybackAnalyticsEvent {
+    public let name = "stream_error"
+
+    /// The type of player controller that experienced the error
+    public let playerType: PlayerControllerType
+    /// Classification of the error
+    public let errorType: StreamErrorType
+    /// Human-readable error description
+    public let errorDescription: String
+    /// Number of reconnection attempts made before giving up
+    public let reconnectAttempts: Int
+    /// How long playback was active before the error
+    public let sessionDuration: TimeInterval
+    /// Duration of preceding stall (if error occurred during recovery)
+    public let stallDuration: TimeInterval?
+    /// What recovery method was attempted
+    public let recoveryMethod: RecoveryMethod
+
+    public var properties: [String: Any]? {
+        var props: [String: Any] = [
+            "player_type": playerType.rawValue,
+            "error_type": errorType.rawValue,
+            "error_description": errorDescription,
+            "reconnect_attempts": reconnectAttempts,
+            "session_duration": sessionDuration,
+            "recovery_method": recoveryMethod.rawValue
+        ]
+        if let stallDuration {
+            props["stall_duration"] = stallDuration
+        }
+        return props
+    }
+
+    public init(
+        playerType: PlayerControllerType,
+        errorType: StreamErrorType,
+        errorDescription: String,
+        reconnectAttempts: Int,
+        sessionDuration: TimeInterval,
+        stallDuration: TimeInterval? = nil,
+        recoveryMethod: RecoveryMethod = .retryWithBackoff
+    ) {
+        self.playerType = playerType
+        self.errorType = errorType
+        self.errorDescription = errorDescription
+        self.reconnectAttempts = reconnectAttempts
+        self.sessionDuration = sessionDuration
+        self.stallDuration = stallDuration
+        self.recoveryMethod = recoveryMethod
+    }
+}
+
 /// Event capturing an audio session interruption.
 public struct InterruptionEvent: PlaybackAnalyticsEvent {
     public let name = "interruption"
@@ -140,7 +210,7 @@ public struct ErrorEvent: PlaybackAnalyticsEvent {
     public var properties: [String: Any]? {
         ["error": error, "context": context]
     }
-
+    
     public init(error: Error, context: String) {
         self.error = error.localizedDescription
         self.context = context
@@ -202,7 +272,7 @@ public enum PlaybackContext: String, Sendable, Equatable {
 /// distinguishing between foreground and background playback.
 public struct CPUSessionEvent: PlaybackAnalyticsEvent {
     public let name = "cpu_session"
-    
+
     public let playerType: PlayerControllerType
     public let context: PlaybackContext
     public let endReason: CPUSessionEndReason
@@ -210,7 +280,7 @@ public struct CPUSessionEvent: PlaybackAnalyticsEvent {
     public let maxCPU: Double
     public let sampleCount: Int
     public let durationSeconds: TimeInterval
-    
+
     public var properties: [String: Any]? {
         [
             "player_type": playerType.rawValue,
