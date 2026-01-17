@@ -458,18 +458,20 @@ public final class AudioPlayerController {
 
         switch reason {
         case .oldDeviceUnavailable:
-            // Headphones unplugged - stop playback
+            // Headphones unplugged - stop playback per Apple HIG
             if isPlaying {
                 analytics.capture(PlaybackStoppedEvent(reason: "route disconnected", duration: playbackDuration))
                 stop()
             }
 
-        case .newDeviceAvailable:
-            // New device connected - no action needed
-            break
-
         default:
-            break
+            // For all other route changes (newDeviceAvailable, routeConfigurationChange,
+            // categoryChange, override, wakeFromSleep, etc.), check if playback was
+            // intended but the engine stopped. AVAudioEngine can stop on route changes.
+            if playbackIntended && !player.isPlaying {
+                // Engine stopped unexpectedly during route change - restart playback
+                player.play()
+            }
         }
     }
     #endif
