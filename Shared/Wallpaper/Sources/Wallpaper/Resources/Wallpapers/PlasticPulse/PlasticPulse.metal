@@ -1,5 +1,5 @@
 //
-//  SteelCubeIdolatry.metal
+//  PlasticPulse.metal
 //  Wallpaper
 //
 //  Voronoi reflections with procedural neon environment.
@@ -124,7 +124,7 @@ static inline float3 neonEnvironment(float3 dir,
     return saturate(col);
 }
 
-fragment float4 steelCubeIdolatryFragment(
+fragment float4 plasticPulseFragment(
     VertexOut in [[stage_in]],
     constant Uniforms& u [[buffer(0)]],
     constant Parameters& p [[buffer(1)]]

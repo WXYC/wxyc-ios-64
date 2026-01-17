@@ -8,7 +8,7 @@
     "style" : "colored"
   },
   "displayName" : "Space Mountain",
-  "id" : "neon_topology_iso",
+  "id" : "space_mountain",
   "material" : {
     "blurRadius" : 11.126260757446289,
     "foreground" : "dark",
@@ -90,9 +90,9 @@
     }
   ],
   "renderer" : {
-    "fragmentFunction" : "neonTopologyIsoFrag",
-    "functionName" : "neonTopologyIso",
-    "shaderFile" : "NeonTopologyIso.metal",
+    "fragmentFunction" : "spaceMountainFrag",
+    "functionName" : "spaceMountain",
+    "shaderFile" : "SpaceMountain.metal",
     "type" : "stitchable"
   },
   "shaderArguments" : [

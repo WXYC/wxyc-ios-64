@@ -20,7 +20,7 @@ import SwiftUI
 @MainActor
 public final class ThemeConfiguration {
 
-    // MARK: - LCD HSB Offset Defaults
+    // MARK: - LCD Defaults
 
     /// Default HSB offset for LCD min (top) segments.
     public static let defaultLCDMinOffset: HSBOffset = .defaultMin
@@ -28,10 +28,13 @@ public final class ThemeConfiguration {
     /// Default HSB offset for LCD max (bottom) segments.
     public static let defaultLCDMaxOffset: HSBOffset = .defaultMax
 
+    /// Default brightness multiplier for active LCD segments.
+    public static let defaultLCDActiveBrightness: Double = 1.24
+
     // MARK: - Storage Keys
 
     private let storageKey = "wallpaper.selectedType.v3"
-    private let defaultThemeID = "wxyc_gradient"
+    private let defaultThemeID = "wxyc_1983"
 
     // MARK: - Per-Theme Storage Keys
 
@@ -65,6 +68,10 @@ public final class ThemeConfiguration {
 
     private func lcdMaxOffsetKey(for themeID: String) -> String {
         "wallpaper.lcdMaxOffset.\(themeID)"
+    }
+
+    private func lcdActiveBrightnessKey(for themeID: String) -> String {
+        "wallpaper.lcdActiveBrightness.\(themeID)"
     }
 
     private func meshGradientPaletteKey(for themeID: String) -> String {
@@ -236,6 +243,16 @@ public final class ThemeConfiguration {
             if let data = try? JSONEncoder().encode(lcdMaxOffset) {
                 defaults.set(data, forKey: key)
             }
+        }
+    }
+
+    /// Brightness multiplier for active (lit) LCD segments.
+    /// Values above 1.0 make segments brighter; below 1.0 makes them dimmer.
+    /// Stored per-theme so each theme remembers its customizations.
+    public var lcdActiveBrightness: Double = ThemeConfiguration.defaultLCDActiveBrightness {
+        didSet {
+            let key = lcdActiveBrightnessKey(for: selectedThemeID)
+            defaults.set(lcdActiveBrightness, forKey: key)
         }
     }
 
@@ -462,6 +479,16 @@ public final class ThemeConfiguration {
         return loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
     }
 
+    /// Returns the LCD active brightness for a given theme ID.
+    public func lcdActiveBrightness(for themeID: String) -> Double {
+        if themeID == selectedThemeID { return lcdActiveBrightness }
+        let key = lcdActiveBrightnessKey(for: themeID)
+        if defaults.object(forKey: key) != nil {
+            return defaults.double(forKey: key)
+        }
+        return Self.defaultLCDActiveBrightness
+    }
+
     /// Returns the effective playback blend mode for a given theme ID.
     /// For the selected theme, uses in-memory value. For other themes, looks up stored override.
     public func effectivePlaybackBlendMode(for themeID: String) -> BlendMode {
@@ -533,6 +560,7 @@ public final class ThemeConfiguration {
             accentColor: effectiveAccentColor(for: themeID),
             lcdMinOffset: lcdMinOffset(for: themeID),
             lcdMaxOffset: lcdMaxOffset(for: themeID),
+            lcdActiveBrightness: lcdActiveBrightness(for: themeID),
             playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID)),
             playbackDarkness: playbackDarkness(for: themeID),
             playbackAlpha: playbackAlpha(for: themeID),
@@ -564,7 +592,8 @@ public final class ThemeConfiguration {
                 overlayDarkness: overlayDarknessOverride,
                 materialBlendMode: materialBlendMode != .default ? materialBlendMode.rawValue : nil,
                 lcdMinOffset: lcdMinOffset != Self.defaultLCDMinOffset ? lcdMinOffset : nil,
-                lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil
+                lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil,
+                lcdActiveBrightness: lcdActiveBrightness != Self.defaultLCDActiveBrightness ? lcdActiveBrightness : nil
             )
         }
 
@@ -578,7 +607,8 @@ public final class ThemeConfiguration {
             overlayDarkness: loadOptionalDouble(overlayDarknessOverrideKey(for: themeID)),
             materialBlendMode: loadOptionalString(materialBlendModeKey(for: themeID)),
             lcdMinOffset: loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)),
-            lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID))
+            lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)),
+            lcdActiveBrightness: loadOptionalDouble(lcdActiveBrightnessKey(for: themeID))
         )
     }
 
@@ -630,9 +660,13 @@ public final class ThemeConfiguration {
             ? defaults.double(forKey: overlayDarknessKey)
             : nil
 
-        // Load LCD HSB offsets
+        // Load LCD HSB offsets and active brightness
         lcdMinOffset = loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)) ?? Self.defaultLCDMinOffset
         lcdMaxOffset = loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
+        let activeBrightnessKey = lcdActiveBrightnessKey(for: themeID)
+        lcdActiveBrightness = defaults.object(forKey: activeBrightnessKey) != nil
+            ? defaults.double(forKey: activeBrightnessKey)
+            : Self.defaultLCDActiveBrightness
 
         // Load playback blend mode
         let blendModeKey = playbackBlendModeKey(for: themeID)
@@ -710,6 +744,7 @@ public final class ThemeConfiguration {
         overlayDarknessOverride = nil
         lcdMinOffset = Self.defaultLCDMinOffset
         lcdMaxOffset = Self.defaultLCDMaxOffset
+        lcdActiveBrightness = Self.defaultLCDActiveBrightness
         playbackBlendMode = .default
         playbackDarkness = 0.0
         playbackAlpha = 1.0
@@ -739,7 +774,7 @@ public final class ThemeConfiguration {
         // Map legacy class names to new manifest IDs
         let mapping: [String: String] = [
             "WXYCGradientWithNoiseWallpaper": "wxyc_gradient_noise",
-            "WXYCGradientWallpaperImplementation": "wxyc_gradient",
+            "WXYCGradientWallpaperImplementation": "wxyc_1983",
             "WaterTurbulenceWallpaper": "water_turbulence",
             "WaterCausticsWallpaper": "water_caustics",
             "SpiralWallpaper": "spiral",
