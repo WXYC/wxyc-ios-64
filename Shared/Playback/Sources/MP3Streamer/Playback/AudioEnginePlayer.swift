@@ -11,6 +11,8 @@
 #if !os(watchOS)
 
 @preconcurrency import AVFoundation
+import Core
+import Logger
 import os.lock
 import Analytics
 import PlaybackCore
@@ -56,6 +58,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     /// Tracks whether render tap installation was requested before engine setup
     private let pendingRenderTapState: RenderTapState
 
+    /// Task observing engine configuration changes (route changes, etc.)
+    private var configurationObserverTask: Task<Void, Never>?
+
     var isPlaying: Bool {
         stateBox.isPlaying
     }
@@ -91,15 +96,15 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         // Accessing engine.mainMixerNode during init implicitly activates the audio
         // hardware and interrupts other apps' audio. Setup is deferred until play().
     }
-
+        
     /// Sets up the audio engine graph. Called lazily on first play() to avoid
     /// interrupting other apps' audio during app launch.
     private func setUpAudioEngineIfNeeded() {
         guard engineSetUpState.setUpIfNeeded() else { return } // Already set up
-        
+
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)
-        
+
         // Install any pending render tap that was requested before engine was ready
         if pendingRenderTapState.remove() {
             guard renderTapState.install() else { return }
@@ -107,6 +112,41 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
             playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
                 continuation.yield(buffer)
             }
+        }
+
+        // Observe engine configuration changes (audio route changes, etc.)
+        // When the hardware configuration changes, the engine stops and must be restarted
+        setUpConfigurationChangeObserver()
+    }
+
+    private func setUpConfigurationChangeObserver() {
+        configurationObserverTask = Task { [weak self] in
+            let notifications = NotificationCenter.default.notifications(
+                named: .AVAudioEngineConfigurationChange,
+                object: self?.engine
+            )
+            for await _ in notifications {
+                guard let self, !Task.isCancelled else { break }
+                self.handleConfigurationChange()
+            }
+        }
+    }
+
+    private func handleConfigurationChange() {
+        // Engine has stopped due to configuration change (route change, etc.)
+        guard stateBox.isPlaying else { return }
+
+        do {
+            // Reconnect the audio graph - configuration change may have invalidated it
+            engine.disconnectNodeOutput(playerNode)
+            engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+        
+            try engine.start()
+            playerNode.play()
+            Log(.info, "Audio engine restarted after configuration change")
+        } catch {
+            Log(.error, "Failed to restart engine after configuration change: \(error)")
+            eventContinuation.yield(.error(error))
         }
     }
 
@@ -134,7 +174,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 
         playerNode.removeTap(onBus: 0)
     }
-        
+
     func play() throws {
         if stateBox.isPlaying {
             analytics?.capture(PlaybackStartedEvent(reason: "audioEnginePlayer already playing"))

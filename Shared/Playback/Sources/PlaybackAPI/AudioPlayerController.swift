@@ -465,13 +465,8 @@ public final class AudioPlayerController {
             }
 
         default:
-            // For all other route changes (newDeviceAvailable, routeConfigurationChange,
-            // categoryChange, override, wakeFromSleep, etc.), check if playback was
-            // intended but the engine stopped. AVAudioEngine can stop on route changes.
-            if playbackIntended && !player.isPlaying {
-                // Engine stopped unexpectedly during route change - restart playback
-                player.play()
-            }
+            // AudioEnginePlayer handles restarting the engine on configuration changes
+            break
         }
     }
     #endif
