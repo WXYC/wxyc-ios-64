@@ -161,11 +161,14 @@ struct RouteChangeBehaviorTests {
         // Should handle gracefully (exact behavior depends on implementation)
     }
 
-    // MARK: - Engine Stop Recovery (AVAudioEngine specific)
+    // MARK: - Engine Stop Recovery
 
-    @Test("Engine stopping during route change triggers recovery when playback intended", arguments: PlayerControllerTestCase.allCases)
-    func engineStopDuringRouteChangeTriggersRecovery(testCase: PlayerControllerTestCase) async {
-        let harness = PlayerControllerTestHarness.make(for: testCase)
+    /// Note: AudioPlayerController with AudioEnginePlayer handles configuration changes internally
+    /// via AVAudioEngine.configurationChangeNotification. This test verifies RadioPlayerController's
+    /// controller-level recovery for AVPlayer-based playback.
+    @Test("RadioPlayerController restarts when player stops during route change")
+    func radioPlayerControllerRestartsOnRouteChange() async {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
 
         // Start playing
         harness.controller.play()
@@ -175,16 +178,16 @@ struct RouteChangeBehaviorTests {
 
         let playCountBefore = harness.playCallCount
 
-        // Simulate engine stopping due to route change (this happens with AVAudioEngine)
+        // Simulate player stopping due to route change
         harness.simulateEngineStoppedDueToRouteChange()
 
-        // Post a route change that should continue playback
+        // Post a route change that should trigger recovery
         harness.postRouteChange(reason: .newDeviceAvailable)
         await harness.waitForAsync()
 
-        // The controller should detect the engine stopped and restart playback
+        // RadioPlayerController should detect the player stopped and restart playback
         #expect(harness.playCallCount > playCountBefore,
-               "Controller should restart playback when engine stops during route change")
+               "RadioPlayerController should restart playback when player stops during route change")
     }
 
     // MARK: - Analytics
@@ -214,36 +217,15 @@ struct RouteChangeBehaviorTests {
 
 // MARK: - AudioPlayerController Route Change Specific Tests
 
+/// Note: AudioPlayerController's engine restart on configuration change is handled internally
+/// by AudioEnginePlayer via AVAudioEngine.configurationChangeNotification, not at the
+/// controller level. These tests verify controller-level behavior only.
 @Suite("AudioPlayerController Route Change Behavior Tests")
 @MainActor
 struct AudioPlayerControllerRouteChangeBehaviorTests {
 
-    @Test("Route change with engine stop restarts playback when playbackIntended")
-    func routeChangeWithEngineStopRestartsPlayback() async {
-        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
-
-        // Start playing
-        harness.controller.play()
-        harness.simulatePlaybackStarted()
-        await harness.waitForAsync()
-        #expect(harness.controller.isPlaying)
-
-        let playCountBefore = harness.playCallCount
-
-        // Simulate engine stopping (as happens on some route changes)
-        harness.simulateEngineStoppedDueToRouteChange()
-
-        // Trigger route change that should continue playback
-        harness.postRouteChange(reason: .routeConfigurationChange)
-        await harness.waitForAsync()
-
-        // Should have restarted playback
-        #expect(harness.playCallCount > playCountBefore,
-               "Should restart playback when engine stops during route change")
-    }
-
-    @Test("Route change without playbackIntended does not restart")
-    func routeChangeWithoutPlaybackIntendedDoesNotRestart() async {
+    @Test("Route change while not playing does not start playback")
+    func routeChangeWhileNotPlayingDoesNotStart() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         // Never started playback
