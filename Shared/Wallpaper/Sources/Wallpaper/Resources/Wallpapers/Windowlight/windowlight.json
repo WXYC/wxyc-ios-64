@@ -1,84 +1,114 @@
 {
-  "id": "windowlight",
-  "displayName": "Windowlight",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "rawMetal",
-    "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "windowlightFragment",
-    "timeScale": 1.0
+  "accent" : {
+    "brightness" : 1,
+    "hue" : 23,
+    "saturation" : 0.2322404371584699
   },
-  "parameters": [
+  "button" : {
+    "darkness" : 0.5,
+    "opacity" : 0.15,
+    "style" : "glass"
+  },
+  "displayName" : "Windowlight",
+  "id" : "windowlight",
+  "material" : {
+    "blurRadius" : 4,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 1,
+      "opacity" : 0.16467662155628204
+    }
+  },
+  "parameters" : [
     {
-      "id": "warmLightR",
-      "type": "float",
-      "label": "Warm Light Red",
-      "default": 1.0,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 1,
+      "id" : "warmLightR",
+      "label" : "Warm Light Red",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "warmLightG",
-      "type": "float",
-      "label": "Warm Light Green",
-      "default": 0.85,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.85,
+      "id" : "warmLightG",
+      "label" : "Warm Light Green",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "warmLightB",
-      "type": "float",
-      "label": "Warm Light Blue",
-      "default": 0.6,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.6,
+      "id" : "warmLightB",
+      "label" : "Warm Light Blue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "coolShadowR",
-      "type": "float",
-      "label": "Cool Shadow Red",
-      "default": 0.15,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.15,
+      "id" : "coolShadowR",
+      "label" : "Cool Shadow Red",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "coolShadowG",
-      "type": "float",
-      "label": "Cool Shadow Green",
-      "default": 0.2,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.2,
+      "id" : "coolShadowG",
+      "label" : "Cool Shadow Green",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "coolShadowB",
-      "type": "float",
-      "label": "Cool Shadow Blue",
-      "default": 0.35,
-      "range": { "min": 0.0, "max": 1.0 }
+      "default" : 0.35,
+      "id" : "coolShadowB",
+      "label" : "Cool Shadow Blue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
     },
     {
-      "id": "maxBlur",
-      "type": "float",
-      "label": "Max Blur",
-      "default": 6.0,
-      "range": { "min": 3.0, "max": 10.0 }
+      "default" : 6,
+      "id" : "maxBlur",
+      "label" : "Max Blur",
+      "range" : {
+        "max" : 10,
+        "min" : 3
+      },
+      "type" : "float"
     },
     {
-      "id": "minBlur",
-      "type": "float",
-      "label": "Min Blur",
-      "default": 2.0,
-      "range": { "min": 0.0, "max": 4.0 }
+      "default" : 2,
+      "id" : "minBlur",
+      "label" : "Min Blur",
+      "range" : {
+        "max" : 4,
+        "min" : 0
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.75,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "windowlightFragment",
+    "timeScale" : 1,
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
   },
-  "material": {
-    "foreground": "dark",
-    "blurRadius": 4.0,
-    "overlay": {
-      "opacity": 0.1,
-      "darkness": 1.0
-    }
-  },
-  "button": { "style": "glass", "opacity": 0.15, "darkness": 0.5 }
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
 }

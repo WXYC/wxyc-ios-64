@@ -1,23 +1,30 @@
 {
-  "id": "wxyc_gradient",
-  "displayName": "WXYC 1983",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "swiftUI"
+  "accent" : {
+    "brightness" : 1,
+    "hue" : 23,
+    "saturation" : 0.75
   },
-  "parameters": [],
-  "shaderArguments": [],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.75,
-    "brightness": 1.0
+  "button" : {
+    "style" : "colored"
   },
-  "material": {
-    "foreground": "light",
-    "blurRadius": 8.0,
-    "overlay": {
-      "opacity": 0.25,
-      "darkness": 1.0
+  "displayName" : "WXYC 1983",
+  "id" : "wxyc_gradient",
+  "material" : {
+    "blurRadius" : 8,
+    "foreground" : "light",
+    "overlay" : {
+      "darkness" : 0.7388059496879578,
+      "opacity" : 0.25
     }
-  }
+  },
+  "parameters" : [
+
+  ],
+  "renderer" : {
+    "type" : "swiftUI"
+  },
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
 }

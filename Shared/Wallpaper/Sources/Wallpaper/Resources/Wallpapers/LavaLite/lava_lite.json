@@ -1,34 +1,42 @@
 {
-  "id": "lava_lite",
-  "displayName": "Lava Lite",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "rawMetal",
-    "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "lavaLiteFragment",
-    "timeScale": 0.5
+  "accent" : {
+    "brightness" : 0.9057377049180327,
+    "hue" : 347.7049180327868,
+    "saturation" : 0.55
   },
-  "parameters": [
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Lava Lite",
+  "id" : "lava_lite",
+  "material" : {
+    "blurRadius" : 18.604477643966675,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 0.5174129605293274,
+      "opacity" : 0.751741349697113
+    }
+  },
+  "parameters" : [
     {
-      "id": "brightness",
-      "type": "float",
-      "label": "Brightness",
-      "default": 1.0,
-      "range": { "min": 0.0, "max": 2.0 }
+      "default" : 0.83830845,
+      "id" : "brightness",
+      "label" : "Brightness",
+      "range" : {
+        "max" : 2,
+        "min" : 0
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.75,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "lavaLiteFragment",
+    "timeScale" : 0.5,
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
   },
-  "material": {
-    "foreground": "dark",
-    "blurRadius": 12.0,
-    "overlay": {
-      "opacity": 0.1,
-      "darkness": 1.0
-    }
-  }
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
 }

@@ -1,51 +1,54 @@
 {
-    "id": "adriatic_drift",
-    "displayName": "Adriatic Drift",
-    "version": "1.0.0",
-    "renderer": {
-        "type": "stitchable",
-        "shaderFile": "AdriaticDrift.metal",
-        "functionName": "adriaticDrift",
-        "fragmentFunction": "adriaticDriftFrag"
-    },
-    "parameters": [
-        {
-            "id": "timeScale",
-            "type": "float",
-            "label": "Time Scale",
-            "default": 1.0,
-            "range": {
-                "min": 0.25,
-                "max": 2.0
-            }
-        }
-    ],
-    "shaderArguments": [
-        {
-            "source": "viewWidth"
-        },
-        {
-            "source": "viewHeight"
-        },
-        {
-            "source": "time"
-        },
-        {
-            "source": "parameter",
-            "id": "timeScale"
-        }
-    ],
-    "accent": {
-        "hue": 190,
-        "saturation": 0.7,
-        "brightness": 0.9
-    },
-    "material": {
-        "foreground": "dark",
-        "blurRadius": 12.0,
-        "overlay": {
-            "opacity": 0.2,
-            "darkness": 0.9
-        }
+  "accent" : {
+    "brightness" : 0.9,
+    "hue" : 190,
+    "saturation" : 0.7
+  },
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Adriatic Drift",
+  "id" : "adriatic_drift",
+  "material" : {
+    "blurRadius" : 12,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 0.9,
+      "opacity" : 0.2
     }
+  },
+  "parameters" : [
+    {
+      "default" : 1.1924751,
+      "id" : "timeScale",
+      "label" : "Time Scale",
+      "range" : {
+        "max" : 2,
+        "min" : 0.25
+      },
+      "type" : "float"
+    }
+  ],
+  "renderer" : {
+    "fragmentFunction" : "adriaticDriftFrag",
+    "functionName" : "adriaticDrift",
+    "shaderFile" : "AdriaticDrift.metal",
+    "type" : "stitchable"
+  },
+  "shaderArguments" : [
+    {
+      "source" : "viewWidth"
+    },
+    {
+      "source" : "viewHeight"
+    },
+    {
+      "source" : "time"
+    },
+    {
+      "id" : "timeScale",
+      "source" : "parameter"
+    }
+  ],
+  "version" : "1.0.0"
 }
