@@ -142,6 +142,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         }
     }
 
+    /// Time scale from ThemeAppearance, used for interpolated transitions.
+    /// Updated from MetalWallpaperView when the appearance changes.
+    public var appearanceTimeScale: Float = 1.0
+
     // MARK: - Active Renderer Tracking
 
     /// Weak reference to the main (non-picker) renderer for snapshot capture.
@@ -516,8 +520,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         }
 
         let now = CACurrentMediaTime()
-        let timeScale = theme.manifest.renderer.timeScale ?? 1.0
-        let t = Float(now - startTime) * timeScale
+        let t = Float(now - startTime) * appearanceTimeScale
 
         // Cap resolution scale by theme's maxScale (for expensive shaders)
         let cappedScale = min(resolutionScale, theme.manifest.renderer.effectiveMaxScale)
@@ -983,8 +986,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
         // Calculate time
         let now = CACurrentMediaTime()
-        let timeScale = theme.manifest.renderer.timeScale ?? 1.0
-        let time = Float(now - startTime) * timeScale
+        let time = Float(now - startTime) * appearanceTimeScale
 
         // Create render pass descriptor
         let rpd = MTLRenderPassDescriptor()

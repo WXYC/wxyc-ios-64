@@ -564,8 +564,37 @@ public final class ThemeConfiguration {
             playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID)),
             playbackDarkness: playbackDarkness(for: themeID),
             playbackAlpha: playbackAlpha(for: themeID),
-            materialBlendMode: DiscreteTransition(effectiveMaterialBlendMode(for: themeID))
+            materialBlendMode: DiscreteTransition(effectiveMaterialBlendMode(for: themeID)),
+            timeScale: easedTimeScale(for: themeID)
         )
+    }
+
+    /// Returns the eased timeScale for a given theme ID.
+    /// Reads the raw value from the theme's ParameterStore and applies any slider easing.
+    private func easedTimeScale(for themeID: String) -> Double {
+        guard let theme = registry.theme(for: themeID),
+              let param = theme.manifest.parameters.first(where: { $0.id == "timeScale" }) else {
+            // Default for themes without a timeScale parameter
+            return 1.0
+        }
+        let rawValue = theme.parameterStore.floatValue(for: "timeScale")
+        let easedValue = applyEasing(Double(rawValue), param: param)
+        return easedValue
+    }
+
+    /// Applies the easing function defined in the parameter to a normalized value.
+    private func applyEasing(_ value: Double, param: ParameterDefinition) -> Double {
+        guard let easing = param.easing,
+              let range = param.range else {
+            return value
+        }
+        // Normalize value to 0-1 range
+        let normalized = (value - Double(range.min)) / Double(range.max - range.min)
+        let clamped = max(0, min(1, normalized))
+        // Apply easing
+        let eased = easing.apply(to: Float(clamped))
+        // Scale back to original range
+        return Double(range.min) + Double(eased) * Double(range.max - range.min)
     }
 
     private func loadHSBOffset(forKey key: String) -> HSBOffset? {

@@ -60,7 +60,7 @@
     },
     {
       "default" : 26.74627,
-      "id" : "timeSpeed",
+      "id" : "timeScale",
       "label" : "Time Speed",
       "range" : {
         "max" : 64,
@@ -102,7 +102,7 @@
       "source" : "parameter"
     },
     {
-      "id" : "timeSpeed",
+      "id" : "timeScale",
       "source" : "parameter"
     }
   ],

@@ -32,7 +32,7 @@ struct Parameters {
     float targetHue;
     float hueRange;
     float noiseFrequency;
-    float timeSpeed;
+    float timeScale;
     float pad;
 };
 
@@ -159,7 +159,7 @@ static inline float perlinNoiseOctaves(float3 position, int freq, int octaves,
 static half4 spaceMountainImpl(float2 position, float width, float height, float time,
                                   float bandCount, float lineWidthScale, float glowBrightnessParam,
                                   float targetHueParam, float hueRangeParam, float noiseFrequency,
-                                  float timeSpeed, float lod) {
+                                  float timeScale, float lod) {
     float aspect = width / height;
     float invWidth = 1.0f / width;
     float invHeight = 1.0f / height;
@@ -167,7 +167,7 @@ static half4 spaceMountainImpl(float2 position, float width, float height, float
     float2 pos = float2(position.x * invWidth * aspect, position.y * invHeight);
 
     uint seed = 0x578437adU;
-    float z = time * timeSpeed;
+    float z = time * timeScale;
     int freq = int(noiseFrequency);
     int octave = 2;
     float persistence = 0.5f;
@@ -218,9 +218,9 @@ static half4 spaceMountainImpl(float2 position, float width, float height, float
 [[ stitchable ]]
 half4 spaceMountain(float2 position, half4 inColor, float width, float height, float time,
                       float bandCount, float lineWidthScale, float glowBrightness,
-                      float targetHue, float hueRange, float noiseFrequency, float timeSpeed) {
+                      float targetHue, float hueRange, float noiseFrequency, float timeScale) {
     return spaceMountainImpl(position, width, height, time, bandCount, lineWidthScale,
-                               glowBrightness, targetHue, hueRange, noiseFrequency, timeSpeed, 1.0f);
+                               glowBrightness, targetHue, hueRange, noiseFrequency, timeScale, 1.0f);
 }
 
 // Fragment wrapper for MTKView rendering
@@ -230,5 +230,5 @@ fragment half4 spaceMountainFrag(VertexOut in [[stage_in]],
     float2 pos = in.uv * u.resolution;
     return spaceMountainImpl(pos, u.resolution.x, u.resolution.y, u.time,
                                p.bandCount, p.lineWidthScale, p.glowBrightness,
-                               p.targetHue, p.hueRange, p.noiseFrequency, p.timeSpeed, u.lod);
+                               p.targetHue, p.hueRange, p.noiseFrequency, p.timeScale, u.lod);
 }

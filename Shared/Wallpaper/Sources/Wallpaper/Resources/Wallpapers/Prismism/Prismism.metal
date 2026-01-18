@@ -43,7 +43,7 @@ struct Parameters {
     float waveScale;
     float iterationDivisor;
     float colorEnhancement;
-    float timeSpeed;
+    float timeScale;
     float pad[3];
 };
 
@@ -55,7 +55,7 @@ struct VertexOut {
 // Core implementation (called by both stitchable and fragment versions)
 static half4 prismismImpl(float2 position, float width, float height, float time,
                             float highlightCompression, float waveScale, float iterationDivisor,
-                            float colorEnhancement, float timeSpeed, float lod) {
+                            float colorEnhancement, float timeScale, float lod) {
     float2 iResolution = float2(width, height);
 
     // Wrap time to prevent floating-point precision loss over extended runtime.
@@ -66,7 +66,7 @@ static half4 prismismImpl(float2 position, float width, float height, float time
 
     // 2-octave noise oscillates time for organic variation in animation pace
     float timeVariation = (noise2Octave(wrappedTime * 0.03f) - 0.5f) * 8.0f;
-    float t = (wrappedTime + timeVariation) / timeSpeed;
+    float t = (wrappedTime + timeVariation) / timeScale;
 
     float3 col = float3(0.0f);
 
@@ -109,10 +109,10 @@ half4 prismism(float2 position,
                  float waveScale,
                  float iterationDivisor,
                  float colorEnhancement,
-                 float timeSpeed)
+                 float timeScale)
 {
     return prismismImpl(position, width, height, time, highlightCompression,
-                          waveScale, iterationDivisor, colorEnhancement, timeSpeed, 1.0f);  // Full quality for SwiftUI
+                          waveScale, iterationDivisor, colorEnhancement, timeScale, 1.0f);  // Full quality for SwiftUI
 }
 
 // Fragment wrapper for MTKView rendering
@@ -124,5 +124,5 @@ fragment half4 prismismFrag(
     float2 pos = in.uv * u.resolution;
     return prismismImpl(pos, u.resolution.x, u.resolution.y, u.time,
                           p.highlightCompression, p.waveScale, p.iterationDivisor,
-                          p.colorEnhancement, p.timeSpeed, u.lod);
+                          p.colorEnhancement, p.timeScale, u.lod);
 }

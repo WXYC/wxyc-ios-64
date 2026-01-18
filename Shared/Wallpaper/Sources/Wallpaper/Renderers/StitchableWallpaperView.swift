@@ -14,6 +14,7 @@ import SwiftUI
 public struct StitchableWallpaperView: View {
     @Environment(\.displayScale) private var displayScale
     @Environment(\.wallpaperAnimationStartTime) private var startTime
+    @Environment(\.themeAppearance) private var appearance
 
     let theme: LoadedTheme
 
@@ -24,7 +25,8 @@ public struct StitchableWallpaperView: View {
     public var body: some View {
         TimelineView(.animation) { context in
             GeometryReader { geometry in
-                let time = Float(context.date.timeIntervalSince(startTime))
+                let rawTime = Float(context.date.timeIntervalSince(startTime))
+                let time = rawTime * Float(appearance.timeScale)
                 let width = Float(geometry.size.width)
                 let height = Float(geometry.size.height)
                 let scale = Float(displayScale)

@@ -2,6 +2,9 @@
 //  Plasma.metal
 //  Wallpaper
 //
+//  Metal shader implementing the Plasma wallpaper with animated sine wave patterns
+//  and oscillating RGB colors. Supports both SwiftUI stitchable and MTKView rendering.
+//
 //  Created by Jake Bromberg on 12/20/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
@@ -25,7 +28,7 @@ struct Parameters {
     float colorOffsetG;
     float colorOffsetB;
     float waveThreeAmplitude;
-    float timeSpeed;
+    float timeScale;
     float pad;
 };
 
@@ -37,10 +40,10 @@ struct VertexOut {
 // Core implementation
 static half4 plasmaImpl(float2 position, float width, float height, float time,
                         float patternScale, float colorAmplitude, float3 colorOffset,
-                        float waveThreeAmplitude, float timeSpeed) {
+                        float waveThreeAmplitude, float timeScale) {
     float2 iResolution = float2(width, height);
     float2 fragCoord = position;
-    float iTime = time * timeSpeed;
+    float iTime = time * timeScale;
 
     // Normalized pixel coordinates scaled up
     float2 p = patternScale * fragCoord / iResolution;
@@ -59,9 +62,9 @@ static half4 plasmaImpl(float2 position, float width, float height, float time,
 [[ stitchable ]]
 half4 plasma(float2 position, half4 inColor, float width, float height, float time,
              float patternScale, float colorAmplitude, float colorOffsetR,
-             float colorOffsetG, float colorOffsetB, float waveThreeAmplitude, float timeSpeed) {
+             float colorOffsetG, float colorOffsetB, float waveThreeAmplitude, float timeScale) {
     return plasmaImpl(position, width, height, time, patternScale, colorAmplitude,
-                      float3(colorOffsetR, colorOffsetG, colorOffsetB), waveThreeAmplitude, timeSpeed);
+                      float3(colorOffsetR, colorOffsetG, colorOffsetB), waveThreeAmplitude, timeScale);
 }
 
 // Fragment wrapper for MTKView rendering
@@ -72,5 +75,5 @@ fragment half4 plasmaFrag(VertexOut in [[stage_in]],
     return plasmaImpl(pos, u.resolution.x, u.resolution.y, u.time,
                       p.patternScale, p.colorAmplitude,
                       float3(p.colorOffsetR, p.colorOffsetG, p.colorOffsetB),
-                      p.waveThreeAmplitude, p.timeSpeed);
+                      p.waveThreeAmplitude, p.timeScale);
 }
