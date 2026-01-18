@@ -434,13 +434,14 @@ public struct ParameterDefinition: Codable, Sendable, Identifiable {
     public let group: String?
     public let defaultValue: ParameterValue
     public let range: ParameterRange?
+    public let easing: ParameterEasing?
     public let userDefaultsKey: String?
     public let components: [ParameterComponentDefinition]?
 
     enum CodingKeys: String, CodingKey {
         case id, type, label, group
         case defaultValue = "default"
-        case range, userDefaultsKey, components
+        case range, easing, userDefaultsKey, components
     }
 
     public init(
@@ -450,6 +451,7 @@ public struct ParameterDefinition: Codable, Sendable, Identifiable {
         group: String? = nil,
         defaultValue: ParameterValue,
         range: ParameterRange? = nil,
+        easing: ParameterEasing? = nil,
         userDefaultsKey: String? = nil,
         components: [ParameterComponentDefinition]? = nil
     ) {
@@ -459,6 +461,7 @@ public struct ParameterDefinition: Codable, Sendable, Identifiable {
         self.group = group
         self.defaultValue = defaultValue
         self.range = range
+        self.easing = easing
         self.userDefaultsKey = userDefaultsKey
         self.components = components
     }
@@ -470,6 +473,35 @@ public enum ParameterType: String, Codable, Sendable {
     case float3
     case color
     case bool
+}
+
+/// Easing function applied to parameter values before passing to shaders.
+public enum ParameterEasing: String, Codable, Sendable {
+    /// Quadratic ease-in: t² (slow start, accelerates)
+    case easeIn
+
+    /// Quadratic ease-out: 1 - (1-t)² (fast start, decelerates)
+    case easeOut
+
+    /// Quadratic ease-in-out: smooth S-curve
+    case easeInOut
+
+    /// Applies the easing function to a normalized value (0-1).
+    public func apply(to t: Float) -> Float {
+        let clamped = max(0, min(1, t))
+        switch self {
+        case .easeIn:
+            return clamped * clamped
+        case .easeOut:
+            return 1 - (1 - clamped) * (1 - clamped)
+        case .easeInOut:
+            if clamped < 0.5 {
+                return 2 * clamped * clamped
+            } else {
+                return 1 - pow(-2 * clamped + 2, 2) / 2
+            }
+        }
+    }
 }
 
 public struct ParameterRange: Codable, Sendable {
