@@ -143,9 +143,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         
             try engine.start()
             playerNode.play()
-            Log(.info, "Audio engine restarted after configuration change")
+            Log(.info, category: .playback, "Audio engine restarted after configuration change")
         } catch {
-            Log(.error, "Failed to restart engine after configuration change: \(error)")
+            Log(.error, category: .playback, "Failed to restart engine after configuration change: \(error)")
             eventContinuation.yield(.error(error))
         }
     }

@@ -53,7 +53,7 @@ public actor ColorPaletteService {
 
         // Check cache first
         if let cached: ColorPalette = try? await cacheCoordinator.value(for: fullCacheKey) {
-            Log(.info, "Palette cache hit for \(fullCacheKey)")
+            Log(.info, category: .artwork, "Palette cache hit for \(fullCacheKey)")
             return cached
         }
 
@@ -109,7 +109,7 @@ public actor ColorPaletteService {
         mode: PaletteMode
     ) async -> ColorPalette? {
         guard let dominantColor = extractor.extractDominantColor(from: image) else {
-            Log(.error, "Failed to extract dominant color for \(cacheKey)")
+            Log(.error, category: .artwork, "Failed to extract dominant color for \(cacheKey)")
             return nil
         }
 
@@ -118,7 +118,7 @@ public actor ColorPaletteService {
         // Cache the result
         await cacheCoordinator.set(value: palette, for: cacheKey, lifespan: .thirtyDays)
 
-        Log(.info, "Generated and cached palette for \(cacheKey)")
+        Log(.info, category: .artwork, "Generated and cached palette for \(cacheKey)")
         return palette
     }
 

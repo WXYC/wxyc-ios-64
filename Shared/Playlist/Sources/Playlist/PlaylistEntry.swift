@@ -167,7 +167,7 @@ public struct Playcut: PlaylistEntry, Hashable {
                 self.rotation = false
             }
         } catch {
-            Log(.error, "Could not decode Playcut: \(error)")
+            Log(.error, category: .network, "Could not decode Playcut: \(error)")
             PostHogSDK.shared.capture(error: error, context: "Playcut init")
             throw error
         }

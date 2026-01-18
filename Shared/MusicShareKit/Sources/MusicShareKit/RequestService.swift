@@ -70,23 +70,23 @@ public struct RequestService: Sendable {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                Log(.error, "No response object from request service")
+                Log(.error, category: .network, "No response object from request service")
                 throw RequestServiceError.invalidResponse
             }
     
             if httpResponse.statusCode == 200 {
-                Log(.info, "Request sent successfully. Status code: \(httpResponse.statusCode)")
+                Log(.info, category: .network, "Request sent successfully. Status code: \(httpResponse.statusCode)")
                 let notification = RequestSentMessage.makeNotification(RequestSentMessage(), object: RequestServiceSubject.shared)
                 NotificationCenter.default.post(notification)
             } else {
-                Log(.error, "Request failed. Status code: \(httpResponse.statusCode)")
-                Log(.error, "Response data: \(String(data: data, encoding: .utf8) ?? "nil")")
+                Log(.error, category: .network, "Request failed. Status code: \(httpResponse.statusCode)")
+                Log(.error, category: .network, "Response data: \(String(data: data, encoding: .utf8) ?? "nil")")
                 throw RequestServiceError.serverError(statusCode: httpResponse.statusCode)
             }
         } catch let error as RequestServiceError {
             throw error
         } catch {
-            Log(.error, "Error sending request: \(error)")
+            Log(.error, category: .network, "Error sending request: \(error)")
             MusicShareKit.trackEvent(
                 "$exception",
                 properties: [

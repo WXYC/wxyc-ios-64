@@ -122,7 +122,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         } else {
             // Shared container unavailable - log error (except on simulator)
             #if !targetEnvironment(simulator)
-            Log(.error, "App group container not available for '\(Self.appGroupID)'. Check entitlements and provisioning profile.")
+            Log(.error, category: .caching, "App group container not available for '\(Self.appGroupID)'. Check entitlements and provisioning profile.")
             #endif
             self.cacheDirectory = nil
         }
@@ -202,7 +202,7 @@ struct DiskCache: Cache, @unchecked Sendable {
 
         // Check for metadata xattr - purge legacy files without it
         guard let metadata = getMetadata(for: fileURL) else {
-            Log(.info, "No xattr metadata for \(key), purging old-format file")
+            Log(.info, category: .caching, "No xattr metadata for \(key), purging old-format file")
             try? FileManager.default.removeItem(at: fileURL)
             return nil
         }
@@ -222,7 +222,7 @@ struct DiskCache: Cache, @unchecked Sendable {
 
         // Check for metadata xattr - purge legacy files without it
         guard getMetadata(for: fileURL) != nil else {
-            Log(.info, "No xattr metadata for \(key), purging old-format file")
+            Log(.info, category: .caching, "No xattr metadata for \(key), purging old-format file")
             try? FileManager.default.removeItem(at: fileURL)
             return nil
         }
@@ -232,7 +232,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             return try Data(contentsOf: fileURL)
         } catch let error as NSError {
             // Log read failures for debugging and analytics
-            Log(.error, "Failed to read file \(fileURL): \(error)")
+            Log(.error, category: .caching, "Failed to read file \(fileURL): \(error)")
             let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileURL): Error Domain=\(error.domain) Code=\(error.code) \(error.localizedDescription)")
             PostHogSDK.shared.capture(error: postHogError, context: "DiskCache data(for:): failed to read file")
             return nil
@@ -248,7 +248,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             // Cache directory unavailable - log error (except on simulator)
             #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
-            Log(.error, error.localizedDescription)
+            Log(.error, category: .caching, error.localizedDescription)
             PostHogSDK.shared.capture(error: error, context: "DiskCache set(_:metadata:for:)")
             #endif
 
@@ -278,7 +278,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         do {
             try FileManager.default.removeItem(at: fileURL)
         } catch {
-            Log(.error, "Failed to remove \(fileURL) from disk: \(error)")
+            Log(.error, category: .caching, "Failed to remove \(fileURL) from disk: \(error)")
         }
     }
 
@@ -292,7 +292,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             // Cache directory unavailable - log error (except on simulator)
             #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
-            Log(.error, error.localizedDescription)
+            Log(.error, category: .caching, error.localizedDescription)
             PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
             #endif
             return []
@@ -303,7 +303,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         do {
             contents = try FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
         } catch {
-            Log(.error, "Failed to read Cache Directory: \(error.localizedDescription)")
+            Log(.error, category: .caching, "Failed to read Cache Directory: \(error.localizedDescription)")
             PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
             return []
         }
@@ -335,9 +335,9 @@ struct DiskCache: Cache, @unchecked Sendable {
             }
             // Also clear the in-memory fallback cache
             cache.removeAllObjects()
-            Log(.info, "Cleared all cache entries from \(cacheDirectory.lastPathComponent)")
+            Log(.info, category: .caching, "Cleared all cache entries from \(cacheDirectory.lastPathComponent)")
         } catch {
-            Log(.error, "Failed to clear cache: \(error)")
+            Log(.error, category: .caching, "Failed to clear cache: \(error)")
         }
     }
 
@@ -361,7 +361,7 @@ struct DiskCache: Cache, @unchecked Sendable {
                 totalBytes += Int64(resourceValues.fileSize ?? 0)
             }
         } catch {
-            Log(.error, "Failed to calculate cache size: \(error)")
+            Log(.error, category: .caching, "Failed to calculate cache size: \(error)")
         }
 
         return totalBytes

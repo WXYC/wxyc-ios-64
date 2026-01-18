@@ -170,14 +170,14 @@ struct WXYCApp: App {
             }
         }
         .backgroundTask(.appRefresh("com.wxyc.refresh")) {
-            Log(.info, "Background refresh started")
+            Log(.info, category: .general, "Background refresh started")
 
             // Fetch fresh playlist (this always fetches from network, ignoring cache)
             // and caches it with a 15-minute lifespan.
             // Note: Widget reload is handled by WidgetStateService observing playlist updates.
             let playlist = await appState.playlistService.fetchAndCachePlaylist()
 
-            Log(.info, "Background refresh completed successfully with \(playlist.entries.count) entries")
+            Log(.info, category: .general, "Background refresh completed successfully with \(playlist.entries.count) entries")
 
             PostHogSDK.shared.capture("Background refresh completed", additionalData: [
                 "entry_count": "\(playlist.entries.count)"
@@ -202,9 +202,9 @@ struct WXYCApp: App {
                 CommandMenu("Debug") {
                     Button("Trigger Background Refresh") {
                         Task {
-                            Log(.info, "Manual background refresh triggered")
+                            Log(.info, category: .general, "Manual background refresh triggered")
                             let playlist = await appState.playlistService.fetchAndCachePlaylist()
-                            Log(.info, "Manual background refresh completed with \(playlist.entries.count) entries")
+                            Log(.info, category: .general, "Manual background refresh completed with \(playlist.entries.count) entries")
                         }
                     }
                 }
@@ -310,9 +310,9 @@ struct WXYCApp: App {
     
         do {
             try BGTaskScheduler.shared.submit(request)
-            Log(.info, "Scheduled background refresh for 15 minutes from now")
+            Log(.info, category: .general, "Scheduled background refresh for 15 minutes from now")
         } catch {
-            Log(.error, "Failed to schedule background refresh: \(error)")
+            Log(.error, category: .general, "Failed to schedule background refresh: \(error)")
             PostHogSDK.shared.capture(error: error, context: "scheduleBackgroundRefresh")
         }
     }
@@ -325,7 +325,7 @@ struct WXYCApp: App {
         Task {
             let isExpired = await appState.playlistService.isCacheExpired()
             if isExpired {
-                Log(.info, "Cache expired while backgrounded - triggering foreground refresh")
+                Log(.info, category: .general, "Cache expired while backgrounded - triggering foreground refresh")
                 _ = await appState.playlistService.fetchAndCachePlaylist()
             }
         }
@@ -343,7 +343,7 @@ struct WXYCApp: App {
             await CacheCoordinator.AlbumArt.clearAll()
             UserDefaults.standard.set(false, forKey: SettingsBundleKeys.clearArtworkCache)
 
-            Log(.info, "Cleared artwork cache via Settings toggle (\(sizeBeforeClear) bytes)")
+            Log(.info, category: .general, "Cleared artwork cache via Settings toggle (\(sizeBeforeClear) bytes)")
             PostHogSDK.shared.capture("Artwork cache cleared", properties: [
                 "source": "settings_toggle",
                 "size_bytes": sizeBeforeClear
@@ -364,11 +364,11 @@ struct WXYCApp: App {
 
                 if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
                     appState.themeConfiguration.extractAndCachePalette(from: snapshot)
-                    Log(.info, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID) (attempt \(attempt))")
+                    Log(.info, category: .general, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID) (attempt \(attempt))")
                     return
                 }
             }
-            Log(.warning, "Failed to capture wallpaper snapshot after 5 attempts")
+            Log(.warning, category: .general, "Failed to capture wallpaper snapshot after 5 attempts")
         }
     }
 
@@ -413,7 +413,7 @@ struct WXYCApp: App {
                     ]
                 )
             } catch {
-                Log(.error, "Failed to donate Siri intent: \(error)")
+                Log(.error, category: .general, "Failed to donate Siri intent: \(error)")
                 PostHogSDK.shared.capture(error: error, context: "WXYCApp: Failed to donate Siri intent")
             }
         }
@@ -426,8 +426,8 @@ struct WXYCApp: App {
         pickerState: ThemePickerState()
     ) {
         RootTabView()
-            .environment(\.playlistService, PlaylistService())
-            .environment(\.artworkService, MultisourceArtworkService())
+            .environment(\.playlistService, .preview)
+            .environment(\.artworkService, .preview)
             .environment(\.playbackController, AudioPlayerController.shared)
             .preferredColorScheme(.light)
     }

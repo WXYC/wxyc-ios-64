@@ -120,12 +120,12 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// Fetches a playlist from the remote source.
     /// Returns an empty playlist if the fetch fails.
     public func fetchPlaylist() async -> Playlist {
-        Log(.info, "Fetching remote playlist (API \(apiVersion.rawValue))")
+        Log(.info, category: .network, "Fetching remote playlist (API \(apiVersion.rawValue))")
         let timer = Core.Timer.start()
         do {
             let playlist = try await self.dataSource.getPlaylist()
             let duration = timer.duration()
-            Log(.info, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
+            Log(.info, category: .network, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
 
             // Simplified sampling: 10% of requests
             if Int.random(in: 1...10) == 1 {
@@ -138,7 +138,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             return Playlist.empty
         } catch let error as NSError {
             let duration = timer.duration()
-            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
             analytics.capture(
                 error: error.localizedDescription,
                 code: error.code,
@@ -149,7 +149,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             return Playlist.empty
         } catch let error as AnalyticsOSError {
             let duration = timer.duration()
-            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
             analytics.capture(
                 error: error,
                 context: "fetchPlaylist",
@@ -159,7 +159,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             return Playlist.empty
         } catch let error as AnalyticsDecoderError {
             let duration = timer.duration()
-            Log(.error, "Remote playlist fetch failed after \(duration) seconds: \(error)")
+            Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
             analytics.capture(
                 error: error,
                 context: "fetchPlaylist",
