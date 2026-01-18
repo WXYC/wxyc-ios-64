@@ -339,7 +339,7 @@ class ShareExtensionViewModel {
     // MARK: - URL Processing
     
     func extractAndProcessURL() async {
-        Log(.info, "extractAndProcessURL started")
+        Log(.info, category: .ui, "extractAndProcessURL started")
 
         // Configure Spotify credentials
         let config = MusicShareKit.configuration
@@ -347,28 +347,28 @@ class ShareExtensionViewModel {
             clientId: config.spotifyClientId,
             clientSecret: config.spotifyClientSecret
         ))
-        Log(.info, "Spotify credentials configured")
+        Log(.info, category: .ui, "Spotify credentials configured")
 
         // For URL-based previews, process the stored URL
         if let previewURL = previewURL {
-            Log(.info, "Processing preview URL: \(previewURL)")
+            Log(.info, category: .ui, "Processing preview URL: \(previewURL)")
             await processURL(previewURL)
             return
         }
 
         // Skip URL extraction for state-based preview mode
         guard !isPreview else {
-            Log(.info, "Skipping - isPreview mode")
+            Log(.info, category: .ui, "Skipping - isPreview mode")
             return
         }
 
         guard let extensionContext = extensionContext,
               let inputItems = extensionContext.inputItems as? [NSExtensionItem] else {
-            Log(.error, "extensionContext or inputItems is nil")
+            Log(.error, category: .ui, "extensionContext or inputItems is nil")
             state = .error
             return
         }
-        Log(.info, "Found \(inputItems.count) input items")
+        Log(.info, category: .ui, "Found \(inputItems.count) input items")
         
         for item in inputItems {
             if let attachments = item.attachments {

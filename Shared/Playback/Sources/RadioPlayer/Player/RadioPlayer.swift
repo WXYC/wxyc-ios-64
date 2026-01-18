@@ -105,7 +105,7 @@ public final class RadioPlayer: Sendable {
             for: PlayerRateDidChangeMessage.self
         ) { [weak self] message in
             guard let self else { return }
-            Log(.info, "RadioPlayer did receive rate change message", message)
+            Log(.info, category: .playback, "RadioPlayer did receive rate change message: \(message)")
             self.handleRateChange(rate: message.rate)
         }
 
@@ -114,7 +114,7 @@ public final class RadioPlayer: Sendable {
             for: PlaybackStalledMessage.self
         ) { [weak self] _ in
             guard let self else { return }
-            Log(.error, "RadioPlayer playback stalled")
+            Log(.error, category: .playback, "RadioPlayer playback stalled")
             self.handlePlaybackStalled()
         }
     }

@@ -96,6 +96,11 @@ public extension EnvironmentValues {
 @MainActor
 @Observable
 public final class ThemePickerState {
+    /// The shared animation used for all theme picker transitions.
+    /// Use this with `withAnimation` at state change sites to ensure
+    /// all views animate together via SwiftUI's transaction system.
+    public static let transitionAnimation: Animation = .spring(duration: 0.5, bounce: 0.2)
+
     /// Whether the picker mode is currently active.
     public var isActive: Bool = false
 
@@ -185,9 +190,9 @@ public final class ThemePickerState {
 
         // Log theme selection
         if themeChanged {
-            Log(.info, "Theme changed from '\(previousID)' to '\(selectedThemeID)'")
+            Log(.info, category: .wallpaper, "Theme changed from '\(previousID)' to '\(selectedThemeID)'")
         } else {
-            Log(.info, "Theme confirmed: '\(selectedThemeID)' (unchanged)")
+            Log(.info, category: .wallpaper, "Theme confirmed: '\(selectedThemeID)' (unchanged)")
         }
 
         // Record analytics event
