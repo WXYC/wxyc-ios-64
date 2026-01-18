@@ -1,0 +1,112 @@
+{
+  "accent" : {
+    "brightness" : 1,
+    "hue" : 335,
+    "saturation" : 0.5
+  },
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Box Suite",
+  "id" : "box_suite",
+  "material" : {
+    "blurRadius" : 8,
+    "foreground" : "light",
+    "overlay" : {
+      "darkness" : 0,
+      "opacity" : 0
+    }
+  },
+  "parameters" : [
+    {
+      "default" : 0.95,
+      "id" : "tileColorR",
+      "label" : "Tile Red",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.5,
+      "id" : "tileColorG",
+      "label" : "Tile Green",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.6,
+      "id" : "tileColorB",
+      "label" : "Tile Blue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.8,
+      "id" : "refractIndex",
+      "label" : "Refract Index",
+      "range" : {
+        "max" : 1,
+        "min" : 0.5
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.9,
+      "id" : "cubeTintR",
+      "label" : "Cube Tint Red",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.6,
+      "id" : "cubeTintG",
+      "label" : "Cube Tint Green",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.7,
+      "id" : "cubeTintB",
+      "label" : "Cube Tint Blue",
+      "range" : {
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.15,
+      "id" : "noiseStrength",
+      "label" : "Noise Strength",
+      "range" : {
+        "max" : 0.3,
+        "min" : 0.05
+      },
+      "type" : "float"
+    }
+  ],
+  "renderer" : {
+    "fragmentFunction" : "boxSuiteFrag",
+    "timeScale" : 1,
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
+  },
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
+}
