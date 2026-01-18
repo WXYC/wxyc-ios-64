@@ -155,7 +155,6 @@
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
 		INTENTSPKGFILEREF000001 /* Intents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Intents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
-		LERPABLE0FILEREF0000001 /* Lerpable */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Lerpable; path = Shared/Lerpable; sourceTree = SOURCE_ROOT; };
 		SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Secrets.xcframework; path = Shared/Secrets/Secrets.xcframework; sourceTree = SOURCE_ROOT; };
 		WALLPAPER0FILEREF0000001 /* Wallpaper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Wallpaper; path = Shared/Wallpaper; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -418,7 +417,6 @@
 				DEBUGPNL0FILEREF0000001 /* DebugPanel */,
 				INTENTSPKGFILEREF000001 /* Intents */,
 				21C88FF06CCC47E090003EAD /* Logger */,
-				LERPABLE0FILEREF0000001 /* Lerpable */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
 				8D0C09BCD2BFEC26D122542E /* OpenNSFW */,
@@ -694,7 +692,6 @@
 				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
 				23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */,
 				WXYCINTENTS00000004 /* XCLocalSwiftPackageReference "Shared/Intents" */,
-				2332850E2F19A9A000E83199 /* XCLocalSwiftPackageReference "Shared/Lerpable" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 6393B8DD84BA2FE9EA639E2D /* Products */;
@@ -2387,10 +2384,6 @@
 		1A4C4581DF37FFB7A421BDE7 /* XCLocalSwiftPackageReference "Shared/AppServices" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/AppServices;
-		};
-		2332850E2F19A9A000E83199 /* XCLocalSwiftPackageReference "Shared/Lerpable" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Shared/Lerpable;
 		};
 		23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */ = {
 			isa = XCLocalSwiftPackageReference;
