@@ -571,8 +571,16 @@ public final class AdaptiveQualityController {
         let stateBasedMomentum = state.normalizedValue
         let baseMomentum = max(signal.momentum, stateBasedMomentum) * mode.momentumMultiplier
         let effectiveMomentum = min(baseMomentum + fpsMomentumBoost, 1.0)
-        // Decay FPS boost over time (so it doesn't persist indefinitely)
-        fpsMomentumBoost *= 0.8
+
+        // Decay FPS boost based on thermal state to coordinate with thermal throttling
+        // Thermal stable: decay quickly (0.5x) to enable recovery
+        // Active thermal pressure: decay slowly (0.8x) to maintain throttling
+        if abs(signal.momentum) < mode.deadZoneThreshold {
+            fpsMomentumBoost *= 0.5
+        } else {
+            fpsMomentumBoost *= 0.8
+        }
+
         currentMomentum = effectiveMomentum
 
         guard var profile = currentProfile else { return }
@@ -586,11 +594,13 @@ public final class AdaptiveQualityController {
         // Apply gradual quality recovery when thermal is stable
         // This allows the profile to drift back toward max quality over time
         // Mode controls how quickly recovery happens (low power mode recovers more slowly)
+        // Recovery scale accelerates recovery when device is cooling rapidly (1.0x to 3.0x)
         if effectiveMomentum < mode.deadZoneThreshold {
-            let recoveryStep = Self.qualityRecoveryStep * mode.recoveryMultiplier
-            newWallpaperFPS = min(newWallpaperFPS + recoveryStep * 5, AdaptiveProfile.wallpaperFPSRange.upperBound)
-            newScale = min(newScale + recoveryStep, AdaptiveProfile.scaleRange.upperBound)
-            newLOD = min(newLOD + recoveryStep * 2, AdaptiveProfile.lodRange.upperBound)
+            let baseRecoveryStep = Self.qualityRecoveryStep * mode.recoveryMultiplier
+            let scaledRecoveryStep = baseRecoveryStep * signal.recoveryScale
+            newWallpaperFPS = min(newWallpaperFPS + scaledRecoveryStep * 5, AdaptiveProfile.wallpaperFPSRange.upperBound)
+            newScale = min(newScale + scaledRecoveryStep, AdaptiveProfile.scaleRange.upperBound)
+            newLOD = min(newLOD + scaledRecoveryStep * 2, AdaptiveProfile.lodRange.upperBound)
         }
 
         // Update profile
