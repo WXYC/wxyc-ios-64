@@ -14,19 +14,19 @@ import Foundation
 /// Themes are the primary entity containing wallpaper configuration and styling properties.
 @MainActor
 public struct ThemeManifest: Codable, Sendable {
-    public let id: String
-    public let displayName: String
-    public let version: String
+    public var id: String
+    public var displayName: String
+    public var version: String
 
     // Wallpaper configuration
-    public let renderer: RendererConfiguration
-    public let parameters: [ParameterDefinition]
-    public let shaderArguments: [ShaderArgument]
+    public var renderer: RendererConfiguration
+    public var parameters: [ParameterDefinition]
+    public var shaderArguments: [ShaderArgument]
 
     // Theme properties
-    public let accent: AccentColor
-    public let material: MaterialConfiguration
-    public let button: ButtonConfiguration?
+    public var accent: AccentColor
+    public var material: MaterialConfiguration
+    public var button: ButtonConfiguration?
 
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
@@ -428,15 +428,15 @@ public enum ShaderArgumentSource: String, Codable, Sendable {
 // MARK: - Parameter Definitions
 
 public struct ParameterDefinition: Codable, Sendable, Identifiable {
-    public let id: String
-    public let type: ParameterType
-    public let label: String
-    public let group: String?
-    public let defaultValue: ParameterValue
-    public let range: ParameterRange?
-    public let easing: ParameterEasing?
-    public let userDefaultsKey: String?
-    public let components: [ParameterComponentDefinition]?
+    public var id: String
+    public var type: ParameterType
+    public var label: String
+    public var group: String?
+    public var defaultValue: ParameterValue
+    public var range: ParameterRange?
+    public var easing: ParameterEasing?
+    public var userDefaultsKey: String?
+    public var components: [ParameterComponentDefinition]?
 
     enum CodingKeys: String, CodingKey {
         case id, type, label, group
