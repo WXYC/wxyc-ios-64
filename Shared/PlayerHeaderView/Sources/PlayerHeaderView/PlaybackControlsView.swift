@@ -34,10 +34,10 @@ struct PlaybackControlsView: View {
                 .frame(width: 50, height: 50)
                 .padding(.trailing, 4)
                 .contentTransition(.symbolEffect)
+                .foregroundStyle(.white)
         }
         .accessibilityIdentifier("playPauseButton")
         .accessibilityValue(isPlaying ? "playing" : "paused")
-        .foregroundStyle(.secondary)
         .brightness(-appearance.playbackDarkness)
         .opacity(appearance.playbackAlpha)
         .blendMode(appearance.playbackBlendMode)
