@@ -640,8 +640,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                     let value = parameterStore.floatValue(for: param.id)
                     paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                // Zero remaining slots
-                for i in params.count..<8 {
+                // Zero remaining slots (only if fewer than 8 parameters)
+                for i in min(params.count, 8)..<8 {
                     paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
                 enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
@@ -666,8 +666,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                     let value = parameterStore.floatValue(for: param.id)
                     paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                // Zero remaining slots
-                for i in params.count..<8 {
+                // Zero remaining slots (only if fewer than 8 parameters)
+                for i in min(params.count, 8)..<8 {
                     paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
                 enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
@@ -724,8 +724,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                     let value = parameterStore.floatValue(for: param.id)
                     paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                // Zero remaining slots
-                for i in params.count..<8 {
+                // Zero remaining slots (only if fewer than 8 parameters)
+                for i in min(params.count, 8)..<8 {
                     paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
                 enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
@@ -756,8 +756,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                     let value = parameterStore.floatValue(for: param.id)
                     paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
-                // Zero remaining slots
-                for i in params.count..<8 {
+                // Zero remaining slots (only if fewer than 8 parameters)
+                for i in min(params.count, 8)..<8 {
                     paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
                 }
                 enc.setFragmentBuffer(uniformBuffer, offset: paramOffset, index: 1)
@@ -952,8 +952,8 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let value = parameterStore.floatValue(for: param.id)
             paramPtr.storeBytes(of: value, toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
         }
-        // Zero remaining slots
-        for i in params.count..<8 {
+        // Zero remaining slots (only if fewer than 8 parameters)
+        for i in min(params.count, 8)..<8 {
             paramPtr.storeBytes(of: Float(0), toByteOffset: i * MemoryLayout<Float>.stride, as: Float.self)
         }
 
