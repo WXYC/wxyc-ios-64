@@ -148,7 +148,9 @@ public final class ParameterStore: Sendable {
                 }
                 switch param.type {
                 case .float:
-                    return .float(floatValue(for: id))
+                    let rawValue = floatValue(for: id)
+                    let easedValue = applyEasing(rawValue, param: param)
+                    return .float(easedValue)
                 case .float2:
                     let (x, y) = float2Value(for: id)
                     return .float2(x, y)
@@ -265,6 +267,21 @@ public final class ParameterStore: Sendable {
             return 0
         }
         return component.defaultValue
+    }
+
+    /// Applies the easing function defined in the parameter to a value.
+    private func applyEasing(_ value: Float, param: ParameterDefinition) -> Float {
+        guard let easing = param.easing,
+              let range = param.range else {
+            return value
+        }
+        // Normalize value to 0-1 range
+        let normalized = (value - range.min) / (range.max - range.min)
+        let clamped = max(0, min(1, normalized))
+        // Apply easing
+        let eased = easing.apply(to: clamped)
+        // Scale back to original range
+        return range.min + eased * (range.max - range.min)
     }
 }
 

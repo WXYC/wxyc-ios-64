@@ -63,6 +63,10 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
     /// during theme picker scrolling.
     public var materialBlendMode: DiscreteTransition<BlendMode>
 
+    /// Animation time multiplier (0.0 = frozen, 1.0 = full speed).
+    /// This value has slider easing already applied from the theme parameter.
+    public var timeScale: Double
+
     public init(
         blurRadius: Double = 8.0,
         overlayOpacity: Double = 0.0,
@@ -74,7 +78,8 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         playbackBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(PlaybackBlendMode.default.blendMode),
         playbackDarkness: Double = 0.0,
         playbackAlpha: Double = 1.0,
-        materialBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(MaterialBlendMode.default.blendMode)
+        materialBlendMode: DiscreteTransition<BlendMode> = DiscreteTransition(MaterialBlendMode.default.blendMode),
+        timeScale: Double = 1.0
     ) {
         self.blurRadius = blurRadius
         self.overlayOpacity = overlayOpacity
@@ -87,6 +92,7 @@ public struct ThemeAppearance: Equatable, @unchecked Sendable {
         self.playbackDarkness = playbackDarkness
         self.playbackAlpha = playbackAlpha
         self.materialBlendMode = materialBlendMode
+        self.timeScale = timeScale
     }
 }
 

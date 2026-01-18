@@ -24,6 +24,7 @@ public struct MetalWallpaperView: ViewRepresentable {
     @Environment(\.wallpaperQualityProfile) private var qualityProfile
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.isThemePickerActive) private var isThemePickerActive
+    @Environment(\.themeAppearance) private var appearance
 
     let theme: LoadedTheme
     let directiveStore: ShaderDirectiveStore?
@@ -83,5 +84,8 @@ public struct MetalWallpaperView: ViewRepresentable {
 
         // Notify coordinator of picker state for idle FPS optimization
         context.coordinator.isInPickerMode = isThemePickerActive
+
+        // Update timeScale from appearance for interpolated transitions
+        context.coordinator.appearanceTimeScale = Float(appearance.timeScale)
     }
 }
