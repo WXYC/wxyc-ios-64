@@ -19,12 +19,23 @@
   },
   "parameters" : [
     {
-      "default" : 1.1924751,
+      "default" : 0.5,
+      "easing" : "easeIn",
       "id" : "timeScale",
       "label" : "Time Scale",
       "range" : {
-        "max" : 2,
-        "min" : 0.25
+        "max" : 1,
+        "min" : 0
+      },
+      "type" : "float"
+    },
+    {
+      "default" : 0.5,
+      "id" : "detail",
+      "label" : "Detail",
+      "range" : {
+        "max" : 1,
+        "min" : 0
       },
       "type" : "float"
     }
@@ -32,23 +43,9 @@
   "renderer" : {
     "fragmentFunction" : "adriaticDriftFrag",
     "functionName" : "adriaticDrift",
-    "shaderFile" : "AdriaticDrift.metal",
-    "type" : "stitchable"
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
   },
-  "shaderArguments" : [
-    {
-      "source" : "viewWidth"
-    },
-    {
-      "source" : "viewHeight"
-    },
-    {
-      "source" : "time"
-    },
-    {
-      "id" : "timeScale",
-      "source" : "parameter"
-    }
-  ],
+  "shaderArguments" : [],
   "version" : "1.0.0"
 }

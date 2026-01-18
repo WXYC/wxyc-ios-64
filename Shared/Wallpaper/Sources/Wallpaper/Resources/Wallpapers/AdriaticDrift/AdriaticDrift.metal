@@ -23,7 +23,7 @@ struct Uniforms {
 // Parameters passed in buffer 1 (up to 8 floats)
 struct Parameters {
     float timeScale;
-    float pad1;
+    float detail;
     float pad2;
     float pad3;
 };
@@ -85,36 +85,60 @@ static float2 rotate(float2 p, float a) {
 
 // ---------------- fbm (noise4) ----------------
 
-static float noise4(float2 uv, float time) {
+// Compute amplitude weight for a given octave using parametric easing.
+// curveExponent controls the falloff shape:
+//   < 1: ease-out (high-freq octaves contribute less)
+//   = 1: linear (standard fbm)
+//   > 1: ease-in (high-freq octaves contribute more)
+static float octaveWeight(int octave, int maxOctaves, float curveExponent) {
+    if (maxOctaves <= 1) return 1.0f;
+    float t = float(octave) / float(maxOctaves - 1);
+    return pow(1.0f - t, curveExponent);
+}
+
+static float noise4(float2 uv, float time, int maxOctaves, float curveExponent) {
     float f = 0.5f;
     float frequency = 1.75f;
-    float amplitude = 0.5f;
+    float baseAmplitude = 0.5f;
 
     // Precompute time-dependent shift once per noise4 call
-    float lt3 = log(time + 3.0f);
+    float lt3 = time * 0.1f;
     float2 shift = rotate(float2(lt3, lt3 / 999.0f), time / 9999.0f);
 
-    // Reduced octave count = 5
-    for (int i = 0; i < 5; i++) {
+    // LOD controls octave count, detail controls amplitude curve
+    for (int i = 0; i < maxOctaves; i++) {
+        float weight = octaveWeight(i, maxOctaves, curveExponent);
+        float amplitude = baseAmplitude * weight;
+
         float2 p = frequency * uv - shift;
         f += amplitude * noise(p);
+
         frequency *= 2.0f;
-        amplitude *= 0.5f;
+        baseAmplitude *= 0.5f;
     }
     return f;
 }
 
 // -----------------------------------------------
 
-static half4 adriaticDriftImpl(float2 position, float width, float height, float time, float timeScale) {
+static half4 adriaticDriftImpl(float2 position, float width, float height, float time, float timeScale, float detail, float lod) {
     float iTime = time * timeScale;
     float2 iResolution = float2(width, height);
     float2 fragCoord = position;
 
+    // LOD (0-1) controls max octaves (2-5) for thermal throttling
+    int maxOctaves = int(mix(2.0f, 5.0f, clamp(lod, 0.0f, 1.0f)) + 0.5f);
+
+    // Detail (0-1) controls amplitude curve exponent:
+    //   detail=0   → exponent=0.25 (strong ease-out, smoothest)
+    //   detail=0.5 → exponent=1.0  (linear, standard fbm)
+    //   detail=1   → exponent=4.0  (strong ease-in, maximum detail)
+    float curveExponent = pow(4.0f, detail - 0.5f);
+
     float2 p = fragCoord / iResolution;
 
     float2 uv = p * float2(iResolution.x / iResolution.y, 0.8f);
-    uv = rotate(uv, log(iTime) / -7.0f);
+    uv = rotate(uv, iTime * -0.02f);
 
     float interval = 10.0f;
     float3 dblue   = interval * float3(1.8f, 2.6f, 2.6f);
@@ -131,23 +155,23 @@ static half4 adriaticDriftImpl(float2 position, float width, float height, float
     // Original structure, with caching enabled
     float f = 0.0f;
 
-    float n_uv = noise4(uv, iTime);
-    float lt1 = log(iTime + 1.0f);
+    float n_uv = noise4(uv, iTime, maxOctaves, curveExponent);
+    float lt1 = iTime * 0.1f;
 
     // 1st layer
-    f = noise4(uv + n_uv * (lt1 + iTime / 60.0f), iTime);
+    f = noise4(uv + n_uv * (lt1 + iTime / 60.0f), iTime, maxOctaves, curveExponent);
     color += f * ndblue;
 
     // 2nd layer
     float2 uv_r2 = rotate(uv, sin(iTime / 11.0f));
-    float n_fuv = noise4(f * uv, iTime);
-    f = noise4(f * uv_r2 + f * n_fuv, iTime);
+    float n_fuv = noise4(f * uv, iTime, maxOctaves, curveExponent);
+    f = noise4(f * uv_r2 + f * n_fuv, iTime, maxOctaves, curveExponent);
     color += f * ncyan;
 
     // 3rd layer
     float2 uv_r3 = rotate(uv, iTime / 7.0f);
     float n_uv2 = n_uv * n_uv;
-    f = noise4(f * uv_r3 + f * n_uv2, iTime);
+    f = noise4(f * uv_r3 + f * n_uv2, iTime, maxOctaves, curveExponent);
     color += f * nmagenta;
 
     color = normalize2(color);
@@ -155,14 +179,15 @@ static half4 adriaticDriftImpl(float2 position, float width, float height, float
 }
 
 [[ stitchable ]]
-half4 adriaticDrift(float2 position, half4 inColor, float width, float height, float time, float timeScale) {
-    return adriaticDriftImpl(position, width, height, time, timeScale);
+half4 adriaticDrift(float2 position, half4 inColor, float width, float height, float time, float timeScale, float detail) {
+    // Stitchable shaders don't receive LOD, so default to full quality
+    return adriaticDriftImpl(position, width, height, time, timeScale, detail, 1.0f);
 }
 
-// Fragment wrapper for MTKView rendering
+// Fragment wrapper for MTKView rendering (receives LOD from thermal controller)
 fragment half4 adriaticDriftFrag(VertexOut in [[stage_in]],
                                   constant Uniforms& u [[buffer(0)]],
                                   constant Parameters& p [[buffer(1)]]) {
     float2 pos = in.uv * u.resolution;
-    return adriaticDriftImpl(pos, u.resolution.x, u.resolution.y, u.time, p.timeScale);
+    return adriaticDriftImpl(pos, u.resolution.x, u.resolution.y, u.time, p.timeScale, p.detail, u.lod);
 }
