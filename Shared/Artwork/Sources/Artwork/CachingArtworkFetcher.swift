@@ -145,7 +145,7 @@ extension CacheCoordinator {
 
             // Decode the PNG
             guard let image = Image(compatibilityData: data) else {
-                Log(.warning, "Failed to decode PNG for key: \(key)")
+                Log(.warning, category: .artwork, "Failed to decode PNG for key: \(key)")
                 continue
             }
 
@@ -154,7 +154,7 @@ extension CacheCoordinator {
             guard let heifData = scaledImage.heifData(
                 compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality
             ) else {
-                Log(.warning, "Failed to encode HEIF for key: \(key)")
+                Log(.warning, category: .artwork, "Failed to encode HEIF for key: \(key)")
                 continue
             }
 
@@ -166,11 +166,11 @@ extension CacheCoordinator {
             await cache.setDataPreservingMetadata(heifData, metadata: metadata, for: key)
             convertedCount += 1
 
-            Log(.info, "Converted \(key): \(data.count) → \(heifData.count) bytes (saved \(bytesSaved))")
+            Log(.info, category: .artwork, "Converted \(key): \(data.count) → \(heifData.count) bytes (saved \(bytesSaved))")
         }
 
         let savedKB = Double(totalBytesSaved) / 1024.0
-        Log(.info, "PNG→HEIF migration complete: \(convertedCount) converted, \(skippedCount) skipped, \(String(format: "%.1f", savedKB)) KB saved")
+        Log(.info, category: .artwork, "PNG→HEIF migration complete: \(convertedCount) converted, \(skippedCount) skipped, \(String(format: "%.1f", savedKB)) KB saved")
     }
 }
 

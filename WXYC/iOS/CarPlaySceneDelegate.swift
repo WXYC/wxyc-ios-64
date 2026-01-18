@@ -44,7 +44,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             self.listTemplate = listTemplate
             
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
-                Log(.info, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
+                Log(.info, category: .ui, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
                 
                 Task { @MainActor in
                     self.observeIsPlaying()
@@ -75,11 +75,11 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     }
     
     nonisolated func nowPlayingTemplateAlbumArtistButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
-        Log(.info, "Hello, World!")
+        Log(.info, category: .ui, "Hello, World!")
     }
     
     nonisolated func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
-        Log(.info, "Hello, World!")
+        Log(.info, category: .ui, "Hello, World!")
     }
     
     // MARK: Private
@@ -111,7 +111,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
-                    Log(.error, "Could not push now playing template: \(error)")
+                    Log(.error, category: .ui, "Could not push now playing template: \(error)")
                     PostHogSDK.shared.capture(error: error, context: "CarPlay: Could not push now playing template")
                 }
             }

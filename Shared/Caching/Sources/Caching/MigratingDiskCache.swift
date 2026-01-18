@@ -92,7 +92,7 @@ struct MigratingDiskCache: Cache, @unchecked Sendable {
 
         // Clean up legacy entry
         legacy.remove(for: key)
-        Log(.info, "Migrated cache entry '\(key)' from legacy to shared container")
+        Log(.info, category: .caching, "Migrated cache entry '\(key)' from legacy to shared container")
 
         return legacyData
     }

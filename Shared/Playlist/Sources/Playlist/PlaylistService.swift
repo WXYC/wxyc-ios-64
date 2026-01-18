@@ -2,6 +2,9 @@
 //  PlaylistService.swift
 //  Playlist
 //
+//  Main service for fetching and caching playlists with periodic updates and multi-observer
+//  broadcasting via AsyncStream. Provides cache-aware fetching for widgets and extensions.
+//
 //  Created by Jake Bromberg on 12/17/18.
 //  Copyright © 2018 WXYC. All rights reserved.
 //
@@ -61,9 +64,9 @@ public final actor PlaylistService: Sendable {
             currentPlaylist = cachedPlaylist
             // Broadcast cached data to any existing observers
             broadcast(cachedPlaylist)
-            Log(.info, "Loaded cached playlist with \(cachedPlaylist.entries.count) entries")
+            Log(.info, category: .network, "Loaded cached playlist with \(cachedPlaylist.entries.count) entries")
         } catch {
-            Log(.info, "No valid cached playlist available")
+            Log(.info, category: .network, "No valid cached playlist available")
         }
     }
     
@@ -112,9 +115,9 @@ public final actor PlaylistService: Sendable {
                 broadcast(playlist)
             }
 
-            Log(.info, "Fetched and cached playlist with \(playlist.entries.count) entries \(playlist.entries)")
+            Log(.info, category: .network, "Fetched and cached playlist with \(playlist.entries.count) entries \(playlist.entries)")
         } else {
-            Log(.warning, "Ignoring empty playlist from background refresh - keeping existing data with \(currentPlaylist.entries.count) entries")
+            Log(.warning, category: .network, "Ignoring empty playlist from background refresh - keeping existing data with \(currentPlaylist.entries.count) entries")
         }
         
         // Return the fetched playlist (may be empty), but in-memory state is preserved
@@ -128,17 +131,17 @@ public final actor PlaylistService: Sendable {
         // Try to get cached playlist first
         do {
             let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
-            Log(.info, "Returning cached playlist with \(cachedPlaylist.entries.count) entries")
+            Log(.info, category: .network, "Returning cached playlist with \(cachedPlaylist.entries.count) entries")
             return cachedPlaylist
         } catch {
             // Cache miss or expired - fetch from network
-            Log(.info, "Cache miss, fetching fresh playlist")
+            Log(.info, category: .network, "Cache miss, fetching fresh playlist")
             let playlist = await fetcher.fetchPlaylist()
 
             // Cache the result for future use
             await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
 
-            Log(.info, "Fetched and cached new playlist with \(playlist.entries.count) entries")
+            Log(.info, category: .network, "Fetched and cached new playlist with \(playlist.entries.count) entries")
             return playlist
         }
     }
@@ -148,7 +151,7 @@ public final actor PlaylistService: Sendable {
     ///
     /// - Parameter version: The API version to switch to.
     public func switchAPIVersion(to version: PlaylistAPIVersion) async {
-        Log(.info, "Switching playlist API to \(version.rawValue)")
+        Log(.info, category: .network, "Switching playlist API to \(version.rawValue)")
             
         // Cancel any existing fetch task
         cancelFetchTask()
@@ -280,7 +283,7 @@ public final actor PlaylistService: Sendable {
                     broadcast(playlist)
                 }
             } else {
-                Log(.warning, "Ignoring empty playlist from fetch - keeping existing data with \(currentPlaylist.entries.count) entries")
+                Log(.warning, category: .network, "Ignoring empty playlist from fetch - keeping existing data with \(currentPlaylist.entries.count) entries")
             }
 
             guard !Task.isCancelled else { break }

@@ -89,7 +89,7 @@ public actor PlaycutMetadataService {
         
         // Check cache
         if let cached: ArtistMetadata = try? await cache.value(for: cacheKey) {
-            Log(.info, "Artist metadata cache hit for ID \(artistId)")
+            Log(.info, category: .network, "Artist metadata cache hit for ID \(artistId)")
             return cached
         }
 
@@ -105,7 +105,7 @@ public actor PlaycutMetadataService {
             await cache.set(value: metadata, for: cacheKey, lifespan: .thirtyDays)
             return metadata
         } catch {
-            Log(.error, "Failed to fetch artist metadata for ID \(artistId): \(error)")
+            Log(.error, category: .network, "Failed to fetch artist metadata for ID \(artistId): \(error)")
             return .empty
         }
     }
@@ -119,24 +119,24 @@ public actor PlaycutMetadataService {
 
         // Check cache
         if let cached: AlbumMetadata = try? await cache.value(for: cacheKey) {
-            Log(.info, "Album metadata cache hit for \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
+            Log(.info, category: .network, "Album metadata cache hit for \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
             return cached
         }
 
         // Fetch from Discogs
-        Log(.info, "Fetching album metadata for: \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
+        Log(.info, category: .network, "Fetching album metadata for: \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
 
         do {
             let searchResult = try await searchDiscogs(for: playcut)
 
             guard let result = searchResult else {
-                Log(.warning, "No Discogs search results found for: \(playcut.artistName)")
+                Log(.warning, category: .network, "No Discogs search results found for: \(playcut.artistName)")
                 let metadata = AlbumMetadata(label: playcut.labelName)
                 await cache.set(value: metadata, for: cacheKey, lifespan: .sevenDays)
                 return metadata
             }
 
-            Log(.info, "Found Discogs result: type=\(result.type), id=\(result.id)")
+            Log(.info, category: .network, "Found Discogs result: type=\(result.type), id=\(result.id)")
 
             // Extract artist ID from release/master details
             let artistId = await extractArtistId(from: result)
@@ -151,7 +151,7 @@ public actor PlaycutMetadataService {
             await cache.set(value: metadata, for: cacheKey, lifespan: .sevenDays)
             return metadata
         } catch {
-            Log(.error, "Failed to fetch album metadata: \(error)")
+            Log(.error, category: .network, "Failed to fetch album metadata: \(error)")
             let metadata = AlbumMetadata(label: playcut.labelName)
             await cache.set(value: metadata, for: cacheKey, lifespan: .sevenDays)
             return metadata
@@ -167,7 +167,7 @@ public actor PlaycutMetadataService {
         
         // Check cache
         if let cached: StreamingLinks = try? await cache.value(for: cacheKey) {
-            Log(.info, "Streaming links cache hit for \(playcut.artistName) - \(playcut.songTitle)")
+            Log(.info, category: .network, "Streaming links cache hit for \(playcut.artistName) - \(playcut.songTitle)")
             return cached
         }
 
@@ -319,7 +319,7 @@ extension PlaycutMetadataService {
             
             return spotifyUrl
         } catch {
-            Log(.error, "Failed to fetch Spotify URL: \(error)")
+            Log(.error, category: .network, "Failed to fetch Spotify URL: \(error)")
             return nil
         }
     }
@@ -393,7 +393,7 @@ extension PlaycutMetadataService {
 
             return trackViewUrl
         } catch {
-            Log(.error, "Failed to fetch Apple Music URL: \(error)")
+            Log(.error, category: .network, "Failed to fetch Apple Music URL: \(error)")
             return nil
         }
     }

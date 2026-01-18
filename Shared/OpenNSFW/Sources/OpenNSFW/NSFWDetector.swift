@@ -54,7 +54,7 @@ public actor NSFWClassifier {
         let modelConfig = MLModelConfiguration()
         let openNSFWModel = try OpenNSFW(contentsOf: modelURL, configuration: modelConfig)
         self.model = try VNCoreMLModel(for: openNSFWModel.model)
-        Log(.info, "OpenNSFW model loaded")
+        Log(.info, category: .artwork, "OpenNSFW model loaded")
     }
 
     public func classify(cgImage: CGImage) throws -> NSFW {
@@ -64,17 +64,17 @@ public actor NSFWClassifier {
 
         let vnRequest = VNCoreMLRequest(model: model) { request, error in
             if let error {
-                Log(.error, "VNCoreMLRequest Error: \(error.localizedDescription)")
+                Log(.error, category: .artwork, "VNCoreMLRequest Error: \(error.localizedDescription)")
                 classificationResult = .failure(NSFWAnalysisError.coreMLError(error))
                 return
             }
             guard let observations = request.results as? [VNClassificationObservation] else {
-                Log(.error, "Unexpected result type from VNCoreMLRequest")
+                Log(.error, category: .artwork, "Unexpected result type from VNCoreMLRequest")
                 classificationResult = .failure(NSFWAnalysisError.invalidObservationType)
                 return
             }
             guard let best = observations.first else {
-                Log(.error, "Unable to retrieve NSFW observation")
+                Log(.error, category: .artwork, "Unable to retrieve NSFW observation")
                 classificationResult = .failure(NSFWAnalysisError.noObservations)
                 return
             }

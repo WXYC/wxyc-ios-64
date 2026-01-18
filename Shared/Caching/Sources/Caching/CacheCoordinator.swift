@@ -219,7 +219,7 @@ public final actor CacheCoordinator {
             return try Self.decoder.decode(Value.self, from: data)
         } catch {
             // Log decode failures for debugging and analytics
-            Log(.error, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
+            Log(.error, category: .caching, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
             PostHogSDK.shared.capture(
                 error: error,
                 context: "CacheCoordinator decode value",
@@ -255,7 +255,7 @@ public final actor CacheCoordinator {
             cache.set(data, metadata: metadata, for: key)
         } catch {
             // Log encode failures for debugging and analytics
-            Log(.error, "Failed to encode value for \(key): \(error)")
+            Log(.error, category: .caching, "Failed to encode value for \(key): \(error)")
             PostHogSDK.shared.capture(
                 error: error,
                 context: "CacheCoordinator encode value",

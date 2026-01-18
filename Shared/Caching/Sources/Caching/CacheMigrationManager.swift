@@ -69,7 +69,7 @@ public enum CacheMigrationManager {
 
         // Check if version has changed since last launch
         if lastKnownVersion != currentVersion {
-            Log(.info, "Version changed from \(lastKnownVersion ?? "nil") to \(currentVersion). Purging cache.")
+            Log(.info, category: .caching, "Version changed from \(lastKnownVersion ?? "nil") to \(currentVersion). Purging cache.")
             purgeAllCaches()
             // Record the new version to prevent re-purging on next launch
             UserDefaults.wxyc.set(currentVersion, forKey: lastKnownVersionKey)

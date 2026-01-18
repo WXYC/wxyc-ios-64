@@ -121,7 +121,7 @@ struct InfoDetailView: View {
         do {
             try await RequestService.shared.sendRequest(message: message)
         } catch {
-            Log(.error, "Error sending request: \(error)")
+            Log(.error, category: .ui, "Error sending request: \(error)")
             PostHogSDK.shared.capture(error: error, context: "Info ViewController")
         }
     }
@@ -222,7 +222,7 @@ struct MailComposerView: UIViewControllerRepresentable {
         func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
             if let error {
                 PostHogSDK.shared.capture(error: error, context: "feedbackEmail")
-                Log(.error, "Failed to send feedback email: \(error)")
+                Log(.error, category: .ui, "Failed to send feedback email: \(error)")
             } else {
                 PostHogSDK.shared.capture("feedback email sent")
             }

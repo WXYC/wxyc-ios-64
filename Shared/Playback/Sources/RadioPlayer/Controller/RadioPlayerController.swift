@@ -210,7 +210,7 @@ public final class RadioPlayerController: PlaybackController {
                 reason: "audio session activation failed",
                 duration: 0
             ))
-            Log(.error, "RadioPlayerController could not start playback: \(error)")
+            Log(.error, category: .playback, "RadioPlayerController could not start playback: \(error)")
             return
         }
         #endif
@@ -283,7 +283,7 @@ private extension RadioPlayerController {
     // MARK: AVPlayer handlers
 
     nonisolated func playbackStalled(_ notification: Notification) {
-        Log(.error, "Playback stalled: \(notification)")
+        Log(.error, category: .playback, "Playback stalled: \(notification)")
 
         Task { @MainActor in
             self.state = .stalled
@@ -297,7 +297,7 @@ private extension RadioPlayerController {
 
     nonisolated func sessionInterrupted(notification: Notification) {
 #if os(iOS) || os(tvOS)
-        Log(.info, "Session interrupted: \(notification)")
+        Log(.info, category: .playback, "Session interrupted: \(notification)")
 
         let userInfo = notification.userInfo
         let typeValue = userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
@@ -340,7 +340,7 @@ private extension RadioPlayerController {
     
     nonisolated func routeChanged(_ notification: Notification) {
 #if os(iOS) || os(tvOS)
-        Log(.info, "Session route changed: \(notification)")
+        Log(.info, category: .playback, "Session route changed: \(notification)")
 
         let userInfo = notification.userInfo
         let reasonValue = userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
@@ -383,12 +383,12 @@ private extension RadioPlayerController {
                 stallDuration: stallDuration,
                 recoveryMethod: .retryWithBackoff
             ))
-            Log(.info, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
+            Log(.info, category: .playback, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
             self.state = .error(.maxReconnectAttemptsExceeded)
             self.backoffTimer.reset()
             return
         }
-        Log(.info, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
+        Log(.info, category: .playback, "Attempting to reconnect with exponential backoff \(self.backoffTimer).")
         reconnectTask = Task {
             if self.radioPlayer.isPlaying {
                 captureRecoveryIfNeeded()
@@ -440,7 +440,7 @@ private extension RadioPlayerController {
                 try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
             } catch {
                 analytics.capture(ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
-                Log(.error, "RadioPlayerController could not deactivate: \(error)")
+                Log(.error, category: .playback, "RadioPlayerController could not deactivate: \(error)")
             }
         }
 #endif

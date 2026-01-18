@@ -82,7 +82,7 @@ public final actor MultisourceArtworkService: ArtworkService {
         do {
             self.nsfwClassifier = try NSFWClassifier()
         } catch {
-            Log(.error, "Failed to initialize NSFW classifier: \(error)")
+            Log(.error, category: .artwork, "Failed to initialize NSFW classifier: \(error)")
             self.nsfwClassifier = nil
         }
 #endif
@@ -132,7 +132,7 @@ public final actor MultisourceArtworkService: ArtworkService {
 #if canImport(Vision)
                 if let nsfwClassifier {
                     guard try await nsfwClassifier.classify(cgImage: artwork) == .sfw else {
-                        Log(.info, "Inappropriate artwork found for \(cacheKey) using fetcher \(fetcher)")
+                        Log(.info, category: .artwork, "Inappropriate artwork found for \(cacheKey) using fetcher \(fetcher)")
                         await self.cacheCoordinator.set(value: Error.nsfw, for: errorCacheKey, lifespan: .thirtyDays)
 
                         return nil
@@ -143,11 +143,11 @@ public final actor MultisourceArtworkService: ArtworkService {
                 await self.cacheCoordinator.set(artwork: artwork, for: cacheKey, lifespan: artworkLifespan)
                 return artwork
             } catch {
-                Log(.info, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(error)")
+                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(error)")
             }
         }
 
-        Log(.error, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
+        Log(.error, category: .artwork, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
         await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: errorCacheKey, lifespan: .thirtyDays)
 
         return nil
