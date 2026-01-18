@@ -22,11 +22,43 @@ struct QualitySignal: Sendable {
     /// Threshold for considering the signal stable (dead zone).
     static let deadZone: Float = 0.1
 
+    /// Momentum threshold for entering heating state (prevents rapid oscillation).
+    static let heatingEntryThreshold: Float = 0.15
+
+    /// Momentum threshold for exiting heating state (creates hysteresis gap).
+    static let heatingExitThreshold: Float = 0.05
+
+    /// Momentum threshold for entering cooling state (prevents rapid oscillation).
+    static let coolingEntryThreshold: Float = -0.15
+
+    /// Momentum threshold for exiting cooling state (creates hysteresis gap).
+    static let coolingExitThreshold: Float = -0.05
+
     /// EMA smoothing factor (0-1). Higher values respond faster to changes.
     static let smoothingFactor: Float = 0.3
 
+    /// EMA smoothing factor for recovery magnitude tracking (slower than momentum).
+    static let recoveryMagnitudeSmoothing: Float = 0.2
+
+    /// Decay rate for recovery magnitude when not actively cooling.
+    static let recoveryMagnitudeDecay: Float = 0.8
+
     /// Current thermal momentum (-1.0 to 1.0).
     private(set) var momentum: Float = 0
+
+    /// Magnitude of cooling rate for proportional recovery scaling (0.0+).
+    ///
+    /// Tracks how quickly the device is cooling down. Higher values indicate
+    /// rapid cooling and enable faster quality recovery. Uses a separate EMA
+    /// with slower smoothing than momentum to avoid jitter.
+    private(set) var recoveryMagnitude: Float = 0
+
+    /// Current thermal direction state (with hysteresis).
+    ///
+    /// Uses entry/exit thresholds to prevent rapid state switching at
+    /// thermal boundaries. Must exceed entry threshold to commit to a
+    /// direction and drop below exit threshold to leave it.
+    private(set) var direction: ThermalDirection = .stable
 
     /// Last recorded thermal state.
     private(set) var lastState: ProcessInfo.ThermalState?
@@ -36,15 +68,25 @@ struct QualitySignal: Sendable {
 
     init() {}
 
-    /// The current thermal trend based on momentum.
+    /// The current thermal trend based on direction with hysteresis.
+    ///
+    /// Direction is updated in record() to prevent rapid switching at thermal boundaries.
+    /// Creates a 0.1 hysteresis gap between entry (±0.15) and exit (±0.05) thresholds.
     var trend: QualityTrend {
-        if momentum > Self.deadZone {
-            return .heating
-        } else if momentum < -Self.deadZone {
-            return .cooling
-        } else {
-            return .stable
-        }
+        direction.toTrend()
+    }
+
+    /// Proportional recovery scale factor based on cooling magnitude (1.0 to 3.0).
+    ///
+    /// Returns a multiplier for quality recovery steps. Higher values indicate
+    /// rapid cooling and enable faster quality restoration:
+    /// - 1.0x: minimal or no cooling (baseline recovery speed)
+    /// - 2.0x: moderate cooling
+    /// - 3.0x: rapid cooling (maximum recovery acceleration)
+    var recoveryScale: Float {
+        // Scale from 1.0x to 3.0x based on recovery magnitude
+        let scale = 1.0 + (recoveryMagnitude * 2.0)
+        return min(scale, 3.0)
     }
 
     /// Records a new thermal state reading and updates momentum.
@@ -72,6 +114,45 @@ struct QualitySignal: Sendable {
 
         // Update momentum using EMA
         momentum = Self.smoothingFactor * delta + (1 - Self.smoothingFactor) * momentum
+
+        // Update recovery magnitude based on cooling rate
+        if delta < 0 {
+            // Device is cooling - track magnitude for proportional recovery
+            let coolingMagnitude = abs(delta)
+            recoveryMagnitude = Self.recoveryMagnitudeSmoothing * coolingMagnitude + (1 - Self.recoveryMagnitudeSmoothing) * recoveryMagnitude
+        } else {
+            // Device heating or stable - decay recovery magnitude
+            recoveryMagnitude *= Self.recoveryMagnitudeDecay
+        }
+
+        // Update direction state using hysteresis thresholds
+        updateDirection()
+    }
+
+    /// Updates the thermal direction state using hysteresis thresholds.
+    ///
+    /// Must be called after momentum is updated to ensure direction tracking
+    /// reflects current momentum with appropriate hysteresis gaps.
+    private mutating func updateDirection() {
+        switch direction {
+        case .heating:
+            // Must drop below exit threshold to leave heating
+            if momentum < Self.heatingExitThreshold {
+                direction = .stable
+            }
+        case .cooling:
+            // Must rise above exit threshold to leave cooling
+            if momentum > Self.coolingExitThreshold {
+                direction = .stable
+            }
+        case .stable:
+            // Must exceed entry threshold to commit to a direction
+            if momentum > Self.heatingEntryThreshold {
+                direction = .heating
+            } else if momentum < Self.coolingEntryThreshold {
+                direction = .cooling
+            }
+        }
     }
 
     /// Resets the signal to initial state.
@@ -80,6 +161,8 @@ struct QualitySignal: Sendable {
     /// to start fresh (e.g., testing scenarios).
     mutating func reset() {
         momentum = 0
+        recoveryMagnitude = 0
+        direction = .stable
         lastState = nil
         lastUpdate = nil
     }
@@ -95,6 +178,8 @@ struct QualitySignal: Sendable {
         // Initialize momentum based on absolute thermal level
         // This ensures we respond immediately to elevated thermal states
         momentum = state.normalizedValue * Self.smoothingFactor
+        recoveryMagnitude = 0 // Reset recovery magnitude when seeding
+        direction = .stable // Reset to stable direction
         lastState = state
         lastUpdate = Date()
     }
@@ -112,6 +197,32 @@ enum QualityTrend: Sendable {
 
     /// Thermal state is stable (momentum within dead zone).
     case stable
+}
+
+// MARK: - ThermalDirection
+
+/// Thermal direction state with hysteresis support.
+///
+/// Used internally by QualitySignal to track committed thermal direction
+/// and prevent rapid oscillation at thermal boundaries.
+enum ThermalDirection: Sendable {
+    /// Device is in heating state (committed).
+    case heating
+
+    /// Device is in cooling state (committed).
+    case cooling
+
+    /// Device is in stable state (not heating or cooling).
+    case stable
+
+    /// Converts thermal direction to quality trend.
+    func toTrend() -> QualityTrend {
+        switch self {
+        case .heating: .heating
+        case .cooling: .cooling
+        case .stable: .stable
+        }
+    }
 }
 
 // MARK: - ProcessInfo.ThermalState Extension
