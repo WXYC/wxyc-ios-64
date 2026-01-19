@@ -11,6 +11,7 @@
 import Testing
 @testable import Core
 
+@Suite(.serialized)
 struct DequeTests {
     @Test
     func testEmptyDeque() {

@@ -12,7 +12,7 @@ import Testing
 import Foundation
 @testable import Core
 
-@Suite("MainActorNotificationMessage Tests")
+@Suite("MainActorNotificationMessage Tests", .serialized)
 struct MainActorMessageTests {
 
     @Test("Message can be posted and received via AsyncSequence")

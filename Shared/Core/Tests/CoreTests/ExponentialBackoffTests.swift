@@ -12,7 +12,7 @@ import Testing
 import Foundation
 @testable import Core
 
-@Suite("ExponentialBackoff Tests")
+@Suite("ExponentialBackoff Tests", .serialized)
 struct ExponentialBackoffTests {
 
     @Test("Default configuration has correct values")

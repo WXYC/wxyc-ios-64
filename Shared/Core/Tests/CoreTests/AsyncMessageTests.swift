@@ -12,7 +12,7 @@ import Testing
 import Foundation
 @testable import Core
 
-@Suite("AsyncNotificationMessage Tests")
+@Suite("AsyncNotificationMessage Tests", .serialized)
 struct AsyncMessageTests {
 
     @Test("Message can be posted and received")
