@@ -18,7 +18,7 @@ let package = Package(
         .package(name: "Caching", path: "../Caching"),
         .package(name: "ColorPalette", path: "../ColorPalette"),
         .package(name: "Core", path: "../Core"),
-        .package(name: "Lerpable", path: "../Lerpable"),
+        .package(url: "https://github.com/jakebromberg/Lerpable.git", from: "0.1.0"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "WXUI", path: "../WXUI"),
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.0"),
