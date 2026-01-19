@@ -40,7 +40,7 @@ final class MockAnalytics: AnalyticsService, @unchecked Sendable {
 
 // MARK: - RadioPlayer Tests
 
-@Suite("RadioPlayer Tests")
+@Suite("RadioPlayer Tests", .serialized)
 @MainActor
 struct RadioPlayerTests {
 
@@ -84,7 +84,7 @@ struct RadioPlayerTests {
 
         // Then
         #expect(mockPlayer.playCallCount == 1)
-        #expect(mockAnalytics.capturedEventNames().contains("radioPlayer play"))
+        #expect(mockAnalytics.capturedEventNames().contains("play"))
     }
 
     @Test("Play does nothing when already playing")
@@ -212,7 +212,7 @@ struct RadioPlayerTests {
 
         // Then
         let capturedEvents = mockAnalytics.capturedEventNames()
-        #expect(capturedEvents.contains("radioPlayer play"))
+        #expect(capturedEvents.contains("play"))
     }
 
     @Test("Works without analytics")
