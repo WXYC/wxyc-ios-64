@@ -1,0 +1,213 @@
+name: Debug CoreTests
+
+on:
+  workflow_dispatch:
+    inputs:
+      partition:
+        description: 'Which partition to run (0-indexed)'
+        required: true
+        default: '0'
+        type: string
+      total_partitions:
+        description: 'Total partitions (empty = one test per partition)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  SCHEME: WXYC
+  DESTINATION: platform=iOS Simulator,name=iPhone 16 Pro
+
+jobs:
+  debug-core-tests:
+    runs-on: macos-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Set up Swift macro trust
+        run: |
+          mkdir -p ~/Library/org.swift.swiftpm/security/
+          cp ci_scripts/macros.json ~/Library/org.swift.swiftpm/security/
+
+      - name: Build Secrets XCFramework for CI
+        run: |
+          mkdir -p Shared/Secrets/Sources/Secrets
+          cat > Shared/Secrets/Sources/Secrets/Secrets.swift << 'EOF'
+          import Foundation
+          public struct Secrets {
+              public static let posthogApiKey = "ci-stub-posthog"
+              public static let discogsApiKeyV2_5 = "ci-stub-discogs-key"
+              public static let discogsApiSecretV2_5 = "ci-stub-discogs-secret"
+              public static let spotifyClientId = "ci-stub-spotify-id"
+              public static let spotifyClientSecret = "ci-stub-spotify-secret"
+              public static let requestOMatic = "ci-stub-request-o-matic"
+          }
+          EOF
+
+          cd Shared/Secrets
+          xcodebuild -project SecretsFramework.xcodeproj \
+            -scheme Secrets \
+            -destination "generic/platform=iOS Simulator" \
+            -configuration Release \
+            -skipMacroValidation \
+            SKIP_INSTALL=NO
+
+          xcodebuild -project SecretsFramework.xcodeproj \
+            -scheme Secrets \
+            -destination "generic/platform=watchOS Simulator" \
+            -configuration Release \
+            -skipMacroValidation \
+            SKIP_INSTALL=NO
+
+          DERIVED_DATA="$HOME/Library/Developer/Xcode/DerivedData"
+          BUILD_DIR=$(find "$DERIVED_DATA" -maxdepth 1 -name "SecretsFramework-*" -type d | head -1)
+          IOS_FRAMEWORK="$BUILD_DIR/Build/Products/Release-iphonesimulator/Secrets.framework"
+          WATCHOS_FRAMEWORK="$BUILD_DIR/Build/Products/Release-watchsimulator/Secrets.framework"
+
+          xcodebuild -create-xcframework \
+            -framework "$IOS_FRAMEWORK" \
+            -framework "$WATCHOS_FRAMEWORK" \
+            -output Secrets.xcframework
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME" \
+            -skipMacroValidation
+
+      - name: Build for testing
+        run: |
+          xcodebuild build-for-testing \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Get test list and compute partition
+        id: partition
+        run: |
+          # All CoreTests - 53 tests total
+          TESTS=(
+            # Image Compatibility (10 tests) - indices 0-9
+            "CoreTests/ImageCompatibilityTests/heifDataProducesValidImageDataThatCanBeDecoded"
+            "CoreTests/ImageCompatibilityTests/heifDataRespectsCompressionQualityParameter"
+            "CoreTests/ImageCompatibilityTests/heifDataReturnsValidDataForValidImage"
+            "CoreTests/ImageCompatibilityTests/scaledHEIFIsSmallerThanScaledPNG"
+            "CoreTests/ImageCompatibilityTests/scaledToWidthHandlesSquareImages"
+            "CoreTests/ImageCompatibilityTests/scaledToWidthHandlesTallImages"
+            "CoreTests/ImageCompatibilityTests/scaledToWidthMaintainsAspectRatio"
+            "CoreTests/ImageCompatibilityTests/scaledToWidthReturnsOriginalForImagesBelowTargetWidth"
+            "CoreTests/ImageCompatibilityTests/scaledToWidthReturnsOriginalForImagesAtTargetWidth"
+            "CoreTests/ImageCompatibilityTests/scaledToWidthScalesImagesWiderThanTarget"
+            # AsyncNotificationMessage Tests (5 tests) - indices 10-14
+            "CoreTests/AsyncMessageTests/postAndReceive"
+            "CoreTests/AsyncMessageTests/multipleMessages"
+            "CoreTests/AsyncMessageTests/subjectFiltering"
+            "CoreTests/AsyncMessageTests/makeMessageReturnsNil"
+            "CoreTests/AsyncMessageTests/cancellationStopsReceiving"
+            # MainActorNotificationMessage Tests (6 tests) - indices 15-20
+            "CoreTests/MainActorMessageTests/postAndReceiveViaSequence"
+            "CoreTests/MainActorMessageTests/postAndReceiveViaObserver"
+            "CoreTests/MainActorMessageTests/subjectFiltering"
+            "CoreTests/MainActorMessageTests/makeMessageReturnsNil"
+            "CoreTests/MainActorMessageTests/makeNotificationCreatesValidNotification"
+            "CoreTests/MainActorMessageTests/multipleMessages"
+            # DequeTests (22 tests) - indices 21-42
+            "CoreTests/DequeTests/testAppend"
+            "CoreTests/DequeTests/testArrayConversion"
+            "CoreTests/DequeTests/testCapacityGrowth"
+            "CoreTests/DequeTests/testCapacityShrinking"
+            "CoreTests/DequeTests/testCircularBuffer"
+            "CoreTests/DequeTests/testCircularBufferWrapping"
+            "CoreTests/DequeTests/testCollectionIndices"
+            "CoreTests/DequeTests/testCopyOnWrite"
+            "CoreTests/DequeTests/testEmptyDeque"
+            "CoreTests/DequeTests/testEquatable"
+            "CoreTests/DequeTests/testExpressibleByArrayLiteral"
+            "CoreTests/DequeTests/testHashable"
+            "CoreTests/DequeTests/testPrepend"
+            "CoreTests/DequeTests/testPrependAndAppend"
+            "CoreTests/DequeTests/testPrependMany"
+            "CoreTests/DequeTests/testRandomAccessCollection"
+            "CoreTests/DequeTests/testRemoveAll"
+            "CoreTests/DequeTests/testRemoveFirst"
+            "CoreTests/DequeTests/testRemoveFirstAll"
+            "CoreTests/DequeTests/testRemoveFirstMultiple"
+            "CoreTests/DequeTests/testRemoveFirstZero"
+            "CoreTests/DequeTests/testRemoveLast"
+            "CoreTests/DequeTests/testRemoveLastFromSingleElement"
+            "CoreTests/DequeTests/testSubscript"
+            # ExponentialBackoff Tests (10 tests) - indices 43-52
+            "CoreTests/ExponentialBackoffTests/customConfigurationIsRespected"
+            "CoreTests/ExponentialBackoffTests/defaultConfigurationHasCorrectValues"
+            "CoreTests/ExponentialBackoffTests/descriptionFormatIsCorrect"
+            "CoreTests/ExponentialBackoffTests/firstAttemptReturnsZeroWaitTime"
+            "CoreTests/ExponentialBackoffTests/resetClearsAttemptsAndTotalWaitTime"
+            "CoreTests/ExponentialBackoffTests/returnsNilWhenMaxAttemptsExhausted"
+            "CoreTests/ExponentialBackoffTests/timeIntervalNanosecondsConversion"
+            "CoreTests/ExponentialBackoffTests/totalWaitTimeAccumulatesCorrectly"
+            "CoreTests/ExponentialBackoffTests/waitTimeIsCappedAtMaximum"
+            "CoreTests/ExponentialBackoffTests/waitTimesIncreaseExponentially"
+          )
+
+          TOTAL=${#TESTS[@]}
+          PARTITION=${{ inputs.partition }}
+
+          # Default to total tests if not specified
+          NUM_PARTITIONS="${{ inputs.total_partitions }}"
+          if [ -z "$NUM_PARTITIONS" ]; then
+            NUM_PARTITIONS=$TOTAL
+          fi
+
+          # Calculate start and end indices
+          PARTITION_SIZE=$(( (TOTAL + NUM_PARTITIONS - 1) / NUM_PARTITIONS ))
+          START=$(( PARTITION * PARTITION_SIZE ))
+          END=$(( START + PARTITION_SIZE ))
+          if [ $END -gt $TOTAL ]; then
+            END=$TOTAL
+          fi
+
+          echo "Total tests: $TOTAL"
+          echo "Partition $PARTITION of $NUM_PARTITIONS (partition size: $PARTITION_SIZE)"
+          echo "Running tests $START to $((END - 1))"
+
+          # Build -only-testing flags
+          ONLY_FLAGS=""
+          for (( i=START; i<END; i++ )); do
+            ONLY_FLAGS="$ONLY_FLAGS -only-testing:${TESTS[$i]}"
+            echo "  Including: ${TESTS[$i]}"
+          done
+
+          echo "only_flags=$ONLY_FLAGS" >> $GITHUB_OUTPUT
+          echo "num_partitions=$NUM_PARTITIONS" >> $GITHUB_OUTPUT
+
+      - name: Run CoreTests partition ${{ inputs.partition }}
+        run: |
+          echo "Running partition ${{ inputs.partition }} of ${{ steps.partition.outputs.num_partitions }}"
+
+          xcodebuild test-without-building \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            ${{ steps.partition.outputs.only_flags }} \
+            -disable-concurrent-testing \
+            -resultBundlePath TestResults.xcresult
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-partition-${{ inputs.partition }}
+          path: TestResults.xcresult
