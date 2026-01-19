@@ -18,7 +18,7 @@ import UIKit
 import AppKit
 #endif
 
-@Suite("Image Compatibility")
+@Suite("Image Compatibility", .serialized)
 struct ImageCompatibilityTests {
     // MARK: - HEIF Encoding Tests
 
