@@ -2,12 +2,30 @@
   "originHash" : "4e53218c25c98b4e08de76e8c2866da3a8633d5f5a29ff83fec6abd784328221",
   "pins" : [
     {
+      "identity" : "lerpable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jakebromberg/Lerpable.git",
+      "state" : {
+        "revision" : "a2a6f2fd4b0ecd8ea7540fc92514d1728d4c65f6",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "posthog-ios",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PostHog/posthog-ios.git",
       "state" : {
         "revision" : "ada6efeea5d5b7a5e53bde4367edea363faa2e15",
         "version" : "3.36.0"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax",
+      "state" : {
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
       }
     }
   ],

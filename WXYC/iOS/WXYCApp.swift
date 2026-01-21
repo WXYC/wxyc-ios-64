@@ -68,8 +68,10 @@ struct WXYCApp: App {
         // Configure MusicShareKit for RequestService
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: Secrets.requestOMatic,
+            authBaseURL: Secrets.apiBaseUrl,
             spotifyClientId: Secrets.spotifyClientId,
-            spotifyClientSecret: Secrets.spotifyClientSecret
+            spotifyClientSecret: Secrets.spotifyClientSecret,
+            analyticsService: StructuredPostHogAnalytics.shared
         ))
 
         // Analytics setup
@@ -301,7 +303,7 @@ struct WXYCApp: App {
         return "Release"
         #endif
     }
-
+    
     // MARK: - Background Refresh
     
     private func scheduleBackgroundRefresh() {

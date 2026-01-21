@@ -8,19 +8,21 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import AnalyticsTesting
 import Foundation
 import Testing
 @testable import MusicShareKit
 
 @Suite("RequestService Tests")
 struct RequestServiceTests {
-    
+
     init() {
         // Configure MusicShareKit before running tests
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
             spotifyClientId: "test-client-id",
-            spotifyClientSecret: "test-client-secret"
+            spotifyClientSecret: "test-client-secret",
+            analyticsService: MockStructuredAnalytics()
         ))
     }
     

@@ -22,6 +22,7 @@ echo "   Copied macros.json to Swift security directory"
 #   SPOTIFY_CLIENT_ID
 #   SPOTIFY_CLIENT_SECRET
 #   REQUEST_O_MATIC
+#   API_BASE_URL
 
 echo "Building Secrets XCFramework..."
 
@@ -33,6 +34,7 @@ missing_vars=()
 [[ -z "$SPOTIFY_CLIENT_ID" ]] && missing_vars+=("SPOTIFY_CLIENT_ID")
 [[ -z "$SPOTIFY_CLIENT_SECRET" ]] && missing_vars+=("SPOTIFY_CLIENT_SECRET")
 [[ -z "$REQUEST_O_MATIC" ]] && missing_vars+=("REQUEST_O_MATIC")
+[[ -z "$API_BASE_URL" ]] && missing_vars+=("API_BASE_URL")
 
 if [[ ${#missing_vars[@]} -gt 0 ]]; then
     echo "❌ ERROR: Missing required environment variables:"

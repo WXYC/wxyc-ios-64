@@ -19,6 +19,7 @@
 #   SPOTIFY_CLIENT_ID
 #   SPOTIFY_CLIENT_SECRET
 #   REQUEST_O_MATIC
+#   API_BASE_URL
 
 set -e
 
@@ -38,10 +39,27 @@ error() {
     exit 1
 }
 
+# Required environment variable names
+REQUIRED_VARS=(
+    "POSTHOG_API_KEY"
+    "DISCOGS_API_KEY_V2_5"
+    "DISCOGS_API_SECRET_V2_5"
+    "SPOTIFY_CLIENT_ID"
+    "SPOTIFY_CLIENT_SECRET"
+    "REQUEST_O_MATIC"
+    "API_BASE_URL"
+)
+
+# Check if any required variables are missing
+has_missing_vars() {
+    for var in "${REQUIRED_VARS[@]}"; do
+        [ -z "${!var}" ] && return 0
+    done
+    return 1
+}
+
 # Load secrets from file if environment variables aren't already set
-if [ -z "$POSTHOG_API_KEY" ] || [ -z "$DISCOGS_API_KEY_V2_5" ] || \
-   [ -z "$DISCOGS_API_SECRET_V2_5" ] || [ -z "$SPOTIFY_CLIENT_ID" ] || \
-   [ -z "$SPOTIFY_CLIENT_SECRET" ] || [ -z "$REQUEST_O_MATIC" ]; then
+if has_missing_vars; then
     SECRETS_FILE="${1:-}"
     if [ -n "$SECRETS_FILE" ] || [ -f "$SCRIPT_DIR/../../../../secrets/secrets.txt" ]; then
         log "Loading secrets from file..."
@@ -54,12 +72,9 @@ fi
 
 # Verify required environment variables
 missing_vars=()
-[ -z "$POSTHOG_API_KEY" ] && missing_vars+=("POSTHOG_API_KEY")
-[ -z "$DISCOGS_API_KEY_V2_5" ] && missing_vars+=("DISCOGS_API_KEY_V2_5")
-[ -z "$DISCOGS_API_SECRET_V2_5" ] && missing_vars+=("DISCOGS_API_SECRET_V2_5")
-[ -z "$SPOTIFY_CLIENT_ID" ] && missing_vars+=("SPOTIFY_CLIENT_ID")
-[ -z "$SPOTIFY_CLIENT_SECRET" ] && missing_vars+=("SPOTIFY_CLIENT_SECRET")
-[ -z "$REQUEST_O_MATIC" ] && missing_vars+=("REQUEST_O_MATIC")
+for var in "${REQUIRED_VARS[@]}"; do
+    [ -z "${!var}" ] && missing_vars+=("$var")
+done
 
 if [ ${#missing_vars[@]} -gt 0 ]; then
     error "Missing required environment variables: ${missing_vars[*]}"
@@ -86,6 +101,7 @@ public struct Secrets {
     public static let spotifyClientId = #ObfuscatedString("${SPOTIFY_CLIENT_ID}")
     public static let spotifyClientSecret = #ObfuscatedString("${SPOTIFY_CLIENT_SECRET}")
     public static let requestOMatic = #ObfuscatedString("${REQUEST_O_MATIC}")
+    public static let apiBaseUrl = #ObfuscatedString("${API_BASE_URL}")
 }
 EOF
 log "Generated Secrets.swift"
@@ -119,10 +135,12 @@ for i in "${!PLATFORMS[@]}"; do
     # Note: BUILD_LIBRARY_FOR_DISTRIBUTION is intentionally omitted due to Swift 6 compatibility issues
     # with transitive dependencies (swift-algorithms). The xcframework is only used within this project
     # so ABI stability across Swift versions is not required.
+    # -skipMacroValidation is needed because the ObfuscateMacro fingerprint changes across Xcode versions.
     if ! xcodebuild -project "$XCODEPROJ" \
         -scheme Secrets \
         -destination "$platform" \
         -configuration Release \
+        -skipMacroValidation \
         SKIP_INSTALL=NO 2>&1 | tee /dev/stderr | grep -q "BUILD SUCCEEDED"; then
         error "Build failed for $platform"
     fi
