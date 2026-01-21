@@ -19,18 +19,24 @@ let package = Package(
         .package(path: "../WXUI"),
         .package(path: "../Logger"),
         .package(path: "../Core"),
+        .package(path: "../Analytics"),
+        .package(path: "../Caching"),
     ],
     targets: [
         .target(
             name: "MusicShareKit",
-            dependencies: ["WXUI", "Logger", "Core"],
+            dependencies: ["WXUI", "Logger", "Core", "Analytics", "Caching"],
             resources: [
                 .process("Resources/Assets.xcassets")
             ],
         ),
         .testTarget(
             name: "MusicShareKitTests",
-            dependencies: ["MusicShareKit"]),
+            dependencies: [
+                "MusicShareKit",
+                .product(name: "AnalyticsTesting", package: "Analytics"),
+                .product(name: "Caching", package: "Caching"),
+            ]),
     ]
 )
 

@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Analytics
 import UIKit
 import SwiftUI
 import MusicShareKit
@@ -24,8 +25,10 @@ class ShareViewController: UIViewController {
         // Configure MusicShareKit with secrets
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: Secrets.requestOMatic,
+            authBaseURL: Secrets.apiBaseUrl,
             spotifyClientId: Secrets.spotifyClientId,
-            spotifyClientSecret: Secrets.spotifyClientSecret
+            spotifyClientSecret: Secrets.spotifyClientSecret,
+            analyticsService: StructuredPostHogAnalytics.shared
         ))
 
         // Create SwiftUI view with extension context
