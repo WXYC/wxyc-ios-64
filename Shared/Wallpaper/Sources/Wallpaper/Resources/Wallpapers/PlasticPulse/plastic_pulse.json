@@ -1,8 +1,8 @@
 {
   "accent" : {
-    "brightness" : 0.4918032786885246,
-    "hue" : 171.14754098360655,
-    "saturation" : 0.85
+    "brightness" : 0.7131147540983607,
+    "hue" : 185.40983606557376,
+    "saturation" : 0.6666666666666665
   },
   "button" : {
     "style" : "colored"
@@ -10,11 +10,11 @@
   "displayName" : "The Plastic Pulse",
   "id" : "plastic_pulse",
   "material" : {
-    "blurRadius" : 8,
+    "blurRadius" : 16.582090258598328,
     "foreground" : "dark",
     "overlay" : {
-      "darkness" : 1,
-      "opacity" : 0.41044774651527405
+      "darkness" : 0.5534825921058655,
+      "opacity" : 0.603233814239502
     }
   },
   "parameters" : [
@@ -59,7 +59,7 @@
       "type" : "float"
     },
     {
-      "default" : 0,
+      "default" : 0.24875621,
       "id" : "ambientLevel",
       "label" : "Ambient",
       "range" : {

@@ -13,8 +13,8 @@
     "blurRadius" : 8,
     "foreground" : "light",
     "overlay" : {
-      "darkness" : 0.7388059496879578,
-      "opacity" : 0.25
+      "darkness" : 1,
+      "opacity" : 0.13368818163871765
     }
   },
   "parameters" : [
