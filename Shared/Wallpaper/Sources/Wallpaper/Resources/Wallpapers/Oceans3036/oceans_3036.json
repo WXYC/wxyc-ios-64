@@ -1,56 +1,73 @@
 {
-  "id": "oceans_3036",
-  "displayName": "Oceans 3036",
-  "version": "1.0.0",
-  "renderer": {
-    "type": "rawMetal",
-    "shaderFile": "Oceans3036.metal",
-    "vertexFunction": "fullscreenVertex",
-    "fragmentFunction": "oceans3036Frag",
-    "timeScale": 1.0
+  "accent" : {
+    "brightness" : 0.7745901639344263,
+    "hue" : 163.7704918032787,
+    "saturation" : 0.65
   },
-  "parameters": [
+  "button" : {
+    "style" : "colored"
+  },
+  "displayName" : "Oceans 3036",
+  "id" : "oceans_3036",
+  "material" : {
+    "blurRadius" : 14.567164778709412,
+    "foreground" : "dark",
+    "overlay" : {
+      "darkness" : 0.7761194109916687,
+      "opacity" : 0.2766169011592865
+    }
+  },
+  "parameters" : [
     {
-      "id": "timeSpeed",
-      "type": "float",
-      "label": "Time Speed",
-      "default": 9.0,
-      "range": { "min": 4.0, "max": 20.0 }
+      "default" : 9,
+      "id" : "timeSpeed",
+      "label" : "Time Speed",
+      "range" : {
+        "max" : 20,
+        "min" : 4
+      },
+      "type" : "float"
     },
     {
-      "id": "colorInterval",
-      "type": "float",
-      "label": "Color Interval",
-      "default": 10.0,
-      "range": { "min": 5.0, "max": 20.0 }
+      "default" : 10,
+      "id" : "colorInterval",
+      "label" : "Color Interval",
+      "range" : {
+        "max" : 20,
+        "min" : 5
+      },
+      "type" : "float"
     },
     {
-      "id": "baseGray",
-      "type": "float",
-      "label": "Base Gray",
-      "default": 0.75,
-      "range": { "min": 0.5, "max": 1.0 }
+      "default" : 0.75,
+      "id" : "baseGray",
+      "label" : "Base Gray",
+      "range" : {
+        "max" : 1,
+        "min" : 0.5
+      },
+      "type" : "float"
     },
     {
-      "id": "hueShift",
-      "type": "float",
-      "label": "Hue Shift",
-      "default": 0.0,
-      "range": { "min": -180.0, "max": 180.0 }
+      "default" : 0,
+      "id" : "hueShift",
+      "label" : "Hue Shift",
+      "range" : {
+        "max" : 180,
+        "min" : -180
+      },
+      "type" : "float"
     }
   ],
-  "shaderArguments": [],
-  "accent": {
-    "hue": 23,
-    "saturation": 0.75,
-    "brightness": 1.0
+  "renderer" : {
+    "fragmentFunction" : "oceans3036Frag",
+    "shaderFile" : "Oceans3036.metal",
+    "timeScale" : 1,
+    "type" : "rawMetal",
+    "vertexFunction" : "fullscreenVertex"
   },
-  "material": {
-    "foreground": "dark",
-    "blurRadius": 8.0,
-    "overlay": {
-      "opacity": 0.1,
-      "darkness": 1.0
-    }
-  }
+  "shaderArguments" : [
+
+  ],
+  "version" : "1.0.0"
 }

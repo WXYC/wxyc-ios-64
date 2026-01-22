@@ -1,8 +1,8 @@
 {
   "accent" : {
-    "brightness" : 1,
-    "hue" : 23,
-    "saturation" : 0.75
+    "brightness" : 0.8155737704918032,
+    "hue" : 229.18032786885243,
+    "saturation" : 0.6898907103825136
   },
   "button" : {
     "style" : "colored"
@@ -13,7 +13,7 @@
     "blurRadius" : 11.126260757446289,
     "foreground" : "dark",
     "overlay" : {
-      "darkness" : 0.8420398235321045,
+      "darkness" : 0.6355721354484558,
       "opacity" : 0.611940324306488
     }
   },

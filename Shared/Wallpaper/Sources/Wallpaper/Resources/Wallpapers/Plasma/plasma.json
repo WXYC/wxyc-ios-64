@@ -1,7 +1,7 @@
 {
   "accent" : {
-    "brightness" : 1,
-    "hue" : 23,
+    "brightness" : 0.95,
+    "hue" : 65,
     "saturation" : 0.55
   },
   "button" : {
@@ -10,11 +10,11 @@
   "displayName" : "Plasma",
   "id" : "plasma",
   "material" : {
-    "blurRadius" : 12,
+    "blurRadius" : 17.858208417892456,
     "foreground" : "dark",
     "overlay" : {
-      "darkness" : 1,
-      "opacity" : 0.25
+      "darkness" : 0.3420397937297821,
+      "opacity" : 0.5634328126907349
     }
   },
   "parameters" : [

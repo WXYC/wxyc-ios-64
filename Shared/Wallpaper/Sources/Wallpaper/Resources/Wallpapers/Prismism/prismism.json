@@ -1,8 +1,8 @@
 {
   "accent" : {
-    "brightness" : 0.8661202185792349,
-    "hue" : 145.57377049180326,
-    "saturation" : 0.75
+    "brightness" : 0.7759562841530054,
+    "hue" : 154.4262295081967,
+    "saturation" : 0.5553072625698324
   },
   "button" : {
     "style" : "colored"
@@ -13,13 +13,13 @@
     "blurRadius" : 19.179105162620544,
     "foreground" : "dark",
     "overlay" : {
-      "darkness" : 0.22885571420192719,
-      "opacity" : 0.459452748298645
+      "darkness" : 0.5049751400947571,
+      "opacity" : 0.31393036246299744
     }
   },
   "parameters" : [
     {
-      "default" : 0.6268657,
+      "default" : 0.5223881,
       "id" : "highlightCompression",
       "label" : "Highlight Compression",
       "range" : {
@@ -29,7 +29,7 @@
       "type" : "float"
     },
     {
-      "default" : 37.070892,
+      "default" : 23.861937,
       "id" : "waveScale",
       "label" : "Wave Scale",
       "range" : {
@@ -39,7 +39,7 @@
       "type" : "float"
     },
     {
-      "default" : 1.8983594,
+      "default" : 1.9581853,
       "id" : "iterationDivisor",
       "label" : "Iteration Divisor",
       "range" : {
@@ -49,7 +49,7 @@
       "type" : "float"
     },
     {
-      "default" : 0.090533294,
+      "default" : 0.09177707,
       "id" : "colorEnhancement",
       "label" : "Color Enhancement",
       "range" : {
