@@ -25,8 +25,8 @@ import Foundation
 /// - `[u]text[/u]` - Underlined text
 /// - `[l=Label Name]` - Label links (displays the label name)
 /// - `[url=http://example.com]Link Text[/url]` - URL links
-/// - `[r12345]` - Release link by ID (resolved via DiscogsEntityResolver)
-/// - `[m123]` - Master link by ID (resolved via DiscogsEntityResolver)
+/// - `[r12345]` or `[r=12345]` - Release link by ID (resolved via DiscogsEntityResolver)
+/// - `[m123]` or `[m=123]` - Master link by ID (resolved via DiscogsEntityResolver)
 public struct DiscogsMarkupParser: Sendable {
     
     // MARK: - Synchronous API (no ID resolution)
@@ -106,8 +106,8 @@ extension DiscogsMarkupParser {
     // Tag classification patterns (applied to tag content)
     nonisolated(unsafe) private static let artistNamePattern = /^a=(.+)$/
     nonisolated(unsafe) private static let artistIdPattern = /^a(\d+)$/
-    nonisolated(unsafe) private static let releaseIdPattern = /^r(\d+)$/
-    nonisolated(unsafe) private static let masterIdPattern = /^m(\d+)$/
+    nonisolated(unsafe) private static let releaseIdPattern = /^r=?(\d+)$/
+    nonisolated(unsafe) private static let masterIdPattern = /^m=?(\d+)$/
     nonisolated(unsafe) private static let labelNamePattern = /^l=(.+)$/
     nonisolated(unsafe) private static let urlOpenPattern = /^url=(.+)$/
     nonisolated(unsafe) private static let closingTagPattern = /^\/(.+)$/
