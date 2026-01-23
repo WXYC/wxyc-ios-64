@@ -11,7 +11,7 @@
 //  - Underline formatting: [u]...[/u]
 //  - Label links: [l=Name]
 //  - URL links: [url=...]...[/url]
-//  - Release/Master links: [r12345], [m123]
+//  - Release/Master links: [r12345], [r=12345], [m123], [m=123]
 //  - Orphaned closing tags
 //  - Edge cases and error handling
 //
@@ -343,13 +343,27 @@ struct IDTagTests {
         #expect(String(result.characters) == "")
     }
     
+    @Test("Skips release link by ID with equals sign in sync mode")
+    func skipsReleaseLinkByIdWithEquals() {
+        let input = "[r=621811]"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "")
+    }
+    
+    @Test("Skips master link by ID with equals sign in sync mode")
+    func skipsMasterLinkByIdWithEquals() {
+        let input = "[m=199386]"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "")
+    }
+
     @Test("Preserves text around release ID")
     func preservesTextAroundReleaseId() {
         let input = "See release [r99999] for details"
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "See release  for details")
     }
-    
+
     @Test("Preserves text around master ID")
     func preservesTextAroundMasterId() {
         let input = "Master [m456] version"
@@ -369,7 +383,7 @@ struct EdgeCaseTests {
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "Just plain text with no formatting")
     }
-
+    
     @Test("Handles empty string")
     func handlesEmptyString() {
         let input = ""
@@ -439,7 +453,7 @@ struct EdgeCaseTests {
         let result = DiscogsMarkupParser.parse(input)
         #expect(String(result.characters) == "bold then italic then underline")
     }
-    
+
     @Test("Does not confuse url tag with u tag")
     func doesNotConfuseUrlWithU() {
         let input = "[url=https://example.com]link[/url]"
@@ -456,7 +470,7 @@ struct EdgeCaseTests {
 
 @Suite("Attribute Verification")
 struct AttributeVerificationTests {
-    
+        
     @Test("Bold text has correct presentation intent")
     func boldHasCorrectIntent() {
         let result = DiscogsMarkupParser.parse("[b]text[/b]")
@@ -584,11 +598,39 @@ struct EntityResolutionTests {
         resolver.masters[12345] = "Kind of Blue"
         
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
-        #expect(String(result.characters) == "Kind of Blue")
     
+        #expect(String(result.characters) == "Kind of Blue")
+
         let range = result.startIndex..<result.endIndex
         #expect(result[range].link == URL(string: "https://www.discogs.com/master/12345"))
+    }
+
+    @Test("Resolves release ID with equals sign to title with link")
+    func resolvesReleaseIdWithEqualsToTitle() async {
+        let input = "[r=621811]"
+        var resolver = MockDiscogsEntityResolver()
+        resolver.releases[621811] = "The Cover Up"
+
+        let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
+
+        #expect(String(result.characters) == "The Cover Up")
+
+        let range = result.startIndex..<result.endIndex
+        #expect(result[range].link == URL(string: "https://www.discogs.com/release/621811"))
+    }
+
+    @Test("Resolves master ID with equals sign to title with link")
+    func resolvesMasterIdWithEqualsToTitle() async {
+        let input = "[m=199386]"
+        var resolver = MockDiscogsEntityResolver()
+        resolver.masters[199386] = "Out Of The Loop"
+
+        let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
+
+        #expect(String(result.characters) == "Out Of The Loop")
+
+        let range = result.startIndex..<result.endIndex
+        #expect(result[range].link == URL(string: "https://www.discogs.com/master/199386"))
     }
     
     @Test("Handles mixed resolved and named tags")
@@ -598,7 +640,7 @@ struct EntityResolutionTests {
         resolver.artists[999] = "Yoko Ono"
         
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-    
+        
         #expect(String(result.characters) == "John Lennon collaborated with Yoko Ono")
     }
     
@@ -644,7 +686,7 @@ struct EntityResolutionTests {
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
         
         #expect(String(result.characters) == "Bold by Test Artist")
-    
+        
         var foundBold = false
         for run in result.runs {
             if run.inlinePresentationIntent == .stronglyEmphasized {
@@ -654,7 +696,7 @@ struct EntityResolutionTests {
         }
         #expect(foundBold)
     }
-    
+        
     @Test("Resolves all entity types in one text")
     func resolvesAllEntityTypes() async {
         let input = "Artist [a1], Release [r2], Master [m3]"
@@ -692,30 +734,30 @@ struct EntityResolutionTests {
         
         let result5 = await DiscogsMarkupParser.parse("[a5]", resolver: resolver)
         #expect(String(result5.characters) == "Level 42")
-        
+
         let result6 = await DiscogsMarkupParser.parse("[a6]", resolver: resolver)
         #expect(String(result6.characters) == "Test (Band)")
     }
-        
+
     @Test("Does not strip suffix from release or master names")
     func doesNotStripSuffixFromNonArtists() async {
         var resolver = MockDiscogsEntityResolver()
         resolver.releases[1] = "Album Title (2)"
         resolver.masters[1] = "Master Title (Remastered) (3)"
-        
+
         let result1 = await DiscogsMarkupParser.parse("[r1]", resolver: resolver)
         let result2 = await DiscogsMarkupParser.parse("[m1]", resolver: resolver)
-        
+
         #expect(String(result1.characters) == "Album Title (2)")
         #expect(String(result2.characters) == "Master Title (Remastered) (3)")
     }
 }
 
 // MARK: - Utility Tests
-        
+
 @Suite("Utility Tests")
 struct UtilityTests {
-        
+
     @Test("stripDisambiguationSuffix removes numeric suffix")
     func stripDisambiguationSuffixRemovesNumericSuffix() {
         #expect(DiscogsMarkupParser.stripDisambiguationSuffix(from: "Artist (2)") == "Artist")
