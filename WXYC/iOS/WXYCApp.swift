@@ -135,6 +135,16 @@ struct WXYCApp: App {
                                 window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
                             }
 #endif
+
+                            // Start marketing mode if enabled via launch argument
+                            if MarketingModeController.isEnabled {
+                                MarketingModeController().start(
+                                    playbackController: AudioPlayerController.shared,
+                                    pickerState: appState.themePickerState,
+                                    configuration: appState.themeConfiguration,
+                                    playlistService: appState.playlistService
+                                )
+                            }
                         }
                         .onOpenURL { url in
                             handleURL(url)
@@ -246,7 +256,7 @@ struct WXYCApp: App {
             )
         }
     }
-
+        
     private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .background:
@@ -293,7 +303,7 @@ struct WXYCApp: App {
     private func setUpThemePickerAnalytics() {
         appState.themePickerState.setAnalytics(StructuredPostHogAnalytics.shared)
     }
-
+    
     private func buildConfiguration() -> String {
         #if DEBUG
         return "Debug"
