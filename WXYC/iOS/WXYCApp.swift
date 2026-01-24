@@ -210,6 +210,24 @@ struct WXYCApp: App {
                     }
                     .keyboardShortcut(.space, modifiers: [])
                 }
+                CommandMenu("Themes") {
+                    Button("Toggle Theme Picker") {
+                        toggleThemePicker()
+                    }
+                    .keyboardShortcut(.return, modifiers: [])
+
+                    Button("Previous Theme") {
+                        navigateToPreviousTheme()
+                    }
+                    .keyboardShortcut(.leftArrow, modifiers: [])
+                    .disabled(!appState.themePickerState.isActive)
+
+                    Button("Next Theme") {
+                        navigateToNextTheme()
+                    }
+                    .keyboardShortcut(.rightArrow, modifiers: [])
+                    .disabled(!appState.themePickerState.isActive)
+                }
             #if DEBUG || DEBUG_TESTFLIGHT
                 CommandMenu("Debug") {
                     Button("Trigger Background Refresh") {
@@ -225,7 +243,7 @@ struct WXYCApp: App {
     }
 
     // MARK: - Setup
-
+        
     private func setUpQuickActions() {
         let playShortcut = UIApplicationShortcutItem(
             type: "org.wxyc.iphoneapp.play",
@@ -281,7 +299,7 @@ struct WXYCApp: App {
             refreshPlaylistIfCacheExpired()
             // Check if user requested cache clear from Settings app
             handleSettingsBundleCacheClear()
-        
+
         @unknown default:
             break
         }
@@ -295,7 +313,7 @@ struct WXYCApp: App {
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
     }
-
+    
     private func setUpQualityAnalytics() {
         AdaptiveQualityController.shared.setAnalytics(StructuredPostHogAnalytics.shared)
     }
@@ -381,6 +399,46 @@ struct WXYCApp: App {
                 }
             }
             Log(.warning, category: .general, "Failed to capture wallpaper snapshot after 5 attempts")
+        }
+    }
+
+    // MARK: - Theme Picker Keyboard Navigation
+
+    /// Toggle theme picker mode on/off.
+    private func toggleThemePicker() {
+        withAnimation(ThemePickerState.transitionAnimation) {
+            if appState.themePickerState.isActive {
+                // Exit: confirm selection and close
+                appState.themePickerState.confirmSelection(to: appState.themeConfiguration)
+                appState.themePickerState.exit()
+            } else {
+                // Enter: open picker at current theme
+                appState.themePickerState.enter(currentThemeID: appState.themeConfiguration.selectedThemeID)
+            }
+        }
+    }
+
+    /// Navigate to the previous theme in the carousel.
+    private func navigateToPreviousTheme() {
+        let themes = ThemeRegistry.shared.themes
+        guard themes.count > 1, appState.themePickerState.isActive else { return }
+
+        withAnimation(.spring(duration: 0.3)) {
+            let newIndex = max(0, appState.themePickerState.carouselIndex - 1)
+            appState.themePickerState.carouselIndex = newIndex
+            appState.themePickerState.updateCenteredTheme(forIndex: newIndex)
+        }
+    }
+
+    /// Navigate to the next theme in the carousel.
+    private func navigateToNextTheme() {
+        let themes = ThemeRegistry.shared.themes
+        guard themes.count > 1, appState.themePickerState.isActive else { return }
+
+        withAnimation(.spring(duration: 0.3)) {
+            let newIndex = min(themes.count - 1, appState.themePickerState.carouselIndex + 1)
+            appState.themePickerState.carouselIndex = newIndex
+            appState.themePickerState.updateCenteredTheme(forIndex: newIndex)
         }
     }
 
