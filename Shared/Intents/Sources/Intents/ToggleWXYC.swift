@@ -11,6 +11,7 @@
 import AppIntents
 import Logger
 import Playback
+import PlaybackCore
 
 public struct ToggleWXYC: SetValueIntent, AudioPlaybackIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -29,13 +30,9 @@ public struct ToggleWXYC: SetValueIntent, AudioPlaybackIntent {
     }
 
     public func perform() async throws -> some IntentResult {
-        Log(.info, "ToggleWXYC intent: \(value)")
-        if value {
-            await AudioPlayerController.shared.play(reason: "ToggleWXYC intent")
-        } else {
-            await MainActor.run {
-                AudioPlayerController.shared.stop(reason: "ToggleWXYC intent")
-            }
+        Log(.info, "ToggleWXYC intent")
+        await MainActor.run {
+            AudioPlayerController.shared.toggle(reason: .toggleIntent)
         }
         return .result()
     }

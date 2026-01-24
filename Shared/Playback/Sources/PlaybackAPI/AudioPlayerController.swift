@@ -186,17 +186,19 @@ public final class AudioPlayerController {
     // MARK: - Public Methods
 
     /// Toggle playback state
-    public func toggle() {
+    /// - Parameter reason: Why playback was toggled (for analytics)
+    public func toggle(reason: PlaybackReason) {
         if isPlaying {
             analytics.capture(PlaybackStoppedEvent(duration: playbackDuration))
-            stop()
+            stop(reason: reason)
         } else {
-            play()
+            play(reason: reason)
         }
     }
 
     /// Start playback
-    public func play(reason: String = "play") {
+    /// - Parameter reason: Why playback was started (for analytics)
+    public func play(reason: PlaybackReason) {
         let context: PlaybackContext = isForegrounded ? .foreground : .background
         cpuAggregator?.startSession(context: context)
 
@@ -208,7 +210,7 @@ public final class AudioPlayerController {
 
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
-        analytics.capture(PlaybackStartedEvent(reason: reason))
+        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue))
         donatePlayIntent()
     }
     
@@ -219,8 +221,8 @@ public final class AudioPlayerController {
     }
 
     /// Stop playback and disconnect from stream
-    /// Note: Analytics should be captured at call sites BEFORE calling this method
-    public func stop(reason _: String? = nil) {
+    /// - Parameter reason: Why playback was stopped (for analytics)
+    public func stop(reason: PlaybackReason) {
         cpuAggregator?.endSession(reason: .userStopped)
 
         reconnectTask?.cancel()
@@ -305,7 +307,7 @@ public final class AudioPlayerController {
         let playTarget = commandCenter.playCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
-                self.play()
+                self.play(reason: .remotePlayCommand)
             }
             return .success
         }
@@ -317,7 +319,7 @@ public final class AudioPlayerController {
             guard let self else { return .commandFailed }
             Task { @MainActor in
                 self.analytics.capture(PlaybackStoppedEvent(duration: self.playbackDuration))
-                self.stop()
+                self.stop(reason: .remotePauseCommand)
             }
             return .success
         }
@@ -328,7 +330,7 @@ public final class AudioPlayerController {
         let toggleTarget = commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
-                self.toggle()
+                self.toggle(reason: .remoteToggleCommand)
             }
             return .success
         }
@@ -432,16 +434,16 @@ public final class AudioPlayerController {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: "interruption began", duration: playbackDuration))
-                stop()
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackDuration))
+                stop(reason: .interruptionBegan)
             }
-            
+
         case .ended:
             guard let optionsValue = optionsValue else { return }
             let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
 
             if options.contains(.shouldResume) && wasPlayingBeforeInterruption {
-                play()
+                play(reason: .resumeAfterInterruption)
             }
             wasPlayingBeforeInterruption = false
             
@@ -460,8 +462,8 @@ public final class AudioPlayerController {
         case .oldDeviceUnavailable:
             // Headphones unplugged - stop playback per Apple HIG
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: "route disconnected", duration: playbackDuration))
-                stop()
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackDuration))
+                stop(reason: .routeDisconnected)
             }
 
         default:
@@ -662,16 +664,5 @@ extension AudioPlayerController: PlaybackController {
         // Convert PlayerState to PlaybackState
         // PlayerState doesn't include .interrupted (controller-level concern)
         return player.state.asPlaybackState
-    }
-
-    public func toggle(reason: String) throws {
-        // AudioPlayerController's toggle doesn't take a reason,
-        // but we match the protocol signature
-        toggle()
-    }
-
-    // Explicit stop() to satisfy protocol (AudioPlayerController has stop(reason:))
-    public func stop() {
-        stop(reason: nil)
     }
 }

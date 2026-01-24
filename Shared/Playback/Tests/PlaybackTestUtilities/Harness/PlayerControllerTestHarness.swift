@@ -27,14 +27,18 @@ import Core
 
 // MARK: - PlaybackController Test Convenience Extensions
 
-/// Convenience methods for testing - allows calling play()/toggle() without reason parameter
+/// Convenience methods for testing - allows calling play()/toggle()/stop() without reason parameter
 public extension PlaybackController {
     func play() {
-        try? play(reason: "test")
+        try? play(reason: .test)
     }
 
     func toggle() {
-        try? toggle(reason: "test")
+        try? toggle(reason: .test)
+    }
+
+    func stop() {
+        stop(reason: .test)
     }
 }
 
@@ -107,7 +111,7 @@ public final class PlayerControllerTestHarness {
     public var lastAnalyticsPlayReason: String? {
         (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStartedEvent }) as? PlaybackStartedEvent)?.reason
     }
-    
+
     public var lastAnalyticsStopDuration: TimeInterval? {
         (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStoppedEvent }) as? PlaybackStoppedEvent)?.duration
     }
@@ -252,7 +256,7 @@ public final class PlayerControllerTestHarness {
 
     /// Resets all tracked state
     public func reset() {
-        controller.stop()
+        controller.stop(reason: .test)
         mockPlayer.reset()
         mockSession.reset()
         mockCommandCenter?.reset()
