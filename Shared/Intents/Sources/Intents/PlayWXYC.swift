@@ -30,13 +30,36 @@ public struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
 
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         Log(.info, "PlayWXYC intent")
+
+        // Prepare audio session early to signal to iOS that audio playback is imminent
+        await AudioPlayerController.shared.prepareForPlayback()
+
         await AudioPlayerController.shared.play(reason: .playIntent)
+
+        // Wait for playback to start before returning, keeping the intent alive
+        // so iOS doesn't suspend the app before the stream connects
+        await waitForPlayback(timeout: .seconds(10))
 
         let value = "Tuning in to WXYC…"
         return .result(
             value: value,
             dialog: IntentDialog(stringLiteral: value)
         )
+    }
+
+    /// Waits for playback to start, polling isPlaying with a timeout.
+    @MainActor
+    private func waitForPlayback(timeout: Duration) async {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+
+        while !AudioPlayerController.shared.isPlaying {
+            if ContinuousClock.now >= deadline {
+                Log(.warning, "PlayWXYC intent: timeout waiting for playback to start")
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        Log(.info, "PlayWXYC intent: playback started")
     }
 
     @available(iOS 26.0, macOS 26.0, *)

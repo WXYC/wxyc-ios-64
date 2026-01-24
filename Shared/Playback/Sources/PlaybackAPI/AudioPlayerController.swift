@@ -262,6 +262,14 @@ public final class AudioPlayerController {
     /// interrupting other apps' audio during app launch.
     private var audioSessionConfigured = false
     
+    /// Prepares the audio session for playback without actually starting playback.
+    /// Call this at the start of an intent to signal to iOS that audio playback is imminent,
+    /// which helps prevent the app from being suspended during stream connection.
+    public func prepareForPlayback() {
+        configureAudioSessionIfNeeded()
+        activateAudioSession()
+    }
+
     private func configureAudioSessionIfNeeded() {
         guard !audioSessionConfigured, let session = audioSession else { return }
         audioSessionConfigured = true
@@ -271,7 +279,7 @@ public final class AudioPlayerController {
             print("Failed to configure audio session: \(error)")
         }
     }
-    
+
     private func activateAudioSession() {
         guard let session = audioSession else { return }
         // Configure the audio session category if not already done
