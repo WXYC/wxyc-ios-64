@@ -10,6 +10,7 @@
 
 import AppIntents
 import Playback
+import PlaybackCore
 import PostHog
 
 public struct PauseWXYC: AudioPlaybackIntent {
@@ -24,7 +25,7 @@ public struct PauseWXYC: AudioPlaybackIntent {
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         PostHogSDK.shared.capture("PauseWXYC intent")
         await MainActor.run {
-            AudioPlayerController.shared.stop()
+            AudioPlayerController.shared.stop(reason: .pauseIntent)
         }
         return .result(value: "Now pausing WXYC")
     }

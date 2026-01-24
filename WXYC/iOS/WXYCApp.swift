@@ -196,7 +196,7 @@ struct WXYCApp: App {
         .commands {
                 CommandMenu("Playback") {
                     Button("Play/Pause") {
-                        AudioPlayerController.shared.toggle()
+                        AudioPlayerController.shared.toggle(reason: .keyboardShortcut)
                     }
                     .keyboardShortcut(.space, modifiers: [])
                 }
@@ -230,15 +230,15 @@ struct WXYCApp: App {
     private func handleURL(_ url: URL) {
         // Handle deep links and user activities
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
-            AudioPlayerController.shared.play()
+            AudioPlayerController.shared.play(reason: .deepLink)
         }
     }
         
     private func handleUserActivity(_ userActivity: NSUserActivity) {
         if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            AudioPlayerController.shared.play()
+            AudioPlayerController.shared.play(reason: .quickAction)
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
-            AudioPlayerController.shared.play()
+            AudioPlayerController.shared.play(reason: .siriIntent)
             PostHogSDK.shared.capture(
                 "Handle INIntent",
                 context: "Intents",

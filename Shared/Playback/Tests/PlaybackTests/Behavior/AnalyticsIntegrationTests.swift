@@ -42,7 +42,7 @@ struct AnalyticsIntegrationTests {
         // Small delay to ensure non-zero duration
         try? await Task.sleep(for: .milliseconds(10))
 
-        try harness.controller.toggle(reason: "test toggle")
+        try harness.controller.toggle(reason: .testToggle)
         #expect(harness.analyticsStopCallCount > 0, "toggle() to stop should call analytics")
         #expect(harness.lastAnalyticsStopDuration != nil, "toggle() to stop should report duration")
     }
@@ -50,10 +50,10 @@ struct AnalyticsIntegrationTests {
     @Test("Analytics receives play reason", arguments: PlayerControllerTestCase.allCases)
     func analyticsReceivesPlayReason(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        try harness.controller.play(reason: "user tapped play")
+        try harness.controller.play(reason: .userTappedPlay)
 
         #expect(harness.mockAnalytics.startedEvents.count == 1)
-        #expect(harness.mockAnalytics.startedEvents.first?.reason == "user tapped play")
+        #expect(harness.mockAnalytics.startedEvents.first?.reason == PlaybackReason.userTappedPlay.rawValue)
     }
 
     @Test("Analytics receives stop duration via toggle", arguments: PlayerControllerTestCase.allCases)
@@ -64,7 +64,7 @@ struct AnalyticsIntegrationTests {
         // Wait a bit to accumulate duration
         try? await Task.sleep(for: .milliseconds(50))
 
-        try harness.controller.toggle(reason: "test toggle")
+        try harness.controller.toggle(reason: .testToggle)
 
         #expect(harness.mockAnalytics.stoppedEvents.count == 1)
         if let duration = harness.mockAnalytics.stoppedEvents.first?.duration {
@@ -78,7 +78,7 @@ struct AnalyticsIntegrationTests {
     func toggleToStopReportsAnalyticsStoppedEvent(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
         harness.controller.play()
-        try harness.controller.toggle(reason: "test toggle")
+        try harness.controller.toggle(reason: .testToggle)
 
         #expect(harness.mockAnalytics.stoppedEvents.count == 1, "toggle() to stop should report analytics stopped event")
     }
@@ -89,7 +89,7 @@ struct AnalyticsIntegrationTests {
         harness.controller.play()
         harness.mockAnalytics.reset()
 
-        try harness.controller.toggle(reason: "test toggle")
+        try harness.controller.toggle(reason: .testToggle)
 
         #expect(harness.mockAnalytics.stoppedEvents.count == 1)
         #expect(harness.mockAnalytics.stoppedEvents.first?.reason == nil,
@@ -111,39 +111,39 @@ struct AnalyticsIntegrationTests {
     @Test("play() reports exact reason string", arguments: PlayerControllerTestCase.allCases)
     func playReportsExactReasonString(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        let expectedReason = "CarPlay listen live tapped"
+        let reason = PlaybackReason.carPlay
 
-        try harness.controller.play(reason: expectedReason)
+        try harness.controller.play(reason: reason)
 
         #expect(harness.mockAnalytics.startedEvents.count == 1)
-        #expect(harness.mockAnalytics.startedEvents.first?.reason == expectedReason,
+        #expect(harness.mockAnalytics.startedEvents.first?.reason == reason.rawValue,
                "play() should report the exact reason string passed in")
     }
 
     @Test("Multiple play reasons are captured distinctly", arguments: [
-        "PlayWXYC intent",
-        "ToggleWXYC intent",
-        "CarPlay listen live tapped",
-        "home screen play quick action",
-        "remotePlayCommand",
-        "remote toggle play/pause",
-        "Resume after interruption ended",
-        "foreground toggle"
+        PlaybackReason.playIntent,
+        PlaybackReason.toggleIntent,
+        PlaybackReason.carPlay,
+        PlaybackReason.quickAction,
+        PlaybackReason.remotePlayCommand,
+        PlaybackReason.remoteToggleCommand,
+        PlaybackReason.resumeAfterInterruption,
+        PlaybackReason.foregroundToggle
     ])
-    func multiplePlayReasonsAreCapturedDistinctly(reason: String) async throws {
+    func multiplePlayReasonsAreCapturedDistinctly(reason: PlaybackReason) async throws {
         // Test with AudioPlayerController
         #if os(iOS) || os(tvOS)
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
         try harness.controller.play(reason: reason)
-        #expect(harness.mockAnalytics.startedEvents.first?.reason == reason,
-               "AudioPlayerController should capture exact reason '\(reason)'")
+        #expect(harness.mockAnalytics.startedEvents.first?.reason == reason.rawValue,
+               "AudioPlayerController should capture exact reason '\(reason.rawValue)'")
         #endif
 
         // Test with RadioPlayerController
         let radioHarness = PlayerControllerTestHarness.make(for: .radioPlayerController)
         try radioHarness.controller.play(reason: reason)
-        #expect(radioHarness.mockAnalytics.startedEvents.first?.reason == reason,
-               "RadioPlayerController should capture exact reason '\(reason)'")
+        #expect(radioHarness.mockAnalytics.startedEvents.first?.reason == reason.rawValue,
+               "RadioPlayerController should capture exact reason '\(reason.rawValue)'")
     }
 }
 

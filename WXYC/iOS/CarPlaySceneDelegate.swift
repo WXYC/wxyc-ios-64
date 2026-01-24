@@ -107,7 +107,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         listenLiveItem.isPlaying = isPlaying
 
         listenLiveItem.handler = { (_: CPSelectableListItem, completionHandler: @escaping () -> Void) in
-            AudioPlayerController.shared.play()
+            AudioPlayerController.shared.play(reason: .carPlay)
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {

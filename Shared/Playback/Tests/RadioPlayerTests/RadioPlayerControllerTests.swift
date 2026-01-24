@@ -182,7 +182,7 @@ struct RadioPlayerControllerTests {
 
         // When - Attempt to play (may fail to activate session in test environment)
         // This should not crash
-        try controller.play(reason: "error handling test")
+        try controller.play(reason: .errorHandlingTest)
 
         // Then - Should handle gracefully
         #expect(true) // No crash = success

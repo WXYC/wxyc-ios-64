@@ -15,6 +15,7 @@ import Foundation
 import UIKit
 @testable import WXYC
 @testable import Playback
+@testable import PlaybackCore
 
 @Suite("PlayWXYC Intent Tests", .serialized)
 @MainActor
@@ -23,7 +24,7 @@ struct PlayWXYCIntentTests {
     @Test("perform() starts playback")
     func performStartsPlayback() async throws {
         // Ensure we start from a stopped state
-        AudioPlayerController.shared.stop()
+        AudioPlayerController.shared.stop(reason: .test)
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(!AudioPlayerController.shared.isPlaying, "Should start in stopped state")
@@ -39,13 +40,13 @@ struct PlayWXYCIntentTests {
         #expect(AudioPlayerController.shared.isPlaying, "Intent should have started playback")
 
         // Clean up: stop playback
-        AudioPlayerController.shared.stop()
+        AudioPlayerController.shared.stop(reason: .test)
     }
 
     @Test("perform() starts playback from background")
     func performStartsPlaybackFromBackground() async throws {
         // Ensure we start from a stopped state
-        AudioPlayerController.shared.stop()
+        AudioPlayerController.shared.stop(reason: .test)
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(!AudioPlayerController.shared.isPlaying, "Should start in stopped state")
@@ -82,7 +83,7 @@ struct PlayWXYCIntentTests {
         #expect(AudioPlayerController.shared.isPlaying, "Playback should continue after foregrounding")
 
         // Clean up
-        AudioPlayerController.shared.stop()
+        AudioPlayerController.shared.stop(reason: .test)
     }
 
     @Test("perform() returns correct dialog")
@@ -94,13 +95,13 @@ struct PlayWXYCIntentTests {
         #expect(result.value == "Tuning in to WXYC…", "Should return tuning message")
 
         // Clean up
-        AudioPlayerController.shared.stop()
+        AudioPlayerController.shared.stop(reason: .test)
     }
 
     @Test("perform() is idempotent when already playing")
     func performIdempotentWhenPlaying() async throws {
         // Start playback first
-        await AudioPlayerController.shared.play()
+        await AudioPlayerController.shared.play(reason: .test)
         try await waitForPlayback(timeout: .seconds(5))
 
         let wasPlaying = AudioPlayerController.shared.isPlaying
@@ -115,7 +116,7 @@ struct PlayWXYCIntentTests {
         #expect(AudioPlayerController.shared.isPlaying == wasPlaying, "State should remain consistent")
 
         // Clean up
-        AudioPlayerController.shared.stop()
+        AudioPlayerController.shared.stop(reason: .test)
     }
 }
 

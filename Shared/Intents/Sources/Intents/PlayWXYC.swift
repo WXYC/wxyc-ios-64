@@ -11,6 +11,7 @@
 import AppIntents
 import Logger
 import Playback
+import PlaybackCore
 
 public struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -29,7 +30,7 @@ public struct PlayWXYC: AudioPlaybackIntent, InstanceDisplayRepresentable {
 
     public func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
         Log(.info, "PlayWXYC intent")
-        await AudioPlayerController.shared.play(reason: "Widget PlayWXYC intent")
+        await AudioPlayerController.shared.play(reason: .playIntent)
 
         let value = "Tuning in to WXYC…"
         return .result(
