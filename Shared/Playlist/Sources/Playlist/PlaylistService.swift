@@ -92,6 +92,13 @@ public final actor PlaylistService: Sendable {
         }
     }
     
+    /// Returns the number of entries in the current playlist.
+    /// Used for checking if the playlist has loaded.
+    public func currentEntryCount() async -> Int {
+        await waitForCacheLoad()
+        return currentPlaylist.entries.count
+    }
+    
     /// Fetch playlist and cache it, always fetching fresh data (ignores cache).
     /// Used for background refresh to ensure we always get the latest data.
     ///
@@ -145,7 +152,7 @@ public final actor PlaylistService: Sendable {
             return playlist
         }
     }
-
+            
     /// Switches to a different API version and immediately fetches fresh data.
     /// Clears the current playlist and cache before fetching to ensure clean data.
     ///
@@ -155,10 +162,10 @@ public final actor PlaylistService: Sendable {
             
         // Cancel any existing fetch task
         cancelFetchTask()
-                
+            
         // Create new fetcher with the specified version
         fetcher = PlaylistFetcher(apiVersion: version)
-
+                
         // Clear current playlist to show loading state
         currentPlaylist = .empty
         broadcast(.empty)
@@ -171,14 +178,14 @@ public final actor PlaylistService: Sendable {
             ensureFetchTaskRunning()
         }
     }
-
+            
     /// Returns an AsyncStream that yields playlist updates.
     /// If a cached playlist exists, it's yielded immediately.
     /// Otherwise, observers wait for the first fetch to complete.
     /// Multiple observers each receive their own stream of updates.
     public nonisolated func updates() -> AsyncStream<Playlist> {
         let id = UUID()
-            
+                
         return AsyncStream { continuation in
             let setupTask = Task { [weak self] in
                 guard let self else {
@@ -228,7 +235,7 @@ public final actor PlaylistService: Sendable {
             cancelFetchTask()
         }
     }
-    
+
     /// Broadcast a playlist update to all observers
     private func broadcast(_ playlist: Playlist) {
         for continuation in continuations.values {
@@ -240,7 +247,7 @@ public final actor PlaylistService: Sendable {
         fetchTask?.cancel()
         fetchTask = nil
     }
-            
+
     deinit {
         for continuation in continuations.values {
             continuation.finish()
