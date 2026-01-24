@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build upload tool
+        run: |
+          chmod +x build-upload-tool.sh
+          ./build-upload-tool.sh
+
+      - name: Create release archive
+        run: |
+          mkdir -p release/app-store-previews
+          cp process-preview.sh release/app-store-previews/
+          cp upload-preview release/app-store-previews/
+          cp upload-preview.swift release/app-store-previews/
+          cp build-upload-tool.sh release/app-store-previews/
+          cp README.md release/app-store-previews/
+          cp -r tests release/app-store-previews/
+
+          cd release
+          zip -r app-store-previews-${{ steps.version.outputs.VERSION }}-macos.zip app-store-previews
+          tar -czvf app-store-previews-${{ steps.version.outputs.VERSION }}-macos.tar.gz app-store-previews
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          files: |
+            release/app-store-previews-${{ steps.version.outputs.VERSION }}-macos.zip
+            release/app-store-previews-${{ steps.version.outputs.VERSION }}-macos.tar.gz
+          body: |
+            ## App Store Preview Pipeline ${{ steps.version.outputs.VERSION }}
+
+            Tools for processing screen recordings into Apple App Store preview video formats.
+
+            ### Installation
+
+            ```bash
+            # Download and extract
+            curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.VERSION }}/app-store-previews-${{ steps.version.outputs.VERSION }}-macos.tar.gz | tar -xz
+
+            # Or with zip
+            unzip app-store-previews-${{ steps.version.outputs.VERSION }}-macos.zip
+            ```
+
+            ### Requirements
+
+            - macOS 13+ (Ventura or later)
+            - ffmpeg (`brew install ffmpeg`)
+            - Xcode Command Line Tools (for rebuilding upload tool)
+
+            ### Quick Start
+
+            ```bash
+            cd app-store-previews
+
+            # Process a video for iPhone 6.9"
+            ./process-preview.sh -d iphone-6.9 -p my_recording.mov
+
+            # Generate all required sizes
+            ./process-preview.sh -a my_recording.mov
+            ```
+
+            See README.md for full documentation.

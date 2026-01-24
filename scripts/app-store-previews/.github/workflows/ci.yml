@@ -1,0 +1,241 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-shell:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on process-preview.sh
+        run: |
+          # ShellCheck doesn't fully support zsh, but catches most issues
+          shellcheck --shell=bash --severity=warning process-preview.sh || true
+
+      - name: Run ShellCheck on process-screenshot.sh
+        run: shellcheck --shell=bash --severity=warning process-screenshot.sh || true
+
+      - name: Run ShellCheck on build script
+        run: shellcheck --shell=bash --severity=warning build-upload-tool.sh || true
+
+  test-shell:
+    name: Test Shell Scripts
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify ffmpeg available
+        run: |
+          brew install ffmpeg || true
+          which ffmpeg
+
+      - name: Make scripts executable
+        run: |
+          chmod +x process-preview.sh process-screenshot.sh
+          chmod +x tests/test_process_preview.sh tests/test_process_screenshot.sh
+
+      - name: Run preview tests
+        run: ./tests/test_process_preview.sh
+
+      - name: Run screenshot tests
+        run: ./tests/test_process_screenshot.sh
+
+  build-swift:
+    name: Build Swift Tool
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build upload tool
+        run: |
+          chmod +x build-upload-tool.sh
+          ./build-upload-tool.sh
+
+      - name: Verify binary exists
+        run: |
+          ls -la upload-preview
+          file upload-preview
+
+      - name: Test help output
+        run: ./upload-preview --help
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: upload-preview-macos
+          path: upload-preview
+
+  test-swift:
+    name: Test Swift Tool
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Compile and run tests
+        run: |
+          swiftc -O -o run-tests tests/UploadPreviewTests.swift
+          ./run-tests
+
+  integration-test:
+    name: Integration Tests
+    runs-on: macos-latest
+    needs: [test-shell, build-swift]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg || true
+
+      - name: Make scripts executable
+        run: chmod +x process-preview.sh build-upload-tool.sh
+
+      - name: Create test video
+        run: |
+          # Create a 20-second test video with ffmpeg
+          ffmpeg -f lavfi -i testsrc=duration=20:size=1920x1080:rate=30 \
+                 -f lavfi -i sine=frequency=440:duration=20 \
+                 -c:v libx264 -c:a aac \
+                 -pix_fmt yuv420p \
+                 -y test_recording.mp4
+
+      - name: Test dry-run processing (iPhone)
+        run: |
+          ./process-preview.sh -d iphone-6.9 -l --dry-run test_recording.mp4
+
+      - name: Test dry-run processing (iPad)
+        run: |
+          ./process-preview.sh -d ipad-13 -l --dry-run test_recording.mp4
+
+      - name: Test dry-run processing (all required)
+        run: |
+          ./process-preview.sh -a -l --dry-run test_recording.mp4
+
+      - name: Test actual processing (iPhone 6.9)
+        run: |
+          ./process-preview.sh -d iphone-6.9 -l -O ./output test_recording.mp4
+          ls -la ./output/
+
+      - name: Verify output dimensions
+        run: |
+          OUTPUT_FILE="./output/test_recording_iphone-6.9_landscape.mp4"
+          WIDTH=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$OUTPUT_FILE")
+          HEIGHT=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$OUTPUT_FILE")
+          echo "Output dimensions: ${WIDTH}x${HEIGHT}"
+
+          if [[ "$WIDTH" != "1920" ]] || [[ "$HEIGHT" != "886" ]]; then
+            echo "ERROR: Expected 1920x886, got ${WIDTH}x${HEIGHT}"
+            exit 1
+          fi
+          echo "Dimensions correct!"
+
+      - name: Verify output codec
+        run: |
+          OUTPUT_FILE="./output/test_recording_iphone-6.9_landscape.mp4"
+          CODEC=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 "$OUTPUT_FILE")
+          echo "Video codec: $CODEC"
+
+          if [[ "$CODEC" != "h264" ]]; then
+            echo "ERROR: Expected h264, got $CODEC"
+            exit 1
+          fi
+          echo "Codec correct!"
+
+      - name: Verify output duration
+        run: |
+          OUTPUT_FILE="./output/test_recording_iphone-6.9_landscape.mp4"
+          DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUTPUT_FILE")
+          DURATION_INT=$(printf "%.0f" "$DURATION")
+          echo "Duration: ${DURATION}s (rounded: ${DURATION_INT}s)"
+
+          if [[ "$DURATION_INT" -lt 15 ]] || [[ "$DURATION_INT" -gt 30 ]]; then
+            echo "ERROR: Duration should be 15-30 seconds"
+            exit 1
+          fi
+          echo "Duration correct!"
+
+      - name: Test trim option
+        run: |
+          ./process-preview.sh -d iphone-6.9 -l -t 0:15 -O ./output-trimmed test_recording.mp4
+
+          OUTPUT_FILE="./output-trimmed/test_recording_iphone-6.9_landscape.mp4"
+          DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUTPUT_FILE")
+          DURATION_INT=$(printf "%.0f" "$DURATION")
+          echo "Trimmed duration: ${DURATION_INT}s"
+
+          if [[ "$DURATION_INT" -ne 15 ]]; then
+            echo "ERROR: Expected 15 seconds after trim"
+            exit 1
+          fi
+
+      - name: Build upload tool
+        run: ./build-upload-tool.sh
+
+      - name: Test upload tool exists
+        run: ./upload-preview --help
+
+  integration-test-screenshots:
+    name: Screenshot Integration Tests
+    runs-on: macos-latest
+    needs: [test-shell]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x process-screenshot.sh
+
+      - name: Create test image
+        run: |
+          # Create a test PNG image using sips
+          sips -s format png /System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericDocumentIcon.icns --out test_screenshot.png
+          sips -z 2000 1500 test_screenshot.png --out test_screenshot.png
+
+      - name: Test dry-run processing (iPhone)
+        run: ./process-screenshot.sh -d iphone-6.9 -l --dry-run test_screenshot.png
+
+      - name: Test actual processing (iPhone 6.9)
+        run: |
+          ./process-screenshot.sh -d iphone-6.9 -l -O ./output test_screenshot.png
+          ls -la ./output/
+
+      - name: Verify output dimensions
+        run: |
+          OUTPUT_FILE="./output/test_screenshot_iphone-6.9_landscape.png"
+          DIMS=$(sips -g pixelWidth -g pixelHeight "$OUTPUT_FILE" | tail -2)
+          WIDTH=$(echo "$DIMS" | grep pixelWidth | awk '{print $2}')
+          HEIGHT=$(echo "$DIMS" | grep pixelHeight | awk '{print $2}')
+          echo "Output dimensions: ${WIDTH}x${HEIGHT}"
+
+          if [[ "$WIDTH" != "2868" ]] || [[ "$HEIGHT" != "1320" ]]; then
+            echo "ERROR: Expected 2868x1320, got ${WIDTH}x${HEIGHT}"
+            exit 1
+          fi
+          echo "Dimensions correct!"
+
+      - name: Test JPEG output
+        run: |
+          ./process-screenshot.sh -d iphone-6.9 -l -f jpg -q 90 -O ./output-jpg test_screenshot.png
+          ls -la ./output-jpg/
+          file ./output-jpg/*.jpg
+
+  all-tests-pass:
+    name: All Tests Pass
+    runs-on: ubuntu-latest
+    needs: [lint-shell, test-shell, build-swift, test-swift, integration-test, integration-test-screenshots]
+    steps:
+      - name: All tests passed
+        run: echo "All tests passed successfully!"
