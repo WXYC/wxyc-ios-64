@@ -29,6 +29,7 @@ let package = Package(
             dependencies: [
                 "Caching",
                 "Playback",
+                .product(name: "PlaybackCore", package: "Playback"),
                 "Wallpaper",
                 "WXUI",
             ],

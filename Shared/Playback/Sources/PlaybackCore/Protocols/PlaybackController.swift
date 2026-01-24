@@ -40,18 +40,19 @@ public protocol PlaybackController: AnyObject, Observable {
     var isLoading: Bool { get }
     
     /// Starts playback with the given reason for analytics
-    /// - Parameter reason: A description of why playback was started (for analytics)
+    /// - Parameter reason: Why playback was started (for analytics)
     /// - Throws: If playback cannot be started
-    func play(reason: String) throws
+    func play(reason: PlaybackReason) throws
     
     /// Toggles between playing and stopped states
-    /// - Parameter reason: A description of why playback was toggled (for analytics)
+    /// - Parameter reason: Why playback was toggled (for analytics)
     /// - Throws: If playback cannot be started when toggling from stopped to playing
-    func toggle(reason: String) throws
+    func toggle(reason: PlaybackReason) throws
     
     /// Stops playback and disconnects from stream
     /// For live streaming, this resets the connection so resume plays live audio
-    func stop()
+    /// - Parameter reason: Why playback was stopped (for analytics)
+    func stop(reason: PlaybackReason)
     
     /// Stream of audio buffers for visualization
     /// Controllers without audio buffer access should return an empty stream

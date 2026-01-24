@@ -102,7 +102,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     func playWithURLSetsPlaybackIntended() async throws {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        try harness.controller.play(reason: "test")
+        try harness.controller.play(reason: .test)
         harness.mockSession.reset()  // Clear the activation from play()
 
         harness.controller.handleAppDidEnterBackground()
@@ -116,7 +116,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     func stopClearsPlaybackIntended() async throws {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        try harness.controller.play(reason: "test")
+        try harness.controller.play(reason: .test)
         harness.mockSession.reset()
         harness.controller.stop()
 
@@ -138,7 +138,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         // Play -> Stop -> Play cycle
-        try harness.controller.play(reason: "initial")
+        try harness.controller.play(reason: .initial)
         harness.controller.stop()  // playbackIntended = false
         harness.controller.play()  // playbackIntended should be true again
 
@@ -153,7 +153,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     func stopClearsPlaybackIntendedAndDeactivates() async throws {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        try harness.controller.play(reason: "test")
+        try harness.controller.play(reason: .test)
         harness.mockSession.reset()
 
         harness.controller.stop()
@@ -169,7 +169,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
     func foregroundWhilePlaybackIntendedReactivates() async throws {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        try harness.controller.play(reason: "test")
+        try harness.controller.play(reason: .test)
         harness.controller.handleAppDidEnterBackground()  // No deactivation (playing)
 
         harness.mockSession.reset()
@@ -227,7 +227,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         // User starts WXYC (interrupts Apple Music)
-        try harness.controller.play(reason: "user started stream")
+        try harness.controller.play(reason: .userStartedStream)
         #expect(harness.controller.isPlaying)
 
         // User backgrounds app while WXYC is playing

@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Playback
+import PlaybackCore
 import Wallpaper
 import WXUI
 
@@ -57,7 +58,7 @@ public struct PlayerHeaderView: View {
                 isPlaying: Self.controller.isPlaying,
                 isLoading: Self.controller.isLoading
             ) {
-                Self.controller.toggle()
+                Self.controller.toggle(reason: .headerViewToggle)
             }
 
             VisualizerTimelineView(

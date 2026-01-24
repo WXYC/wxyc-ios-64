@@ -21,6 +21,7 @@ let package = Package(
             dependencies: [
                 "Logger",
                 "Playback",
+                .product(name: "PlaybackCore", package: "Playback"),
                 .product(name: "PostHog", package: "posthog-ios"),
             ],
             path: "Sources/Intents"

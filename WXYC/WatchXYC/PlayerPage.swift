@@ -15,6 +15,7 @@ import PlaybackWatchOS
 #else
 import Playback
 #endif
+import PlaybackCore
 import AppServices
 #if canImport(UIKit)
 import UIKit
@@ -77,7 +78,7 @@ struct PlayerPage: View {
                     #if os(watchOS)
                     // TODO: Maximize tappable target.
                     Button(action: {
-                        Task { try playbackController.toggle(reason: "Watch play/pause tapped") }
+                        Task { try playbackController.toggle(reason: .watchPlayPause) }
                     }) {
                         Image(systemName: playbackController.isPlaying ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))
@@ -95,10 +96,10 @@ struct PlayerPage: View {
             #if os(tvOS)
             .focusable(true)
             .onPlayPauseCommand {
-                try? playbackController.toggle(reason: "tvOS play/pause command")
+                try? playbackController.toggle(reason: .tvOSCommand)
             }
             .task {
-                try? playbackController.play(reason: "tvOS task")
+                try? playbackController.play(reason: .tvOSCommand)
             }
             #endif
             .task {
