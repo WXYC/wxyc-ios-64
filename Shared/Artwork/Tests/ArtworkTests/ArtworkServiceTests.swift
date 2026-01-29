@@ -140,33 +140,6 @@ extension CGImage {
 }
 #endif
 
-// MARK: - Playcut Test Stub
-
-extension Playcut {
-    /// Creates a Playcut with sensible defaults for testing.
-    static func stub(
-        id: UInt64 = 1,
-        hour: UInt64 = 1000,
-        chronOrderID: UInt64? = nil,
-        timeCreated: UInt64? = nil,
-        songTitle: String = "Test Song",
-        labelName: String? = nil,
-        artistName: String = "Test Artist",
-        releaseTitle: String? = "Test Album"
-    ) -> Playcut {
-        Playcut(
-            id: id,
-            hour: hour,
-            chronOrderID: chronOrderID ?? id,
-            timeCreated: timeCreated ?? hour,
-            songTitle: songTitle,
-            labelName: labelName,
-            artistName: artistName,
-            releaseTitle: releaseTitle
-        )
-    }
-}
-
 // MARK: - ArtworkService Tests
 
 @Suite("ArtworkService Tests")
