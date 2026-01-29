@@ -115,6 +115,7 @@ func makeTestPlaycut(id: UInt64 = 1, songTitle: String = "Test Song", artistName
         id: id,
         hour: 0,
         chronOrderID: id,
+        timeCreated: 0,
         songTitle: songTitle,
         labelName: nil,
         artistName: artistName,

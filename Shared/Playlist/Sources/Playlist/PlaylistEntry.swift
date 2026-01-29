@@ -24,6 +24,7 @@ public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hasha
     var id: UInt64 { get }
     var hour: UInt64 { get }
     var chronOrderID: UInt64 { get }
+    var timeCreated: UInt64 { get }
 }
 
 public extension PlaylistEntry {
@@ -52,6 +53,7 @@ public struct Breakpoint: PlaylistEntry {
     public let id: UInt64
     public let hour: UInt64
     public let chronOrderID: UInt64
+    public let timeCreated: UInt64
     
     
     public var formattedDate: String {
@@ -72,6 +74,7 @@ public struct Talkset: PlaylistEntry {
     public let id: UInt64
     public let hour: UInt64
     public let chronOrderID: UInt64
+    public let timeCreated: UInt64
 }
 
 /// Represents a show start or end marker from the v2 API.
@@ -79,6 +82,7 @@ public struct ShowMarker: PlaylistEntry {
     public let id: UInt64
     public let hour: UInt64
     public let chronOrderID: UInt64
+    public let timeCreated: UInt64
     public let isStart: Bool
     public let djName: String?
     public let message: String
@@ -87,6 +91,7 @@ public struct ShowMarker: PlaylistEntry {
         id: UInt64,
         hour: UInt64,
         chronOrderID: UInt64,
+        timeCreated: UInt64,
         isStart: Bool,
         djName: String?,
         message: String
@@ -94,6 +99,7 @@ public struct ShowMarker: PlaylistEntry {
         self.id = id
         self.hour = hour
         self.chronOrderID = chronOrderID
+        self.timeCreated = timeCreated
         self.isStart = isStart
         self.djName = djName
         self.message = message
@@ -104,12 +110,13 @@ public struct Playcut: PlaylistEntry, Hashable {
     public let id: UInt64
     public let hour: UInt64
     public let chronOrderID: UInt64
+    public let timeCreated: UInt64
 
     public let songTitle: String
     public let labelName: String?
     public let artistName: String
     public let releaseTitle: String?
-    
+
     /// Whether this playcut is a rotation play (station library track).
     /// Rotation plays have their artwork cached longer than non-rotation plays.
     public let rotation: Bool
@@ -118,6 +125,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         case id
         case hour
         case chronOrderID
+        case timeCreated
         case songTitle
         case labelName
         case artistName
@@ -129,6 +137,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         id: UInt64,
         hour: UInt64,
         chronOrderID: UInt64,
+        timeCreated: UInt64,
         songTitle: String,
         labelName: String?,
         artistName: String,
@@ -138,6 +147,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.id = id
         self.hour = hour
         self.chronOrderID = chronOrderID
+        self.timeCreated = timeCreated
         self.songTitle = songTitle
         self.labelName = labelName
         self.artistName = artistName
@@ -151,6 +161,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.id = try container.decode(UInt64.self, forKey: .id)
         self.hour = try container.decode(UInt64.self, forKey: .hour)
         self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
+        self.timeCreated = try container.decode(UInt64.self, forKey: .timeCreated)
 
         do {
             self.songTitle = try container.decode(String.self, forKey: .songTitle).htmlDecoded

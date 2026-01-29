@@ -197,6 +197,7 @@ struct PlaycutDetailView: View {
             id: 1,
             hour: 0,
             chronOrderID: 1,
+            timeCreated: 0,
             songTitle: "Marilyn (feat. Micachu)",
             labelName: "Warp",
             artistName: "Mount Kimbie",

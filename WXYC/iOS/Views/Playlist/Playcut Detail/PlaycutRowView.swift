@@ -254,6 +254,7 @@ extension View {
             id: 1,
             hour: 0,
             chronOrderID: 1,
+            timeCreated: 0,
             songTitle: "Belleville",
             labelName: nil,
             artistName: "Laurel Halo",
