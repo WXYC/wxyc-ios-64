@@ -124,6 +124,48 @@ enum ArtworkServiceError: Error {
     case noResults
 }
 
+// MARK: - Playcut Test Stub
+
+extension Playcut {
+    /// Creates a Playcut with sensible defaults for testing.
+    static func stub(
+        id: UInt64 = 1,
+        hour: UInt64 = 1000,
+        chronOrderID: UInt64? = nil,
+        timeCreated: UInt64? = nil,
+        songTitle: String = "Test Song",
+        labelName: String? = nil,
+        artistName: String = "Test Artist",
+        releaseTitle: String? = nil
+    ) -> Playcut {
+        Playcut(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID ?? id,
+            timeCreated: timeCreated ?? hour,
+            songTitle: songTitle,
+            labelName: labelName,
+            artistName: artistName,
+            releaseTitle: releaseTitle
+        )
+    }
+}
+
+extension Playlist {
+    /// Creates a Playlist stub for testing.
+    static func stub(
+        playcuts: [Playcut] = [],
+        breakpoints: [Breakpoint] = [],
+        talksets: [Talkset] = []
+    ) -> Playlist {
+        Playlist(
+            playcuts: playcuts,
+            breakpoints: breakpoints,
+            talksets: talksets
+        )
+    }
+}
+
 // MARK: - Tests
 
 @MainActor
@@ -140,21 +182,8 @@ struct NowPlayingServiceTests {
         let testImage = CGImage.gradientImage()
         mockArtworkService.artworkToReturn = testImage
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
-        let playlist = Playlist(
-            playcuts: [playcut],
-            breakpoints: [],
-            talksets: []
-        )
-        mockFetcher.playlistToReturn = playlist
+        let playcut = Playcut.stub()
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [playcut])
 
         // Use isolated cache to avoid interference from other tests
         let playlistService = PlaylistService(
@@ -192,20 +221,8 @@ struct NowPlayingServiceTests {
         let mockArtworkService = MockArtworkService()
 
         // Start with a non-empty playlist to avoid indefinite waiting
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
-        mockFetcher.playlistToReturn = Playlist(
-            playcuts: [playcut],
-            breakpoints: [],
-            talksets: []
-        )
+        let playcut = Playcut.stub()
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [playcut])
 
         // Use isolated cache to avoid interference from other tests
         let playlistService = PlaylistService(
@@ -233,20 +250,8 @@ struct NowPlayingServiceTests {
         let mockFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
 
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "First Song",
-            labelName: nil,
-            artistName: "First Artist",
-            releaseTitle: nil
-        )
-        mockFetcher.playlistToReturn = Playlist(
-            playcuts: [playcut1],
-            breakpoints: [],
-            talksets: []
-        )
+        let playcut1 = Playcut.stub(songTitle: "First Song", artistName: "First Artist")
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [playcut1])
 
         // Use isolated cache to avoid interference from other tests
         let playlistService = PlaylistService(
@@ -268,20 +273,8 @@ struct NowPlayingServiceTests {
         #expect(firstItem?.playcut.songTitle == "First Song")
 
         // When - Update playlist with new playcut
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 2000,
-            chronOrderID: 2,
-            songTitle: "Second Song",
-            labelName: nil,
-            artistName: "Second Artist",
-            releaseTitle: nil
-        )
-        mockFetcher.playlistToReturn = Playlist(
-            playcuts: [playcut2],
-            breakpoints: [],
-            talksets: []
-        )
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Second Song", artistName: "Second Artist")
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [playcut2])
 
         let secondItem = try await iterator.next()
 
@@ -296,40 +289,12 @@ struct NowPlayingServiceTests {
         let mockFetcher = MockPlaylistFetcher()
         let mockArtworkService = MockArtworkService()
 
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 3,
-            songTitle: "Third Song",
-            labelName: nil,
-            artistName: "Artist 3",
-            releaseTitle: nil
-        )
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 2000,
-            chronOrderID: 2,
-            songTitle: "Second Song",
-            labelName: nil,
-            artistName: "Artist 2",
-            releaseTitle: nil
-        )
-        let playcut3 = Playcut(
-            id: 3,
-            hour: 3000,
-            chronOrderID: 1,
-            songTitle: "First Song",
-            labelName: nil,
-            artistName: "Artist 1",
-            releaseTitle: nil
-        )
+        let playcut1 = Playcut.stub(chronOrderID: 3, songTitle: "Third Song", artistName: "Artist 3")
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, chronOrderID: 2, songTitle: "Second Song", artistName: "Artist 2")
+        let playcut3 = Playcut.stub(id: 3, hour: 3000, chronOrderID: 1, songTitle: "First Song", artistName: "Artist 1")
 
         // Playlist with multiple playcuts (sorted descending by chronOrderID)
-        mockFetcher.playlistToReturn = Playlist(
-            playcuts: [playcut1, playcut2, playcut3],
-            breakpoints: [],
-            talksets: []
-        )
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [playcut1, playcut2, playcut3])
 
         // Use isolated cache to avoid interference from other tests
         let playlistService = PlaylistService(
@@ -357,24 +322,8 @@ struct NowPlayingServiceTests {
     @Test("NowPlayingItem equality works correctly")
     func nowPlayingItemEquality() async throws {
         // Given
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song 1",
-            labelName: nil,
-            artistName: "Artist 1",
-            releaseTitle: nil
-        )
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 2000,
-            chronOrderID: 2,
-            songTitle: "Song 2",
-            labelName: nil,
-            artistName: "Artist 2",
-            releaseTitle: nil
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song 1", artistName: "Artist 1")
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song 2", artistName: "Artist 2")
 
         let item1 = NowPlayingItem(playcut: playcut1, artwork: nil)
         let item2 = NowPlayingItem(playcut: playcut1, artwork: nil)
@@ -388,24 +337,8 @@ struct NowPlayingServiceTests {
     @Test("NowPlayingItem comparison by chronOrderID")
     func nowPlayingItemComparison() async throws {
         // Given
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song 1",
-            labelName: nil,
-            artistName: "Artist 1",
-            releaseTitle: nil
-        )
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 2000,
-            chronOrderID: 2,
-            songTitle: "Song 2",
-            labelName: nil,
-            artistName: "Artist 2",
-            releaseTitle: nil
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song 1", artistName: "Artist 1")
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song 2", artistName: "Artist 2")
 
         let item1 = NowPlayingItem(playcut: playcut1, artwork: nil)
         let item2 = NowPlayingItem(playcut: playcut2, artwork: nil)

@@ -78,21 +78,9 @@ actor ConcurrentTrackingMockFetcher: PlaylistFetcherProtocol {
     var totalFetchCount: Int = 0
     
     /// Returns a non-empty playlist so broadcasts happen
-    private let testPlaylist = Playlist(
-        playcuts: [
-            Playcut(
-                id: 1,
-                hour: 1000,
-                chronOrderID: 1,
-                songTitle: "Test Song",
-                labelName: nil,
-                artistName: "Test Artist",
-                releaseTitle: nil
-            )
-        ],
-        breakpoints: [],
-        talksets: []
-    )
+    private let testPlaylist = Playlist.stub(playcuts: [
+        .stub(songTitle: "Test Song", artistName: "Test Artist", releaseTitle: nil)
+    ])
 
     func fetchPlaylist() async -> Playlist {
         // Track entry into fetch

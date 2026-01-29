@@ -88,29 +88,15 @@ struct PlaylistServiceCachingTests {
         // Given - Set up cache with a playlist
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let cachedPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Cached Song",
-                    labelName: nil,
-                    artistName: "Cached Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        
+        let cachedPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Cached Song", artistName: "Cached Artist")])
+
         // Cache the playlist
         await cacheCoordinator.set(
             value: cachedPlaylist,
             for: "com.wxyc.playlist.cache",
             lifespan: 15 * 60
         )
-        
+
         // When - Create service (should load from cache)
         let mockFetcher = MockPlaylistFetcher()
         let service = PlaylistService(
@@ -118,39 +104,25 @@ struct PlaylistServiceCachingTests {
             interval: 30,
             cacheCoordinator: cacheCoordinator
         )
-        
+
         // Wait a bit for async cache loading
         try await Task.sleep(for: .milliseconds(100))
-        
+
         // Then - Should yield cached playlist immediately
         var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
-        
+
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Cached Song")
         // Note: fetcher may have been called by the time we check, so we just verify we got cached data
     }
-    
+
     @Test("Does not load expired cached playlist", .timeLimit(.minutes(1)))
     func doesNotLoadExpiredCache() async throws {
         // Given - Set up cache with expired playlist
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let expiredPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Expired Song",
-                    labelName: nil,
-                    artistName: "Expired Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        
+        let expiredPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Expired Song", artistName: "Expired Artist")])
+
         // Create an expired record manually
         let encoder = JSONEncoder()
         let encoded = try encoder.encode(expiredPlaylist)
@@ -159,210 +131,126 @@ struct PlaylistServiceCachingTests {
             lifespan: 15 * 60 // 15 minute lifespan
         )
         mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
-        
+
         // When - Create service
         let mockFetcher = MockPlaylistFetcher()
-        let freshPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 2,
-                    hour: 2000,
-                    chronOrderID: 2,
-                    songTitle: "Fresh Song",
-                    labelName: nil,
-                    artistName: "Fresh Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        mockFetcher.playlistToReturn = freshPlaylist
-    
+        mockFetcher.playlistToReturn = .stub(playcuts: [
+            .stub(id: 2, hour: 2000, songTitle: "Fresh Song", artistName: "Fresh Artist")
+        ])
+
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 0.1,
             cacheCoordinator: cacheCoordinator
         )
-    
+
         // Wait for initial load attempt
         try await Task.sleep(for: .milliseconds(100))
-    
+
         // Then - Should fetch fresh data, not use expired cache
         var iterator = service.updates().makeAsyncIterator()
         let firstPlaylist = await iterator.next()
-    
+        
         #expect(firstPlaylist?.playcuts.first?.songTitle == "Fresh Song")
         #expect(firstPlaylist?.playcuts.first?.songTitle != "Expired Song")
     }
-    
+
     // MARK: - fetchAndCachePlaylist Tests
-    
+
     @Test("fetchAndCachePlaylist always fetches fresh data")
     func fetchAndCachePlaylistAlwaysFetchesFresh() async throws {
         // Given - Set up service with cached data
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let cachedPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Cached Song",
-                    labelName: nil,
-                    artistName: "Cached Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        
+        let cachedPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Cached Song", artistName: "Cached Artist")])
+
         await cacheCoordinator.set(
             value: cachedPlaylist,
             for: "com.wxyc.playlist.cache",
             lifespan: 15 * 60
         )
-        
+
         let mockFetcher = MockPlaylistFetcher()
-        let freshPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 2,
-                    hour: 2000,
-                    chronOrderID: 2,
-                    songTitle: "Fresh Song",
-                    labelName: nil,
-                    artistName: "Fresh Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        mockFetcher.playlistToReturn = freshPlaylist
-        
+        mockFetcher.playlistToReturn = .stub(playcuts: [
+            .stub(id: 2, hour: 2000, songTitle: "Fresh Song", artistName: "Fresh Artist")
+        ])
+
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
             cacheCoordinator: cacheCoordinator
         )
-        
+
         // When - Call fetchAndCachePlaylist (should ignore cache)
         let fetchedPlaylist = await service.fetchAndCachePlaylist()
-        
+
         // Then - Should return fresh data
         #expect(fetchedPlaylist.playcuts.first?.songTitle == "Fresh Song")
         #expect(mockFetcher.callCount == 1)
-        
+    
         // And - Cache should be updated with fresh data
         let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
         #expect(cached.playcuts.first?.songTitle == "Fresh Song")
     }
-    
+
     @Test("fetchAndCachePlaylist updates cache even if playlist unchanged")
     func fetchAndCachePlaylistUpdatesCacheEvenIfUnchanged() async throws {
         // Given
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let mockFetcher = MockPlaylistFetcher()
-        let playlist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Same Song",
-                    labelName: nil,
-                    artistName: "Same Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        mockFetcher.playlistToReturn = playlist
-        
+        mockFetcher.playlistToReturn = .stub(playcuts: [.stub(songTitle: "Same Song", artistName: "Same Artist")])
+
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
             cacheCoordinator: cacheCoordinator
         )
-        
+
         // When - Fetch and cache
         _ = await service.fetchAndCachePlaylist()
-        
+
         // Then - Cache should be updated (timestamp refreshed)
         let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
         #expect(cached.playcuts.first?.songTitle == "Same Song")
     }
-    
+
     // MARK: - Regular Fetching Caching Tests
-    
+
     @Test("Regular fetching caches results", .timeLimit(.minutes(1)))
     func regularFetchingCachesResults() async throws {
         // Given
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let mockFetcher = MockPlaylistFetcher()
-        let playlist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Fetched Song",
-                    labelName: nil,
-                    artistName: "Fetched Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        mockFetcher.playlistToReturn = playlist
+        mockFetcher.playlistToReturn = .stub(playcuts: [.stub(songTitle: "Fetched Song", artistName: "Fetched Artist")])
         
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 0.1,
             cacheCoordinator: cacheCoordinator
         )
-        
+
         // When - Start observing (triggers fetch)
         var iterator = service.updates().makeAsyncIterator()
         _ = await iterator.next()
-        
+
         // Wait for fetch to complete and cache
         try await Task.sleep(for: .milliseconds(150))
-        
+
         // Then - Cache should contain the fetched playlist
         let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
         #expect(cached.playcuts.first?.songTitle == "Fetched Song")
     }
-    
+        
     // MARK: - Cache Expiration Tests
-    
+
     @Test("Cache expires after 15 minutes")
     func cacheExpiresAfter15Minutes() async throws {
         // Given - Create a playlist cached 16 minutes ago
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let oldPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Old Song",
-                    labelName: nil,
-                    artistName: "Old Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
+        let oldPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Old Song", artistName: "Old Artist")])
         
         // Manually create expired record
         let encoder = JSONEncoder()
@@ -372,35 +260,21 @@ struct PlaylistServiceCachingTests {
             lifespan: 15 * 60 // 15 minute lifespan
         )
         mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
-        
+    
         // When - Try to retrieve
         // Then - Should throw noCachedResult error
         await #expect(throws: CacheCoordinator.Error.noCachedResult) {
             let _: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
         }
     }
-    
+
     @Test("Cache is valid within 15 minutes")
     func cacheIsValidWithin15Minutes() async throws {
         // Given - Create a playlist cached 10 minutes ago
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let recentPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Recent Song",
-                    labelName: nil,
-                    artistName: "Recent Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        
+        let recentPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Recent Song", artistName: "Recent Artist")])
+
         // Manually create recent record
         let encoder = JSONEncoder()
         let encoded = try encoder.encode(recentPlaylist)
@@ -409,7 +283,7 @@ struct PlaylistServiceCachingTests {
             lifespan: 15 * 60
         )
         mockCache.set(encoded, metadata: recentMetadata, for: "com.wxyc.playlist.cache")
-
+        
         // When - Try to retrieve
         let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
 

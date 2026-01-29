@@ -19,67 +19,30 @@ struct PlaycutTests {
 
     @Test("artworkCacheKey uses releaseTitle when available")
     func artworkCacheKeyUsesReleaseTitle() {
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
-
+        let playcut = Playcut.stub()
         #expect(playcut.artworkCacheKey == "Test Artist-Test Album")
     }
 
     @Test("artworkCacheKey uses songTitle when releaseTitle is nil")
     func artworkCacheKeyUsesSongTitleWhenReleaseTitleNil() {
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
-
+        let playcut = Playcut.stub(releaseTitle: nil)
         #expect(playcut.artworkCacheKey == "Test Artist-Test Song")
     }
 
     @Test("artworkCacheKey uses songTitle when releaseTitle is empty string")
     func artworkCacheKeyUsesSongTitleWhenReleaseTitleEmpty() {
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: ""
-        )
-
+        let playcut = Playcut.stub(releaseTitle: "")
         #expect(playcut.artworkCacheKey == "Test Artist-Test Song")
     }
 
     @Test("artworkCacheKey is consistent for same content")
     func artworkCacheKeyConsistentForSameContent() {
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
+        let playcut1 = Playcut.stub(songTitle: "Song", artistName: "Artist", releaseTitle: "Album")
+        let playcut2 = Playcut.stub(
+            id: 2,
+            hour: 2000,
             songTitle: "Song",
-            labelName: nil,
-            artistName: "Artist",
-            releaseTitle: "Album"
-        )
-
-        let playcut2 = Playcut(
-            id: 2,  // Different ID
-            hour: 2000,  // Different hour
-            chronOrderID: 2,  // Different chronOrderID
-            songTitle: "Song",
-            labelName: "Different Label",  // Different label
+            labelName: "Different Label",
             artistName: "Artist",
             releaseTitle: "Album"
         )
@@ -90,50 +53,16 @@ struct PlaycutTests {
 
     @Test("artworkCacheKey differs for different artists")
     func artworkCacheKeyDiffersForDifferentArtists() {
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song",
-            labelName: nil,
-            artistName: "Artist A",
-            releaseTitle: "Album"
-        )
-
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 1000,
-            chronOrderID: 2,
-            songTitle: "Song",
-            labelName: nil,
-            artistName: "Artist B",
-            releaseTitle: "Album"
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song", artistName: "Artist A", releaseTitle: "Album")
+        let playcut2 = Playcut.stub(id: 2, songTitle: "Song", artistName: "Artist B", releaseTitle: "Album")
 
         #expect(playcut1.artworkCacheKey != playcut2.artworkCacheKey)
     }
 
     @Test("artworkCacheKey differs for different releases")
     func artworkCacheKeyDiffersForDifferentReleases() {
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song",
-            labelName: nil,
-            artistName: "Artist",
-            releaseTitle: "Album A"
-        )
-
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 1000,
-            chronOrderID: 2,
-            songTitle: "Song",
-            labelName: nil,
-            artistName: "Artist",
-            releaseTitle: "Album B"
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song", artistName: "Artist", releaseTitle: "Album A")
+        let playcut2 = Playcut.stub(id: 2, songTitle: "Song", artistName: "Artist", releaseTitle: "Album B")
 
         #expect(playcut1.artworkCacheKey != playcut2.artworkCacheKey)
     }
@@ -147,6 +76,7 @@ struct PlaycutTests {
             "id": 123,
             "hour": 1000,
             "chronOrderID": 1,
+            "timeCreated": 1000,
             "songTitle": "Test &#8217;Song&#8217;",
             "artistName": "Raphael Rogi&#324;ski &amp; Ruzi&#269;njak Tajni",
             "releaseTitle": "Test &lt;Album&gt;",

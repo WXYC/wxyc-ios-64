@@ -101,6 +101,33 @@ final class MetadataMockWebSession: WebSession, @unchecked Sendable {
     }
 }
 
+// MARK: - Playcut Test Stub
+
+extension Playcut {
+    /// Creates a Playcut with sensible defaults for testing.
+    static func stub(
+        id: UInt64 = 1,
+        hour: UInt64 = 1000,
+        chronOrderID: UInt64? = nil,
+        timeCreated: UInt64? = nil,
+        songTitle: String = "Test Song",
+        labelName: String? = nil,
+        artistName: String = "Test Artist",
+        releaseTitle: String? = "Test Album"
+    ) -> Playcut {
+        Playcut(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID ?? id,
+            timeCreated: timeCreated ?? hour,
+            songTitle: songTitle,
+            labelName: labelName,
+            artistName: artistName,
+            releaseTitle: releaseTitle
+        )
+    }
+}
+
 // MARK: - PlaycutMetadataService Caching Tests
 
 @Suite("PlaycutMetadataService Caching Tests")
@@ -114,15 +141,7 @@ struct PlaycutMetadataServiceCachingTests {
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
 
-        let playcut = Playcut(
-            id: 12345,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: "Test Label",
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub(id: 12345, labelName: "Test Label")
 
         // Pre-populate cache with granular metadata
         let albumKey = MetadataCacheKey.album(artistName: "Test Artist", releaseTitle: "Test Album")
@@ -174,10 +193,8 @@ struct PlaycutMetadataServiceCachingTests {
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
 
-        let playcut = Playcut(
+        let playcut = Playcut.stub(
             id: 99999,
-            hour: 1000,
-            chronOrderID: 1,
             songTitle: "New Song",
             labelName: "New Label",
             artistName: "New Artist",
@@ -222,15 +239,7 @@ struct PlaycutMetadataServiceCachingTests {
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
 
-        let playcut = Playcut(
-            id: 42,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Artist Name",
-            releaseTitle: "Album Title"
-        )
+        let playcut = Playcut.stub(id: 42, artistName: "Artist Name", releaseTitle: "Album Title")
 
         // Mock empty responses
         mockSession.responses["api.discogs.com"] = "{\"results\": []}".data(using: .utf8)!
@@ -257,10 +266,8 @@ struct PlaycutMetadataServiceCachingTests {
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(session: mockSession, cache: cache)
 
-        let playcut = Playcut(
+        let playcut = Playcut.stub(
             id: 555,
-            hour: 1000,
-            chronOrderID: 1,
             songTitle: "Test",
             labelName: "Label",
             artistName: "Artist",
@@ -304,16 +311,8 @@ struct PlaycutMetadataServiceCachingTests {
         await cache.set(value: artistMetadata, for: MetadataCacheKey.artist(discogsId: 12345), lifespan: .thirtyDays)
 
         // Two different songs by the same artist
-        let song1 = Playcut(
-            id: 1, hour: 1000, chronOrderID: 1,
-            songTitle: "Song 1", labelName: nil,
-            artistName: "Same Artist", releaseTitle: "Album A"
-        )
-        let song2 = Playcut(
-            id: 2, hour: 1001, chronOrderID: 2,
-            songTitle: "Song 2", labelName: nil,
-            artistName: "Same Artist", releaseTitle: "Album B"
-        )
+        let song1 = Playcut.stub(songTitle: "Song 1", artistName: "Same Artist", releaseTitle: "Album A")
+        let song2 = Playcut.stub(id: 2, hour: 1001, songTitle: "Song 2", artistName: "Same Artist", releaseTitle: "Album B")
 
         // Pre-populate album caches with same artist ID
         let album1 = AlbumMetadata(label: "Label A", releaseYear: 2020, discogsURL: nil, discogsArtistId: 12345)
