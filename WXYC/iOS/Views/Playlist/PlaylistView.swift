@@ -90,12 +90,14 @@ struct PlaylistView: View {
                             PlaylistSectionHeader(text: "recently played")
                         }
 
-                        playlistRow(for: entry)
-                            .padding(.vertical, 8)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .opacity
-                            ))
+                        if entry is Playcut {
+                            playlistRow(for: entry)
+                                .padding(.vertical, 8)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                        }
                     }
                     .animation(.spring(duration: 0.4, bounce: 0.2), value: playlistEntries.map(\.id))
                     

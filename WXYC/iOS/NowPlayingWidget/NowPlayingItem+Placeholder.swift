@@ -23,6 +23,7 @@ extension NowPlayingItem {
             id: 0,
             hour: 0,
             chronOrderID: 0,
+            timeCreated: 0,
             songTitle: "VI Scose Poise",
             labelName: nil,
             artistName: "Autechre",
@@ -32,6 +33,7 @@ extension NowPlayingItem {
             id: 1,
             hour: 0,
             chronOrderID: 1,
+            timeCreated: 0,
             songTitle: "Belleville",
             labelName: nil,
             artistName: "Laurel Halo",
@@ -41,6 +43,7 @@ extension NowPlayingItem {
             id: 2,
             hour: 0,
             chronOrderID: 2,
+            timeCreated: 0,
             songTitle: "Bismillahi 'Rrahmani 'Rrahim",
             labelName: nil,
             artistName: "Harold Budd",
@@ -50,13 +53,14 @@ extension NowPlayingItem {
             id: 3,
             hour: 0,
             chronOrderID: 3,
+            timeCreated: 0,
             songTitle: "Guinnevere",
             labelName: nil,
             artistName: "Miles Davis",
             releaseTitle: "Bitches Brew"
         )
     ]
-    
+        
     private struct CircularIterator<Element>: IteratorProtocol {
         let sequence: any Sequence<Element>
         private var iterator: any IteratorProtocol<Element>
