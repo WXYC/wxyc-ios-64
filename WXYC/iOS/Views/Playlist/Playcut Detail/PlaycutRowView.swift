@@ -143,6 +143,8 @@ struct PlaycutRowView: View {
                                 .foregroundStyle(.white)
                             Text(playcut.artistName)
                                 .foregroundStyle(.white)
+                            ClockView(timeCreated: playcut.timeCreated, size: 24)
+                                .padding(.top, 4)
                         }
                         .padding(0)
                         
@@ -252,9 +254,9 @@ extension View {
     PlaycutRowView(
         playcut: Playcut(
             id: 1,
-            hour: 0,
+            hour: 1706544000000,
             chronOrderID: 1,
-            timeCreated: 0,
+            timeCreated: 1706549400000, // 3:30 PM
             songTitle: "Belleville",
             labelName: nil,
             artistName: "Laurel Halo",
