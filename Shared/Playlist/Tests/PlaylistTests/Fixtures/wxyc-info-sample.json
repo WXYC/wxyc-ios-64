@@ -1,0 +1,80 @@
+{
+  "playcuts": [
+    {
+      "id": 2580200,
+      "rotation": "true",
+      "request": "false",
+      "songTitle": "Sguabag / The Sweeper",
+      "timeCreated": 1769707664375,
+      "labelName": "Glitterbeat Records",
+      "hour": 1769706000000,
+      "artistName": "Brighde Chaimbeul",
+      "chronOrderID": 170975006,
+      "releaseTitle": "Sunwise"
+    },
+    {
+      "id": 2580199,
+      "rotation": "false",
+      "request": "false",
+      "songTitle": "Besame Mucho",
+      "timeCreated": 1769707467670,
+      "labelName": "EMI Music Japan",
+      "hour": 1769706000000,
+      "artistName": "Lisa Ono",
+      "chronOrderID": 170975005,
+      "releaseTitle": "Romance Latino Vol.3 - Cuba Caliente y su ritmo saborso"
+    },
+    {
+      "id": 2580197,
+      "rotation": "true",
+      "request": "false",
+      "songTitle": "Slight Return",
+      "timeCreated": 1769706898103,
+      "labelName": "Joyful Noise Recordings",
+      "hour": 1769706000000,
+      "artistName": "Editrix",
+      "chronOrderID": 170975003,
+      "releaseTitle": "The Big E"
+    },
+    {
+      "id": 2580150,
+      "rotation": "true",
+      "request": "false",
+      "songTitle": "Po Moru Je Plovila Gallja",
+      "timeCreated": 1769698840701,
+      "labelName": "Instant Classic",
+      "hour": 1769698800000,
+      "artistName": "Raphael Roginski & Ruzicnjak Tajni",
+      "chronOrderID": 170973033,
+      "releaseTitle": "Bura"
+    }
+  ],
+  "talksets": [
+    {
+      "id": 2580185,
+      "timeCreated": 1769704979553,
+      "hour": 1769702400000,
+      "chronOrderID": 170974033
+    },
+    {
+      "id": 2580178,
+      "timeCreated": 1769703668586,
+      "hour": 1769702400000,
+      "chronOrderID": 170974026
+    }
+  ],
+  "breakpoints": [
+    {
+      "id": 2580193,
+      "timeCreated": 1769706056553,
+      "hour": 1769706000000,
+      "chronOrderID": 170974041
+    },
+    {
+      "id": 2580171,
+      "timeCreated": 1769702540126,
+      "hour": 1769702400000,
+      "chronOrderID": 170974019
+    }
+  ]
+}

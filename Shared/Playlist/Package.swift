@@ -19,7 +19,8 @@ let package = Package(
         ),
         .testTarget(
             name: "PlaylistTests",
-            dependencies: ["Playlist", "Caching"]
+            dependencies: ["Playlist", "Caching"],
+            resources: [.copy("Fixtures")]
         )
     ]
 )
