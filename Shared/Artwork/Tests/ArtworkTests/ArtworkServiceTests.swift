@@ -140,6 +140,33 @@ extension CGImage {
 }
 #endif
 
+// MARK: - Playcut Test Stub
+
+extension Playcut {
+    /// Creates a Playcut with sensible defaults for testing.
+    static func stub(
+        id: UInt64 = 1,
+        hour: UInt64 = 1000,
+        chronOrderID: UInt64? = nil,
+        timeCreated: UInt64? = nil,
+        songTitle: String = "Test Song",
+        labelName: String? = nil,
+        artistName: String = "Test Artist",
+        releaseTitle: String? = "Test Album"
+    ) -> Playcut {
+        Playcut(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID ?? id,
+            timeCreated: timeCreated ?? hour,
+            songTitle: songTitle,
+            labelName: labelName,
+            artistName: artistName,
+            releaseTitle: releaseTitle
+        )
+    }
+}
+
 // MARK: - ArtworkService Tests
 
 @Suite("ArtworkService Tests")
@@ -164,15 +191,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When
         let artwork = try await service.fetchArtwork(for: playcut)
@@ -201,15 +220,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When
         let artwork = try await service.fetchArtwork(for: playcut)
@@ -235,15 +246,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When/Then
         await #expect(throws: MultisourceArtworkService.Error.noArtworkAvailable) {
@@ -269,15 +272,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When - Make 3 concurrent requests for the same artwork
         async let result1 = service.fetchArtwork(for: playcut)
@@ -306,25 +301,9 @@ struct ArtworkServiceTests {
         )
 
         // Two playcuts with same release title but different songs
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song A",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song A")
 
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 2000,
-            chronOrderID: 2,
-            songTitle: "Song B",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song B")
 
         // When - Request both concurrently
         async let result1 = service.fetchArtwork(for: playcut1)
@@ -351,22 +330,12 @@ struct ArtworkServiceTests {
 
         // Two playcuts with same release title but DIFFERENT artists
         // This can happen with compilation albums or common album names like "Greatest Hits"
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song A",
-            labelName: nil,
-            artistName: "Artist A",
-            releaseTitle: "Greatest Hits"
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song A", artistName: "Artist A", releaseTitle: "Greatest Hits")
 
-        let playcut2 = Playcut(
+        let playcut2 = Playcut.stub(
             id: 2,
             hour: 2000,
-            chronOrderID: 2,
             songTitle: "Song B",
-            labelName: nil,
             artistName: "Artist B", // Different artist
             releaseTitle: "Greatest Hits" // Same release title
         )
@@ -395,22 +364,12 @@ struct ArtworkServiceTests {
         )
 
         // Two playcuts with same song title but DIFFERENT artists, no release title
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Unique Song",
-            labelName: nil,
-            artistName: "Artist A",
-            releaseTitle: nil
-        )
+        let playcut1 = Playcut.stub(songTitle: "Unique Song", artistName: "Artist A", releaseTitle: nil)
 
-        let playcut2 = Playcut(
+        let playcut2 = Playcut.stub(
             id: 2,
             hour: 2000,
-            chronOrderID: 2,
             songTitle: "Unique Song",
-            labelName: nil,
             artistName: "Artist B", // Different artist
             releaseTitle: nil
         )
@@ -439,22 +398,12 @@ struct ArtworkServiceTests {
         )
 
         // Two playcuts with same song title AND same artist, no release title
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Unique Song",
-            labelName: nil,
-            artistName: "Same Artist",
-            releaseTitle: nil
-        )
+        let playcut1 = Playcut.stub(songTitle: "Unique Song", artistName: "Same Artist", releaseTitle: nil)
 
-        let playcut2 = Playcut(
+        let playcut2 = Playcut.stub(
             id: 2,
             hour: 2000,
-            chronOrderID: 2,
             songTitle: "Unique Song",
-            labelName: nil,
             artistName: "Same Artist", // Same artist
             releaseTitle: nil
         )
@@ -480,25 +429,9 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut1 = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Song A",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Album A"
-        )
+        let playcut1 = Playcut.stub(songTitle: "Song A", releaseTitle: "Album A")
 
-        let playcut2 = Playcut(
-            id: 2,
-            hour: 2000,
-            chronOrderID: 2,
-            songTitle: "Song B",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Album B"
-        )
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song B", releaseTitle: "Album B")
 
         // When - Request different albums
         _ = try await service.fetchArtwork(for: playcut1)
@@ -520,15 +453,7 @@ struct ArtworkServiceTests {
         fetcher.artworkToReturn = artwork
 
         // Create a mock cache fetcher that reads from our mockCache
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // First service with just the regular fetcher
         let service = MultisourceArtworkService(
@@ -574,15 +499,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When
         let result = try await service.fetchArtwork(for: playcut)
@@ -601,15 +518,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When/Then
         await #expect(throws: MultisourceArtworkService.Error.noArtworkAvailable) {
@@ -630,7 +539,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
+        let playcut = Playcut.stub(
             id: 42,
             hour: 12345,
             chronOrderID: 99,
@@ -665,13 +574,11 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcuts = (1...5).map { i in
-            Playcut(
+        let playcuts: [Playcut] = (1...5).map { i in
+            Playcut.stub(
                 id: UInt64(i),
                 hour: UInt64(i * 1000),
-                chronOrderID: UInt64(i),
                 songTitle: "Song \(i)",
-                labelName: nil,
                 artistName: "Artist",
                 releaseTitle: "Album \(i)"
             )
@@ -710,15 +617,7 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator.AlbumArt
         )
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When - Make sequential requests
         _ = try await service.fetchArtwork(for: playcut)
@@ -737,15 +636,7 @@ struct ArtworkServiceTests {
         // Given
         let service = MultisourceArtworkService()
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When/Then - Service should work with default fetchers
         // It will likely fail to find artwork for this test playcut, but shouldn't crash

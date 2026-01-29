@@ -62,21 +62,9 @@ struct PlaylistFetcherTests {
     func fetchPlaylistReturnsPlaylistOnSuccess() async {
         let mockDataSource = MockPlaylistDataSource()
         let mockAnalytics = MockPlaylistAnalytics()
-        let expectedPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Test Song",
-                    labelName: "Test Label",
-                    artistName: "Test Artist",
-                    releaseTitle: "Test Album"
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
+        let expectedPlaylist = Playlist.stub(playcuts: [
+            .stub(songTitle: "Test Song", labelName: "Test Label", artistName: "Test Artist")
+        ])
         mockDataSource.playlistToReturn = expectedPlaylist
 
         let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
