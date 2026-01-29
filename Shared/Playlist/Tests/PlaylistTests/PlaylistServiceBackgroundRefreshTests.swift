@@ -25,44 +25,20 @@ struct PlaylistServiceBackgroundRefreshTests {
         // Given - Service with cached data
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let oldPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Old Song",
-                    labelName: nil,
-                    artistName: "Old Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        
+        let oldPlaylist = Playlist.stub(playcuts: [
+            .stub(songTitle: "Old Song", artistName: "Old Artist", releaseTitle: nil)
+        ])
+
         await cacheCoordinator.set(
             value: oldPlaylist,
             for: "com.wxyc.playlist.cache",
             lifespan: 15 * 60
         )
-        
+
         let mockFetcher = MockPlaylistFetcher()
-        let newPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 2,
-                    hour: 2000,
-                    chronOrderID: 2,
-                    songTitle: "New Song",
-                    labelName: nil,
-                    artistName: "New Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
+        let newPlaylist = Playlist.stub(playcuts: [
+            .stub(id: 2, hour: 2000, songTitle: "New Song", artistName: "New Artist", releaseTitle: nil)
+        ])
         mockFetcher.playlistToReturn = newPlaylist
         
         let service = PlaylistService(
@@ -86,28 +62,16 @@ struct PlaylistServiceBackgroundRefreshTests {
         // Given - Valid cached data
         let mockCache = PlaylistServiceMockCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
-        let cachedPlaylist = Playlist(
-            playcuts: [
-                Playcut(
-                    id: 1,
-                    hour: 1000,
-                    chronOrderID: 1,
-                    songTitle: "Cached",
-                    labelName: nil,
-                    artistName: "Artist",
-                    releaseTitle: nil
-                )
-            ],
-            breakpoints: [],
-            talksets: []
-        )
-        
+        let cachedPlaylist = Playlist.stub(playcuts: [
+            .stub(songTitle: "Cached", artistName: "Artist", releaseTitle: nil)
+        ])
+
         await cacheCoordinator.set(
             value: cachedPlaylist,
             for: "com.wxyc.playlist.cache",
             lifespan: 15 * 60
         )
-        
+
         let mockFetcher = MockPlaylistFetcher()
         mockFetcher.playlistToReturn = cachedPlaylist // Same data, but should still fetch
         
@@ -116,7 +80,7 @@ struct PlaylistServiceBackgroundRefreshTests {
             interval: 30,
             cacheCoordinator: cacheCoordinator
         )
-        
+    
         // When - Background refresh
         _ = await service.fetchAndCachePlaylist()
         

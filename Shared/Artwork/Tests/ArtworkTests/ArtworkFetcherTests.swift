@@ -71,6 +71,33 @@ extension CGImage {
 }
 #endif
 
+// MARK: - Playcut Test Stub
+
+extension Playcut {
+    /// Creates a Playcut with sensible defaults for testing.
+    static func stub(
+        id: UInt64 = 1,
+        hour: UInt64 = 1000,
+        chronOrderID: UInt64? = nil,
+        timeCreated: UInt64? = nil,
+        songTitle: String = "Test Song",
+        labelName: String? = nil,
+        artistName: String = "Test Artist",
+        releaseTitle: String? = "Test Album"
+    ) -> Playcut {
+        Playcut(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID ?? id,
+            timeCreated: timeCreated ?? hour,
+            songTitle: songTitle,
+            labelName: labelName,
+            artistName: artistName,
+            releaseTitle: releaseTitle
+        )
+    }
+}
+
 // MARK: - iTunesArtworkService Tests
 
 @Suite("iTunesArtworkService Tests")
@@ -92,15 +119,7 @@ struct iTunesArtworkServiceTests {
             }
         }
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // Mock search results
         let searchResults = iTunes.SearchResults(
@@ -143,15 +162,7 @@ struct iTunesArtworkServiceTests {
         let mockSession = SequentialMockSession()
         let fetcher = iTunesArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
+        let playcut = Playcut.stub(releaseTitle: nil)
 
         let searchResults = iTunes.SearchResults(
             results: [
@@ -178,15 +189,7 @@ struct iTunesArtworkServiceTests {
         let mockSession = MockWebSession()
         let fetcher = iTunesArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         let searchResults = iTunes.SearchResults(results: [])
         let searchData = try JSONEncoder().encode(searchResults)
@@ -204,15 +207,7 @@ struct iTunesArtworkServiceTests {
         let mockSession = MockWebSession()
         let fetcher = iTunesArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Radiohead",
-            releaseTitle: "OK Computer"
-        )
+        let playcut = Playcut.stub(artistName: "Radiohead", releaseTitle: "OK Computer")
 
         mockSession.errorToThrow = ServiceError.noResults
 
@@ -252,15 +247,7 @@ struct LastFMArtworkServiceTests {
         let mockSession = SequentialMockSession()
         let fetcher = LastFMArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // Mock search response
         let searchResponse = LastFM.SearchResponse(
@@ -319,12 +306,8 @@ struct LastFMArtworkServiceTests {
         let mockSession = MockWebSession()
         let fetcher = LastFMArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
+        let playcut = Playcut.stub(
             songTitle: "Paranoid Android",
-            labelName: nil,
             artistName: "Radiohead",
             releaseTitle: "OK Computer"
         )
@@ -369,15 +352,7 @@ struct DiscogsArtworkServiceTests {
         let mockSession = SequentialMockSession()
         let fetcher = DiscogsArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // Mock search results with valid cover image
         let searchResults = """
@@ -423,15 +398,7 @@ struct DiscogsArtworkServiceTests {
         let mockSession = SequentialMockSession()
         let fetcher = DiscogsArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // Mock search results with spacer.gif first, then real image
         let searchResults = """
@@ -472,15 +439,7 @@ struct DiscogsArtworkServiceTests {
         let mockSession = MockWebSession()
         let fetcher = DiscogsArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "s/t"
-        )
+        let playcut = Playcut.stub(releaseTitle: "s/t")
 
         mockSession.errorToThrow = ServiceError.noResults
 
@@ -534,15 +493,7 @@ struct DiscogsArtworkServiceTests {
         let mockSession = CustomMockSession()
         let fetcher = DiscogsArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // When
         let artwork = try await fetcher.fetchArtwork(for: playcut)
@@ -558,15 +509,7 @@ struct DiscogsArtworkServiceTests {
         let mockSession = MockWebSession()
         let fetcher = DiscogsArtworkService(session: mockSession)
 
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // Mock empty search results
         let emptyResults = """
@@ -594,15 +537,7 @@ struct CacheCoordinatorArtworkTests {
         // Given
         let cache = CacheCoordinator.AlbumArt
         let testImage = CGImage.testImage
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: "Test Album"
-        )
+        let playcut = Playcut.stub()
 
         // Set cached artwork with correct key format: artistName-releaseTitle
         await cache.set(artwork: testImage, for: "Test Artist-Test Album", lifespan: .thirtyDays)
@@ -619,15 +554,7 @@ struct CacheCoordinatorArtworkTests {
         // Given
         let cache = CacheCoordinator.AlbumArt
         let testImage = CGImage.testImage
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: nil
-        )
+        let playcut = Playcut.stub(releaseTitle: nil)
 
         // Set cached artwork with correct key format: artistName-songTitle (no release title)
         await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)
@@ -643,12 +570,8 @@ struct CacheCoordinatorArtworkTests {
     func throwsErrorWhenNotCached() async throws {
         // Given
         let cache = CacheCoordinator.AlbumArt
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
+        let playcut = Playcut.stub(
             songTitle: "Uncached Song",
-            labelName: nil,
             artistName: "Uncached Artist",
             releaseTitle: "Uncached Album"
         )
@@ -669,12 +592,8 @@ struct CacheCoordinatorArtworkTests {
         await cache.set(artwork: testImage, for: "Some Artist-My Album", lifespan: .thirtyDays)
 
         // Playcut with matching release title
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
+        let playcut = Playcut.stub(
             songTitle: "Some Song",
-            labelName: nil,
             artistName: "Some Artist",
             releaseTitle: "My Album"
         )
@@ -696,15 +615,7 @@ struct CacheCoordinatorArtworkTests {
         await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)
 
         // Playcut with empty release title
-        let playcut = Playcut(
-            id: 1,
-            hour: 1000,
-            chronOrderID: 1,
-            songTitle: "Test Song",
-            labelName: nil,
-            artistName: "Test Artist",
-            releaseTitle: ""
-        )
+        let playcut = Playcut.stub(releaseTitle: "")
 
         // When
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
