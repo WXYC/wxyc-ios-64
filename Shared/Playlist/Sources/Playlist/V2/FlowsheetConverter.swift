@@ -35,6 +35,7 @@ enum FlowsheetConverter {
                     id: id,
                     hour: hour,
                     chronOrderID: chronOrderID,
+                    timeCreated: hour,
                     songTitle: (entry.track_title ?? "Unknown").htmlDecoded,
                     labelName: entry.record_label?.htmlDecoded,
                     artistName: (entry.artist_name ?? "Unknown").htmlDecoded,
@@ -44,16 +45,17 @@ enum FlowsheetConverter {
                 playcuts.append(playcut)
 
             case .talkset:
-                talksets.append(Talkset(id: id, hour: hour, chronOrderID: chronOrderID))
+                talksets.append(Talkset(id: id, hour: hour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .breakpoint:
-                breakpoints.append(Breakpoint(id: id, hour: hour, chronOrderID: chronOrderID))
+                breakpoints.append(Breakpoint(id: id, hour: hour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .showStart(let djName):
                 let marker = ShowMarker(
                     id: id,
                     hour: hour,
                     chronOrderID: chronOrderID,
+                    timeCreated: hour,
                     isStart: true,
                     djName: djName,
                     message: entry.message ?? ""
@@ -65,6 +67,7 @@ enum FlowsheetConverter {
                     id: id,
                     hour: hour,
                     chronOrderID: chronOrderID,
+                    timeCreated: hour,
                     isStart: false,
                     djName: djName,
                     message: entry.message ?? ""

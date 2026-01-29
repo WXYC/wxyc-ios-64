@@ -78,6 +78,7 @@ struct PlaycutMetadataSection: View {
             id: 0,
             hour: 0,
             chronOrderID: 0,
+            timeCreated: 0,
             songTitle: "Pharoah's Dance",
             labelName: "Columbia",
             artistName: "Miles Davis",

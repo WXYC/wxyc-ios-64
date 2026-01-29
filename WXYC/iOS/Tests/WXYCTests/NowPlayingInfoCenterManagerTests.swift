@@ -38,6 +38,7 @@ private func makePlaycut(
         id: id,
         hour: 0,
         chronOrderID: id,
+        timeCreated: 0,
         songTitle: songTitle,
         labelName: nil,
         artistName: artistName,
