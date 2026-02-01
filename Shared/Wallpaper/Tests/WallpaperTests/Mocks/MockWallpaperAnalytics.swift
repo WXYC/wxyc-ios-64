@@ -19,9 +19,9 @@ final class MockWallpaperAnalytics: AnalyticsService, @unchecked Sendable {
     var recordedEvents: [QualityAdjustmentEvent] = []
     var reportedSummaries: [QualitySessionSummary] = []
     var flushReasons: [QualityFlushReason] = []
-    private var _events: [AnalyticsEvent] = []
+    private var _events: [any AnalyticsEvent] = []
 
-    nonisolated func capture(_ event: AnalyticsEvent) {
+    nonisolated func capture<T: AnalyticsEvent>(_ event: T) {
         MainActor.assumeIsolated {
             _events.append(event)
             if let adjustmentEvent = event as? QualityAdjustmentEvent {

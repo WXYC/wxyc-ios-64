@@ -15,5 +15,5 @@ import PostHog
 
 public protocol AnalyticsService: Sendable {
     /// Captures a structured analytics event.
-    func capture(_ event: AnalyticsEvent)
+    func capture<T: AnalyticsEvent>(_ event: T)
 }

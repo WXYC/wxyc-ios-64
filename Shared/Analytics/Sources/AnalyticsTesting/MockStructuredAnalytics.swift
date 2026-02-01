@@ -12,23 +12,28 @@ import Analytics
 import Foundation
 
 public final class MockStructuredAnalytics: AnalyticsService, @unchecked Sendable {
-    public private(set) var events: [AnalyticsEvent] = []
-    
+    public private(set) var events: [any AnalyticsEvent] = []
+    private var eventNames: [String] = []
+
     public init() {}
-    
-    public func capture(_ event: AnalyticsEvent) {
+
+    public func capture<T: AnalyticsEvent>(_ event: T) {
         events.append(event)
+        eventNames.append(T.name)
     }
-    
+
     public func reset() {
         events.removeAll()
+        eventNames.removeAll()
     }
-    
+
     // MARK: - Convenience Accessors
 
     /// All events with the given name.
-    public func events(named name: String) -> [AnalyticsEvent] {
-        events.filter { $0.name == name }
+    public func events(named name: String) -> [any AnalyticsEvent] {
+        zip(events, eventNames)
+            .filter { $0.1 == name }
+            .map { $0.0 }
     }
 
     /// Filtered events of a specific type.
@@ -38,7 +43,7 @@ public final class MockStructuredAnalytics: AnalyticsService, @unchecked Sendabl
 
     /// All captured event names (for filtering by name pattern).
     public func capturedEventNames() -> [String] {
-        events.map { $0.name }
+        eventNames
     }
 }
 
@@ -58,8 +63,7 @@ public extension MockStructuredAnalytics {
 
     /// All playback started events (events named "play").
     var startedEvents: [StartedEventProxy] {
-        events
-            .filter { $0.name == "play" }
+        events(named: "play")
             .compactMap { event -> StartedEventProxy? in
                 guard let props = event.properties,
                       let reason = props["reason"] as? String else { return nil }
@@ -69,8 +73,7 @@ public extension MockStructuredAnalytics {
 
     /// All playback stopped events (events named "pause").
     var stoppedEvents: [StoppedEventProxy] {
-        events
-            .filter { $0.name == "pause" }
+        events(named: "pause")
             .compactMap { event -> StoppedEventProxy? in
                 guard let props = event.properties,
                       let duration = props["duration"] as? TimeInterval else { return nil }
@@ -94,8 +97,7 @@ public extension MockStructuredAnalytics {
 
     /// All CPU session events (events named "cpu_session").
     var cpuSessionEvents: [CPUSessionEventProxy] {
-        events
-            .filter { $0.name == "cpu_session" }
+        events(named: "cpu_session")
             .compactMap { event -> CPUSessionEventProxy? in
                 guard let props = event.properties,
                       let playerType = props["player_type"] as? String,
