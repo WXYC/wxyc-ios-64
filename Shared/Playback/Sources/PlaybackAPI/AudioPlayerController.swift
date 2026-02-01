@@ -12,6 +12,7 @@
 import AVFoundation
 import Core
 import Foundation
+import Logger
 import MediaPlayer
 import PlaybackCore
 import Analytics
@@ -199,6 +200,7 @@ public final class AudioPlayerController {
     /// Start playback
     /// - Parameter reason: Why playback was started (for analytics)
     public func play(reason: PlaybackReason) {
+        Log(.info, category: .playback, "Play requested (reason: \(reason.rawValue))")
         let context: PlaybackContext = isForegrounded ? .foreground : .background
         cpuAggregator?.startSession(context: context)
 
@@ -223,6 +225,7 @@ public final class AudioPlayerController {
     /// Stop playback and disconnect from stream
     /// - Parameter reason: Why playback was stopped (for analytics)
     public func stop(reason: PlaybackReason) {
+        Log(.info, category: .playback, "Stop requested (reason: \(reason.rawValue))")
         cpuAggregator?.endSession(reason: .userStopped)
 
         reconnectTask?.cancel()
@@ -275,8 +278,9 @@ public final class AudioPlayerController {
         audioSessionConfigured = true
         do {
             try session.setCategory(.playback, mode: .default, options: [])
+            Log(.info, category: .playback, "Audio session configured for playback")
         } catch {
-            print("Failed to configure audio session: \(error)")
+            Log(.error, category: .playback, "Failed to configure audio session: \(error)")
         }
     }
 
@@ -287,8 +291,9 @@ public final class AudioPlayerController {
         do {
             try session.setActive(true, options: [])
             audioSessionActivated = true
+            Log(.info, category: .playback, "Audio session activated")
         } catch {
-            print("Failed to activate audio session: \(error)")
+            Log(.error, category: .playback, "Failed to activate audio session: \(error)")
         }
     }
 
@@ -298,8 +303,9 @@ public final class AudioPlayerController {
         do {
             try session.setActive(false, options: .notifyOthersOnDeactivation)
             audioSessionActivated = false
+            Log(.info, category: .playback, "Audio session deactivated")
         } catch {
-            print("Failed to deactivate audio session: \(error)")
+            Log(.error, category: .playback, "Failed to deactivate audio session: \(error)")
         }
     }
     #endif
@@ -410,6 +416,7 @@ public final class AudioPlayerController {
     /// Call this when the app enters the background (from SwiftUI scenePhase)
     /// Only deactivates the audio session if playback is NOT intended
     public func handleAppDidEnterBackground() {
+        Log(.info, category: .playback, "App entered background (playbackIntended: \(playbackIntended))")
         isForegrounded = false
         if isPlaying {
             cpuAggregator?.transitionContext(to: .background)
@@ -417,10 +424,11 @@ public final class AudioPlayerController {
         guard !playbackIntended else { return }
         deactivateAudioSession()
     }
-            
+
     /// Call this when the app enters the foreground (from SwiftUI scenePhase)
     /// Reactivates the audio session if playback is intended
     public func handleAppWillEnterForeground() {
+        Log(.info, category: .playback, "App entering foreground (playbackIntended: \(playbackIntended))")
         isForegrounded = true
         if isPlaying {
             cpuAggregator?.transitionContext(to: .foreground)
@@ -551,13 +559,14 @@ extension AudioPlayerController {
                         recoveryMethod: .automaticReconnect
                     ))
                     self.cpuAggregator?.endSession(reason: .error)
-                    print("AudioPlayerController received error: \(error)")
+                    Log(.error, category: .playback, "Player error: \(error.localizedDescription)")
                 }
             }
         }
     }
 
     private func handleStall() {
+        Log(.warning, category: .playback, "Stall detected, starting backoff recovery")
         stallStartTime = Date()
         analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration))
 
@@ -566,6 +575,7 @@ extension AudioPlayerController {
     }
 
     private func handleRecovery() {
+        Log(.info, category: .playback, "Playback recovered from stall")
         captureRecoveryIfNeeded()
     }
 
@@ -584,15 +594,19 @@ extension AudioPlayerController {
                 recoveryMethod: .retryWithBackoff
             ))
             cpuAggregator?.endSession(reason: .error)
-            print("Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
+            Log(.error, category: .playback, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection")
             self.backoffTimer.reset()
             return
         }
+
+        let attemptNumber = backoffTimer.numberOfAttempts
+        Log(.info, category: .playback, "Reconnect attempt \(attemptNumber)/\(backoffTimer.maximumAttempts), waiting \(String(format: "%.1f", waitTime))s")
 
         reconnectTask = Task { [weak self] in
             guard let self else { return }
 
             if self.player.isPlaying {
+                Log(.info, category: .playback, "Already playing, cancelling reconnect")
                 self.captureRecoveryIfNeeded()
                 self.backoffTimer.reset()
                 return
@@ -606,6 +620,8 @@ extension AudioPlayerController {
                 if !player.isPlaying {
                     attemptReconnectWithExponentialBackoff()
                 } else {
+                    let totalStallTime = stallStartTime.map { Date().timeIntervalSince($0) } ?? 0
+                    Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s")
                     captureRecoveryIfNeeded()
                     self.backoffTimer.reset()
                 }

@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Logger
 
 /// Errors that can occur during HTTP streaming
 enum HTTPStreamError: Error {
@@ -43,6 +44,7 @@ final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
     }
 
     func connect() async throws {
+        Log(.info, category: .playback, "Connecting to \(url.absoluteString)")
         // Cancel any existing connection
         sessionState.invalidateSession()
 
@@ -69,6 +71,7 @@ final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
     }
 
     func disconnect() {
+        Log(.info, category: .playback, "Disconnected (intentional)")
         sessionState.invalidateSession()
         continuation.yield(.disconnected)
     }
@@ -94,18 +97,21 @@ private final class StreamingDataDelegate: NSObject, URLSessionDataDelegate, @un
         completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
     ) {
         guard let httpResponse = response as? HTTPURLResponse else {
+            Log(.error, category: .playback, "Connection failed: invalid response type")
             continuation.yield(.error(HTTPStreamError.connectionFailed))
             completionHandler(.cancel)
             return
         }
 
         guard httpResponse.statusCode == 200 else {
+            Log(.error, category: .playback, "HTTP error: status code \(httpResponse.statusCode)")
             continuation.yield(.error(HTTPStreamError.httpError(statusCode: httpResponse.statusCode)))
             completionHandler(.cancel)
             return
         }
 
         // Successfully connected
+        Log(.info, category: .playback, "Connected (HTTP \(httpResponse.statusCode))")
         hasConnected = true
         continuation.yield(.connected)
         completionHandler(.allow)
@@ -125,9 +131,11 @@ private final class StreamingDataDelegate: NSObject, URLSessionDataDelegate, @un
                 // Don't yield error for intentional cancellation
                 return
             }
+            Log(.error, category: .playback, "Connection error: \(error.localizedDescription)")
             continuation.yield(.error(error))
         } else if hasConnected {
             // Stream ended normally
+            Log(.info, category: .playback, "Stream ended (server closed connection)")
             continuation.yield(.disconnected)
         }
     }

@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Logger
 import Observation
 @preconcurrency import AVFoundation
 import Core
@@ -39,6 +40,7 @@ public final class MP3Streamer {
     public private(set) var streamingState: StreamingAudioState = .idle {
         didSet {
             if streamingState != oldValue {
+                Log(.info, category: .playback, "State: \(oldValue) → \(streamingState)")
                 stateContinuationInternal.yield(state)
             }
         }
@@ -189,6 +191,7 @@ public final class MP3Streamer {
 
     /// Start streaming and playing audio
     public func play() {
+        Log(.info, category: .playback, "MP3Streamer play() called (current state: \(streamingState))")
         if streamingState == .playing {
             analytics?.capture(PlaybackStartedEvent(reason: "already playing (local)"))
             return
@@ -203,6 +206,7 @@ public final class MP3Streamer {
                 try audioPlayer.play()
                 streamingState = .playing
             } catch {
+                Log(.error, category: .playback, "Failed to resume from pause: \(error)")
                 streamingState = .error(error)
                 eventContinuationInternal.yield(.error(error))
             }
@@ -221,6 +225,7 @@ public final class MP3Streamer {
                 try await httpClient.connect()
                 // State will transition to buffering as data arrives
             } catch {
+                Log(.error, category: .playback, "Connection failed: \(error)")
                 streamingState = .error(error)
                 eventContinuationInternal.yield(.error(error))
             }
@@ -229,6 +234,7 @@ public final class MP3Streamer {
 
     /// Stop playback and disconnect from stream
     public func stop() {
+        Log(.info, category: .playback, "MP3Streamer stop() called")
         reconnectTask?.cancel()
         reconnectTask = nil
 
@@ -246,6 +252,7 @@ public final class MP3Streamer {
     private func handleHTTPEvent(_ event: HTTPStreamEvent) async {
         switch event {
         case .connected:
+            Log(.info, category: .playback, "HTTP connected, starting buffering")
             streamingState = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
 
         case .data(let data):
@@ -254,9 +261,11 @@ public final class MP3Streamer {
         case .disconnected:
             // Only handle if we're not intentionally stopping
             guard streamingState != .idle else { return }
+            Log(.warning, category: .playback, "HTTP disconnected unexpectedly")
             attemptReconnect()
 
         case .error(let error):
+            Log(.error, category: .playback, "HTTP error: \(error)")
             streamingState = .error(error)
             attemptReconnect()
         }
@@ -265,15 +274,16 @@ public final class MP3Streamer {
     private func handlePlayerEvent(_ event: AudioPlayerEvent) async {
         switch event {
         case .started:
-            break // State already managed by play()
+            Log(.debug, category: .playback, "Audio engine started")
 
         case .paused:
-            break // State already managed
+            Log(.debug, category: .playback, "Audio engine paused")
 
         case .stopped:
-            break // State already managed by stop()
+            Log(.debug, category: .playback, "Audio engine stopped")
 
         case .error(let error):
+            Log(.error, category: .playback, "Audio engine error: \(error)")
             streamingState = .error(error)
             eventContinuationInternal.yield(.error(error))
 
@@ -282,12 +292,14 @@ public final class MP3Streamer {
 
         case .stalled:
             if case .playing = streamingState {
+                Log(.warning, category: .playback, "Buffer underrun detected (stalled)")
                 streamingState = .stalled
                 eventContinuationInternal.yield(.stall)
             }
 
         case .recoveredFromStall:
             if case .stalled = streamingState {
+                Log(.info, category: .playback, "Recovered from stall")
                 streamingState = .playing
                 eventContinuationInternal.yield(.recovery)
             }
@@ -305,6 +317,7 @@ public final class MP3Streamer {
             // Use combined enqueue + state check (single lock acquisition)
             let result = bufferQueue.enqueue(buffer)
             if result.hasMinimumBuffers {
+                Log(.info, category: .playback, "Buffer threshold reached (\(result.count)/\(configuration.minimumBuffersBeforePlayback)), starting playback")
                 do {
                     try audioPlayer.play()
                     _ = playbackTimer.duration()
@@ -315,10 +328,12 @@ public final class MP3Streamer {
                     streamingState = .playing
                     scheduleBuffers()
                 } catch {
+                    Log(.error, category: .playback, "Failed to start audio engine: \(error)")
                     streamingState = .error(error)
                 }
             } else {
                 // Still buffering - update progress using result from enqueue
+                Log(.debug, category: .playback, "Buffering: \(result.count)/\(configuration.minimumBuffersBeforePlayback) buffers")
                 streamingState = .buffering(
                     bufferedCount: result.count,
                     requiredCount: configuration.minimumBuffersBeforePlayback
@@ -330,6 +345,7 @@ public final class MP3Streamer {
             let result = bufferQueue.enqueue(buffer)
             if result.hasMinimumBuffers {
                 // Stall recovery - have enough buffers to resume
+                Log(.info, category: .playback, "Stall recovery: buffer threshold reached")
                 scheduleBuffers()
                 streamingState = .playing
             }
@@ -352,10 +368,14 @@ public final class MP3Streamer {
     private func attemptReconnect() {
         guard let waitTime = backoffTimer.nextWaitTime() else {
             // Backoff exhausted - give up and transition to error state
+            Log(.error, category: .playback, "Reconnect backoff exhausted after \(backoffTimer.numberOfAttempts) attempts")
             streamingState = .error(HTTPStreamError.connectionFailed)
             backoffTimer.reset()
             return
         }
+
+        let attemptNumber = backoffTimer.numberOfAttempts
+        Log(.info, category: .playback, "Reconnect attempt \(attemptNumber)/\(backoffTimer.maximumAttempts), waiting \(String(format: "%.1f", waitTime))s")
 
         reconnectTask = Task {
             try? await Task.sleep(for: .seconds(waitTime))
@@ -365,8 +385,10 @@ public final class MP3Streamer {
             do {
                 try await httpClient.connect()
                 // Reset backoff on successful connection
+                Log(.info, category: .playback, "Reconnect successful")
                 backoffTimer.reset()
             } catch {
+                Log(.warning, category: .playback, "Reconnect failed: \(error)")
                 streamingState = .error(error)
                 attemptReconnect()
             }

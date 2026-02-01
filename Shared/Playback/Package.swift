@@ -50,6 +50,7 @@ let package = Package(
                 "PlaybackCore",
                 "Core",
                 "Analytics",
+                "Logger",
             ],
             path: "Sources/MP3Streamer"
         ),
@@ -63,6 +64,7 @@ let package = Package(
                 "PlaybackCore",
                 "RadioPlayerModule",
                 "MP3StreamerModule",
+                "Logger",
             ],
             path: "Sources/PlaybackAPI"
         ),
