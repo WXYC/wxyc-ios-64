@@ -13,18 +13,12 @@ import Foundation
 // MARK: - App Launch
 
 /// Event fired when the app launches.
-public struct AppLaunch: AnalyticsEvent {
+@AnalyticsEvent
+public struct AppLaunch {
     public static let name = "app launch"
 
     public let hasUsedThemePicker: Bool
     public let buildType: String
-
-    public var properties: [String: Any]? {
-        [
-            "has_used_theme_picker": hasUsedThemePicker,
-            "build_type": buildType
-        ]
-    }
 
     public init(hasUsedThemePicker: Bool, buildType: String) {
         self.hasUsedThemePicker = hasUsedThemePicker
@@ -33,10 +27,9 @@ public struct AppLaunch: AnalyticsEvent {
 }
 
 /// Simplified app launch event for watchOS and tvOS.
-public struct AppLaunchSimple: AnalyticsEvent {
+@AnalyticsEvent
+public struct AppLaunchSimple {
     public static let name = "app launch"
-
-    public var properties: [String: Any]? { nil }
 
     public init() {}
 }
@@ -44,14 +37,11 @@ public struct AppLaunchSimple: AnalyticsEvent {
 // MARK: - Background Events
 
 /// Event fired when the app enters the background.
-public struct AppEnteredBackground: AnalyticsEvent {
+@AnalyticsEvent
+public struct AppEnteredBackground {
     public static let name = "App entered background"
 
     public let isPlaying: Bool
-
-    public var properties: [String: Any]? {
-        ["Is Playing?": isPlaying]
-    }
 
     public init(isPlaying: Bool) {
         self.isPlaying = isPlaying
@@ -59,35 +49,26 @@ public struct AppEnteredBackground: AnalyticsEvent {
 }
 
 /// Event fired when background refresh completes.
-public struct BackgroundRefreshCompleted: AnalyticsEvent {
+@AnalyticsEvent
+public struct BackgroundRefreshCompleted {
     public static let name = "Background refresh completed"
 
-    public let entryCount: Int
-
-    public var properties: [String: Any]? {
-        ["entry_count": "\(entryCount)"]
-    }
+    public let entryCount: String
 
     public init(entryCount: Int) {
-        self.entryCount = entryCount
+        self.entryCount = "\(entryCount)"
     }
 }
 
 // MARK: - Cache Events
 
 /// Event fired when the artwork cache is cleared.
-public struct ArtworkCacheCleared: AnalyticsEvent {
+@AnalyticsEvent
+public struct ArtworkCacheCleared {
     public static let name = "Artwork cache cleared"
 
     public let source: String
     public let sizeBytes: Int64
-
-    public var properties: [String: Any]? {
-        [
-            "source": source,
-            "size_bytes": sizeBytes
-        ]
-    }
 
     public init(source: String, sizeBytes: Int64) {
         self.source = source
