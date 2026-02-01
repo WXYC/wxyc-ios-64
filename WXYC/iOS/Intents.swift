@@ -8,6 +8,7 @@
 //  Copyright © 2022 WXYC. All rights reserved.
 //
 
+import Analytics
 import AppIntents
 import AppServices
 import Artwork
@@ -64,7 +65,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
             throw error
         }
 
-        PostHogSDK.shared.capture("WhatsPlayingOnWXYC intent")
+        StructuredPostHogAnalytics.shared.capture(WhatsPlayingOnWXYCIntent())
         let value = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
         return .result(
             value: value,

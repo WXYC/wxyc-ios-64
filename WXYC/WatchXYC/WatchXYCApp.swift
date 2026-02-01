@@ -8,13 +8,14 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import SwiftUI
+import Analytics
 import AVFoundation
 import Logger
+import PlaybackWatchOS
+import Playlist
 import PostHog
 import Secrets
-import Playlist
-import PlaybackWatchOS
+import SwiftUI
 
 @main
 struct WatchXYC: App {
@@ -26,7 +27,7 @@ struct WatchXYC: App {
         let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
 
         PostHogSDK.shared.setup(config)
-        PostHogSDK.shared.capture("app launch")
+        StructuredPostHogAnalytics.shared.capture(AppLaunchSimple())
         PostHogSDK.shared.flush()
 
         do {

@@ -8,11 +8,12 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import SwiftUI
-import PostHog
+import Analytics
 import Playback
 import Playlist
+import PostHog
 import Secrets
+import SwiftUI
 
 @main
 struct WXYCTVApp: App {
@@ -26,7 +27,7 @@ struct WXYCTVApp: App {
     }
 
     init() {
-        PostHogSDK.shared.capture("app launch")
+        StructuredPostHogAnalytics.shared.capture(AppLaunchSimple())
     }
     
     private func setUpAnalytics() {
