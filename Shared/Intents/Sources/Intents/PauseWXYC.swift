@@ -8,10 +8,10 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import AppIntents
 import Playback
 import PlaybackCore
-import PostHog
 
 public struct PauseWXYC: AudioPlaybackIntent {
     public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
@@ -23,7 +23,7 @@ public struct PauseWXYC: AudioPlaybackIntent {
     public init() { }
 
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        PostHogSDK.shared.capture("PauseWXYC intent")
+        StructuredPostHogAnalytics.shared.capture(PauseWXYCIntent())
         await MainActor.run {
             AudioPlayerController.shared.stop(reason: .pauseIntent)
         }

@@ -8,15 +8,15 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import WidgetKit
-import SwiftUI
+import Analytics
+import AppServices
+import Artwork
+import Caching
+import Playlist
 import PostHog
 import Secrets
-import Analytics
-import Artwork
-import Playlist
-import AppServices
-import Caching
+import SwiftUI
+import WidgetKit
 
 final class Provider: TimelineProvider, Sendable {
     typealias Entry = NowPlayingTimelineEntry
@@ -55,11 +55,9 @@ final class Provider: TimelineProvider, Sendable {
     
     func getSnapshot(in context: Context, completion: @escaping @Sendable (NowPlayingTimelineEntry) -> ()) {
         let family = context.family
-        PostHogSDK.shared.capture(
-            "getSnapshot",
-            context: "NowPlayingWidget",
-            additionalData: ["family" : String(describing: family)]
-        )
+        StructuredPostHogAnalytics.shared.capture(WidgetGetSnapshot(
+            family: String(describing: family)
+        ))
 
         Task {
             let playlist = await playlistService.fetchPlaylist()
@@ -92,11 +90,9 @@ final class Provider: TimelineProvider, Sendable {
     
     func getTimeline(in context: Context, completion: @escaping @Sendable (Timeline<Entry>) -> ()) {
         let family = context.family
-        PostHogSDK.shared.capture(
-            "getTimeline",
-            context: "NowPlayingWidget",
-            additionalData: ["family" : String(describing: family)]
-        )
+        StructuredPostHogAnalytics.shared.capture(WidgetGetTimeline(
+            family: String(describing: family)
+        ))
 
         Task {
             var nowPlayingItemsWithArtwork: [NowPlayingItem] = []

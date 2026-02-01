@@ -78,11 +78,10 @@ struct WXYCApp: App {
         setUpAnalytics()
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
-        PostHogSDK.shared.capture(
-            "app launch",
-            properties: ["has_used_theme_picker": appState.themePickerState.persistence.hasEverUsedPicker],
-            userPropertiesSetOnce: ["build_type": buildConfiguration()]
-        )
+        StructuredPostHogAnalytics.shared.capture(AppLaunch(
+            hasUsedThemePicker: appState.themePickerState.persistence.hasEverUsedPicker,
+            buildType: buildConfiguration()
+        ))
 
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
         // Setting it here at launch would interrupt other apps' audio unnecessarily.
@@ -191,9 +190,9 @@ struct WXYCApp: App {
 
             Log(.info, category: .general, "Background refresh completed successfully with \(playlist.entries.count) entries")
 
-            PostHogSDK.shared.capture("Background refresh completed", additionalData: [
-                "entry_count": "\(playlist.entries.count)"
-            ])
+            StructuredPostHogAnalytics.shared.capture(BackgroundRefreshCompleted(
+                entryCount: playlist.entries.count
+            ))
 
             // Schedule the next refresh
             await MainActor.run {
@@ -267,20 +266,18 @@ struct WXYCApp: App {
             AudioPlayerController.shared.play(reason: .quickAction)
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
             AudioPlayerController.shared.play(reason: .siriIntent)
-            PostHogSDK.shared.capture(
-                "Handle INIntent",
-                context: "Intents",
-                additionalData: ["intent data": intent.description]
-            )
+            StructuredPostHogAnalytics.shared.capture(HandleINIntent(
+                intentData: intent.description
+            ))
         }
     }
         
     private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .background:
-            PostHogSDK.shared.capture("App entered background", properties: [
-                "Is Playing?": AudioPlayerController.shared.isPlaying
-            ])
+            StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
+                isPlaying: AudioPlayerController.shared.isPlaying
+            ))
             AudioPlayerController.shared.handleAppDidEnterBackground()
             AdaptiveQualityController.shared.handleBackgrounded()
             appState.setForegrounded(false)
@@ -374,10 +371,10 @@ struct WXYCApp: App {
             UserDefaults.standard.set(false, forKey: SettingsBundleKeys.clearArtworkCache)
 
             Log(.info, category: .general, "Cleared artwork cache via Settings toggle (\(sizeBeforeClear) bytes)")
-            PostHogSDK.shared.capture("Artwork cache cleared", properties: [
-                "source": "settings_toggle",
-                "size_bytes": sizeBeforeClear
-            ])
+            StructuredPostHogAnalytics.shared.capture(ArtworkCacheCleared(
+                source: "settings_toggle",
+                sizeBytes: sizeBeforeClear
+            ))
         }
     }
 
@@ -475,13 +472,9 @@ struct WXYCApp: App {
                 activity.userInfo = ["origin": "donateSiriIntent"]
                 activity.becomeCurrent()
 
-                PostHogSDK.shared.capture(
-                    "Intents",
-                    context: "donateSiriIntent",
-                    additionalData: [
-                        "intent data": activity.description
-                    ]
-                )
+                StructuredPostHogAnalytics.shared.capture(SiriIntentDonated(
+                    intentData: activity.description
+                ))
             } catch {
                 Log(.error, category: .general, "Failed to donate Siri intent: \(error)")
                 PostHogSDK.shared.capture(error: error, context: "WXYCApp: Failed to donate Siri intent")

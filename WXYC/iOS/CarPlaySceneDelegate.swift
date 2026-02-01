@@ -8,17 +8,18 @@
 //  Copyright © 2017 WXYC. All rights reserved.
 //
 
-import Foundation
+import Analytics
+import Artwork
 @preconcurrency import CarPlay
 import Core
-import Logger
-import PostHog
+import Foundation
 import Intents
-import SwiftUI
-import PlayerHeaderView
+import Logger
 import Playback
+import PlayerHeaderView
 import Playlist
-import Artwork
+import PostHog
+import SwiftUI
 
 @MainActor
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver, CPInterfaceControllerDelegate {
@@ -29,7 +30,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     // MARK: CPTemplateApplicationSceneDelegate
     
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
-        PostHogSDK.shared.capture("carplay connected")
+        StructuredPostHogAnalytics.shared.capture(CarPlayConnected())
         
         Task { @MainActor in
             self.interfaceController = interfaceController
