@@ -157,12 +157,14 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         // The tap will be installed when play() triggers engine setup.
         // This avoids interrupting other apps' audio on launch.
         guard engineSetUpState.isSetUp else {
+            Log(.debug, category: .playback, "Render tap install deferred (engine not ready)")
             _ = pendingRenderTapState.install()
             return
         }
-        
+
         guard renderTapState.install() else { return } // Already installed
-        
+
+        Log(.info, category: .playback, "Render tap installed")
         let continuation = renderTapContinuation
         playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             continuation.yield(buffer)
@@ -172,6 +174,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func removeRenderTap() {
         guard renderTapState.remove() else { return } // Already removed
 
+        Log(.info, category: .playback, "Render tap removed")
         playerNode.removeTap(onBus: 0)
     }
 
@@ -180,14 +183,16 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
             analytics?.capture(PlaybackStartedEvent(reason: "audioEnginePlayer already playing"))
             return
         }
-        
+
+        Log(.info, category: .playback, "Audio engine play requested")
         analytics?.capture(PlaybackStartedEvent(reason: "audioEnginePlayer play"))
-        
+
         // Defer audio engine setup until first play to avoid interrupting other apps on launch
         setUpAudioEngineIfNeeded()
-        
+
         if !engine.isRunning {
             try engine.start()
+            Log(.info, category: .playback, "Audio engine started")
         }
 
         playerNode.play()
@@ -198,6 +203,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func pause() {
         guard stateBox.isPlaying else { return }
 
+        Log(.info, category: .playback, "Audio engine paused")
         analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer pause", duration: 0)) // Duration 0 as we don't track it here yet
         playerNode.pause()
         stateBox.isPlaying = false
@@ -207,6 +213,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     func stop() {
         guard stateBox.isPlaying || engine.isRunning else { return }
 
+        Log(.info, category: .playback, "Audio engine stopped")
         analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer stop", duration: 0))
         playerNode.stop()
         engine.stop()
@@ -228,6 +235,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
             // If we were stalled and now have buffers, we're recovering
             // Uses atomic check-and-clear to avoid redundant lock acquisitions
             if self.stateBox.clearStalledIfSet() {
+                Log(.info, category: .playback, "Recovered from buffer underrun")
                 self.eventContinuation.yield(.recoveredFromStall)
             }
 
@@ -245,6 +253,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
                     // Detect stall: count hit zero while we were playing
                     if count == 0 && isPlaying {
                         if self.stateBox.setStalledIfPlaying() {
+                            Log(.warning, category: .playback, "Buffer underrun detected (stalled)")
                             self.eventContinuation.yield(.stalled)
                         }
                     }
