@@ -11,18 +11,18 @@ let package = Package(
         .library(name: "WXYCIntents", targets: ["WXYCIntents"]),
     ],
     dependencies: [
+        .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "Playback", path: "../Playback"),
-        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
     ],
     targets: [
         .target(
             name: "WXYCIntents",
             dependencies: [
+                "Analytics",
                 "Logger",
                 "Playback",
                 .product(name: "PlaybackCore", package: "Playback"),
-                .product(name: "PostHog", package: "posthog-ios"),
             ],
             path: "Sources/Intents"
         ),

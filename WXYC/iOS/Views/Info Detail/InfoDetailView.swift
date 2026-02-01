@@ -6,16 +6,16 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import SwiftUI
-import MessageUI
-import UniformTypeIdentifiers
+import Analytics
 import Core
 import Logger
-import PostHog
-import Analytics
+import MessageUI
 import MusicShareKit
-import WXUI
+import PostHog
+import SwiftUI
+import UniformTypeIdentifiers
 import Wallpaper
+import WXUI
 
 struct InfoDetailView: View {
     @State private var showingLogPrompt = false
@@ -188,7 +188,7 @@ struct MailComposerView: UIViewControllerRepresentable {
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
-        PostHogSDK.shared.capture("feedback email presented")
+        StructuredPostHogAnalytics.shared.capture(FeedbackEmailPresented())
 
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = context.coordinator
@@ -224,7 +224,7 @@ struct MailComposerView: UIViewControllerRepresentable {
                 PostHogSDK.shared.capture(error: error, context: "feedbackEmail")
                 Log(.error, category: .ui, "Failed to send feedback email: \(error)")
             } else {
-                PostHogSDK.shared.capture("feedback email sent")
+                StructuredPostHogAnalytics.shared.capture(FeedbackEmailSent())
             }
 
             dismiss()

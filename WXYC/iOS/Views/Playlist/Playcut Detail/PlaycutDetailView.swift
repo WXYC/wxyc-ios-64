@@ -6,11 +6,11 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Analytics
 import AppIntents
 import AppServices
 import Metadata
 import Playlist
-import PostHog
 import SwiftUI
 import UIKit
 import WXUI
@@ -70,14 +70,11 @@ struct PlaycutDetailView: View {
                         metadata: metadata,
                         isLoading: isLoadingMetadata,
                         onServiceTapped: { service in
-                            PostHogSDK.shared.capture(
-                                "streaming link tapped",
-                                properties: [
-                                    "service": service.name,
-                                    "artist": playcut.artistName,
-                                    "album": playcut.releaseTitle
-                                ]
-                            )
+                            StructuredPostHogAnalytics.shared.capture(StreamingLinkTapped(
+                                service: service.name,
+                                artist: playcut.artistName,
+                                album: playcut.releaseTitle ?? ""
+                            ))
                             donateAddedSongIntent(service: service)
                         }
                     )
@@ -89,14 +86,11 @@ struct PlaycutDetailView: View {
                     ExternalLinksSection(
                         metadata: metadata,
                         onLinkTapped: { service in
-                            PostHogSDK.shared.capture(
-                                "external link tapped",
-                                properties: [
-                                    "service": service,
-                                    "artist": playcut.artistName,
-                                    "album": playcut.releaseTitle
-                                ]
-                            )
+                            StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
+                                service: service,
+                                artist: playcut.artistName,
+                                album: playcut.releaseTitle ?? ""
+                            ))
                         }
                     )
                     .foregroundStyle(.white)
@@ -110,13 +104,10 @@ struct PlaycutDetailView: View {
         .scrollContentBackground(.hidden)
         .overlaySheetScrollTracking()
         .onAppear {
-            PostHogSDK.shared.capture(
-                "playcut detail view presented",
-                properties: [
-                    "artist": playcut.artistName,
-                    "album": playcut.releaseTitle
-                ]
-            )
+            StructuredPostHogAnalytics.shared.capture(PlaycutDetailViewPresented(
+                artist: playcut.artistName,
+                album: playcut.releaseTitle ?? ""
+            ))
         }
         .task {
             await loadMetadata()

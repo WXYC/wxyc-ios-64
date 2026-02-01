@@ -9,16 +9,16 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import SwiftUI
-import UIKit
-import WXUI
+import Analytics
 import AppIntents
 import DebugPanel
-import PlayerHeaderView
 import PartyHorn
+import PlayerHeaderView
 import Playlist
-import PostHog
+import SwiftUI
+import UIKit
 import Wallpaper
+import WXUI
 
 struct PlaycutSelection {
     let playcut: Playcut
@@ -123,7 +123,7 @@ struct PlaylistView: View {
         .fullScreenCover(isPresented: $showingPartyHorn) {
             PartyHornSwiftUIView()
                 .onAppear {
-                    PostHogSDK.shared.capture("party horn presented")
+                    StructuredPostHogAnalytics.shared.capture(PartyHornPresented())
                 }
         }
         #if DEBUG || DEBUG_TESTFLIGHT
