@@ -15,8 +15,7 @@ import Analytics
 
 /// Event when user enters theme picker mode.
 public struct ThemePickerEnteredEvent: AnalyticsEvent {
-    public let name = "theme_picker_entered"
-
+    public static let name = "theme_picker_entered"
     public let fromThemeID: String
     public let timestamp: Date
     
@@ -35,8 +34,7 @@ public struct ThemePickerEnteredEvent: AnalyticsEvent {
 
 /// Event when user confirms a theme selection.
 public struct ThemePickerSelectionEvent: AnalyticsEvent {
-    public let name = "theme_picker_selection"
-
+    public static let name = "theme_picker_selection"
     public let selectedThemeID: String
     public let previousThemeID: String
     public let themeChanged: Bool
@@ -66,8 +64,7 @@ public struct ThemePickerSelectionEvent: AnalyticsEvent {
 
 /// Event when user dismisses the theme tip.
 public struct ThemeTipDismissedEvent: AnalyticsEvent {
-    public let name = "theme_tip_dismissed"
-    
+    public static let name = "theme_tip_dismissed"
     public let hadEverEnteredPicker: Bool
     
     public var properties: [String: Any]? {

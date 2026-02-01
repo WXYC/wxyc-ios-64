@@ -46,8 +46,6 @@ import Analytics
 public protocol QualityAnalyticsEvent: AnalyticsEvent {}
 
 public struct QualityAdjustmentEvent: QualityAnalyticsEvent {
-    public let name = "quality_adjustment"
-
     /// Identifier for the active shader
     public let shaderId: String
     /// Current wallpaper FPS setting (display rate)
@@ -107,8 +105,6 @@ public struct QualityAdjustmentEvent: QualityAnalyticsEvent {
 // MARK: - Session Summary
 
 public struct QualitySessionSummary: QualityAnalyticsEvent {
-    public let name = "quality_session_summary"
-
     // MARK: Identity
 
     /// Identifier for the shader
