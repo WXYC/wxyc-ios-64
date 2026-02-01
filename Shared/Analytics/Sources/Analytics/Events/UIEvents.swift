@@ -13,10 +13,9 @@ import Foundation
 // MARK: - Party Horn
 
 /// Event fired when the party horn easter egg is presented.
-public struct PartyHornPresented: AnalyticsEvent {
+@AnalyticsEvent
+public struct PartyHornPresented {
     public static let name = "party horn presented"
-
-    public var properties: [String: Any]? { nil }
 
     public init() {}
 }
@@ -24,19 +23,17 @@ public struct PartyHornPresented: AnalyticsEvent {
 // MARK: - Feedback Email
 
 /// Event fired when the feedback email composer is presented.
-public struct FeedbackEmailPresented: AnalyticsEvent {
+@AnalyticsEvent
+public struct FeedbackEmailPresented {
     public static let name = "feedback email presented"
-
-    public var properties: [String: Any]? { nil }
 
     public init() {}
 }
 
 /// Event fired when a feedback email is sent successfully.
-public struct FeedbackEmailSent: AnalyticsEvent {
+@AnalyticsEvent
+public struct FeedbackEmailSent {
     public static let name = "feedback email sent"
-
-    public var properties: [String: Any]? { nil }
 
     public init() {}
 }
@@ -44,18 +41,12 @@ public struct FeedbackEmailSent: AnalyticsEvent {
 // MARK: - Playcut Detail
 
 /// Event fired when a playcut detail view is presented.
-public struct PlaycutDetailViewPresented: AnalyticsEvent {
+@AnalyticsEvent
+public struct PlaycutDetailViewPresented {
     public static let name = "playcut detail view presented"
 
     public let artist: String
     public let album: String
-
-    public var properties: [String: Any]? {
-        [
-            "artist": artist,
-            "album": album
-        ]
-    }
 
     public init(artist: String, album: String) {
         self.artist = artist
@@ -64,20 +55,13 @@ public struct PlaycutDetailViewPresented: AnalyticsEvent {
 }
 
 /// Event fired when a streaming service link is tapped.
-public struct StreamingLinkTapped: AnalyticsEvent {
+@AnalyticsEvent
+public struct StreamingLinkTapped {
     public static let name = "streaming link tapped"
 
     public let service: String
     public let artist: String
     public let album: String
-
-    public var properties: [String: Any]? {
-        [
-            "service": service,
-            "artist": artist,
-            "album": album
-        ]
-    }
 
     public init(service: String, artist: String, album: String) {
         self.service = service
@@ -87,20 +71,13 @@ public struct StreamingLinkTapped: AnalyticsEvent {
 }
 
 /// Event fired when an external link (Discogs, Wikipedia) is tapped.
-public struct ExternalLinkTapped: AnalyticsEvent {
+@AnalyticsEvent
+public struct ExternalLinkTapped {
     public static let name = "external link tapped"
 
     public let service: String
     public let artist: String
     public let album: String
-
-    public var properties: [String: Any]? {
-        [
-            "service": service,
-            "artist": artist,
-            "album": album
-        ]
-    }
 
     public init(service: String, artist: String, album: String) {
         self.service = service
@@ -112,10 +89,9 @@ public struct ExternalLinkTapped: AnalyticsEvent {
 // MARK: - CarPlay
 
 /// Event fired when CarPlay connects.
-public struct CarPlayConnected: AnalyticsEvent {
+@AnalyticsEvent
+public struct CarPlayConnected {
     public static let name = "carplay connected"
-
-    public var properties: [String: Any]? { nil }
 
     public init() {}
 }
@@ -123,37 +99,29 @@ public struct CarPlayConnected: AnalyticsEvent {
 // MARK: - Widget
 
 /// Event fired when the widget requests a snapshot.
-public struct WidgetGetSnapshot: AnalyticsEvent {
+@AnalyticsEvent
+public struct WidgetGetSnapshot {
     public static let name = "getSnapshot"
 
+    public let context: String
     public let family: String
 
-    public var properties: [String: Any]? {
-        [
-            "context": "NowPlayingWidget",
-            "family": family
-        ]
-    }
-
     public init(family: String) {
+        self.context = "NowPlayingWidget"
         self.family = family
     }
 }
 
 /// Event fired when the widget requests a timeline.
-public struct WidgetGetTimeline: AnalyticsEvent {
+@AnalyticsEvent
+public struct WidgetGetTimeline {
     public static let name = "getTimeline"
 
+    public let context: String
     public let family: String
 
-    public var properties: [String: Any]? {
-        [
-            "context": "NowPlayingWidget",
-            "family": family
-        ]
-    }
-
     public init(family: String) {
+        self.context = "NowPlayingWidget"
         self.family = family
     }
 }
