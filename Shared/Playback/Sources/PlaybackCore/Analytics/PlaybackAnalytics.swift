@@ -32,7 +32,7 @@ public protocol PlaybackAnalyticsEvent: AnalyticsEvent {}
 
 /// Event capturing that playback started.
 public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
-    public let name = "play"
+    public static let name = "play"
     public let reason: String
 
     public var properties: [String: Any]? {
@@ -46,7 +46,7 @@ public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
 
 /// Event capturing that playback stopped.
 public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
-    public let name = "pause"
+    public static let name = "pause"
     public let reason: String?
     public let duration: TimeInterval
 
@@ -80,8 +80,7 @@ public enum RecoveryMethod: String, Sendable, Equatable {
 
 /// Event capturing recovery from a stall.
 public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
-    public let name = "stall_recovery"
-
+    public static let name = "stall_recovery"
     public let playerType: PlayerControllerType
     public let successful: Bool
     public let attempts: Int
@@ -136,8 +135,7 @@ public enum StreamErrorType: String, Sendable, Equatable {
 /// This event complements `StallRecoveryEvent`: while stall recovery tracks successful
 /// recoveries, this event captures failures where playback could not be restored.
 public struct StreamErrorEvent: PlaybackAnalyticsEvent {
-    public let name = "stream_error"
-
+    public static let name = "stream_error"
     /// The type of player controller that experienced the error
     public let playerType: PlayerControllerType
     /// Classification of the error
@@ -189,7 +187,7 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
 
 /// Event capturing an audio session interruption.
 public struct InterruptionEvent: PlaybackAnalyticsEvent {
-    public let name = "interruption"
+    public static let name = "interruption"
     public let type: InterruptionType
     
     public var properties: [String: Any]? {
@@ -203,7 +201,7 @@ public struct InterruptionEvent: PlaybackAnalyticsEvent {
 
 /// Event capturing an error during playback.
 public struct ErrorEvent: PlaybackAnalyticsEvent {
-    public let name = "error"
+    public static let name = "error"
     public let error: String
     public let context: String
     
@@ -223,7 +221,7 @@ public struct ErrorEvent: PlaybackAnalyticsEvent {
 }
 
 public struct CPUUsageEvent: PlaybackAnalyticsEvent {
-    public let name = "cpu_usage"
+    public static let name = "cpu_usage"
     public let playerType: PlayerControllerType
     public let cpuUsage: Double
     
@@ -271,8 +269,7 @@ public enum PlaybackContext: String, Sendable, Equatable {
 /// Reports average and maximum CPU usage over a playback session,
 /// distinguishing between foreground and background playback.
 public struct CPUSessionEvent: PlaybackAnalyticsEvent {
-    public let name = "cpu_session"
-
+    public static let name = "cpu_session"
     public let playerType: PlayerControllerType
     public let context: PlaybackContext
     public let endReason: CPUSessionEndReason

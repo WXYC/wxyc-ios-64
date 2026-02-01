@@ -17,7 +17,7 @@ public final class StructuredPostHogAnalytics: AnalyticsService, @unchecked Send
 
     private init() {}
 
-    public func capture(_ event: AnalyticsEvent) {
-        PostHogSDK.shared.capture(event.name, properties: event.properties)
+    public func capture<T: AnalyticsEvent>(_ event: T) {
+        PostHogSDK.shared.capture(T.name, properties: event.properties)
     }
 }
