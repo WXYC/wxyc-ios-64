@@ -242,4 +242,112 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
                "Session should remain active so WXYC continues playing")
     }
 }
+
+// MARK: - Render Tap Background/Foreground Tests
+
+@Suite("Render Tap Background/Foreground Behavior Tests")
+@MainActor
+struct RenderTapBackgroundBehaviorTests {
+
+    @Test("Background removes render tap when installed")
+    func backgroundRemovesRenderTapWhenInstalled() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Install render tap (simulates visualizer becoming visible)
+        harness.controller.installRenderTap()
+        let installCountBefore = harness.mockPlayer.installRenderTapCallCount
+
+        // Go to background
+        harness.controller.handleAppDidEnterBackground()
+
+        // Should have removed the tap
+        #expect(harness.mockPlayer.removeRenderTapCallCount == 1,
+               "Background should remove render tap to save CPU")
+    }
+
+    @Test("Background does not remove render tap when not installed")
+    func backgroundDoesNotRemoveWhenNotInstalled() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Don't install render tap
+        harness.controller.handleAppDidEnterBackground()
+
+        // Should not have tried to remove
+        #expect(harness.mockPlayer.removeRenderTapCallCount == 0,
+               "Background should not remove tap that was never installed")
+    }
+
+    @Test("Foreground restores render tap when it was active")
+    func foregroundRestoresRenderTapWhenActive() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Install render tap
+        harness.controller.installRenderTap()
+        #expect(harness.mockPlayer.installRenderTapCallCount == 1)
+
+        // Background (removes tap)
+        harness.controller.handleAppDidEnterBackground()
+        #expect(harness.mockPlayer.removeRenderTapCallCount == 1)
+
+        // Foreground should restore
+        harness.controller.handleAppWillEnterForeground()
+        #expect(harness.mockPlayer.installRenderTapCallCount == 2,
+               "Foreground should restore render tap that was active before background")
+    }
+
+    @Test("Foreground does not install render tap when it was not active")
+    func foregroundDoesNotInstallWhenNotActive() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Never installed render tap
+        harness.controller.handleAppDidEnterBackground()
+        harness.controller.handleAppWillEnterForeground()
+
+        #expect(harness.mockPlayer.installRenderTapCallCount == 0,
+               "Foreground should not install tap that was never requested")
+    }
+
+    @Test("Install while backgrounded defers until foreground")
+    func installWhileBackgroundedDefersUntilForeground() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Go to background first
+        harness.controller.handleAppDidEnterBackground()
+
+        // Try to install render tap while backgrounded
+        harness.controller.installRenderTap()
+
+        // Should NOT have actually installed (app is backgrounded)
+        #expect(harness.mockPlayer.installRenderTapCallCount == 0,
+               "Should not install render tap while backgrounded")
+
+        // Come back to foreground
+        harness.controller.handleAppWillEnterForeground()
+
+        // NOW it should install
+        #expect(harness.mockPlayer.installRenderTapCallCount == 1,
+               "Should install render tap when returning to foreground")
+    }
+
+    @Test("Remove while backgrounded clears desired state")
+    func removeWhileBackgroundedClearsDesiredState() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Install, then background
+        harness.controller.installRenderTap()
+        harness.controller.handleAppDidEnterBackground()
+        #expect(harness.mockPlayer.removeRenderTapCallCount == 1)
+
+        // Remove while backgrounded (user navigates away from visualizer)
+        harness.controller.removeRenderTap()
+
+        // Come back to foreground
+        harness.mockPlayer.installRenderTapCallCount = 0  // Reset to check
+        harness.controller.handleAppWillEnterForeground()
+
+        // Should NOT reinstall because user removed it
+        #expect(harness.mockPlayer.installRenderTapCallCount == 0,
+               "Should not restore render tap that was explicitly removed")
+    }
+}
 #endif

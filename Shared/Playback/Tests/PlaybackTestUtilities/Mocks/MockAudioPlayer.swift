@@ -20,6 +20,8 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
 
     public var playCallCount = 0
     public var stopCallCount = 0
+    public var installRenderTapCallCount = 0
+    public var removeRenderTapCallCount = 0
 
     public var shouldAutoUpdateState = true
 
@@ -83,11 +85,11 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     }
 
     public func installRenderTap() {
-        // No-op for mock
+        installRenderTapCallCount += 1
     }
 
     public func removeRenderTap() {
-        // No-op for mock
+        removeRenderTapCallCount += 1
     }
 
     // MARK: - Test Helpers
@@ -95,6 +97,8 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     public func reset() {
         playCallCount = 0
         stopCallCount = 0
+        installRenderTapCallCount = 0
+        removeRenderTapCallCount = 0
         isPlaying = false
         state = .idle
     }
