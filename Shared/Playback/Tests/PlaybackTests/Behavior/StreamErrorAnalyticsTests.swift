@@ -41,6 +41,9 @@ struct StreamErrorAnalyticsTests {
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
 
+        // Wait for playback to fully initialize
+        try? await Task.sleep(for: .milliseconds(50))
+
         // Simulate stall to trigger backoff
         harness.simulateStall()
 
@@ -66,6 +69,9 @@ struct StreamErrorAnalyticsTests {
         harness.controller.play()
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
+
+        // Wait for playback to fully initialize
+        try? await Task.sleep(for: .milliseconds(50))
 
         // Trigger backoff exhaustion
         harness.simulateStall()
@@ -125,6 +131,9 @@ struct StreamErrorAnalyticsTests {
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
 
+        // Wait for playback to fully initialize
+        try? await Task.sleep(for: .milliseconds(50))
+
         // Trigger stall (which starts the stall timer)
         harness.simulateStall()
 
@@ -154,6 +163,9 @@ struct StreamErrorAnalyticsTests {
         harness.controller.play()
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
+
+        // Wait for playback to fully initialize
+        try? await Task.sleep(for: .milliseconds(50))
 
         // Trigger backoff exhaustion
         harness.simulateStall()
