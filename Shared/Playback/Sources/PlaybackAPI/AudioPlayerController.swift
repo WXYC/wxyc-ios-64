@@ -115,6 +115,9 @@ public final class AudioPlayerController {
     @ObservationIgnored private var cpuAggregator: CPUSessionAggregator?
     private var isForegrounded = true
     
+    // Render tap state for background/foreground management
+    private var renderTapDesired = false
+    
     // MARK: - Initialization
 
     #if os(iOS) || os(tvOS)
@@ -418,6 +421,12 @@ public final class AudioPlayerController {
     public func handleAppDidEnterBackground() {
         Log(.info, category: .playback, "App entered background (playbackIntended: \(playbackIntended))")
         isForegrounded = false
+
+        // Suspend render tap - no point running visualization in background
+        if renderTapDesired {
+            player.removeRenderTap()
+        }
+
         if isPlaying {
             cpuAggregator?.transitionContext(to: .background)
         }
@@ -430,6 +439,12 @@ public final class AudioPlayerController {
     public func handleAppWillEnterForeground() {
         Log(.info, category: .playback, "App entering foreground (playbackIntended: \(playbackIntended))")
         isForegrounded = true
+
+        // Restore render tap if visualization was active before backgrounding
+        if renderTapDesired {
+            player.installRenderTap()
+        }
+
         if isPlaying {
             cpuAggregator?.transitionContext(to: .foreground)
         }
@@ -527,12 +542,19 @@ extension AudioPlayerController {
 
     /// Install the render tap for audio visualization.
     /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
+    /// The tap is automatically suspended when the app enters background and restored on foreground.
     public func installRenderTap() {
+        renderTapDesired = true
+        guard isForegrounded else {
+            Log(.debug, category: .playback, "Render tap install deferred (app backgrounded)")
+            return
+        }
         player.installRenderTap()
     }
 
     /// Remove the render tap when visualization is no longer needed.
     public func removeRenderTap() {
+        renderTapDesired = false
         player.removeRenderTap()
     }
 
