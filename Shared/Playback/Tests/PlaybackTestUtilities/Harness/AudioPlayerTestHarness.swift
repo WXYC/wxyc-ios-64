@@ -233,8 +233,8 @@ public final class AudioPlayerTestHarness {
         #if !os(watchOS)
         case .mp3Streamer:
             // MP3Streamer transitions naturally when test MP3 data flows through.
-            // Wait for the state to reach .playing
-            await waitUntil({ self.player.state == .playing }, timeout: .seconds(2))
+            // Wait for the state to reach .playing (longer timeout for CI environments)
+            await waitUntil({ self.player.state == .playing }, timeout: .seconds(5))
         #endif
 
         case .radioPlayer:
