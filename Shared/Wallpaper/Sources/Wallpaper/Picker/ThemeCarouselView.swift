@@ -73,14 +73,14 @@ struct ThemeCarouselView: View {
                         storage: photoStorage,
                         cardSize: cardSize,
                         cornerRadius: cardCornerRadius,
-                        onCardTapped: {
-                            handleCardTap(at: photoCardIndex)
-                        },
                         onPhotoSaved: {
                             pickerState.refreshPhotoTheme(storage: photoStorage)
                         }
                     )
                     .id(photoCardIndex)
+                    .onTapGesture {
+                        handleCardTap(at: photoCardIndex)
+                    }
                 }
                 .scrollTargetLayout()
             }

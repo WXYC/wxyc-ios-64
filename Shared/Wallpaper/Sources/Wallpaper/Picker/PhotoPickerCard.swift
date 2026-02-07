@@ -3,8 +3,8 @@
 //  Wallpaper
 //
 //  Special carousel card for photo background selection. Shows a placeholder when no
-//  photo is set, or the selected photo preview when one exists. The card content handles
-//  tap gestures for carousel navigation, while a separate button below opens the picker.
+//  photo is set, or the selected photo preview when one exists. Carousel navigation is
+//  handled by ThemeCarouselView; a button overlaid below the card opens the picker.
 //
 //  Created by Claude on 01/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -22,9 +22,9 @@ import UIKit
 /// A card view for selecting a photo background in the theme carousel.
 ///
 /// When no photo is set, displays a placeholder with an icon.
-/// When a photo exists, shows the photo preview. Tapping the card navigates
-/// the carousel via `onCardTapped`. A separate button below the card opens
-/// `PhotosPicker` for photo selection.
+/// When a photo exists, shows the photo preview. Carousel navigation taps are
+/// handled externally by `ThemeCarouselView`. A button overlaid below the card
+/// opens `PhotosPicker` for photo selection.
 struct PhotoPickerCard: View {
     /// The photo storage service.
     let storage: PhotoBackgroundStorageProtocol
@@ -34,9 +34,6 @@ struct PhotoPickerCard: View {
 
     /// The corner radius.
     let cornerRadius: CGFloat
-
-    /// Called when the card content is tapped (for carousel scrolling/selection).
-    var onCardTapped: (() -> Void)?
 
     /// Callback when a photo is successfully saved.
     var onPhotoSaved: (() -> Void)?
@@ -59,58 +56,56 @@ struct PhotoPickerCard: View {
     private let labelHeight: CGFloat = 40
 
     var body: some View {
-        VStack(spacing: 12) {
-            // Card content - tapping navigates the carousel
-            cardContent
-                .frame(width: cardSize.width, height: cardSize.height)
-                .clipShape(.rect(cornerRadius: cornerRadius))
-                .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .strokeBorder(.white.opacity(0.3), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
-                .overlay(alignment: .top) {
-                    Text("Photo")
-                        .font(.headline)
-                        .bold()
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                        .offset(y: -labelHeight)
-                }
-                .contentShape(.rect)
-                .onTapGesture {
-                    onCardTapped?()
-                }
-
-            // Picker button below the card
-            Button(
-                previewImage != nil ? "Change Photo" : "Choose Photo",
-                systemImage: "photo.on.rectangle.angled"
-            ) {
-                isPickerPresented = true
+        cardContent
+            .frame(width: cardSize.width, height: cardSize.height)
+            .clipShape(.rect(cornerRadius: cornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(.white.opacity(0.3), lineWidth: 1)
             }
-            .font(.subheadline)
-            .bold()
-            .foregroundStyle(.white.opacity(0.8))
-            .buttonStyle(.plain)
-        }
-        #if os(iOS)
-        .photosPicker(
-            isPresented: $isPickerPresented,
-            selection: $selectedItem,
-            matching: .images,
-            photoLibrary: .shared()
-        )
-        .onChange(of: selectedItem) { _, newItem in
-            guard let newItem else { return }
-            Task {
-                await loadAndSavePhoto(from: newItem)
+            .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+            .overlay(alignment: .top) {
+                Text("Photo")
+                    .font(.headline)
+                    .bold()
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                    .offset(y: -labelHeight)
             }
-        }
-        #endif
-        .task {
-            await loadPreview()
-        }
+            // Limit the card's hit-testing area so the outer onTapGesture
+            // (added by ThemeCarouselView) does not intercept button taps.
+            .contentShape(.rect)
+            .overlay(alignment: .bottom) {
+                // Picker button below the card, tracking it on scroll
+                Button(
+                    previewImage != nil ? "Change Photo" : "Choose Photo",
+                    systemImage: "photo.on.rectangle.angled"
+                ) {
+                    isPickerPresented = true
+                }
+                .font(.subheadline)
+                .bold()
+                .foregroundStyle(.white.opacity(0.8))
+                .buttonStyle(.plain)
+                .offset(y: 48)
+            }
+            #if os(iOS)
+            .photosPicker(
+                isPresented: $isPickerPresented,
+                selection: $selectedItem,
+                matching: .images,
+                photoLibrary: .shared()
+            )
+            .onChange(of: selectedItem) { _, newItem in
+                guard let newItem else { return }
+                Task {
+                    await loadAndSavePhoto(from: newItem)
+                }
+            }
+            #endif
+            .task {
+                await loadPreview()
+            }
     }
 
     @ViewBuilder
@@ -166,18 +161,23 @@ struct PhotoPickerCard: View {
 
         do {
             guard let data = try await item.loadTransferable(type: Data.self) else {
+                Log(.error, "PhotosPickerItem returned nil data")
                 return
             }
 
             guard let image = UIImage(data: data) else {
+                Log(.error, "Failed to create UIImage from photo data (\(data.count) bytes)")
                 return
             }
 
             try await storage.savePhoto(image, maxDimension: nil)
-            previewImage = await storage.loadPhoto()
+
+            // Show the original image immediately rather than round-tripping
+            // through storage encoding/decoding.
+            previewImage = image
             onPhotoSaved?()
         } catch {
-            Log(.error, "Failed to load photo: \(error)")
+            Log(.error, "Failed to save photo: \(error)")
         }
     }
     #endif
