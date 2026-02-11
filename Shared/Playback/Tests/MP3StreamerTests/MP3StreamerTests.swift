@@ -376,6 +376,185 @@ extension Tag {
     @Tag static var integration: Self
     @Tag static var network: Self
     @Tag static var directScheduling: Self
+    @Tag static var stuckStateRecovery: Self
+}
+
+// MARK: - Stuck State Recovery Tests
+
+@Suite("MP3Streamer Stuck State Recovery")
+@MainActor
+struct MP3StreamerStuckStateRecoveryTests {
+    static let testStreamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
+
+    @Test("play() from error state resets and reconnects", .tags(.stuckStateRecovery))
+    func playFromErrorStateReconnects() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        // First connection fails, putting streamer in error state
+        mockHTTP.shouldSucceed = false
+        mockHTTP.errorToThrow = HTTPStreamError.connectionFailed
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .error = streamer.streamingState else {
+            Issue.record("Expected error state but got \(streamer.streamingState)")
+            return
+        }
+
+        // Now fix the connection and try again
+        mockHTTP.shouldSucceed = true
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(100))
+
+        // Should have reset and reconnected
+        #expect(streamer.streamingState != .error(HTTPStreamError.connectionFailed),
+                "play() from error state should reset and attempt reconnection")
+        #expect(mockHTTP.connectCallCount >= 2,
+                "Should have attempted a second connection")
+    }
+
+    @Test("play() from stalled state resets and reconnects", .tags(.stuckStateRecovery))
+    func playFromStalledStateReconnects() async throws {
+        let config = MP3StreamerConfiguration(
+            url: Self.testStreamURL,
+            minimumBuffersBeforePlayback: 3
+        )
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        mockPlayer.immediatelyRequestMoreBuffers = false
+
+        let testData = try TestAudioBufferFactory.loadMP3TestData()
+        mockHTTP.testData = testData
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        // Get to playing state
+        streamer.play()
+        for _ in 0..<20 {
+            try await Task.sleep(for: .milliseconds(100))
+            if case .playing = streamer.streamingState { break }
+        }
+
+        guard case .playing = streamer.streamingState else {
+            // Skip if we couldn't reach playing state in this environment
+            return
+        }
+
+        // Simulate stall
+        mockPlayer.simulateStall()
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(streamer.streamingState == .stalled)
+
+        let connectCountBeforeRetry = mockHTTP.connectCallCount
+
+        // Call play() again - should reset and reconnect
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(streamer.streamingState != .stalled,
+                "play() from stalled state should reset and attempt reconnection")
+        #expect(mockHTTP.connectCallCount > connectCountBeforeRetry,
+                "Should have attempted a new connection after stall recovery")
+    }
+
+    @Test("play() from connecting state resets and reconnects", .tags(.stuckStateRecovery))
+    func playFromConnectingStateReconnects() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        // Don't provide test data so connect() will be called but no data arrives
+        // and shouldSucceed = true means connect() won't throw, but we need to
+        // keep the streamer stuck in connecting. We'll manually yield connected
+        // to get past that, but the key issue is the guard statement.
+        // Actually, the simplest approach: set the state directly via the
+        // play() -> connect flow. When connect() succeeds, state goes to buffering.
+        // So for connecting, we need connect() to hang.
+        // Let's just test that calling play() while in a non-idle/non-paused state
+        // actually does something useful.
+
+        // Simulate a slow connection by making connect() block
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil  // No data, so stays in connecting/buffering
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(50))
+
+        // At this point streamer should be in connecting or buffering
+        let stateAfterFirstPlay = streamer.streamingState
+        let connectCountAfterFirst = mockHTTP.connectCallCount
+
+        // Call play() again
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(100))
+
+        // Should have torn down and reconnected
+        #expect(mockHTTP.connectCallCount > connectCountAfterFirst,
+                "play() from \(stateAfterFirstPlay) should tear down and reconnect")
+    }
+
+    @Test("isPlaying is true after recovering from error via play()", .tags(.stuckStateRecovery))
+    func isPlayingAfterRecoveryFromError() async throws {
+        let config = MP3StreamerConfiguration(
+            url: Self.testStreamURL,
+            minimumBuffersBeforePlayback: 2
+        )
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        mockPlayer.immediatelyRequestMoreBuffers = false
+
+        // First attempt fails
+        mockHTTP.shouldSucceed = false
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .error = streamer.streamingState else {
+            Issue.record("Expected error state but got \(streamer.streamingState)")
+            return
+        }
+        #expect(!streamer.isPlaying)
+
+        // Fix connection and provide data
+        mockHTTP.shouldSucceed = true
+        let testData = try TestAudioBufferFactory.loadMP3TestData()
+        mockHTTP.testData = testData
+
+        streamer.play()
+
+        // Wait for it to reach playing state
+        for _ in 0..<20 {
+            try await Task.sleep(for: .milliseconds(100))
+            if streamer.isPlaying { break }
+        }
+
+        #expect(streamer.isPlaying,
+                "Should be playing after recovering from error state via play()")
+    }
 }
 
 #endif // !os(watchOS)

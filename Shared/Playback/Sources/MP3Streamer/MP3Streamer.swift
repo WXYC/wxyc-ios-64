@@ -197,8 +197,6 @@ public final class MP3Streamer {
             return
         }
 
-        guard streamingState == .idle || streamingState == .paused else { return }
-
         // If paused, just resume playback
         if case .paused = streamingState {
             do {
@@ -213,7 +211,14 @@ public final class MP3Streamer {
             return
         }
 
-        // Otherwise, connect and start streaming
+        // If in a stuck state (connecting, buffering, stalled, reconnecting, error),
+        // tear down the current attempt and start fresh
+        if streamingState != .idle {
+            Log(.info, category: .playback, "Resetting from \(streamingState) to reconnect")
+            stop()
+        }
+
+        // Connect and start streaming
         analytics?.capture(PlaybackStartedEvent(reason: "mp3Streamer play"))
         playbackTimer = Timer.start()
         streamingState = .connecting
