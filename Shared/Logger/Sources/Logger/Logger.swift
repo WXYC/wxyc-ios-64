@@ -147,10 +147,11 @@ public final class Logger: Sendable {
         // Also print for Xcode console
         print(logStatement)
         
-        // Write to file asynchronously
-        Task { @LoggerActor in
-            Self.writeToLogFile(logStatement)
-        }
+        // Write to file synchronously under lock. Previously this used
+        // `Task { @LoggerActor in }` but production logs showed that file
+        // writes created as unstructured Tasks were silently lost for calls
+        // originating from @MainActor @Observable classes.
+        Self.writeToLogFile(logStatement)
     }
     
     // MARK: - Log Retrieval
@@ -160,7 +161,10 @@ public final class Logger: Sendable {
         guard let logFileURL = todaysLogFile else {
             return nil
         }
-        
+
+        // Flush buffered writes so a new read handle sees everything
+        flushWriteHandle()
+
         do {
             return try readLogFromDisk(logFileURL)
         } catch {
@@ -173,6 +177,9 @@ public final class Logger: Sendable {
     /// Fetch all log files (today's uncompressed + older compressed).
     public static func fetchAllLogs() -> [(logName: String, data: Data)] {
         guard let logsDir = logsDirectory else { return [] }
+
+        // Flush buffered writes so reads see everything
+        flushWriteHandle()
 
         var results: [(String, Data)] = []
         guard let contents = try? FileManager.default.contentsOfDirectory(
@@ -190,8 +197,13 @@ public final class Logger: Sendable {
 
     // MARK: - Private
 
-    @globalActor
-    private actor LoggerActor: GlobalActor { static let shared = LoggerActor() }
+    /// Lock protecting `fileHandle` for thread-safe synchronous writes.
+    /// Replaces the previous `@LoggerActor` approach, which used unstructured Tasks
+    /// that were silently lost in production.
+    private static let fileLock = NSLock()
+
+    /// Lock protecting `dateFormatter`, which is NOT thread-safe.
+    private static let timestampLock = NSLock()
 
     private static func readLogFromDisk(_ logFile: URL) throws -> (logName: String, data: Data)? {
         let fileHandle = try FileHandle(forReadingFrom: logFile)
@@ -208,7 +220,9 @@ public final class Logger: Sendable {
     }()
 
     private static func timestamp() -> String {
-        dateFormatter.string(from: Date())
+        timestampLock.withLock {
+            dateFormatter.string(from: Date())
+        }
     }
 
     private static func todayDateString() -> String {
@@ -254,7 +268,7 @@ public final class Logger: Sendable {
         return fileURL
     }()
 
-    @LoggerActor
+    /// File handle for writing. Initialized lazily and accessed under `fileLock`.
     private static let fileHandle: FileHandle? = {
         guard let logFileURL = todaysLogFile else { return nil }
 
@@ -272,17 +286,26 @@ public final class Logger: Sendable {
         }
     }()
 
-    @LoggerActor
-    private static func writeToLogFile(_ message: String) {
-        guard let fileHandle else { return }
+    /// Flushes any buffered writes to disk so readers see up-to-date content.
+    private static func flushWriteHandle() {
+        fileLock.withLock {
+            fileHandle?.synchronizeFile()
+        }
+    }
 
-        do {
-            try fileHandle.seekToEnd()
-            guard let data = (message + "\n").data(using: .utf8) else { return }
-            try fileHandle.write(contentsOf: data)
-        } catch {
-            // Avoid recursion - use print
-            print("[Logger] Failed to write to log file: \(error)")
+    /// Writes a log message to the file synchronously under `fileLock`.
+    private static func writeToLogFile(_ message: String) {
+        fileLock.withLock {
+            guard let fileHandle else { return }
+
+            do {
+                try fileHandle.seekToEnd()
+                guard let data = (message + "\n").data(using: .utf8) else { return }
+                try fileHandle.write(contentsOf: data)
+            } catch {
+                // Avoid recursion - use print
+                print("[Logger] Failed to write to log file: \(error)")
+            }
         }
     }
 
