@@ -22,5 +22,9 @@ let package = Package(
                 .linkedFramework("Foundation"),
             ]
         ),
+        .testTarget(
+            name: "LoggerTests",
+            dependencies: ["Logger"]
+        ),
     ]
 )
