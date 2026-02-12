@@ -14,19 +14,19 @@ import Foundation
 /// Themes are the primary entity containing wallpaper configuration and styling properties.
 @MainActor
 public struct ThemeManifest: Codable, Sendable {
-    public var id: String
-    public var displayName: String
-    public var version: String
+    public let id: String
+    public let displayName: String
+    public let version: String
 
     // Wallpaper configuration
-    public var renderer: RendererConfiguration
-    public var parameters: [ParameterDefinition]
-    public var shaderArguments: [ShaderArgument]
+    public let renderer: RendererConfiguration
+    public let parameters: [ParameterDefinition]
+    public let shaderArguments: [ShaderArgument]
 
     // Theme properties
-    public var accent: AccentColor
-    public var material: MaterialConfiguration
-    public var button: ButtonConfiguration?
+    public let accent: AccentColor
+    public let material: MaterialConfiguration
+    public let button: ButtonConfiguration?
 
     enum CodingKeys: String, CodingKey {
         case id, displayName, version, renderer, parameters, shaderArguments
@@ -428,20 +428,19 @@ public enum ShaderArgumentSource: String, Codable, Sendable {
 // MARK: - Parameter Definitions
 
 public struct ParameterDefinition: Codable, Sendable, Identifiable {
-    public var id: String
-    public var type: ParameterType
-    public var label: String
-    public var group: String?
-    public var defaultValue: ParameterValue
-    public var range: ParameterRange?
-    public var easing: ParameterEasing?
-    public var userDefaultsKey: String?
-    public var components: [ParameterComponentDefinition]?
+    public let id: String
+    public let type: ParameterType
+    public let label: String
+    public let group: String?
+    public let defaultValue: ParameterValue
+    public let range: ParameterRange?
+    public let userDefaultsKey: String?
+    public let components: [ParameterComponentDefinition]?
 
     enum CodingKeys: String, CodingKey {
         case id, type, label, group
         case defaultValue = "default"
-        case range, easing, userDefaultsKey, components
+        case range, userDefaultsKey, components
     }
 
     public init(
@@ -451,7 +450,6 @@ public struct ParameterDefinition: Codable, Sendable, Identifiable {
         group: String? = nil,
         defaultValue: ParameterValue,
         range: ParameterRange? = nil,
-        easing: ParameterEasing? = nil,
         userDefaultsKey: String? = nil,
         components: [ParameterComponentDefinition]? = nil
     ) {
@@ -461,7 +459,6 @@ public struct ParameterDefinition: Codable, Sendable, Identifiable {
         self.group = group
         self.defaultValue = defaultValue
         self.range = range
-        self.easing = easing
         self.userDefaultsKey = userDefaultsKey
         self.components = components
     }
@@ -473,35 +470,6 @@ public enum ParameterType: String, Codable, Sendable {
     case float3
     case color
     case bool
-}
-
-/// Easing function applied to parameter values before passing to shaders.
-public enum ParameterEasing: String, Codable, Sendable {
-    /// Quadratic ease-in: t² (slow start, accelerates)
-    case easeIn
-
-    /// Quadratic ease-out: 1 - (1-t)² (fast start, decelerates)
-    case easeOut
-
-    /// Quadratic ease-in-out: smooth S-curve
-    case easeInOut
-
-    /// Applies the easing function to a normalized value (0-1).
-    public func apply(to t: Float) -> Float {
-        let clamped = max(0, min(1, t))
-        switch self {
-        case .easeIn:
-            return clamped * clamped
-        case .easeOut:
-            return 1 - (1 - clamped) * (1 - clamped)
-        case .easeInOut:
-            if clamped < 0.5 {
-                return 2 * clamped * clamped
-            } else {
-                return 1 - pow(-2 * clamped + 2, 2) / 2
-            }
-        }
-    }
 }
 
 public struct ParameterRange: Codable, Sendable {

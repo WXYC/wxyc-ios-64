@@ -52,7 +52,7 @@ public struct ThemePickerContainer<Content: View>: View {
         // Actively scrolling between themes - interpolate
         let fromAppearance = configuration.appearance(for: transition.fromTheme.id)
         let toAppearance = configuration.appearance(for: transition.toTheme.id)
-        return .lerp(fromAppearance, toAppearance, t: transition.progress)
+        return ThemeAppearance.lerp(fromAppearance, toAppearance, t: transition.progress)
     }
 
     public init(

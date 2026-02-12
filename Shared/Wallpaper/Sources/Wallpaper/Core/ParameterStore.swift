@@ -270,18 +270,10 @@ public final class ParameterStore: Sendable {
     }
 
     /// Applies the easing function defined in the parameter to a value.
+    /// Note: Currently returns value unmodified as easing is not yet implemented on ParameterDefinition.
     private func applyEasing(_ value: Float, param: ParameterDefinition) -> Float {
-        guard let easing = param.easing,
-              let range = param.range else {
-            return value
-        }
-        // Normalize value to 0-1 range
-        let normalized = (value - range.min) / (range.max - range.min)
-        let clamped = max(0, min(1, normalized))
-        // Apply easing
-        let eased = easing.apply(to: clamped)
-        // Scale back to original range
-        return range.min + eased * (range.max - range.min)
+        // Easing not yet implemented on ParameterDefinition - return value as-is
+        value
     }
 }
 

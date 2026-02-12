@@ -20,7 +20,7 @@ import SwiftUI
 @MainActor
 public final class ThemeConfiguration {
 
-    // MARK: - LCD Defaults
+    // MARK: - LCD HSB Offset Defaults
 
     /// Default HSB offset for LCD min (top) segments.
     public static let defaultLCDMinOffset: HSBOffset = .defaultMin
@@ -28,13 +28,13 @@ public final class ThemeConfiguration {
     /// Default HSB offset for LCD max (bottom) segments.
     public static let defaultLCDMaxOffset: HSBOffset = .defaultMax
 
-    /// Default brightness multiplier for active LCD segments.
+    /// Default brightness multiplier for active (lit) LCD segments.
     public static let defaultLCDActiveBrightness: Double = 1.24
 
     // MARK: - Storage Keys
 
     private let storageKey = "wallpaper.selectedType.v3"
-    private let defaultThemeID = "wxyc_1983"
+    private let defaultThemeID = "wxyc_gradient"
 
     // MARK: - Per-Theme Storage Keys
 
@@ -479,16 +479,6 @@ public final class ThemeConfiguration {
         return loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
     }
 
-    /// Returns the LCD active brightness for a given theme ID.
-    public func lcdActiveBrightness(for themeID: String) -> Double {
-        if themeID == selectedThemeID { return lcdActiveBrightness }
-        let key = lcdActiveBrightnessKey(for: themeID)
-        if defaults.object(forKey: key) != nil {
-            return defaults.double(forKey: key)
-        }
-        return Self.defaultLCDActiveBrightness
-    }
-
     /// Returns the effective playback blend mode for a given theme ID.
     /// For the selected theme, uses in-memory value. For other themes, looks up stored override.
     public func effectivePlaybackBlendMode(for themeID: String) -> BlendMode {
@@ -560,41 +550,11 @@ public final class ThemeConfiguration {
             accentColor: effectiveAccentColor(for: themeID),
             lcdMinOffset: lcdMinOffset(for: themeID),
             lcdMaxOffset: lcdMaxOffset(for: themeID),
-            lcdActiveBrightness: lcdActiveBrightness(for: themeID),
             playbackBlendMode: DiscreteTransition(effectivePlaybackBlendMode(for: themeID)),
             playbackDarkness: playbackDarkness(for: themeID),
             playbackAlpha: playbackAlpha(for: themeID),
-            materialBlendMode: DiscreteTransition(effectiveMaterialBlendMode(for: themeID)),
-            timeScale: easedTimeScale(for: themeID)
+            materialBlendMode: DiscreteTransition(effectiveMaterialBlendMode(for: themeID))
         )
-    }
-
-    /// Returns the eased timeScale for a given theme ID.
-    /// Reads the raw value from the theme's ParameterStore and applies any slider easing.
-    private func easedTimeScale(for themeID: String) -> Double {
-        guard let theme = registry.theme(for: themeID),
-              let param = theme.manifest.parameters.first(where: { $0.id == "timeScale" }) else {
-            // Default for themes without a timeScale parameter
-            return 1.0
-        }
-        let rawValue = theme.parameterStore.floatValue(for: "timeScale")
-        let easedValue = applyEasing(Double(rawValue), param: param)
-        return easedValue
-    }
-
-    /// Applies the easing function defined in the parameter to a normalized value.
-    private func applyEasing(_ value: Double, param: ParameterDefinition) -> Double {
-        guard let easing = param.easing,
-              let range = param.range else {
-            return value
-        }
-        // Normalize value to 0-1 range
-        let normalized = (value - Double(range.min)) / Double(range.max - range.min)
-        let clamped = max(0, min(1, normalized))
-        // Apply easing
-        let eased = easing.apply(to: Float(clamped))
-        // Scale back to original range
-        return Double(range.min) + Double(eased) * Double(range.max - range.min)
     }
 
     private func loadHSBOffset(forKey key: String) -> HSBOffset? {
@@ -621,8 +581,7 @@ public final class ThemeConfiguration {
                 overlayDarkness: overlayDarknessOverride,
                 materialBlendMode: materialBlendMode != .default ? materialBlendMode.rawValue : nil,
                 lcdMinOffset: lcdMinOffset != Self.defaultLCDMinOffset ? lcdMinOffset : nil,
-                lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil,
-                lcdActiveBrightness: lcdActiveBrightness != Self.defaultLCDActiveBrightness ? lcdActiveBrightness : nil
+                lcdMaxOffset: lcdMaxOffset != Self.defaultLCDMaxOffset ? lcdMaxOffset : nil
             )
         }
 
@@ -636,8 +595,7 @@ public final class ThemeConfiguration {
             overlayDarkness: loadOptionalDouble(overlayDarknessOverrideKey(for: themeID)),
             materialBlendMode: loadOptionalString(materialBlendModeKey(for: themeID)),
             lcdMinOffset: loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)),
-            lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)),
-            lcdActiveBrightness: loadOptionalDouble(lcdActiveBrightnessKey(for: themeID))
+            lcdMaxOffset: loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID))
         )
     }
 
@@ -689,12 +647,14 @@ public final class ThemeConfiguration {
             ? defaults.double(forKey: overlayDarknessKey)
             : nil
 
-        // Load LCD HSB offsets and active brightness
+        // Load LCD HSB offsets
         lcdMinOffset = loadHSBOffset(forKey: lcdMinOffsetKey(for: themeID)) ?? Self.defaultLCDMinOffset
         lcdMaxOffset = loadHSBOffset(forKey: lcdMaxOffsetKey(for: themeID)) ?? Self.defaultLCDMaxOffset
-        let activeBrightnessKey = lcdActiveBrightnessKey(for: themeID)
-        lcdActiveBrightness = defaults.object(forKey: activeBrightnessKey) != nil
-            ? defaults.double(forKey: activeBrightnessKey)
+
+        // Load LCD active brightness
+        let lcdBrightnessKey = lcdActiveBrightnessKey(for: themeID)
+        lcdActiveBrightness = defaults.object(forKey: lcdBrightnessKey) != nil
+            ? defaults.double(forKey: lcdBrightnessKey)
             : Self.defaultLCDActiveBrightness
 
         // Load playback blend mode

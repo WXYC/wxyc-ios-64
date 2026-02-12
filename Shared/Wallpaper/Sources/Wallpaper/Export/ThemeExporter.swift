@@ -117,32 +117,49 @@ public final class ThemeExporter {
 
     private func applyParameterValues(from store: ParameterStore, to manifest: ThemeManifest) -> ThemeManifest {
         // Update parameter definitions with current values as new defaults
-        let updatedParameters = manifest.parameters.map { param in
-            var updated = param
+        let updatedParameters = manifest.parameters.map { param -> ParameterDefinition in
+            let newDefaultValue: ParameterValue
             switch param.type {
             case .float:
-                updated.defaultValue = .float(store.floatValue(for: param.id))
+                newDefaultValue = .float(store.floatValue(for: param.id))
             case .float2:
                 let (x, y) = store.float2Value(for: param.id)
-                updated.defaultValue = .float2(x, y)
+                newDefaultValue = .float2(x, y)
             case .float3:
                 let (x, y, z) = store.float3Value(for: param.id)
-                updated.defaultValue = .float3(x, y, z)
+                newDefaultValue = .float3(x, y, z)
             case .bool:
-                updated.defaultValue = .bool(store.boolValue(for: param.id))
+                newDefaultValue = .bool(store.boolValue(for: param.id))
             case .color:
-                updated.defaultValue = .float3(
+                newDefaultValue = .float3(
                     store.colorComponent("r", for: param.id),
                     store.colorComponent("g", for: param.id),
                     store.colorComponent("b", for: param.id)
                 )
             }
-            return updated
+            return ParameterDefinition(
+                id: param.id,
+                type: param.type,
+                label: param.label,
+                group: param.group,
+                defaultValue: newDefaultValue,
+                range: param.range,
+                userDefaultsKey: param.userDefaultsKey,
+                components: param.components
+            )
         }
 
-        var result = manifest
-        result.parameters = updatedParameters
-        return result
+        return ThemeManifest(
+            id: manifest.id,
+            displayName: manifest.displayName,
+            version: manifest.version,
+            renderer: manifest.renderer,
+            parameters: updatedParameters,
+            shaderArguments: manifest.shaderArguments,
+            accent: manifest.accent,
+            material: manifest.material,
+            button: manifest.button ?? .colored
+        )
     }
 
     private func createZipArchive(from sourceDir: URL, to zipURL: URL) throws {

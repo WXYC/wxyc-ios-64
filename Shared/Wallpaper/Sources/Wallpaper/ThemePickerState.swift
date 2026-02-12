@@ -62,6 +62,12 @@ private struct WallpaperMeshGradientPaletteKey: EnvironmentKey {
     static let defaultValue: [Color]? = nil
 }
 
+/// Environment key to indicate UI testing mode.
+/// When true, animations are disabled to prevent XCUITest idle timeouts.
+private struct UITestingModeKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
 public extension EnvironmentValues {
     var isThemePickerActive: Bool {
         get { self[ThemePickerActiveKey.self] }
@@ -88,6 +94,13 @@ public extension EnvironmentValues {
     var wallpaperMeshGradientPalette: [Color]? {
         get { self[WallpaperMeshGradientPaletteKey.self] }
         set { self[WallpaperMeshGradientPaletteKey.self] = newValue }
+    }
+
+    /// Whether the app is running in UI testing mode.
+    /// When true, animations are disabled to prevent XCUITest idle timeouts.
+    var isUITesting: Bool {
+        get { self[UITestingModeKey.self] }
+        set { self[UITestingModeKey.self] = newValue }
     }
 }
 
@@ -190,9 +203,9 @@ public final class ThemePickerState {
 
         // Log theme selection
         if themeChanged {
-            Log(.info, category: .wallpaper, "Theme changed from '\(previousID)' to '\(selectedThemeID)'")
+            Log(.info, "Theme changed from '\(previousID)' to '\(selectedThemeID)'")
         } else {
-            Log(.info, category: .wallpaper, "Theme confirmed: '\(selectedThemeID)' (unchanged)")
+            Log(.info, "Theme confirmed: '\(selectedThemeID)' (unchanged)")
         }
 
         // Record analytics event
