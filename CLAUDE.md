@@ -12,7 +12,6 @@ Metal. It also supports tvOS, watchOS, and macOS (designed for iPad).
 - SwiftUI backed up by `@Observable` classes for shared data.
 - Do not introduce third-party frameworks without asking first.
 - Avoid UIKit unless requested.
-- Prefer a test-driven approach to making changes. The idea is that you write a failing test first, either because the code has a bug, or it doesn't compile because it tests an API that doesn't yet exist. Then change the code under test.
 - There is no "iPhone 16 Pro" simulator. Simulator 156E5217-1C62-4531-B8BE-B0299138F6DB should be available. Check the available simulators if not.
 
 ## Coding style
@@ -44,10 +43,22 @@ When creating new files:
 
 The pre-commit hook (`scripts/hooks/header-check.sh`) validates headers and can use Claude to generate missing descriptions automatically.
 
+## Testing Standards
+
+This project follows **Test-Driven Development (TDD)**. All code changes must be test-driven - this is not optional.
+
+### TDD Workflow
+
+1. **Red**: Write a failing test that describes the desired behavior. Run it and verify it fails for the expected reason (compile error for new API, assertion failure for bug fix).
+2. **Green**: Write the minimum code necessary to make the test pass. Run the test and confirm it passes.
+3. **Refactor**: Look for opportunities to improve the code while keeping tests green. Re-run tests after each change.
+4. **Repeat**: Continue this cycle until the feature is complete.
+
+**Key principle**: No production code without a failing test first.
+
 ## Swift instructions
 
 - Prefer Swift 6.2's `Observations` type and AsyncIterator/AsyncStream over closure-based callback handlers. It's okay to use closure-based handlers for simple things like button presses (e.g., `onButtonTapped`). `Observations.swift` exists in the repository to make this API available to iOS 18+.
-- Use a test-driven approach to changing and writing new code. Write a failing test, and then make the change you intend to write.
 - Assume strict Swift concurrency rules are being applied.
 - Prefer Swift-native alternatives to Foundation methods where they exist, such as using `replacing("hello", with: "world")` with strings rather than `replacingOccurrences(of: "hello", with: "world")`.
 - Prefer modern Foundation API, for example `URL.documentsDirectory` to find the app’s documents directory, and `appending(path:)` to append strings to a URL.
