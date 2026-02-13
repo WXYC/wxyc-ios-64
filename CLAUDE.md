@@ -237,6 +237,10 @@ PostHog is used throughout. Key events:
 - Background refresh scheduled every 15 minutes
 - OpenNSFW model seeded to shared container for widget access
 
+## App Store Previews
+
+App Store screenshots and preview assets live in a separate project at `../app-store-previews`. Use that project when preparing assets for App Store publication.
+
 ## Minimum iOS Version
 
 iOS 18.6 (based on SDK version in built app)
