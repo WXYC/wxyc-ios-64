@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import AVFoundation
 import SwiftUI
 import Playback
 import PlaybackCore
@@ -64,7 +65,6 @@ public struct PlayerHeaderView: View {
             VisualizerTimelineView(
                 visualizer: visualizer,
                 barHistory: $barHistory,
-                isPlaying: Self.controller.isPlaying,
                 onDebugTapped: onDebugTapped
             )
         }
@@ -72,27 +72,31 @@ public struct PlayerHeaderView: View {
         .background { BackgroundLayer() }
         .clipShape(.rect(cornerRadius: 12))
         .onAppear {
-            // Install render tap when visualization is visible
             Self.controller.installRenderTap()
+            if Self.controller.isPlaying {
+                visualizer.startConsuming(stream: Self.controller.audioBufferStream)
+            }
         }
         .onDisappear {
-            // Remove render tap when visualization is hidden to save CPU
             Self.controller.removeRenderTap()
+            visualizer.stopConsuming()
         }
-        .task(id: Self.controller.isPlaying) {
-            // Only process buffers when playing
-            guard Self.controller.isPlaying else { return }
-
-            // Get stream reference on MainActor, then process on background thread
-            let stream = Self.controller.audioBufferStream
-            let viz = visualizer
-
-            // Detach to process FFT/RMS off MainActor
-            await Task.detached(priority: .userInitiated) {
-                for await buffer in stream {
-                    viz.processBuffer(buffer)
-                }
-            }.value
+        .onChange(of: Self.controller.isPlaying) { _, nowPlaying in
+            if nowPlaying {
+                visualizer.startConsuming(stream: Self.controller.audioBufferStream)
+            } else {
+                visualizer.stopConsuming()
+            }
+        }
+        .task {
+            #if os(iOS) || os(tvOS)
+            visualizer.outputLatency = Self.controller.outputLatency
+            for await _ in NotificationCenter.default.notifications(
+                named: AVAudioSession.routeChangeNotification
+            ) {
+                visualizer.outputLatency = Self.controller.outputLatency
+            }
+            #endif
         }
     }
 }

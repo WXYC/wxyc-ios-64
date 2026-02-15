@@ -91,6 +91,14 @@ public final class VisualizerDataSource: @unchecked Sendable {
     /// RMS values per frequency bar
     public var rmsPerBar: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
 
+    /// Whether the visualizer should be considered active (consuming or draining).
+    /// True when consuming a stream or when the delay buffer still has frames to display.
+    public var isActive: Bool = false
+
+    /// AirPlay output latency in seconds. Set from AVAudioSession.outputLatency on route changes.
+    @ObservationIgnored
+    public var outputLatency: TimeInterval = 0
+
     // MARK: - Persisted Settings
 
     /// Signal boost multiplier for amplifying visualization (1.0 = no boost, range: 0.1–10.0)
@@ -169,6 +177,17 @@ public final class VisualizerDataSource: @unchecked Sendable {
     public var showFPS: Bool = false {
         didSet { defaults.set(showFPS, forKey: DefaultsKeys.showFPS) }
     }
+
+    // MARK: - Stream Consumption State
+
+    @ObservationIgnored
+    private var isConsuming = false
+
+    @ObservationIgnored
+    private var consumptionTask: Task<Void, Never>?
+
+    @ObservationIgnored
+    private let delayBuffer = DelayBuffer()
 
     // MARK: - Private Properties (not persisted)
 
@@ -265,25 +284,71 @@ public final class VisualizerDataSource: @unchecked Sendable {
             boostedData.deallocate()
         }
         
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.fftMagnitudes = magnitudes
+        delayBuffer.enqueue(TimestampedFrame(
+            timestamp: .now,
+            fftMagnitudes: magnitudes,
+            rmsPerBar: rmsValues
+        ))
+    }
         
-            // Apply smoothing: blend new RMS with previous values
-            for i in 0..<VisualizerConstants.barAmount {
-                let newValue = i < rmsValues.count ? rmsValues[i] : 0
-                self.rmsPerBar[i] = self.rmsSmoothing * self.rmsPerBar[i] + (1 - self.rmsSmoothing) * newValue
+    /// Begin consuming audio buffers from the given stream.
+    /// Cancels any existing consumption task before starting a new one.
+    /// - Parameter stream: The async stream of audio buffers to consume.
+    @MainActor
+    public func startConsuming(stream: AsyncStream<AVAudioPCMBuffer>) {
+        consumptionTask?.cancel()
+        isConsuming = true
+        isActive = true
+    
+        let viz = self
+        consumptionTask = Task.detached(priority: .userInitiated) {
+            for await buffer in stream {
+                guard !Task.isCancelled else { break }
+                viz.processBuffer(buffer)
             }
         }
     }
-        
+
+    /// Stop consuming the audio buffer stream.
+    /// The delay buffer may still contain frames; `isActive` remains true until drained.
+    @MainActor
+    public func stopConsuming() {
+        consumptionTask?.cancel()
+        consumptionTask = nil
+        isConsuming = false
+        isActive = isConsuming || !delayBuffer.isEmpty
+    }
+
+    /// Dequeues the next eligible frame from the delay buffer and updates
+    /// observable `fftMagnitudes` and `rmsPerBar`. Call once per display frame.
+    @MainActor
+    public func dequeueNextFrame() {
+        if let frame = delayBuffer.dequeue(delay: outputLatency, now: .now) {
+            fftMagnitudes = frame.fftMagnitudes
+
+            let rmsValues = frame.rmsPerBar
+            for i in 0..<VisualizerConstants.barAmount {
+                let newValue = i < rmsValues.count ? rmsValues[i] : 0
+                rmsPerBar[i] = rmsSmoothing * rmsPerBar[i] + (1 - rmsSmoothing) * newValue
+            }
+        }
+
+        isActive = isConsuming || !delayBuffer.isEmpty
+    }
+
     /// Reset visualization state and persisted settings to defaults
     public func reset() {
+        consumptionTask?.cancel()
+        consumptionTask = nil
+        isConsuming = false
+        isActive = false
+        delayBuffer.clear()
+
         fftMagnitudes = []
         rmsPerBar = Array(repeating: 0, count: VisualizerConstants.barAmount)
         fftProcessor.reset()
         rmsProcessor.reset()
-        
+
         // Reset persisted settings to defaults
         signalBoost = 1.0
         signalBoostEnabled = true
@@ -294,12 +359,12 @@ public final class VisualizerDataSource: @unchecked Sendable {
         displayProcessor = .rms
         showFPS = false
     }
-        
+
     /// Sets the signal boost level
     public func setSignalBoost(_ boost: Float) {
         signalBoost = boost
     }
-    
+
     /// Resets signal boost to default (no amplification)
     public func resetSignalBoost() {
         signalBoost = 1.0

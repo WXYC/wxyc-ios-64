@@ -16,7 +16,6 @@ import SwiftUI
 public struct VisualizerTimelineView: View {
     @Bindable var visualizer: VisualizerDataSource
     @Binding var barHistory: [[Float]]
-    var isPlaying: Bool
     var onDebugTapped: (() -> Void)?
     
     /// Computed property to get the current display data based on displayProcessor
@@ -74,20 +73,18 @@ public struct VisualizerTimelineView: View {
         BarData(category: String($0), value: 0)
     }
     
-    /// Animation runs during playback OR while dots are falling
+    /// Animation runs while the visualizer is active (consuming or draining) OR while dots are falling
     private var isAnimating: Bool {
-        isPlaying || isFalling
+        visualizer.isActive || isFalling
     }
-    
+
     public init(
         visualizer: VisualizerDataSource,
         barHistory: Binding<[[Float]]>,
-        isPlaying: Bool,
         onDebugTapped: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self._barHistory = barHistory
-        self.isPlaying = isPlaying
         self.onDebugTapped = onDebugTapped
     }
     
@@ -120,9 +117,9 @@ public struct VisualizerTimelineView: View {
                 updateFrame()
             }
         }
-        .onChange(of: isPlaying) { wasPlaying, nowPlaying in
-            if wasPlaying && !nowPlaying {
-                // Playback stopped - start falling animation
+        .onChange(of: visualizer.isActive) { wasActive, nowActive in
+            if wasActive && !nowActive {
+                // Delay buffer fully drained - start falling animation
                 startFalling()
             }
         }
@@ -149,7 +146,7 @@ public struct VisualizerTimelineView: View {
     }
     
     private func updateFrame() {
-        if isPlaying {
+        if visualizer.isActive {
             updatePlaybackData()
         } else if isFalling {
             updateFallingDots()
@@ -159,6 +156,9 @@ public struct VisualizerTimelineView: View {
     /// Update visualizer with live audio data using frame-level smoothing
     /// This interpolates between audio buffer updates to achieve smooth 60 FPS animation
     private func updatePlaybackData() {
+        // Pull the next eligible frame from the delay buffer into fftMagnitudes/rmsPerBar
+        visualizer.dequeueNextFrame()
+
         // Cache displayData to avoid repeated computed property access
         let currentDisplayData = displayData
         
