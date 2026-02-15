@@ -25,12 +25,16 @@ public final class MockAudioSession: AudioSessionProtocol {
     public var lastCategory: AVAudioSession.Category?
     public var lastMode: AVAudioSession.Mode?
     public var lastCategoryOptions: AVAudioSession.CategoryOptions?
+    public var lastPolicy: AVAudioSession.RouteSharingPolicy?
     public var lastActiveState: Bool?
     public var lastActiveOptions: AVAudioSession.SetActiveOptions?
 
     public var shouldThrowOnSetCategory = false
     public var shouldThrowOnSetActive = false
-    
+
+    /// Configurable output latency for testing AirPlay delay scenarios
+    public var outputLatency: TimeInterval = 0
+
     public init() {}
 
     // MARK: - AudioSessionProtocol
@@ -39,6 +43,18 @@ public final class MockAudioSession: AudioSessionProtocol {
         setCategoryCallCount += 1
         lastCategory = category
         lastMode = mode
+        lastCategoryOptions = options
+
+        if shouldThrowOnSetCategory {
+            throw MockAudioSessionError.setCategoryFailed
+        }
+    }
+
+    public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, policy: AVAudioSession.RouteSharingPolicy, options: AVAudioSession.CategoryOptions) throws {
+        setCategoryCallCount += 1
+        lastCategory = category
+        lastMode = mode
+        lastPolicy = policy
         lastCategoryOptions = options
 
         if shouldThrowOnSetCategory {
@@ -57,8 +73,6 @@ public final class MockAudioSession: AudioSessionProtocol {
     }
 
     public var currentRoute: AVAudioSessionRouteDescription {
-        // Return the shared instance's route for basic compatibility
-        // In tests, we typically don't care about the actual route
         AVAudioSession.sharedInstance().currentRoute
     }
 
@@ -70,10 +84,12 @@ public final class MockAudioSession: AudioSessionProtocol {
         lastCategory = nil
         lastMode = nil
         lastCategoryOptions = nil
+        lastPolicy = nil
         lastActiveState = nil
         lastActiveOptions = nil
         shouldThrowOnSetCategory = false
         shouldThrowOnSetActive = false
+        outputLatency = 0
     }
 }
 
@@ -95,14 +111,14 @@ public final class MockAudioSession: AudioSessionProtocol {
     public func setActive(_ active: Bool) throws {
         setActiveCallCount += 1
         lastActiveState = active
-        
+
         if shouldThrowOnSetActive {
             throw MockAudioSessionError.setActiveFailed
         }
     }
-    
+
     // MARK: - Test Helpers
-    
+
     public func reset() {
         setActiveCallCount = 0
         lastActiveState = nil

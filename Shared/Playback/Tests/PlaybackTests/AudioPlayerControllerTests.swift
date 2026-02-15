@@ -52,7 +52,7 @@ struct AudioPlayerControllerTests {
         #expect(mockSession.setActiveCallCount == 0)
     }
 
-    @Test("Audio session category is configured on first play")
+    @Test("Audio session category is configured on first play with longFormAudio policy")
     func audioSessionConfiguredOnPlay() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
@@ -74,6 +74,7 @@ struct AudioPlayerControllerTests {
 
         #expect(mockSession.setCategoryCallCount == 1)
         #expect(mockSession.lastCategory == .playback)
+        #expect(mockSession.lastPolicy == .longFormAudio)
         #expect(mockSession.setActiveCallCount == 1)
         #expect(mockSession.lastActiveState == true)
     }
@@ -100,6 +101,43 @@ struct AudioPlayerControllerTests {
         #expect(mockSession.setCategoryCallCount == 1)
         // setActive is called: play(true), stop(false), play(true) = 3 times
         #expect(mockSession.setActiveCallCount == 3)
+    }
+
+    // MARK: - Output Latency Tests
+
+    @Test("Output latency returns audio session's output latency")
+    func outputLatencyReturnsSessionValue() {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockAudioPlayerForController()
+
+        mockSession.outputLatency = 2.0
+
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: MockStructuredAnalytics()
+        )
+
+        #expect(controller.outputLatency == 2.0)
+    }
+
+    @Test("Output latency returns 0 when audio session is nil")
+    func outputLatencyReturnsZeroWithNilSession() {
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockAudioPlayerForController()
+
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: nil,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: MockStructuredAnalytics()
+        )
+
+        #expect(controller.outputLatency == 0)
     }
 
     // MARK: - Remote Command Center Tests

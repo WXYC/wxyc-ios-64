@@ -18,16 +18,22 @@ public protocol AudioSessionProtocol: AnyObject {
     /// Configure the audio session category
     func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws
     
+    /// Configure the audio session category with a route sharing policy
+    func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, policy: AVAudioSession.RouteSharingPolicy, options: AVAudioSession.CategoryOptions) throws
+
     /// Activate or deactivate the audio session
     func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws
 
     /// The current audio route
     var currentRoute: AVAudioSessionRouteDescription { get }
+
+    /// The latency of the current audio output route in seconds
+    var outputLatency: TimeInterval { get }
 }
 
 /// Default implementation that wraps AVAudioSession.sharedInstance()
 extension AVAudioSession: AudioSessionProtocol {
-    // AVAudioSession already conforms to these methods
+    // AVAudioSession already conforms — all methods and properties exist on AVAudioSession
 }
 
 #else

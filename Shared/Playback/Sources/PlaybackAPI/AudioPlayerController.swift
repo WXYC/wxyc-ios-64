@@ -280,8 +280,8 @@ public final class AudioPlayerController {
         guard !audioSessionConfigured, let session = audioSession else { return }
         audioSessionConfigured = true
         do {
-            try session.setCategory(.playback, mode: .default, options: [])
-            Log(.info, category: .playback, "Audio session configured for playback")
+            try session.setCategory(.playback, mode: .default, policy: .longFormAudio, options: [])
+            Log(.info, category: .playback, "Audio session configured for playback with longFormAudio policy")
         } catch {
             Log(.error, category: .playback, "Failed to configure audio session: \(error)")
         }
@@ -539,6 +539,17 @@ extension AudioPlayerController {
     public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
         player.audioBufferStream
     }
+
+    #if os(iOS) || os(tvOS)
+    /// The output latency of the current audio route in seconds.
+    /// Updates automatically when the audio route changes (e.g., switching to AirPlay).
+    public var outputLatency: TimeInterval {
+        audioSession?.outputLatency ?? 0
+    }
+    #else
+    /// Output latency is not available on macOS/watchOS.
+    public var outputLatency: TimeInterval { 0 }
+    #endif
 
     /// Install the render tap for audio visualization.
     /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
