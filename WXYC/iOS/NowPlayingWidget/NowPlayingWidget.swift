@@ -9,6 +9,7 @@
 //
 
 import AppIntents
+import AppServices
 import Caching
 import SwiftUI
 import WidgetKit
@@ -18,9 +19,9 @@ import WXYCIntents
 
 struct NowPlayingWidget: Widget {
     let kind: String = "NowPlayingWidget"
-    
+
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: NowPlayingWidgetIntent.self, provider: Provider()) { entry in
             content(for: entry)
         }
         .configurationDisplayName("WXYC Now Playing")

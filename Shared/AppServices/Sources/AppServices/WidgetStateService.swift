@@ -10,6 +10,7 @@
 //
 
 #if canImport(WidgetKit)
+import AppIntents
 import Caching
 import Core
 import PlaybackCore
@@ -33,14 +34,20 @@ import UIKit
 public final class WidgetStateService {
     private let playbackController: any PlaybackController
     private let playlistService: PlaylistService
+    private let relevanceUpdater: any WidgetRelevanceUpdating
     private var isForegrounded = false
     private var playbackObservationTask: Task<Void, Never>?
     private var playlistObservationTask: Task<Void, Never>?
     private var appTerminationObservation: NSObjectProtocol?
 
-    public init(playbackController: any PlaybackController, playlistService: PlaylistService) {
+    public init(
+        playbackController: any PlaybackController,
+        playlistService: PlaylistService,
+        relevanceUpdater: any WidgetRelevanceUpdating = SystemWidgetRelevanceUpdater()
+    ) {
         self.playbackController = playbackController
         self.playlistService = playlistService
+        self.relevanceUpdater = relevanceUpdater
 
         // Listen for app termination to clear playback state
         #if canImport(UIKit) && !os(watchOS)
@@ -49,10 +56,13 @@ public final class WidgetStateService {
                 self.clearPlaybackState()
             }
         #endif
-        
+
         // Clear stale playback state from previous app session.
         // The app wasn't playing when it was terminated, so reset to false.
         clearPlaybackState()
+
+        // Clear stale relevance from previous session
+        Task { await self.updateWidgetRelevance(isActive: false) }
     }
 
     deinit {
@@ -99,6 +109,20 @@ public final class WidgetStateService {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    private func updateWidgetRelevance(isActive: Bool) async {
+        #if os(iOS)
+        if isActive {
+            let intent = NowPlayingWidgetIntent()
+            let twoHoursFromNow = Date.now.addingTimeInterval(2 * 60 * 60)
+            let relevance = RelevantContext.date(from: .now, to: twoHoursFromNow)
+            let relevant = RelevantIntent(intent, widgetKind: "NowPlayingWidget", relevance: relevance)
+            await relevanceUpdater.updateRelevantIntents([relevant])
+        } else {
+            await relevanceUpdater.updateRelevantIntents([])
+        }
+        #endif
+    }
+
     private func startObservingPlaybackState() {
         playbackObservationTask?.cancel()
 
@@ -114,6 +138,9 @@ public final class WidgetStateService {
 
                 // Update UserDefaults
                 UserDefaults.wxyc.set(isActive, forKey: "isPlaying")
+
+                // Update Smart Stack relevance hints
+                await self.updateWidgetRelevance(isActive: isActive)
 
                 // Reload Control Center controls to update toggle state
                 #if os(iOS)
