@@ -31,7 +31,13 @@ let package = Package(
         ),
         .testTarget(
             name: "AppServicesTests",
-            dependencies: ["AppServices", "Caching", "Playlist", "Artwork"]
+            dependencies: [
+                "AppServices",
+                "Caching",
+                "Playlist",
+                "Artwork",
+                .product(name: "PlaybackCore", package: "Playback"),
+            ]
         )
     ]
 )
