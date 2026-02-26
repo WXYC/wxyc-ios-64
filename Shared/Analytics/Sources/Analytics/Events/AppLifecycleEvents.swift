@@ -15,8 +15,6 @@ import Foundation
 /// Event fired when the app launches.
 @AnalyticsEvent
 public struct AppLaunch {
-    public static let name = "app launch"
-
     public let hasUsedThemePicker: Bool
     public let buildType: String
 
@@ -27,9 +25,11 @@ public struct AppLaunch {
 }
 
 /// Simplified app launch event for watchOS and tvOS.
+///
+/// Shares the `app_launch` event name with `AppLaunch`.
 @AnalyticsEvent
 public struct AppLaunchSimple {
-    public static let name = "app launch"
+    public static let name = "app_launch"
 
     public init() {}
 }
@@ -39,8 +39,6 @@ public struct AppLaunchSimple {
 /// Event fired when the app enters the background.
 @AnalyticsEvent
 public struct AppEnteredBackground {
-    public static let name = "App entered background"
-
     public let isPlaying: Bool
 
     public init(isPlaying: Bool) {
@@ -51,8 +49,6 @@ public struct AppEnteredBackground {
 /// Event fired when background refresh completes.
 @AnalyticsEvent
 public struct BackgroundRefreshCompleted {
-    public static let name = "Background refresh completed"
-
     public let entryCount: String
 
     public init(entryCount: Int) {
@@ -65,8 +61,6 @@ public struct BackgroundRefreshCompleted {
 /// Event fired when the artwork cache is cleared.
 @AnalyticsEvent
 public struct ArtworkCacheCleared {
-    public static let name = "Artwork cache cleared"
-
     public let source: String
     public let sizeBytes: Int64
 
