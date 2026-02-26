@@ -112,6 +112,11 @@ public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProto
         eventContinuation.yield(event)
     }
 
+    /// Clear the scheduled buffers list (for tracking across sessions)
+    public func clearScheduledBuffers() {
+        scheduledBuffers.removeAll()
+    }
+
     /// Simulate a stall
     public func simulateStall() {
         eventContinuation.yield(.stalled)

@@ -77,7 +77,7 @@ public final class MP3Streamer {
     @ObservationIgnored
     private let httpClient: any HTTPStreamClientProtocol
     @ObservationIgnored
-    private let mp3Decoder: MP3StreamDecoder
+    private var mp3Decoder: MP3StreamDecoder
     @ObservationIgnored
     private let bufferQueue: PCMBufferQueue
     @ObservationIgnored
@@ -91,6 +91,8 @@ public final class MP3Streamer {
     private var httpEventTask: Task<Void, Never>?
     @ObservationIgnored
     private var playerEventTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var decoderConsumerTask: Task<Void, Never>?
     @ObservationIgnored
     private let analytics: AnalyticsService?
     @ObservationIgnored
@@ -177,8 +179,11 @@ public final class MP3Streamer {
             }
         }
 
-        // Listen to decoded buffers
-        Task { [weak self] in
+        startDecoderConsumer()
+    }
+
+    private func startDecoderConsumer() {
+        decoderConsumerTask = Task { [weak self] in
             guard let self else { return }
             for await buffer in self.mp3Decoder.decodedBufferStream {
                 guard !Task.isCancelled else { break }
@@ -246,7 +251,16 @@ public final class MP3Streamer {
         httpClient.disconnect()
         audioPlayer.stop()
         bufferQueue.clear()
+
+        // Cancel the old decoder consumer and replace the decoder with a fresh instance.
+        // This eliminates stale decoded buffers that may remain in the old decoder's
+        // AsyncStream buffer (up to 32 frames with .bufferingOldest policy).
+        // The old decoder's deinit calls bufferContinuation.finish(), cleanly terminating
+        // the old consumer's for-await loop.
+        decoderConsumerTask?.cancel()
         mp3Decoder.reset()
+        mp3Decoder = MP3StreamDecoder()
+        startDecoderConsumer()
 
         streamingState = .idle
         backoffTimer.reset()
@@ -264,10 +278,17 @@ public final class MP3Streamer {
             mp3Decoder.decode(data: data)
 
         case .disconnected:
-            // Only handle if we're not intentionally stopping
-            guard streamingState != .idle else { return }
-            Log(.warning, category: .playback, "HTTP disconnected unexpectedly")
-            attemptReconnect()
+            // Only reconnect from states where an unexpected disconnect is meaningful.
+            // States like .connecting, .reconnecting, .idle, .paused, and .error must
+            // not trigger reconnect — this prevents spurious reconnects from stale
+            // .disconnected events that arrive after stop()/play() recovery cycles.
+            switch streamingState {
+            case .playing, .buffering, .stalled:
+                Log(.warning, category: .playback, "HTTP disconnected unexpectedly")
+                attemptReconnect()
+            default:
+                break
+            }
 
         case .error(let error):
             Log(.error, category: .playback, "HTTP error: \(error)")
