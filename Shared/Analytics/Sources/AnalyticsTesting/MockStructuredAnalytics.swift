@@ -47,6 +47,15 @@ public final class MockStructuredAnalytics: AnalyticsService, @unchecked Sendabl
     }
 }
 
+// MARK: - Error Event Accessors
+
+public extension MockStructuredAnalytics {
+    /// All captured error events.
+    var errorEvents: [ErrorEvent] {
+        typedEvents(ofType: ErrorEvent.self)
+    }
+}
+
 // MARK: - Playback Event Accessors (Extension for Playback module tests)
 
 public extension MockStructuredAnalytics {

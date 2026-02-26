@@ -41,7 +41,7 @@ let package = Package(
         ),
         .testTarget(
             name: "AnalyticsTests",
-            dependencies: ["Analytics"]
+            dependencies: ["Analytics", "AnalyticsTesting"]
         ),
         .testTarget(
             name: "AnalyticsMacrosTests",
