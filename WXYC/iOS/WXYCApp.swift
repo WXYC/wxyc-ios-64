@@ -78,6 +78,7 @@ struct WXYCApp: App {
         setUpAnalytics()
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
+        Task { await setUpCacheAnalytics() }
         StructuredPostHogAnalytics.shared.capture(AppLaunch(
             hasUsedThemePicker: appState.themePickerState.persistence.hasEverUsedPicker,
             buildType: buildConfiguration()
@@ -317,6 +318,13 @@ struct WXYCApp: App {
 
     private func setUpThemePickerAnalytics() {
         appState.themePickerState.setAnalytics(StructuredPostHogAnalytics.shared)
+    }
+
+    private func setUpCacheAnalytics() async {
+        let analytics = StructuredPostHogAnalytics.shared
+        await CacheCoordinator.AlbumArt.setAnalytics(analytics)
+        await CacheCoordinator.Playlist.setAnalytics(analytics)
+        await CacheCoordinator.Metadata.setAnalytics(analytics)
     }
     
     private func buildConfiguration() -> String {
