@@ -439,7 +439,7 @@ private extension RadioPlayerController {
             do {
                 try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
             } catch {
-                analytics.capture(PlaybackCore.ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
+                analytics.capture(Analytics.ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
                 Log(.error, category: .playback, "RadioPlayerController could not deactivate: \(error)")
             }
         }
