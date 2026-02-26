@@ -453,7 +453,10 @@ struct MP3StreamerStuckStateRecoveryTests {
             return
         }
 
-        // Simulate stall
+        // Wait for decoder to finish all pending data so no new buffers auto-recover
+        try await Task.sleep(for: .milliseconds(300))
+
+        // Simulate stall — with no pending data, the stall state should persist
         mockPlayer.simulateStall()
         try await Task.sleep(for: .milliseconds(50))
         #expect(streamer.streamingState == .stalled)
@@ -510,6 +513,114 @@ struct MP3StreamerStuckStateRecoveryTests {
         // Should have torn down and reconnected
         #expect(mockHTTP.connectCallCount > connectCountAfterFirst,
                 "play() from \(stateAfterFirstPlay) should tear down and reconnect")
+    }
+
+    @Test("play() from stuck state does not trigger spurious reconnect", .tags(.stuckStateRecovery))
+    func playFromStuckStateNoSpuriousReconnect() async throws {
+        // Tests the primary bug: when play() calls stop() for stuck-state recovery,
+        // stop() calls httpClient.disconnect() which yields a .disconnected event.
+        // Since play() and stop() run synchronously on MainActor, this event isn't
+        // processed until play() returns. By then, state has moved to .connecting.
+        // The old guard (state != .idle) would pass and trigger attemptReconnect(),
+        // causing a duplicate connection.
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        // Don't provide test data — we only care about connection count
+        mockHTTP.testData = nil
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        // Start initial connection
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(mockHTTP.connectCallCount == 1)
+
+        // Manually yield .disconnected to put the streamer into reconnect mode.
+        // This simulates a real disconnect that makes the streamer attempt recovery.
+        mockHTTP.yield(.disconnected)
+        try await Task.sleep(for: .milliseconds(100))
+
+        // Now the streamer is reconnecting (or has reconnected). Record connect count.
+        let connectCountBefore = mockHTTP.connectCallCount
+
+        // Call play() again. This triggers stop() → disconnect() → .disconnected event.
+        // After stop() returns, play() sets state to .connecting and calls connect().
+        // The stale .disconnected event arrives after state is .connecting.
+        // With the bug: that event passes guard (state != .idle) and calls
+        // attemptReconnect(), adding an extra connect.
+        streamer.play()
+
+        // Allow time for the stale .disconnected to be processed
+        try await Task.sleep(for: .milliseconds(300))
+
+        // Exactly 1 new connect should have happened (from play()).
+        // If 2+ new connects happened, the stale .disconnected triggered a spurious reconnect.
+        let newConnections = mockHTTP.connectCallCount - connectCountBefore
+        #expect(newConnections == 1,
+                "play() recovery should trigger exactly 1 new connect, not more")
+    }
+
+    @Test("play() from stuck state does not schedule stale buffers", .tags(.stuckStateRecovery))
+    func playFromStuckStateNoStaleBuffers() async throws {
+        let config = MP3StreamerConfiguration(
+            url: Self.testStreamURL,
+            minimumBuffersBeforePlayback: 3
+        )
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        mockPlayer.immediatelyRequestMoreBuffers = false
+
+        let testData = try TestAudioBufferFactory.loadMP3TestData()
+        mockHTTP.testData = testData
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        // Get to playing state
+        streamer.play()
+        for _ in 0..<20 {
+            try await Task.sleep(for: .milliseconds(100))
+            if case .playing = streamer.streamingState { break }
+        }
+
+        guard case .playing = streamer.streamingState else {
+            return // Skip if we couldn't reach playing state
+        }
+
+        // Wait for decoder to finish processing all data
+        try await Task.sleep(for: .milliseconds(300))
+
+        // Capture the buffer identities from the first session
+        let firstSessionBuffers = Set(mockPlayer.scheduledBuffers.map { ObjectIdentifier($0) })
+        #expect(!firstSessionBuffers.isEmpty, "Should have scheduled buffers in first session")
+
+        // Clear the mock's buffer list so we can track only post-recovery buffers
+        mockPlayer.clearScheduledBuffers()
+
+        // Recover via play() — stop() + reconnect with fresh data
+        mockHTTP.testData = testData
+        streamer.play()
+
+        // Wait for new buffers to be scheduled
+        for _ in 0..<20 {
+            try await Task.sleep(for: .milliseconds(100))
+            if !mockPlayer.scheduledBuffers.isEmpty { break }
+        }
+
+        // Verify no stale buffers from the first session appear in the second
+        let secondSessionBuffers = Set(mockPlayer.scheduledBuffers.map { ObjectIdentifier($0) })
+        let staleBuffers = firstSessionBuffers.intersection(secondSessionBuffers)
+        #expect(staleBuffers.isEmpty,
+                "Stale buffers from first session should not leak into second session")
     }
 
     @Test("isPlaying is true after recovering from error via play()", .tags(.stuckStateRecovery))
