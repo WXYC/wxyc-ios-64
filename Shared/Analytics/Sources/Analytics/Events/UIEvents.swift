@@ -15,8 +15,6 @@ import Foundation
 /// Event fired when the party horn easter egg is presented.
 @AnalyticsEvent
 public struct PartyHornPresented {
-    public static let name = "party horn presented"
-
     public init() {}
 }
 
@@ -25,16 +23,12 @@ public struct PartyHornPresented {
 /// Event fired when the feedback email composer is presented.
 @AnalyticsEvent
 public struct FeedbackEmailPresented {
-    public static let name = "feedback email presented"
-
     public init() {}
 }
 
 /// Event fired when a feedback email is sent successfully.
 @AnalyticsEvent
 public struct FeedbackEmailSent {
-    public static let name = "feedback email sent"
-
     public init() {}
 }
 
@@ -43,8 +37,6 @@ public struct FeedbackEmailSent {
 /// Event fired when a playcut detail view is presented.
 @AnalyticsEvent
 public struct PlaycutDetailViewPresented {
-    public static let name = "playcut detail view presented"
-
     public let artist: String
     public let album: String
 
@@ -57,8 +49,6 @@ public struct PlaycutDetailViewPresented {
 /// Event fired when a streaming service link is tapped.
 @AnalyticsEvent
 public struct StreamingLinkTapped {
-    public static let name = "streaming link tapped"
-
     public let service: String
     public let artist: String
     public let album: String
@@ -73,8 +63,6 @@ public struct StreamingLinkTapped {
 /// Event fired when an external link (Discogs, Wikipedia) is tapped.
 @AnalyticsEvent
 public struct ExternalLinkTapped {
-    public static let name = "external link tapped"
-
     public let service: String
     public let artist: String
     public let album: String
@@ -89,9 +77,11 @@ public struct ExternalLinkTapped {
 // MARK: - CarPlay
 
 /// Event fired when CarPlay connects.
+///
+/// Overrides the auto-derived name (`car_play_connected`) to use `carplay_connected`.
 @AnalyticsEvent
 public struct CarPlayConnected {
-    public static let name = "carplay connected"
+    public static let name = "carplay_connected"
 
     public init() {}
 }
@@ -101,13 +91,9 @@ public struct CarPlayConnected {
 /// Event fired when the widget requests a snapshot.
 @AnalyticsEvent
 public struct WidgetGetSnapshot {
-    public static let name = "getSnapshot"
-
-    public let context: String
     public let family: String
 
     public init(family: String) {
-        self.context = "NowPlayingWidget"
         self.family = family
     }
 }
@@ -115,13 +101,9 @@ public struct WidgetGetSnapshot {
 /// Event fired when the widget requests a timeline.
 @AnalyticsEvent
 public struct WidgetGetTimeline {
-    public static let name = "getTimeline"
-
-    public let context: String
     public let family: String
 
     public init(family: String) {
-        self.context = "NowPlayingWidget"
         self.family = family
     }
 }
