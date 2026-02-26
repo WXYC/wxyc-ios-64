@@ -35,6 +35,7 @@ public struct AnalyticsOSError: AnalyticsError {
 }
 
 public extension PostHogSDK {
+    @available(*, deprecated, message: "Use AnalyticsService.captureError(_:context:) instead")
     func capture(error: AnalyticsDecoderError, context: String, additionalData: [String: String] = [:]) {
         PostHogSDK.shared.capture("error", properties: [
             "error": error.localizedDescription,
@@ -53,6 +54,7 @@ public extension PostHogSDK {
 //        PostHogSDK.shared.register(["Build Configuration" : self.buildConfiguration()])
 //    }
     
+    @available(*, deprecated, message: "Use AnalyticsService.captureError(_:context:) instead")
     func capture(error: Error, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = [
             "description": "\(error.localizedDescription)",
@@ -65,6 +67,7 @@ public extension PostHogSDK {
             properties: defaultProperties)
     }
         
+    @available(*, deprecated, message: "Use AnalyticsService.captureError(_:context:code:domain:) instead")
     func capture(error: String, code: Int, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties = [
             "description": error,
@@ -79,6 +82,7 @@ public extension PostHogSDK {
         )
     }
     
+    @available(*, deprecated, message: "Use AnalyticsService.captureError(_:context:) instead")
     func capture(error: AnalyticsOSError, context: String, additionalData: [String: String] = [:]) {
         var defaultProperties: [String : Any] = [
             "domain": error.domain,
@@ -94,6 +98,7 @@ public extension PostHogSDK {
         )
     }
     
+    @available(*, deprecated, message: "Use AnalyticsService.capture(_:) with a structured AnalyticsEvent instead")
     func capture(_ event: String, context: String? = nil, additionalData: [String: String] = [:]) {
         var defaultProperties = ["context": context]
         defaultProperties.merge(with: additionalData)
