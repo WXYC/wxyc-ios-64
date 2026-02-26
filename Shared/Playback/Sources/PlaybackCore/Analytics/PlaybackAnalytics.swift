@@ -200,6 +200,7 @@ public struct InterruptionEvent: PlaybackAnalyticsEvent {
 }
 
 /// Event capturing an error during playback.
+@available(*, deprecated, message: "Use Analytics.ErrorEvent instead")
 public struct ErrorEvent: PlaybackAnalyticsEvent {
     public static let name = "error"
     public let error: String
