@@ -18,7 +18,6 @@ import Logger
 import Playback
 import PlayerHeaderView
 import Playlist
-import PostHog
 import SwiftUI
 
 @MainActor
@@ -113,7 +112,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
                     Log(.error, category: .ui, "Could not push now playing template: \(error)")
-                    PostHogSDK.shared.capture(error: error, context: "CarPlay: Could not push now playing template")
+                    StructuredPostHogAnalytics.shared.captureError(error, context: "CarPlay: Could not push now playing template")
                 }
             }
             completionHandler()

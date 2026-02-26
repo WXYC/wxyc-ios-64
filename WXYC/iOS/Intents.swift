@@ -15,7 +15,6 @@ import Artwork
 import Logger
 import MusicShareKit
 import Playlist
-import PostHog
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -60,7 +59,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         var iterator = nowPlayingService.makeAsyncIterator()
         guard let nowPlayingItem = try await iterator.next() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
-            PostHogSDK.shared.capture(error: error, context: "fetchPlaylist")
+            StructuredPostHogAnalytics.shared.captureError(error, context: "fetchPlaylist")
             Log(.error, error.localizedDescription)
             throw error
         }
