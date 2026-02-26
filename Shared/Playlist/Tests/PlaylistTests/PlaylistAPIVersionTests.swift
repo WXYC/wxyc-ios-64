@@ -10,6 +10,7 @@
 
 import Testing
 import Foundation
+import Analytics
 @testable import Playlist
 
 // MARK: - Mock Feature Flag Provider

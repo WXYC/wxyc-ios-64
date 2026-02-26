@@ -9,17 +9,8 @@
 //
 
 import Foundation
-import PostHog
+import Analytics
 import Caching
-
-// MARK: - Feature Flag Provider Protocol
-
-/// Protocol for retrieving feature flag values, allowing PostHogSDK to be mocked in tests.
-public protocol FeatureFlagProvider {
-    func getFeatureFlag(_ key: String) -> Any?
-}
-
-extension PostHogSDK: FeatureFlagProvider {}
 
 // MARK: - PlaylistAPIVersion
 
@@ -48,7 +39,7 @@ public enum PlaylistAPIVersion: String, CaseIterable, Identifiable, Hashable, Se
     /// 2. PostHog feature flag
     /// 3. Default to v1
     public static func loadActive() -> PlaylistAPIVersion {
-        loadActive(featureFlagProvider: PostHogSDK.shared)
+        loadActive(featureFlagProvider: PostHogFeatureFlagProvider.shared)
     }
 
     /// Loads the active API version with an injectable feature flag provider.
