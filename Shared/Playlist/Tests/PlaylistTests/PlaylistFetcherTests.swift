@@ -10,7 +10,7 @@
 
 import Testing
 import Foundation
-import Analytics
+import AnalyticsTesting
 @testable import Playlist
 
 // MARK: - Mock PlaylistDataSource
@@ -31,29 +31,6 @@ final class MockPlaylistDataSource: PlaylistDataSource, @unchecked Sendable {
     }
 }
 
-// MARK: - Mock PlaylistAnalytics
-
-final class MockPlaylistAnalytics: PlaylistAnalytics {
-    var capturedEvents: [(event: String, context: String?, additionalData: [String: String])] = []
-    var capturedErrors: [(context: String, additionalData: [String: String])] = []
-
-    func capture(_ event: String, context: String?, additionalData: [String: String]) {
-        capturedEvents.append((event, context, additionalData))
-    }
-
-    func capture(error: String, code: Int, context: String, additionalData: [String: String]) {
-        capturedErrors.append((context, additionalData))
-    }
-
-    func capture(error: AnalyticsOSError, context: String, additionalData: [String: String]) {
-        capturedErrors.append((context, additionalData))
-    }
-
-    func capture(error: AnalyticsDecoderError, context: String, additionalData: [String: String]) {
-        capturedErrors.append((context, additionalData))
-    }
-}
-
 // MARK: - PlaylistFetcher Tests
 
 @Suite("PlaylistFetcher Tests")
@@ -61,7 +38,7 @@ struct PlaylistFetcherTests {
     @Test("fetchPlaylist returns playlist on success")
     func fetchPlaylistReturnsPlaylistOnSuccess() async {
         let mockDataSource = MockPlaylistDataSource()
-        let mockAnalytics = MockPlaylistAnalytics()
+        let mockAnalytics = MockStructuredAnalytics()
         let expectedPlaylist = Playlist.stub(playcuts: [
             .stub(songTitle: "Test Song", labelName: "Test Label", artistName: "Test Artist")
         ])
@@ -74,10 +51,10 @@ struct PlaylistFetcherTests {
         #expect(mockDataSource.fetchCount == 1)
     }
 
-    @Test("fetchPlaylist returns empty playlist on NSError")
-    func fetchPlaylistReturnsEmptyOnNSError() async {
+    @Test("fetchPlaylist returns empty playlist on error")
+    func fetchPlaylistReturnsEmptyOnError() async {
         let mockDataSource = MockPlaylistDataSource()
-        let mockAnalytics = MockPlaylistAnalytics()
+        let mockAnalytics = MockStructuredAnalytics()
         mockDataSource.errorToThrow = NSError(domain: "TestDomain", code: 123, userInfo: nil)
 
         let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
@@ -85,41 +62,30 @@ struct PlaylistFetcherTests {
 
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
-        #expect(mockAnalytics.capturedErrors.count == 1)
+        #expect(mockAnalytics.errorEvents.count == 1)
+        #expect(mockAnalytics.errorEvents.first?.context == "fetchPlaylist")
     }
 
-    @Test("fetchPlaylist returns empty playlist on AnalyticsOSError")
-    func fetchPlaylistReturnsEmptyOnAnalyticsOSError() async {
+    @Test("fetchPlaylist returns empty playlist on decoding error")
+    func fetchPlaylistReturnsEmptyOnDecodingError() async {
         let mockDataSource = MockPlaylistDataSource()
-        let mockAnalytics = MockPlaylistAnalytics()
-        mockDataSource.errorToThrow = AnalyticsOSError(domain: "TestDomain", code: 123, description: "Test error")
+        let mockAnalytics = MockStructuredAnalytics()
+        mockDataSource.errorToThrow = DecodingError.dataCorrupted(
+            .init(codingPath: [], debugDescription: "Test decoder error")
+        )
 
         let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
         let result = await fetcher.fetchPlaylist()
 
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
-        #expect(mockAnalytics.capturedErrors.count == 1)
+        #expect(mockAnalytics.errorEvents.count == 1)
     }
 
-    @Test("fetchPlaylist returns empty playlist on AnalyticsDecoderError")
-    func fetchPlaylistReturnsEmptyOnAnalyticsDecoderError() async {
-        let mockDataSource = MockPlaylistDataSource()
-        let mockAnalytics = MockPlaylistAnalytics()
-        mockDataSource.errorToThrow = AnalyticsDecoderError(description: "Test decoder error")
-
-        let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
-        let result = await fetcher.fetchPlaylist()
-
-        #expect(result == .empty)
-        #expect(mockDataSource.fetchCount == 1)
-        #expect(mockAnalytics.capturedErrors.count == 1)
-    }
-
-    @Test("fetchPlaylist returns empty playlist on CancellationError")
+    @Test("fetchPlaylist returns empty playlist on CancellationError without analytics")
     func fetchPlaylistReturnsEmptyOnCancellationError() async {
         let mockDataSource = MockPlaylistDataSource()
-        let mockAnalytics = MockPlaylistAnalytics()
+        let mockAnalytics = MockStructuredAnalytics()
         mockDataSource.errorToThrow = CancellationError()
 
         let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
@@ -128,7 +94,7 @@ struct PlaylistFetcherTests {
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
         // CancellationError should not trigger analytics
-        #expect(mockAnalytics.capturedErrors.isEmpty)
+        #expect(mockAnalytics.errorEvents.isEmpty)
     }
 }
 
@@ -138,7 +104,7 @@ struct PlaylistFetcherTests {
 struct DataMojibakeRepairTests {
     @Test("repairs UTF-8 mojibake in JSON data")
     func repairsMojibakeInJSON() {
-        // "Björk" encoded as UTF-8, then incorrectly decoded as Latin-1, then re-encoded as UTF-8
+        // "Bjork" encoded as UTF-8, then incorrectly decoded as Latin-1, then re-encoded as UTF-8
         // Results in "BjÃ¶rk" in the JSON
         let corruptedJSON = """
         {"artistName":"BjÃ¶rk","songTitle":"Venus as a Boy"}

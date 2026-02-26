@@ -11,7 +11,6 @@
 import Foundation
 import Core
 import Logger
-import PostHog
 import Analytics
 
 // MARK: - Protocols
@@ -27,40 +26,15 @@ public protocol PlaylistDataSource: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
-/// Protocol for analytics capturing, allowing PostHogSDK to be mocked in tests.
-public protocol PlaylistAnalytics: AnyObject {
-    func capture(_ event: String, context: String?, additionalData: [String: String])
-    func capture(error: String, code: Int, context: String, additionalData: [String: String])
-    func capture(error: AnalyticsOSError, context: String, additionalData: [String: String])
-    func capture(error: AnalyticsDecoderError, context: String, additionalData: [String: String])
-}
-
-// MARK: - PostHogSDK Conformance
-
-extension PostHogSDK: PlaylistAnalytics {
-    // Conformance is satisfied by the extensions in Analytics module
-}
-
 // MARK: - URLSession Playlist Fetching
 
 private let decoder = JSONDecoder()
 
 extension URLSession: PlaylistDataSource {
     public func getPlaylist() async throws -> Playlist {
-        do {
-            let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
-            let repairedData = playlistData.repairingMojibake()
-            return try decoder.decode(Playlist.self, from: repairedData)
-        } catch let error as NSError {
-            print(error.localizedDescription)
-            throw AnalyticsOSError(
-                domain: error.domain,
-                code: error.code,
-                description: error.localizedDescription
-            )
-        } catch let error as DecodingError {
-            throw AnalyticsDecoderError(description: error.localizedDescription)
-        }
+        let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+        let repairedData = playlistData.repairingMojibake()
+        return try decoder.decode(Playlist.self, from: repairedData)
     }
 }
 
@@ -68,7 +42,7 @@ extension Data {
     /// Repairs mojibake caused by UTF-8 text being stored/sent as Latin-1.
     ///
     /// The V1 API server has encoding issues where UTF-8 characters are corrupted
-    /// (e.g., "Björk" becomes "BjÃ¶rk"). This repairs by re-interpreting the
+    /// (e.g., "Bjork" becomes "BjÃ¶rk"). This repairs by re-interpreting the
     /// UTF-8 string as Latin-1 bytes, then decoding those bytes as UTF-8.
     func repairingMojibake() -> Data {
         guard let string = String(data: self, encoding: .utf8),
@@ -87,7 +61,7 @@ extension Data {
 /// Wraps a PlaylistDataSource with error handling, logging, and analytics tracking.
 public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
     private let dataSource: PlaylistDataSource
-    private let analytics: PlaylistAnalytics
+    private let analytics: AnalyticsService
     private let apiVersion: PlaylistAPIVersion
 
     /// Creates a new PlaylistFetcher.
@@ -99,7 +73,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     public init(
         apiVersion: PlaylistAPIVersion? = nil,
         dataSource: PlaylistDataSource? = nil,
-        analytics: PlaylistAnalytics = PostHogSDK.shared
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared
     ) {
         let resolvedVersion = apiVersion ?? PlaylistAPIVersion.loadActive()
         self.apiVersion = resolvedVersion
@@ -127,45 +101,22 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             let duration = timer.duration()
             Log(.info, category: .network, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
 
-            // Simplified sampling: 10% of requests
+            // TODO: move to PostHog server-side sampling
             if Int.random(in: 1...10) == 1 {
-                analytics.capture("fetchPlaylist", context: nil, additionalData: ["duration":"\(duration)"])
+                analytics.capture(PlaylistFetchSuccess(
+                    duration: duration,
+                    apiVersion: apiVersion.rawValue
+                ))
             }
 
             return playlist
         } catch is CancellationError {
             // Task was cancelled - this is normal during cleanup
             return Playlist.empty
-        } catch let error as NSError {
+        } catch {
             let duration = timer.duration()
             Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            analytics.capture(
-                error: error.localizedDescription,
-                code: error.code,
-                context: "fetchPlaylist",
-                additionalData: ["duration":"\(duration)"]
-            )
-
-            return Playlist.empty
-        } catch let error as AnalyticsOSError {
-            let duration = timer.duration()
-            Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            analytics.capture(
-                error: error,
-                context: "fetchPlaylist",
-                additionalData: ["duration":"\(duration)"]
-            )
-
-            return Playlist.empty
-        } catch let error as AnalyticsDecoderError {
-            let duration = timer.duration()
-            Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            analytics.capture(
-                error: error,
-                context: "fetchPlaylist",
-                additionalData: ["duration":"\(duration)"]
-            )
-
+            analytics.captureError(error, context: "fetchPlaylist")
             return Playlist.empty
         }
     }
