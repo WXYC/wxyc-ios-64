@@ -9,7 +9,6 @@ let package = Package(
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Core", path: "../Core"),
         .package(name: "Logger", path: "../Logger"),
-        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
     ],
     targets: [
         .target(
@@ -18,13 +17,14 @@ let package = Package(
                 "Analytics",
                 "Core",
                 "Logger",
-                .product(name: "PostHog", package: "posthog-ios")
             ]
         ),
         .testTarget(
             name: "CachingTests",
-            dependencies: ["Caching"]
+            dependencies: [
+                "Caching",
+                .product(name: "AnalyticsTesting", package: "Analytics"),
+            ]
         )
     ]
 )
-

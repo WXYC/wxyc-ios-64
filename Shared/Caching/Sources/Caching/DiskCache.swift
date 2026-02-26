@@ -10,7 +10,6 @@
 
 import Foundation
 import Logger
-import PostHog
 import Analytics
 
 // MARK: - DiskCache
@@ -81,6 +80,9 @@ struct DiskCache: Cache, @unchecked Sendable {
 
     /// The directory where cache files are stored, or `nil` if unavailable.
     private let cacheDirectory: URL?
+
+    /// Analytics service for structured error capture.
+    nonisolated(unsafe) var analytics: AnalyticsService?
 
     // MARK: - Initialization
 
@@ -233,8 +235,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         } catch let error as NSError {
             // Log read failures for debugging and analytics
             Log(.error, category: .caching, "Failed to read file \(fileURL): \(error)")
-            let postHogError = DiskCacheError(stringLiteral: "Failed to read file \(fileURL): Error Domain=\(error.domain) Code=\(error.code) \(error.localizedDescription)")
-            PostHogSDK.shared.capture(error: postHogError, context: "DiskCache data(for:): failed to read file")
+            analytics?.captureError(error, context: "DiskCache data(for:): failed to read file")
             return nil
         }
     }
@@ -249,7 +250,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
             Log(.error, category: .caching, error.localizedDescription)
-            PostHogSDK.shared.capture(error: error, context: "DiskCache set(_:metadata:for:)")
+            analytics?.captureError(error, context: "DiskCache set(_:metadata:for:)")
             #endif
 
             // Fall back to in-memory cache (no metadata/TTL support)
@@ -293,7 +294,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
             Log(.error, category: .caching, error.localizedDescription)
-            PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
+            analytics?.captureError(error, context: "DiskCache allMetadata")
             #endif
             return []
         }
@@ -304,7 +305,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             contents = try FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
         } catch {
             Log(.error, category: .caching, "Failed to read Cache Directory: \(error.localizedDescription)")
-            PostHogSDK.shared.capture(error: error, context: "DiskCache allMetadata")
+            analytics?.captureError(error, context: "DiskCache allMetadata")
             return []
         }
 
