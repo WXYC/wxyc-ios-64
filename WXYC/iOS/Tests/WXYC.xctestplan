@@ -122,6 +122,13 @@
         "identifier" : "ColorPaletteTests",
         "name" : "ColorPaletteTests"
       }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Shared\/Analytics",
+        "identifier" : "AnalyticsTests",
+        "name" : "AnalyticsTests"
+      }
     }
   ],
   "version" : 1
