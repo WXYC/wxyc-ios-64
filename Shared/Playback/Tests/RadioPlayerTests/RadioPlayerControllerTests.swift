@@ -38,8 +38,11 @@ import Core
 final class MockAudioSession: AudioSessionProtocol {
     var setActiveCallCount = 0
     var lastActiveState: Bool?
+    var outputLatency: TimeInterval = 0
 
     func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {}
+
+    func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, policy: AVAudioSession.RouteSharingPolicy, options: AVAudioSession.CategoryOptions) throws {}
 
     func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
         setActiveCallCount += 1

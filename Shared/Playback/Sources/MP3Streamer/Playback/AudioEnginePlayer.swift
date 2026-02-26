@@ -215,9 +215,17 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 
         Log(.info, category: .playback, "Audio engine stopped")
         analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer stop", duration: 0))
-        playerNode.stop()
-        engine.stop()
+
+        // Set isPlaying false first so in-flight scheduling blocks see it immediately
         stateBox.isPlaying = false
+
+        // Execute playerNode.stop() inside schedulingQueue.sync so any in-flight
+        // scheduling blocks complete first, then playerNode.stop() clears all their buffers.
+        // This prevents stale buffers from being scheduled after stop.
+        schedulingQueue.sync {
+            self.playerNode.stop()
+        }
+        engine.stop()
         scheduledBufferCount.reset()
         eventContinuation.yield(.stopped)
     }
@@ -231,6 +239,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 
         schedulingQueue.async { [weak self] in
             guard let self else { return }
+            guard self.stateBox.isPlaying else { return }
 
             // If we were stalled and now have buffers, we're recovering
             // Uses atomic check-and-clear to avoid redundant lock acquisitions
