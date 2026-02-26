@@ -348,7 +348,7 @@ struct WXYCApp: App {
             Log(.info, category: .general, "Scheduled background refresh for 15 minutes from now")
         } catch {
             Log(.error, category: .general, "Failed to schedule background refresh: \(error)")
-            PostHogSDK.shared.capture(error: error, context: "scheduleBackgroundRefresh")
+            StructuredPostHogAnalytics.shared.captureError(error, context: "scheduleBackgroundRefresh")
         }
     }
     
@@ -485,7 +485,7 @@ struct WXYCApp: App {
                 ))
             } catch {
                 Log(.error, category: .general, "Failed to donate Siri intent: \(error)")
-                PostHogSDK.shared.capture(error: error, context: "WXYCApp: Failed to donate Siri intent")
+                StructuredPostHogAnalytics.shared.captureError(error, context: "WXYCApp: Failed to donate Siri intent")
             }
         }
     }

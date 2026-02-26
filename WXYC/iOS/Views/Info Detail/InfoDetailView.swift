@@ -11,7 +11,6 @@ import Core
 import Logger
 import MessageUI
 import MusicShareKit
-import PostHog
 import SwiftUI
 import UniformTypeIdentifiers
 import Wallpaper
@@ -122,7 +121,7 @@ struct InfoDetailView: View {
             try await RequestService.shared.sendRequest(message: message)
         } catch {
             Log(.error, category: .ui, "Error sending request: \(error)")
-            PostHogSDK.shared.capture(error: error, context: "Info ViewController")
+            StructuredPostHogAnalytics.shared.captureError(error, context: "Info ViewController")
         }
     }
 }
@@ -221,7 +220,7 @@ struct MailComposerView: UIViewControllerRepresentable {
 
         func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
             if let error {
-                PostHogSDK.shared.capture(error: error, context: "feedbackEmail")
+                StructuredPostHogAnalytics.shared.captureError(error, context: "feedbackEmail")
                 Log(.error, category: .ui, "Failed to send feedback email: \(error)")
             } else {
                 StructuredPostHogAnalytics.shared.capture(FeedbackEmailSent())
