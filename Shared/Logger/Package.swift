@@ -8,11 +8,11 @@ let package = Package(
         .iOS("18.4"), .watchOS(.v9), .macOS(.v15)
     ],
     products: [
-        .library(name: "Logger", targets: ["Logger"]
-        ),
+        .library(name: "Logger", targets: ["Logger"]),
+        .library(name: "LoggerTesting", targets: ["LoggerTesting"]),
     ],
     dependencies: [
-        
+
     ],
     targets: [
         .target(
@@ -22,9 +22,13 @@ let package = Package(
                 .linkedFramework("Foundation"),
             ]
         ),
+        .target(
+            name: "LoggerTesting",
+            dependencies: ["Logger"]
+        ),
         .testTarget(
             name: "LoggerTests",
-            dependencies: ["Logger"]
+            dependencies: ["Logger", "LoggerTesting"]
         ),
     ]
 )

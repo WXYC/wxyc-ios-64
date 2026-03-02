@@ -110,6 +110,35 @@ public final class Logger: Sendable {
     
     /// Cache of os.Logger instances by category
     private static let osLoggers = OSLoggerCache()
+
+    // MARK: - Destinations
+
+    /// Lock protecting the destinations array. Separate from `fileLock` so
+    /// destination dispatch never contends with file I/O.
+    private static let destinationLock = NSLock()
+
+    /// Registered log destinations, dispatched after standard outputs.
+    /// Protected by `destinationLock`; safe to mutate from any thread.
+    private nonisolated(unsafe) static var _destinations: [any LogDestination] = []
+
+    /// Registers a destination to receive all future log messages that
+    /// pass the level filter.
+    ///
+    /// Destinations are called synchronously on the logging thread after
+    /// os.Logger, print, and file writes complete. Register destinations
+    /// once at app launch.
+    public static func addDestination(_ destination: any LogDestination) {
+        destinationLock.withLock {
+            _destinations.append(destination)
+        }
+    }
+
+    /// Removes all registered destinations. Primarily for testing.
+    public static func removeAllDestinations() {
+        destinationLock.withLock {
+            _destinations.removeAll()
+        }
+    }
     
     // MARK: - Public API
     
@@ -152,6 +181,13 @@ public final class Logger: Sendable {
         // writes created as unstructured Tasks were silently lost for calls
         // originating from @MainActor @Observable classes.
         Self.writeToLogFile(logStatement)
+
+        // Dispatch to registered destinations outside of fileLock.
+        // Copy the array under destinationLock, then iterate without holding any lock.
+        let destinations = Self.destinationLock.withLock { Self._destinations }
+        for destination in destinations {
+            destination.receive(level: level, category: category, message: logStatement)
+        }
     }
     
     // MARK: - Log Retrieval
