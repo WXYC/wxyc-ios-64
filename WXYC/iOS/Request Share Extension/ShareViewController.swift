@@ -22,12 +22,10 @@ class ShareViewController: UIViewController {
         super.viewDidLoad()
         Log(.info, "ShareViewController viewDidLoad started")
 
-        // Configure MusicShareKit with secrets
+        // Configure MusicShareKit
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: Secrets.requestOMatic,
             authBaseURL: Secrets.apiBaseUrl,
-            spotifyClientId: Secrets.spotifyClientId,
-            spotifyClientSecret: Secrets.spotifyClientSecret,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
