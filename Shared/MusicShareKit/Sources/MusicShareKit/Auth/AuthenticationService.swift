@@ -9,13 +9,14 @@
 //
 
 import Analytics
+import Core
 import Foundation
 
 /// Service for managing anonymous authentication.
 ///
 /// Handles token caching, Keychain persistence, and network sign-in.
 /// All operations are serialized to prevent race conditions.
-public actor AuthenticationService {
+public actor AuthenticationService: SessionTokenProvider {
 
     // MARK: - Dependencies
 
@@ -169,6 +170,14 @@ public actor AuthenticationService {
     public func signOut() async {
         cachedSession = nil
         try? storage.delete()
+    }
+
+    // MARK: - SessionTokenProvider
+
+    /// Conforms to SessionTokenProvider so services in Artwork and Metadata
+    /// packages can obtain a Bearer token without depending on MusicShareKit.
+    public func token() async throws -> String {
+        try await ensureAuthenticated()
     }
 
     // MARK: - Analytics
