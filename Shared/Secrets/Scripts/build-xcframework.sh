@@ -48,6 +48,7 @@ REQUIRED_VARS=(
     "SPOTIFY_CLIENT_SECRET"
     "REQUEST_O_MATIC"
     "API_BASE_URL"
+    "IOS_SENTRY_DSN"
 )
 
 # Check if any required variables are missing
@@ -102,6 +103,7 @@ public struct Secrets {
     public static let spotifyClientSecret = #ObfuscatedString("${SPOTIFY_CLIENT_SECRET}")
     public static let requestOMatic = #ObfuscatedString("${REQUEST_O_MATIC}")
     public static let apiBaseUrl = #ObfuscatedString("${API_BASE_URL}")
+    public static let sentryDsn = #ObfuscatedString("${IOS_SENTRY_DSN}")
 }
 EOF
 log "Generated Secrets.swift"
