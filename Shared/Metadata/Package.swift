@@ -10,13 +10,12 @@ let package = Package(
         .package(name: "Core", path: "../Core"),
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Playlist", path: "../Playlist"),
-        .package(name: "Secrets", path: "../Secrets"),
         .package(name: "Logger", path: "../Logger"),
     ],
     targets: [
         .target(
             name: "Metadata",
-            dependencies: ["Artwork", "Core", "Caching", "Playlist", "Secrets", "Logger"]
+            dependencies: ["Artwork", "Core", "Caching", "Playlist", "Logger"]
         ),
         .testTarget(
             name: "MetadataTests",

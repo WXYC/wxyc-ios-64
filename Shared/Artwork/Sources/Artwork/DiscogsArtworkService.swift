@@ -2,105 +2,90 @@
 //  DiscogsArtworkService.swift
 //  Artwork
 //
-//  Fetches album artwork from Discogs API.
-//  Falls back to artist images when album art is unavailable.
+//  Fetches album artwork via the backend proxy endpoint.
+//  Falls back gracefully when no token provider is available.
 //
 //  Created by Jake Bromberg on 04/12/23.
 //  Copyright © 2023 WXYC. All rights reserved.
 //
 
-import Secrets
 import Foundation
 import Core
 import CoreGraphics
 import Playlist
 
 final class DiscogsArtworkService: ArtworkService {
-    private static let key    = Secrets.discogsApiKeyV2_5
-    private static let secret = Secrets.discogsApiSecretV2_5
-
+    private let baseURL: URL
+    private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
     private let decoder = JSONDecoder()
 
-    init(session: WebSession = URLSession.shared) {
+    init(
+        baseURL: URL = URL(string: "https://api.wxyc.org")!,
+        tokenProvider: SessionTokenProvider? = nil,
+        session: WebSession = URLSession.shared
+    ) {
+        self.baseURL = baseURL
+        self.tokenProvider = tokenProvider
         self.session = session
     }
 
     func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
-        let url: URL
-        if let albumArtURL = try await fetchAlbumArtURL(for: playcut) {
-            url = albumArtURL
-        } else if let artistArtURL = try await fetchArtistArtURL(for: playcut) {
-            url = artistArtURL
-        } else {
+        let response = try await fetchArtworkResponse(for: playcut)
+
+        guard let urlString = response.artworkUrl, let url = URL(string: urlString) else {
             throw ServiceError.noResults
         }
 
         let imageData = try await session.data(from: url)
-        
+
         guard let cgImage = createCGImage(from: imageData) else {
             throw ServiceError.noResults
         }
-    
+
         return cgImage
     }
-    
-    private func fetchAlbumArtURL(for playcut: Playcut) async throws -> URL? {
-        let searchURL = makeArtworkSearchURL(for: playcut)
-        return try await fetchArtURL(for: searchURL)
-    }
-    
-    private func makeArtworkSearchURL(for playcut: Playcut) -> URL {
-        var releaseTitle: String? = playcut.releaseTitle
-        if let title = playcut.releaseTitle,
-           title.lowercased() == "s/t" {
-            releaseTitle = playcut.artistName
+
+    private func fetchArtworkResponse(for playcut: Playcut) async throws -> ArtworkSearchResponse {
+        var components = URLComponents(url: baseURL.appending(path: "proxy/artwork/search"), resolvingAgainstBaseURL: false)!
+        var queryItems = [URLQueryItem(name: "artistName", value: playcut.artistName)]
+
+        if let releaseTitle = playcut.releaseTitle {
+            let title = releaseTitle.lowercased() == "s/t" ? playcut.artistName : releaseTitle
+            queryItems.append(URLQueryItem(name: "releaseTitle", value: title))
         }
-        
-        var searchTerms = [
-            playcut.artistName,
-        ]
-        
-        if let releaseTitle {
-            searchTerms.append(releaseTitle)
+
+        components.queryItems = queryItems
+
+        guard let url = components.url else {
+            throw ServiceError.noResults
         }
-        
-        var components = URLComponents(string: "https://api.discogs.com")!
-        components.path = "/database/search"
-        components.queryItems = .init([
-            "q" : searchTerms.joined(separator: " "),
-            "key" : Self.key,
-            "secret" : Self.secret,
-        ])
-    
-        return components.url!
+
+        let data: Data
+        if let tokenProvider {
+            let token = try await tokenProvider.token()
+            data = try await authenticatedData(from: url, token: token)
+        } else {
+            data = try await session.data(from: url)
+        }
+
+        return try decoder.decode(ArtworkSearchResponse.self, from: data)
     }
-    
-    func fetchArtistArtURL(for playcut: Playcut) async throws -> URL? {
-        let searchURL = makeArtistSearchURL(for: playcut)
-        return try await fetchArtURL(for: searchURL)
+
+    private func authenticatedData(from url: URL, token: String) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return data
     }
-    
-    func makeArtistSearchURL(for playcut: Playcut) -> URL {
-        var components = URLComponents(string: "https://api.discogs.com")!
-        components.path = "/database/search"
-        components.queryItems = .init([
-            "type" : "artist",
-            "title" : playcut.artistName,
-            "key" : Self.key,
-            "secret" : Self.secret,
-        ])
-    
-        return components.url!
-    }
-    
-    func fetchArtURL(for searchURL: URL) async throws -> URL? {
-        let searchData = try await session.data(from: searchURL)
-        let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: searchData)
-        
-        let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
-        return imageURLs.first(where: { !$0.lastPathComponent.hasPrefix("spacer.gif") })
-    }
+}
+
+// MARK: - Backend Response Model
+
+struct ArtworkSearchResponse: Codable, Sendable {
+    let artworkUrl: String?
+    let source: String?
+    let confidence: Double?
 }
 
 extension [URLQueryItem] {
@@ -116,7 +101,7 @@ public struct Discogs {
     public struct SearchResults: Codable {
         public let results: [SearchResult]
     }
-    
+
     public struct SearchResult: Codable {
         public let coverImage: URL
         public let masterId: Int?
@@ -126,7 +111,7 @@ public struct Discogs {
         public let year: String?
         public let uri: String?
         public let resourceUrl: String?
-        
+
         enum CodingKeys: String, CodingKey {
             case coverImage = "cover_image"
             case masterId = "master_id"
@@ -137,16 +122,15 @@ public struct Discogs {
             case uri
             case resourceUrl = "resource_url"
         }
-        
+
         /// Constructs the full Discogs web URL from the uri field or id/type
         public var discogsWebURL: URL? {
             // Prefer uri if available
-            if let uri = uri {
+            if let uri {
                 return URL(string: "https://www.discogs.com\(uri)")
             }
-            
+
             // Fallback: construct URL from type and id
-            // Examples: /release/12345, /master/67890, /artist/123
             let path: String
             switch type {
             case "release":
@@ -158,37 +142,36 @@ public struct Discogs {
             case "label":
                 path = "/label/\(id)"
             default:
-                // For unknown types, try a generic approach
                 path = "/\(type)/\(id)"
             }
-            
+
             return URL(string: "https://www.discogs.com\(path)")
         }
-            
+
         /// Parsed release year as Int
         public var releaseYear: Int? {
-            guard let year = year else { return nil }
+            guard let year else { return nil }
             return Int(year)
         }
-    
+
         /// First label name if available
         public var primaryLabel: String? {
             label?.first
         }
     }
-    
+
     // MARK: - Artist Models
-    
+
     public struct Artist: Codable {
         public let id: Int
         public let name: String
         public let profile: String?
         public let urls: [String]?
         public let images: [ArtistImage]?
-        
+
         /// Finds Wikipedia URL from the urls array
         public var wikipediaURL: URL? {
-            guard let urls = urls else { return nil }
+            guard let urls else { return nil }
             let wikipediaString = urls.first { url in
                 url.lowercased().contains("wikipedia.org") ||
                 url.lowercased().contains("en.wikipedia")
@@ -196,14 +179,14 @@ public struct Discogs {
             return wikipediaString.flatMap { URL(string: $0) }
         }
     }
-    
+
     public struct ArtistImage: Codable {
         let uri: String
         let type: String
     }
-    
+
     // MARK: - Release Models (for detailed info)
-        
+
     public struct Release: Codable {
         let id: Int
         let title: String
@@ -211,51 +194,51 @@ public struct Discogs {
         let labels: [Label]?
         let artists: [ReleaseArtist]?
         let uri: String?
-        
+
         struct Label: Codable {
             let name: String
             let id: Int
         }
-        
+
         struct ReleaseArtist: Codable {
             let id: Int
             let name: String
         }
-        
+
         public var primaryLabel: String? {
             labels?.first?.name
         }
-        
+
         public var primaryArtistId: Int? {
             artists?.first?.id
         }
-    
+
         public var discogsWebURL: URL? {
-            guard let uri = uri else { return nil }
+            guard let uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")
         }
     }
-    
+
     // MARK: - Master Release Models
-    
+
     public struct Master: Codable {
         let id: Int
         let title: String
         let year: Int?
         let uri: String?
         let artists: [ReleaseArtist]?
-        
+
         struct ReleaseArtist: Codable {
             let id: Int
             let name: String
         }
-        
+
         public var primaryArtistId: Int? {
             artists?.first?.id
         }
 
         public var discogsWebURL: URL? {
-            guard let uri = uri else { return nil }
+            guard let uri else { return nil }
             return URL(string: "https://www.discogs.com\(uri)")
         }
     }
