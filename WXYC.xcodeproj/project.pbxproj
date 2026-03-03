@@ -50,6 +50,8 @@
 		B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 932CA5D4CF336582845E6C75 /* AppServices */; };
 		B78B37108DAAACABF26EB624 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */; };
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
+		7127691612A44A229E553EDE /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 16E246AEBDDC40D3B97316A6 /* Sentry */; };
+		0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3693E141EF47CABE91D00F /* Sentry */; };
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
@@ -341,6 +343,7 @@
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
 				23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */,
 				C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */,
+				7127691612A44A229E553EDE /* Sentry in Frameworks */,
 				WXYCINTENTS00000001 /* WXYCIntents in Frameworks */,
 			);
 		};
@@ -362,6 +365,7 @@
 				B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */,
 				B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */,
 				3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */,
+				0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */,
 			);
 		};
 		6EEDCD01D3747AC2DCAEBCFF /* Frameworks */ = {
@@ -534,6 +538,7 @@
 				3776C2184A667CCB7B4E0B67 /* Artwork */,
 				932CA5D4CF336582845E6C75 /* AppServices */,
 				01BA6F026317213ACE8EE228 /* PostHog */,
+				8A3693E141EF47CABE91D00F /* Sentry */,
 			);
 			productName = WatchXYC;
 			productReference = E790F2E8AAE12A20CB303818 /* WatchXYC.app */;
@@ -623,6 +628,7 @@
 				3DF76684E122C2FAD4F26E27 /* PartyHorn */,
 				35DC07836DEEE44F7B819265 /* PlayerHeaderView */,
 				51D35AECC049A83AE7575477 /* PostHog */,
+				16E246AEBDDC40D3B97316A6 /* Sentry */,
 				23D418172EF2C80000WALLPA /* Wallpaper */,
 				23D4181A2EF2C8000DBGPNL /* DebugPanel */,
 				23B42F962F0209CB007351F1 /* ColorPalette */,
@@ -674,6 +680,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+				E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 				17F14B03423533C80A6A4E69 /* XCRemoteSwiftPackageReference "Vortex" */,
 				6414443EB40D8B806FA6BAAA /* XCLocalSwiftPackageReference "Shared/Analytics" */,
 				1A4C4581DF37FFB7A421BDE7 /* XCLocalSwiftPackageReference "Shared/AppServices" */,
@@ -2464,6 +2471,14 @@
 				minimumVersion = 3.35.0;
 			};
 		};
+		E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.49.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -2698,6 +2713,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = WXYCINTENTS00000004 /* XCLocalSwiftPackageReference "Shared/Intents" */;
 			productName = WXYCIntents;
+		};
+		16E246AEBDDC40D3B97316A6 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+		8A3693E141EF47CABE91D00F /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
