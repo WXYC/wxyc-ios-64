@@ -26,6 +26,7 @@ import PlayerHeaderView
 import Playlist
 import PostHog
 import Secrets
+import Sentry
 import StoreKit
 import SwiftUI
 import Wallpaper
@@ -74,9 +75,10 @@ struct WXYCApp: App {
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
-        // Analytics and error reporting setup
+        // Analytics, Sentry, and error reporting setup
         setUpAnalytics()
-        ErrorReporting.shared = PostHogErrorReporter.shared
+        setUpSentry()
+        setUpErrorReporting()
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
         StructuredPostHogAnalytics.shared.capture(AppLaunch(
@@ -311,7 +313,28 @@ struct WXYCApp: App {
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
     }
-    
+
+    private func setUpSentry() {
+        SentrySDK.start { options in
+            options.dsn = Secrets.sentryDsn
+            options.enableAutoSessionTracking = true
+            options.tracesSampleRate = 0.1
+            options.enableAppLaunchProfiling = true
+            options.enableUIViewControllerTracing = false  // SwiftUI app, no UIKit VCs
+            options.enableNetworkTracking = true
+            options.enableFileIOTracing = true
+            options.enableSwizzling = true
+            #if DEBUG
+            options.debug = true
+            #endif
+        }
+    }
+
+    private func setUpErrorReporting() {
+        ErrorReporting.shared = CompositeErrorReporter()
+        Logger.addDestination(SentryBreadcrumbDestination())
+    }
+
     private func setUpQualityAnalytics() {
         AdaptiveQualityController.shared.setAnalytics(StructuredPostHogAnalytics.shared)
     }
