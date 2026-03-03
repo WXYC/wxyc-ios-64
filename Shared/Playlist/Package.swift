@@ -23,6 +23,7 @@ let package = Package(
                 "Playlist",
                 "Caching",
                 .product(name: "AnalyticsTesting", package: "Analytics"),
+                .product(name: "LoggerTesting", package: "Logger"),
             ],
             resources: [.copy("Fixtures")]
         )
