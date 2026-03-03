@@ -27,12 +27,6 @@ public struct MusicShareKitConfiguration {
     /// Pass `nil` for app-only storage.
     public let keychainAccessGroup: String?
 
-    /// Spotify API client ID
-    public let spotifyClientId: String
-
-    /// Spotify API client secret
-    public let spotifyClientSecret: String
-
     /// Provider for checking feature flag values.
     /// Used to determine if authentication is enabled.
     public let featureFlagProvider: FeatureFlagProvider?
@@ -48,8 +42,6 @@ public struct MusicShareKitConfiguration {
         requestOMaticURL: String,
         authBaseURL: String? = nil,
         keychainAccessGroup: String? = nil,
-        spotifyClientId: String,
-        spotifyClientSecret: String,
         featureFlagProvider: FeatureFlagProvider? = nil,
         defaults: DefaultsStorage = UserDefaults.standard,
         analyticsService: AnalyticsService
@@ -57,8 +49,6 @@ public struct MusicShareKitConfiguration {
         self.requestOMaticURL = requestOMaticURL
         self.authBaseURL = authBaseURL
         self.keychainAccessGroup = keychainAccessGroup
-        self.spotifyClientId = spotifyClientId
-        self.spotifyClientSecret = spotifyClientSecret
         self.featureFlagProvider = featureFlagProvider
         self.defaults = defaults
         self.analyticsService = analyticsService
