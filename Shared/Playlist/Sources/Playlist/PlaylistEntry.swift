@@ -177,7 +177,7 @@ public struct Playcut: PlaylistEntry, Hashable {
                 self.rotation = false
             }
         } catch {
-            Log(.error, category: .network, "Could not decode Playcut: \(error)")
+            ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error
         }
     }

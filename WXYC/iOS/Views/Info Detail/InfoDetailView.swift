@@ -120,8 +120,7 @@ struct InfoDetailView: View {
         do {
             try await RequestService.shared.sendRequest(message: message)
         } catch {
-            Log(.error, category: .ui, "Error sending request: \(error)")
-            StructuredPostHogAnalytics.shared.captureError(error, context: "Info ViewController")
+            ErrorReporting.shared.report(error, context: "Info ViewController", category: .ui)
         }
     }
 }
@@ -220,8 +219,7 @@ struct MailComposerView: UIViewControllerRepresentable {
 
         func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
             if let error {
-                StructuredPostHogAnalytics.shared.captureError(error, context: "feedbackEmail")
-                Log(.error, category: .ui, "Failed to send feedback email: \(error)")
+                ErrorReporting.shared.report(error, context: "feedbackEmail", category: .ui)
             } else {
                 StructuredPostHogAnalytics.shared.capture(FeedbackEmailSent())
             }

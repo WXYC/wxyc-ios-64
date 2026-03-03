@@ -61,7 +61,8 @@ extension Data {
 /// Wraps a PlaylistDataSource with error handling, logging, and analytics tracking.
 public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
     private let dataSource: PlaylistDataSource
-    private let analytics: AnalyticsService
+    private let errorReporter: any ErrorReporter
+    private let analytics: any AnalyticsService
     private let apiVersion: PlaylistAPIVersion
 
     /// Creates a new PlaylistFetcher.
@@ -69,15 +70,18 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// - Parameters:
     ///   - apiVersion: The API version to use. If nil, uses `PlaylistAPIVersion.loadActive()`.
     ///   - dataSource: Custom data source. If nil, creates one based on apiVersion.
-    ///   - analytics: Analytics service for logging.
+    ///   - errorReporter: Error reporter for failure tracking. Defaults to the global reporter.
+    ///   - analytics: Analytics service for event tracking.
     public init(
         apiVersion: PlaylistAPIVersion? = nil,
         dataSource: PlaylistDataSource? = nil,
-        analytics: AnalyticsService = StructuredPostHogAnalytics.shared
+        errorReporter: any ErrorReporter = ErrorReporting.shared,
+        analytics: any AnalyticsService = StructuredPostHogAnalytics.shared
     ) {
         let resolvedVersion = apiVersion ?? PlaylistAPIVersion.loadActive()
         self.apiVersion = resolvedVersion
         self.dataSource = dataSource ?? Self.createDataSource(for: resolvedVersion)
+        self.errorReporter = errorReporter
         self.analytics = analytics
     }
 
@@ -103,10 +107,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
 
             // TODO: move to PostHog server-side sampling
             if Int.random(in: 1...10) == 1 {
-                analytics.capture(PlaylistFetchSuccess(
-                    duration: duration,
-                    apiVersion: apiVersion.rawValue
-                ))
+                analytics.capture(FetchPlaylistEvent(duration: duration))
             }
 
             return playlist
@@ -115,8 +116,12 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             return Playlist.empty
         } catch {
             let duration = timer.duration()
-            Log(.error, category: .network, "Remote playlist fetch failed after \(duration) seconds: \(error)")
-            analytics.captureError(error, context: "fetchPlaylist")
+            errorReporter.report(
+                error,
+                context: "fetchPlaylist",
+                category: .network,
+                additionalData: ["duration": "\(duration)"]
+            )
             return Playlist.empty
         }
     }

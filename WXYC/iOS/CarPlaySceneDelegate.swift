@@ -111,8 +111,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             
             self.interfaceController?.pushTemplate(CPNowPlayingTemplate.shared, animated: true) { success, error in
                 if let error {
-                    Log(.error, category: .ui, "Could not push now playing template: \(error)")
-                    StructuredPostHogAnalytics.shared.captureError(error, context: "CarPlay: Could not push now playing template")
+                    ErrorReporting.shared.report(error, context: "CarPlay: Could not push now playing template", category: .ui)
                 }
             }
             completionHandler()

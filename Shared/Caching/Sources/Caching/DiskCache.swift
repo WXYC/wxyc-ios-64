@@ -10,7 +10,6 @@
 
 import Foundation
 import Logger
-import Analytics
 
 // MARK: - DiskCache
 
@@ -80,9 +79,6 @@ struct DiskCache: Cache, @unchecked Sendable {
 
     /// The directory where cache files are stored, or `nil` if unavailable.
     private let cacheDirectory: URL?
-
-    /// Analytics service for structured error capture.
-    nonisolated(unsafe) var analytics: AnalyticsService?
 
     // MARK: - Initialization
 
@@ -232,10 +228,8 @@ struct DiskCache: Cache, @unchecked Sendable {
         // Read the file contents
         do {
             return try Data(contentsOf: fileURL)
-        } catch let error as NSError {
-            // Log read failures for debugging and analytics
-            Log(.error, category: .caching, "Failed to read file \(fileURL): \(error)")
-            analytics?.captureError(error, context: "DiskCache data(for:): failed to read file")
+        } catch {
+            ErrorReporting.shared.report(error, context: "DiskCache data(for:): failed to read file", category: .caching)
             return nil
         }
     }
@@ -249,8 +243,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             // Cache directory unavailable - log error (except on simulator)
             #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
-            Log(.error, category: .caching, error.localizedDescription)
-            analytics?.captureError(error, context: "DiskCache set(_:metadata:for:)")
+            ErrorReporting.shared.report(error, context: "DiskCache set(_:metadata:for:)", category: .caching)
             #endif
 
             // Fall back to in-memory cache (no metadata/TTL support)
@@ -293,8 +286,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             // Cache directory unavailable - log error (except on simulator)
             #if !targetEnvironment(simulator)
             let error: DiskCacheError = "Failed to find Cache Directory."
-            Log(.error, category: .caching, error.localizedDescription)
-            analytics?.captureError(error, context: "DiskCache allMetadata")
+            ErrorReporting.shared.report(error, context: "DiskCache allMetadata", category: .caching)
             #endif
             return []
         }
@@ -304,8 +296,7 @@ struct DiskCache: Cache, @unchecked Sendable {
         do {
             contents = try FileManager.default.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
         } catch {
-            Log(.error, category: .caching, "Failed to read Cache Directory: \(error.localizedDescription)")
-            analytics?.captureError(error, context: "DiskCache allMetadata")
+            ErrorReporting.shared.report(error, context: "DiskCache allMetadata", category: .caching)
             return []
         }
 

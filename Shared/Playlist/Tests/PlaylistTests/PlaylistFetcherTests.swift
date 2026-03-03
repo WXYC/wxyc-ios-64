@@ -10,41 +10,31 @@
 
 import Testing
 import Foundation
+import Analytics
 import AnalyticsTesting
+import Logger
+import LoggerTesting
 @testable import Playlist
-
-// MARK: - Mock PlaylistDataSource
-
-final class MockPlaylistDataSource: PlaylistDataSource, @unchecked Sendable {
-    var playlistToReturn: Playlist = .empty
-    var errorToThrow: Error?
-    var fetchCount = 0
-
-    func getPlaylist() async throws -> Playlist {
-        fetchCount += 1
-
-        if let error = errorToThrow {
-            throw error
-        }
-
-        return playlistToReturn
-    }
-}
 
 // MARK: - PlaylistFetcher Tests
 
-@Suite("PlaylistFetcher Tests")
+@Suite("PlaylistFetcher Tests", .serialized)
 struct PlaylistFetcherTests {
     @Test("fetchPlaylist returns playlist on success")
     func fetchPlaylistReturnsPlaylistOnSuccess() async {
         let mockDataSource = MockPlaylistDataSource()
+        let mockErrorReporter = MockErrorReporter()
         let mockAnalytics = MockStructuredAnalytics()
         let expectedPlaylist = Playlist.stub(playcuts: [
             .stub(songTitle: "Test Song", labelName: "Test Label", artistName: "Test Artist")
         ])
         mockDataSource.playlistToReturn = expectedPlaylist
 
-        let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: mockErrorReporter,
+            analytics: mockAnalytics
+        )
         let result = await fetcher.fetchPlaylist()
 
         #expect(result == expectedPlaylist)
@@ -54,47 +44,79 @@ struct PlaylistFetcherTests {
     @Test("fetchPlaylist returns empty playlist on error")
     func fetchPlaylistReturnsEmptyOnError() async {
         let mockDataSource = MockPlaylistDataSource()
+        let mockErrorReporter = MockErrorReporter()
         let mockAnalytics = MockStructuredAnalytics()
         mockDataSource.errorToThrow = NSError(domain: "TestDomain", code: 123, userInfo: nil)
 
-        let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: mockErrorReporter,
+            analytics: mockAnalytics
+        )
         let result = await fetcher.fetchPlaylist()
 
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
-        #expect(mockAnalytics.errorEvents.count == 1)
-        #expect(mockAnalytics.errorEvents.first?.context == "fetchPlaylist")
+        #expect(mockErrorReporter.allReportedErrors.count == 1)
+        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist")
     }
 
     @Test("fetchPlaylist returns empty playlist on decoding error")
     func fetchPlaylistReturnsEmptyOnDecodingError() async {
         let mockDataSource = MockPlaylistDataSource()
+        let mockErrorReporter = MockErrorReporter()
         let mockAnalytics = MockStructuredAnalytics()
-        mockDataSource.errorToThrow = DecodingError.dataCorrupted(
-            .init(codingPath: [], debugDescription: "Test decoder error")
-        )
+        mockDataSource.errorToThrow = AnalyticsOSError(domain: "TestDomain", code: 123, description: "Test error")
 
-        let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: mockErrorReporter,
+            analytics: mockAnalytics
+        )
         let result = await fetcher.fetchPlaylist()
 
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
-        #expect(mockAnalytics.errorEvents.count == 1)
+        #expect(mockErrorReporter.allReportedErrors.count == 1)
     }
 
-    @Test("fetchPlaylist returns empty playlist on CancellationError without analytics")
+    @Test("fetchPlaylist returns empty playlist on AnalyticsDecoderError")
+    func fetchPlaylistReturnsEmptyOnAnalyticsDecoderError() async {
+        let mockDataSource = MockPlaylistDataSource()
+        let mockErrorReporter = MockErrorReporter()
+        let mockAnalytics = MockStructuredAnalytics()
+        mockDataSource.errorToThrow = AnalyticsDecoderError(description: "Test decoder error")
+
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: mockErrorReporter,
+            analytics: mockAnalytics
+        )
+        let result = await fetcher.fetchPlaylist()
+
+        #expect(result == .empty)
+        #expect(mockDataSource.fetchCount == 1)
+        #expect(mockErrorReporter.allReportedErrors.count == 1)
+    }
+
+    @Test("fetchPlaylist returns empty playlist on CancellationError")
     func fetchPlaylistReturnsEmptyOnCancellationError() async {
         let mockDataSource = MockPlaylistDataSource()
+        let mockErrorReporter = MockErrorReporter()
         let mockAnalytics = MockStructuredAnalytics()
         mockDataSource.errorToThrow = CancellationError()
 
-        let fetcher = PlaylistFetcher(dataSource: mockDataSource, analytics: mockAnalytics)
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: mockErrorReporter,
+            analytics: mockAnalytics
+        )
         let result = await fetcher.fetchPlaylist()
 
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
-        // CancellationError should not trigger analytics
-        #expect(mockAnalytics.errorEvents.isEmpty)
+        // CancellationError should not trigger error reporting
+        #expect(mockErrorReporter.allReportedErrors.isEmpty)
     }
 }
 
@@ -146,5 +168,23 @@ struct DataMojibakeRepairTests {
 
         #expect(repairedString.contains("Sigur Rós"))
         #expect(repairedString.contains("Ágætis byrjun"))
+    }
+}
+
+// MARK: - Test Doubles
+
+final class MockPlaylistDataSource: PlaylistDataSource, @unchecked Sendable {
+    var playlistToReturn: Playlist = .empty
+    var errorToThrow: Error?
+    var fetchCount = 0
+
+    func getPlaylist() async throws -> Playlist {
+        fetchCount += 1
+
+        if let error = errorToThrow {
+            throw error
+        }
+
+        return playlistToReturn
     }
 }

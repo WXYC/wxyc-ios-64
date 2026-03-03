@@ -27,14 +27,14 @@ struct WatchXYC: App {
         let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
 
         PostHogSDK.shared.setup(config)
+        ErrorReporting.shared = PostHogErrorReporter.shared
         StructuredPostHogAnalytics.shared.capture(AppLaunchSimple())
         PostHogSDK.shared.flush()
 
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, policy: .longFormAudio)
         } catch {
-            Log(.error, "Could not set AVAudioSession category: \(error)")
-            StructuredPostHogAnalytics.shared.captureError(error, context: "AppDelegate: Could not set AVAudioSession category")
+            ErrorReporting.shared.report(error, context: "WatchXYC: Could not set AVAudioSession category")
         }
     }
 
