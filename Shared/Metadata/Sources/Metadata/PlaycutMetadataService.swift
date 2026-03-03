@@ -2,7 +2,7 @@
 //  PlaycutMetadataService.swift
 //  Metadata
 //
-//  Service for fetching and caching extended playcut metadata.
+//  Service for fetching and caching extended playcut metadata via backend proxy.
 //
 //  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -10,7 +10,6 @@
 
 import Foundation
 import Artwork
-import Secrets
 import Logger
 import Core
 import Caching
@@ -18,38 +17,39 @@ import Playlist
 
 // MARK: - PlaycutMetadataService
 
-/// Service for fetching extended metadata about a playcut from various sources.
+/// Service for fetching extended metadata about a playcut from the backend proxy.
 ///
 /// Uses multi-level caching to reduce redundant API calls:
 /// - Artist metadata is cached by Discogs artist ID (30-day TTL)
 /// - Album metadata is cached by artist+release key (7-day TTL)
 /// - Streaming links are cached by artist+song key (7-day TTL)
 public actor PlaycutMetadataService {
+    private let baseURL: URL
+    private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
     private let decoder: JSONDecoder
     private let cache: CacheCoordinator
 
-    // Discogs API credentials
-    private static let discogsKey = Secrets.discogsApiKeyV2_5
-    private static let discogsSecret = Secrets.discogsApiSecretV2_5
-
-    // Spotify credentials
-    private static let spotifyClientId = Secrets.spotifyClientId
-    private static let spotifyClientSecret = Secrets.spotifyClientSecret
-
-    // Cached Spotify token
-    private var spotifyToken: String?
-    private var spotifyTokenExpiration: Date?
-    private var inflightTokenTask: Task<String, any Error>?
-
-    public init() {
+    public init(
+        baseURL: URL = URL(string: "https://api.wxyc.org")!,
+        tokenProvider: SessionTokenProvider? = nil
+    ) {
+        self.baseURL = baseURL
+        self.tokenProvider = tokenProvider
         self.session = URLSession.shared
         self.decoder = JSONDecoder()
         self.cache = .Metadata
     }
 
     // Internal initializer for testing
-    init(session: WebSession, cache: CacheCoordinator = .Metadata) {
+    init(
+        baseURL: URL = URL(string: "https://api.wxyc.org")!,
+        tokenProvider: SessionTokenProvider? = nil,
+        session: WebSession,
+        cache: CacheCoordinator = .Metadata
+    ) {
+        self.baseURL = baseURL
+        self.tokenProvider = tokenProvider
         self.session = session
         self.decoder = JSONDecoder()
         self.cache = cache
@@ -62,11 +62,8 @@ public actor PlaycutMetadataService {
     /// - Artist metadata by Discogs artist ID (30-day TTL)
     /// - Streaming links by artist+song (7-day TTL)
     public func fetchMetadata(for playcut: Playcut) async -> PlaycutMetadata {
-        // Fetch metadata at each granularity level concurrently
-        async let albumResult = fetchAlbumMetadata(for: playcut)
-        async let streamingResult = fetchStreamingLinks(for: playcut)
-
-        let album = await albumResult
+        // Fetch album metadata (includes streaming links from backend)
+        let (album, streaming) = await fetchAlbumAndStreaming(for: playcut)
 
         // Artist metadata requires the Discogs artist ID from the album lookup
         let artist = await fetchArtistMetadata(discogsArtistId: album.discogsArtistId)
@@ -74,7 +71,7 @@ public actor PlaycutMetadataService {
         return PlaycutMetadata(
             artist: artist,
             album: album,
-            streaming: await streamingResult
+            streaming: streaming
         )
     }
 
@@ -85,24 +82,29 @@ public actor PlaycutMetadataService {
         guard let artistId = discogsArtistId else {
             return .empty
         }
-        
+
         let cacheKey = MetadataCacheKey.artist(discogsId: artistId)
-        
+
         // Check cache
         if let cached: ArtistMetadata = try? await cache.value(for: cacheKey) {
             Log(.info, category: .network, "Artist metadata cache hit for ID \(artistId)")
             return cached
         }
 
-        // Fetch from Discogs
+        // Fetch from backend proxy
         do {
-            let artist = try await fetchArtist(id: artistId)
-            let metadata = ArtistMetadata(
-                bio: artist.profile,
-                wikipediaURL: artist.wikipediaURL,
-                discogsArtistId: artistId
+            let response = try await fetchFromProxy(
+                path: "proxy/metadata/artist",
+                queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
             )
-    
+
+            let apiResult = try decoder.decode(ArtistMetadataAPIResponse.self, from: response)
+            let metadata = ArtistMetadata(
+                bio: apiResult.bio,
+                wikipediaURL: apiResult.wikipediaUrl.flatMap { URL(string: $0) },
+                discogsArtistId: apiResult.discogsArtistId ?? artistId
+            )
+
             await cache.set(value: metadata, for: cacheKey, lifespan: .thirtyDays)
             return metadata
         } catch {
@@ -111,356 +113,117 @@ public actor PlaycutMetadataService {
         }
     }
 
-    /// Fetches album metadata, caching by artist+release key.
-    private func fetchAlbumMetadata(for playcut: Playcut) async -> AlbumMetadata {
-        let cacheKey = MetadataCacheKey.album(
+    /// Fetches album metadata and streaming links from the backend proxy in a single call.
+    private func fetchAlbumAndStreaming(for playcut: Playcut) async -> (AlbumMetadata, StreamingLinks) {
+        let albumCacheKey = MetadataCacheKey.album(
             artistName: playcut.artistName,
             releaseTitle: playcut.releaseTitle ?? ""
         )
-
-        // Check cache
-        if let cached: AlbumMetadata = try? await cache.value(for: cacheKey) {
-            Log(.info, category: .network, "Album metadata cache hit for \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
-            return cached
-        }
-
-        // Fetch from Discogs
-        Log(.info, category: .network, "Fetching album metadata for: \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
-
-        do {
-            let searchResult = try await searchDiscogs(for: playcut)
-
-            guard let result = searchResult else {
-                Log(.warning, category: .network, "No Discogs search results found for: \(playcut.artistName)")
-                let metadata = AlbumMetadata(label: playcut.labelName)
-                await cache.set(value: metadata, for: cacheKey, lifespan: .sevenDays)
-                return metadata
-            }
-
-            Log(.info, category: .network, "Found Discogs result: type=\(result.type), id=\(result.id)")
-
-            // Extract artist ID from release/master details
-            let artistId = await extractArtistId(from: result)
-
-            let metadata = AlbumMetadata(
-                label: result.primaryLabel ?? playcut.labelName,
-                releaseYear: result.releaseYear,
-                discogsURL: result.discogsWebURL,
-                discogsArtistId: artistId
-            )
-
-            await cache.set(value: metadata, for: cacheKey, lifespan: .sevenDays)
-            return metadata
-        } catch {
-            Log(.error, category: .network, "Failed to fetch album metadata: \(error)")
-            let metadata = AlbumMetadata(label: playcut.labelName)
-            await cache.set(value: metadata, for: cacheKey, lifespan: .sevenDays)
-            return metadata
-        }
-    }
-
-    /// Fetches streaming links, caching by artist+song key.
-    private func fetchStreamingLinks(for playcut: Playcut) async -> StreamingLinks {
-        let cacheKey = MetadataCacheKey.streaming(
+        let streamingCacheKey = MetadataCacheKey.streaming(
             artistName: playcut.artistName,
             songTitle: playcut.songTitle
         )
-        
-        // Check cache
-        if let cached: StreamingLinks = try? await cache.value(for: cacheKey) {
-            Log(.info, category: .network, "Streaming links cache hit for \(playcut.artistName) - \(playcut.songTitle)")
-            return cached
+
+        // Check both caches
+        let cachedAlbum: AlbumMetadata? = try? await cache.value(for: albumCacheKey)
+        let cachedStreaming: StreamingLinks? = try? await cache.value(for: streamingCacheKey)
+
+        if let album = cachedAlbum, let streaming = cachedStreaming {
+            Log(.info, category: .network, "Album+streaming cache hit for \(playcut.artistName)")
+            return (album, streaming)
         }
 
-        // Fetch from all streaming services concurrently
-        async let spotifyURL = fetchSpotifyURL(for: playcut)
-        async let appleMusicURL = fetchAppleMusicURL(for: playcut)
-        async let youtubeMusicURL = makeYouTubeMusicSearchURL(for: playcut)
-        async let bandcampURL = makeBandcampSearchURL(for: playcut)
-        async let soundcloudURL = makeSoundCloudSearchURL(for: playcut)
-        
-        let links = StreamingLinks(
-            spotifyURL: await spotifyURL,
-            appleMusicURL: await appleMusicURL,
-            youtubeMusicURL: await youtubeMusicURL,
-            bandcampURL: await bandcampURL,
-            soundcloudURL: await soundcloudURL
-        )
+        // Fetch from backend proxy (returns both album metadata and streaming links)
+        Log(.info, category: .network, "Fetching album metadata for: \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
 
-        await cache.set(value: links, for: cacheKey, lifespan: .sevenDays)
-        return links
-    }
-
-    /// Extracts the primary artist ID from a Discogs search result.
-    private func extractArtistId(from result: Discogs.SearchResult) async -> Int? {
-        if result.type == "artist" {
-            return result.id
-        }
-
-        if result.type == "release",
-           let resourceUrl = result.resourceUrl,
-           let url = URL(string: resourceUrl) {
-            if let release = try? await fetchRelease(url: url) {
-                return release.primaryArtistId
-            }
-        }
-
-        if result.type == "master",
-           let resourceUrl = result.resourceUrl,
-           let url = URL(string: resourceUrl) {
-            if let master = try? await fetchMaster(url: url) {
-                return master.primaryArtistId
-            }
-        }
-
-        return nil
-    }
-}
-
-// MARK: - Discogs Integration
-
-extension PlaycutMetadataService {
-    private func searchDiscogs(for playcut: Playcut) async throws -> Discogs.SearchResult? {
-        var releaseTitle = playcut.releaseTitle
-        if let title = playcut.releaseTitle, title.lowercased() == "s/t" {
-            releaseTitle = playcut.artistName
-        }
-        
-        var searchTerms = [playcut.artistName]
-        if let releaseTitle {
-            searchTerms.append(releaseTitle)
-        }
-        
-        var components = URLComponents(string: "https://api.discogs.com")!
-        components.path = "/database/search"
-        components.queryItems = [
-            URLQueryItem(name: "q", value: searchTerms.joined(separator: " ")),
-            URLQueryItem(name: "key", value: Self.discogsKey),
-            URLQueryItem(name: "secret", value: Self.discogsSecret)
-        ]
-        
-        let data = try await session.data(from: components.url!)
-        let response = try decoder.decode(Discogs.SearchResults.self, from: data)
-        
-        // Find a valid result (skip spacer.gif placeholders)
-        return response.results.first { result in
-            !result.coverImage.lastPathComponent.hasPrefix("spacer.gif")
-        }
-    }
-            
-    private func fetchRelease(url: URL) async throws -> Discogs.Release {
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "key", value: Self.discogsKey),
-            URLQueryItem(name: "secret", value: Self.discogsSecret)
-        ]
-        
-        let data = try await session.data(from: components.url!)
-        return try decoder.decode(Discogs.Release.self, from: data)
-    }
-    
-    private func fetchMaster(url: URL) async throws -> Discogs.Master {
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "key", value: Self.discogsKey),
-            URLQueryItem(name: "secret", value: Self.discogsSecret)
-        ]
-        
-        let data = try await session.data(from: components.url!)
-        return try decoder.decode(Discogs.Master.self, from: data)
-    }
-    
-    private func fetchArtist(id: Int) async throws -> Discogs.Artist {
-        var components = URLComponents(string: "https://api.discogs.com")!
-        components.path = "/artists/\(id)"
-        components.queryItems = [
-            URLQueryItem(name: "key", value: Self.discogsKey),
-            URLQueryItem(name: "secret", value: Self.discogsSecret)
-        ]
-        
-        let data = try await session.data(from: components.url!)
-        return try decoder.decode(Discogs.Artist.self, from: data)
-    }
-}
-
-// MARK: - Spotify Integration
-
-extension PlaycutMetadataService {
-    private func fetchSpotifyURL(for playcut: Playcut) async -> URL? {
         do {
-            let token = try await getSpotifyToken()
-            
-            var query = "track:\(playcut.songTitle) artist:\(playcut.artistName)"
-            if let album = playcut.releaseTitle {
-                query += " album:\(album)"
+            var queryItems = [URLQueryItem(name: "artistName", value: playcut.artistName)]
+            if let releaseTitle = playcut.releaseTitle {
+                let title = releaseTitle.lowercased() == "s/t" ? playcut.artistName : releaseTitle
+                queryItems.append(URLQueryItem(name: "releaseTitle", value: title))
             }
-            
-            var components = URLComponents(string: "https://api.spotify.com")!
-            components.path = "/v1/search"
-            components.queryItems = [
-                URLQueryItem(name: "q", value: query),
-                URLQueryItem(name: "type", value: "track"),
-                URLQueryItem(name: "limit", value: "1")
-            ]
-            
-            var request = URLRequest(url: components.url!)
+            queryItems.append(URLQueryItem(name: "trackTitle", value: playcut.songTitle))
+
+            let data = try await fetchFromProxy(path: "proxy/metadata/album", queryItems: queryItems)
+            let apiResult = try decoder.decode(AlbumMetadataAPIResponse.self, from: data)
+
+            let album = cachedAlbum ?? AlbumMetadata(
+                label: playcut.labelName,
+                releaseYear: apiResult.releaseYear,
+                discogsURL: apiResult.discogsUrl.flatMap { URL(string: $0) },
+                discogsArtistId: apiResult.discogsReleaseId
+            )
+
+            let streaming = cachedStreaming ?? StreamingLinks(
+                spotifyURL: apiResult.spotifyUrl.flatMap { URL(string: $0) },
+                appleMusicURL: apiResult.appleMusicUrl.flatMap { URL(string: $0) },
+                youtubeMusicURL: apiResult.youtubeMusicUrl.flatMap { URL(string: $0) },
+                bandcampURL: apiResult.bandcampUrl.flatMap { URL(string: $0) },
+                soundcloudURL: apiResult.soundcloudUrl.flatMap { URL(string: $0) }
+            )
+
+            if cachedAlbum == nil {
+                await cache.set(value: album, for: albumCacheKey, lifespan: .sevenDays)
+            }
+            if cachedStreaming == nil {
+                await cache.set(value: streaming, for: streamingCacheKey, lifespan: .sevenDays)
+            }
+
+            return (album, streaming)
+        } catch {
+            Log(.error, category: .network, "Failed to fetch album metadata: \(error)")
+            let album = cachedAlbum ?? AlbumMetadata(label: playcut.labelName)
+            let streaming = cachedStreaming ?? .empty
+            return (album, streaming)
+        }
+    }
+
+    // MARK: - Network
+
+    private func fetchFromProxy(path: String, queryItems: [URLQueryItem]) async throws -> Data {
+        var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
+        components.queryItems = queryItems
+
+        guard let url = components.url else {
+            throw MetadataError.invalidURL
+        }
+
+        if let tokenProvider {
+            let token = try await tokenProvider.token()
+            var request = URLRequest(url: url)
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
             let (data, _) = try await URLSession.shared.data(for: request)
-
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tracks = json["tracks"] as? [String: Any],
-                  let items = tracks["items"] as? [[String: Any]],
-                  let firstTrack = items.first,
-                  let externalUrls = firstTrack["external_urls"] as? [String: String],
-                  let spotifyUrlString = externalUrls["spotify"],
-                  let spotifyUrl = URL(string: spotifyUrlString) else {
-                return nil
-            }
-            
-            return spotifyUrl
-        } catch {
-            Log(.error, category: .network, "Failed to fetch Spotify URL: \(error)")
-            return nil
-        }
-    }
-    
-    private func getSpotifyToken() async throws -> String {
-        // Return cached token if valid
-        if let token = spotifyToken,
-           let expiration = spotifyTokenExpiration,
-           Date() < expiration.addingTimeInterval(-60) {
-            return token
-        }
-
-        // Coalesce concurrent token fetches into a single request
-        if let inflightTask = inflightTokenTask {
-            return try await inflightTask.value
-        }
-
-        let task = Task<String, any Error> {
-            // Fetch new token using Client Credentials flow
-            let tokenURL = URL(string: "https://accounts.spotify.com/api/token")!
-
-            var request = URLRequest(url: tokenURL)
-            request.httpMethod = "POST"
-            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-
-            let credentialString = "\(Self.spotifyClientId):\(Self.spotifyClientSecret)"
-            let base64Credentials = Data(credentialString.utf8).base64EncodedString()
-            request.setValue("Basic \(base64Credentials)", forHTTPHeaderField: "Authorization")
-
-            request.httpBody = "grant_type=client_credentials".data(using: .utf8)
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw MetadataError.authenticationFailed
-            }
-
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let accessToken = json["access_token"] as? String,
-                  let expiresIn = json["expires_in"] as? Int else {
-                throw MetadataError.invalidResponse
-            }
-
-            return accessToken
-        }
-
-        inflightTokenTask = task
-
-        do {
-            let accessToken = try await task.value
-            spotifyToken = accessToken
-            spotifyTokenExpiration = Date().addingTimeInterval(3600)
-            inflightTokenTask = nil
-            return accessToken
-        } catch {
-            inflightTokenTask = nil
-            throw error
+            return data
+        } else {
+            return try await session.data(from: url)
         }
     }
 }
 
-// MARK: - Apple Music / iTunes Integration
+// MARK: - Backend API Response Models
 
-extension PlaycutMetadataService {
-    private func fetchAppleMusicURL(for playcut: Playcut) async -> URL? {
-        do {
-            let query = "\(playcut.artistName) \(playcut.songTitle)"
-            
-            var components = URLComponents(string: "https://itunes.apple.com")!
-            components.path = "/search"
-            components.queryItems = [
-                URLQueryItem(name: "term", value: query),
-                URLQueryItem(name: "entity", value: "song"),
-                URLQueryItem(name: "media", value: "music"),
-                URLQueryItem(name: "limit", value: "1")
-            ]
-            
-            let data = try await session.data(from: components.url!)
-            
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let results = json["results"] as? [[String: Any]],
-                  let firstResult = results.first,
-                  let trackViewUrlString = firstResult["trackViewUrl"] as? String,
-                  let trackViewUrl = URL(string: trackViewUrlString) else {
-                return nil
-            }
-
-            return trackViewUrl
-        } catch {
-            Log(.error, category: .network, "Failed to fetch Apple Music URL: \(error)")
-            return nil
-        }
-    }
+private struct AlbumMetadataAPIResponse: Codable {
+    let discogsReleaseId: Int?
+    let discogsUrl: String?
+    let releaseYear: Int?
+    let artworkUrl: String?
+    let spotifyUrl: String?
+    let appleMusicUrl: String?
+    let youtubeMusicUrl: String?
+    let bandcampUrl: String?
+    let soundcloudUrl: String?
 }
 
-// MARK: - YouTube Music
-
-extension PlaycutMetadataService {
-    /// Creates a YouTube Music search URL for the playcut
-    /// Note: YouTube Data API requires an API key, so we construct a search URL instead
-    private func makeYouTubeMusicSearchURL(for playcut: Playcut) async -> URL? {
-        let query = "\(playcut.artistName) \(playcut.songTitle)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-        return URL(string: "https://music.youtube.com/search?q=\(query)")
-    }
-}
-
-// MARK: - Bandcamp
-
-extension PlaycutMetadataService {
-    /// Creates a Bandcamp search URL for the playcut
-    /// Note: Bandcamp doesn't have a public API for search
-    private func makeBandcampSearchURL(for playcut: Playcut) async -> URL? {
-        let query = "\(playcut.artistName) \(playcut.songTitle)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-        return URL(string: "https://bandcamp.com/search?q=\(query)")
-    }
-}
-
-// MARK: - SoundCloud
-
-extension PlaycutMetadataService {
-    /// Creates a SoundCloud search URL for the playcut
-    /// Note: SoundCloud API is restricted, so we construct a search URL instead
-    private func makeSoundCloudSearchURL(for playcut: Playcut) async -> URL? {
-        let query = "\(playcut.artistName) \(playcut.songTitle)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-        return URL(string: "https://soundcloud.com/search?q=\(query)")
-    }
+private struct ArtistMetadataAPIResponse: Codable {
+    let discogsArtistId: Int?
+    let bio: String?
+    let wikipediaUrl: String?
 }
 
 // MARK: - Errors
 
 extension PlaycutMetadataService {
     enum MetadataError: Error {
-        case authenticationFailed
-        case invalidResponse
+        case invalidURL
     }
 }
