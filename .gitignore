@@ -31,3 +31,6 @@ AudioStreaming/
 
 # Party Horn assets (separate project)
 WXYC/Shared/Party Horn/assets/
+
+# Sentry CLI config (contains auth token)
+.sentryclirc

@@ -600,6 +600,7 @@
 				F801C85D5BDA674A19D07E71 /* Embed ExtensionKit Extensions */,
 				2E5A435D75D8811BBFB1D9CA /* Embed Watch Content */,
 				23FB21BA2EEA854F0064E6FD /* Resources */,
+				EE041E6CCD134EE28A57C03B /* Upload Debug Symbols to Sentry */,
 			);
 			buildRules = (
 			);
@@ -770,6 +771,21 @@
 				"\"${SRCROOT}/Shared/Secrets/Scripts/ensure-xcframework.sh\"",
 				"",
 			);
+		};
+		EE041E6CCD134EE28A57C03B /* Upload Debug Symbols to Sentry */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+			);
+			name = "Upload Debug Symbols to Sentry";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if which sentry-cli >/dev/null; then\n  export SENTRY_ORG=wxyc\n  export SENTRY_PROJECT=ios\n  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\n  if [ ! $? -eq 0 ]; then\n    echo \"warning: sentry-cli - $ERROR\"\n  fi\nelse\n  echo \"warning: sentry-cli not installed, skipping debug symbol upload\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
