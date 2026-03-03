@@ -59,8 +59,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         var iterator = nowPlayingService.makeAsyncIterator()
         guard let nowPlayingItem = try await iterator.next() else {
             let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
-            StructuredPostHogAnalytics.shared.captureError(error, context: "fetchPlaylist")
-            Log(.error, error.localizedDescription)
+            ErrorReporting.shared.report(error, context: "fetchPlaylist")
             throw error
         }
 

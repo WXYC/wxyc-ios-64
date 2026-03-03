@@ -74,11 +74,11 @@ struct WXYCApp: App {
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
-        // Analytics setup
+        // Analytics and error reporting setup
         setUpAnalytics()
+        ErrorReporting.shared = PostHogErrorReporter.shared
         setUpQualityAnalytics()
         setUpThemePickerAnalytics()
-        Task { await setUpCacheAnalytics() }
         StructuredPostHogAnalytics.shared.capture(AppLaunch(
             hasUsedThemePicker: appState.themePickerState.persistence.hasEverUsedPicker,
             buildType: buildConfiguration()
@@ -320,13 +320,6 @@ struct WXYCApp: App {
         appState.themePickerState.setAnalytics(StructuredPostHogAnalytics.shared)
     }
 
-    private func setUpCacheAnalytics() async {
-        let analytics = StructuredPostHogAnalytics.shared
-        await CacheCoordinator.AlbumArt.setAnalytics(analytics)
-        await CacheCoordinator.Playlist.setAnalytics(analytics)
-        await CacheCoordinator.Metadata.setAnalytics(analytics)
-    }
-    
     private func buildConfiguration() -> String {
         #if DEBUG
         return "Debug"
@@ -347,8 +340,7 @@ struct WXYCApp: App {
             try BGTaskScheduler.shared.submit(request)
             Log(.info, category: .general, "Scheduled background refresh for 15 minutes from now")
         } catch {
-            Log(.error, category: .general, "Failed to schedule background refresh: \(error)")
-            StructuredPostHogAnalytics.shared.captureError(error, context: "scheduleBackgroundRefresh")
+            ErrorReporting.shared.report(error, context: "scheduleBackgroundRefresh")
         }
     }
     
@@ -484,8 +476,7 @@ struct WXYCApp: App {
                     intentData: activity.description
                 ))
             } catch {
-                Log(.error, category: .general, "Failed to donate Siri intent: \(error)")
-                StructuredPostHogAnalytics.shared.captureError(error, context: "WXYCApp: Failed to donate Siri intent")
+                ErrorReporting.shared.report(error, context: "WXYCApp: Failed to donate Siri intent")
             }
         }
     }

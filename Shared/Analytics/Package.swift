@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "AnalyticsTesting", targets: ["AnalyticsTesting"]),
     ],
     dependencies: [
+        .package(path: "../Logger"),
         .package(path: "../Secrets"),
         .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.20.0")),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "509.0.0"..<"603.0.0"),
@@ -31,6 +32,7 @@ let package = Package(
             name: "Analytics",
             dependencies: [
                 "AnalyticsMacros",
+                "Logger",
                 "Secrets",
                 .product(name: "PostHog", package: "posthog-ios"),
             ]

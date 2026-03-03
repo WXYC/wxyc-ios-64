@@ -11,7 +11,6 @@
 
 import Foundation
 import Logger
-import Analytics
 
 // MARK: - CacheCoordinator
 
@@ -118,9 +117,6 @@ public final actor CacheCoordinator {
     /// Background task that purges expired entries at initialization.
     private let purgeTask: Task<Void, Never>
 
-    /// Analytics service for structured error capture.
-    private var analytics: AnalyticsService?
-
     /// Shared JSON encoder for serializing Codable values.
     private static let encoder = JSONEncoder()
 
@@ -215,14 +211,20 @@ public final actor CacheCoordinator {
         guard let data = cache.data(for: key) else {
             throw Error.noCachedResult
         }
-    
+
         // Decode the JSON data into the requested type
         do {
             return try Self.decoder.decode(Value.self, from: data)
         } catch {
-            // Log decode failures for debugging and analytics
-            Log(.error, category: .caching, "CacheCoordinator failed to decode value for key \"\(key)\": \(error)")
-            analytics?.captureError(error, context: "CacheCoordinator decode value")
+            ErrorReporting.shared.report(
+                error,
+                context: "CacheCoordinator decode value",
+                category: .caching,
+                additionalData: [
+                    "value type": String(describing: Value.self),
+                    "key": key
+                ]
+            )
             throw error
         }
     }
@@ -249,12 +251,18 @@ public final actor CacheCoordinator {
             let metadata = CacheMetadata(timestamp: clock.now, lifespan: lifespan)
             cache.set(data, metadata: metadata, for: key)
         } catch {
-            // Log encode failures for debugging and analytics
-            Log(.error, category: .caching, "Failed to encode value for \(key): \(error)")
-            analytics?.captureError(error, context: "CacheCoordinator encode value")
+            ErrorReporting.shared.report(
+                error,
+                context: "CacheCoordinator encode value",
+                category: .caching,
+                additionalData: [
+                    "value type": String(describing: Value.self),
+                    "key": key
+                ]
+            )
         }
     }
-    
+
     // MARK: - Testing Support
 
     /// Waits for the initial purge operation to complete.
@@ -267,13 +275,6 @@ public final actor CacheCoordinator {
     ///   as the purge happens asynchronously in the background.
     public func waitForPurge() async {
         await purgeTask.value
-    }
-
-    /// Sets the analytics service for structured error capture.
-    ///
-    /// - Parameter analytics: The analytics implementation to use.
-    public func setAnalytics(_ analytics: AnalyticsService) {
-        self.analytics = analytics
     }
 
     // MARK: - Low-Level Access (for Migrations)
