@@ -13,8 +13,8 @@ import AVFoundation
 import Logger
 import PlaybackWatchOS
 import Playlist
+import AppServices
 import PostHog
-import Secrets
 import SwiftUI
 
 @main
@@ -22,9 +22,10 @@ struct WatchXYC: App {
     private let playlistService = PlaylistService()
 
     init() {
-        let POSTHOG_API_KEY = Secrets.posthogApiKey
-        let POSTHOG_HOST = "https://us.i.posthog.com"
-        let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
+        let config = PostHogConfig(
+            apiKey: AppConfiguration.defaults.posthogApiKey,
+            host: AppConfiguration.defaults.posthogHost
+        )
 
         PostHogSDK.shared.setup(config)
         ErrorReporting.shared = PostHogErrorReporter.shared
