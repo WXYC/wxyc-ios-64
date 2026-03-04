@@ -15,7 +15,6 @@ import Artwork
 import Caching
 import Playlist
 import PostHog
-import Secrets
 import SwiftUI
 import WidgetKit
 
@@ -30,9 +29,10 @@ final class Provider: AppIntentTimelineProvider, Sendable {
     let artworkService = MultisourceArtworkService()
 
     init() {
-        let POSTHOG_API_KEY = Secrets.posthogApiKey
-        let POSTHOG_HOST = "https://us.i.posthog.com"
-        let config = PostHogConfig(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
+        let config = PostHogConfig(
+            apiKey: AppConfiguration.defaults.posthogApiKey,
+            host: AppConfiguration.defaults.posthogHost
+        )
         PostHogSDK.shared.setup(config)
     }
 

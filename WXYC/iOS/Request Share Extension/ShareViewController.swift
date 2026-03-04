@@ -9,11 +9,11 @@
 //
 
 import Analytics
+import AppServices
 import UIKit
 import SwiftUI
 import MusicShareKit
 import Logger
-import Secrets
 
 @objc(ShareViewController)
 class ShareViewController: UIViewController {
@@ -24,8 +24,8 @@ class ShareViewController: UIViewController {
 
         // Configure MusicShareKit
         MusicShareKit.configure(MusicShareKitConfiguration(
-            requestOMaticURL: Secrets.requestOMatic,
-            authBaseURL: Secrets.apiBaseUrl,
+            requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
+            authBaseURL: AppConfiguration.defaults.apiBaseUrl,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
