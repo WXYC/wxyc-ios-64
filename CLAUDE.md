@@ -122,20 +122,19 @@ The app uses a highly modular architecture with 19 local Swift packages in `Shar
 | Package | Purpose |
 |---------|---------|
 | **Analytics** | PostHog analytics wrapper |
-| **AppServices** | App-level services (NowPlayingInfoCenter, background refresh) |
+| **AppServices** | App-level services (NowPlayingInfoCenter, background refresh, AppConfiguration) |
 | **Artwork** | Album artwork fetching from multiple sources |
 | **Caching** | Disk/memory caching with TTL support |
 | **Core** | Core types (RadioStation, Playcut, etc.) |
 | **Logger** | Logging infrastructure |
 | **Metadata** | Playlist metadata parsing |
 | **MusicShareKit** | Share extension support for music sharing |
-| **Obfuscate** | ObfuscateMacro for API key protection |
+| **Obfuscate** | ObfuscateMacro (unused, retained as transitive dependency) |
 | **OpenNSFW** | NSFW image detection for artwork filtering |
 | **PartyHorn** | An easter egg. Users must scroll to the bottom of the playlist view and tap 'what the freq?' to access it.' |
 | **Playback** | Houses several playback engines. Eventually this will whittle down to 1 or 2, but is currently in an experimental phase. |
 | **PlayerHeaderView** | Now playing header UI component |
 | **Playlist** | Playlist service and data models |
-| **Secrets** | Generated file containing obfuscated API keys. Uses a precompiled Secrets.xcframework to avoid recompiling when the build cache is cleared. |
 | **Wallpaper** | Metal shader-based animated backgrounds |
 | **WXUI** | Shared SwiftUI components |
 
@@ -179,16 +178,9 @@ See `WXYC/iOS/Tests/WXYCUITests/README.md` for UI test documentation.
 xcodebuild test -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:WXYCUITests
 ```
 
-## Secrets Management
+## Configuration
 
-API keys are stored in `PROJECT_ROOT/../secrets/secrets.txt` and the Secrets package generates a git-ignored Secrets.swift file.
-
-```bash
-# Generate Secrets.swift from secrets.txt
-./scripts/generate_secrets.sh
-```
-
-The generated file uses ObfuscateMacro to protect keys at compile time.
+App configuration (PostHog API key, API base URL, request-o-matic URL) is managed by `AppConfiguration` in the AppServices package. Values are hardcoded as defaults and optionally fetched from the backend `/config` endpoint at launch. Confidential API credentials (Discogs, Spotify) are no longer embedded in the app; those calls are proxied through Backend-Service behind anonymous device session auth.
 
 ## Code Signing
 
