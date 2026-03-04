@@ -11,8 +11,8 @@
 import Analytics
 import Playback
 import Playlist
+import AppServices
 import PostHog
-import Secrets
 import SwiftUI
 
 @main
@@ -32,8 +32,8 @@ struct WXYCTVApp: App {
     
     private func setUpAnalytics() {
         let config = PostHogConfig(
-            apiKey: Secrets.posthogApiKey,
-            host: "https://us.i.posthog.com"
+            apiKey: AppConfiguration.defaults.posthogApiKey,
+            host: AppConfiguration.defaults.posthogHost
         )
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
