@@ -25,7 +25,6 @@ import Playback
 import PlayerHeaderView
 import Playlist
 import PostHog
-import Secrets
 import Sentry
 import StoreKit
 import SwiftUI
@@ -74,8 +73,8 @@ struct WXYCApp: App {
 
         // Configure MusicShareKit for RequestService
         MusicShareKit.configure(MusicShareKitConfiguration(
-            requestOMaticURL: Secrets.requestOMatic,
-            authBaseURL: Secrets.apiBaseUrl,
+            requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
+            authBaseURL: AppConfiguration.defaults.apiBaseUrl,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
@@ -324,8 +323,8 @@ struct WXYCApp: App {
 
     private func setUpAnalytics() {
         let config = PostHogConfig(
-            apiKey: Secrets.posthogApiKey,
-            host: "https://us.i.posthog.com"
+            apiKey: AppConfiguration.defaults.posthogApiKey,
+            host: AppConfiguration.defaults.posthogHost
         )
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
@@ -333,7 +332,7 @@ struct WXYCApp: App {
 
     private func setUpSentry() {
         SentrySDK.start { options in
-            options.dsn = Secrets.sentryDsn
+            options.dsn = AppConfiguration.sentryDsn
             options.enableAutoSessionTracking = true
             options.tracesSampleRate = 0.05
             options.enableUIViewControllerTracing = false  // SwiftUI app, no UIKit VCs
