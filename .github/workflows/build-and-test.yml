@@ -61,6 +61,8 @@ jobs:
               public static let spotifyClientId = "ci-stub-spotify-id"
               public static let spotifyClientSecret = "ci-stub-spotify-secret"
               public static let requestOMatic = "ci-stub-request-o-matic"
+              public static let apiBaseUrl = "https://ci-stub.example.com"
+              public static let sentryDsn = "https://ci-stub@sentry.io/0"
           }
           EOF
 

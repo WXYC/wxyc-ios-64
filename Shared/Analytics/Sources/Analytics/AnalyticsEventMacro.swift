@@ -72,4 +72,4 @@
 /// ```
 @attached(member, names: named(name), named(properties))
 @attached(extension, conformances: AnalyticsEvent)
-public macro AnalyticsEvent() = #externalMacro(module: "AnalyticsMacros", type: "AnalyticsEventMacro")
+public macro AnalyticsEvent() = #externalMacro(module: "AnalyticsMacrosPlugin", type: "AnalyticsEventMacro")

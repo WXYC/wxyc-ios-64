@@ -11,6 +11,7 @@
 
 import Foundation
 import Logger
+import struct Logger.Category
 import PostHog
 import Sentry
 

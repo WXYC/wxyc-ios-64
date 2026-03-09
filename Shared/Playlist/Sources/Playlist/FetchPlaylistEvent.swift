@@ -9,6 +9,7 @@
 //
 
 import Analytics
+import Foundation
 
 @AnalyticsEvent
 struct FetchPlaylistEvent {
