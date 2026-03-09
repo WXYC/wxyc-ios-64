@@ -11,6 +11,7 @@
 
 import Foundation
 import Logger
+import struct Logger.Category
 import Sentry
 
 /// Forwards log messages to Sentry as breadcrumbs.

@@ -155,7 +155,7 @@ struct RequestLineAuthFeatureTests {
             analytics: mockAnalytics
         )
 
-        let events = mockAnalytics.events(named: "request_line_feature_flag_evaluated")
+        let events = mockAnalytics.events(named: "request_line_feature_flag_evaluated_event")
         #expect(events.count == 1)
 
         if let props = events.first?.properties {
@@ -179,7 +179,7 @@ struct RequestLineAuthFeatureTests {
             analytics: mockAnalytics
         )
 
-        let events = mockAnalytics.events(named: "request_line_feature_flag_evaluated")
+        let events = mockAnalytics.events(named: "request_line_feature_flag_evaluated_event")
         #expect(events.count == 1)
 
         if let props = events.first?.properties {
