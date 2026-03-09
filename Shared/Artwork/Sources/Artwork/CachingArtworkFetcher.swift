@@ -35,7 +35,8 @@ extension CacheCoordinator: ArtworkService {
     }
 
     func set(artwork: CGImage, for id: String, lifespan: TimeInterval) async {
-        let scaledArtwork = scaleCGImage(artwork, toWidth: ArtworkCacheConfiguration.targetWidth)
+        let trimmedArtwork = trimWhiteBorder(from: artwork)
+        let scaledArtwork = scaleCGImage(trimmedArtwork, toWidth: ArtworkCacheConfiguration.targetWidth)
         let artworkData = encodeCGImageAsHEIF(scaledArtwork, compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality)
             ?? encodeCGImageAsPNG(scaledArtwork)
         self.setData(artworkData, for: id, lifespan: lifespan)
