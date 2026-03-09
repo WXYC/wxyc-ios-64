@@ -236,8 +236,8 @@ struct AuthenticationServiceTests {
         _ = try await service.ensureAuthenticated()
 
         let eventNames = mockAnalytics.capturedEventNames()
-        #expect(eventNames.contains("request_line_auth_started"))
-        #expect(eventNames.contains("request_line_auth_completed"))
+        #expect(eventNames.contains("request_line_auth_started_event"))
+        #expect(eventNames.contains("request_line_auth_completed_event"))
     }
 
     @Test("Tracks auth failed event on network error")
@@ -256,6 +256,6 @@ struct AuthenticationServiceTests {
         }
 
         let eventNames = mockAnalytics.capturedEventNames()
-        #expect(eventNames.contains("request_line_auth_failed"))
+        #expect(eventNames.contains("request_line_auth_failed_event"))
     }
 }

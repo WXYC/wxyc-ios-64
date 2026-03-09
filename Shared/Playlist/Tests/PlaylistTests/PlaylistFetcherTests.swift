@@ -61,12 +61,12 @@ struct PlaylistFetcherTests {
         #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist")
     }
 
-    @Test("fetchPlaylist returns empty playlist on decoding error")
-    func fetchPlaylistReturnsEmptyOnDecodingError() async {
+    @Test("fetchPlaylist returns empty playlist on URLError")
+    func fetchPlaylistReturnsEmptyOnURLError() async {
         let mockDataSource = MockPlaylistDataSource()
         let mockErrorReporter = MockErrorReporter()
         let mockAnalytics = MockStructuredAnalytics()
-        mockDataSource.errorToThrow = AnalyticsOSError(domain: "TestDomain", code: 123, description: "Test error")
+        mockDataSource.errorToThrow = URLError(.notConnectedToInternet)
 
         let fetcher = PlaylistFetcher(
             dataSource: mockDataSource,
@@ -80,12 +80,12 @@ struct PlaylistFetcherTests {
         #expect(mockErrorReporter.allReportedErrors.count == 1)
     }
 
-    @Test("fetchPlaylist returns empty playlist on AnalyticsDecoderError")
-    func fetchPlaylistReturnsEmptyOnAnalyticsDecoderError() async {
+    @Test("fetchPlaylist returns empty playlist on DecodingError")
+    func fetchPlaylistReturnsEmptyOnDecodingError() async {
         let mockDataSource = MockPlaylistDataSource()
         let mockErrorReporter = MockErrorReporter()
         let mockAnalytics = MockStructuredAnalytics()
-        mockDataSource.errorToThrow = AnalyticsDecoderError(description: "Test decoder error")
+        mockDataSource.errorToThrow = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Test decoder error"))
 
         let fetcher = PlaylistFetcher(
             dataSource: mockDataSource,

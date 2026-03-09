@@ -12,6 +12,7 @@
 
 import Foundation
 import Logger
+import struct Logger.Category
 import PostHog
 
 /// Reports errors to both the local log file and PostHog analytics.

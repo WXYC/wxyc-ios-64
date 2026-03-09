@@ -189,9 +189,9 @@ final class MockPlaybackController: PlaybackController {
     var isPlaying: Bool { state.isPlaying }
     var isLoading: Bool { state.isLoading }
 
-    func play(reason: String) throws {}
-    func toggle(reason: String) throws {}
-    func stop() {}
+    func play(reason: PlaybackReason) throws {}
+    func toggle(reason: PlaybackReason) throws {}
+    func stop(reason: PlaybackReason) {}
 
     var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
         AsyncStream { _ in }
