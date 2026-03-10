@@ -1,10 +1,6 @@
 name: Build and Test
 
 on:
-  push:
-    branches: [master, fix/github-actions-ci]
-  pull_request:
-    branches: [master]
   workflow_dispatch:
 
 env:
