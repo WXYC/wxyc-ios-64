@@ -12,8 +12,8 @@ import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
 import XCTest
 
-#if canImport(AnalyticsMacros)
-import AnalyticsMacros
+#if canImport(AnalyticsMacrosPlugin)
+import AnalyticsMacrosPlugin
 
 let testMacros: [String: Macro.Type] = [
     "AnalyticsEvent": AnalyticsEventMacro.self,
