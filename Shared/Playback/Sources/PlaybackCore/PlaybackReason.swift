@@ -49,6 +49,7 @@ extension PlaybackReason {
 
     // Route changes
     public static let routeDisconnected = PlaybackReason(rawValue: "route disconnected")
+    public static let resumeAfterRouteReconnect = PlaybackReason(rawValue: "resume after route reconnect")
 
     // Foreground/background
     public static let foregroundNotPlaying = PlaybackReason(rawValue: "foreground not playing")

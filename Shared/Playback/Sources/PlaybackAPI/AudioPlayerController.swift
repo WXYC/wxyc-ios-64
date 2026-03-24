@@ -95,6 +95,7 @@ public final class AudioPlayerController {
     // MARK: - State
 
     private var wasPlayingBeforeInterruption = false
+    private var wasPlayingBeforeRouteDisconnect = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
     /// Tracks whether the audio session has been activated (to avoid deactivating when never activated)
@@ -208,6 +209,7 @@ public final class AudioPlayerController {
         cpuAggregator?.startSession(context: context)
 
         playbackIntended = true
+        wasPlayingBeforeRouteDisconnect = false
         playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS)
         activateAudioSession()
@@ -236,6 +238,9 @@ public final class AudioPlayerController {
         backoffTimer.reset()
 
         playbackIntended = false
+        if reason != .routeDisconnected {
+            wasPlayingBeforeRouteDisconnect = false
+        }
         player.stop()
         playbackStartTime = nil
         #if os(iOS) || os(tvOS)
@@ -492,9 +497,16 @@ public final class AudioPlayerController {
         switch reason {
         case .oldDeviceUnavailable:
             // Headphones unplugged - stop playback per Apple HIG
+            wasPlayingBeforeRouteDisconnect = isPlaying
             if isPlaying {
                 analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackDuration))
                 stop(reason: .routeDisconnected)
+            }
+
+        case .newDeviceAvailable:
+            // Device reconnected (e.g., AirPod reinserted) - resume if we were playing before disconnect
+            if wasPlayingBeforeRouteDisconnect {
+                play(reason: .resumeAfterRouteReconnect)
             }
 
         default:
