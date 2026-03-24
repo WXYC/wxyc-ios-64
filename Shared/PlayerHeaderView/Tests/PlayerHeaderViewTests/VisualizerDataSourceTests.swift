@@ -138,6 +138,55 @@ struct VisualizerDataSourceTests {
         #expect(dataSource.rmsPerBar.allSatisfy { $0 == 0 })
     }
 
+    // MARK: - Pause/Resume State Clearing
+
+    @Test("startConsuming clears stale visualization data from previous session")
+    @MainActor
+    func startConsumingClearsStaleData() {
+        let dataSource = VisualizerDataSource()
+        dataSource.outputLatency = 0
+        dataSource.fftProcessingEnabled = true
+        dataSource.rmsProcessingEnabled = true
+
+        // Simulate a previous playback session: process buffers and dequeue
+        let buffer = makeAudioBuffer(frameCount: 4096)
+        dataSource.processBuffer(buffer)
+        dataSource.dequeueNextFrame()
+
+        let hasStaleOutput = !dataSource.fftMagnitudes.isEmpty ||
+            dataSource.rmsPerBar.contains(where: { $0 > 0 })
+        #expect(hasStaleOutput, "Precondition: should have output after processing")
+
+        // Now simulate pause → resume: start consuming a new stream
+        let freshStream = AsyncStream<AVAudioPCMBuffer> { $0.finish() }
+        dataSource.startConsuming(stream: freshStream)
+
+        // Stale data from previous session should be cleared
+        #expect(dataSource.fftMagnitudes.isEmpty, "fftMagnitudes should be cleared on startConsuming")
+        #expect(dataSource.rmsPerBar.allSatisfy { $0 == 0 }, "rmsPerBar should be zeroed on startConsuming")
+        dataSource.stopConsuming()
+    }
+
+    @Test("startConsuming clears stale delay buffer frames from previous session")
+    @MainActor
+    func startConsumingClearsDelayBuffer() {
+        let dataSource = VisualizerDataSource()
+        dataSource.outputLatency = 0
+
+        // Enqueue a frame from a previous session
+        let buffer = makeAudioBuffer(frameCount: 4096)
+        dataSource.processBuffer(buffer)
+
+        // Start consuming (simulating resume) — buffer should be cleared
+        let freshStream = AsyncStream<AVAudioPCMBuffer> { $0.finish() }
+        dataSource.startConsuming(stream: freshStream)
+
+        // Dequeue should find nothing (stale frames cleared)
+        dataSource.dequeueNextFrame()
+        #expect(dataSource.fftMagnitudes.isEmpty, "Stale delay buffer frames should be cleared on startConsuming")
+        dataSource.stopConsuming()
+    }
+
     // MARK: - Stream Consumption Lifecycle
 
     @Test("startConsuming sets isActive to true")
@@ -273,13 +322,13 @@ private final class CancellationFlag: Sendable {
     func set() { storage.withLock { $0 = true } }
 }
 
-private func makeAudioBuffer(amplitude: Float = 0.5) -> AVAudioPCMBuffer {
+private func makeAudioBuffer(amplitude: Float = 0.5, frameCount: AVAudioFrameCount = 1024) -> AVAudioPCMBuffer {
     let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
-    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1024)!
-    buffer.frameLength = 1024
+    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+    buffer.frameLength = frameCount
 
     if let channelData = buffer.floatChannelData?[0] {
-        for i in 0..<1024 {
+        for i in 0..<Int(frameCount) {
             channelData[i] = sin(Float(i) * 0.1) * amplitude
         }
     }

@@ -299,7 +299,13 @@ public final class VisualizerDataSource: @unchecked Sendable {
         consumptionTask?.cancel()
         isConsuming = true
         isActive = true
-    
+
+        // Clear stale visualization data from any previous session so the
+        // visualizer starts from silence rather than showing a frozen frame.
+        delayBuffer.clear()
+        fftMagnitudes = []
+        rmsPerBar = Array(repeating: 0, count: VisualizerConstants.barAmount)
+
         let viz = self
         consumptionTask = Task.detached(priority: .userInitiated) {
             for await buffer in stream {
