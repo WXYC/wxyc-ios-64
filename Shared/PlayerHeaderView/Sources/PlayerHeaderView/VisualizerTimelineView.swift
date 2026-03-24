@@ -118,8 +118,15 @@ public struct VisualizerTimelineView: View {
             }
         }
         .onChange(of: visualizer.isActive) { wasActive, nowActive in
-            if wasActive && !nowActive {
-                // Delay buffer fully drained - start falling animation
+            if !wasActive && nowActive {
+                // Resuming — clear stale smoothed values so bars start from zero
+                smoothedValues = Array(repeating: 0, count: VisualizerConstants.barAmount)
+                for barIndex in 0..<VisualizerConstants.barAmount {
+                    barDataCache[barIndex] = BarData(category: String(barIndex), value: 0)
+                }
+                isFalling = false
+            } else if wasActive && !nowActive {
+                // Delay buffer fully drained — start falling animation
                 startFalling()
             }
         }
