@@ -44,7 +44,7 @@
 		9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0E4513BB04D21BB582E4B0 /* MusicShareKit */; };
 		A17CCEC28257E400D4B99AFF /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 8ED7023BC91B73A942BF53C7 /* Core */; };
 		A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 3CABF5AF82DAA2E0D9877A07 /* Core */; };
-		A5D120B4FBE72D5CA761A231 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = E790F2E8AAE12A20CB303818 /* WatchXYC.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A5D120B4FBE72D5CA761A231 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = E790F2E8AAE12A20CB303818 /* WatchXYC.app */; platformFilters = (ios, ); settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 196F9D43ACA1827478F32D5D /* Artwork */; };
 		ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1E128B6E39E90EA57C68C69 /* MusicShareKit */; };
 		B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 3776C2184A667CCB7B4E0B67 /* Artwork */; };
@@ -53,7 +53,7 @@
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
 		7127691612A44A229E553EDE /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 16E246AEBDDC40D3B97316A6 /* Sentry */; };
 		0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3693E141EF47CABE91D00F /* Sentry */; };
-		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; platformFilters = (ios, ); settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
 		SEC00001XCFR0002WDGT0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
@@ -1097,8 +1097,8 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1543,8 +1543,8 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1832,8 +1832,8 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -2162,8 +2162,8 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = TEST_FLIGHT;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2308,8 +2308,8 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

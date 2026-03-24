@@ -13,6 +13,9 @@
 import Foundation
 @preconcurrency import AVFoundation
 import AudioToolbox
+#if targetEnvironment(macCatalyst)
+import CoreAudio
+#endif
 import Core
 
 /// Errors that can occur during MP3 decoding

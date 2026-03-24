@@ -115,6 +115,7 @@ rm -rf "$OUTPUT_DIR/$XCFRAMEWORK_NAME"
 PLATFORMS=(
     "generic/platform=iOS"
     "generic/platform=iOS Simulator"
+    "generic/platform=macOS,variant=Mac Catalyst"
     "generic/platform=watchOS"
     "generic/platform=watchOS Simulator"
 )
@@ -122,6 +123,7 @@ PLATFORMS=(
 PLATFORM_DIRS=(
     "Release-iphoneos"
     "Release-iphonesimulator"
+    "Release-maccatalyst"
     "Release-watchos"
     "Release-watchsimulator"
 )
