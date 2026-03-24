@@ -1,45 +1,12 @@
 project: WXYC.xcodeproj
 schemes:
-  # App targets
+  # App and extension targets (shared packages are indexed as dependencies)
   - WXYC
   - WXYC TV
   - WatchXYC
   - NowPlayingWidget
   - Request Share Extension
-  # Shared packages
-  - Analytics
-  - AppServices
-  - Artwork
-  - Caching
-  - ColorPalette
-  - Core
-  - DebugPanel
-  - Logger
-  - Metadata
-  - MusicShareKit
-  - OpenNSFW
-  - PartyHorn
-  - Playback
-  - PlaybackCore
-  - PlaybackWatchOS
-  - PlayerHeaderView
-  - Playlist
-  - Secrets
-  - Wallpaper
-  - WXUI
-  - WXYCIntents
   # Test schemes
-  - AppServicesTests
-  - ArtworkTests
-  - ColorPaletteTests
-  - CoreTests
-  - MetadataTests
-  - MP3StreamerTests
-  - MusicShareKitTests
-  - PlayerHeaderViewTests
-  - PlaylistTests
-  - RadioPlayerTests
-  - WallpaperTests
   - WXYCTests
   - WXYCUITests
 
