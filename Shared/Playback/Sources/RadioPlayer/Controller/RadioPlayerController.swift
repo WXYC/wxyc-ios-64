@@ -199,6 +199,7 @@ public final class RadioPlayerController: PlaybackController {
         self.state = .loading
         self.playbackTimer = Timer.start()
         self.playbackIntended = true
+        self.wasPlayingBeforeRouteDisconnect = false
 
         #if os(iOS) || os(tvOS)
         do {
@@ -228,6 +229,9 @@ public final class RadioPlayerController: PlaybackController {
         reconnectTask = nil
         backoffTimer.reset()
         self.playbackIntended = false
+        if reason != .routeDisconnected {
+            self.wasPlayingBeforeRouteDisconnect = false
+        }
         self.radioPlayer.stop()
         self.state = .idle
     }
@@ -277,6 +281,7 @@ public final class RadioPlayerController: PlaybackController {
     private let analytics: AnalyticsService
     private var stallStartTime: Date?
     private var wasPlayingBeforeInterruption = false
+    private var wasPlayingBeforeRouteDisconnect = false
     private var playbackIntended = false
 }
 
@@ -354,9 +359,18 @@ private extension RadioPlayerController {
             switch reason {
             case .oldDeviceUnavailable:
                 // Headphones unplugged - stop playback per Apple HIG
+                wasPlayingBeforeRouteDisconnect = isPlaying
                 if isPlaying {
                     analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackTimer.duration()))
                     self.stop(reason: .routeDisconnected)
+                }
+
+            case .newDeviceAvailable:
+                // Device reconnected (e.g., AirPod reinserted) - resume if we were playing before disconnect
+                if wasPlayingBeforeRouteDisconnect {
+                    try? self.play(reason: .resumeAfterRouteReconnect)
+                } else if playbackIntended && !radioPlayer.isPlaying {
+                    radioPlayer.play()
                 }
 
             default:

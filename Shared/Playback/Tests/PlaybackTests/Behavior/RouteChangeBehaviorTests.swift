@@ -57,6 +57,55 @@ struct RouteChangeBehaviorTests {
         #expect(!harness.controller.isPlaying, "Should still not be playing")
     }
 
+    // MARK: - Route Reconnection Resume
+
+    @Test("Reconnecting device after disconnect resumes playback", arguments: PlayerControllerTestCase.allCases)
+    func reconnectingDeviceAfterDisconnectResumesPlayback(testCase: PlayerControllerTestCase) async {
+        let harness = PlayerControllerTestHarness.make(for: testCase)
+
+        // Start playing
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaying, "Should be playing before disconnect")
+
+        // Simulate AirPod removed (oldDeviceUnavailable stops playback)
+        harness.postRouteChange(reason: .oldDeviceUnavailable)
+        await harness.waitForAsync()
+        #expect(!harness.controller.isPlaying, "Should have stopped after disconnect")
+
+        let playCountBefore = harness.playCallCount
+
+        // Simulate AirPod reinserted (newDeviceAvailable should resume)
+        harness.postRouteChange(reason: .newDeviceAvailable)
+        await harness.waitForAsync()
+
+        #expect(harness.playCallCount > playCountBefore,
+               "Reconnecting device should resume playback after route disconnect")
+    }
+
+    @Test("Reconnecting device does not resume if user manually stopped", arguments: PlayerControllerTestCase.allCases)
+    func reconnectingDeviceDoesNotResumeIfUserStopped(testCase: PlayerControllerTestCase) async {
+        let harness = PlayerControllerTestHarness.make(for: testCase)
+
+        // Start playing, then user stops manually
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+        harness.controller.stop()
+        harness.simulatePlaybackStopped()
+        await harness.waitForAsync()
+
+        let playCountBefore = harness.playCallCount
+
+        // Simulate new device connected - should NOT resume since user stopped intentionally
+        harness.postRouteChange(reason: .newDeviceAvailable)
+        await harness.waitForAsync()
+
+        #expect(harness.playCallCount == playCountBefore,
+               "Should not resume playback when user manually stopped")
+    }
+
     // MARK: - New Device Available
 
     @Test("New device available while playing continues playback", arguments: PlayerControllerTestCase.allCases)
