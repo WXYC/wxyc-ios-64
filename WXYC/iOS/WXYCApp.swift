@@ -112,7 +112,6 @@ struct WXYCApp: App {
             ) {
                 ZStack {
                     RootTabView()
-                        .frame(maxWidth: 440)
                         .environment(appState)
                         .environment(\.playlistService, appState.playlistService)
                         .environment(\.artworkService, appState.artworkService)
@@ -202,8 +201,8 @@ struct WXYCApp: App {
                 scheduleBackgroundRefresh()
             }
         }
-        #if os(macOS)
-        .defaultSize(width: 440, height: 800)
+        #if targetEnvironment(macCatalyst)
+        .windowResizability(.contentMinSize)
         #endif
         .commands {
                 CommandMenu("Playback") {
