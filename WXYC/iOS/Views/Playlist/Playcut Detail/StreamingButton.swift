@@ -16,25 +16,34 @@ struct StreamingButton: View {
     let url: URL?
     let isLoading: Bool
     var onTap: ((StreamingService) -> Void)?
-    
+
+    @Environment(\.openURL) private var openURL
+    #if canImport(SafariServices)
     @State private var showingSafari = false
-    
+    #endif
+
     var body: some View {
         Group {
             if let url = url {
                 Button {
                     onTap?(service)
+                    #if canImport(SafariServices)
                     if service.opensInBrowser {
                         showingSafari = true
                     } else {
-                        UIApplication.shared.open(url)
+                        openURL(url)
                     }
+                    #else
+                    openURL(url)
+                    #endif
                 } label: {
                     buttonContent
                 }
+                #if canImport(SafariServices)
                 .sheet(isPresented: $showingSafari) {
                     SafariView(url: url)
                 }
+                #endif
             } else {
                 buttonContent
                     .opacity(isLoading ? 0.5 : 0.3)

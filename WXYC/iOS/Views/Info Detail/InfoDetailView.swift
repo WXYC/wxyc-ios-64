@@ -23,6 +23,7 @@ struct InfoDetailView: View {
     @State private var attachLogsToEmail = false
     @State private var requestText = ""
     @Environment(Singletonia.self) private var appState
+    @Environment(\.openURL) private var openURL
     
     var body: some View {
         VStack(alignment: .center) {
@@ -63,7 +64,7 @@ struct InfoDetailView: View {
                     icon: "phone.fill",
                     color: .green
                 ) {
-                    UIApplication.shared.open(RadioStation.WXYC.requestLine)
+                    openURL(RadioStation.WXYC.requestLine)
                 }
                 
                 ActionButton(
@@ -71,7 +72,7 @@ struct InfoDetailView: View {
                     icon: "tshirt.fill",
                     color: .purple
                 ) {
-                    UIApplication.shared.open(RadioStation.WXYC.merchURL)
+                    openURL(RadioStation.WXYC.merchURL)
                 }
             }
             

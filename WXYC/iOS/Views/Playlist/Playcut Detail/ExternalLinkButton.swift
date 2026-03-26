@@ -14,11 +14,13 @@ struct ExternalLinkButton: View {
     let imageName: String
     let url: URL
     var onTap: ((String) -> Void)?
-    
+
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
         Button {
             onTap?(title)
-            UIApplication.shared.open(url)
+            openURL(url)
         } label: {
             HStack(spacing: 12) {
                 Image(imageName, bundle: .playlist)
