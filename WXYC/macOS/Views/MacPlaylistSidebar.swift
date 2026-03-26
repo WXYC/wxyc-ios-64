@@ -16,8 +16,10 @@ import SwiftUI
 import Wallpaper
 import WXUI
 
-struct MacPlaycutSelection: Equatable {
+struct MacPlaycutSelection: Identifiable, Equatable {
     let playcut: Playcut
+
+    var id: UInt64 { playcut.id }
 
     static func == (lhs: MacPlaycutSelection, rhs: MacPlaycutSelection) -> Bool {
         lhs.playcut.id == rhs.playcut.id

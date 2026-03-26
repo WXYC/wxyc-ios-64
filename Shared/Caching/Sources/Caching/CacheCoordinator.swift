@@ -60,10 +60,13 @@ public final actor CacheCoordinator {
 
     /// Cache coordinator for playlist data.
     ///
-    /// Uses ``MigratingDiskCache`` to migrate data from the app's private caches
-    /// directory to the shared App Group container, enabling access from widgets
-    /// and extensions.
+    /// On iOS, uses ``MigratingDiskCache`` to store in the shared App Group container
+    /// for widget/extension access. On macOS, uses a private cache (no widget to share with).
+    #if os(macOS)
+    public static let Playlist = CacheCoordinator(cache: DiskCache())
+    #else
     public static let Playlist = CacheCoordinator(cache: MigratingDiskCache())
+    #endif
 
     /// Cache coordinator for playcut metadata.
     ///

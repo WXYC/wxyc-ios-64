@@ -37,8 +37,12 @@ public extension UserDefaults {
     /// Marked `nonisolated(unsafe)` because `UserDefaults` is thread-safe
     /// and this is a static constant initialized once.
     ///
-    /// - Important: The force unwrap is safe because the App Group is configured
-    ///   in the app's entitlements. If the suite name is invalid, the app would
-    ///   fail at build/signing time, not runtime.
+    /// - Important: On iOS, the force unwrap is safe because the App Group is configured
+    ///   in the app's entitlements. On macOS, uses standard UserDefaults since there is
+    ///   no widget or extension to share data with.
+    #if os(macOS)
+    nonisolated(unsafe) static let wxyc = UserDefaults.standard
+    #else
     nonisolated(unsafe) static let wxyc = UserDefaults(suiteName: "group.wxyc.iphone")!
+    #endif
 }
