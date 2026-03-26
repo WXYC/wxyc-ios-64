@@ -201,9 +201,6 @@ struct WXYCApp: App {
                 scheduleBackgroundRefresh()
             }
         }
-        #if targetEnvironment(macCatalyst)
-        .windowResizability(.contentMinSize)
-        #endif
         .commands {
                 CommandMenu("Playback") {
                     Button("Play/Pause") {

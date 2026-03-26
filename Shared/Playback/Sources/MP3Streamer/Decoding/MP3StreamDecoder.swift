@@ -13,7 +13,7 @@
 import Foundation
 @preconcurrency import AVFoundation
 import AudioToolbox
-#if targetEnvironment(macCatalyst)
+#if os(macOS)
 import CoreAudio
 #endif
 import Core
