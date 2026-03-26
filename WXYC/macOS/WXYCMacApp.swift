@@ -138,9 +138,12 @@ struct WXYCMacApp: App {
             options.dsn = Secrets.sentryDsn
             options.enableAutoSessionTracking = true
             options.tracesSampleRate = 0.1
-            options.enableNetworkTracking = true
             options.enableFileIOTracing = true
             options.enableSwizzling = true
+            // Disable network features that use SCNetworkReachability,
+            // which triggers the "find devices on local networks" prompt.
+            options.enableNetworkTracking = false
+            options.enableNetworkBreadcrumbs = false
             #if DEBUG
             options.debug = true
             #endif
