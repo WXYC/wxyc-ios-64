@@ -41,6 +41,15 @@ public extension CGImage {
         UIImage(cgImage: self)
     }
 }
+#elseif canImport(AppKit)
+import AppKit
+
+public extension CGImage {
+    /// Converts the CGImage to an NSImage.
+    func toNSImage() -> NSImage {
+        NSImage(cgImage: self, size: NSSize(width: width, height: height))
+    }
+}
 #endif
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkService`

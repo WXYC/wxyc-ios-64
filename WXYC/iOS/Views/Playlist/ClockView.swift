@@ -10,14 +10,20 @@
 //
 
 import SwiftUI
+import CoreGraphics
+
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 /// Displays a clock glyph inline with formatted time text.
 ///
-/// The clock face uses an even-odd compound path so the hands are transparent
-/// cutouts through the circle. The image is rendered as a template so it
-/// inherits the surrounding `foregroundStyle`. Size tracks Dynamic Type via
-/// `@ScaledMetric`.
+/// The clock face uses a transparency layer with `.clear` blend mode so the
+/// hands are transparent cutouts through the circle. The image is rendered as
+/// a template so it inherits the surrounding `foregroundStyle`. Size tracks
+/// Dynamic Type via `@ScaledMetric`.
 struct ClockView: View {
     /// Timestamp in milliseconds since epoch.
     let timeCreated: UInt64
@@ -54,39 +60,61 @@ struct ClockView: View {
     }
 
     var body: some View {
-        Text("\(Image(uiImage: clockImage)) \(formattedTime)")
+        Text("\(clockSwiftUIImage) \(formattedTime)")
     }
 
-    // MARK: - Clock Image Rendering
+    // MARK: - Platform Image Wrapping
 
-    /// Renders the clock face as a template image. A white circle is drawn first,
+    private var clockSwiftUIImage: Image {
+        let cgImage = renderClockCGImage(size: clockSize)
+        #if canImport(UIKit)
+        let platformImage = UIImage(cgImage: cgImage).withRenderingMode(.alwaysTemplate)
+        return Image(uiImage: platformImage)
+        #elseif canImport(AppKit)
+        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: clockSize, height: clockSize))
+        nsImage.isTemplate = true
+        return Image(nsImage: nsImage)
+        #endif
+    }
+
+    // MARK: - Platform-Agnostic Clock Rendering
+
+    /// Renders the clock face as a CGImage. A white circle is drawn first,
     /// then the hand shapes are erased with `.clear` blend mode inside a
     /// transparency layer, producing see-through cutouts.
-    private var clockImage: UIImage {
-        let size = clockSize
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+    private func renderClockCGImage(size: CGFloat) -> CGImage {
+        let intSize = Int(ceil(size * 3))
+        let scale = CGFloat(intSize) / size
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
 
-        let image = renderer.image { ctx in
-            let gc = ctx.cgContext
-            let center = CGPoint(x: size / 2, y: size / 2)
-            let radius = size / 2
-            let handWidth = max(radius * 0.35, 1.5)
+        let gc = CGContext(
+            data: nil,
+            width: intSize,
+            height: intSize,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
 
-            gc.beginTransparencyLayer(auxiliaryInfo: nil)
+        gc.scaleBy(x: scale, y: scale)
 
-            // Solid circle
-            gc.setFillColor(UIColor.white.cgColor)
-            gc.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
+        let center = CGPoint(x: size / 2, y: size / 2)
+        let radius = size / 2
+        let handWidth = max(radius * 0.35, 1.5)
 
-            // Punch out hands
-            gc.setBlendMode(.clear)
-            fillHand(in: gc, center: center, length: radius * 0.5, width: handWidth, angle: hourAngle)
-            fillHand(in: gc, center: center, length: radius * 0.7, width: handWidth, angle: minuteAngle)
+        gc.beginTransparencyLayer(auxiliaryInfo: nil)
 
-            gc.endTransparencyLayer()
-        }
+        gc.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        gc.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
 
-        return image.withRenderingMode(.alwaysTemplate)
+        gc.setBlendMode(.clear)
+        fillHand(in: gc, center: center, length: radius * 0.5, width: handWidth, angle: hourAngle)
+        fillHand(in: gc, center: center, length: radius * 0.7, width: handWidth, angle: minuteAngle)
+
+        gc.endTransparencyLayer()
+
+        return gc.makeImage()!
     }
 
     /// Fills a clock hand shape (rounded rectangle) at the given angle.
