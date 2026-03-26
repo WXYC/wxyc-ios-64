@@ -137,14 +137,14 @@ struct PlaycutRowView: View {
                         .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
                         
                         // Song info
-                        VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(playcut.songTitle)
                                 .fontWeight(.bold)
                                 .foregroundStyle(.white)
                             Text(playcut.artistName)
                                 .foregroundStyle(.white)
-                            ClockView(timeCreated: playcut.timeCreated, size: 24)
-                                .padding(.top, 4)
+                            ClockView(timeCreated: playcut.timeCreated)
+                                .foregroundStyle(.white.opacity(0.7))
                         }
                         .padding(0)
                         
