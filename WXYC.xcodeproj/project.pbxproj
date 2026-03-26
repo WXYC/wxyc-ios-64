@@ -61,6 +61,22 @@
 		SEC00001XCFR0004WTCH0001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
 		WXYCINTENTS00000001 /* WXYCIntents in Frameworks */ = {isa = PBXBuildFile; productRef = WXYCINTENTS00000005 /* WXYCIntents */; };
 		WXYCINTENTS00000002 /* WXYCIntents in Frameworks */ = {isa = PBXBuildFile; productRef = WXYCINTENTS00000006 /* WXYCIntents */; };
+		MAC00000D0BFANALYTICS01 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = MAC00001D0PDANALYTICS01 /* Analytics */; };
+		MAC00000E0BFAPPSERVICES1 /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = MAC00001E0PDAPPSERVICES1 /* AppServices */; };
+		MAC00000F0BFARTWORK00001 /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = MAC00001F0PDARTWORK00001 /* Artwork */; };
+		MAC0000100BFCACHING00001 /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000200PDCACHING00001 /* Caching */; };
+		MAC0000110BFCOLORPALET01 /* ColorPalette in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000210PDCOLORPALET01 /* ColorPalette */; };
+		MAC0000120BFCORE00000001 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000220PDCORE00000001 /* Core */; };
+		MAC0000130BFLOGGER000001 /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000230PDLOGGER000001 /* Logger */; };
+		MAC0000140BFMETADATA0001 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000240PDMETADATA0001 /* Metadata */; };
+		MAC0000150BFPLAYBACK0001 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000250PDPLAYBACK0001 /* Playback */; };
+		MAC0000160BFPLAYERHEAD01 /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000260PDPLAYERHEAD01 /* PlayerHeaderView */; };
+		MAC0000170BFPLAYLIST0001 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000270PDPLAYLIST0001 /* Playlist */; };
+		MAC0000180BFSECRETS00001 /* Secrets.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */; };
+		MAC0000190BFWALLPAPER001 /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000280PDWALLPAPER001 /* Wallpaper */; };
+		MAC00001A0BFWXUI00000001 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = MAC0000290PDWXUI00000001 /* WXUI */; };
+		MAC00001B0BFPOSTHOG0001 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = MAC00002A0PDPOSTHOG0001 /* PostHog */; };
+		MAC00001C0BFSENTRY000001 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = MAC00002B0PDSENTRY000001 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -160,6 +176,7 @@
 		INTENTSPKGFILEREF000001 /* Intents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Intents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
 		SEC00001XCFR0000FILEREF1 /* Secrets.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Secrets.xcframework; path = Shared/Secrets/Secrets.xcframework; sourceTree = SOURCE_ROOT; };
 		WALLPAPER0FILEREF0000001 /* Wallpaper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Wallpaper; path = Shared/Wallpaper; sourceTree = SOURCE_ROOT; };
+		MAC0000002PRODUCTREF0001 /* WXYC Mac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC Mac.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -262,6 +279,14 @@
 				"WXYC TV/ContentView.swift",
 				"WXYC TV/WXYC-TV-Info.plist",
 				"WXYC TV/WXYCTVApp.swift",
+				macOS/Info.plist,
+				macOS/MacSingletonia.swift,
+				macOS/Views/MacPlaycutDetailView.swift,
+				macOS/Views/MacPlaylistRowView.swift,
+				macOS/Views/MacPlaylistSidebar.swift,
+				macOS/Views/MacRootView.swift,
+				macOS/WXYC-macOS.entitlements,
+				macOS/WXYCMacApp.swift,
 			);
 			target = CB30AABA6C3A478076794CBD /* WXYC */;
 		};
@@ -290,6 +315,25 @@
 			);
 			target = 9BCD7F5ECE0107BFED8218E5 /* WXYC TV */;
 		};
+		MAC00002C0EXCEPTSET00001 /* Exceptions for "WXYC" folder in "WXYC Mac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				iOS/Assets/AppIcon.icon,
+				iOS/Assets/Images.xcassets,
+				iOS/Assets/OpenNSFW.mlmodelc,
+				iOS/Assets/Record.svg,
+				iOS/CompositeErrorReporter.swift,
+				iOS/SentryBreadcrumbDestination.swift,
+				iOS/Views/Playlist/ClockView.swift,
+				macOS/MacSingletonia.swift,
+				macOS/Views/MacPlaycutDetailView.swift,
+				macOS/Views/MacPlaylistRowView.swift,
+				macOS/Views/MacPlaylistSidebar.swift,
+				macOS/Views/MacRootView.swift,
+				macOS/WXYCMacApp.swift,
+			);
+			target = MAC0000001NATIVETARGET01 /* WXYC Mac */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -303,6 +347,7 @@
 				23A10B252EF5F166001EF137 /* Exceptions for "WXYC" folder in "WXYCUITests" target */,
 				23FB1F6D2EEA847F0064E6FD /* Exceptions for "WXYC" folder in "WatchXYC" target */,
 				236B51F22EFC656A0058AD01 /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */,
+				MAC00002C0EXCEPTSET00001 /* Exceptions for "WXYC" folder in "WXYC Mac" target */,
 			);
 			path = WXYC;
 			sourceTree = "<group>";
@@ -386,6 +431,27 @@
 				9A3DDC2D5E4C3B61FAF462E1 /* OpenNSFW in Frameworks */,
 			);
 		};
+		MAC0000004FRMWRKPHASE01 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				MAC00000D0BFANALYTICS01 /* Analytics in Frameworks */,
+				MAC00000E0BFAPPSERVICES1 /* AppServices in Frameworks */,
+				MAC00000F0BFARTWORK00001 /* Artwork in Frameworks */,
+				MAC0000100BFCACHING00001 /* Caching in Frameworks */,
+				MAC0000110BFCOLORPALET01 /* ColorPalette in Frameworks */,
+				MAC0000120BFCORE00000001 /* Core in Frameworks */,
+				MAC0000130BFLOGGER000001 /* Logger in Frameworks */,
+				MAC0000140BFMETADATA0001 /* Metadata in Frameworks */,
+				MAC0000150BFPLAYBACK0001 /* Playback in Frameworks */,
+				MAC0000160BFPLAYERHEAD01 /* PlayerHeaderView in Frameworks */,
+				MAC0000170BFPLAYLIST0001 /* Playlist in Frameworks */,
+				MAC0000180BFSECRETS00001 /* Secrets.xcframework in Frameworks */,
+				MAC0000190BFWALLPAPER001 /* Wallpaper in Frameworks */,
+				MAC00001A0BFWXUI00000001 /* WXUI in Frameworks */,
+				MAC00001B0BFPOSTHOG0001 /* PostHog in Frameworks */,
+				MAC00001C0BFSENTRY000001 /* Sentry in Frameworks */,
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -409,6 +475,7 @@
 				09FC6D530E7D389518140201 /* WXYCTests.xctest */,
 				8BACFC9947E84949B746EE60 /* WXYCUITests.xctest */,
 				236B51CE2EFC651A0058AD01 /* NowPlayingWidget.appex */,
+				MAC0000002PRODUCTREF0001 /* WXYC Mac.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -644,6 +711,41 @@
 			productReference = 87ED2724FB87B5D288BBFFFB /* WXYC.app */;
 			productType = "com.apple.product-type.application";
 		};
+		MAC0000001NATIVETARGET01 /* WXYC Mac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = MAC0000007CONFIGLIST0001 /* Build configuration list for PBXNativeTarget "WXYC Mac" */;
+			buildPhases = (
+				MAC0000006SECRETSPHASE1 /* Ensure Secrets XCFramework */,
+				MAC0000003SOURCESPHASE01 /* Sources */,
+				MAC0000004FRMWRKPHASE01 /* Frameworks */,
+				MAC0000005RESOURCEPHASE1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "WXYC Mac";
+			packageProductDependencies = (
+				MAC00001D0PDANALYTICS01 /* Analytics */,
+				MAC00001E0PDAPPSERVICES1 /* AppServices */,
+				MAC00001F0PDARTWORK00001 /* Artwork */,
+				MAC0000200PDCACHING00001 /* Caching */,
+				MAC0000210PDCOLORPALET01 /* ColorPalette */,
+				MAC0000220PDCORE00000001 /* Core */,
+				MAC0000230PDLOGGER000001 /* Logger */,
+				MAC0000240PDMETADATA0001 /* Metadata */,
+				MAC0000250PDPLAYBACK0001 /* Playback */,
+				MAC0000260PDPLAYERHEAD01 /* PlayerHeaderView */,
+				MAC0000270PDPLAYLIST0001 /* Playlist */,
+				MAC0000280PDWALLPAPER001 /* Wallpaper */,
+				MAC0000290PDWXUI00000001 /* WXUI */,
+				MAC00002A0PDPOSTHOG0001 /* PostHog */,
+				MAC00002B0PDSENTRY000001 /* Sentry */,
+			);
+			productName = "WXYC Mac";
+			productReference = MAC0000002PRODUCTREF0001 /* WXYC Mac.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -719,6 +821,7 @@
 				6DEE556479EB425A885731F3 /* WXYCUITests */,
 				7D10437EC0EA6CBA5D9C60D0 /* WatchXYC */,
 				236B51CD2EFC651A0058AD01 /* NowPlayingWidget */,
+				MAC0000001NATIVETARGET01 /* WXYC Mac */,
 			);
 		};
 /* End PBXProject section */
@@ -745,6 +848,11 @@
 			);
 		};
 		B60696590E1538E245DAA075 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		MAC0000005RESOURCEPHASE1 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -815,6 +923,19 @@
 			shellPath = /bin/sh;
 			shellScript = "if which sentry-cli >/dev/null; then\n  export SENTRY_ORG=wxyc\n  export SENTRY_PROJECT=ios\n  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\n  if [ ! $? -eq 0 ]; then\n    echo \"warning: sentry-cli - $ERROR\"\n  fi\nelse\n  echo \"warning: sentry-cli not installed, skipping debug symbol upload\"\nfi\n";
 		};
+		MAC0000006SECRETSPHASE1 /* Ensure Secrets XCFramework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			inputFileListPaths = (
+				"$(SRCROOT)/Shared/Secrets/Scripts/ensure-xcframework.sh",
+			);
+			name = "Ensure Secrets XCFramework";
+			shellPath = /bin/sh;
+			shellScript = (
+				"\"${SRCROOT}/Shared/Secrets/Scripts/ensure-xcframework.sh\"",
+				"",
+			);
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -849,6 +970,11 @@
 			);
 		};
 		DC2337F574A1DD668183BDF4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		MAC0000003SOURCESPHASE01 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
 			);
@@ -2340,6 +2466,235 @@
 			};
 			name = Release;
 		};
+		MAC0000008CFGDEBUG00001 /* Debug configuration for PBXNativeTarget "WXYC Mac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					"**/PostHogExample*/*.storyboard",
+					"**/PostHogObjCExample/*.storyboard",
+					"**/PostHogExampleStoryboard/*.storyboard",
+					"**/PostHogExampleAutocapture/*/*.storyboard",
+					"**/PostHogExampleExternalSDK/**",
+					"**/PostHogExample*/**",
+					"**/PostHogExampleExternalSDK/Package.swift",
+					"**/.build/**",
+					"**/.build/*",
+				);
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WXYC/macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "WXYC Mac";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.macapp;
+				PRODUCT_NAME = "WXYC Mac";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				CODE_SIGN_ENTITLEMENTS = WXYC/macOS/WXYC-macOS.entitlements;
+			};
+			name = Debug;
+		};
+		MAC0000009CFGDEBUGTF001 /* Debug TestFlight configuration for PBXNativeTarget "WXYC Mac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					"**/PostHogExample*/*.storyboard",
+					"**/PostHogObjCExample/*.storyboard",
+					"**/PostHogExampleStoryboard/*.storyboard",
+					"**/PostHogExampleAutocapture/*/*.storyboard",
+					"**/PostHogExampleExternalSDK/**",
+					"**/PostHogExample*/**",
+					"**/PostHogExampleExternalSDK/Package.swift",
+					"**/.build/**",
+					"**/.build/*",
+				);
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WXYC/macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "WXYC Mac";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.macapp;
+				PRODUCT_NAME = "WXYC Mac";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				CODE_SIGN_ENTITLEMENTS = WXYC/macOS/WXYC-macOS.entitlements;
+			};
+			name = "Debug TestFlight";
+		};
+		MAC000000ACFGRELEASE0001 /* Release configuration for PBXNativeTarget "WXYC Mac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					"**/PostHogExample*/*.storyboard",
+					"**/PostHogObjCExample/*.storyboard",
+					"**/PostHogExampleStoryboard/*.storyboard",
+					"**/PostHogExampleAutocapture/*/*.storyboard",
+					"**/PostHogExampleExternalSDK/**",
+					"**/PostHogExample*/**",
+					"**/PostHogExampleExternalSDK/Package.swift",
+					"**/.build/**",
+					"**/.build/*",
+				);
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WXYC/macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "WXYC Mac";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.macapp;
+				PRODUCT_NAME = "WXYC Mac";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				CODE_SIGN_ENTITLEMENTS = WXYC/macOS/WXYC-macOS.entitlements;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			};
+			name = Release;
+		};
+		MAC000000BCFGRELACTARCH1 /* Release (Active Arch) configuration for PBXNativeTarget "WXYC Mac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					"**/PostHogExample*/*.storyboard",
+					"**/PostHogObjCExample/*.storyboard",
+					"**/PostHogExampleStoryboard/*.storyboard",
+					"**/PostHogExampleAutocapture/*/*.storyboard",
+					"**/PostHogExampleExternalSDK/**",
+					"**/PostHogExample*/**",
+					"**/PostHogExampleExternalSDK/Package.swift",
+					"**/.build/**",
+					"**/.build/*",
+				);
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WXYC/macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "WXYC Mac";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.macapp;
+				PRODUCT_NAME = "WXYC Mac";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				CODE_SIGN_ENTITLEMENTS = WXYC/macOS/WXYC-macOS.entitlements;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			};
+			name = "Release (Active Arch)";
+		};
+		MAC000000CCFGTESTFLIGHT1 /* TestFlight configuration for PBXNativeTarget "WXYC Mac" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 92V374HC38;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				EXCLUDED_SOURCE_FILE_NAMES = (
+					"**/PostHogExample*/*.storyboard",
+					"**/PostHogObjCExample/*.storyboard",
+					"**/PostHogExampleStoryboard/*.storyboard",
+					"**/PostHogExampleAutocapture/*/*.storyboard",
+					"**/PostHogExampleExternalSDK/**",
+					"**/PostHogExample*/**",
+					"**/PostHogExampleExternalSDK/Package.swift",
+					"**/.build/**",
+					"**/.build/*",
+				);
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/WXYC/Shared",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WXYC/macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "WXYC Mac";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.wxyc.macapp;
+				PRODUCT_NAME = "WXYC Mac";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				CODE_SIGN_ENTITLEMENTS = WXYC/macOS/WXYC-macOS.entitlements;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = TEST_FLIGHT;
+			};
+			name = TestFlight;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -2428,6 +2783,17 @@
 				21A208C397EAF6069A2100DD /* Release configuration for PBXNativeTarget "WXYC TV" */,
 				237AD1FD2EFB330B00D423EC /* Release (Active Arch) configuration for PBXNativeTarget "WXYC TV" */,
 				D7DD3314155D35B2040C7BB3 /* TestFlight configuration for PBXNativeTarget "WXYC TV" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		MAC0000007CONFIGLIST0001 /* Build configuration list for PBXNativeTarget "WXYC Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				MAC0000008CFGDEBUG00001 /* Debug configuration for PBXNativeTarget "WXYC Mac" */,
+				MAC0000009CFGDEBUGTF001 /* Debug TestFlight configuration for PBXNativeTarget "WXYC Mac" */,
+				MAC000000ACFGRELEASE0001 /* Release configuration for PBXNativeTarget "WXYC Mac" */,
+				MAC000000BCFGRELACTARCH1 /* Release (Active Arch) configuration for PBXNativeTarget "WXYC Mac" */,
+				MAC000000CCFGTESTFLIGHT1 /* TestFlight configuration for PBXNativeTarget "WXYC Mac" */,
 			);
 			defaultConfigurationName = Release;
 		};
@@ -2775,6 +3141,69 @@
 			productName = Sentry;
 		};
 		8A3693E141EF47CABE91D00F /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+		MAC00001D0PDANALYTICS01 /* Analytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Analytics;
+		};
+		MAC00001E0PDAPPSERVICES1 /* AppServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AppServices;
+		};
+		MAC00001F0PDARTWORK00001 /* Artwork */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Artwork;
+		};
+		MAC0000200PDCACHING00001 /* Caching */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Caching;
+		};
+		MAC0000210PDCOLORPALET01 /* ColorPalette */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ColorPalette;
+		};
+		MAC0000220PDCORE00000001 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Core;
+		};
+		MAC0000230PDLOGGER000001 /* Logger */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Logger;
+		};
+		MAC0000240PDMETADATA0001 /* Metadata */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Metadata;
+		};
+		MAC0000250PDPLAYBACK0001 /* Playback */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Playback;
+		};
+		MAC0000260PDPLAYERHEAD01 /* PlayerHeaderView */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlayerHeaderView;
+		};
+		MAC0000270PDPLAYLIST0001 /* Playlist */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Playlist;
+		};
+		MAC0000280PDWALLPAPER001 /* Wallpaper */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */;
+			productName = Wallpaper;
+		};
+		MAC0000290PDWXUI00000001 /* WXUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WXUI;
+		};
+		MAC00002A0PDPOSTHOG0001 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+		MAC00002B0PDSENTRY000001 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;

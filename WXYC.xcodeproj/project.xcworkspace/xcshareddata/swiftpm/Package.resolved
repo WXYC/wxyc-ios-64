@@ -1,5 +1,5 @@
 {
-  "originHash" : "ba9c61283065de7a4206b94fcb009c4c1760e5d17bb7a0603af3d40381d967e4",
+  "originHash" : "5cdb7399095276d003e7e663c5c7f3eaea69a89e0e5be2db76fcb4c60e5db55c",
   "pins" : [
     {
       "identity" : "lerpable",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "a2a6f2fd4b0ecd8ea7540fc92514d1728d4c65f6",
         "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "obfuscatemacro",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/p-x9/ObfuscateMacro.git",
+      "state" : {
+        "revision" : "933cf203cfea5fb79b11363d2928bfa54284478e",
+        "version" : "0.14.0"
       }
     },
     {
@@ -26,6 +35,42 @@
       "state" : {
         "revision" : "16cd512711375fa73f25ae5e373f596bdf4251ae",
         "version" : "8.58.0"
+      }
+    },
+    {
+      "identity" : "swift-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-algorithms",
+      "state" : {
+        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
+        "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-asn1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-asn1.git",
+      "state" : {
+        "revision" : "9f542610331815e29cc3821d3b6f488db8715517",
+        "version" : "1.6.0"
+      }
+    },
+    {
+      "identity" : "swift-crypto",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-crypto.git",
+      "state" : {
+        "revision" : "fa308c07a6fa04a727212d793e761460e41049c3",
+        "version" : "4.3.0"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics.git",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
       }
     },
     {

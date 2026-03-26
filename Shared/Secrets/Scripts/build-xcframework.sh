@@ -123,7 +123,7 @@ PLATFORMS=(
 PLATFORM_DIRS=(
     "Release-iphoneos"
     "Release-iphonesimulator"
-    "Release-macosx"
+    "Release"
     "Release-watchos"
     "Release-watchsimulator"
 )
