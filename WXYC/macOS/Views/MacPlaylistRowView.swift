@@ -14,6 +14,7 @@ import Artwork
 import Core
 import Playlist
 import SwiftUI
+import Wallpaper
 
 struct MacPlaylistRowView: View {
     let playcut: Playcut
@@ -23,42 +24,44 @@ struct MacPlaylistRowView: View {
     @Environment(\.artworkService) private var artworkService
 
     var body: some View {
-        HStack(spacing: 10) {
-            // Thumbnail
-            Group {
-                if let artwork {
-                    Image(nsImage: artwork)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Rectangle()
-                        .fill(.white.opacity(0.1))
+        ZStack {
+            BackgroundLayer(cornerRadius: 12)
+
+            HStack(spacing: 10) {
+                // Thumbnail
+                Group {
+                    if let artwork {
+                        Image(nsImage: artwork)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Rectangle()
+                            .fill(.white.opacity(0.1))
+                    }
                 }
-            }
-            .frame(width: 40, height: 40)
-            .clipShape(.rect(cornerRadius: 4))
+                .frame(width: 40, height: 40)
+                .clipShape(.rect(cornerRadius: 4))
 
-            // Track info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(playcut.songTitle)
-                    .bold()
-                    .lineLimit(1)
-                Text(playcut.artistName)
-                    .lineLimit(1)
-                    .foregroundStyle(.secondary)
-                ClockView(timeCreated: playcut.timeCreated)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+                // Track info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(playcut.songTitle)
+                        .bold()
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(playcut.artistName)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    ClockView(timeCreated: playcut.timeCreated)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
 
-            Spacer()
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? .white.opacity(0.15) : .clear)
-        )
+        .clipShape(.rect(cornerRadius: 12))
         .contentShape(.rect)
         .task {
             await loadArtwork()
