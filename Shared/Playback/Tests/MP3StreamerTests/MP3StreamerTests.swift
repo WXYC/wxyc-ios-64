@@ -549,9 +549,10 @@ struct MP3StreamerStuckStateRecoveryTests {
         // Now the streamer is reconnecting (or has reconnected). Record connect count.
         let connectCountBefore = mockHTTP.connectCallCount
 
-        // Call play() again. This triggers stop() → disconnect() → .disconnected event.
-        // After stop() returns, play() sets state to .connecting and calls connect().
-        // The stale .disconnected event arrives after state is .connecting.
+        // Call play() again. This sets state to .connecting immediately, then
+        // asynchronously runs stop() → disconnect() → connect() inside a Task.
+        // The stale .disconnected event from stop() arrives when state is .connecting,
+        // which the guard in handleHTTPEvent correctly ignores.
         // With the bug: that event passes guard (state != .idle) and calls
         // attemptReconnect(), adding an extra connect.
         streamer.play()
