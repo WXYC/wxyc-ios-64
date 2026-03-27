@@ -217,20 +217,32 @@ public final class MP3Streamer {
         }
 
         // If in a stuck state (connecting, buffering, stalled, reconnecting, error),
-        // tear down the current attempt and start fresh
-        if streamingState != .idle {
+        // perform a non-blocking teardown before reconnecting. The teardown is moved
+        // into the async Task to avoid blocking the main thread — previously stop()
+        // was called synchronously here, which could deadlock when the decoder queue
+        // was busy with a long conversion loop (0x8BADF00D watchdog kill).
+        let needsTeardown = streamingState != .idle
+        if needsTeardown {
             Log(.info, category: .playback, "Resetting from \(streamingState) to reconnect")
-            stop()
+            // Cancel any pending reconnect task eagerly to prevent it from racing
+            // with the new connection attempt. This is safe and non-blocking.
+            reconnectTask?.cancel()
+            reconnectTask = nil
         }
 
         // Connect and start streaming
         analytics?.capture(PlaybackStartedEvent(reason: "mp3Streamer play"))
         playbackTimer = Timer.start()
         streamingState = .connecting
-        backoffTimer.reset()
 
         Task { @MainActor [weak self] in
             guard let self else { return }
+            if needsTeardown {
+                stop()
+                // Restore connecting state after stop() sets it to .idle
+                streamingState = .connecting
+                backoffTimer.reset()
+            }
             do {
                 try await httpClient.connect()
                 // State will transition to buffering as data arrives
