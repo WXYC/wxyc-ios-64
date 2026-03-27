@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Logger
 import Metal
 
 /// Manages frame caching and interpolation for thermal throttling.
@@ -169,6 +170,9 @@ struct FrameInterpolator {
 
         previousFrame = device.makeTexture(descriptor: descriptor)
         currentFrame = device.makeTexture(descriptor: descriptor)
+        if previousFrame == nil || currentFrame == nil {
+            Log(.error, category: .wallpaper, "FrameInterpolator: Failed to allocate interpolation textures (\(width)x\(height)) — previousFrame=\(previousFrame != nil), currentFrame=\(currentFrame != nil), device='\(device.name)'")
+        }
 
         // Reset state when textures change - we need fresh frames
         reset()

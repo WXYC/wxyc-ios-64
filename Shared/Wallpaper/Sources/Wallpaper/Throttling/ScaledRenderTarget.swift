@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Logger
 import Metal
 
 /// Manages an intermediate texture for scaled rendering.
@@ -87,6 +88,9 @@ struct ScaledRenderTarget {
         descriptor.storageMode = .private
 
         renderTexture = device.makeTexture(descriptor: descriptor)
+        if renderTexture == nil {
+            Log(.error, category: .wallpaper, "ScaledRenderTarget: Failed to allocate \(scaledWidth)x\(scaledHeight) texture (scale=\(scale)) on '\(device.name)'")
+        }
 
         return true
     }

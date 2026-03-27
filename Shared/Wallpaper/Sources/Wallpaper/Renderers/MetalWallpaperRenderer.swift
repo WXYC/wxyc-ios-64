@@ -10,6 +10,7 @@
 //
 
 import Core
+import Logger
 import MetalKit
 import simd
 
@@ -104,6 +105,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     /// Frame rate monitor for early performance detection.
     private var frameRateMonitor = FrameRateMonitor()
 
+    /// Number of consecutive frames where draw(in:) returned early without rendering.
+    private var consecutiveFailedFrames: Int = 0
+
+    /// Threshold for logging a warning about consecutive failed frames.
+    private static let consecutiveFailureThreshold = 10
+
     /// Timestamp of last frame start for duration measurement.
     private var lastFrameStart: CFTimeInterval = 0
 
@@ -191,7 +198,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     }
 
     func configure(view: MTKView) {
-        guard let device = view.device else { return }
+        guard let device = view.device else {
+            Log(.error, category: .wallpaper, "configure: MTKView has no Metal device")
+            return
+        }
         self.device = device
         self.queue = device.makeCommandQueue()
         self.pixelFormat = view.colorPixelFormat
@@ -264,6 +274,11 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         uniformBuffers = (0..<Self.uniformBufferCount).compactMap { _ in
             device.makeBuffer(length: Self.uniformBufferSize, options: .storageModeShared)
         }
+        if uniformBuffers.isEmpty {
+            Log(.error, category: .wallpaper, "setUpUniformBuffers: All \(Self.uniformBufferCount) allocations failed on '\(device.name)'")
+        } else if uniformBuffers.count < Self.uniformBufferCount {
+            Log(.warning, category: .wallpaper, "setUpUniformBuffers: Only \(uniformBuffers.count)/\(Self.uniformBufferCount) allocated on '\(device.name)'")
+        }
     }
 
     private func setUpUpscaleSampler(device: MTLDevice) {
@@ -305,12 +320,12 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     private func setUpComputePipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
         guard let computeConfig = renderer.compute else {
-            print("MetalWallpaperRenderer: Compute configuration missing for compute renderer type")
+            Log(.error, category: .wallpaper, "Compute configuration missing for compute renderer type")
             return
         }
 
         guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else {
-            print("MetalWallpaperRenderer: Failed to load Metal library from bundle")
+            Log(.error, category: .wallpaper, "Failed to load Metal library from bundle")
             return
         }
 
@@ -321,30 +336,30 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             try manager.setUp(config: computeConfig, library: library, pixelFormat: pixelFormat)
             self.computeManager = manager
         } catch {
-            print("MetalWallpaperRenderer: Failed to set up compute pipeline: \(error)")
+            Log(.error, category: .wallpaper, "Failed to set up compute pipeline: \(error)")
         }
     }
 
     private func setUpStitchablePipeline(device: MTLDevice, renderer: RendererConfiguration, pixelFormat: MTLPixelFormat) {
         guard let fragmentFn = renderer.fragmentFunction else {
-            print("MetalWallpaperRenderer: No fragmentFunction specified in manifest")
+            Log(.error, category: .wallpaper, "No fragmentFunction specified in manifest")
             return
         }
 
         let vertexFn = "fullscreenVertex"
 
         guard let library = try? device.makeDefaultLibrary(bundle: Bundle.module) else {
-            print("MetalWallpaperRenderer: Failed to load Metal library from bundle")
+            Log(.error, category: .wallpaper, "Failed to load Metal library from bundle")
             return
         }
 
         guard let vfn = library.makeFunction(name: vertexFn) else {
-            print("MetalWallpaperRenderer: Vertex function '\(vertexFn)' not found")
+            Log(.error, category: .wallpaper, "Vertex function '\(vertexFn)' not found")
             return
         }
 
         guard let ffn = library.makeFunction(name: fragmentFn) else {
-            print("MetalWallpaperRenderer: Fragment function '\(fragmentFn)' not found")
+            Log(.error, category: .wallpaper, "Fragment function '\(fragmentFn)' not found")
             return
         }
 
@@ -356,7 +371,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         do {
             self.pipeline = try device.makeRenderPipelineState(descriptor: desc)
         } catch {
-            print("MetalWallpaperRenderer: Failed to create pipeline: \(error)")
+            Log(.error, category: .wallpaper, "Failed to create pipeline: \(error)")
         }
     }
 
@@ -421,7 +436,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
             self.pipeline = try device.makeRenderPipelineState(descriptor: desc)
         } catch {
-            print("MetalWallpaperRenderer: Failed to build runtime pipeline: \(error)")
+            Log(.error, category: .wallpaper, "Failed to build runtime pipeline: \(error)")
         }
     }
 
@@ -450,7 +465,14 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             let queue,
             let drawable = view.currentDrawable,
             !uniformBuffers.isEmpty
-        else { return }
+        else {
+            consecutiveFailedFrames += 1
+            if consecutiveFailedFrames == Self.consecutiveFailureThreshold {
+                Log(.warning, category: .wallpaper, "draw(in:): \(Self.consecutiveFailureThreshold) consecutive frames skipped — pipeline=\(hasValidPipeline), queue=\(self.queue != nil), drawable=\(view.currentDrawable != nil), uniformBuffers=\(uniformBuffers.count)")
+            }
+            return
+        }
+        consecutiveFailedFrames = 0
 
         // Get quality values from fixed profile or thermal controller
         let resolutionScale: Float
@@ -537,7 +559,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         let uniformBuffer = uniformBuffers[uniformBufferIndex]
         uniformBufferIndex = (uniformBufferIndex + 1) % uniformBuffers.count
 
-        guard let cmd = queue.makeCommandBuffer() else { return }
+        guard let cmd = queue.makeCommandBuffer() else {
+            Log(.error, category: .wallpaper, "draw(in:): Failed to create command buffer")
+            return
+        }
 
         // Compute mode: execute compute passes and render
         if usesComputeMode, let manager = computeManager {
@@ -564,7 +589,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             )
 
             // Render to screen
-            guard let rpd = view.currentRenderPassDescriptor else { return }
+            guard let rpd = view.currentRenderPassDescriptor else {
+                Log(.warning, category: .wallpaper, "draw(in:): No currentRenderPassDescriptor for compute mode")
+                return
+            }
             manager.render(
                 commandBuffer: cmd,
                 renderPassDescriptor: rpd,
@@ -596,7 +624,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
             blitToDrawable(cmd: cmd, texture: scaledTexture, drawable: drawable, view: view)
         } else {
             // Render directly to drawable
-            guard let rpd = view.currentRenderPassDescriptor else { return }
+            guard let rpd = view.currentRenderPassDescriptor else {
+                Log(.warning, category: .wallpaper, "draw(in:): No currentRenderPassDescriptor for direct render")
+                return
+            }
             renderDirectly(cmd: cmd, descriptor: rpd, drawableSize: view.drawableSize, time: t, lod: lod, view: view, uniformBuffer: uniformBuffer)
         }
 
@@ -611,7 +642,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         rpd.colorAttachments[0].storeAction = .store
         rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
 
-        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else {
+            Log(.error, category: .wallpaper, "renderToScaledTexture: Failed to create render command encoder")
+            return
+        }
 
         enc.setRenderPipelineState(pipeline)
 
@@ -679,14 +713,20 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     }
 
     private func blitToDrawable(cmd: MTLCommandBuffer, texture: MTLTexture, drawable: CAMetalDrawable, view: MTKView) {
-        guard let blitPipeline, let upscaleSampler else { return }
+        guard let blitPipeline, let upscaleSampler else {
+            Log(.warning, category: .wallpaper, "blitToDrawable: Missing blitPipeline=\(self.blitPipeline != nil), upscaleSampler=\(self.upscaleSampler != nil)")
+            return
+        }
 
         let rpd = MTLRenderPassDescriptor()
         rpd.colorAttachments[0].texture = drawable.texture
         rpd.colorAttachments[0].loadAction = .dontCare
         rpd.colorAttachments[0].storeAction = .store
 
-        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else {
+            Log(.error, category: .wallpaper, "blitToDrawable: Failed to create render command encoder")
+            return
+        }
 
         enc.setRenderPipelineState(blitPipeline)
         enc.setFragmentTexture(texture, index: 0)
@@ -696,7 +736,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
     }
 
     private func renderDirectly(cmd: MTLCommandBuffer, descriptor: MTLRenderPassDescriptor, drawableSize: CGSize, time: Float, lod: Float, view: MTKView, uniformBuffer: MTLBuffer) {
-        guard let enc = cmd.makeRenderCommandEncoder(descriptor: descriptor) else { return }
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: descriptor) else {
+            Log(.error, category: .wallpaper, "renderDirectly: Failed to create render command encoder")
+            return
+        }
 
         enc.setRenderPipelineState(pipeline)
 
@@ -871,7 +914,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         rpd.colorAttachments[0].storeAction = .store
         rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
 
-        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else {
+            Log(.error, category: .wallpaper, "renderToTexture: Failed to create render command encoder")
+            return
+        }
 
         enc.setRenderPipelineState(pipeline)
 
@@ -925,7 +971,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         rpd.colorAttachments[0].loadAction = .dontCare
         rpd.colorAttachments[0].storeAction = .store
 
-        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
+        guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else {
+            Log(.error, category: .wallpaper, "blendFramesToDrawable: Failed to create render command encoder")
+            return
+        }
 
         enc.setRenderPipelineState(pipeline)
         enc.setFragmentTexture(previousFrame, index: 0)
@@ -1088,7 +1137,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
 
     // MARK: - Noise Texture
 
-    private func makeNoiseTexture(device: MTLDevice, size: Int) -> MTLTexture {
+    private func makeNoiseTexture(device: MTLDevice, size: Int) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm,
             width: size,
@@ -1097,7 +1146,10 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         )
         desc.usage = [.shaderRead]
 
-        let tex = device.makeTexture(descriptor: desc)!
+        guard let tex = device.makeTexture(descriptor: desc) else {
+            Log(.error, category: .wallpaper, "makeNoiseTexture: Failed to allocate \(size)x\(size) RGBA8 texture on '\(device.name)'")
+            return nil
+        }
 
         var bytes = [UInt8](repeating: 0, count: size * size * 4)
         for i in stride(from: 0, to: bytes.count, by: 4) {
