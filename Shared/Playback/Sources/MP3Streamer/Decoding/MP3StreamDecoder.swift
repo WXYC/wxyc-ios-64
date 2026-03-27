@@ -17,6 +17,8 @@ import AudioToolbox
 import CoreAudio
 #endif
 import Core
+import Logger
+import Synchronization
 
 /// Errors that can occur during MP3 decoding
 enum MP3DecoderError: Error {
@@ -78,6 +80,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// Context for C callbacks - retained to prevent deallocation
     private var callbackContext: AudioStreamContext?
 
+    /// Thread-safe cancellation flag. Set by `reset()` to interrupt the conversion
+    /// loop in `handlePackets()`, preventing unbounded blocking of the decoder queue.
+    private let _isCancelled = Mutex(false)
+
+    /// Whether this decoder has been cancelled via `reset()`.
+    var isCancelled: Bool {
+        _isCancelled.withLock { $0 }
+    }
+
     init() {
         self.instanceID = Self.nextInstanceID
         Self.nextInstanceID += 1
@@ -130,10 +141,17 @@ final class MP3StreamDecoder: @unchecked Sendable {
         }
     }
 
-    /// Synchronously resets the decoder state.
-    /// Must complete before new data is processed to avoid frame misalignment.
+    /// Cancels any in-progress conversion loop and asynchronously resets the decoder state.
+    ///
+    /// The cancellation flag is set immediately (thread-safe), causing the conversion
+    /// loop in `handlePackets()` to break on its next iteration. The actual cleanup
+    /// is dispatched asynchronously to the decoder queue so it never blocks the caller.
+    /// Callers should replace this decoder with a fresh instance after calling reset.
     func reset() {
-        decoderQueue.sync {
+        _isCancelled.withLock { $0 = true }
+
+        decoderQueue.async { [self] in
+            Log(.info, category: .playback, "MP3StreamDecoder[\(instanceID)] reset: cleaning up")
             packetData.removeAll()
             packetDescriptions.removeAll()
             consumedByteOffset = 0
@@ -277,9 +295,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
             }
         }
 
-        // Decode all available packets into PCM buffers
-        // Use a small threshold to minimize latency while ensuring enough data for conversion
+        // Decode all available packets into PCM buffers.
+        // Check the cancellation flag each iteration so reset() can interrupt a large backlog
+        // without waiting for every packet to be converted (which can take 10+ seconds after
+        // a network stall clears and a burst of data arrives at once).
         while self.packetDescriptions.count >= 4 {
+            if _isCancelled.withLock({ $0 }) {
+                Log(.info, category: .playback, "MP3StreamDecoder[\(instanceID)] conversion loop cancelled with \(self.packetDescriptions.count) packets remaining")
+                break
+            }
             convertToPCM()
         }
     }

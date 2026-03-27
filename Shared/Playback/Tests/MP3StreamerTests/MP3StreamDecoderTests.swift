@@ -374,6 +374,39 @@ struct MP3StreamDecoderTests {
         #expect(buffer.frameLength > 0, "Accumulated packets should be converted after converter is ready")
     }
 
+    // MARK: - Cancellation Tests
+
+    @Test("Cancellation flag is initially false")
+    func testCancellationFlagInitiallyFalse() async throws {
+        let decoder = MP3StreamDecoder()
+        #expect(!decoder.isCancelled)
+    }
+
+    @Test("reset() sets the cancellation flag")
+    func testResetSetsCancellationFlag() async throws {
+        let decoder = MP3StreamDecoder()
+        #expect(!decoder.isCancelled)
+        decoder.reset()
+        #expect(decoder.isCancelled)
+    }
+
+    @Test("reset() is non-blocking even when decoder queue is busy")
+    func testResetDoesNotBlock() async throws {
+        let decoder = MP3StreamDecoder()
+        let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
+
+        // Feed a large chunk to keep the decoder queue busy
+        decoder.decode(data: mp3Data)
+
+        // Measure that reset() returns quickly (should not wait for decoder queue)
+        let start = ContinuousClock.now
+        decoder.reset()
+        let elapsed = ContinuousClock.now - start
+
+        #expect(elapsed < .milliseconds(100), "reset() should return in under 100ms but took \(elapsed)")
+        #expect(decoder.isCancelled)
+    }
+
     // MARK: - Performance Tests
 
     @Test("Decodes multiple chunks efficiently")
