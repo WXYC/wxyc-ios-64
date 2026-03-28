@@ -53,8 +53,26 @@ public struct Breakpoint: PlaylistEntry {
     public let hour: UInt64
     public let chronOrderID: UInt64
     public let timeCreated: UInt64
-    
-    
+
+    public init(id: UInt64, hour: UInt64, chronOrderID: UInt64, timeCreated: UInt64) {
+        self.id = id
+        self.hour = hour
+        self.chronOrderID = chronOrderID
+        self.timeCreated = timeCreated
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UInt64.self, forKey: .id)
+        self.hour = try container.decode(UInt64.self, forKey: .hour)
+        self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
+        self.timeCreated = try container.decodeIfPresent(UInt64.self, forKey: .timeCreated) ?? container.decode(UInt64.self, forKey: .hour)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, hour, chronOrderID, timeCreated
+    }
+
     public var formattedDate: String {
         let timeSince1970 = Double(hour) / 1000.0
         let date = Date(timeIntervalSince1970: timeSince1970)
@@ -74,6 +92,25 @@ public struct Talkset: PlaylistEntry {
     public let hour: UInt64
     public let chronOrderID: UInt64
     public let timeCreated: UInt64
+
+    public init(id: UInt64, hour: UInt64, chronOrderID: UInt64, timeCreated: UInt64) {
+        self.id = id
+        self.hour = hour
+        self.chronOrderID = chronOrderID
+        self.timeCreated = timeCreated
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UInt64.self, forKey: .id)
+        self.hour = try container.decode(UInt64.self, forKey: .hour)
+        self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
+        self.timeCreated = try container.decodeIfPresent(UInt64.self, forKey: .timeCreated) ?? container.decode(UInt64.self, forKey: .hour)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, hour, chronOrderID, timeCreated
+    }
 }
 
 /// Represents a show start or end marker from the v2 API.
@@ -102,6 +139,21 @@ public struct ShowMarker: PlaylistEntry {
         self.isStart = isStart
         self.djName = djName
         self.message = message
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UInt64.self, forKey: .id)
+        self.hour = try container.decode(UInt64.self, forKey: .hour)
+        self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
+        self.timeCreated = try container.decodeIfPresent(UInt64.self, forKey: .timeCreated) ?? container.decode(UInt64.self, forKey: .hour)
+        self.isStart = try container.decode(Bool.self, forKey: .isStart)
+        self.djName = try container.decodeIfPresent(String.self, forKey: .djName)
+        self.message = try container.decode(String.self, forKey: .message)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, hour, chronOrderID, timeCreated, isStart, djName, message
     }
 }
 
@@ -160,7 +212,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.id = try container.decode(UInt64.self, forKey: .id)
         self.hour = try container.decode(UInt64.self, forKey: .hour)
         self.chronOrderID = try container.decode(UInt64.self, forKey: .chronOrderID)
-        self.timeCreated = try container.decode(UInt64.self, forKey: .timeCreated)
+        self.timeCreated = try container.decodeIfPresent(UInt64.self, forKey: .timeCreated) ?? container.decode(UInt64.self, forKey: .hour)
 
         do {
             self.songTitle = try container.decode(String.self, forKey: .songTitle).htmlDecoded
