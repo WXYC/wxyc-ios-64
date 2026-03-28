@@ -1135,6 +1135,19 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
         #endif
     }
 
+    // MARK: - Memory Management
+
+    /// Releases interpolation and scaled render target textures to reduce memory pressure.
+    ///
+    /// Call this when the app enters background or on memory warning. Textures are
+    /// automatically recreated on the next draw cycle when `updateTextures()` and
+    /// `update()` detect size changes from the `.zero` reset.
+    public func releaseInterpolationTextures() {
+        frameInterpolator.releaseTextures()
+        scaledRenderTarget.releaseTexture()
+        Log(.info, category: .wallpaper, "Released interpolation and scaled render target textures")
+    }
+
     // MARK: - Noise Texture
 
     private func makeNoiseTexture(device: MTLDevice, size: Int) -> MTLTexture? {

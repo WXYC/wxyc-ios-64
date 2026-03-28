@@ -94,4 +94,13 @@ struct ScaledRenderTarget {
 
         return true
     }
+
+    /// Releases the render texture to reduce memory pressure.
+    ///
+    /// Resets `currentSize` to `.zero` so the next `update()` call detects a
+    /// change and recreates the texture on foreground return.
+    mutating func releaseTexture() {
+        renderTexture = nil
+        currentSize = .zero
+    }
 }

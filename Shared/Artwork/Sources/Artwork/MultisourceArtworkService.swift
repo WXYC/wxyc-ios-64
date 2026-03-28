@@ -156,4 +156,17 @@ public final actor MultisourceArtworkService: ArtworkService {
     private func removeTask(for id: String) {
         inflightTasks[id] = nil
     }
+
+    /// Releases in-flight tasks to reduce memory pressure.
+    /// Called in response to `UIApplication.didReceiveMemoryWarningNotification`.
+    public func releaseMemory() {
+        let count = inflightTasks.count
+        for task in inflightTasks.values {
+            task.cancel()
+        }
+        inflightTasks.removeAll()
+        if count > 0 {
+            Log(.info, category: .artwork, "Released \(count) in-flight artwork tasks due to memory warning")
+        }
+    }
 }
