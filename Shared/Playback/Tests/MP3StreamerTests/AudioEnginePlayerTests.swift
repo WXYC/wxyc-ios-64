@@ -212,6 +212,32 @@ struct AudioEnginePlayerTests {
         }
     }
 
+    @Test("stop() is non-blocking even when scheduling queue is busy")
+    func testStopIsNonBlocking() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2)
+
+        // Schedule many buffers to keep the scheduling queue busy
+        for _ in 0..<20 {
+            let buffer = TestAudioBufferFactory.makeSilentBuffer()
+            player.scheduleBuffer(buffer)
+        }
+
+        // Measure that stop() returns quickly (should not wait for scheduling queue)
+        let start = ContinuousClock.now
+        player.stop()
+        let elapsed = ContinuousClock.now - start
+
+        #expect(elapsed < .milliseconds(100), "stop() should return in under 100ms but took \(elapsed)")
+        #expect(player.isPlaying == false)
+
+        // Wait for the async cleanup to complete
+        _ = try await player.eventStream.first(timeout: 2)
+    }
+
     @Test("Stop when not running is a no-op")
     func testStopWhenNotRunning() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()

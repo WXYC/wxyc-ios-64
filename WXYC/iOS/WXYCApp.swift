@@ -58,9 +58,13 @@ struct WXYCApp: App {
         }
         #endif
 
-        // Seed OpenNSFW model to shared container for widget
+        // Seed OpenNSFW model to shared container for widget.
+        // Runs off the main thread since model copying is I/O-heavy and only
+        // matters for widget rendering, not the app's initial display.
         if let bundleURL = Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc") {
-            ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
+            Task.detached(priority: .utility) {
+                ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
+            }
         }
         
         // Enable battery monitoring for thermal context
