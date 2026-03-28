@@ -122,6 +122,9 @@ struct WXYCApp: App {
                         .environment(\.playbackController, AudioPlayerController.shared)
                         .environment(\.reviewRequestService, appState.reviewRequestService)
                         .forceLightStatusBar()
+                        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+                            handleMemoryWarning()
+                        }
                         .onAppear {
                             setUpQuickActions()
                             appState.setForegrounded(true)
@@ -278,6 +281,13 @@ struct WXYCApp: App {
         }
     }
         
+    private func handleMemoryWarning() {
+        Log(.warning, category: .general, "Memory warning received — releasing caches and textures")
+        Task {
+            await appState.artworkService.releaseMemory()
+        }
+    }
+
     private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .background:
@@ -321,12 +331,23 @@ struct WXYCApp: App {
         SentrySDK.start { options in
             options.dsn = Secrets.sentryDsn
             options.enableAutoSessionTracking = true
-            options.tracesSampleRate = 0.1
-            options.enableAppLaunchProfiling = true
+            options.tracesSampleRate = 0.05
             options.enableUIViewControllerTracing = false  // SwiftUI app, no UIKit VCs
             options.enableNetworkTracking = true
-            options.enableFileIOTracing = true
             options.enableSwizzling = true
+
+            // Disabled to reduce memory overhead:
+            // - App launch profiling accumulates 10-20MB of stack samples; use Instruments instead
+            // - File I/O tracing generates hundreds of spans from disk cache reads without actionable signal
+            options.enableAppLaunchProfiling = false
+            options.enableFileIOTracing = false
+
+            // Disable auto-capture of failed HTTP requests. The stream server returns 503
+            // during outages, and each reconnect retry auto-generates a separate Sentry event
+            // (up to 10-20 per outage). Stream errors are already reported to PostHog via
+            // StreamErrorEvent and appear as Sentry breadcrumbs via SentryBreadcrumbDestination.
+            options.enableCaptureFailedRequests = false
+
             #if DEBUG
             options.debug = true
             #endif

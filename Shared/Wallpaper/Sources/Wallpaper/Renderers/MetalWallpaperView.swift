@@ -80,6 +80,12 @@ public struct MetalWallpaperView: ViewRepresentable {
 
         if view.isPaused != shouldPause {
             view.isPaused = shouldPause
+
+            // Release Metal textures when backgrounded to reduce memory footprint.
+            // Textures are automatically recreated on the next draw cycle.
+            if shouldPause {
+                context.coordinator.releaseInterpolationTextures()
+            }
         }
 
         // Notify coordinator of picker state for idle FPS optimization

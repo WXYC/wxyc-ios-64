@@ -220,6 +220,18 @@ struct FrameInterpolator {
         resetCount += 1
     }
 
+    /// Releases interpolation textures to reduce memory pressure.
+    ///
+    /// Call this when the app enters background. Textures are automatically
+    /// recreated by `updateTextures()` on foreground return because `currentSize`
+    /// is reset to `.zero`, triggering the size-change detection path.
+    mutating func releaseTextures() {
+        previousFrame = nil
+        currentFrame = nil
+        currentSize = .zero
+        reset()
+    }
+
     /// Resets the reset counter.
     ///
     /// Call this when starting a new analytics session.
