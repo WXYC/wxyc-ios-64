@@ -212,9 +212,23 @@ public final actor CacheCoordinator {
             throw Error.noCachedResult
         }
 
-        // Decode the JSON data into the requested type
+        // Decode the JSON data into the requested type.
+        // On DecodingError, evict the corrupt entry to prevent repeated failures
+        // from the same stale data (e.g., after a schema change adds a required field).
         do {
             return try Self.decoder.decode(Value.self, from: data)
+        } catch let error as DecodingError {
+            cache.remove(for: key)
+            ErrorReporting.shared.report(
+                error,
+                context: "CacheCoordinator evicted corrupt entry",
+                category: .caching,
+                additionalData: [
+                    "value type": String(describing: Value.self),
+                    "key": key
+                ]
+            )
+            throw error
         } catch {
             ErrorReporting.shared.report(
                 error,
