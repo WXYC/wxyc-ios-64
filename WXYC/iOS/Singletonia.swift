@@ -48,8 +48,10 @@ final class Singletonia {
             boundsSize: CGSize(width: screenWidth, height: screenWidth)
         )
 
-        // Configure artwork cache to use screen-width scaled HEIF images
-        ArtworkCacheConfiguration.targetWidth = screenWidth * UIScreen.main.scale
+        // Configure artwork cache to use half-screen-width scaled HEIF images.
+        // Artwork is displayed at ~40% of screen width in playlist rows, so half-screen
+        // resolution is more than sufficient. This cuts per-image memory from ~5.5MB to ~1.4MB.
+        ArtworkCacheConfiguration.targetWidth = screenWidth * UIScreen.main.scale / 2
 
         let nowPlayingService = NowPlayingService(
             playlistService: playlistService,
