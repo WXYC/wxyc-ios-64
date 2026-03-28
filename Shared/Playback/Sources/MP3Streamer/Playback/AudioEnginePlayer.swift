@@ -217,17 +217,23 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer stop", duration: 0))
 
         // Set isPlaying false first so in-flight scheduling blocks see it immediately
+        // via their isPlaying check and exit early.
         stateBox.isPlaying = false
 
-        // Execute playerNode.stop() inside schedulingQueue.sync so any in-flight
-        // scheduling blocks complete first, then playerNode.stop() clears all their buffers.
-        // This prevents stale buffers from being scheduled after stop.
-        schedulingQueue.sync {
-            self.playerNode.stop()
+        // Dispatch the full teardown sequence asynchronously to avoid blocking the
+        // caller (often the main thread). The ordering guarantee is preserved: in-flight
+        // scheduling blocks complete first (they're ahead in the serial queue), then
+        // playerNode.stop() clears buffers, then the engine stops.
+        //
+        // Previously this used schedulingQueue.sync, which blocked the main thread
+        // for the duration of any in-flight buffer scheduling — the same class of
+        // deadlock as the MP3StreamDecoder.reset() issue (0x8BADF00D watchdog kill).
+        schedulingQueue.async { [self] in
+            playerNode.stop()
+            engine.stop()
+            scheduledBufferCount.reset()
+            eventContinuation.yield(.stopped)
         }
-        engine.stop()
-        scheduledBufferCount.reset()
-        eventContinuation.yield(.stopped)
     }
 
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
