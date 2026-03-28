@@ -50,6 +50,14 @@ public enum CacheMigrationManager {
     /// UserDefaults key for tracking the last known app version.
     private static let lastKnownVersionKey = "CacheMigrationManager.lastKnownVersion"
 
+    /// UserDefaults key for tracking the cache schema version.
+    private static let schemaVersionKey = "CacheMigrationManager.schemaVersion"
+
+    /// Increment this when any cached Codable type changes shape (added/removed/renamed fields).
+    /// This triggers a cache purge independently of the app's marketing version, catching
+    /// within-version schema drift (e.g., a build increment that changes a cached struct).
+    static let cacheSchemaVersion: Int = 1
+
     /// The App Group identifier for the shared container.
     private static let appGroupID = "group.wxyc.iphone"
 
@@ -66,13 +74,15 @@ public enum CacheMigrationManager {
     public static func migrateIfNeeded() {
         let currentVersion = Bundle.main.marketingVersion
         let lastKnownVersion = UserDefaults.wxyc.string(forKey: lastKnownVersionKey)
+        let lastKnownSchema = UserDefaults.wxyc.integer(forKey: schemaVersionKey)
 
-        // Check if version has changed since last launch
-        if lastKnownVersion != currentVersion {
-            Log(.info, category: .caching, "Version changed from \(lastKnownVersion ?? "nil") to \(currentVersion). Purging cache.")
+        // Check if version or schema has changed since last launch
+        if lastKnownVersion != currentVersion || lastKnownSchema != cacheSchemaVersion {
+            Log(.info, category: .caching, "Cache invalidated — version: \(lastKnownVersion ?? "nil") → \(currentVersion), schema: \(lastKnownSchema) → \(cacheSchemaVersion). Purging cache.")
             purgeAllCaches()
-            // Record the new version to prevent re-purging on next launch
+            // Record the new version and schema to prevent re-purging on next launch
             UserDefaults.wxyc.set(currentVersion, forKey: lastKnownVersionKey)
+            UserDefaults.wxyc.set(cacheSchemaVersion, forKey: schemaVersionKey)
         }
     }
 
