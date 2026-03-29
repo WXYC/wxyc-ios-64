@@ -138,8 +138,8 @@ extension DiscogsMarkupParser {
             
             // Now look for the closing ']'
             guard let closingBracket = remaining[bracketIndex...].firstIndex(of: "]") else {
-                // No closing bracket - match old behavior: append full remaining (including beforeBracket again)
-                tokens.append(.plainText(String(remaining)))
+                // No closing bracket - append from the opening bracket onward as plain text
+                tokens.append(.plainText(String(remaining[bracketIndex...])))
                 break
             }
             
