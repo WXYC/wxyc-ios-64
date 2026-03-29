@@ -75,7 +75,12 @@ struct DiskCache: Cache, @unchecked Sendable {
     // MARK: - Properties
 
     /// In-memory cache used as fallback when disk storage is unavailable.
-    private let cache = NSCache<NSString, NSData>()
+    private let cache: NSCache<NSString, NSData> = {
+        let cache = NSCache<NSString, NSData>()
+        cache.totalCostLimit = 50 * 1024 * 1024  // 50 MB
+        cache.countLimit = 500
+        return cache
+    }()
 
     /// The directory where cache files are stored, or `nil` if unavailable.
     private let cacheDirectory: URL?
@@ -172,7 +177,10 @@ struct DiskCache: Cache, @unchecked Sendable {
         fileURL.withUnsafeFileSystemRepresentation { path in
             guard let path else { return }
             data.withUnsafeBytes { buffer in
-                _ = setxattr(path, Self.metadataAttributeName, buffer.baseAddress, buffer.count, 0, 0)
+                let result = setxattr(path, Self.metadataAttributeName, buffer.baseAddress, buffer.count, 0, 0)
+                if result == -1 {
+                    Log(.error, category: .caching, "Failed to write cache metadata xattr for \(fileURL.lastPathComponent): errno \(errno)")
+                }
             }
         }
     }
