@@ -42,26 +42,41 @@ public struct ArtistMetadata: Sendable, Equatable, Codable {
 public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// Record label name
     public let label: String?
-    
+
     /// Release year
     public let releaseYear: Int?
-    
+
     /// Link to the release on Discogs
     public let discogsURL: URL?
 
     /// Discogs artist ID (links to artist metadata for efficient lookups)
     public let discogsArtistId: Int?
 
+    /// Discogs genre classifications
+    public let genres: [String]?
+
+    /// Discogs style classifications (more specific than genres)
+    public let styles: [String]?
+
+    /// Full release date when available (e.g. "2024-03-15")
+    public let fullReleaseDate: String?
+
     public init(
         label: String? = nil,
         releaseYear: Int? = nil,
         discogsURL: URL? = nil,
-        discogsArtistId: Int? = nil
+        discogsArtistId: Int? = nil,
+        genres: [String]? = nil,
+        styles: [String]? = nil,
+        fullReleaseDate: String? = nil
     ) {
         self.label = label
         self.releaseYear = releaseYear
         self.discogsURL = discogsURL
         self.discogsArtistId = discogsArtistId
+        self.genres = genres
+        self.styles = styles
+        self.fullReleaseDate = fullReleaseDate
     }
 
     public static let empty = AlbumMetadata()

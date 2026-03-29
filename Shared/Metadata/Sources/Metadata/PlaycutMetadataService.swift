@@ -148,10 +148,13 @@ public actor PlaycutMetadataService {
             let apiResult = try decoder.decode(AlbumMetadataAPIResponse.self, from: data)
 
             let album = cachedAlbum ?? AlbumMetadata(
-                label: playcut.labelName,
+                label: apiResult.label ?? playcut.labelName,
                 releaseYear: apiResult.releaseYear,
                 discogsURL: apiResult.discogsUrl.flatMap { URL(string: $0) },
-                discogsArtistId: apiResult.discogsReleaseId
+                discogsArtistId: apiResult.discogsArtistId,
+                genres: apiResult.genres,
+                styles: apiResult.styles,
+                fullReleaseDate: apiResult.fullReleaseDate
             )
 
             let streaming = cachedStreaming ?? StreamingLinks(
@@ -204,9 +207,14 @@ public actor PlaycutMetadataService {
 
 private struct AlbumMetadataAPIResponse: Codable {
     let discogsReleaseId: Int?
+    let discogsArtistId: Int?
     let discogsUrl: String?
     let releaseYear: Int?
     let artworkUrl: String?
+    let genres: [String]?
+    let styles: [String]?
+    let label: String?
+    let fullReleaseDate: String?
     let spotifyUrl: String?
     let appleMusicUrl: String?
     let youtubeMusicUrl: String?

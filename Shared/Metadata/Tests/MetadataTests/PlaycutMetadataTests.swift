@@ -64,6 +64,27 @@ struct PlaycutMetadataTests {
         #expect(decoded.discogsArtistId == 456)
     }
 
+    @Test("AlbumMetadata with genres, styles, and fullReleaseDate encodes and decodes correctly")
+    func albumMetadataWithEnrichedFieldsEncodesAndDecodes() throws {
+        let album = AlbumMetadata(
+            label: "Warp",
+            releaseYear: 2001,
+            discogsURL: URL(string: "https://www.discogs.com/release/789"),
+            discogsArtistId: 42,
+            genres: ["Electronic"],
+            styles: ["IDM", "Abstract"],
+            fullReleaseDate: "2001-04-30"
+        )
+
+        let encoded = try JSONEncoder().encode(album)
+        let decoded = try JSONDecoder().decode(AlbumMetadata.self, from: encoded)
+
+        #expect(decoded == album)
+        #expect(decoded.genres == ["Electronic"])
+        #expect(decoded.styles == ["IDM", "Abstract"])
+        #expect(decoded.fullReleaseDate == "2001-04-30")
+    }
+
     @Test("AlbumMetadata empty instance has nil values")
     func albumMetadataEmptyInstance() {
         let empty = AlbumMetadata.empty
@@ -72,6 +93,24 @@ struct PlaycutMetadataTests {
         #expect(empty.releaseYear == nil)
         #expect(empty.discogsURL == nil)
         #expect(empty.discogsArtistId == nil)
+        #expect(empty.genres == nil)
+        #expect(empty.styles == nil)
+        #expect(empty.fullReleaseDate == nil)
+    }
+
+    @Test("AlbumMetadata without enriched fields decodes with nil defaults")
+    func albumMetadataBackwardCompatibleDecoding() throws {
+        let json = """
+        {"label": "Drag City", "releaseYear": 2015}
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(AlbumMetadata.self, from: json)
+
+        #expect(decoded.label == "Drag City")
+        #expect(decoded.releaseYear == 2015)
+        #expect(decoded.genres == nil)
+        #expect(decoded.styles == nil)
+        #expect(decoded.fullReleaseDate == nil)
     }
 
     // MARK: - StreamingLinks Tests
