@@ -31,22 +31,6 @@ final class DiscogsArtworkService: ArtworkService {
     }
 
     func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
-        let response = try await fetchArtworkResponse(for: playcut)
-
-        guard let urlString = response.artworkUrl, let url = URL(string: urlString) else {
-            throw ServiceError.noResults
-        }
-
-        let imageData = try await session.data(from: url)
-
-        guard let cgImage = createCGImage(from: imageData) else {
-            throw ServiceError.noResults
-        }
-
-        return cgImage
-    }
-
-    private func fetchArtworkResponse(for playcut: Playcut) async throws -> ArtworkSearchResponse {
         var components = URLComponents(url: baseURL.appending(path: "proxy/artwork/search"), resolvingAgainstBaseURL: false)!
         var queryItems = [URLQueryItem(name: "artistName", value: playcut.artistName)]
 
@@ -61,31 +45,31 @@ final class DiscogsArtworkService: ArtworkService {
             throw ServiceError.noResults
         }
 
-        let data: Data
+        // The backend proxy now returns image bytes directly (with NSFW filtering
+        // applied server-side), so we no longer need to parse a JSON response and
+        // download the image in a separate step.
+        let imageData: Data
         if let tokenProvider {
             let token = try await tokenProvider.token()
-            data = try await authenticatedData(from: url, token: token)
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 404 {
+                throw ServiceError.noResults
+            }
+
+            imageData = data
         } else {
-            data = try await session.data(from: url)
+            imageData = try await session.data(from: url)
         }
 
-        return try decoder.decode(ArtworkSearchResponse.self, from: data)
+        guard let cgImage = createCGImage(from: imageData) else {
+            throw ServiceError.noResults
+        }
+
+        return cgImage
     }
-
-    private func authenticatedData(from url: URL, token: String) async throws -> Data {
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return data
-    }
-}
-
-// MARK: - Backend Response Model
-
-struct ArtworkSearchResponse: Codable, Sendable {
-    let artworkUrl: String?
-    let source: String?
-    let confidence: Double?
 }
 
 extension [URLQueryItem] {

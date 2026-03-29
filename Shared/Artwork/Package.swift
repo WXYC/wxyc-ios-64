@@ -9,13 +9,12 @@ let package = Package(
         .package(name: "Core", path: "../Core"),
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Playlist", path: "../Playlist"),
-        .package(name: "OpenNSFW", path: "../OpenNSFW"),
         .package(name: "Logger", path: "../Logger"),
     ],
     targets: [
         .target(
             name: "Artwork",
-            dependencies: ["Core", "Caching", "Playlist", "OpenNSFW", "Logger"]
+            dependencies: ["Core", "Caching", "Playlist", "Logger"]
         ),
         .testTarget(
             name: "ArtworkTests",
