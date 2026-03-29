@@ -67,32 +67,32 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
         }
 
         public mutating func next() async throws -> NowPlayingItem? {
-            // Get the next playlist
-            guard let playlist = await playlistStream.next() else {
-                return nil
-            }
+            // Skip playlists with no playcuts (e.g. talkset-only shows)
+            while true {
+                guard let playlist = await playlistStream.next() else {
+                    return nil
+                }
 
-            // Get the first playcut
-            guard let playcut = playlist.playcuts.first else {
-                Log(.info, "No playcut found in playlist")
-                // Continue to next playlist
-                return try await next()
-            }
+                guard let playcut = playlist.playcuts.first else {
+                    Log(.info, "No playcut found in playlist, waiting for next update")
+                    continue
+                }
 
-            // Fetch artwork for the playcut
-            let artwork: Image?
-            do {
-                let cgImage = try await service.artworkService.fetchArtwork(for: playcut)
-                #if canImport(UIKit)
-                artwork = UIImage(cgImage: cgImage)
-                #else
-                artwork = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-                #endif
-            } catch {
-                Log(.warning, "Artwork fetch failed for playcut \(playcut.id): \(error)")
-                artwork = nil
+                // Fetch artwork for the playcut
+                let artwork: Image?
+                do {
+                    let cgImage = try await service.artworkService.fetchArtwork(for: playcut)
+                    #if canImport(UIKit)
+                    artwork = UIImage(cgImage: cgImage)
+                    #else
+                    artwork = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+                    #endif
+                } catch {
+                    Log(.warning, "Artwork fetch failed for playcut \(playcut.id): \(error)")
+                    artwork = nil
+                }
+                return NowPlayingItem(playcut: playcut, artwork: artwork)
             }
-            return NowPlayingItem(playcut: playcut, artwork: artwork)
         }
     }
 }
