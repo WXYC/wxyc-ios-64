@@ -66,8 +66,12 @@ final class YouTubeMusicService: MusicService {
         
         // Use YouTube oEmbed API (no auth required)
         // API: https://www.youtube.com/oembed?url={url}&format=json
-        let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        guard let apiURL = URL(string: "https://www.youtube.com/oembed?url=\(encodedUrl)&format=json") else {
+        var components = URLComponents(string: "https://www.youtube.com/oembed")!
+        components.queryItems = [
+            URLQueryItem(name: "url", value: track.url.absoluteString),
+            URLQueryItem(name: "format", value: "json"),
+        ]
+        guard let apiURL = components.url else {
             return track
         }
         
