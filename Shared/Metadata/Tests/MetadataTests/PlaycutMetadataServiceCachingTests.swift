@@ -201,21 +201,20 @@ struct PlaycutMetadataServiceCachingTests {
             releaseTitle: "New Album"
         )
 
-        // Mock Discogs search response (empty results for simplicity)
-        let emptyDiscogsResults = """
+        // Mock proxy album metadata response
+        let albumResponse = """
         {
-            "results": []
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
         }
         """.data(using: .utf8)!
-        mockSession.responses["api.discogs.com"] = emptyDiscogsResults
-
-        // Mock iTunes response (empty)
-        let emptyiTunesResults = """
-        {
-            "results": []
-        }
-        """.data(using: .utf8)!
-        mockSession.responses["itunes.apple.com"] = emptyiTunesResults
+        mockSession.responses["proxy/metadata/album"] = albumResponse
 
         // When
         let result = await service.fetchMetadata(for: playcut)
@@ -223,7 +222,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Then
         #expect(result.label == "New Label") // Falls back to playcut's label
         #expect(mockCache.setCallCount >= 2, "Should cache album and streaming results")
-        
+
         // Verify correct cache keys are used
         let albumKey = MetadataCacheKey.album(artistName: "New Artist", releaseTitle: "New Album")
         let streamingKey = MetadataCacheKey.streaming(artistName: "New Artist", songTitle: "New Song")
@@ -241,9 +240,20 @@ struct PlaycutMetadataServiceCachingTests {
 
         let playcut = Playcut.stub(id: 42, artistName: "Artist Name", releaseTitle: "Album Title")
 
-        // Mock empty responses
-        mockSession.responses["api.discogs.com"] = "{\"results\": []}".data(using: .utf8)!
-        mockSession.responses["itunes.apple.com"] = "{\"results\": []}".data(using: .utf8)!
+        // Mock proxy response
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
 
         // When
         _ = await service.fetchMetadata(for: playcut)
@@ -274,13 +284,20 @@ struct PlaycutMetadataServiceCachingTests {
             releaseTitle: "Album"
         )
 
-        // Mock responses
-        mockSession.responses["api.discogs.com"] = """
-        {"results": []}
+        // Mock proxy response
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
         """.data(using: .utf8)!
-        mockSession.responses["itunes.apple.com"] = """
-        {"results": []}
-        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
 
         // When - first fetch
         _ = await service.fetchMetadata(for: playcut)
@@ -292,6 +309,225 @@ struct PlaycutMetadataServiceCachingTests {
 
         // Then
         #expect(secondRequestCount == firstRequestCount, "Second fetch should not make additional API calls")
+    }
+
+    @Test("Parses enriched API response with genres, styles, and fullReleaseDate")
+    func parsesEnrichedAPIResponse() async throws {
+        // Given
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // Mock enriched album metadata response
+        let albumResponse = """
+        {
+            "discogsReleaseId": 12345,
+            "discogsArtistId": 67890,
+            "discogsUrl": "https://www.discogs.com/release/12345",
+            "releaseYear": 2001,
+            "label": "Warp Records",
+            "genres": ["Electronic"],
+            "styles": ["IDM", "Abstract"],
+            "fullReleaseDate": "2001-04-30",
+            "spotifyUrl": "https://open.spotify.com/track/abc",
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // Mock artist metadata response
+        let artistResponse = """
+        {
+            "discogsArtistId": 67890,
+            "bio": "Autechre are an English electronic music duo.",
+            "wikipediaUrl": "https://en.wikipedia.org/wiki/Autechre"
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/artist"] = artistResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.album.genres == ["Electronic"])
+        #expect(result.album.styles == ["IDM", "Abstract"])
+        #expect(result.album.fullReleaseDate == "2001-04-30")
+        #expect(result.album.label == "Warp Records")
+        #expect(result.album.discogsArtistId == 67890)
+        #expect(result.album.releaseYear == 2001)
+        #expect(result.artistBio == "Autechre are an English electronic music duo.")
+    }
+
+    @Test("Maps discogsArtistId from dedicated field, not discogsReleaseId")
+    func mapsDiscogsArtistIdCorrectly() async throws {
+        // Given
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
+        )
+
+        // API response where discogsReleaseId != discogsArtistId
+        let albumResponse = """
+        {
+            "discogsReleaseId": 11111,
+            "discogsArtistId": 22222,
+            "discogsUrl": "https://www.discogs.com/release/11111",
+            "releaseYear": 2024,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // Artist response keyed by correct artist ID
+        let artistResponse = """
+        {
+            "discogsArtistId": 22222,
+            "bio": "Argentine singer-songwriter.",
+            "wikipediaUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/artist"] = artistResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - discogsArtistId should be 22222 (from dedicated field), NOT 11111 (from releaseId)
+        #expect(result.album.discogsArtistId == 22222)
+        #expect(result.artistBio == "Argentine singer-songwriter.")
+    }
+
+    @Test("Uses API label when available, falls back to playcut label")
+    func usesAPILabelOverPlaycutLabel() async throws {
+        // Given
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Back, Baby",
+            labelName: "Drag City",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
+        )
+
+        // API response with label field
+        let albumResponse = """
+        {
+            "discogsReleaseId": 99999,
+            "discogsUrl": null,
+            "releaseYear": 2015,
+            "label": "Drag City Records",
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - should use the API label ("Drag City Records") not the playcut label ("Drag City")
+        #expect(result.label == "Drag City Records")
+    }
+
+    @Test("Falls back to playcut label when API label is absent")
+    func fallsBackToPlaycutLabelWhenAPILabelAbsent() async throws {
+        // Given
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Moon Pix",
+            labelName: "Matador Records",
+            artistName: "Cat Power",
+            releaseTitle: "Moon Pix"
+        )
+
+        // API response without label field
+        let albumResponse = """
+        {
+            "discogsReleaseId": 88888,
+            "discogsUrl": null,
+            "releaseYear": 1998,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - should fall back to playcut label
+        #expect(result.label == "Matador Records")
+    }
+
+    @Test("Enriched fields are nil when absent from API response")
+    func enrichedFieldsNilWhenAbsent() async throws {
+        // Given
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Aluminum Tunes",
+            artistName: "Stereolab",
+            releaseTitle: "Aluminum Tunes"
+        )
+
+        // Minimal API response (old backend format without enriched fields)
+        let albumResponse = """
+        {
+            "discogsReleaseId": 77777,
+            "discogsUrl": "https://www.discogs.com/release/77777",
+            "releaseYear": 1998,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - enriched fields should be nil
+        #expect(result.album.genres == nil)
+        #expect(result.album.styles == nil)
+        #expect(result.album.fullReleaseDate == nil)
     }
 
     @Test("Same artist across different songs shares cached artist metadata")

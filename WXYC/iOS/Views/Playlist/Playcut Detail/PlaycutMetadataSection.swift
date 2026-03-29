@@ -15,34 +15,40 @@ import Playlist
 struct PlaycutMetadataSection: View {
     let metadata: PlaycutMetadata
     @Binding var expandedBio: Bool
-    
+
+    private var tags: [String] {
+        (metadata.album.genres ?? []) + (metadata.album.styles ?? [])
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-        
-            if metadata.label != nil || metadata.releaseYear != nil {
-                // Label and Year
-                Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
-                    if let label = metadata.label {
-                        GridRow {
-                            MetadataLabel(title: "Label")
-                            MetadataValue(value: label)
-                        }
+            // Label and Year
+            Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
+                if let label = metadata.label {
+                    GridRow {
+                        MetadataLabel(title: "Label")
+                        MetadataValue(value: label)
                     }
-                    if let year = metadata.releaseYear {
-                        GridRow {
-                            MetadataLabel(title: "Year")
-                            HStack {
-                                MetadataValue(value: String(year))
-                                Spacer()
-                            }
+                }
+                if let year = metadata.releaseYear {
+                    GridRow {
+                        MetadataLabel(title: "Year")
+                        HStack {
+                            MetadataValue(value: String(year))
+                            Spacer()
                         }
                     }
                 }
-                
-                // Artist Bio
-                if let bio = metadata.artistBio, !bio.isEmpty {
-                    ArtistBioSection(bio: bio, expandedBio: $expandedBio)
-                }
+            }
+
+            // Genre/Style Tags
+            if !tags.isEmpty {
+                GenreTagsView(tags: tags)
+            }
+
+            // Artist Bio
+            if let bio = metadata.artistBio, !bio.isEmpty {
+                ArtistBioSection(bio: bio, expandedBio: $expandedBio)
             }
         }
         .padding()
@@ -59,16 +65,14 @@ struct PlaycutMetadataSection: View {
     @Previewable @Namespace var previewNamespace
     
     let metadata = PlaycutMetadata(
-        label: "We Release Whatever The Fuck We Want Okay?",
-        releaseYear: 2025,
-        discogsURL: nil,
-        artistBio: nil,
-        wikipediaURL: nil,
-        spotifyURL: nil,
-        appleMusicURL: nil,
-        youtubeMusicURL: nil,
-        bandcampURL: nil,
-        soundcloudURL: nil
+        artist: .empty,
+        album: AlbumMetadata(
+            label: "Warp",
+            releaseYear: 2001,
+            genres: ["Electronic"],
+            styles: ["IDM", "Abstract"]
+        ),
+        streaming: .empty
     )
     
     PlaycutLoadingSection()
