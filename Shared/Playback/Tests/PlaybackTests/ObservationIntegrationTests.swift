@@ -18,11 +18,9 @@ import AnalyticsTesting
 @testable import PlaybackCore
 import Core
 
-// NOTE: These tests are disabled because AudioPlayerController.isPlaying is a computed property
-// that reads from player.isPlaying, and the player is marked @ObservationIgnored.
-// True Swift Observations won't track changes to computed properties that read from non-observable sources.
-// To fix: make isPlaying a stored property that gets updated via player.stateStream observation.
-@Suite("Observation Integration Tests", .serialized, .disabled("AudioPlayerController.isPlaying is not truly observable - needs architecture change"))
+// AudioPlayerController.isPlaying now reads from a stored `playerState` property that is
+// updated via player.stateStream observation, making it properly observable.
+@Suite("Observation Integration Tests", .serialized)
 @MainActor
 struct ObservationIntegrationTests {
 
@@ -71,13 +69,13 @@ struct ObservationIntegrationTests {
         try await Task.sleep(for: .milliseconds(50))
 
         // Trigger state changes
-        controller.play()
+        controller.play(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
-        controller.stop()
+        controller.stop(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
-        controller.play()
+        controller.play(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         observationTask.cancel()
@@ -93,7 +91,7 @@ struct ObservationIntegrationTests {
         var firstState: Bool?
 
         // Ensure we start stopped
-        controller.stop()
+        controller.stop(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         let observations = Observations {
@@ -136,9 +134,9 @@ struct ObservationIntegrationTests {
 
         // Rapid changes
         for _ in 0..<5 {
-            controller.play()
+            controller.play(reason: .test)
             try await Task.sleep(for: .milliseconds(20))
-            controller.stop()
+            controller.stop(reason: .test)
             try await Task.sleep(for: .milliseconds(20))
         }
 
@@ -153,7 +151,7 @@ struct ObservationIntegrationTests {
         var changeCount = 0
 
         // Ensure we start stopped
-        controller.stop()
+        controller.stop(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         let observations = Observations {
@@ -190,7 +188,7 @@ struct ObservationIntegrationTests {
         }
 
         // Trigger one change
-        controller.play()
+        controller.play(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         let countBeforeCancel = changeCount
@@ -200,9 +198,9 @@ struct ObservationIntegrationTests {
         try await Task.sleep(for: .milliseconds(50))
 
         // Trigger more changes after cancellation
-        controller.stop()
+        controller.stop(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
-        controller.play()
+        controller.play(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         // Count should not increase (allow +1 for race condition)
