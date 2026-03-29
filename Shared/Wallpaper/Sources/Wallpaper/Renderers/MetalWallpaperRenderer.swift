@@ -1057,7 +1057,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 time: time,
                 lod: 1.0
             )
-            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.size)
+            memcpy(bufferPtr, &uniforms, MemoryLayout<RawMetalUniforms>.stride)
             encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
 
             if let sampler { encoder.setFragmentSamplerState(sampler, index: 0) }
@@ -1074,7 +1074,7 @@ public final class MetalWallpaperRenderer: NSObject, MTKViewDelegate {
                 time: time,
                 displayScale: 1.0
             )
-            memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.size)
+            memcpy(bufferPtr, &uniforms, MemoryLayout<StitchableUniforms>.stride)
             encoder.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
 
             setCustomParameters(
