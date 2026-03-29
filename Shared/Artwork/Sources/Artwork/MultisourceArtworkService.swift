@@ -11,7 +11,6 @@
 
 import Foundation
 import Combine
-import OpenNSFW
 import Logger
 import Caching
 import Playlist
@@ -54,23 +53,19 @@ public final actor MultisourceArtworkService: ArtworkService {
     private let cacheCoordinator: CacheCoordinator
     private var inflightTasks: [String: Task<CGImage?, Never>] = [:]
 
-#if canImport(Vision)
-    private let nsfwClassifier: NSFWClassifier?
-#endif
-
-    // Public convenience initializer with default fetchers
+    // Public convenience initializer with default fetchers.
+    // The backend proxy now handles the full fallback chain (Discogs → Last.fm → iTunes)
+    // and NSFW classification server-side, so DiscogsArtworkService is the only remote fetcher.
     public init() {
         self.init(
             fetchers: [
                 CacheCoordinator.AlbumArt,
                 DiscogsArtworkService(),
-                LastFMArtworkService(),
-                iTunesArtworkService(),
             ],
             cacheCoordinator: .AlbumArt
         )
     }
-        
+
     // Internal initializer for dependency injection
     init(
         fetchers: [any ArtworkService],
@@ -78,14 +73,6 @@ public final actor MultisourceArtworkService: ArtworkService {
     ) {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
-#if canImport(Vision)
-        do {
-            self.nsfwClassifier = try NSFWClassifier()
-        } catch {
-            Log(.error, category: .artwork, "Failed to initialize NSFW classifier: \(error)")
-            self.nsfwClassifier = nil
-        }
-#endif
     }
 
     public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
@@ -130,18 +117,9 @@ public final actor MultisourceArtworkService: ArtworkService {
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
-    
-#if canImport(Vision)
-                if let nsfwClassifier {
-                    guard try await nsfwClassifier.classify(cgImage: artwork) == .sfw else {
-                        Log(.info, category: .artwork, "Inappropriate artwork found for \(cacheKey) using fetcher \(fetcher)")
-                        await self.cacheCoordinator.set(value: Error.nsfw, for: errorCacheKey, lifespan: .thirtyDays)
-
-                        return nil
-                    }
-                }
-#endif
-
+                // NSFW classification is now handled server-side by the backend proxy.
+                // The proxy returns 404 for NSFW artwork, which DiscogsArtworkService
+                // translates to ServiceError.noResults.
                 await self.cacheCoordinator.set(artwork: artwork, for: cacheKey, lifespan: artworkLifespan)
                 return artwork
             } catch {
