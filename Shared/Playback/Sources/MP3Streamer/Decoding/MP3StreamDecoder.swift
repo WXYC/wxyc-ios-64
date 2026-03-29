@@ -40,6 +40,7 @@ private final class AudioStreamContext {
 
 /// Decodes streaming MP3 data to PCM buffers using AudioToolbox's AudioFileStream
 final class MP3StreamDecoder: @unchecked Sendable {
+    private static let idLock = NSLock()
     private nonisolated(unsafe) static var nextInstanceID = 0
     private let instanceID: Int
 
@@ -90,8 +91,10 @@ final class MP3StreamDecoder: @unchecked Sendable {
     }
 
     init() {
+        Self.idLock.lock()
         self.instanceID = Self.nextInstanceID
         Self.nextInstanceID += 1
+        Self.idLock.unlock()
         self.decoderQueue = DispatchQueue(label: "com.avaudiostreamer.mp3decoder.\(instanceID)", qos: .userInitiated)
 
         // Initialize buffer stream with bounded buffer to prevent memory growth
