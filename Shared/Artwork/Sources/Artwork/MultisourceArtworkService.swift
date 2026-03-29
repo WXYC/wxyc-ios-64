@@ -116,8 +116,10 @@ public final actor MultisourceArtworkService: ArtworkService {
         let cacheKey = playcut.artworkCacheKey
         let errorCacheKey = "error_\(cacheKey)"
 
-        if let error: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKey),
-           Error.allCases.contains(error) {
+        if let cachedError: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKey),
+           Error.allCases.contains(cachedError) {
+            Log(.info, category: .artwork, "Cached error for \(cacheKey): \(cachedError)")
+            return nil
         }
 
         // Rotation plays get cached for 30 days; non-rotation plays for 1 day
