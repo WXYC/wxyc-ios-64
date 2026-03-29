@@ -87,7 +87,7 @@ enum FlowsheetConverter {
     /// Parses an ISO 8601 timestamp string to milliseconds since 1970.
     ///
     /// - Parameter isoString: ISO 8601 formatted date string.
-    /// - Returns: Milliseconds since 1970, or 0 if parsing fails.
+    /// - Returns: Milliseconds since 1970, or current time in milliseconds if parsing fails.
     private static func parseHour(from isoString: String) -> UInt64 {
         // Use modern Swift Foundation parsing
         if let date = try? Date(isoString, strategy: .iso8601) {
@@ -98,6 +98,8 @@ enum FlowsheetConverter {
         if let date = try? Date(isoString, strategy: fractionalStrategy) {
             return UInt64(date.timeIntervalSince1970 * 1000)
         }
-        return 0
+        // Use current time as fallback so entries sort correctly rather than
+        // appearing at epoch (Jan 1, 1970).
+        return UInt64(Date.now.timeIntervalSince1970 * 1000)
     }
 }
