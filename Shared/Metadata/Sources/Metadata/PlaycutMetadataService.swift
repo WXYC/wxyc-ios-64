@@ -40,6 +40,7 @@ public actor PlaycutMetadataService {
     // Cached Spotify token
     private var spotifyToken: String?
     private var spotifyTokenExpiration: Date?
+    private var inflightTokenTask: Task<String, any Error>?
 
     public init() {
         self.session = URLSession.shared
@@ -331,37 +332,54 @@ extension PlaycutMetadataService {
            Date() < expiration.addingTimeInterval(-60) {
             return token
         }
-        
-        // Fetch new token using Client Credentials flow
-        let tokenURL = URL(string: "https://accounts.spotify.com/api/token")!
-        
-        var request = URLRequest(url: tokenURL)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        let credentialString = "\(Self.spotifyClientId):\(Self.spotifyClientSecret)"
-        let base64Credentials = Data(credentialString.utf8).base64EncodedString()
-        request.setValue("Basic \(base64Credentials)", forHTTPHeaderField: "Authorization")
-        
-        request.httpBody = "grant_type=client_credentials".data(using: .utf8)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw MetadataError.authenticationFailed
+        // Coalesce concurrent token fetches into a single request
+        if let inflightTask = inflightTokenTask {
+            return try await inflightTask.value
         }
 
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let accessToken = json["access_token"] as? String,
-              let expiresIn = json["expires_in"] as? Int else {
-            throw MetadataError.invalidResponse
+        let task = Task<String, any Error> {
+            // Fetch new token using Client Credentials flow
+            let tokenURL = URL(string: "https://accounts.spotify.com/api/token")!
+
+            var request = URLRequest(url: tokenURL)
+            request.httpMethod = "POST"
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+            let credentialString = "\(Self.spotifyClientId):\(Self.spotifyClientSecret)"
+            let base64Credentials = Data(credentialString.utf8).base64EncodedString()
+            request.setValue("Basic \(base64Credentials)", forHTTPHeaderField: "Authorization")
+
+            request.httpBody = "grant_type=client_credentials".data(using: .utf8)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                throw MetadataError.authenticationFailed
+            }
+
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let accessToken = json["access_token"] as? String,
+                  let expiresIn = json["expires_in"] as? Int else {
+                throw MetadataError.invalidResponse
+            }
+
+            return accessToken
         }
-        
-        spotifyToken = accessToken
-        spotifyTokenExpiration = Date().addingTimeInterval(TimeInterval(expiresIn))
-        
-        return accessToken
+
+        inflightTokenTask = task
+
+        do {
+            let accessToken = try await task.value
+            spotifyToken = accessToken
+            spotifyTokenExpiration = Date().addingTimeInterval(3600)
+            inflightTokenTask = nil
+            return accessToken
+        } catch {
+            inflightTokenTask = nil
+            throw error
+        }
     }
 }
 
