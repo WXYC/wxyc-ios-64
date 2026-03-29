@@ -9,13 +9,18 @@
 //
 
 import AppServices
+import Foundation
 import Playlist
 
 extension NowPlayingItem {
     static var placeholder: NowPlayingItem {
-        NowPlayingItem(playcut: playcutsIterator.next()!)
+        placeholderLock.lock()
+        let playcut = playcutsIterator.next()!
+        placeholderLock.unlock()
+        return NowPlayingItem(playcut: playcut)
     }
-    
+
+    private static let placeholderLock = NSLock()
     private static var playcutsIterator = CircularIterator(placeholderPlaycuts)
     
     private static let placeholderPlaycuts: [Playcut] = [
