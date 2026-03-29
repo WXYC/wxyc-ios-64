@@ -101,9 +101,16 @@ public final class ReviewRequestService {
 
     /// Compares two semantic version strings.
     /// Returns true if version1 is greater than version2.
+    /// Non-numeric segments are silently dropped, so "1.0.beta" compares as "1.0".
     private func compareVersions(_ version1: String, isGreaterThan version2: String) -> Bool {
         let v1Components = version1.split(separator: ".").compactMap { Int($0) }
         let v2Components = version2.split(separator: ".").compactMap { Int($0) }
+
+        // If either version string produced no numeric components, treat as equal
+        // to avoid false positives from malformed version strings.
+        guard !v1Components.isEmpty, !v2Components.isEmpty else {
+            return false
+        }
 
         let maxLength = max(v1Components.count, v2Components.count)
 
