@@ -68,6 +68,7 @@ public final class WidgetStateService {
     deinit {
         playbackObservationTask?.cancel()
         playlistObservationTask?.cancel()
+        // appTerminationObservation is automatically cleaned up on deallocation (iOS 18.6+)
     }
 
     // MARK: - Lifecycle
