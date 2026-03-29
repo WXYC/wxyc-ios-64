@@ -40,7 +40,6 @@
 		7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 0852AD2E14147E5B270AD1F1 /* Playlist */; };
 		78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9AA59EC6C2A143F5728D04F9 /* Analytics */; };
 		7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */ = {isa = PBXBuildFile; productRef = 3DF76684E122C2FAD4F26E27 /* PartyHorn */; };
-		9A3DDC2D5E4C3B61FAF462E1 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = B2494B4F186A5F3B593EF021 /* OpenNSFW */; };
 		9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0E4513BB04D21BB582E4B0 /* MusicShareKit */; };
 		A17CCEC28257E400D4B99AFF /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 8ED7023BC91B73A942BF53C7 /* Core */; };
 		A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 3CABF5AF82DAA2E0D9877A07 /* Core */; };
@@ -50,7 +49,6 @@
 		B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 3776C2184A667CCB7B4E0B67 /* Artwork */; };
 		B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 932CA5D4CF336582845E6C75 /* AppServices */; };
 		1529CE89784D4CABA78CA19E /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 4F7FBFF8641D4F629866EB1F /* AppServices */; };
-		B78B37108DAAACABF26EB624 /* OpenNSFW in Frameworks */ = {isa = PBXBuildFile; productRef = 6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */; };
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
 		7127691612A44A229E553EDE /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 16E246AEBDDC40D3B97316A6 /* Sentry */; };
 		0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3693E141EF47CABE91D00F /* Sentry */; };
@@ -148,7 +146,6 @@
 		7DEA10C351FEB7C3DEBD1E89 /* WXUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WXUI; path = Shared/WXUI; sourceTree = SOURCE_ROOT; };
 		87ED2724FB87B5D288BBFFFB /* WXYC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WXYC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8BACFC9947E84949B746EE60 /* WXYCUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8D0C09BCD2BFEC26D122542E /* OpenNSFW */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenNSFW; path = Shared/OpenNSFW; sourceTree = SOURCE_ROOT; };
 		8ED0B718BCDD0CEC55372A30 /* Caching */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Caching; path = Shared/Caching; sourceTree = SOURCE_ROOT; };
 		CAB44EBC8F31C69863D71146 /* Analytics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Analytics; path = Shared/Analytics; sourceTree = SOURCE_ROOT; };
 		COLORPAL0FILEREF0000001 /* ColorPalette */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ColorPalette; path = Shared/ColorPalette; sourceTree = SOURCE_ROOT; };
@@ -165,7 +162,6 @@
 		236B51F22EFC656A0058AD01 /* Exceptions for "WXYC" folder in "NowPlayingWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				iOS/Assets/OpenNSFW.mlmodelc,
 				iOS/NowPlayingWidget/Assets.xcassets,
 				iOS/NowPlayingWidget/Extensions.swift,
 				"iOS/NowPlayingWidget/NowPlayingItem+Placeholder.swift",
@@ -329,7 +325,6 @@
 				23925B902F5A0A4A0040EE1B /* Sentry in Frameworks */,
 				A17CCEC28257E400D4B99AFF /* Core in Frameworks */,
 				2C25163B4CC5F775E9F8409E /* Logger in Frameworks */,
-				B78B37108DAAACABF26EB624 /* OpenNSFW in Frameworks */,
 				78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */,
 				9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */,
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
@@ -382,7 +377,6 @@
 				23DD3EC12EFA090B0090636B /* PostHog in Frameworks */,
 				A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */,
 				DCF27381E7D5EC54633BE58E /* Logger in Frameworks */,
-				9A3DDC2D5E4C3B61FAF462E1 /* OpenNSFW in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -426,7 +420,6 @@
 				21C88FF06CCC47E090003EAD /* Logger */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
-				8D0C09BCD2BFEC26D122542E /* OpenNSFW */,
 				FF0D2C45269DEE0E530C46D3 /* PartyHorn */,
 				4FA5098D4C45B1A40664F383 /* Playback */,
 				408862FFDA682059B46DBE38 /* PlayerHeaderView */,
@@ -620,7 +613,6 @@
 			packageProductDependencies = (
 				8ED7023BC91B73A942BF53C7 /* Core */,
 				33A31E91AA56954894130F50 /* Logger */,
-				6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */,
 				9AA59EC6C2A143F5728D04F9 /* Analytics */,
 				4E0E4513BB04D21BB582E4B0 /* MusicShareKit */,
 				E150313F784CF272A32EA642 /* Playback */,
@@ -696,7 +688,6 @@
 				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
-				6797FDE9A6390018099531DF /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */,
 				9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */,
 				F312D55190C505B9EE16903A /* XCLocalSwiftPackageReference "Shared/Playback" */,
 				6220DC310DFF2FC4A929FDB0 /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */,
@@ -843,7 +834,6 @@
 		};
 		23FB21CD2EEA86910064E6FD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			productRef = 23FB21CC2EEA86910064E6FD /* OpenNSFW */;
 		};
 		23FB21CF2EEA86B30064E6FD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -855,7 +845,6 @@
 		};
 		23FB21D32EEA86BB0064E6FD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			productRef = 23FB21D22EEA86BB0064E6FD /* OpenNSFW */;
 		};
 		24AEA30BAA6F9ED854ABE568 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -2414,10 +2403,6 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Analytics;
 		};
-		6797FDE9A6390018099531DF /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Shared/OpenNSFW;
-		};
 		8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Metadata;
@@ -2571,11 +2556,6 @@
 			package = FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */;
 			productName = Core;
 		};
-		23FB21CC2EEA86910064E6FD /* OpenNSFW */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6797FDE9A6390018099531DF /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
-			productName = OpenNSFW;
-		};
 		23FB21CE2EEA86B30064E6FD /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */;
@@ -2585,11 +2565,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */;
 			productName = Logger;
-		};
-		23FB21D22EEA86BB0064E6FD /* OpenNSFW */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6797FDE9A6390018099531DF /* XCLocalSwiftPackageReference "Shared/OpenNSFW" */;
-			productName = OpenNSFW;
 		};
 		23TV00012EFC67800058AD01 /* Playback */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2645,10 +2620,6 @@
 			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
 			productName = PostHog;
 		};
-		6CDA52F7CC9C0CC0A7741EF9 /* OpenNSFW */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = OpenNSFW;
-		};
 		79AE74A2A92779E80E688376 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -2672,10 +2643,6 @@
 		B1E128B6E39E90EA57C68C69 /* MusicShareKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MusicShareKit;
-		};
-		B2494B4F186A5F3B593EF021 /* OpenNSFW */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = OpenNSFW;
 		};
 		B5DEC242C4D59E9B40D0E365 /* Logger */ = {
 			isa = XCSwiftPackageProductDependency;

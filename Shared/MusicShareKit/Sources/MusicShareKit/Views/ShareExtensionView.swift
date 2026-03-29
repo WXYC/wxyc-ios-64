@@ -341,13 +341,8 @@ class ShareExtensionViewModel {
     func extractAndProcessURL() async {
         Log(.info, category: .ui, "extractAndProcessURL started")
 
-        // Configure Spotify credentials
-        let config = MusicShareKit.configuration
-        await SpotifyService.configure(credentials: SpotifyCredentials(
-            clientId: config.spotifyClientId,
-            clientSecret: config.spotifyClientSecret
-        ))
-        Log(.info, category: .ui, "Spotify credentials configured")
+        // Spotify track lookup is now handled via the backend proxy (no client credentials needed)
+        Log(.info, category: .ui, "Starting URL extraction")
 
         // For URL-based previews, process the stored URL
         if let previewURL = previewURL {
