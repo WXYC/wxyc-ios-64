@@ -50,8 +50,12 @@ final class SoundCloudService: MusicService {
     func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         // Use SoundCloud oEmbed API (no auth required)
         // API: https://soundcloud.com/oembed?format=json&url=[url]
-        let encodedUrl = track.url.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        guard let apiURL = URL(string: "https://soundcloud.com/oembed?format=json&url=\(encodedUrl)") else {
+        var components = URLComponents(string: "https://soundcloud.com/oembed")!
+        components.queryItems = [
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "url", value: track.url.absoluteString),
+        ]
+        guard let apiURL = components.url else {
             return track
         }
         
