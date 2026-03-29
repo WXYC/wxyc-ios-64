@@ -68,16 +68,21 @@ public final class AudioPlayerController {
     #endif
     
     // MARK: - Public Properties
-    
+
+    /// Stored mirror of the underlying player state, updated via stateStream observation.
+    /// Using a stored property (instead of reading player.state directly) allows the
+    /// Observation framework to track mutations, since `player` is @ObservationIgnored.
+    private var playerState: PlayerState = .idle
+
     /// Whether audio is currently playing
     public var isPlaying: Bool {
-        player.isPlaying
+        playerState == .playing
     }
 
     /// Whether playback is loading (play initiated but not yet playing, or buffering)
     /// Excludes error and stopped states to prevent infinite loading
     public var isLoading: Bool {
-        playbackIntended && (!isPlaying || player.state == .loading) && !player.state.isError
+        playbackIntended && (!isPlaying || playerState == .loading) && !playerState.isError
     }
 
     // MARK: - Dependencies
@@ -107,6 +112,7 @@ public final class AudioPlayerController {
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
+    @ObservationIgnored private var stateObservationTask: Task<Void, Never>?
 
     // Exponential backoff for reconnection
     @ObservationIgnored internal var backoffTimer: ExponentialBackoff
@@ -178,6 +184,7 @@ public final class AudioPlayerController {
 
     @MainActor
     deinit {
+        stateObservationTask?.cancel()
         eventTask?.cancel()
         reconnectTask?.cancel()
         for observer in notificationObservers {
@@ -210,6 +217,7 @@ public final class AudioPlayerController {
 
         playbackIntended = true
         wasPlayingBeforeRouteDisconnect = false
+        stallStartTime = nil
         playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS)
         activateAudioSession()
@@ -217,6 +225,10 @@ public final class AudioPlayerController {
 
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
+        // Sync stored state immediately so isPlaying reflects the intent without
+        // waiting for the async stateStream to propagate. The stateStream observation
+        // will keep playerState in sync for subsequent player-driven transitions.
+        playerState = player.state
         analytics.capture(PlaybackStartedEvent(reason: reason.rawValue))
         donatePlayIntent()
     }
@@ -238,10 +250,12 @@ public final class AudioPlayerController {
         backoffTimer.reset()
 
         playbackIntended = false
+        stallStartTime = nil
         if reason != .routeDisconnected {
             wasPlayingBeforeRouteDisconnect = false
         }
         player.stop()
+        playerState = player.state
         playbackStartTime = nil
         #if os(iOS) || os(tvOS)
         deactivateAudioSession()
@@ -582,6 +596,17 @@ extension AudioPlayerController {
     }
 
     private func setUpPlayerObservation() {
+        // Observe player state changes and mirror to the stored `playerState` property
+        // so the Observation framework can track mutations.
+        stateObservationTask?.cancel()
+        stateObservationTask = Task { [weak self] in
+            guard let self else { return }
+            for await newState in player.stateStream {
+                guard !Task.isCancelled else { break }
+                self.playerState = newState
+            }
+        }
+
         eventTask?.cancel()
         eventTask = Task { [weak self] in
             guard let self else { return }
@@ -612,7 +637,9 @@ extension AudioPlayerController {
 
     private func handleStall() {
         Log(.warning, category: .playback, "Stall detected, starting backoff recovery")
-        stallStartTime = Date()
+        // Only record the first stall timestamp so repeated stall events don't
+        // shorten the reported stall duration.
+        stallStartTime = stallStartTime ?? Date()
         analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration))
 
         // Attempt reconnection with exponential backoff
@@ -658,12 +685,17 @@ extension AudioPlayerController {
             }
 
             do {
-                self.player.play()
                 try await Task.sleep(for: .seconds(waitTime))
-
                 guard !Task.isCancelled else { return }
-                if !player.isPlaying {
-                    attemptReconnectWithExponentialBackoff()
+
+                self.player.play()
+
+                // Brief grace period for connection to establish
+                try await Task.sleep(for: .milliseconds(500))
+                guard !Task.isCancelled else { return }
+
+                if !self.player.isPlaying {
+                    self.attemptReconnectWithExponentialBackoff()
                 } else {
                     let totalStallTime = stallStartTime.map { Date().timeIntervalSince($0) } ?? 0
                     Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s")
@@ -731,7 +763,8 @@ extension AudioPlayerController: PlaybackController {
         }
 
         // Convert PlayerState to PlaybackState
-        // PlayerState doesn't include .interrupted (controller-level concern)
-        return player.state.asPlaybackState
+        // Uses the stored playerState (updated via stateStream observation)
+        // rather than player.state directly, so Observation can track changes.
+        return playerState.asPlaybackState
     }
 }
