@@ -25,27 +25,29 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     var interfaceController: CPInterfaceController?
     var listTemplate: CPListTemplate?
     var playlistService: PlaylistService { Singletonia.shared.playlistService }
-    
+    private var isPlayingObservationTask: Task<Void, Never>?
+    private var playlistObservationTask: Task<Void, Never>?
+
     // MARK: CPTemplateApplicationSceneDelegate
-    
+
     nonisolated func templateApplicationScene(_ templateApplicationScene: CPTemplateApplicationScene, didConnect interfaceController: CPInterfaceController) {
         StructuredPostHogAnalytics.shared.capture(CarPlayConnected())
-        
+
         Task { @MainActor in
             self.interfaceController = interfaceController
-            
+
             interfaceController.delegate = self
             self.setUpNowPlaying()
-            
+
             let listTemplate = CPListTemplate(
                 title: "WXYC 89.3 FM",
                 sections: [self.makePlayerSection()]
             )
             self.listTemplate = listTemplate
-            
+
             self.interfaceController?.setRootTemplate(listTemplate, animated: true) { success, error in
                 Log(.info, category: .ui, "CPNowPlayingTemplate setRootTemplate: success: \(success), error: \(String(describing: error))")
-                
+
                 Task { @MainActor in
                     self.observeIsPlaying()
                     self.observePlaylist()
@@ -53,15 +55,19 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
             }
         }
     }
-    
+
     nonisolated func templateApplicationScene(
         _ templateApplicationScene: CPTemplateApplicationScene,
         didDisconnectInterfaceController interfaceController: CPInterfaceController
     ) {
         Task { @MainActor in
+            self.isPlayingObservationTask?.cancel()
+            self.isPlayingObservationTask = nil
+            self.playlistObservationTask?.cancel()
+            self.playlistObservationTask = nil
             self.interfaceController = nil
             templateApplicationScene.delegate = self
-            
+
             CPNowPlayingTemplate.shared.remove(self)
         }
     }
@@ -124,7 +130,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         let playlistItems = playlist.entries.compactMap { entry in
             switch entry {
             case let entry as Playcut:
-                CPListItem(playcut: entry)
+                CPListItem(playcut: entry, artworkService: Singletonia.shared.artworkService)
             case _ as Talkset:
                 CPListItem(text: nil, detailText: "Talkset", image: nil)
             case let entry as Breakpoint:
@@ -152,22 +158,25 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
         )
     }
     
-    private nonisolated func observeIsPlaying() {
-        Task { @MainActor in
+    private func observeIsPlaying() {
+        isPlayingObservationTask?.cancel()
+        isPlayingObservationTask = Task {
             let observation = Observations {
                 AudioPlayerController.shared.isPlaying
             }
-            
+
             for await _ in observation {
+                guard !Task.isCancelled else { break }
                 self.updateListTemplate()
             }
         }
     }
-    
-    @MainActor
+
     private func observePlaylist() {
-        Task {
+        playlistObservationTask?.cancel()
+        playlistObservationTask = Task {
             for await playlist in playlistService.updates() {
+                guard !Task.isCancelled else { break }
                 self.playlist = playlist
                 self.updateListTemplate()
             }
@@ -176,13 +185,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
 }
 
 extension CPListItem: @unchecked @retroactive Sendable {
-    convenience init(playcut: Playcut) {
+    convenience init(playcut: Playcut, artworkService: ArtworkService) {
         self.init(text: playcut.artistName, detailText: playcut.songTitle)
         Task {
-            let artworkService = MultisourceArtworkService()
-            let cgImage = try await artworkService.fetchArtwork(for: playcut)
-
-            Task { @MainActor in
+            guard let cgImage = try? await artworkService.fetchArtwork(for: playcut),
+                  !Task.isCancelled else { return }
+            await MainActor.run {
                 self.setImage(cgImage.toUIImage())
             }
         }
