@@ -416,7 +416,7 @@ struct EdgeCaseTests {
     func handlesUnclosedBracket() {
         let input = "Text with [unclosed bracket"
         let result = DiscogsMarkupParser.parse(input)
-        #expect(String(result.characters) == "Text with Text with [unclosed bracket")
+        #expect(String(result.characters) == "Text with [unclosed bracket")
     }
     
     @Test("Handles unknown tags")
