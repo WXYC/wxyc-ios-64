@@ -32,7 +32,11 @@ private let decoder = JSONDecoder()
 
 extension URLSession: PlaylistDataSource {
     public func getPlaylist() async throws -> Playlist {
-        let (playlistData, _) = try await self.data(from: URL.WXYCPlaylist)
+        let (playlistData, response) = try await self.data(from: URL.WXYCPlaylist)
+        if let httpResponse = response as? HTTPURLResponse,
+           !(200...299).contains(httpResponse.statusCode) {
+            throw URLError(.badServerResponse)
+        }
         let repairedData = playlistData.repairingMojibake()
         return try decoder.decode(Playlist.self, from: repairedData)
     }
