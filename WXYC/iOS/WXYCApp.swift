@@ -20,7 +20,6 @@ import Intents
 import Logger
 import MusicShareKit
 import Observation
-import OpenNSFW
 import Playback
 import PlayerHeaderView
 import Playlist
@@ -59,15 +58,6 @@ struct WXYCApp: App {
         }
         #endif
 
-        // Seed OpenNSFW model to shared container for widget.
-        // Runs off the main thread since model copying is I/O-heavy and only
-        // matters for widget rendering, not the app's initial display.
-        if let bundleURL = Bundle.main.url(forResource: "OpenNSFW", withExtension: "mlmodelc") {
-            Task.detached(priority: .utility) {
-                ModelSeeder.seedIfNeeded(bundleModelURL: bundleURL)
-            }
-        }
-        
         // Enable battery monitoring for thermal context
         DeviceContext.enableBatteryMonitoring()
 
