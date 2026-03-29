@@ -84,10 +84,13 @@ struct RequestSentHUDModifier: ViewModifier {
 public extension View {
     func requestSentHUD(
         isPresented: Binding<Bool>,
-        autoDismissAfter _: TimeInterval = 1.5
+        autoDismissAfter duration: TimeInterval = 1.5
     ) -> some View {
         modifier(
-            RequestSentHUDModifier(isPresented: isPresented)
+            RequestSentHUDModifier(
+                isPresented: isPresented,
+                autoDismissAfter: .milliseconds(Int(duration * 1000))
+            )
         )
     }
 }
