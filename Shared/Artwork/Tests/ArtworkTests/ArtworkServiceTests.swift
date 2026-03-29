@@ -145,6 +145,12 @@ extension CGImage {
 @Suite("ArtworkService Tests")
 struct ArtworkServiceTests {
 
+    /// Creates a unique Playcut for each test invocation to avoid error cache collisions
+    /// from the persistent DiskCache used by CacheCoordinator.
+    private func uniquePlaycut() -> Playcut {
+        Playcut.stub(artistName: UUID().uuidString)
+    }
+
     // MARK: - Basic Fetching Tests
 
     @Test("Fetches artwork from first successful fetcher")
@@ -161,10 +167,10 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2, fetcher3],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // When
         let artwork = try await service.fetchArtwork(for: playcut)
@@ -190,10 +196,10 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2, fetcher3],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // When
         let artwork = try await service.fetchArtwork(for: playcut)
@@ -216,10 +222,10 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher1, fetcher2],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // When/Then
         await #expect(throws: MultisourceArtworkService.Error.noArtworkAvailable) {
@@ -242,10 +248,10 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // When - Make 3 concurrent requests for the same artwork
         async let result1 = service.fetchArtwork(for: playcut)
@@ -270,13 +276,14 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         // Two playcuts with same release title but different songs
-        let playcut1 = Playcut.stub(songTitle: "Song A")
+        let uniqueArtist = UUID().uuidString
+        let playcut1 = Playcut.stub(songTitle: "Song A", artistName: uniqueArtist)
 
-        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song B")
+        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song B", artistName: uniqueArtist)
 
         // When - Request both concurrently
         async let result1 = service.fetchArtwork(for: playcut1)
@@ -298,7 +305,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         // Two playcuts with same release title but DIFFERENT artists
@@ -333,7 +340,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         // Two playcuts with same song title but DIFFERENT artists, no release title
@@ -367,7 +374,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         // Two playcuts with same song title AND same artist, no release title
@@ -399,7 +406,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         let playcut1 = Playcut.stub(songTitle: "Song A", releaseTitle: "Album A")
@@ -426,12 +433,12 @@ struct ArtworkServiceTests {
         fetcher.artworkToReturn = artwork
 
         // Create a mock cache fetcher that reads from our mockCache
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // First service with just the regular fetcher
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         // When - First fetch
@@ -469,10 +476,10 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [failingFetcher, successfulFetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // When
         let result = try await service.fetchArtwork(for: playcut)
@@ -488,10 +495,10 @@ struct ArtworkServiceTests {
         // Given
         let service = MultisourceArtworkService(
             fetchers: [],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
         // When/Then
         await #expect(throws: MultisourceArtworkService.Error.noArtworkAvailable) {
@@ -509,7 +516,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         let playcut = Playcut.stub(
@@ -544,7 +551,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
         let playcuts: [Playcut] = (1...5).map { i in
@@ -587,35 +594,35 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator.AlbumArt
+            cacheCoordinator: CacheCoordinator(cache: DiskCache())
         )
 
-        let playcut = Playcut.stub()
+        let playcut = uniquePlaycut()
 
-        // When - Make sequential requests
+        // When - Make sequential requests (each completes before the next starts)
         _ = try await service.fetchArtwork(for: playcut)
         _ = try await service.fetchArtwork(for: playcut)
         _ = try await service.fetchArtwork(for: playcut)
 
-        // Then - Each request should hit the fetcher since tasks complete between calls
-        // But with cache as first fetcher, subsequent calls would be cached
-        #expect(fetcher.fetchCount >= 1)
+        // Then - Each sequential request hits the fetcher because the in-flight task
+        // is removed between calls (no cache fetcher in the fetchers list)
+        #expect(fetcher.fetchCount == 3)
     }
 
     // MARK: - Default Initializer Test
 
-    @Test("Default initializer works correctly")
+    @Test("Default initializer creates service without crashing")
     func defaultInitializerWorks() async throws {
-        // Given
+        // Given/When - Use default fetchers (real network services)
         let service = MultisourceArtworkService()
 
-        let playcut = Playcut.stub()
-
-        // When/Then - Service should work with default fetchers
-        // It will likely fail to find artwork for this test playcut, but shouldn't crash
-        _ = try? await service.fetchArtwork(for: playcut)
-
-        // Test passes if we get here without crashing
-        #expect(true)
+        // Then - Service should handle a missing artwork lookup gracefully
+        let playcut = uniquePlaycut()
+        do {
+            _ = try await service.fetchArtwork(for: playcut)
+        } catch {
+            // Expected: no real artwork exists for stub playcut
+            #expect(error is MultisourceArtworkService.Error)
+        }
     }
 }
