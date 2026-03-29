@@ -14,7 +14,7 @@ import SwiftUI
 import WidgetKit
 
 struct NowPlayingTimelineEntry: TimelineEntry {
-    let date: Date = Date(timeIntervalSinceNow: 1)
+    let date: Date = Date()
     let artist: String
     let songTitle: String
     let artwork: SwiftUI.Image?
