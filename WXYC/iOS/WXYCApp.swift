@@ -44,6 +44,8 @@ private enum SettingsBundleKeys {
 @main
 struct WXYCApp: App {
     @State private var appState = Singletonia.shared
+    @State private var foregroundRefreshTask: Task<Void, Never>?
+    @State private var cacheCleanupTask: Task<Void, Never>?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.requestReview) private var requestReview
 
@@ -190,6 +192,12 @@ struct WXYCApp: App {
             }
         }
         .backgroundTask(.appRefresh("com.wxyc.refresh")) {
+            // Schedule next refresh first so the cycle continues even if the app
+            // is terminated during the fetch below.
+            await MainActor.run {
+                scheduleBackgroundRefresh()
+            }
+
             Log(.info, category: .general, "Background refresh started")
 
             // Fetch fresh playlist (this always fetches from network, ignoring cache)
@@ -202,11 +210,6 @@ struct WXYCApp: App {
             StructuredPostHogAnalytics.shared.capture(BackgroundRefreshCompleted(
                 entryCount: playlist.entries.count
             ))
-
-            // Schedule the next refresh
-            await MainActor.run {
-                scheduleBackgroundRefresh()
-            }
         }
         #if targetEnvironment(macCatalyst)
         .windowResizability(.contentMinSize)
@@ -306,12 +309,15 @@ struct WXYCApp: App {
             AdaptiveQualityController.shared.handleForegrounded()
             appState.setForegrounded(true)
             scheduleBackgroundRefresh()
+            // Cancel previous tasks to avoid duplicated work from rapid phase changes
+            foregroundRefreshTask?.cancel()
+            cacheCleanupTask?.cancel()
             // Refresh playlist if cache has expired while in background.
             // This ensures users see fresh data when returning to the app after
             // an extended period, rather than waiting for the next fetch cycle.
-            refreshPlaylistIfCacheExpired()
+            foregroundRefreshTask = refreshPlaylistIfCacheExpired()
             // Check if user requested cache clear from Settings app
-            handleSettingsBundleCacheClear()
+            cacheCleanupTask = handleSettingsBundleCacheClear()
 
         @unknown default:
             break
@@ -395,7 +401,8 @@ struct WXYCApp: App {
     /// Called when the app returns to foreground after potentially being backgrounded
     /// for an extended period. This ensures users see fresh data immediately rather
     /// than waiting for the next periodic fetch cycle.
-    private func refreshPlaylistIfCacheExpired() {
+    @discardableResult
+    private func refreshPlaylistIfCacheExpired() -> Task<Void, Never> {
         Task {
             let isExpired = await appState.playlistService.isCacheExpired()
             if isExpired {
@@ -407,12 +414,13 @@ struct WXYCApp: App {
 
     /// Checks if the user enabled the "Clear Artwork Cache" toggle in Settings.
     /// If enabled, clears the cache and resets the toggle.
-    private func handleSettingsBundleCacheClear() {
+    @discardableResult
+    private func handleSettingsBundleCacheClear() -> Task<Void, Never>? {
         guard UserDefaults.standard.bool(forKey: SettingsBundleKeys.clearArtworkCache) else {
-            return
+            return nil
         }
 
-        Task {
+        return Task {
             let sizeBeforeClear = await CacheCoordinator.AlbumArt.totalSize()
             await CacheCoordinator.AlbumArt.clearAll()
             UserDefaults.standard.set(false, forKey: SettingsBundleKeys.clearArtworkCache)
