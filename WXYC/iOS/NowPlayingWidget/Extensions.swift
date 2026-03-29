@@ -65,21 +65,22 @@ extension SwiftUI.Image {
 
 extension Collection where Self: Sendable, Element: Sendable {
     /// Asynchronously maps each element of the collection using the given transform.
-    /// Elements are processed concurrently using a task group.
+    /// Elements are processed concurrently using a task group, preserving input order.
     public func asyncMap<T: Sendable>(_ transform: @Sendable @escaping (Element) async -> T) async -> [T] {
-        await withTaskGroup(of: T.self) { group in
-            for element in self {
+        let indexed = Array(self.enumerated())
+        return await withTaskGroup(of: (Int, T).self) { group in
+            for (index, element) in indexed {
                 group.addTask {
-                    await transform(element)
+                    (index, await transform(element))
                 }
             }
-            
-            var results: [T] = []
-            for await result in group {
-                results.append(result)
+
+            var results = Array<T?>(repeating: nil, count: indexed.count)
+            for await (index, value) in group {
+                results[index] = value
             }
-            
-            return results
+
+            return results.compactMap { $0 }
         }
     }
 }
