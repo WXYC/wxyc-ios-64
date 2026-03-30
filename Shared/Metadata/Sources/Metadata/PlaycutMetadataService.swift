@@ -27,6 +27,7 @@ public actor PlaycutMetadataService {
     private let baseURL: URL
     private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
+    private let urlSession: URLSession
     private let decoder: JSONDecoder
     private let cache: CacheCoordinator
 
@@ -37,6 +38,7 @@ public actor PlaycutMetadataService {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
         self.session = URLSession.shared
+        self.urlSession = .shared
         self.decoder = JSONDecoder()
         self.cache = .Metadata
     }
@@ -46,11 +48,13 @@ public actor PlaycutMetadataService {
         baseURL: URL = URL(string: "https://api.wxyc.org")!,
         tokenProvider: SessionTokenProvider? = nil,
         session: WebSession,
+        urlSession: URLSession = .shared,
         cache: CacheCoordinator = .Metadata
     ) {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
         self.session = session
+        self.urlSession = urlSession
         self.decoder = JSONDecoder()
         self.cache = cache
     }
@@ -195,7 +199,11 @@ public actor PlaycutMetadataService {
             let token = try await tokenProvider.token()
             var request = URLRequest(url: url)
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let (data, _) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await urlSession.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                throw MetadataError.httpError(statusCode: httpResponse.statusCode)
+            }
             return data
         } else {
             return try await session.data(from: url)
@@ -233,5 +241,6 @@ private struct ArtistMetadataAPIResponse: Codable {
 extension PlaycutMetadataService {
     enum MetadataError: Error {
         case invalidURL
+        case httpError(statusCode: Int)
     }
 }
