@@ -26,6 +26,7 @@ import UIKit
 // Platform-specific imports for default player
 #if !os(watchOS)
 import MP3StreamerModule
+import HLSPlayerModule
 #endif
 import RadioPlayerModule
 
@@ -39,32 +40,40 @@ public final class AudioPlayerController {
     // MARK: - Singleton
 
     #if os(iOS) || os(tvOS)
-    /// Shared singleton instance for iOS/tvOS using MP3Streamer
     public static let shared = AudioPlayerController(
-        player: MP3Streamer(
-            configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
-        ),
+        player: makePlayer(for: PlayerControllerType.loadPersisted()),
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
         analytics: StructuredPostHogAnalytics.shared
     )
     #elseif os(watchOS)
-    /// Shared singleton instance for watchOS using RadioPlayer
     public static let shared = AudioPlayerController(
         player: RadioPlayer(),
         notificationCenter: .default,
         analytics: StructuredPostHogAnalytics.shared
     )
     #else
-    /// Shared singleton instance for macOS using MP3Streamer
     public static let shared = AudioPlayerController(
-        player: MP3Streamer(
-            configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL)
-        ),
+        player: makePlayer(for: PlayerControllerType.loadPersisted()),
         notificationCenter: .default,
         analytics: StructuredPostHogAnalytics.shared
     )
+    #endif
+
+    // MARK: - Player Factory
+
+    #if !os(watchOS)
+    static func makePlayer(for type: PlayerControllerType) -> any AudioPlayerProtocol {
+        switch type {
+        case .mp3Streamer:
+            MP3Streamer(configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL))
+        case .radioPlayer:
+            RadioPlayer()
+        case .hlsPlayer:
+            HLSPlayer(url: RadioStation.WXYC.hlsStreamURL)
+        }
+    }
     #endif
     
     // MARK: - Public Properties
@@ -262,6 +271,43 @@ public final class AudioPlayerController {
         #endif
     }
 
+    // MARK: - Time-Shift Support
+
+    /// Whether the current player supports time-shifting (seeking within a live stream).
+    public var supportsTimeShift: Bool {
+        player is TimeShiftablePlayer
+    }
+
+    /// Whether the player is currently at or near the live edge.
+    public var isAtLiveEdge: Bool {
+        (player as? TimeShiftablePlayer)?.isAtLiveEdge ?? true
+    }
+
+    /// Seconds behind the live edge. Returns 0 when at live or when time-shift is unsupported.
+    public var secondsBehindLive: TimeInterval {
+        (player as? TimeShiftablePlayer)?.secondsBehindLive ?? 0
+    }
+
+    /// Maximum seconds the listener can scrub backwards.
+    public var maxLookbackSeconds: TimeInterval {
+        (player as? TimeShiftablePlayer)?.maxLookbackSeconds ?? 0
+    }
+
+    /// Seek to a position expressed as seconds behind the live edge.
+    public func seek(secondsBehindLive: TimeInterval) async {
+        await (player as? TimeShiftablePlayer)?.seek(secondsBehindLive: secondsBehindLive)
+    }
+
+    /// Jump to the live edge.
+    public func seekToLive() async {
+        await (player as? TimeShiftablePlayer)?.seekToLive()
+    }
+
+    /// Stream of time position updates from the underlying player, if it supports time-shifting.
+    public var timePositionStream: AsyncStream<TimeInterval>? {
+        (player as? TimeShiftablePlayer)?.timePositionStream
+    }
+
     // MARK: - CPU Session Aggregation
 
     private func setUpCPUAggregator() {
@@ -269,10 +315,12 @@ public final class AudioPlayerController {
         self.cpuAggregator = CPUSessionAggregator(
             analytics: analytics,
             playerTypeProvider: { [weak self] in
-                // Determine player type from the actual player instance
                 guard let self else { return .mp3Streamer }
                 if self.player is RadioPlayer {
                     return .radioPlayer
+                }
+                if self.player is HLSPlayer {
+                    return .hlsPlayer
                 }
                 return .mp3Streamer
             }
@@ -372,15 +420,63 @@ public final class AudioPlayerController {
         }
         commandTargets.append(toggleTarget)
 
-        // Disable unsupported commands for live streaming
+        // Disable unsupported commands
         commandCenter.stopCommand.isEnabled = false
-        commandCenter.skipForwardCommand.isEnabled = false
-        commandCenter.skipBackwardCommand.isEnabled = false
         commandCenter.nextTrackCommand.isEnabled = false
         commandCenter.previousTrackCommand.isEnabled = false
         commandCenter.seekForwardCommand.isEnabled = false
         commandCenter.seekBackwardCommand.isEnabled = false
-        commandCenter.changePlaybackPositionCommand.isEnabled = false
+
+        // Enable seek commands when the player supports time-shifting
+        if player is TimeShiftablePlayer {
+            commandCenter.skipBackwardCommand.isEnabled = true
+            commandCenter.skipBackwardCommand.preferredIntervals = [15]
+            let skipBackTarget = commandCenter.skipBackwardCommand.addTarget { [weak self] event in
+                guard let self,
+                      let skipEvent = event as? MPSkipIntervalCommandEvent else {
+                    return .commandFailed
+                }
+                Task { @MainActor in
+                    let newOffset = self.secondsBehindLive + skipEvent.interval
+                    await self.seek(secondsBehindLive: min(newOffset, self.maxLookbackSeconds))
+                }
+                return .success
+            }
+            commandTargets.append(skipBackTarget)
+
+            commandCenter.skipForwardCommand.isEnabled = true
+            commandCenter.skipForwardCommand.preferredIntervals = [15]
+            let skipFwdTarget = commandCenter.skipForwardCommand.addTarget { [weak self] event in
+                guard let self,
+                      let skipEvent = event as? MPSkipIntervalCommandEvent else {
+                    return .commandFailed
+                }
+                Task { @MainActor in
+                    let newOffset = self.secondsBehindLive - skipEvent.interval
+                    await self.seek(secondsBehindLive: max(0, newOffset))
+                }
+                return .success
+            }
+            commandTargets.append(skipFwdTarget)
+
+            commandCenter.changePlaybackPositionCommand.isEnabled = true
+            let positionTarget = commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+                guard let self,
+                      let positionEvent = event as? MPChangePlaybackPositionCommandEvent else {
+                    return .commandFailed
+                }
+                Task { @MainActor in
+                    let secondsBehind = self.maxLookbackSeconds - positionEvent.positionTime
+                    await self.seek(secondsBehindLive: max(0, secondsBehind))
+                }
+                return .success
+            }
+            commandTargets.append(positionTarget)
+        } else {
+            commandCenter.skipForwardCommand.isEnabled = false
+            commandCenter.skipBackwardCommand.isEnabled = false
+            commandCenter.changePlaybackPositionCommand.isEnabled = false
+        }
     }
 
     private func removeRemoteCommandTargets() {
@@ -618,7 +714,7 @@ extension AudioPlayerController {
                     handleRecovery()
                 case .error(let error):
                     // Capture analytics for the error
-                    let playerType: PlayerControllerType = self.player is RadioPlayer ? .radioPlayer : .mp3Streamer
+                    let playerType = self.resolvedPlayerType
                     self.analytics.capture(StreamErrorEvent(
                         playerType: playerType,
                         errorType: self.classifyError(error),
@@ -654,7 +750,7 @@ extension AudioPlayerController {
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
             // Backoff exhausted - capture error analytics
-            let playerType: PlayerControllerType = player is RadioPlayer ? .radioPlayer : .mp3Streamer
+            let playerType = self.resolvedPlayerType
             let stallDuration = stallStartTime.map { Date().timeIntervalSince($0) }
             analytics.capture(StreamErrorEvent(
                 playerType: playerType,
@@ -710,7 +806,7 @@ extension AudioPlayerController {
 
     private func captureRecoveryIfNeeded() {
         guard let stallStart = self.stallStartTime else { return }
-        let playerType: PlayerControllerType = player is RadioPlayer ? .radioPlayer : .mp3Streamer
+        let playerType = self.resolvedPlayerType
         analytics.capture(StallRecoveryEvent(
             playerType: playerType,
             successful: true,
@@ -723,6 +819,14 @@ extension AudioPlayerController {
     }
 
     /// Classifies an error into a StreamErrorType for analytics
+    private var resolvedPlayerType: PlayerControllerType {
+        if player is RadioPlayer { return .radioPlayer }
+        #if !os(watchOS)
+        if player is HLSPlayer { return .hlsPlayer }
+        #endif
+        return .mp3Streamer
+    }
+
     private func classifyError(_ error: Error) -> StreamErrorType {
         let nsError = error as NSError
 
