@@ -16,6 +16,7 @@ import Foundation
 public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, Sendable {
     case radioPlayer = "RadioPlayer"
     case mp3Streamer = "MP3Streamer"
+    case hlsPlayer = "HLSPlayer"
 
     // MARK: - Persistence
 

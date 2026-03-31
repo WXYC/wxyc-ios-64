@@ -111,6 +111,13 @@
     },
     {
       "target" : {
+        "containerPath" : "container:Shared\/Playback",
+        "identifier" : "HLSPlayerTests",
+        "name" : "HLSPlayerTests"
+      }
+    },
+    {
+      "target" : {
         "containerPath" : "container:Shared\/Wallpaper",
         "identifier" : "WallpaperTests",
         "name" : "WallpaperTests"
