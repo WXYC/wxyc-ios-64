@@ -53,15 +53,28 @@ let package = Package(
             path: "Sources/MP3Streamer"
         ),
 
+        // AVPlayer-based HLS player with seeking (iOS/macOS/tvOS only, not watchOS)
+        .target(
+            name: "HLSPlayerModule",
+            dependencies: [
+                "PlaybackCore",
+                "Core",
+                "Analytics",
+                "Logger",
+            ],
+            path: "Sources/HLSPlayer"
+        ),
+
         // MARK: - Public-Facing Targets
 
-        // iOS/macOS/tvOS playback (includes both players)
+        // iOS/macOS/tvOS playback (includes all players)
         .target(
             name: "Playback",
             dependencies: [
                 "PlaybackCore",
                 "RadioPlayerModule",
                 "MP3StreamerModule",
+                "HLSPlayerModule",
                 "Logger",
             ],
             path: "Sources/PlaybackAPI"
@@ -85,6 +98,7 @@ let package = Package(
                 "PlaybackCore",
                 "RadioPlayerModule",
                 "MP3StreamerModule",
+                "HLSPlayerModule",
                 .product(name: "AnalyticsTesting", package: "Analytics"),
             ],
             path: "Tests/PlaybackTestUtilities",
@@ -106,6 +120,16 @@ let package = Package(
             name: "MP3StreamerTests",
             dependencies: ["MP3StreamerModule", "PlaybackCore", "Core", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")],
             resources: [.process("Resources")]
+        ),
+        .testTarget(
+            name: "HLSPlayerTests",
+            dependencies: [
+                "HLSPlayerModule",
+                "PlaybackCore",
+                "Core",
+                "PlaybackTestUtilities",
+                .product(name: "AnalyticsTesting", package: "Analytics"),
+            ]
         ),
     ]
 )
