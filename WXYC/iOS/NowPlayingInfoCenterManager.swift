@@ -49,6 +49,25 @@ final class NowPlayingInfoCenterManager {
         update(playcut: item.playcut)
         update(artwork: item.artwork)
     }
+
+    /// Update the playback position for the Lock Screen scrub bar.
+    /// Setting `isLiveStream` to false enables the scrub bar in Control Center and Lock Screen.
+    func updatePlaybackPosition(secondsBehindLive: TimeInterval, maxLookback: TimeInterval) {
+        if infoCenter.nowPlayingInfo == nil {
+            infoCenter.nowPlayingInfo = [:]
+        }
+        infoCenter.nowPlayingInfo?[MPMediaItemPropertyPlaybackDuration] = maxLookback
+        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] = maxLookback - secondsBehindLive
+        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
+        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyIsLiveStream] = false
+    }
+
+    /// Reset to live stream mode (no scrub bar).
+    func clearPlaybackPosition() {
+        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyIsLiveStream] = true
+        infoCenter.nowPlayingInfo?.removeValue(forKey: MPMediaItemPropertyPlaybackDuration)
+        infoCenter.nowPlayingInfo?.removeValue(forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime)
+    }
         
     // MARK: - Private
         
