@@ -10,6 +10,7 @@ import Analytics
 import AppIntents
 import AppServices
 import Metadata
+import MusicShareKit
 import Playlist
 import SwiftUI
 import UIKit
@@ -30,7 +31,7 @@ struct PlaycutDetailView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.reviewRequestService) var reviewRequestService
 
-    private let metadataService = PlaycutMetadataService()
+    private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.authService)
     
     private var artworkGeometryID: String {
         "playcut-artwork-\(playcut.id)"
