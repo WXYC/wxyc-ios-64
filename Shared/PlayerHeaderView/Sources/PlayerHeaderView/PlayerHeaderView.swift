@@ -54,19 +54,25 @@ public struct PlayerHeaderView: View {
     }
     
     public var body: some View {
-        HStack(alignment: .center) {
-            PlaybackControlsView(
-                isPlaying: Self.controller.isPlaying,
-                isLoading: Self.controller.isLoading
-            ) {
-                Self.controller.toggle(reason: .headerViewToggle)
+        VStack(spacing: 8) {
+            HStack(alignment: .center) {
+                PlaybackControlsView(
+                    isPlaying: Self.controller.isPlaying,
+                    isLoading: Self.controller.isLoading
+                ) {
+                    Self.controller.toggle(reason: .headerViewToggle)
+                }
+
+                VisualizerTimelineView(
+                    visualizer: visualizer,
+                    barHistory: $barHistory,
+                    onDebugTapped: onDebugTapped
+                )
             }
 
-            VisualizerTimelineView(
-                visualizer: visualizer,
-                barHistory: $barHistory,
-                onDebugTapped: onDebugTapped
-            )
+            if Self.controller.supportsTimeShift && Self.controller.isPlaying {
+                TimeShiftScrubBar()
+            }
         }
         .padding(12)
         .background { BackgroundLayer() }
