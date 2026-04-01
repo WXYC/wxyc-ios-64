@@ -10,6 +10,7 @@
 
 import SwiftUI
 import AppServices
+import Caching
 import PlayerHeaderView
 import Playlist
 import Wallpaper
@@ -19,6 +20,7 @@ public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
     @State private var skipNextAPIVersionPersist = false
+    @State private var cachePurged = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
@@ -77,6 +79,23 @@ public struct VisualizerDebugView: View {
                     Text("Tips & Discoverability")
                 } footer: {
                     Text("Resets tip dismissal state and theme picker usage tracking for testing analytics.")
+                }
+
+                // Cache
+                Section {
+                    Button("Purge All Caches", role: .destructive) {
+                        Task {
+                            await CacheCoordinator.AlbumArt.clearAll()
+                            await CacheCoordinator.Playlist.clearAll()
+                            await CacheCoordinator.Metadata.clearAll()
+                            cachePurged = true
+                        }
+                    }
+                    .disabled(cachePurged)
+                } header: {
+                    Text("Cache")
+                } footer: {
+                    Text(cachePurged ? "All caches purged." : "Removes all cached album art, playlist data, and metadata.")
                 }
 
                 // Playlist API Version

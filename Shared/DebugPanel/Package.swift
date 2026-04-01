@@ -19,6 +19,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "AppServices", path: "../AppServices"),
+        .package(name: "Caching", path: "../Caching"),
         .package(name: "Playback", path: "../Playback"),
         .package(name: "Playlist", path: "../Playlist"),
         .package(name: "Wallpaper", path: "../Wallpaper"),
@@ -29,6 +30,7 @@ let package = Package(
             name: "DebugPanel",
             dependencies: [
                 "AppServices",
+                "Caching",
                 "Playback",
                 "Playlist",
                 "Wallpaper",
