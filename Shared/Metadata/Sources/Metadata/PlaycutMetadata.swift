@@ -61,6 +61,9 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// Full release date when available (e.g. "2024-03-15")
     public let fullReleaseDate: String?
 
+    /// Artwork image URL from the metadata proxy (Discogs cover image)
+    public let artworkURL: URL?
+
     public init(
         label: String? = nil,
         releaseYear: Int? = nil,
@@ -68,7 +71,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         discogsArtistId: Int? = nil,
         genres: [String]? = nil,
         styles: [String]? = nil,
-        fullReleaseDate: String? = nil
+        fullReleaseDate: String? = nil,
+        artworkURL: URL? = nil
     ) {
         self.label = label
         self.releaseYear = releaseYear
@@ -77,6 +81,7 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         self.genres = genres
         self.styles = styles
         self.fullReleaseDate = fullReleaseDate
+        self.artworkURL = artworkURL
     }
 
     public static let empty = AlbumMetadata()

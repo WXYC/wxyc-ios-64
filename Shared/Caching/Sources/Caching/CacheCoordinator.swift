@@ -58,6 +58,12 @@ public final actor CacheCoordinator {
     /// Uses the app's private caches directory.
     public static let AlbumArt = CacheCoordinator(cache: DiskCache())
 
+    /// Cache coordinator for artwork fetch errors (negative cache).
+    ///
+    /// Stored separately from artwork images so errors can be cleared independently
+    /// when the fetcher chain is upgraded (e.g. Discogs fallback added).
+    public static let ArtworkErrors = CacheCoordinator(cache: DiskCache(subdirectory: "artwork-errors"))
+
     /// Cache coordinator for playlist data.
     ///
     /// Uses ``MigratingDiskCache`` to migrate data from the app's private caches

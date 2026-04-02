@@ -83,7 +83,8 @@ extension Playcut {
         songTitle: String = "Test Song",
         labelName: String? = nil,
         artistName: String = "Test Artist",
-        releaseTitle: String? = "Test Album"
+        releaseTitle: String? = "Test Album",
+        artworkURL: URL? = nil
     ) -> Playcut {
         Playcut(
             id: id,
@@ -93,13 +94,15 @@ extension Playcut {
             songTitle: songTitle,
             labelName: labelName,
             artistName: artistName,
-            releaseTitle: releaseTitle
+            releaseTitle: releaseTitle,
+            artworkURL: artworkURL
         )
     }
 }
 
-// MARK: - iTunesArtworkService Tests
+// MARK: - iTunesArtworkService Tests (disabled — service removed)
 
+#if false
 @Suite("iTunesArtworkService Tests")
 struct iTunesArtworkServiceTests {
 
@@ -222,8 +225,10 @@ struct iTunesArtworkServiceTests {
         #expect(url.absoluteString.contains("entity=album"))
     }
 }
+#endif
 
-// MARK: - LastFMArtworkService Tests
+#if false
+// MARK: - LastFMArtworkService Tests (disabled — service removed)
 
 @Suite("LastFMArtworkService Tests")
 struct LastFMArtworkServiceTests {
@@ -327,6 +332,7 @@ struct LastFMArtworkServiceTests {
         #expect(url.absoluteString.contains("format=json"))
     }
 }
+#endif
 
 // MARK: - DiscogsArtworkService Tests
 
@@ -350,7 +356,7 @@ struct DiscogsArtworkServiceTests {
         }
 
         let mockSession = SequentialMockSession()
-        let fetcher = DiscogsArtworkService(session: mockSession)
+        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
         let playcut = Playcut.stub()
 
@@ -396,7 +402,7 @@ struct DiscogsArtworkServiceTests {
         }
 
         let mockSession = SequentialMockSession()
-        let fetcher = DiscogsArtworkService(session: mockSession)
+        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
         let playcut = Playcut.stub()
 
@@ -437,7 +443,7 @@ struct DiscogsArtworkServiceTests {
         // We can't easily test the internal URL construction, but we can verify behavior
 
         let mockSession = MockWebSession()
-        let fetcher = DiscogsArtworkService(session: mockSession)
+        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
         let playcut = Playcut.stub(releaseTitle: "s/t")
 
@@ -491,7 +497,7 @@ struct DiscogsArtworkServiceTests {
         }
 
         let mockSession = CustomMockSession()
-        let fetcher = DiscogsArtworkService(session: mockSession)
+        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
         let playcut = Playcut.stub()
 
@@ -507,7 +513,7 @@ struct DiscogsArtworkServiceTests {
     func throwsErrorWhenNoArtwork() async throws {
         // Given
         let mockSession = MockWebSession()
-        let fetcher = DiscogsArtworkService(session: mockSession)
+        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
         let playcut = Playcut.stub()
 
@@ -522,6 +528,69 @@ struct DiscogsArtworkServiceTests {
 
         // When/Then
         await #expect(throws: ServiceError.self) {
+            try await fetcher.fetchArtwork(for: playcut)
+        }
+    }
+}
+
+// MARK: - URLArtworkFetcher Tests
+
+@Suite("URLArtworkFetcher Tests")
+struct URLArtworkFetcherTests {
+
+    @Test("Fetches image when artworkURL is present")
+    func fetchImageFromURL() async throws {
+        let mockSession = MockWebSession()
+        let fetcher = URLArtworkFetcher(session: mockSession)
+        let playcut = Playcut.stub(
+            artistName: "Autechre",
+            releaseTitle: "Confield",
+            artworkURL: URL(string: "https://example.com/artwork.jpg")
+        )
+        mockSession.dataToReturn = CGImage.testImage.pngDataCompatibility!
+
+        let artwork = try await fetcher.fetchArtwork(for: playcut)
+
+        #expect(artwork.pngDataCompatibility != nil)
+        #expect(mockSession.requestedURLs.first?.absoluteString == "https://example.com/artwork.jpg")
+    }
+
+    @Test("Throws noResults when artworkURL is nil")
+    func throwsWhenNoArtworkURL() async throws {
+        let mockSession = MockWebSession()
+        let fetcher = URLArtworkFetcher(session: mockSession)
+        let playcut = Playcut.stub(artworkURL: nil)
+
+        await #expect(throws: ServiceError.noResults) {
+            try await fetcher.fetchArtwork(for: playcut)
+        }
+        #expect(mockSession.requestedURLs.isEmpty)
+    }
+
+    @Test("Throws noResults when session returns non-image data")
+    func throwsWhenNonImageData() async throws {
+        let mockSession = MockWebSession()
+        let fetcher = URLArtworkFetcher(session: mockSession)
+        let playcut = Playcut.stub(
+            artworkURL: URL(string: "https://example.com/artwork.jpg")
+        )
+        mockSession.dataToReturn = "{\"error\":\"not found\"}".data(using: .utf8)!
+
+        await #expect(throws: ServiceError.noResults) {
+            try await fetcher.fetchArtwork(for: playcut)
+        }
+    }
+
+    @Test("Propagates session errors")
+    func propagatesSessionError() async throws {
+        let mockSession = MockWebSession()
+        let fetcher = URLArtworkFetcher(session: mockSession)
+        let playcut = Playcut.stub(
+            artworkURL: URL(string: "https://example.com/artwork.jpg")
+        )
+        mockSession.errorToThrow = URLError(.badServerResponse)
+
+        await #expect(throws: URLError.self) {
             try await fetcher.fetchArtwork(for: playcut)
         }
     }

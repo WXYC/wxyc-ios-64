@@ -158,7 +158,8 @@ public actor PlaycutMetadataService {
                 discogsArtistId: apiResult.discogsArtistId,
                 genres: apiResult.genres,
                 styles: apiResult.styles,
-                fullReleaseDate: apiResult.fullReleaseDate
+                fullReleaseDate: apiResult.fullReleaseDate,
+                artworkURL: apiResult.artworkUrl.flatMap { URL(string: $0) }
             )
 
             let streaming = cachedStreaming ?? StreamingLinks(
