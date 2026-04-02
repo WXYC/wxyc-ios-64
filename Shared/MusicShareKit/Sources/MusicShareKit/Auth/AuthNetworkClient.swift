@@ -26,22 +26,30 @@ public protocol AuthNetworkClient: Sendable {
 // MARK: - Default Implementation
 
 /// Default implementation of `AuthNetworkClient` using URLSession.
+///
+/// Uses an ephemeral session by default to avoid cookie contamination from
+/// prior anonymous sessions (better-auth returns 400 if a valid session
+/// cookie is already present).
 public struct DefaultAuthNetworkClient: AuthNetworkClient {
+    private let session: URLSession
 
-    public init() {}
+    public init(session: URLSession = URLSession(configuration: .ephemeral)) {
+        self.session = session
+    }
 
     public func signInAnonymously(baseURL: String) async throws -> AuthSession {
-        guard let url = URL(string: "\(baseURL)/auth/anonymous") else {
+        guard let url = URL(string: "\(baseURL)/auth/sign-in/anonymous") else {
             throw AuthenticationError.notConfigured
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(baseURL, forHTTPHeaderField: "Origin")
 
         let response: (data: Data, response: URLResponse)
         do {
-            response = try await URLSession.shared.data(for: request)
+            response = try await session.data(for: request)
         } catch {
             throw AuthenticationError.networkError(error)
         }
@@ -58,9 +66,9 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
             let authResponse = try JSONDecoder().decode(AuthResponse.self, from: response.data)
             return AuthSession(
                 token: authResponse.token,
-                userId: authResponse.userId,
+                userId: authResponse.user.id,
                 createdAt: Date(),
-                expiresAt: authResponse.expiresAt
+                expiresAt: nil
             )
         } catch {
             throw AuthenticationError.invalidResponse
@@ -73,13 +81,10 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
 /// Response from the anonymous sign-in endpoint.
 private struct AuthResponse: Decodable {
     let token: String
-    let userId: String
-    let expiresAt: Date?
+    let user: AuthResponseUser
 
-    private enum CodingKeys: String, CodingKey {
-        case token
-        case userId = "user_id"
-        case expiresAt = "expires_at"
+    struct AuthResponseUser: Decodable {
+        let id: String
     }
 }
 
