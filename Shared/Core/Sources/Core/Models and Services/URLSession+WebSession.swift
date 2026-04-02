@@ -12,7 +12,13 @@ import Foundation
 
 extension URLSession: WebSession {
     public func data(from url: URL) async throws -> Data {
-        let (data, _) = try await data(from: url)
+        let (data, response) = try await data(from: url)
+
+        if let httpResponse = response as? HTTPURLResponse,
+           !(200...299).contains(httpResponse.statusCode) {
+            throw URLError(.badServerResponse)
+        }
+
         return data
     }
 }

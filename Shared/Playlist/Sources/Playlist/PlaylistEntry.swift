@@ -172,6 +172,43 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Rotation plays have their artwork cached longer than non-rotation plays.
     public let rotation: Bool
 
+    // MARK: - Inline Metadata (v2 API)
+
+    /// Album artwork URL from backend metadata enrichment.
+    public let artworkURL: URL?
+
+    /// Discogs release page URL.
+    public let discogsURL: URL?
+
+    /// Album release year.
+    public let releaseYear: Int?
+
+    /// Spotify track URL.
+    public let spotifyURL: URL?
+
+    /// Apple Music track URL.
+    public let appleMusicURL: URL?
+
+    /// YouTube Music track URL.
+    public let youtubeMusicURL: URL?
+
+    /// Bandcamp track URL.
+    public let bandcampURL: URL?
+
+    /// SoundCloud track URL.
+    public let soundcloudURL: URL?
+
+    /// Artist biography from Discogs.
+    public let artistBio: String?
+
+    /// Artist Wikipedia page URL.
+    public let artistWikipediaURL: URL?
+
+    /// Whether this playcut carries inline metadata from the v2 flowsheet API.
+    public var hasV2Metadata: Bool {
+        artworkURL != nil || discogsURL != nil || spotifyURL != nil
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id
         case hour
@@ -182,6 +219,16 @@ public struct Playcut: PlaylistEntry, Hashable {
         case artistName
         case releaseTitle
         case rotation
+        case artworkURL
+        case discogsURL
+        case releaseYear
+        case spotifyURL
+        case appleMusicURL
+        case youtubeMusicURL
+        case bandcampURL
+        case soundcloudURL
+        case artistBio
+        case artistWikipediaURL
     }
 
     public init(
@@ -193,7 +240,17 @@ public struct Playcut: PlaylistEntry, Hashable {
         labelName: String?,
         artistName: String,
         releaseTitle: String?,
-        rotation: Bool = false
+        rotation: Bool = false,
+        artworkURL: URL? = nil,
+        discogsURL: URL? = nil,
+        releaseYear: Int? = nil,
+        spotifyURL: URL? = nil,
+        appleMusicURL: URL? = nil,
+        youtubeMusicURL: URL? = nil,
+        bandcampURL: URL? = nil,
+        soundcloudURL: URL? = nil,
+        artistBio: String? = nil,
+        artistWikipediaURL: URL? = nil
     ) {
         self.id = id
         self.hour = hour
@@ -204,6 +261,16 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.artistName = artistName
         self.releaseTitle = releaseTitle
         self.rotation = rotation
+        self.artworkURL = artworkURL
+        self.discogsURL = discogsURL
+        self.releaseYear = releaseYear
+        self.spotifyURL = spotifyURL
+        self.appleMusicURL = appleMusicURL
+        self.youtubeMusicURL = youtubeMusicURL
+        self.bandcampURL = bandcampURL
+        self.soundcloudURL = soundcloudURL
+        self.artistBio = artistBio
+        self.artistWikipediaURL = artistWikipediaURL
     }
 
     public init(from decoder: Decoder) throws {
@@ -228,6 +295,17 @@ public struct Playcut: PlaylistEntry, Hashable {
             } else {
                 self.rotation = false
             }
+
+            self.artworkURL = try container.decodeIfPresent(URL.self, forKey: .artworkURL)
+            self.discogsURL = try container.decodeIfPresent(URL.self, forKey: .discogsURL)
+            self.releaseYear = try container.decodeIfPresent(Int.self, forKey: .releaseYear)
+            self.spotifyURL = try container.decodeIfPresent(URL.self, forKey: .spotifyURL)
+            self.appleMusicURL = try container.decodeIfPresent(URL.self, forKey: .appleMusicURL)
+            self.youtubeMusicURL = try container.decodeIfPresent(URL.self, forKey: .youtubeMusicURL)
+            self.bandcampURL = try container.decodeIfPresent(URL.self, forKey: .bandcampURL)
+            self.soundcloudURL = try container.decodeIfPresent(URL.self, forKey: .soundcloudURL)
+            self.artistBio = try container.decodeIfPresent(String.self, forKey: .artistBio)
+            self.artistWikipediaURL = try container.decodeIfPresent(URL.self, forKey: .artistWikipediaURL)
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error
