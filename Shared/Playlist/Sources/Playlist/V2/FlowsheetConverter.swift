@@ -40,7 +40,17 @@ enum FlowsheetConverter {
                     labelName: entry.record_label?.htmlDecoded,
                     artistName: (entry.artist_name ?? "Unknown").htmlDecoded,
                     releaseTitle: entry.album_title?.htmlDecoded,
-                    rotation: entry.rotation_id != nil
+                    rotation: entry.rotation_id != nil,
+                    artworkURL: entry.artwork_url.flatMap { URL(string: $0) },
+                    discogsURL: entry.discogs_url.flatMap { URL(string: $0) },
+                    releaseYear: entry.release_year,
+                    spotifyURL: entry.spotify_url.flatMap { URL(string: $0) },
+                    appleMusicURL: entry.apple_music_url.flatMap { URL(string: $0) },
+                    youtubeMusicURL: entry.youtube_music_url.flatMap { URL(string: $0) },
+                    bandcampURL: entry.bandcamp_url.flatMap { URL(string: $0) },
+                    soundcloudURL: entry.soundcloud_url.flatMap { URL(string: $0) },
+                    artistBio: entry.artist_bio,
+                    artistWikipediaURL: entry.artist_wikipedia_url.flatMap { URL(string: $0) }
                 )
                 playcuts.append(playcut)
 
