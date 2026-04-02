@@ -28,7 +28,7 @@ final class Singletonia {
 
     let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
     let playlistService = PlaylistService()
-    private(set) var artworkService = MultisourceArtworkService()
+    let artworkService = MultisourceArtworkService()
     let widgetStateService: WidgetStateService
     let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
 
@@ -100,8 +100,7 @@ final class Singletonia {
         }
 
         if !secrets.discogsApiKey.isEmpty, !secrets.discogsApiSecret.isEmpty {
-            artworkService = .withDiscogsFallback(key: secrets.discogsApiKey, secret: secrets.discogsApiSecret)
-            await artworkService.clearNegativeCache()
+            await artworkService.addFetcher(DiscogsArtworkService(key: secrets.discogsApiKey, secret: secrets.discogsApiSecret))
             Log(.info, "Artwork service upgraded with Discogs fallback")
         }
     }

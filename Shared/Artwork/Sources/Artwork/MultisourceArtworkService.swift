@@ -49,7 +49,7 @@ public final actor MultisourceArtworkService: ArtworkService {
         case nsfw
     }
 
-    private let fetchers: [ArtworkService]
+    private var fetchers: [ArtworkService]
     private let cacheCoordinator: CacheCoordinator
     private let errorCache: CacheCoordinator
     private var inflightTasks: [String: Task<CGImage?, Never>] = [:]
@@ -60,22 +60,6 @@ public final actor MultisourceArtworkService: ArtworkService {
             fetchers: [
                 CacheCoordinator.AlbumArt,
                 URLArtworkFetcher(),
-            ],
-            cacheCoordinator: .AlbumArt
-        )
-    }
-
-    /// Creates the artwork service with the Discogs API as a fallback fetcher.
-    ///
-    /// Use this when Discogs credentials are available from the backend `/config` endpoint.
-    /// The Discogs fallback handles v1 playcuts (no `artworkURL`) and v2 playcuts where
-    /// backend metadata enrichment hasn't completed yet.
-    public static func withDiscogsFallback(key: String, secret: String) -> MultisourceArtworkService {
-        MultisourceArtworkService(
-            fetchers: [
-                CacheCoordinator.AlbumArt,
-                URLArtworkFetcher(),
-                DiscogsArtworkService(key: key, secret: secret),
             ],
             cacheCoordinator: .AlbumArt
         )
@@ -159,11 +143,12 @@ public final actor MultisourceArtworkService: ArtworkService {
         inflightTasks[id] = nil
     }
 
-    /// Clears cached "no artwork available" errors so entries are retried with the current fetcher chain.
-    /// Call this after upgrading the fetcher chain (e.g. adding the Discogs fallback).
-    public func clearNegativeCache() async {
+    /// Appends a fetcher to the chain and clears the negative cache so previously
+    /// failed lookups are retried with the new fetcher.
+    public func addFetcher(_ fetcher: ArtworkService) async {
+        fetchers.append(fetcher)
         await errorCache.clearAll()
-        Log(.info, category: .artwork, "Cleared artwork negative cache")
+        Log(.info, category: .artwork, "Added fetcher \(fetcher), cleared negative cache")
     }
 
     /// Releases in-flight tasks to reduce memory pressure.
