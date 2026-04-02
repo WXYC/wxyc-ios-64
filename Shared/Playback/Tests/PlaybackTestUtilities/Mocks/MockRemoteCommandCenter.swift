@@ -13,20 +13,20 @@ import MediaPlayer
 @testable import Playback
 
 /// Mock remote command for testing
-public final class MockRemoteCommand: RemoteCommandProtocol {
+public class MockRemoteCommand: RemoteCommandProtocol {
     public var isEnabled: Bool = false
     public var targetHandlers: [(MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus] = []
     public var targets: [Any] = []
-    
+
     public init() {}
-    
+
     public func addTarget(handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus) -> Any {
         targetHandlers.append(handler)
         let target = NSObject()
         targets.append(target)
         return target
     }
-    
+
     public func removeTarget(_ target: Any?) {
         guard let target = target else { return }
         if let index = targets.firstIndex(where: { ($0 as AnyObject) === (target as AnyObject) }) {
@@ -36,14 +36,17 @@ public final class MockRemoteCommand: RemoteCommandProtocol {
             }
         }
     }
-    
-    /// Simulate triggering the command
-    
+
     public func reset() {
         isEnabled = false
         targetHandlers.removeAll()
         targets.removeAll()
     }
+}
+
+/// Mock skip interval command with configurable preferred intervals
+public final class MockSkipIntervalCommand: MockRemoteCommand, SkipIntervalCommandProtocol {
+    public var preferredIntervals: [NSNumber] = []
 }
 
 /// Mock remote command center for testing
@@ -53,8 +56,8 @@ public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     public let pauseCommand: RemoteCommandProtocol
     public let stopCommand: RemoteCommandProtocol
     public let togglePlayPauseCommand: RemoteCommandProtocol
-    public let skipForwardCommand: RemoteCommandProtocol
-    public let skipBackwardCommand: RemoteCommandProtocol
+    public let skipForwardCommand: SkipIntervalCommandProtocol
+    public let skipBackwardCommand: SkipIntervalCommandProtocol
     public let nextTrackCommand: RemoteCommandProtocol
     public let previousTrackCommand: RemoteCommandProtocol
     public let seekForwardCommand: RemoteCommandProtocol
@@ -65,8 +68,8 @@ public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     private let _pauseCommand = MockRemoteCommand()
     private let _stopCommand = MockRemoteCommand()
     private let _togglePlayPauseCommand = MockRemoteCommand()
-    private let _skipForwardCommand = MockRemoteCommand()
-    private let _skipBackwardCommand = MockRemoteCommand()
+    private let _skipForwardCommand = MockSkipIntervalCommand()
+    private let _skipBackwardCommand = MockSkipIntervalCommand()
     private let _nextTrackCommand = MockRemoteCommand()
     private let _previousTrackCommand = MockRemoteCommand()
     private let _seekForwardCommand = MockRemoteCommand()
