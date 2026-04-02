@@ -103,6 +103,7 @@ public actor AppConfiguration {
             let token = try await tokenProvider.token()
             let url = URL(string: "\(Self.apiBaseUrl)/config/secrets")!
             var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
             let (data, response) = try await session.data(for: request)
