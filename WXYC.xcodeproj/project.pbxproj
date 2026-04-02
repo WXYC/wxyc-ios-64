@@ -185,7 +185,6 @@
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
-				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
 			target = A3EC40619289B0065648A53C /* WXYCTests */;
@@ -236,7 +235,6 @@
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
-				iOS/Tests/WXYCTests/ScaledRenderTargetTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/MarketingRecordingUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
