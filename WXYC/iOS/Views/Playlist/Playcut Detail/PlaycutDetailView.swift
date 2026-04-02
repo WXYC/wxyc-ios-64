@@ -18,8 +18,13 @@ import WXUI
 
 struct PlaycutDetailView: View {
     let playcut: Playcut
-    let artwork: UIImage?
-    
+    @State private var artwork: UIImage?
+
+    init(playcut: Playcut, artwork: UIImage?) {
+        self.playcut = playcut
+        self._artwork = State(initialValue: artwork)
+    }
+
     @State private var metadata: PlaycutMetadata = .empty
     @State private var isLoadingMetadata = true
     @State private var expandedBio = false
@@ -131,13 +136,62 @@ struct PlaycutDetailView: View {
     }
     
     private func loadMetadata() async {
+        // If the playcut carries inline metadata from the v2 flowsheet response, use it directly
+        if playcut.hasV2Metadata {
+            let v2Metadata = PlaycutMetadata(
+                artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
+                album: AlbumMetadata(
+                    label: playcut.labelName,
+                    releaseYear: playcut.releaseYear,
+                    discogsURL: playcut.discogsURL
+                ),
+                streaming: StreamingLinks(
+                    spotifyURL: playcut.spotifyURL,
+                    appleMusicURL: playcut.appleMusicURL,
+                    youtubeMusicURL: playcut.youtubeMusicURL,
+                    bandcampURL: playcut.bandcampURL,
+                    soundcloudURL: playcut.soundcloudURL
+                )
+            )
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.metadata = v2Metadata
+                    self.isLoadingMetadata = false
+                }
+            }
+            return
+        }
+
+        // v1 fallback: fetch from metadata proxy
         let fetchedMetadata = await metadataService.fetchMetadata(for: playcut)
-        
         await MainActor.run {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.metadata = fetchedMetadata
                 self.isLoadingMetadata = false
             }
+        }
+
+        // If we still have no artwork and metadata provided an artwork URL, fetch it
+        if artwork == nil, let artworkURL = fetchedMetadata.album.artworkURL {
+            await loadArtwork(from: artworkURL)
+        }
+    }
+
+    private func loadArtwork(from url: URL) async {
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let image = UIImage(data: data) else {
+                return
+            }
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    self.artwork = image
+                }
+            }
+        } catch {
+            // Artwork fetch is best-effort
         }
     }
     
