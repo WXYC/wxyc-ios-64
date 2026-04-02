@@ -20,14 +20,19 @@ public protocol RemoteCommandProtocol: AnyObject {
     func removeTarget(_ target: Any?)
 }
 
+/// Protocol for skip interval commands that support configurable intervals
+public protocol SkipIntervalCommandProtocol: RemoteCommandProtocol {
+    var preferredIntervals: [NSNumber] { get set }
+}
+
 /// Protocol defining the remote command center interface for testability
 public protocol RemoteCommandCenterProtocol: AnyObject {
     var playCommand: RemoteCommandProtocol { get }
     var pauseCommand: RemoteCommandProtocol { get }
     var stopCommand: RemoteCommandProtocol { get }
     var togglePlayPauseCommand: RemoteCommandProtocol { get }
-    var skipForwardCommand: RemoteCommandProtocol { get }
-    var skipBackwardCommand: RemoteCommandProtocol { get }
+    var skipForwardCommand: SkipIntervalCommandProtocol { get }
+    var skipBackwardCommand: SkipIntervalCommandProtocol { get }
     var nextTrackCommand: RemoteCommandProtocol { get }
     var previousTrackCommand: RemoteCommandProtocol { get }
     var seekForwardCommand: RemoteCommandProtocol { get }
@@ -39,6 +44,9 @@ public protocol RemoteCommandCenterProtocol: AnyObject {
 /// Make MPRemoteCommand conform to RemoteCommandProtocol
 extension MPRemoteCommand: RemoteCommandProtocol { }
 
+/// Make MPSkipIntervalCommand conform to SkipIntervalCommandProtocol
+extension MPSkipIntervalCommand: SkipIntervalCommandProtocol { }
+
 /// Wrapper to make MPRemoteCommandCenter conform to RemoteCommandCenterProtocol
 public final class SystemRemoteCommandCenter: RemoteCommandCenterProtocol {
     private let commandCenter: MPRemoteCommandCenter
@@ -46,13 +54,13 @@ public final class SystemRemoteCommandCenter: RemoteCommandCenterProtocol {
     public init(commandCenter: MPRemoteCommandCenter = .shared()) {
         self.commandCenter = commandCenter
     }
-    
+
     public var playCommand: RemoteCommandProtocol { commandCenter.playCommand }
     public var pauseCommand: RemoteCommandProtocol { commandCenter.pauseCommand }
     public var stopCommand: RemoteCommandProtocol { commandCenter.stopCommand }
     public var togglePlayPauseCommand: RemoteCommandProtocol { commandCenter.togglePlayPauseCommand }
-    public var skipForwardCommand: RemoteCommandProtocol { commandCenter.skipForwardCommand }
-    public var skipBackwardCommand: RemoteCommandProtocol { commandCenter.skipBackwardCommand }
+    public var skipForwardCommand: SkipIntervalCommandProtocol { commandCenter.skipForwardCommand }
+    public var skipBackwardCommand: SkipIntervalCommandProtocol { commandCenter.skipBackwardCommand }
     public var nextTrackCommand: RemoteCommandProtocol { commandCenter.nextTrackCommand }
     public var previousTrackCommand: RemoteCommandProtocol { commandCenter.previousTrackCommand }
     public var seekForwardCommand: RemoteCommandProtocol { commandCenter.seekForwardCommand }

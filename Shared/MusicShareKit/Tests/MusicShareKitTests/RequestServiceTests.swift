@@ -20,8 +20,6 @@ struct RequestServiceTests {
         // Configure MusicShareKit before running tests
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
-            spotifyClientId: "test-client-id",
-            spotifyClientSecret: "test-client-secret",
             analyticsService: MockStructuredAnalytics()
         ))
     }
@@ -42,8 +40,6 @@ struct RequestServiceTests {
     func configurationIsAccessible() {
         let config = MusicShareKit.configuration
         #expect(config.requestOMaticURL == "https://example.com/request")
-        #expect(config.spotifyClientId == "test-client-id")
-        #expect(config.spotifyClientSecret == "test-client-secret")
     }
     
     @Test("sendRequest uses configured URL")
