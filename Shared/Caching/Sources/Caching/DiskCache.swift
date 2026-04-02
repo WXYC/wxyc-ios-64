@@ -95,13 +95,18 @@ struct DiskCache: Cache, @unchecked Sendable {
     ///
     /// - Note: On the simulator, the shared container may not be available. In this
     ///   case, the cache falls back to in-memory storage without logging an error.
-    init(useSharedContainer: Bool = false) {
+    init(useSharedContainer: Bool = false, subdirectory: String? = nil) {
         // Use the private caches directory if shared container not requested
         guard useSharedContainer else {
-            self.cacheDirectory = FileManager.default.urls(
+            var dir = FileManager.default.urls(
                 for: .cachesDirectory,
                 in: .userDomainMask
             ).first
+            if let subdirectory, let base = dir {
+                dir = base.appending(path: subdirectory)
+                try? FileManager.default.createDirectory(at: dir!, withIntermediateDirectories: true)
+            }
+            self.cacheDirectory = dir
 
             return
         }

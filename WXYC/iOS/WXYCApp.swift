@@ -93,6 +93,10 @@ struct WXYCApp: App {
         }
         #endif
         
+        // Fetch backend configuration (upgrades artwork service with Discogs fallback)
+        let appState = self.appState
+        Task { await appState.fetchConfiguration() }
+
         // Siri intent donation
         Self.donateSiriIntent()
     }

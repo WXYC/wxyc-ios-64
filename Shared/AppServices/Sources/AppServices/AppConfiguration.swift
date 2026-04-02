@@ -10,9 +10,10 @@
 //
 
 import Foundation
+import Core
 import Logger
 
-/// App configuration values returned by the `/config` endpoint.
+/// App configuration values returned by the public `/config` endpoint.
 public struct AppConfig: Sendable, Codable, Equatable {
     public let posthogApiKey: String
     public let posthogHost: String
@@ -32,11 +33,20 @@ public struct AppConfig: Sendable, Codable, Equatable {
     }
 }
 
+/// Third-party API credentials returned by the authenticated `/config/secrets` endpoint.
+public struct AppSecrets: Sendable, Codable, Equatable {
+    public let discogsApiKey: String
+    public let discogsApiSecret: String
+}
+
 /// Bootstrap configuration provider.
 ///
 /// Provides hardcoded defaults that are always available synchronously (for widgets,
 /// extensions, and first launch) and optionally fetches from the backend `/config`
 /// endpoint to pick up configuration changes without an app update.
+///
+/// Third-party API credentials are served from the authenticated `/config/secrets`
+/// endpoint and require a session token.
 public actor AppConfiguration {
     /// The backend API base URL. This is the only value that must be known at compile time.
     public static let apiBaseUrl = "https://api.wxyc.org"
@@ -81,6 +91,32 @@ public actor AppConfiguration {
         } catch {
             Log(.warning, category: .general, "AppConfiguration: failed to fetch /config: \(error.localizedDescription)")
             return Self.defaults
+        }
+    }
+
+    /// Fetches third-party API credentials from the authenticated `/config/secrets` endpoint.
+    ///
+    /// Requires a valid session token. Returns `nil` on failure (no auth session,
+    /// network error, or backend hasn't been updated yet).
+    public func fetchSecrets(tokenProvider: SessionTokenProvider) async -> AppSecrets? {
+        do {
+            let token = try await tokenProvider.token()
+            let url = URL(string: "\(Self.apiBaseUrl)/config/secrets")!
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+            let (data, response) = try await session.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                Log(.warning, category: .general, "AppConfiguration: non-200 response from /config/secrets")
+                return nil
+            }
+
+            return try JSONDecoder().decode(AppSecrets.self, from: data)
+        } catch {
+            Log(.warning, category: .general, "AppConfiguration: failed to fetch /config/secrets: \(error.localizedDescription)")
+            return nil
         }
     }
 }

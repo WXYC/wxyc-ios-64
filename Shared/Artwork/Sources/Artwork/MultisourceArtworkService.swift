@@ -51,28 +51,45 @@ public final actor MultisourceArtworkService: ArtworkService {
 
     private let fetchers: [ArtworkService]
     private let cacheCoordinator: CacheCoordinator
+    private let errorCache: CacheCoordinator
     private var inflightTasks: [String: Task<CGImage?, Never>] = [:]
 
-    // Public convenience initializer with default fetchers.
-    // The backend proxy now handles the full fallback chain (Discogs → Last.fm → iTunes)
-    // and NSFW classification server-side, so DiscogsArtworkService is the only remote fetcher.
+    /// Creates the artwork service with the default fetcher chain (cache + URL fetcher).
     public init() {
         self.init(
             fetchers: [
                 CacheCoordinator.AlbumArt,
-                DiscogsArtworkService(),
+                URLArtworkFetcher(),
             ],
             cacheCoordinator: .AlbumArt
         )
     }
 
-    // Internal initializer for dependency injection
-    init(
+    /// Creates the artwork service with the Discogs API as a fallback fetcher.
+    ///
+    /// Use this when Discogs credentials are available from the backend `/config` endpoint.
+    /// The Discogs fallback handles v1 playcuts (no `artworkURL`) and v2 playcuts where
+    /// backend metadata enrichment hasn't completed yet.
+    public static func withDiscogsFallback(key: String, secret: String) -> MultisourceArtworkService {
+        MultisourceArtworkService(
+            fetchers: [
+                CacheCoordinator.AlbumArt,
+                URLArtworkFetcher(),
+                DiscogsArtworkService(key: key, secret: secret),
+            ],
+            cacheCoordinator: .AlbumArt
+        )
+    }
+
+    /// Creates the artwork service with a custom fetcher chain.
+    public init(
         fetchers: [any ArtworkService],
-        cacheCoordinator: CacheCoordinator
+        cacheCoordinator: CacheCoordinator,
+        errorCache: CacheCoordinator = .ArtworkErrors
     ) {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
+        self.errorCache = errorCache
     }
 
     public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
@@ -101,9 +118,8 @@ public final actor MultisourceArtworkService: ArtworkService {
 
     private func scanFetchers(for playcut: Playcut) async -> CGImage? {
         let cacheKey = playcut.artworkCacheKey
-        let errorCacheKey = "error_\(cacheKey)"
 
-        if let cachedError: Error = try? await self.cacheCoordinator.fetchError(for: errorCacheKey),
+        if let cachedError: Error = try? await self.errorCache.fetchError(for: cacheKey),
            Error.allCases.contains(cachedError) {
             Log(.info, category: .artwork, "Cached error for \(cacheKey): \(cachedError)")
             return nil
@@ -113,28 +129,41 @@ public final actor MultisourceArtworkService: ArtworkService {
         let artworkLifespan: TimeInterval = playcut.rotation ? .thirtyDays : .oneDay
 
         let timer = Core.Timer.start()
+        var hadServerError = false
 
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
-                // NSFW classification is now handled server-side by the backend proxy.
-                // The proxy returns 404 for NSFW artwork, which DiscogsArtworkService
-                // translates to ServiceError.noResults.
                 await self.cacheCoordinator.set(artwork: artwork, for: cacheKey, lifespan: artworkLifespan)
                 return artwork
+            } catch let error as URLError where error.code == .badServerResponse {
+                // Server error (5xx) — don't cache, retry later
+                Log(.warning, category: .artwork, "Server error for \(cacheKey) using fetcher \(fetcher): \(error)")
+                hadServerError = true
             } catch {
                 Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(error)")
             }
         }
 
         Log(.error, category: .artwork, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
-        await self.cacheCoordinator.set(value: Error.noArtworkAvailable, for: errorCacheKey, lifespan: .thirtyDays)
+
+        // Only cache definitive "not found" errors, not transient server errors
+        if !hadServerError {
+            await self.errorCache.set(value: Error.noArtworkAvailable, for: cacheKey, lifespan: .thirtyDays)
+        }
 
         return nil
     }
 
     private func removeTask(for id: String) {
         inflightTasks[id] = nil
+    }
+
+    /// Clears cached "no artwork available" errors so entries are retried with the current fetcher chain.
+    /// Call this after upgrading the fetcher chain (e.g. adding the Discogs fallback).
+    public func clearNegativeCache() async {
+        await errorCache.clearAll()
+        Log(.info, category: .artwork, "Cleared artwork negative cache")
     }
 
     /// Releases in-flight tasks to reduce memory pressure.

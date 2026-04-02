@@ -28,7 +28,7 @@ final class Singletonia {
 
     let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
     let playlistService = PlaylistService()
-    let artworkService = MultisourceArtworkService()
+    private(set) var artworkService = MultisourceArtworkService()
     let widgetStateService: WidgetStateService
     let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
 
@@ -81,6 +81,29 @@ final class Singletonia {
     /// Start the widget state service to observe playback and playlist updates
     func startWidgetStateService() {
         widgetStateService.start()
+    }
+
+    // MARK: - Configuration
+
+    /// Fetches secrets from the backend and upgrades services that depend on them.
+    ///
+    /// Call this early in the app lifecycle. The artwork service starts with cache + URL
+    /// fetcher only; once secrets arrive with Discogs credentials, the Discogs API fallback
+    /// is added to the fetcher chain. Requires device session auth.
+    func fetchConfiguration() async {
+        let appConfiguration = AppConfiguration()
+
+        guard let authService = MusicShareKit.authService,
+              let secrets = await appConfiguration.fetchSecrets(tokenProvider: authService) else {
+            Log(.info, "No secrets available — Discogs fallback disabled")
+            return
+        }
+
+        if !secrets.discogsApiKey.isEmpty, !secrets.discogsApiSecret.isEmpty {
+            artworkService = .withDiscogsFallback(key: secrets.discogsApiKey, secret: secrets.discogsApiSecret)
+            await artworkService.clearNegativeCache()
+            Log(.info, "Artwork service upgraded with Discogs fallback")
+        }
     }
 
     // MARK: - Review Request Tracking
