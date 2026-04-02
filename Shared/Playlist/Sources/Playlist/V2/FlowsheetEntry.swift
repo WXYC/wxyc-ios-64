@@ -31,4 +31,18 @@ struct FlowsheetEntry: Codable, Sendable {
     let message: String?
     let play_order: Int
     let add_time: String
+
+    // Metadata fields from album_metadata/artist_metadata LEFT JOINs.
+    // Present only in v2 responses after backend enrichment completes.
+    // Defaults to nil so existing test constructors remain valid.
+    var artwork_url: String? = nil
+    var discogs_url: String? = nil
+    var release_year: Int? = nil
+    var spotify_url: String? = nil
+    var apple_music_url: String? = nil
+    var youtube_music_url: String? = nil
+    var bandcamp_url: String? = nil
+    var soundcloud_url: String? = nil
+    var artist_bio: String? = nil
+    var artist_wikipedia_url: String? = nil
 }
