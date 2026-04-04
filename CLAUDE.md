@@ -117,7 +117,7 @@ This project follows **Test-Driven Development (TDD)**. All code changes must be
 
 ### Modular Swift Packages
 
-The app uses a highly modular architecture with 19 local Swift packages in `Shared/`:
+The app uses a highly modular architecture with local Swift packages in `Shared/`. The Wallpaper package is a private git submodule sourced from `WXYC/wallpaper-ios`; run `git submodule update --init --recursive` after cloning.
 
 | Package | Purpose |
 |---------|---------|
@@ -135,7 +135,7 @@ The app uses a highly modular architecture with 19 local Swift packages in `Shar
 | **Playback** | Houses several playback engines. Eventually this will whittle down to 1 or 2, but is currently in an experimental phase. |
 | **PlayerHeaderView** | Now playing header UI component |
 | **Playlist** | Playlist service and data models |
-| **Wallpaper** | Metal shader-based animated backgrounds |
+| **Wallpaper** | Metal shader-based animated backgrounds (private submodule from `WXYC/wallpaper-ios`) |
 | **WXUI** | Shared SwiftUI components |
 
 ### App Entry Point
@@ -162,6 +162,9 @@ Run WXYC.xctestplan.
 ### Building
 
 ```bash
+# After cloning, initialize the Wallpaper submodule
+git submodule update --init --recursive
+
 # Build for device
 xcodebuild -scheme WXYC -destination 'generic/platform=iOS'
 
