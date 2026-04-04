@@ -70,7 +70,18 @@ struct ClockView: View {
             let gc = ctx.cgContext
             let center = CGPoint(x: size / 2, y: size / 2)
             let radius = size / 2
-            let handWidth = max(radius * 0.35, 1.5)
+            let handWidth = max(radius * 0.2, 1.0)
+            let hourLength = radius * 0.5
+            let minuteLength = radius * 0.7
+
+            let hourTip = CGPoint(
+                x: center.x + hourLength * sin(hourAngle.radians),
+                y: center.y - hourLength * cos(hourAngle.radians)
+            )
+            let minuteTip = CGPoint(
+                x: center.x + minuteLength * sin(minuteAngle.radians),
+                y: center.y - minuteLength * cos(minuteAngle.radians)
+            )
 
             gc.beginTransparencyLayer(auxiliaryInfo: nil)
 
@@ -78,32 +89,21 @@ struct ClockView: View {
             gc.setFillColor(UIColor.white.cgColor)
             gc.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
 
-            // Punch out hands
+            // Punch out hands as a single stroked path: hour tip → center → minute tip
             gc.setBlendMode(.clear)
-            fillHand(in: gc, center: center, length: radius * 0.5, width: handWidth, angle: hourAngle)
-            fillHand(in: gc, center: center, length: radius * 0.7, width: handWidth, angle: minuteAngle)
+            gc.setStrokeColor(UIColor.white.cgColor)
+            gc.setLineWidth(handWidth)
+            gc.setLineCap(.round)
+            gc.setLineJoin(.round)
+            gc.move(to: hourTip)
+            gc.addLine(to: center)
+            gc.addLine(to: minuteTip)
+            gc.strokePath()
 
             gc.endTransparencyLayer()
         }
 
         return image.withRenderingMode(.alwaysTemplate)
-    }
-
-    /// Fills a clock hand shape (rounded rectangle) at the given angle.
-    private func fillHand(
-        in gc: CGContext,
-        center: CGPoint,
-        length: CGFloat,
-        width: CGFloat,
-        angle: Angle
-    ) {
-        let rect = CGRect(x: -width / 2, y: -length, width: width, height: length)
-        let transform = CGAffineTransform(rotationAngle: angle.radians)
-            .translatedBy(x: center.x, y: center.y)
-        let handPath = CGMutablePath()
-        handPath.addRoundedRect(in: rect, cornerWidth: width / 2, cornerHeight: width / 2, transform: transform)
-        gc.addPath(handPath)
-        gc.fillPath()
     }
 }
 
