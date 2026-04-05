@@ -30,10 +30,12 @@ public actor PlaycutMetadataService {
     private let urlSession: URLSession
     private let decoder: JSONDecoder
     private let cache: CacheCoordinator
+    private let errorReporter: any ErrorReporter
 
     public init(
         baseURL: URL = URL(string: "https://api.wxyc.org")!,
-        tokenProvider: SessionTokenProvider? = nil
+        tokenProvider: SessionTokenProvider? = nil,
+        errorReporter: any ErrorReporter = ErrorReporting.shared
     ) {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
@@ -41,6 +43,7 @@ public actor PlaycutMetadataService {
         self.urlSession = .shared
         self.decoder = JSONDecoder()
         self.cache = .Metadata
+        self.errorReporter = errorReporter
     }
 
     // Internal initializer for testing
@@ -49,7 +52,8 @@ public actor PlaycutMetadataService {
         tokenProvider: SessionTokenProvider? = nil,
         session: WebSession,
         urlSession: URLSession = .shared,
-        cache: CacheCoordinator = .Metadata
+        cache: CacheCoordinator = .Metadata,
+        errorReporter: any ErrorReporter = ErrorReporting.shared
     ) {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
@@ -57,6 +61,7 @@ public actor PlaycutMetadataService {
         self.urlSession = urlSession
         self.decoder = JSONDecoder()
         self.cache = cache
+        self.errorReporter = errorReporter
     }
 
     /// Fetches all available metadata for a playcut using granular caching.
@@ -95,8 +100,12 @@ public actor PlaycutMetadataService {
             return cached
         }
 
-        // Fetch from backend proxy
-        do {
+        return await timedOperation(
+            context: "fetchArtistMetadata(ID: \(artistId))",
+            category: .network,
+            fallback: .empty,
+            errorReporter: errorReporter
+        ) {
             let response = try await fetchFromProxy(
                 path: "proxy/metadata/artist",
                 queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
@@ -111,9 +120,6 @@ public actor PlaycutMetadataService {
 
             await cache.set(value: metadata, for: cacheKey, lifespan: .thirtyDays)
             return metadata
-        } catch {
-            Log(.error, category: .network, "Failed to fetch artist metadata for ID \(artistId): \(error)")
-            return .empty
         }
     }
 
@@ -137,10 +143,15 @@ public actor PlaycutMetadataService {
             return (album, streaming)
         }
 
-        // Fetch from backend proxy (returns both album metadata and streaming links)
-        Log(.info, category: .network, "Fetching album metadata for: \(playcut.artistName) - \(playcut.releaseTitle ?? "nil")")
+        let fallbackAlbum = cachedAlbum ?? AlbumMetadata(label: playcut.labelName)
+        let fallbackStreaming = cachedStreaming ?? .empty
 
-        do {
+        return await timedOperation(
+            context: "fetchAlbumAndStreaming(\(playcut.artistName))",
+            category: .network,
+            fallback: (fallbackAlbum, fallbackStreaming),
+            errorReporter: errorReporter
+        ) {
             var queryItems = [URLQueryItem(name: "artistName", value: playcut.artistName)]
             if let releaseTitle = playcut.releaseTitle {
                 let title = releaseTitle.lowercased() == "s/t" ? playcut.artistName : releaseTitle
@@ -177,11 +188,6 @@ public actor PlaycutMetadataService {
                 await cache.set(value: streaming, for: streamingCacheKey, lifespan: .sevenDays)
             }
 
-            return (album, streaming)
-        } catch {
-            Log(.error, category: .network, "Failed to fetch album metadata: \(error)")
-            let album = cachedAlbum ?? AlbumMetadata(label: playcut.labelName)
-            let streaming = cachedStreaming ?? .empty
             return (album, streaming)
         }
     }
