@@ -293,8 +293,8 @@ struct DiscogsAPIEntityResolverCachingTests {
         _ = try await resolver.resolveMaster(id: 3)
 
         // Then
-        #expect(mockCache.keysSet.contains("discogs-artist-1"))
-        #expect(mockCache.keysSet.contains("discogs-release-2"))
-        #expect(mockCache.keysSet.contains("discogs-master-3"))
+        #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "artist", id: 1)))
+        #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "release", id: 2)))
+        #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "master", id: 3)))
     }
 }

@@ -93,7 +93,7 @@ struct PlaylistServiceCachingTests {
         // Cache the playlist
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: "com.wxyc.playlist.cache",
+            for: PlaylistCacheKey.playlist,
             lifespan: 15 * 60
         )
 
@@ -130,7 +130,7 @@ struct PlaylistServiceCachingTests {
             timestamp: Date.timeIntervalSinceReferenceDate - (16 * 60), // 16 minutes ago
             lifespan: 15 * 60 // 15 minute lifespan
         )
-        mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
+        mockCache.set(encoded, metadata: expiredMetadata, for: PlaylistCacheKey.playlist)
 
         // When - Create service
         let mockFetcher = MockPlaylistFetcher()
@@ -166,7 +166,7 @@ struct PlaylistServiceCachingTests {
 
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: "com.wxyc.playlist.cache",
+            for: PlaylistCacheKey.playlist,
             lifespan: 15 * 60
         )
 
@@ -189,7 +189,7 @@ struct PlaylistServiceCachingTests {
         #expect(mockFetcher.callCount == 1)
     
         // And - Cache should be updated with fresh data
-        let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
         #expect(cached.playcuts.first?.songTitle == "Fresh Song")
     }
 
@@ -211,7 +211,7 @@ struct PlaylistServiceCachingTests {
         _ = await service.fetchAndCachePlaylist()
 
         // Then - Cache should be updated (timestamp refreshed)
-        let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
         #expect(cached.playcuts.first?.songTitle == "Same Song")
     }
 
@@ -239,7 +239,7 @@ struct PlaylistServiceCachingTests {
         try await Task.sleep(for: .milliseconds(150))
 
         // Then - Cache should contain the fetched playlist
-        let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
         #expect(cached.playcuts.first?.songTitle == "Fetched Song")
     }
         
@@ -259,12 +259,12 @@ struct PlaylistServiceCachingTests {
             timestamp: Date.timeIntervalSinceReferenceDate - (16 * 60), // 16 minutes ago
             lifespan: 15 * 60 // 15 minute lifespan
         )
-        mockCache.set(encoded, metadata: expiredMetadata, for: "com.wxyc.playlist.cache")
+        mockCache.set(encoded, metadata: expiredMetadata, for: PlaylistCacheKey.playlist)
     
         // When - Try to retrieve
         // Then - Should throw noCachedResult error
         await #expect(throws: CacheCoordinator.Error.noCachedResult) {
-            let _: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
+            let _: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
         }
     }
 
@@ -282,10 +282,10 @@ struct PlaylistServiceCachingTests {
             timestamp: Date.timeIntervalSinceReferenceDate - (10 * 60), // 10 minutes ago
             lifespan: 15 * 60
         )
-        mockCache.set(encoded, metadata: recentMetadata, for: "com.wxyc.playlist.cache")
+        mockCache.set(encoded, metadata: recentMetadata, for: PlaylistCacheKey.playlist)
         
         // When - Try to retrieve
-        let cached: Playlist = try await cacheCoordinator.value(for: "com.wxyc.playlist.cache")
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
 
         // Then - Should succeed
         #expect(cached.playcuts.first?.songTitle == "Recent Song")

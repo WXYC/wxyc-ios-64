@@ -59,7 +59,7 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     }
 
     private func resolve(type: String, id: Int) async throws -> String {
-        let cacheKey = "discogs-\(type)-\(id)"
+        let cacheKey = MetadataCacheKey.discogsEntity(type: type, id: id)
 
         // Check cache first
         if let cached: String = try? await cache.value(for: cacheKey) {

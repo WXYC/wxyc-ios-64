@@ -19,7 +19,7 @@ public final actor PlaylistService: Sendable {
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
     private let cacheCoordinator: CacheCoordinator
-    private static let cacheKey = "com.wxyc.playlist.cache"
+    private static let cacheKey = PlaylistCacheKey.playlist
     private static let cacheLifespan: TimeInterval = 15 * 60 // 15 minutes
     
     /// Collection of continuations for broadcasting to multiple observers
