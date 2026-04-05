@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Metadata
+import WXUI
 
 struct ArtistBioSection: View {
     let bio: String
@@ -22,7 +23,7 @@ struct ArtistBioSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("About the Artist")
-                .font(.headline.smallCaps())
+                .font(.detailSectionHeader)
                 .foregroundStyle(.primary)
             
             parsedBioText

@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Metadata
+import WXUI
 
 struct ExternalLinksSection: View {
     let metadata: PlaycutMetadata
@@ -18,7 +19,7 @@ struct ExternalLinksSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("More Info")
-                .font(.headline)
+                .font(.detailSectionHeader)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
