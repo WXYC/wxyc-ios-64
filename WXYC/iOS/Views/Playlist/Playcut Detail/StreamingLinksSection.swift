@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Metadata
+import WXUI
 
 struct StreamingLinksSection: View {
     let metadata: PlaycutMetadata
@@ -19,7 +20,7 @@ struct StreamingLinksSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Add it to your library")
-                .font(.headline.smallCaps())
+                .font(.detailSectionHeader)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
