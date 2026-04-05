@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 enum SpotifyError: Error {
@@ -114,7 +115,7 @@ final class SpotifyService: MusicService {
             throw SpotifyError.trackNotFound
         }
 
-        let json = try JSONDecoder().decode(SpotifyTrackProxyResponse.self, from: data)
+        let json = try JSONDecoder.shared.decode(SpotifyTrackProxyResponse.self, from: data)
 
         return MusicTrack(
             service: track.service,

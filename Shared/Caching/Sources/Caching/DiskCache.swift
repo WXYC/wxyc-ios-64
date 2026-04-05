@@ -8,6 +8,7 @@
 //  Copyright © 2018 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Logger
 
@@ -162,7 +163,7 @@ struct DiskCache: Cache, @unchecked Sendable {
             guard result == size else { return nil }
 
             // Decode the JSON-encoded metadata
-            return try? JSONDecoder().decode(CacheMetadata.self, from: data)
+            return try? JSONDecoder.shared.decode(CacheMetadata.self, from: data)
         }
     }
 

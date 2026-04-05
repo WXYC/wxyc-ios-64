@@ -85,7 +85,7 @@ public actor AppConfiguration {
                 return Self.defaults
             }
 
-            let config = try JSONDecoder().decode(AppConfig.self, from: data)
+            let config = try JSONDecoder.shared.decode(AppConfig.self, from: data)
             cached = config
             return config
         } catch {
@@ -113,7 +113,7 @@ public actor AppConfiguration {
                 return nil
             }
 
-            return try JSONDecoder().decode(AppSecrets.self, from: data)
+            return try JSONDecoder.shared.decode(AppSecrets.self, from: data)
         } catch {
             Log(.warning, category: .general, "AppConfiguration: failed to fetch /config/secrets: \(error.localizedDescription)")
             return nil

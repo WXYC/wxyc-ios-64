@@ -24,7 +24,6 @@ public final class DiscogsArtworkService: ArtworkService {
     private let key: String
     private let secret: String
     private let session: WebSession
-    private let decoder = JSONDecoder()
 
     public init(key: String, secret: String, session: WebSession = URLSession.shared) {
         self.key = key
@@ -102,7 +101,7 @@ public final class DiscogsArtworkService: ArtworkService {
     
     func fetchArtURL(for searchURL: URL) async throws -> URL? {
         let searchData = try await session.data(from: searchURL)
-        let searchResponse = try decoder.decode(Discogs.SearchResults.self, from: searchData)
+        let searchResponse = try JSONDecoder.shared.decode(Discogs.SearchResults.self, from: searchData)
         
         let imageURLs: [URL] = searchResponse.results.map(\.coverImage)
         return imageURLs.first(where: { !$0.lastPathComponent.hasPrefix("spacer.gif") })

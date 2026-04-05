@@ -28,7 +28,6 @@ public actor PlaycutMetadataService {
     private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
     private let urlSession: URLSession
-    private let decoder: JSONDecoder
     private let cache: CacheCoordinator
     private let errorReporter: any ErrorReporter
 
@@ -41,7 +40,6 @@ public actor PlaycutMetadataService {
         self.tokenProvider = tokenProvider
         self.session = URLSession.shared
         self.urlSession = .shared
-        self.decoder = JSONDecoder()
         self.cache = .Metadata
         self.errorReporter = errorReporter
     }
@@ -59,7 +57,6 @@ public actor PlaycutMetadataService {
         self.tokenProvider = tokenProvider
         self.session = session
         self.urlSession = urlSession
-        self.decoder = JSONDecoder()
         self.cache = cache
         self.errorReporter = errorReporter
     }
@@ -103,7 +100,7 @@ public actor PlaycutMetadataService {
                     path: "proxy/metadata/artist",
                     queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
                 )
-                return try decoder.decode(ArtistMetadataAPIResponse.self, from: response)
+                return try JSONDecoder.shared.decode(ArtistMetadataAPIResponse.self, from: response)
             },
             transform: { apiResult in
                 ArtistMetadata(
@@ -152,7 +149,7 @@ public actor PlaycutMetadataService {
             queryItems.append(URLQueryItem(name: "trackTitle", value: playcut.songTitle))
 
             let data = try await fetchFromProxy(path: "proxy/metadata/album", queryItems: queryItems)
-            let apiResult = try decoder.decode(AlbumMetadataAPIResponse.self, from: data)
+            let apiResult = try JSONDecoder.shared.decode(AlbumMetadataAPIResponse.self, from: data)
 
             let album = cachedAlbum ?? AlbumMetadata(
                 label: apiResult.label ?? playcut.labelName,

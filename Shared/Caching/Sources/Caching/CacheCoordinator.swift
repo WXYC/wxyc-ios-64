@@ -9,6 +9,7 @@
 //  Copyright © 2018 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Logger
 
@@ -127,7 +128,7 @@ public final actor CacheCoordinator {
     private static let encoder = JSONEncoder()
 
     /// Shared JSON decoder for deserializing Codable values.
-    private static let decoder = JSONDecoder()
+    private static let decoder = JSONDecoder.shared
 
     // MARK: - Binary Data Operations
 

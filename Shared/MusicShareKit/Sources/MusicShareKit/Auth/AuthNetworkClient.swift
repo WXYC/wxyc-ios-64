@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 /// Protocol for making authentication network requests.
@@ -63,7 +64,7 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
         }
 
         do {
-            let authResponse = try JSONDecoder().decode(AuthResponse.self, from: response.data)
+            let authResponse = try JSONDecoder.shared.decode(AuthResponse.self, from: response.data)
             return AuthSession(
                 token: authResponse.token,
                 userId: authResponse.user.id,
