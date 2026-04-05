@@ -14,29 +14,21 @@ struct ExternalLinkButton: View {
     let imageName: String
     let url: URL
     var onTap: ((String) -> Void)?
-    
+
     var body: some View {
         Button {
             onTap?(title)
             UIApplication.shared.open(url)
         } label: {
-            HStack(spacing: 12) {
-                Image(imageName, bundle: .playlist)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 20, height: 16)
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-            }
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(.primary.opacity(0.15))
+            LinkButtonLabel(
+                icon: .custom(name: imageName, bundle: .playlist),
+                title: title,
+                font: .subheadline,
+                foregroundShapeStyle: AnyShapeStyle(.primary),
+                backgroundFill: AnyShapeStyle(.primary.opacity(0.15)),
+                alignment: .center,
+                spacing: 12
             )
         }
     }
 }
-

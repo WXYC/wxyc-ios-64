@@ -182,6 +182,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
+				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
@@ -232,6 +233,7 @@
 				"iOS/Request Share Extension/ShareViewController.swift",
 				iOS/Tests/WXYC.xctestplan,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
+				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
