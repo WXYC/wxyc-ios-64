@@ -49,4 +49,15 @@ public enum MetadataCacheKey {
     public static func streaming(artistName: String, songTitle: String) -> String {
         "streaming-\(artistName)-\(songTitle)"
     }
+
+    /// Cache key for resolved Discogs entity names (artists, releases, masters).
+    ///
+    /// Entity names essentially never change and can be cached for 30 days.
+    /// - Parameters:
+    ///   - type: The Discogs entity type (e.g., "artist", "release", "master")
+    ///   - id: The Discogs entity ID
+    /// - Returns: Cache key in format `discogs-{type}-{id}`
+    public static func discogsEntity(type: String, id: Int) -> String {
+        "discogs-\(type)-\(id)"
+    }
 }

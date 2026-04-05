@@ -43,7 +43,7 @@ public actor ColorPaletteService {
         cacheKey: String,
         mode: PaletteMode
     ) async throws -> ColorPalette {
-        let fullCacheKey = "palette_\(mode.rawValue)_\(cacheKey)"
+        let fullCacheKey = ColorPaletteCacheKey.palette(mode: mode, identifier: cacheKey)
 
         // Check for existing in-flight task
         if let existingTask = inflightTasks[fullCacheKey],
@@ -94,7 +94,7 @@ public actor ColorPaletteService {
             results[mode] = palette
 
             // Cache each palette
-            let fullCacheKey = "palette_\(mode.rawValue)_\(cacheKey)"
+            let fullCacheKey = ColorPaletteCacheKey.palette(mode: mode, identifier: cacheKey)
             await cacheCoordinator.set(value: palette, for: fullCacheKey, lifespan: .thirtyDays)
         }
 
