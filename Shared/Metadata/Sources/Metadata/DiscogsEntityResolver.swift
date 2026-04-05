@@ -61,38 +61,36 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     private func resolve(type: String, id: Int) async throws -> String {
         let cacheKey = MetadataCacheKey.discogsEntity(type: type, id: id)
 
-        // Check cache first
-        if let cached: String = try? await cache.value(for: cacheKey) {
-            return cached
-        }
+        return try await cachedFetch(
+            key: cacheKey,
+            cache: cache,
+            lifespan: Self.cacheLifespan,
+            fetch: {
+                var components = URLComponents(url: baseURL.appending(path: "proxy/entity/resolve"), resolvingAgainstBaseURL: false)!
+                components.queryItems = [
+                    URLQueryItem(name: "type", value: type),
+                    URLQueryItem(name: "id", value: String(id))
+                ]
 
-        var components = URLComponents(url: baseURL.appending(path: "proxy/entity/resolve"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
-            URLQueryItem(name: "type", value: type),
-            URLQueryItem(name: "id", value: String(id))
-        ]
+                guard let url = components.url else {
+                    throw ServiceError.noResults
+                }
 
-        guard let url = components.url else {
-            throw ServiceError.noResults
-        }
+                let data: Data
+                if let tokenProvider {
+                    let token = try await tokenProvider.token()
+                    var request = URLRequest(url: url)
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    let (responseData, _) = try await URLSession.shared.data(for: request)
+                    data = responseData
+                } else {
+                    data = try await session.data(from: url)
+                }
 
-        let data: Data
-        if let tokenProvider {
-            let token = try await tokenProvider.token()
-            var request = URLRequest(url: url)
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let (responseData, _) = try await URLSession.shared.data(for: request)
-            data = responseData
-        } else {
-            data = try await session.data(from: url)
-        }
-
-        let response = try decoder.decode(EntityResolveResponse.self, from: data)
-
-        // Cache the result
-        await cache.set(value: response.name, for: cacheKey, lifespan: Self.cacheLifespan)
-
-        return response.name
+                return try decoder.decode(EntityResolveResponse.self, from: data)
+            },
+            transform: { $0.name }
+        )
     }
 }
 
