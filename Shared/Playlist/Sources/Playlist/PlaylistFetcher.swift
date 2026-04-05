@@ -102,31 +102,22 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// Fetches a playlist from the remote source.
     /// Returns an empty playlist if the fetch fails.
     public func fetchPlaylist() async -> Playlist {
-        Log(.info, category: .network, "Fetching remote playlist (API \(apiVersion.rawValue))")
         let timer = Core.Timer.start()
-        do {
-            let playlist = try await self.dataSource.getPlaylist()
-            let duration = timer.duration()
-            Log(.info, category: .network, "Remote playlist fetch succeeded: fetch time \(duration), entry count \(playlist.entries.count)")
 
-            // TODO: move to PostHog server-side sampling
-            if Int.random(in: 1...10) == 1 {
-                analytics.capture(FetchPlaylistEvent(duration: duration))
-            }
-
-            return playlist
-        } catch is CancellationError {
-            // Task was cancelled - this is normal during cleanup
-            return Playlist.empty
-        } catch {
-            let duration = timer.duration()
-            errorReporter.report(
-                error,
-                context: "fetchPlaylist",
-                category: .network,
-                additionalData: ["duration": "\(duration)"]
-            )
-            return Playlist.empty
+        let playlist = await timedOperation(
+            context: "fetchPlaylist(API \(apiVersion.rawValue))",
+            category: .network,
+            fallback: .empty,
+            errorReporter: errorReporter
+        ) {
+            try await self.dataSource.getPlaylist()
         }
+
+        // TODO: move to PostHog server-side sampling
+        if playlist != .empty, Int.random(in: 1...10) == 1 {
+            analytics.capture(FetchPlaylistEvent(duration: timer.duration()))
+        }
+
+        return playlist
     }
 }
