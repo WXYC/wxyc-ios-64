@@ -94,33 +94,25 @@ public actor PlaycutMetadataService {
 
         let cacheKey = MetadataCacheKey.artist(discogsId: artistId)
 
-        // Check cache
-        if let cached: ArtistMetadata = try? await cache.value(for: cacheKey) {
-            Log(.info, category: .network, "Artist metadata cache hit for ID \(artistId)")
-            return cached
-        }
-
-        return await timedOperation(
-            context: "fetchArtistMetadata(ID: \(artistId))",
-            category: .network,
-            fallback: .empty,
-            errorReporter: errorReporter
-        ) {
-            let response = try await fetchFromProxy(
-                path: "proxy/metadata/artist",
-                queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
-            )
-
-            let apiResult = try decoder.decode(ArtistMetadataAPIResponse.self, from: response)
-            let metadata = ArtistMetadata(
-                bio: apiResult.bio,
-                wikipediaURL: apiResult.wikipediaUrl.flatMap { URL(string: $0) },
-                discogsArtistId: apiResult.discogsArtistId ?? artistId
-            )
-
-            await cache.set(value: metadata, for: cacheKey, lifespan: .thirtyDays)
-            return metadata
-        }
+        return (try? await cachedFetch(
+            key: cacheKey,
+            cache: cache,
+            lifespan: .thirtyDays,
+            fetch: {
+                let response = try await fetchFromProxy(
+                    path: "proxy/metadata/artist",
+                    queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
+                )
+                return try decoder.decode(ArtistMetadataAPIResponse.self, from: response)
+            },
+            transform: { apiResult in
+                ArtistMetadata(
+                    bio: apiResult.bio,
+                    wikipediaURL: apiResult.wikipediaUrl.flatMap { URL(string: $0) },
+                    discogsArtistId: apiResult.discogsArtistId ?? artistId
+                )
+            }
+        )) ?? .empty
     }
 
     /// Fetches album metadata and streaming links from the backend proxy in a single call.
