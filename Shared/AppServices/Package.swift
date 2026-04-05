@@ -35,6 +35,7 @@ let package = Package(
                 "AppServices",
                 "Caching",
                 "Playlist",
+                .product(name: "PlaylistTesting", package: "Playlist"),
                 "Artwork",
                 .product(name: "PlaybackCore", package: "Playback"),
             ]

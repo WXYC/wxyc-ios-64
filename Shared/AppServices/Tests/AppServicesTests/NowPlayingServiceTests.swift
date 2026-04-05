@@ -13,84 +13,19 @@ import Foundation
 import Artwork
 import Core
 import ImageIO
+import PlaylistTesting
 @testable import Playlist
 @testable import AppServices
 @testable import Caching
 
-// MARK: - Mock Types
+// MARK: - Helpers
 
-final class MockPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
-    var playlistToReturn: Playlist = .empty
-    var callCount = 0
-
-    func fetchPlaylist() async -> Playlist {
-        callCount += 1
-        return playlistToReturn
-    }
-}
-
-// MARK: - Mock Cache for Isolated Tests
-
-/// In-memory cache for isolated test execution
-final class NowPlayingTestMockCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-    private let lock = NSLock()
-
-    func metadata(for key: String) -> CacheMetadata? {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage[key]
-    }
-    
-    func data(for key: String) -> Data? {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage[key]
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        if let data = data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-    
-    func remove(for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func totalSize() -> Int64 {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-}
-
-/// Helper to create an isolated cache coordinator for testing
+/// Helper to create an isolated cache coordinator for testing.
 func makeNowPlayingTestCacheCoordinator() -> CacheCoordinator {
-    CacheCoordinator(cache: NowPlayingTestMockCache())
+    CacheCoordinator(cache: InMemoryCache())
 }
+
+// MARK: - Mock Types
 
 final class MockArtworkService: ArtworkService, @unchecked Sendable {
     var artworkToReturn: CGImage?
@@ -122,48 +57,6 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
 
 enum ArtworkServiceError: Error {
     case noResults
-}
-
-// MARK: - Playcut Test Stub
-
-extension Playcut {
-    /// Creates a Playcut with sensible defaults for testing.
-    static func stub(
-        id: UInt64 = 1,
-        hour: UInt64 = 1000,
-        chronOrderID: UInt64? = nil,
-        timeCreated: UInt64? = nil,
-        songTitle: String = "Test Song",
-        labelName: String? = nil,
-        artistName: String = "Test Artist",
-        releaseTitle: String? = nil
-    ) -> Playcut {
-        Playcut(
-            id: id,
-            hour: hour,
-            chronOrderID: chronOrderID ?? id,
-            timeCreated: timeCreated ?? hour,
-            songTitle: songTitle,
-            labelName: labelName,
-            artistName: artistName,
-            releaseTitle: releaseTitle
-        )
-    }
-}
-
-extension Playlist {
-    /// Creates a Playlist stub for testing.
-    static func stub(
-        playcuts: [Playcut] = [],
-        breakpoints: [Breakpoint] = [],
-        talksets: [Talkset] = []
-    ) -> Playlist {
-        Playlist(
-            playcuts: playcuts,
-            breakpoints: breakpoints,
-            talksets: talksets
-        )
-    }
 }
 
 // MARK: - Tests

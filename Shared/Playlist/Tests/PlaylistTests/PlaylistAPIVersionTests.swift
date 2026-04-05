@@ -11,17 +11,8 @@
 import Testing
 import Foundation
 import Analytics
+import AnalyticsTesting
 @testable import Playlist
-
-// MARK: - Mock Feature Flag Provider
-
-final class MockFeatureFlagProvider: FeatureFlagProvider {
-    var flagValues: [String: Any] = [:]
-
-    func getFeatureFlag(_ key: String) -> Any? {
-        flagValues[key]
-    }
-}
 
 // MARK: - PlaylistAPIVersion Tests
 
@@ -51,7 +42,7 @@ struct PlaylistAPIVersionTests {
     @Test("Returns v2 when feature flag is set to v2")
     func returnsV2WhenFeatureFlagIsV2() {
         let mockProvider = MockFeatureFlagProvider()
-        mockProvider.flagValues[PlaylistAPIVersion.featureFlagKey] = "v2"
+        mockProvider.flags[PlaylistAPIVersion.featureFlagKey] = "v2"
         let defaults = makeTestDefaults()
 
         let version = PlaylistAPIVersion.loadActive(
@@ -65,7 +56,7 @@ struct PlaylistAPIVersionTests {
     @Test("Returns v1 when feature flag is set to v1")
     func returnsV1WhenFeatureFlagIsV1() {
         let mockProvider = MockFeatureFlagProvider()
-        mockProvider.flagValues[PlaylistAPIVersion.featureFlagKey] = "v1"
+        mockProvider.flags[PlaylistAPIVersion.featureFlagKey] = "v1"
         let defaults = makeTestDefaults()
 
         let version = PlaylistAPIVersion.loadActive(
@@ -79,7 +70,7 @@ struct PlaylistAPIVersionTests {
     @Test("Manual override takes priority over feature flag")
     func manualOverrideTakesPriority() {
         let mockProvider = MockFeatureFlagProvider()
-        mockProvider.flagValues[PlaylistAPIVersion.featureFlagKey] = "v1"
+        mockProvider.flags[PlaylistAPIVersion.featureFlagKey] = "v1"
         let defaults = makeTestDefaults()
 
         // Set manual override to v2
@@ -96,7 +87,7 @@ struct PlaylistAPIVersionTests {
     @Test("Clearing override reverts to feature flag")
     func clearingOverrideRevertsToFeatureFlag() {
         let mockProvider = MockFeatureFlagProvider()
-        mockProvider.flagValues[PlaylistAPIVersion.featureFlagKey] = "v2"
+        mockProvider.flags[PlaylistAPIVersion.featureFlagKey] = "v2"
         let defaults = makeTestDefaults()
 
         // Set manual override to v1
@@ -117,7 +108,7 @@ struct PlaylistAPIVersionTests {
     @Test("Invalid feature flag value falls back to default")
     func invalidFeatureFlagFallsBackToDefault() {
         let mockProvider = MockFeatureFlagProvider()
-        mockProvider.flagValues[PlaylistAPIVersion.featureFlagKey] = "v3"  // Invalid
+        mockProvider.flags[PlaylistAPIVersion.featureFlagKey] = "v3"  // Invalid
         let defaults = makeTestDefaults()
 
         let version = PlaylistAPIVersion.loadActive(
@@ -131,7 +122,7 @@ struct PlaylistAPIVersionTests {
     @Test("Non-string feature flag value falls back to default")
     func nonStringFeatureFlagFallsBackToDefault() {
         let mockProvider = MockFeatureFlagProvider()
-        mockProvider.flagValues[PlaylistAPIVersion.featureFlagKey] = true  // Boolean, not string
+        mockProvider.flags[PlaylistAPIVersion.featureFlagKey] = true  // Boolean, not string
         let defaults = makeTestDefaults()
 
         let version = PlaylistAPIVersion.loadActive(

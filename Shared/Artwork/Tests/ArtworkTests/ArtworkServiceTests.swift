@@ -11,6 +11,7 @@
 import Testing
 import Foundation
 import ImageIO
+import PlaylistTesting
 @testable import Artwork
 @testable import Playlist
 @testable import Core

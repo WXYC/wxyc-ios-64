@@ -61,62 +61,6 @@ final class MockClock: Clock, @unchecked Sendable {
     }
 }
 
-// MARK: - Mock Cache
-
-final class MockCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-    private let lock = NSLock()
-
-    func metadata(for key: String) -> CacheMetadata? {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage[key]
-    }
-    
-    func data(for key: String) -> Data? {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage[key]
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        if let data = data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-    
-    func remove(for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func totalSize() -> Int64 {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-}
 
 // MARK: - Test Data Types
 
@@ -142,7 +86,7 @@ struct CacheCoordinatorTests {
     @Test("Stores and retrieves string values")
     func storesAndRetrievesStrings() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "test-string"
         let value = "Hello, Cache!"
@@ -158,7 +102,7 @@ struct CacheCoordinatorTests {
     @Test("Stores and retrieves integer values")
     func storesAndRetrievesIntegers() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "test-int"
         let value = 42
@@ -174,7 +118,7 @@ struct CacheCoordinatorTests {
     @Test("Stores and retrieves custom structs")
     func storesAndRetrievesCustomStructs() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "test-person"
         let value = TestPerson(name: "Alice", age: 30)
@@ -190,7 +134,7 @@ struct CacheCoordinatorTests {
     @Test("Stores and retrieves arrays")
     func storesAndRetrievesArrays() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "test-array"
         let value = [1, 2, 3, 4, 5]
@@ -206,7 +150,7 @@ struct CacheCoordinatorTests {
     @Test("Stores and retrieves dictionaries")
     func storesAndRetrievesDictionaries() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "test-dict"
         let value = ["name": "Bob", "city": "NYC"]
@@ -224,7 +168,7 @@ struct CacheCoordinatorTests {
     @Test("Throws error for expired values")
     func throwsErrorForExpiredValues() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let mockClock = MockClock()
         let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "expired-value"
@@ -245,7 +189,7 @@ struct CacheCoordinatorTests {
     @Test("Non-expired values are accessible")
     func nonExpiredValuesAreAccessible() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let mockClock = MockClock()
         let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "valid-value"
@@ -265,7 +209,7 @@ struct CacheCoordinatorTests {
     @Test("Expired records are removed from cache")
     func expiredRecordsAreRemoved() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let mockClock = MockClock()
         let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "to-be-removed"
@@ -294,7 +238,7 @@ struct CacheCoordinatorTests {
     @Test("Throws error for non-existent key")
     func throwsErrorForNonExistentKey() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "does-not-exist"
 
@@ -307,7 +251,7 @@ struct CacheCoordinatorTests {
     @Test("Throws error for type mismatch")
     func throwsErrorForTypeMismatch() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "type-mismatch"
 
@@ -325,7 +269,7 @@ struct CacheCoordinatorTests {
     @Test("Setting nil removes value")
     func settingNilRemovesValue() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "remove-with-nil"
         let value = "To be removed"
@@ -349,7 +293,7 @@ struct CacheCoordinatorTests {
     @Test("Overwrites existing values")
     func overwritesExistingValues() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "overwrite-test"
         let initialValue = "Initial"
@@ -368,7 +312,7 @@ struct CacheCoordinatorTests {
     @Test("Updates lifespan when overwriting")
     func updatesLifespanWhenOverwriting() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let mockClock = MockClock()
         let coordinator = CacheCoordinator(cache: mockCache, clock: mockClock)
         let key = "lifespan-update"
@@ -396,7 +340,7 @@ struct CacheCoordinatorTests {
     @Test("Handles nested structures")
     func handlesNestedStructures() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "nested-test"
         let value = [
@@ -415,7 +359,7 @@ struct CacheCoordinatorTests {
     @Test("Handles optional values")
     func handlesOptionalValues() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "optional-test"
         let value: String? = "Optional value"
@@ -433,7 +377,7 @@ struct CacheCoordinatorTests {
     @Test("Handles concurrent reads and writes")
     func handlesConcurrentReadsAndWrites() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
 
         // When - Concurrent writes
@@ -459,7 +403,7 @@ struct CacheCoordinatorTests {
     @Test("Actor isolation prevents data races")
     func actorIsolationPreventsDataRaces() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "race-test"
 
@@ -503,7 +447,7 @@ struct CacheCoordinatorTests {
     @Test("Handles empty strings")
     func handlesEmptyStrings() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "empty-string"
         let value = ""
@@ -519,7 +463,7 @@ struct CacheCoordinatorTests {
     @Test("Handles zero values")
     func handlesZeroValues() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "zero-value"
         let value = 0
@@ -535,7 +479,7 @@ struct CacheCoordinatorTests {
     @Test("Handles negative lifespan gracefully")
     func handlesNegativeLifespan() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "negative-lifespan"
         let value = "Already expired"
@@ -552,7 +496,7 @@ struct CacheCoordinatorTests {
     @Test("Handles very large lifespan")
     func handlesVeryLargeLifespan() async throws {
         // Given
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "large-lifespan"
         let value = "Long lived"

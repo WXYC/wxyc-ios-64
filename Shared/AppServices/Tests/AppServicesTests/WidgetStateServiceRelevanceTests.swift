@@ -12,11 +12,12 @@
 #if canImport(WidgetKit)
 import AppIntents
 import AVFoundation
+import Caching
 import Foundation
 import PlaybackCore
+import PlaylistTesting
 import Testing
 import WidgetKit
-@testable import Caching
 @testable import Playlist
 @testable import AppServices
 
@@ -116,7 +117,7 @@ struct WidgetStateServiceRelevanceTests {
 @MainActor
 private func makeTestPlaylistService() -> PlaylistService {
     PlaylistService(
-        fetcher: StubPlaylistFetcher(),
+        fetcher: MockPlaylistFetcher(),
         interval: 60,
         cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
     )
@@ -143,44 +144,6 @@ final class MockWidgetRelevanceUpdater: WidgetRelevanceUpdating {
     }
 }
 
-private struct StubPlaylistFetcher: PlaylistFetcherProtocol {
-    func fetchPlaylist() async -> Playlist { .empty }
-}
-
-private final class InMemoryCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-
-    func metadata(for key: String) -> CacheMetadata? { metadataStorage[key] }
-    func data(for key: String) -> Data? { dataStorage[key] }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        if let data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-
-    func remove(for key: String) {
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func totalSize() -> Int64 {
-        dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-}
 
 @Observable
 @MainActor

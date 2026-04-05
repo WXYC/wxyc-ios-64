@@ -95,7 +95,7 @@ public final actor CacheCoordinator {
     /// - Parameters:
     ///   - cache: The underlying cache implementation to use for storage.
     ///   - clock: The clock to use for time-based operations. Defaults to ``SystemClock``.
-    internal init(cache: Cache, clock: Clock = SystemClock()) {
+    public init(cache: Cache, clock: Clock = SystemClock()) {
         self.cache = cache
         self.clock = clock
 

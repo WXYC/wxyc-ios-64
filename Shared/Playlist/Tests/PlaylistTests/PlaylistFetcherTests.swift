@@ -14,6 +14,7 @@ import Analytics
 import AnalyticsTesting
 import Logger
 import LoggerTesting
+import PlaylistTesting
 @testable import Playlist
 
 // MARK: - PlaylistFetcher Tests
@@ -171,20 +172,3 @@ struct DataMojibakeRepairTests {
     }
 }
 
-// MARK: - Test Doubles
-
-final class MockPlaylistDataSource: PlaylistDataSource, @unchecked Sendable {
-    var playlistToReturn: Playlist = .empty
-    var errorToThrow: Error?
-    var fetchCount = 0
-
-    func getPlaylist() async throws -> Playlist {
-        fetchCount += 1
-
-        if let error = errorToThrow {
-            throw error
-        }
-
-        return playlistToReturn
-    }
-}

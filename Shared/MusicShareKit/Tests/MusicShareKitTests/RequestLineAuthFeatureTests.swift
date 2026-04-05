@@ -189,12 +189,3 @@ struct RequestLineAuthFeatureTests {
     }
 }
 
-// MARK: - Mock Feature Flag Provider
-
-final class MockFeatureFlagProvider: FeatureFlagProvider {
-    var flags: [String: Any] = [:]
-
-    func getFeatureFlag(_ key: String) -> Any? {
-        flags[key]
-    }
-}

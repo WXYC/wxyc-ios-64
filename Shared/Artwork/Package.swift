@@ -18,7 +18,12 @@ let package = Package(
         ),
         .testTarget(
             name: "ArtworkTests",
-            dependencies: ["Artwork", "Caching", "Playlist"]
+            dependencies: [
+                "Artwork",
+                "Caching",
+                "Playlist",
+                .product(name: "PlaylistTesting", package: "Playlist"),
+            ]
         )
     ]
 )

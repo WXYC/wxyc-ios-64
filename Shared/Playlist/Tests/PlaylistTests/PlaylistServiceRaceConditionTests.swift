@@ -10,66 +10,9 @@
 
 import Testing
 import Foundation
+import PlaylistTesting
 @testable import Playlist
 @testable import Caching
-
-// MARK: - Mock Cache for Tests
-
-/// In-memory cache for isolated test execution (race condition tests)
-final class RaceConditionTestMockCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-    private let lock = NSLock()
-
-    func metadata(for key: String) -> CacheMetadata? {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage[key]
-    }
-    
-    func data(for key: String) -> Data? {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage[key]
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        if let data = data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-    
-    func remove(for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-    
-    func totalSize() -> Int64 {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-}
 
 /// Mock fetcher for tracking concurrency in race condition tests
 actor ConcurrentTrackingMockFetcher: PlaylistFetcherProtocol {
@@ -114,7 +57,7 @@ struct PlaylistServiceRaceConditionTests {
         let service = PlaylistService(
             fetcher: tracker,
             interval: 1.0, // Short interval for testing
-            cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
         )
 
         // When: Many observers subscribe concurrently and consume values
@@ -161,7 +104,7 @@ struct PlaylistServiceRaceConditionTests {
         let service = PlaylistService(
             fetcher: tracker,
             interval: 0.2, // Short interval to make test faster
-            cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
         )
 
         // Create some observers that consume a value then disconnect
@@ -205,7 +148,7 @@ struct PlaylistServiceRaceConditionTests {
         let service = PlaylistService(
             fetcher: tracker,
             interval: 1.0,
-            cacheCoordinator: CacheCoordinator(cache: RaceConditionTestMockCache())
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
         )
         
         // Use a Task to properly manage the stream lifecycle
