@@ -32,7 +32,7 @@ import Foundation
 ///
 /// - ``DiskCache``: File-based cache using extended attributes for metadata storage
 /// - ``MigratingDiskCache``: Wrapper that migrates data between storage locations
-protocol Cache: Sendable {
+public protocol Cache: Sendable {
     /// Retrieves metadata for a cached entry without loading the data.
     ///
     /// This method reads only the metadata (timestamp and lifespan) for an entry,

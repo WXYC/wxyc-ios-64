@@ -12,10 +12,9 @@
 
 import Testing
 import Foundation
+import PlaylistTesting
 @testable import Playlist
 @testable import Caching
-
-// PlaylistServiceMockCache is defined in PlaylistServiceCachingTests.swift
 
 @Suite("PlaylistService Background Refresh Tests")
 struct PlaylistServiceBackgroundRefreshTests {
@@ -23,7 +22,7 @@ struct PlaylistServiceBackgroundRefreshTests {
     @Test("fetchAndCachePlaylist invalidates existing cache")
     func fetchAndCachePlaylistInvalidatesExistingCache() async throws {
         // Given - Service with cached data
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let oldPlaylist = Playlist.stub(playcuts: [
             .stub(songTitle: "Old Song", artistName: "Old Artist", releaseTitle: nil)
@@ -60,7 +59,7 @@ struct PlaylistServiceBackgroundRefreshTests {
     @Test("fetchAndCachePlaylist always calls fetcher even with valid cache")
     func fetchAndCachePlaylistAlwaysCallsFetcher() async throws {
         // Given - Valid cached data
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let cachedPlaylist = Playlist.stub(playcuts: [
             .stub(songTitle: "Cached", artistName: "Artist", releaseTitle: nil)

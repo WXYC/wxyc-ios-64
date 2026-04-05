@@ -12,6 +12,7 @@ import Testing
 import Foundation
 import Core
 import Playlist
+import PlaylistTesting
 @testable import Caching
 @testable import Metadata
 

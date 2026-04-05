@@ -14,67 +14,9 @@
 
 import Testing
 import Foundation
+import PlaylistTesting
 @testable import Playlist
 @testable import Caching
-
-// MARK: - Test Mock Cache
-
-/// Mock cache for PlaylistService caching tests
-/// (Defined locally to avoid ambiguity with other MockCache classes)
-final class PlaylistServiceMockCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-    private let lock = NSLock()
-    
-    func metadata(for key: String) -> CacheMetadata? {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage[key]
-    }
-
-    func data(for key: String) -> Data? {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage[key]
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        if let data = data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-    
-    func remove(for key: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        lock.lock()
-        defer { lock.unlock() }
-        return metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        lock.lock()
-        defer { lock.unlock() }
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func totalSize() -> Int64 {
-        lock.lock()
-        defer { lock.unlock() }
-        return dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-}
 
 // MARK: - Tests
 
@@ -86,7 +28,7 @@ struct PlaylistServiceCachingTests {
     @Test("Loads cached playlist on initialization if available", .timeLimit(.minutes(1)))
     func loadsCachedPlaylistOnInit() async throws {
         // Given - Set up cache with a playlist
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let cachedPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Cached Song", artistName: "Cached Artist")])
 
@@ -119,7 +61,7 @@ struct PlaylistServiceCachingTests {
     @Test("Does not load expired cached playlist", .timeLimit(.minutes(1)))
     func doesNotLoadExpiredCache() async throws {
         // Given - Set up cache with expired playlist
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let expiredPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Expired Song", artistName: "Expired Artist")])
 
@@ -160,7 +102,7 @@ struct PlaylistServiceCachingTests {
     @Test("fetchAndCachePlaylist always fetches fresh data")
     func fetchAndCachePlaylistAlwaysFetchesFresh() async throws {
         // Given - Set up service with cached data
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let cachedPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Cached Song", artistName: "Cached Artist")])
 
@@ -196,7 +138,7 @@ struct PlaylistServiceCachingTests {
     @Test("fetchAndCachePlaylist updates cache even if playlist unchanged")
     func fetchAndCachePlaylistUpdatesCacheEvenIfUnchanged() async throws {
         // Given
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let mockFetcher = MockPlaylistFetcher()
         mockFetcher.playlistToReturn = .stub(playcuts: [.stub(songTitle: "Same Song", artistName: "Same Artist")])
@@ -220,7 +162,7 @@ struct PlaylistServiceCachingTests {
     @Test("Regular fetching caches results", .timeLimit(.minutes(1)))
     func regularFetchingCachesResults() async throws {
         // Given
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let mockFetcher = MockPlaylistFetcher()
         mockFetcher.playlistToReturn = .stub(playcuts: [.stub(songTitle: "Fetched Song", artistName: "Fetched Artist")])
@@ -248,7 +190,7 @@ struct PlaylistServiceCachingTests {
     @Test("Cache expires after 15 minutes")
     func cacheExpiresAfter15Minutes() async throws {
         // Given - Create a playlist cached 16 minutes ago
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let oldPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Old Song", artistName: "Old Artist")])
         
@@ -271,7 +213,7 @@ struct PlaylistServiceCachingTests {
     @Test("Cache is valid within 15 minutes")
     func cacheIsValidWithin15Minutes() async throws {
         // Given - Create a playlist cached 10 minutes ago
-        let mockCache = PlaylistServiceMockCache()
+        let mockCache = InMemoryCache()
         let cacheCoordinator = CacheCoordinator(cache: mockCache)
         let recentPlaylist = Playlist.stub(playcuts: [.stub(songTitle: "Recent Song", artistName: "Recent Artist")])
 

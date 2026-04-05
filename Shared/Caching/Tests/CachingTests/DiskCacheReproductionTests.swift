@@ -32,7 +32,7 @@ struct DiskCacheReproductionTests {
     @Test("Corrupted data is evicted on decode failure")
     func corruptedDataIsEvictedOnDecodeFailure() async {
         // Given: A mock cache with corrupted data (valid metadata, invalid JSON payload)
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let key = "corrupted_playlist"
 
         // Write invalid JSON directly to the cache with valid metadata
@@ -61,7 +61,7 @@ struct DiskCacheReproductionTests {
     @Test("Second read after eviction throws noCachedResult instead of decode error")
     func secondReadAfterEvictionThrowsNoCachedResult() async {
         // Given: A mock cache with corrupted data
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let key = "persistent_corruption"
         let corruptedData = "{ invalid json }".data(using: .utf8)!
         let metadata = CacheMetadata(lifespan: 3600)
@@ -88,7 +88,7 @@ struct DiskCacheReproductionTests {
     @Test("purgeExpiredEntries deletes expired entries on coordinator initialization")
     func purgeExpiredEntriesDeletesExpiredEntries() async {
         // Given: A mock cache pre-populated with expired data
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let expiredKey = "expired_on_init"
         let expiredData = "some data".data(using: .utf8)!
         
@@ -113,7 +113,7 @@ struct DiskCacheReproductionTests {
     @Test("purgeExpiredEntries preserves valid entries while deleting expired ones")
     func purgeExpiredEntriesPreservesValidEntries() async throws {
         // Given: A cache with both valid and expired entries
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let validKey = "valid_entry"
         let expiredKey = "expired_entry"
         
@@ -152,7 +152,7 @@ struct DiskCacheReproductionTests {
     @Test("Type mismatch evicts entry since it produces a DecodingError")
     func typeMismatchEvictsEntry() async throws {
         // Given: Store a value as String
-        let mockCache = MockCache()
+        let mockCache = InMemoryCache()
         let coordinator = CacheCoordinator(cache: mockCache)
         let key = "type_mismatch"
 

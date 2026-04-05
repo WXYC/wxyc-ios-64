@@ -19,7 +19,12 @@ let package = Package(
         ),
         .testTarget(
             name: "MetadataTests",
-            dependencies: ["Metadata", "Caching", "Playlist"]
+            dependencies: [
+                "Metadata",
+                "Caching",
+                "Playlist",
+                .product(name: "PlaylistTesting", package: "Playlist"),
+            ]
         )
     ]
 )
