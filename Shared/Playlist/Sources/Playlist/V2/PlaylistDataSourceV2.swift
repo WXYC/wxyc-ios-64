@@ -27,8 +27,7 @@ public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable
     public func getPlaylist() async throws -> Playlist {
         let (data, response) = try await session.data(from: URL.WXYCFlowsheet)
         try (response as? HTTPURLResponse)?.validateSuccessStatus()
-        let decoder = JSONDecoder()
-        let entries = try decoder.decode([FlowsheetEntry].self, from: data)
+        let entries = try JSONDecoder.shared.decode([FlowsheetEntry].self, from: data)
         return FlowsheetConverter.convert(entries)
     }
 }

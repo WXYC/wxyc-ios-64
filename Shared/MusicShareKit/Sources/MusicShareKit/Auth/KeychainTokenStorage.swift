@@ -9,6 +9,7 @@
 //
 
 import Analytics
+import Core
 import Foundation
 import Security
 
@@ -68,7 +69,7 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
                 throw AuthenticationError.keychainError(status: errSecParam)
             }
             do {
-                let session = try JSONDecoder().decode(AuthSession.self, from: data)
+                let session = try JSONDecoder.shared.decode(AuthSession.self, from: data)
                 return session
             } catch {
                 trackKeychainError(operation: .read, status: errSecDecode)

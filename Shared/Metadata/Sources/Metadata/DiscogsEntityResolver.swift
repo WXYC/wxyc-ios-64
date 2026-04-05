@@ -24,7 +24,6 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     private let baseURL: URL
     private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
-    private let decoder: JSONDecoder
     private let cache: CacheCoordinator
 
     /// Cache lifespan: 30 days (entity names essentially never change)
@@ -42,7 +41,6 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
         self.session = session
-        self.decoder = JSONDecoder()
         self.cache = cache
     }
 
@@ -87,7 +85,7 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
                     data = try await session.data(from: url)
                 }
 
-                return try decoder.decode(EntityResolveResponse.self, from: data)
+                return try JSONDecoder.shared.decode(EntityResolveResponse.self, from: data)
             },
             transform: { $0.name }
         )

@@ -28,14 +28,12 @@ public protocol PlaylistDataSource: Sendable {
 
 // MARK: - URLSession Playlist Fetching
 
-private let decoder = JSONDecoder()
-
 extension URLSession: PlaylistDataSource {
     public func getPlaylist() async throws -> Playlist {
         let (playlistData, response) = try await self.data(from: URL.WXYCPlaylist)
         try (response as? HTTPURLResponse)?.validateSuccessStatus()
         let repairedData = playlistData.repairingMojibake()
-        return try decoder.decode(Playlist.self, from: repairedData)
+        return try JSONDecoder.shared.decode(Playlist.self, from: repairedData)
     }
 }
 
