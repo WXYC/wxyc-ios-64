@@ -207,10 +207,7 @@ public actor PlaycutMetadataService {
             var request = URLRequest(url: url)
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             let (data, response) = try await urlSession.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse,
-               !(200...299).contains(httpResponse.statusCode) {
-                throw MetadataError.httpError(statusCode: httpResponse.statusCode)
-            }
+            try (response as? HTTPURLResponse)?.validateSuccessStatus()
             return data
         } else {
             return try await session.data(from: url)

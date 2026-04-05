@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Core
 
 /// URL for the v2 flowsheet API.
 extension URL {
@@ -25,10 +26,7 @@ public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable
 
     public func getPlaylist() async throws -> Playlist {
         let (data, response) = try await session.data(from: URL.WXYCFlowsheet)
-        if let httpResponse = response as? HTTPURLResponse,
-           !(200...299).contains(httpResponse.statusCode) {
-            throw URLError(.badServerResponse)
-        }
+        try (response as? HTTPURLResponse)?.validateSuccessStatus()
         let decoder = JSONDecoder()
         let entries = try decoder.decode([FlowsheetEntry].self, from: data)
         return FlowsheetConverter.convert(entries)
