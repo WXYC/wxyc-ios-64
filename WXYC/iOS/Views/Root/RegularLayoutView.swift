@@ -36,9 +36,13 @@ struct RegularLayoutView: View {
     var body: some View {
         NavigationSplitView {
             sidebarContent
+                .toolbarBackground(.hidden, for: .navigationBar)
         } detail: {
             detailContent
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .background(.clear)
         }
+        .navigationSplitViewStyle(.balanced)
         .animation(.easeInOut(duration: 0.2), value: selectedPlaycutID)
         .onKeyPress(.escape) {
             guard selectedPlaycutID != nil else { return .ignored }
