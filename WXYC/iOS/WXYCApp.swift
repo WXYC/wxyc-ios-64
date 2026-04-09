@@ -108,7 +108,7 @@ struct WXYCApp: App {
                 pickerState: appState.themePickerState
             ) {
                 ZStack {
-                    RootTabView()
+                    AdaptiveRootView()
                         .environment(appState)
                         .environment(\.playlistService, appState.playlistService)
                         .environment(\.artworkService, appState.artworkService)
@@ -533,7 +533,7 @@ struct WXYCApp: App {
         configuration: ThemeConfiguration(),
         pickerState: ThemePickerState()
     ) {
-        RootTabView()
+        AdaptiveRootView()
             .environment(\.playlistService, .preview)
             .environment(\.artworkService, .preview)
             .environment(\.playbackController, AudioPlayerController.shared)

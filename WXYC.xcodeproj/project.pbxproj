@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		062417DC96252E36AE65C585 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = E150313F784CF272A32EA642 /* Playback */; };
 		0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 79AE74A2A92779E80E688376 /* Core */; };
+		0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3693E141EF47CABE91D00F /* Sentry */; };
+		1529CE89784D4CABA78CA19E /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 4F7FBFF8641D4F629866EB1F /* AppServices */; };
 		160F5276C232F51B9ABD41FA /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCE16D2F8F98E766EFCFFDF /* Caching */; };
 		1F3D795595990939AC76274D /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = D1362165656CBF5DDD9E5DDA /* Playlist */; };
 		1F511646EB98B7621319A1DA /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = EE16E35E8F1311399E5AD843 /* AppServices */; };
@@ -30,32 +32,28 @@
 		23E3942E2F0C85ED009D24CB /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 23TV00032EFC676F0058AD01 /* AppServices */; };
 		23E3942F2F0C85ED009D24CB /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 23TV00042EFC6780ARTWORK01 /* Artwork */; };
 		23E394302F0C85ED009D24CB /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23TV00052EF2C80000WALLPA /* Wallpaper */; };
-
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
 		37327445A68BBA56C392BEF7 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 01163D6D065337EB60F79C5B /* WXUI */; };
 		3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 01BA6F026317213ACE8EE228 /* PostHog */; };
 		524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 35DC07836DEEE44F7B819265 /* PlayerHeaderView */; };
 		62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = BE7D47372C4F1F83B0F271DE /* Metadata */; };
+		7127691612A44A229E553EDE /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 16E246AEBDDC40D3B97316A6 /* Sentry */; };
 		7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 0852AD2E14147E5B270AD1F1 /* Playlist */; };
 		78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9AA59EC6C2A143F5728D04F9 /* Analytics */; };
 		7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */ = {isa = PBXBuildFile; productRef = 3DF76684E122C2FAD4F26E27 /* PartyHorn */; };
 		9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0E4513BB04D21BB582E4B0 /* MusicShareKit */; };
 		A17CCEC28257E400D4B99AFF /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 8ED7023BC91B73A942BF53C7 /* Core */; };
 		A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 3CABF5AF82DAA2E0D9877A07 /* Core */; };
-		A5D120B4FBE72D5CA761A231 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = E790F2E8AAE12A20CB303818 /* WatchXYC.app */; platformFilters = (ios, ); settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		A5D120B4FBE72D5CA761A231 /* WatchXYC.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = E790F2E8AAE12A20CB303818 /* WatchXYC.app */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 196F9D43ACA1827478F32D5D /* Artwork */; };
 		ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1E128B6E39E90EA57C68C69 /* MusicShareKit */; };
 		B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 3776C2184A667CCB7B4E0B67 /* Artwork */; };
 		B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 932CA5D4CF336582845E6C75 /* AppServices */; };
-		1529CE89784D4CABA78CA19E /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 4F7FBFF8641D4F629866EB1F /* AppServices */; };
 		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
-		7127691612A44A229E553EDE /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 16E246AEBDDC40D3B97316A6 /* Sentry */; };
-		0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3693E141EF47CABE91D00F /* Sentry */; };
-		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; platformFilters = (ios, ); settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
-
 		WXYCINTENTS00000001 /* WXYCIntents in Frameworks */ = {isa = PBXBuildFile; productRef = WXYCINTENTS00000005 /* WXYCIntents */; };
 		WXYCINTENTS00000002 /* WXYCIntents in Frameworks */ = {isa = PBXBuildFile; productRef = WXYCINTENTS00000006 /* WXYCIntents */; };
 /* End PBXBuildFile section */
@@ -154,7 +152,6 @@
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
 		INTENTSPKGFILEREF000001 /* Intents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Intents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
-
 		WALLPAPER0FILEREF0000001 /* Wallpaper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Wallpaper; path = Shared/Wallpaper; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -181,6 +178,7 @@
 		23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Tests/WXYCTests/AdaptiveLayoutTests.swift,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
@@ -232,6 +230,7 @@
 				"iOS/Request Share Extension/Info.plist",
 				"iOS/Request Share Extension/ShareViewController.swift",
 				iOS/Tests/WXYC.xctestplan,
+				iOS/Tests/WXYCTests/AdaptiveLayoutTests.swift,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
@@ -311,7 +310,6 @@
 				236B52062EFC67750058AD01 /* AppServices in Frameworks */,
 				236B51FA2EFC674F0058AD01 /* Caching in Frameworks */,
 				236B52072EFC67800058AD01 /* Playback in Frameworks */,
-
 				236B51D22EFC651A0058AD01 /* SwiftUI.framework in Frameworks */,
 				236B52022EFC67630058AD01 /* Analytics in Frameworks */,
 				236B51D02EFC651A0058AD01 /* WidgetKit.framework in Frameworks */,
@@ -329,7 +327,6 @@
 				9CE357BF402D2D35325581C3 /* MusicShareKit in Frameworks */,
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
-
 				1F3D795595990939AC76274D /* Playlist in Frameworks */,
 				23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */,
 				23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */,
@@ -355,7 +352,6 @@
 		64915BA4D2117A923D5E4476 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
-
 				0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */,
 				2AD59B02211E454634324EEB /* Logger in Frameworks */,
 				PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */,
@@ -385,7 +381,6 @@
 		23FB21C52EEA866C0064E6FD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-
 				236B51CF2EFC651A0058AD01 /* WidgetKit.framework */,
 				236B51D12EFC651A0058AD01 /* SwiftUI.framework */,
 			);
@@ -447,7 +442,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 236B51DE2EFC651C0058AD01 /* Build configuration list for PBXNativeTarget "NowPlayingWidget" */;
 			buildPhases = (
-
 				236B51CA2EFC651A0058AD01 /* Sources */,
 				236B51CB2EFC651A0058AD01 /* Frameworks */,
 				236B51CC2EFC651A0058AD01 /* Resources */,
@@ -477,7 +471,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F07B8EB63012AED1DBF55448 /* Build configuration list for PBXNativeTarget "Request Share Extension" */;
 			buildPhases = (
-
 				121F040A2043328980F3406A /* Sources */,
 				B60696590E1538E245DAA075 /* Resources */,
 				5282D69CBC6C3EAF27DE8CBE /* Frameworks */,
@@ -513,7 +506,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0CF3A4E4F58365C88AF3BEC0 /* Build configuration list for PBXNativeTarget "WatchXYC" */;
 			buildPhases = (
-
 				12A0D2636F71F6DF9021FE60 /* Sources */,
 				64915BA4D2117A923D5E4476 /* Frameworks */,
 				23FB21BC2EEA85BD0064E6FD /* Resources */,
@@ -590,7 +582,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = BCDB07AF50A606A90AFC77E6 /* Build configuration list for PBXNativeTarget "WXYC" */;
 			buildPhases = (
-
 				6AF4C1FE1EAD852AFDE5A6DC /* Sources */,
 				2994456FF2469AAFA85A0645 /* Frameworks */,
 				3FA193A59B6488FC4364B0FD /* Embed Foundation Extensions */,
@@ -696,7 +687,6 @@
 				23D418162EF2C80000WALLPA /* XCLocalSwiftPackageReference "Shared/Wallpaper" */,
 				23B42F952F0209CB007351F1 /* XCLocalSwiftPackageReference "Shared/ColorPalette" */,
 				WXYCINTENTS00000004 /* XCLocalSwiftPackageReference "Shared/Intents" */,
-				F4ADF988FEFD40379D32876C /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 6393B8DD84BA2FE9EA639E2D /* Products */;
@@ -745,18 +735,24 @@
 /* Begin PBXShellScriptBuildPhase section */
 		EE041E6CCD134EE28A57C03B /* Upload Debug Symbols to Sentry */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
 			inputPaths = (
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
 			);
 			name = "Upload Debug Symbols to Sentry";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if which sentry-cli >/dev/null; then\n  export SENTRY_ORG=wxyc\n  export SENTRY_PROJECT=ios\n  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\n  if [ ! $? -eq 0 ]; then\n    echo \"warning: sentry-cli - $ERROR\"\n  fi\nelse\n  echo \"warning: sentry-cli not installed, skipping debug symbol upload\"\nfi\n";
+			shellScript = (
+				"if which sentry-cli >/dev/null; then",
+				"  export SENTRY_ORG=wxyc",
+				"  export SENTRY_PROJECT=ios",
+				"  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)",
+				"  if [ ! $? -eq 0 ]; then",
+				"    echo \"warning: sentry-cli - $ERROR\"",
+				"  fi",
+				"else",
+				"  echo \"warning: sentry-cli not installed, skipping debug symbol upload\"",
+				"fi",
+				"",
+			);
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -2482,6 +2478,11 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = Playlist;
 		};
+		16E246AEBDDC40D3B97316A6 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
 		196F9D43ACA1827478F32D5D /* Artwork */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Artwork;
@@ -2615,6 +2616,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = MusicShareKit;
 		};
+		4F7FBFF8641D4F629866EB1F /* AppServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AppServices;
+		};
 		51D35AECC049A83AE7575477 /* PostHog */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
@@ -2623,6 +2628,11 @@
 		79AE74A2A92779E80E688376 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
+		};
+		8A3693E141EF47CABE91D00F /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 		8ED7023BC91B73A942BF53C7 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2659,7 +2669,6 @@
 		};
 		CA0F906956044B14B8D02D31 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F4ADF988FEFD40379D32876C /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
 			productName = Sentry;
 		};
 		D1362165656CBF5DDD9E5DDA /* Playlist */ = {
@@ -2671,10 +2680,6 @@
 			productName = Playback;
 		};
 		EE16E35E8F1311399E5AD843 /* AppServices */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AppServices;
-		};
-		4F7FBFF8641D4F629866EB1F /* AppServices */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AppServices;
 		};
@@ -2691,16 +2696,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = WXYCINTENTS00000004 /* XCLocalSwiftPackageReference "Shared/Intents" */;
 			productName = WXYCIntents;
-		};
-		16E246AEBDDC40D3B97316A6 /* Sentry */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
-			productName = Sentry;
-		};
-		8A3693E141EF47CABE91D00F /* Sentry */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
-			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

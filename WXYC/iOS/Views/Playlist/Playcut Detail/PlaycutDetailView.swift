@@ -9,6 +9,7 @@
 import Analytics
 import AppIntents
 import AppServices
+import Artwork
 import Metadata
 import MusicShareKit
 import Playlist
@@ -35,6 +36,7 @@ struct PlaycutDetailView: View {
     
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.reviewRequestService) var reviewRequestService
+    @Environment(\.artworkService) private var artworkService
 
     private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.authService)
     
@@ -116,6 +118,7 @@ struct PlaycutDetailView: View {
             ))
         }
         .task {
+            await loadArtworkIfNeeded()
             await loadMetadata()
         }
         .overlay {
@@ -135,6 +138,20 @@ struct PlaycutDetailView: View {
         .overlaySheetLightboxActive(isLightboxActive)
     }
     
+    private func loadArtworkIfNeeded() async {
+        guard artwork == nil, let artworkService else { return }
+        do {
+            let cgImage = try await artworkService.fetchArtwork(for: playcut)
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    self.artwork = cgImage.toUIImage()
+                }
+            }
+        } catch {
+            // Artwork fetch is best-effort
+        }
+    }
+
     private func loadMetadata() async {
         // If the playcut carries inline metadata from the v2 flowsheet response, use it directly
         if playcut.hasV2Metadata {
