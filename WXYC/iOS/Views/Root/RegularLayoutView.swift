@@ -40,11 +40,11 @@ struct RegularLayoutView: View {
             detailContent
         }
         .animation(.easeInOut(duration: 0.2), value: selectedPlaycutID)
-        #if targetEnvironment(macCatalyst)
-        .onExitCommand {
+        .onKeyPress(.escape) {
+            guard selectedPlaycutID != nil else { return .ignored }
             selectedPlaycutID = nil
+            return .handled
         }
-        #endif
         .task {
             guard let playlistService else { return }
             for await playlist in playlistService.updates() {
