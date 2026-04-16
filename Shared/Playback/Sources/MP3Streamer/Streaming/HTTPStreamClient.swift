@@ -43,6 +43,18 @@ final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
         self.continuation = cont
     }
 
+    /// Builds the URLSession configuration for streaming, with MPTCP handover enabled on iOS.
+    static func makeSessionConfiguration(for configuration: MP3StreamerConfiguration) -> URLSessionConfiguration {
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.timeoutIntervalForRequest = configuration.connectionTimeout
+        sessionConfig.timeoutIntervalForResource = 0 // No timeout for streaming
+        #if os(iOS)
+        sessionConfig.multipathServiceType = .handover
+        #endif
+        sessionConfig.waitsForConnectivity = true
+        return sessionConfig
+    }
+
     func connect() async throws {
         Log(.info, category: .playback, "Connecting to \(url.absoluteString)")
         // Cancel any existing connection
@@ -57,12 +69,7 @@ final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
         // Create delegate that receives data in chunks
         let delegate = StreamingDataDelegate(continuation: continuation)
 
-        // Create session with delegate - data arrives in chunks via delegate methods
-        let sessionConfig = URLSessionConfiguration.default
-        sessionConfig.timeoutIntervalForRequest = configuration.connectionTimeout
-        sessionConfig.timeoutIntervalForResource = 0 // No timeout for streaming
-        sessionConfig.waitsForConnectivity = false
-
+        let sessionConfig = Self.makeSessionConfiguration(for: configuration)
         let session = URLSession(configuration: sessionConfig, delegate: delegate, delegateQueue: nil)
         let dataTask = session.dataTask(with: request)
 
