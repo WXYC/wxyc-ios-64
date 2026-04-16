@@ -22,9 +22,10 @@ import Analytics
 public final class MP3Streamer {
     // MARK: - Streams
 
-    /// Stream of audio buffers for visualization - yields at render rate (~60 times/sec)
-    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
-        audioPlayer.renderTapStream
+    /// Creates a fresh stream of audio buffers for visualization.
+    /// Yields at render rate (~60 times/sec). Each call returns a new stream.
+    public func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
+        audioPlayer.makeRenderTapStream()
     }
 
     // MARK: - AudioPlayerProtocol Streams

@@ -16,8 +16,8 @@ import PlaybackCore
 
 extension RadioPlayer: AudioPlayerProtocol {
 
-    // RadioPlayer now provides state, stateStream, audioBufferStream, and eventStream
-    // as stored properties, so only the missing protocol methods need to be added here.
+    // RadioPlayer now provides state, stateStream, makeAudioBufferStream(), and eventStream
+    // directly, so only the missing protocol methods need to be added here.
 
     public func stop() {
         pause()

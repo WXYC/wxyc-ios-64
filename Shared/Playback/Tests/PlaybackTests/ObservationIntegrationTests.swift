@@ -231,10 +231,8 @@ final class ObservationTestMockPlayer: AudioPlayerProtocol, @unchecked Sendable 
         }
     }
 
-    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
-        AsyncStream { continuation in
-            continuation.finish()
-        }
+    func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { $0.finish() }
     }
 
     func play() {

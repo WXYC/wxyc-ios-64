@@ -668,9 +668,10 @@ public final class AudioPlayerController {
 // MARK: - Convenience for views
 
 extension AudioPlayerController {
-    /// Stream of audio buffers for visualization
-    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
-        player.audioBufferStream
+    /// Creates a fresh stream of audio buffers for visualization.
+    /// Each call returns a new stream; the previous stream's continuation is finished.
+    public func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
+        player.makeAudioBufferStream()
     }
 
     #if os(iOS) || os(tvOS)

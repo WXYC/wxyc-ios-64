@@ -162,7 +162,7 @@ struct HLSPlayerTests {
         let (player, _, _) = makePlayer()
         var count = 0
 
-        for await _ in player.audioBufferStream {
+        for await _ in player.makeAudioBufferStream() {
             count += 1
         }
 

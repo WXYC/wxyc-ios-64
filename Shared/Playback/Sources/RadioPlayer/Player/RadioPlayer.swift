@@ -48,8 +48,10 @@ public final class RadioPlayer: Sendable {
     public let stateStream: AsyncStream<PlayerState>
     private let stateContinuation: AsyncStream<PlayerState>.Continuation
         
-    /// Stream of audio buffers (not supported by AVPlayer-based RadioPlayer)
-    public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    /// Creates a fresh stream of audio buffers (always empty for AVPlayer-based RadioPlayer).
+    public func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { $0.finish() }
+    }
 
     /// Stream of internal player events (stalls, recovery, errors)
     public let eventStream: AsyncStream<AudioPlayerInternalEvent>
@@ -85,11 +87,6 @@ public final class RadioPlayer: Sendable {
             stateContinuation = continuation
         }
         self.stateContinuation = stateContinuation
-
-        // Initialize audio buffer stream (empty - AVPlayer doesn't expose PCM buffers)
-        self.audioBufferStream = AsyncStream { continuation in
-            continuation.finish()
-        }
 
         // Initialize event stream
         var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!

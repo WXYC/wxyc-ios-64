@@ -41,9 +41,10 @@ public protocol AudioEnginePlayerProtocol: AnyObject, Sendable {
     /// Stream of player events
     var eventStream: AsyncStream<AudioPlayerEvent> { get }
 
-    /// Stream of audio buffers from the render tap for visualization.
+    /// Creates a fresh stream of audio buffers from the render tap for visualization.
+    /// Each call returns a new stream; the previous stream's continuation is finished.
     /// Only yields buffers when the tap is installed via `installRenderTap()`.
-    var renderTapStream: AsyncStream<AVAudioPCMBuffer> { get }
+    func makeRenderTapStream() -> AsyncStream<AVAudioPCMBuffer>
 
     /// Start playback
     func play() throws
