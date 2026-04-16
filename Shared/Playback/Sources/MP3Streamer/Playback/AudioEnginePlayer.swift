@@ -191,7 +191,13 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         setUpAudioEngineIfNeeded()
 
         if !engine.isRunning {
-            try engine.start()
+            do {
+                try engine.start()
+            } catch {
+                Log(.error, category: .playback, "Engine start failed: \(error)")
+                tearDownEngine()
+                throw error
+            }
             Log(.info, category: .playback, "Audio engine started")
         }
 
@@ -234,6 +240,25 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
             scheduledBufferCount.reset()
             eventContinuation.yield(.stopped)
         }
+    }
+
+    /// Tears down the audio engine graph so it can be rebuilt on the next `play()` call.
+    /// Called when `engine.start()` fails to ensure the engine isn't permanently stuck.
+    func tearDownEngine() {
+        configurationObserverTask?.cancel()
+        configurationObserverTask = nil
+
+        engine.disconnectNodeOutput(playerNode)
+        engine.detach(playerNode)
+
+        // Detaching the player node physically removes any installed tap.
+        // Reset renderTapState to match, and if a tap was installed, mark it
+        // as pending so it gets re-installed on the next engine setup.
+        if renderTapState.remove() {
+            _ = pendingRenderTapState.install()
+        }
+
+        engineSetUpState.reset()
     }
 
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
@@ -454,6 +479,13 @@ private final class EngineSetUpState: @unchecked Sendable {
         if _isSetUp { return false }
         _isSetUp = true
         return true
+    }
+
+    /// Resets the engine setup state so the engine will be set up again on next use.
+    func reset() {
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        _isSetUp = false
     }
 }
 

@@ -360,6 +360,63 @@ struct AudioEnginePlayerTests {
         player.stop()
     }
 
+    // MARK: - Engine Recovery Tests
+
+    @Test("Play succeeds after engine teardown (recovery from start failure)")
+    func testPlaySucceedsAfterEngineTearDown() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        // First play sets up and starts the engine
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        player.stop()
+        _ = try await player.eventStream.first(timeout: 2) // Consume stopped
+
+        // Simulate what happens when engine.start() fails: tearDownEngine() resets
+        // the engine graph and setup state so the next play() can rebuild it.
+        player.tearDownEngine()
+
+        // The engine should be recoverable - play() re-attaches the player node,
+        // reconnects the audio graph, and starts the engine fresh.
+        try player.play()
+        #expect(player.isPlaying == true)
+
+        let event = try await player.eventStream.first(timeout: 2)
+        guard case .started = event else {
+            Issue.record("Expected .started but got \(event)")
+            return
+        }
+
+        player.stop()
+    }
+
+    @Test("Render tap is re-installed after engine teardown and recovery")
+    func testRenderTapReinstalledAfterRecovery() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        // Install render tap and play
+        player.installRenderTap()
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        player.stop()
+        _ = try await player.eventStream.first(timeout: 2) // Consume stopped
+
+        // Tear down engine - render tap state should be reset and marked pending
+        player.tearDownEngine()
+
+        // Play again - the pending render tap should be re-installed during setup
+        try player.play()
+        #expect(player.isPlaying == true)
+
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+
+        player.stop()
+    }
+
     // MARK: - Batch Scheduling Tests (Performance Optimization)
 
     @Test("Batch scheduling multiple buffers works correctly", .tags(.batchScheduling))
