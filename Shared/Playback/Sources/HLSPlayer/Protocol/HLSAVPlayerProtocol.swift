@@ -37,7 +37,11 @@ final class AVPlayerHLSAdapter: HLSAVPlayerProtocol, @unchecked Sendable {
     private let player: AVPlayer
 
     init(url: URL) {
-        self.player = AVPlayer(playerItem: AVPlayerItem(url: url))
+        let asset = AVURLAsset(url: url, options: [
+            AVURLAssetAllowsConstrainedNetworkAccessKey: true,
+            AVURLAssetAllowsExpensiveNetworkAccessKey: true,
+        ])
+        self.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
     }
 
     var rate: Float { player.rate }

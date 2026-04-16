@@ -60,9 +60,10 @@ public final class RadioPlayer: Sendable {
     // MARK: - Initialization
 
     public convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
+        let asset = AVURLAsset(url: streamURL, options: Self.streamingAssetOptions)
         self.init(
             streamURL: streamURL,
-            player: AVPlayer(url: streamURL),
+            player: AVPlayer(playerItem: AVPlayerItem(asset: asset)),
             analytics: StructuredPostHogAnalytics.shared,
             notificationCenter: .default
         )
@@ -171,8 +172,13 @@ public final class RadioPlayer: Sendable {
 
     private let player: PlayerProtocol
 
+    private static let streamingAssetOptions: [String: Any] = [
+        AVURLAssetAllowsConstrainedNetworkAccessKey: true,
+        AVURLAssetAllowsExpensiveNetworkAccessKey: true,
+    ]
+
     private func resetStream() {
-        let asset = AVURLAsset(url: self.streamURL)
+        let asset = AVURLAsset(url: self.streamURL, options: Self.streamingAssetOptions)
         let playerItem = AVPlayerItem(asset: asset)
         self.player.replaceCurrentItem(with: playerItem)
     }

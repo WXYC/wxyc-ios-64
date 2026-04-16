@@ -47,6 +47,19 @@ struct HTTPStreamClientTests {
         _ = client
     }
 
+    @Test("Session configuration enables MPTCP handover and waits for connectivity")
+    func testSessionConfigurationMultipath() {
+        let config = makeConfiguration()
+        let sessionConfig = HTTPStreamClient.makeSessionConfiguration(for: config)
+
+        #if os(iOS)
+        #expect(sessionConfig.multipathServiceType == .handover)
+        #endif
+        #expect(sessionConfig.waitsForConnectivity == true)
+        #expect(sessionConfig.timeoutIntervalForRequest == config.connectionTimeout)
+        #expect(sessionConfig.timeoutIntervalForResource == 0)
+    }
+
     @Test("HTTPStreamError cases are distinct")
     func testErrorCases() {
         let invalidURL = HTTPStreamError.invalidURL
