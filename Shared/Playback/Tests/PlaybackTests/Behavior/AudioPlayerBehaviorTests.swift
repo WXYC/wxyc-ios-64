@@ -479,7 +479,7 @@ struct AudioPlayerAudioBufferStreamTests {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
         // Should have an audioBufferStream (even if it's empty for RadioPlayer)
-        let stream = harness.player.audioBufferStream
+        let stream = harness.player.makeAudioBufferStream()
         _ = stream // Just verify it exists
     }
 
@@ -488,7 +488,7 @@ struct AudioPlayerAudioBufferStreamTests {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
         var bufferCount = 0
-        for await _ in harness.player.audioBufferStream {
+        for await _ in harness.player.makeAudioBufferStream() {
             bufferCount += 1
         }
 
@@ -518,7 +518,7 @@ struct AudioPlayerProtocolConformanceTests {
         _ = harness.player.isPlaying
         _ = harness.player.state
         _ = harness.player.stateStream
-        _ = harness.player.audioBufferStream
+        _ = harness.player.makeAudioBufferStream()
         _ = harness.player.eventStream
         harness.player.play()
         harness.player.stop()

@@ -80,7 +80,7 @@ public struct PlayerHeaderView: View {
         .onAppear {
             Self.controller.installRenderTap()
             if Self.controller.isPlaying {
-                visualizer.startConsuming(stream: Self.controller.audioBufferStream)
+                visualizer.startConsuming(stream: Self.controller.makeAudioBufferStream())
             }
         }
         .onDisappear {
@@ -89,7 +89,7 @@ public struct PlayerHeaderView: View {
         }
         .onChange(of: Self.controller.isPlaying) { _, nowPlaying in
             if nowPlaying {
-                visualizer.startConsuming(stream: Self.controller.audioBufferStream)
+                visualizer.startConsuming(stream: Self.controller.makeAudioBufferStream())
             } else {
                 visualizer.stopConsuming()
             }

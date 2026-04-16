@@ -31,7 +31,6 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     public var state: PlayerState = .idle
 
     public let stateStream: AsyncStream<PlayerState>
-    public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
     public let eventStream: AsyncStream<AudioPlayerInternalEvent>
 
     public var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
@@ -52,8 +51,6 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
         var sC: AsyncStream<PlayerState>.Continuation!
         self.stateStream = AsyncStream { sC = $0 }
         self.stateContinuation = sC
-
-        self.audioBufferStream = AsyncStream { $0.finish() }
 
         var eC: AsyncStream<AudioPlayerInternalEvent>.Continuation!
         self.eventStream = AsyncStream { eC = $0 }
@@ -82,6 +79,10 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
             onStateChange?(oldState, .idle)
             stateContinuation?.yield(.idle)
         }
+    }
+
+    public func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { $0.finish() }
     }
 
     public func installRenderTap() {

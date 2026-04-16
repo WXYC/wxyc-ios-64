@@ -44,10 +44,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     let eventStream: AsyncStream<AudioPlayerEvent>
     private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
 
-    /// Stream of audio buffers from the render tap.
-    /// Only yields buffers when tap is installed via `installRenderTap()`.
-    let renderTapStream: AsyncStream<AVAudioPCMBuffer>
-    private let renderTapContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+    /// Relay that manages mutable render tap continuations, allowing fresh streams
+    /// to be created across play sessions without the single-use AsyncStream limitation.
+    private let renderTapRelay = RenderTapRelay()
 
     /// Tracks whether the render tap is currently installed
     private let renderTapState: RenderTapState
@@ -87,11 +86,6 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         self.eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(16)) { eventCont = $0 }
         self.eventContinuation = eventCont
 
-        // Initialize render tap stream - only keeps latest buffer for visualization
-        var renderCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { renderCont = $0 }
-        self.renderTapContinuation = renderCont
-
         // NOTE: We intentionally do NOT call setUpAudioEngine() here.
         // Accessing engine.mainMixerNode during init implicitly activates the audio
         // hardware and interrupts other apps' audio. Setup is deferred until play().
@@ -108,9 +102,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         // Install any pending render tap that was requested before engine was ready
         if pendingRenderTapState.remove() {
             guard renderTapState.install() else { return }
-            let continuation = renderTapContinuation
+            let relay = renderTapRelay
             playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
-                continuation.yield(buffer)
+                relay.yield(buffer)
             }
         }
 
@@ -165,9 +159,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         guard renderTapState.install() else { return } // Already installed
 
         Log(.info, category: .playback, "Render tap installed")
-        let continuation = renderTapContinuation
+        let relay = renderTapRelay
         playerNode.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
-            continuation.yield(buffer)
+            relay.yield(buffer)
         }
     }
 
@@ -176,6 +170,10 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 
         Log(.info, category: .playback, "Render tap removed")
         playerNode.removeTap(onBus: 0)
+    }
+
+    func makeRenderTapStream() -> AsyncStream<AVAudioPCMBuffer> {
+        renderTapRelay.makeStream()
     }
 
     func play() throws {
@@ -486,6 +484,48 @@ private final class EngineSetUpState: @unchecked Sendable {
         os_unfair_lock_lock(lock)
         defer { os_unfair_lock_unlock(lock) }
         _isSetUp = false
+    }
+}
+
+/// Manages a mutable AsyncStream continuation for the render tap, allowing
+/// fresh streams to be created across play sessions. AsyncStream is single-use:
+/// once a consumer's iterator is deallocated, the stream terminates permanently.
+/// This relay solves the problem by finishing the old continuation and creating
+/// a new stream+continuation pair on each `makeStream()` call.
+private final class RenderTapRelay: @unchecked Sendable {
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
+    private var _continuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
+
+    init() {
+        lock = .allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
+    }
+
+    deinit {
+        lock.deinitialize(count: 1)
+        lock.deallocate()
+    }
+
+    /// Creates a fresh AsyncStream, finishing any previously active continuation.
+    func makeStream() -> AsyncStream<AVAudioPCMBuffer> {
+        os_unfair_lock_lock(lock)
+        let old = _continuation
+        var newCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { newCont = $0 }
+        _continuation = newCont
+        os_unfair_lock_unlock(lock)
+        old?.finish()
+        return stream
+    }
+
+    /// Yields a buffer to the current continuation, if any.
+    /// The lock protects only the pointer read; the actual yield happens outside
+    /// the lock to keep the critical section minimal for the audio thread.
+    func yield(_ buffer: AVAudioPCMBuffer) {
+        os_unfair_lock_lock(lock)
+        let cont = _continuation
+        os_unfair_lock_unlock(lock)
+        cont?.yield(buffer)
     }
 }
 

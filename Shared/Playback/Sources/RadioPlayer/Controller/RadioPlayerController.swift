@@ -236,12 +236,10 @@ public final class RadioPlayerController: PlaybackController {
         self.state = .idle
     }
     
-    public var audioBufferStream: AsyncStream<AVAudioPCMBuffer> {
+    public func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
         // RadioPlayerController uses AVPlayer which doesn't provide raw audio buffers
         // Return empty stream that finishes immediately
-        AsyncStream { continuation in
-            continuation.finish()
-        }
+        AsyncStream { $0.finish() }
     }
     
     /// No-op: AVPlayer-based RadioPlayerController doesn't support render tap
