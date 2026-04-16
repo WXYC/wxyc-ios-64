@@ -103,6 +103,32 @@ struct AudioPlayerControllerTests {
         #expect(mockSession.setActiveCallCount == 3)
     }
 
+    // MARK: - Audio Session Failure Guard
+
+    @Test("Play bails when audio session activation fails")
+    func playBailsOnSessionActivationFailure() {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockAudioPlayerForController()
+
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: MockStructuredAnalytics()
+        )
+
+        mockSession.shouldThrowOnSetActive = true
+
+        controller.play()
+
+        #expect(controller.isPlaying == false)
+        // isLoading is false when playbackIntended is false (playerState is .idle)
+        #expect(controller.isLoading == false)
+        #expect(mockPlayer.isPlaying == false)
+    }
+
     // MARK: - Output Latency Tests
 
     @Test("Output latency returns audio session's output latency")

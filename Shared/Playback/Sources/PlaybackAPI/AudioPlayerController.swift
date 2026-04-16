@@ -229,7 +229,13 @@ public final class AudioPlayerController {
         stallStartTime = nil
         playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS)
-        activateAudioSession()
+        guard activateAudioSession() else {
+            Log(.error, category: .playback, "Aborting play: audio session activation failed")
+            playbackIntended = false
+            playbackStartTime = nil
+            cpuAggregator?.endSession(reason: .error)
+            return
+        }
         #endif
 
         // Always play fresh for live streaming (don't resume paused state)
@@ -354,16 +360,21 @@ public final class AudioPlayerController {
         }
     }
 
-    private func activateAudioSession() {
-        guard let session = audioSession else { return }
+    /// Activates the audio session, returning whether activation succeeded.
+    /// - Returns: `true` if the session was activated (or no session exists), `false` on failure.
+    @discardableResult
+    private func activateAudioSession() -> Bool {
+        guard let session = audioSession else { return true }
         // Configure the audio session category if not already done
         configureAudioSessionIfNeeded()
         do {
             try session.setActive(true, options: [])
             audioSessionActivated = true
             Log(.info, category: .playback, "Audio session activated")
+            return true
         } catch {
             Log(.error, category: .playback, "Failed to activate audio session: \(error)")
+            return false
         }
     }
 
@@ -784,6 +795,13 @@ extension AudioPlayerController {
                 try await Task.sleep(for: .seconds(waitTime))
                 guard !Task.isCancelled else { return }
 
+                #if os(iOS) || os(tvOS)
+                guard self.activateAudioSession() else {
+                    Log(.error, category: .playback, "Reconnect aborted: audio session activation failed")
+                    self.backoffTimer.reset()
+                    return
+                }
+                #endif
                 self.player.play()
 
                 // Brief grace period for connection to establish
