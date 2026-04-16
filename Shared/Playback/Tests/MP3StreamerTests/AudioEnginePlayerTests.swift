@@ -498,6 +498,74 @@ struct AudioEnginePlayerTests {
 
         player.stop()
     }
+
+    // MARK: - Render Tap Stream Reuse Tests
+
+    @Test("makeRenderTapStream returns a working stream after previous consumer is cancelled")
+    func testMakeRenderTapStreamAfterCancellation() async throws {
+        let format = TestAudioBufferFactory.makeStandardFormat()
+        let player = AudioEnginePlayer(format: format)
+
+        // Set up engine and install render tap
+        try player.play()
+        _ = try await player.eventStream.first(timeout: 2) // Consume started
+        player.installRenderTap()
+
+        // First stream: consume one buffer then cancel
+        let firstStream = player.makeRenderTapStream()
+        let buffer1 = TestAudioBufferFactory.makeSilentBuffer(frameCount: 2048)
+        player.scheduleBuffer(buffer1)
+
+        let firstTask = Task {
+            for await _ in firstStream {
+                return true
+            }
+            return false
+        }
+
+        let received = try await withThrowingTaskGroup(of: Bool.self) { group in
+            group.addTask { await firstTask.value }
+            group.addTask {
+                try await Task.sleep(for: .seconds(2))
+                throw TimeoutError()
+            }
+            guard let result = try await group.next() else { throw TimeoutError() }
+            group.cancelAll()
+            return result
+        }
+        #expect(received, "First stream should receive a buffer")
+
+        // Cancel the first consumer
+        firstTask.cancel()
+        try await Task.sleep(for: .milliseconds(50))
+
+        // Second stream: should work after the first was cancelled
+        let secondStream = player.makeRenderTapStream()
+        let buffer2 = TestAudioBufferFactory.makeSilentBuffer(frameCount: 2048)
+        player.scheduleBuffer(buffer2)
+
+        let secondTask = Task {
+            for await _ in secondStream {
+                return true
+            }
+            return false
+        }
+
+        let receivedAgain = try await withThrowingTaskGroup(of: Bool.self) { group in
+            group.addTask { await secondTask.value }
+            group.addTask {
+                try await Task.sleep(for: .seconds(2))
+                throw TimeoutError()
+            }
+            guard let result = try await group.next() else { throw TimeoutError() }
+            group.cancelAll()
+            return result
+        }
+        #expect(receivedAgain, "Second stream should receive a buffer after first stream was cancelled")
+
+        secondTask.cancel()
+        player.stop()
+    }
 }
 
 // MARK: - Additional Test Tags

@@ -20,11 +20,10 @@ import AnalyticsTesting
 @MainActor
 public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProtocol {
     private let eventContinuation: AsyncStream<AudioPlayerEvent>.Continuation
-    private let renderContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
+    private var renderContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
     public let analytics: MockStructuredAnalytics?
 
     public let eventStream: AsyncStream<AudioPlayerEvent>
-    public let renderTapStream: AsyncStream<AVAudioPCMBuffer>
 
     public var volume: Float = 1.0
     public private(set) var isPlaying = false
@@ -51,8 +50,15 @@ public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProto
         self.eventContinuation = eventCont
 
         var renderCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        self.renderTapStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { renderCont = $0 }
+        _ = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { renderCont = $0 }
         self.renderContinuation = renderCont
+    }
+
+    public func makeRenderTapStream() -> AsyncStream<AVAudioPCMBuffer> {
+        var cont: AsyncStream<AVAudioPCMBuffer>.Continuation!
+        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { cont = $0 }
+        self.renderContinuation = cont
+        return stream
     }
 
     public func play() throws {

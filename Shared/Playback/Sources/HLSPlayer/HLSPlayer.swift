@@ -74,7 +74,10 @@ public final class HLSPlayer: Sendable {
     public let stateStream: AsyncStream<PlayerState>
     private let stateContinuation: AsyncStream<PlayerState>.Continuation
 
-    public let audioBufferStream: AsyncStream<AVAudioPCMBuffer>
+    /// Creates a fresh stream of audio buffers (always empty for HLS player).
+    public func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
+        AsyncStream { $0.finish() }
+    }
 
     public let eventStream: AsyncStream<AudioPlayerInternalEvent>
     private let eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation
@@ -106,10 +109,6 @@ public final class HLSPlayer: Sendable {
             stateContinuation = continuation
         }
         self.stateContinuation = stateContinuation
-
-        self.audioBufferStream = AsyncStream { continuation in
-            continuation.finish()
-        }
 
         var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
         self.eventStream = AsyncStream { continuation in

@@ -36,10 +36,11 @@ public protocol AudioPlayerProtocol: AnyObject {
     /// Stream of player state changes
     var stateStream: AsyncStream<PlayerState> { get }
     
-    /// Stream of audio buffers for visualization
-    /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread
-    /// Note: Only yields buffers when render tap is installed via `installRenderTap()`
-    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> { get }
+    /// Creates a fresh stream of audio buffers for visualization.
+    /// Each call returns a new stream; the previous stream's continuation is finished.
+    /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread.
+    /// Only yields buffers when render tap is installed via `installRenderTap()`.
+    func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer>
 
     /// Stream of internal player events (errors, stalls, recovery)
     var eventStream: AsyncStream<AudioPlayerInternalEvent> { get }

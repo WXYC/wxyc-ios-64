@@ -54,11 +54,12 @@ public protocol PlaybackController: AnyObject, Observable {
     /// - Parameter reason: Why playback was stopped (for analytics)
     func stop(reason: PlaybackReason)
     
-    /// Stream of audio buffers for visualization
-    /// Controllers without audio buffer access should return an empty stream
-    /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread
-    /// Note: Only yields buffers when render tap is installed via `installRenderTap()`
-    var audioBufferStream: AsyncStream<AVAudioPCMBuffer> { get }
+    /// Creates a fresh stream of audio buffers for visualization.
+    /// Each call returns a new stream; the previous stream's continuation is finished.
+    /// Controllers without audio buffer access should return an empty finished stream.
+    /// Should be buffered with .bufferingNewest(1) to avoid blocking audio thread.
+    /// Only yields buffers when render tap is installed via `installRenderTap()`.
+    func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer>
 
     /// Install the render tap for audio visualization.
     /// The tap runs at ~60Hz and consumes CPU, so only install when actively displaying visualizations.
