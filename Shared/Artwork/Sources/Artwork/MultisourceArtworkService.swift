@@ -119,6 +119,13 @@ public final actor MultisourceArtworkService: ArtworkService {
     private func scanFetchers(for playcut: Playcut) async -> CGImage? {
         let cacheKey = playcut.artworkCacheKey
 
+        // Check positive cache first. Artwork may have been stored by an external
+        // code path (e.g. metadata fallback in detail view) after a negative cache
+        // entry was recorded.
+        if let cached = try? await cacheCoordinator.fetchArtwork(for: playcut) {
+            return cached
+        }
+
         if let cachedError: Error = try? await self.errorCache.fetchError(for: cacheKey),
            Error.allCases.contains(cachedError) {
             Log(.info, category: .artwork, "Cached error for \(cacheKey): \(cachedError)")
@@ -157,6 +164,18 @@ public final actor MultisourceArtworkService: ArtworkService {
 
     private func removeTask(for id: String) {
         inflightTasks[id] = nil
+    }
+
+    /// Stores artwork fetched by an external code path (e.g. the metadata fallback
+    /// in the detail view) and clears any negative cache entry for the same key.
+    ///
+    /// Call this when artwork is loaded outside the normal fetcher chain so that
+    /// subsequent `fetchArtwork(for:)` calls find it in the positive cache.
+    public func cacheExternalArtwork(_ image: CGImage, for playcut: Playcut) async {
+        let cacheKey = playcut.artworkCacheKey
+        let lifespan: TimeInterval = playcut.rotation ? .thirtyDays : .oneDay
+        await cacheCoordinator.set(artwork: image, for: cacheKey, lifespan: lifespan)
+        await errorCache.setData(nil, for: cacheKey, lifespan: 0)
     }
 
     /// Clears cached "no artwork available" errors so entries are retried with the current fetcher chain.

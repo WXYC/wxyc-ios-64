@@ -202,6 +202,12 @@ struct PlaycutDetailView: View {
                   let image = UIImage(data: data) else {
                 return
             }
+
+            // Store in artwork service cache so playlist rows pick it up
+            if let artworkService, let cgImage = image.cgImage {
+                await artworkService.cacheExternalArtwork(cgImage, for: playcut)
+            }
+
             await MainActor.run {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     self.artwork = image

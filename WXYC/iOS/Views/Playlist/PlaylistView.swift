@@ -29,6 +29,7 @@ struct PlaylistView: View {
     @Binding var selectedPlaycut: PlaycutSelection?
 
     @State private var playlistEntries: [any PlaylistEntry] = []
+    @State private var artworkLoadGeneration = 0
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
@@ -150,6 +151,11 @@ struct PlaylistView: View {
                 }
             }
         }
+        .onChange(of: selectedPlaycut != nil) { wasPresented, isPresented in
+            if wasPresented && !isPresented {
+                artworkLoadGeneration &+= 1
+            }
+        }
         .themePickerGesture(
             pickerState: appState.themePickerState,
             configuration: appState.themeConfiguration
@@ -161,7 +167,7 @@ struct PlaylistView: View {
     private func playlistRow(for entry: any PlaylistEntry) -> some View {
         switch entry {
         case let playcut as Playcut:
-            PlaycutRowView(playcut: playcut) { artwork in
+            PlaycutRowView(playcut: playcut, artworkLoadGeneration: artworkLoadGeneration) { artwork in
                 selectedPlaycut = PlaycutSelection(playcut: playcut, artwork: artwork)
             }
 

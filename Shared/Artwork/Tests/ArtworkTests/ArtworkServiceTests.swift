@@ -306,7 +306,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
+            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
         // Two playcuts with same release title but DIFFERENT artists
@@ -341,7 +341,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
+            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
         // Two playcuts with same song title but DIFFERENT artists, no release title
@@ -375,7 +375,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
+            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
         // Two playcuts with same song title AND same artist, no release title
@@ -407,7 +407,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
+            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
         let playcut1 = Playcut.stub(songTitle: "Song A", releaseTitle: "Album A")
@@ -517,7 +517,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
+            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
         let playcut = Playcut.stub(
@@ -552,7 +552,7 @@ struct ArtworkServiceTests {
 
         let service = MultisourceArtworkService(
             fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
+            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
         let playcuts: [Playcut] = (1...5).map { i in
@@ -586,8 +586,8 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 5)
     }
 
-    @Test("Sequential requests for same artwork use cached task")
-    func sequentialRequestsUseCachedTask() async throws {
+    @Test("Sequential requests for same artwork serve from positive cache after first fetch")
+    func sequentialRequestsServeFromCache() async throws {
         // Given
         let fetcher = MockArtworkService()
         let artwork = CGImage.testImageWithColor(.systemIndigo)
@@ -605,9 +605,9 @@ struct ArtworkServiceTests {
         _ = try await service.fetchArtwork(for: playcut)
         _ = try await service.fetchArtwork(for: playcut)
 
-        // Then - Each sequential request hits the fetcher because the in-flight task
-        // is removed between calls (no cache fetcher in the fetchers list)
-        #expect(fetcher.fetchCount == 3)
+        // Then - First call hits the fetcher and caches the result;
+        // subsequent calls serve from the positive cache
+        #expect(fetcher.fetchCount == 1)
     }
 
     // MARK: - Default Initializer Test
@@ -673,6 +673,65 @@ struct ArtworkServiceTests {
         // Second call: should retry (not cached), so fetcher count increases
         do { _ = try await service.fetchArtwork(for: playcut) } catch {}
         #expect(fetcher.fetchCount == 2)
+    }
+
+    @Test("Positive cache takes precedence over negative cache")
+    func positiveCacheTakesPrecedenceOverNegativeCache() async throws {
+        // Given: a service where all fetchers fail
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = ServiceError.noResults
+
+        let artworkCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-pos-\(UUID().uuidString)"))
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [artworkCache, fetcher],
+            cacheCoordinator: artworkCache,
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        // First call: fails and sets negative cache entry
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+
+        // Externally store artwork in positive cache (simulates detail view caching)
+        let testImage = CGImage.testImageWithColor(.green)
+        await artworkCache.set(artwork: testImage, for: playcut.artworkCacheKey, lifespan: .thirtyDays)
+
+        // When: fetching again with negative cache still present
+        // Then: positive cache should win
+        let result = try await service.fetchArtwork(for: playcut)
+        #expect(result.width > 0)
+    }
+
+    @Test("cacheExternalArtwork stores artwork and clears negative cache")
+    func cacheExternalArtworkStoresAndClearsNegativeCache() async throws {
+        // Given: a service where all fetchers fail
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = ServiceError.noResults
+
+        let artworkCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-ext-\(UUID().uuidString)"))
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [artworkCache, fetcher],
+            cacheCoordinator: artworkCache,
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        // First call: fails and sets negative cache entry
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        // When: store artwork externally
+        let testImage = CGImage.testImageWithColor(.cyan)
+        await service.cacheExternalArtwork(testImage, for: playcut)
+
+        // Then: fetch should succeed from cache without hitting the fetcher again
+        let result = try await service.fetchArtwork(for: playcut)
+        #expect(result.width > 0)
+        #expect(fetcher.fetchCount == 1) // fetcher not called again
     }
 
     @Test("clearNegativeCache allows retrying previously failed lookups")

@@ -90,19 +90,36 @@ final class Singletonia {
     /// Call this early in the app lifecycle. The artwork service starts with cache + URL
     /// fetcher only; once secrets arrive with Discogs credentials, the Discogs API fallback
     /// is added to the fetcher chain. Requires device session auth.
+    ///
+    /// Retries with exponential backoff on failure because a transient timeout would
+    /// otherwise leave the Discogs fallback disabled for the entire session, causing
+    /// all artwork lookups to fail for v1 API entries (which have no inline artworkURL).
     func fetchConfiguration() async {
         let appConfiguration = AppConfiguration()
+        let maxAttempts = 4
+        var delay: Duration = .seconds(5)
 
-        guard let authService = MusicShareKit.authService,
-              let secrets = await appConfiguration.fetchSecrets(tokenProvider: authService) else {
-            Log(.info, "No secrets available — Discogs fallback disabled")
+        for attempt in 1...maxAttempts {
+            guard let authService = MusicShareKit.authService,
+                  let secrets = await appConfiguration.fetchSecrets(tokenProvider: authService) else {
+                Log(.info, "Secrets fetch attempt \(attempt)/\(maxAttempts) failed")
+
+                guard attempt < maxAttempts else {
+                    Log(.warning, "No secrets available after \(maxAttempts) attempts — Discogs fallback disabled")
+                    return
+                }
+
+                try? await Task.sleep(for: delay)
+                delay *= 3
+                continue
+            }
+
+            if !secrets.discogsApiKey.isEmpty, !secrets.discogsApiSecret.isEmpty {
+                artworkService = .withDiscogsFallback(key: secrets.discogsApiKey, secret: secrets.discogsApiSecret)
+                await artworkService.clearNegativeCache()
+                Log(.info, "Artwork service upgraded with Discogs fallback (attempt \(attempt))")
+            }
             return
-        }
-
-        if !secrets.discogsApiKey.isEmpty, !secrets.discogsApiSecret.isEmpty {
-            artworkService = .withDiscogsFallback(key: secrets.discogsApiKey, secret: secrets.discogsApiSecret)
-            await artworkService.clearNegativeCache()
-            Log(.info, "Artwork service upgraded with Discogs fallback")
         }
     }
 

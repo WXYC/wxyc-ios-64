@@ -80,6 +80,7 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 struct PlaycutRowView: View {
     let playcut: Playcut
+    let artworkLoadGeneration: Int
     let onSelect: (UIImage?) -> Void
 
     @State private var artwork: UIImage?
@@ -199,18 +200,22 @@ struct PlaycutRowView: View {
                 let range = shadowOffsetAtBottom - shadowOffsetAtTop
                 shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
             }
-            .task {
+            .task(id: artworkLoadGeneration) {
                 await loadArtwork()
             }
     }
 
     private func loadArtwork() async {
+        guard artwork == nil else { return }
+
         guard let artworkService = artworkService else {
             await MainActor.run {
                 isLoadingArtwork = false
             }
             return
         }
+
+        await MainActor.run { isLoadingArtwork = true }
 
         do {
             let cgImage = try await artworkService.fetchArtwork(for: playcut)
@@ -262,6 +267,7 @@ extension View {
             artistName: "Laurel Halo",
             releaseTitle: "Atlas"
         ),
+        artworkLoadGeneration: 0,
         onSelect: { _ in }
     )
     .environment(\.artworkService, MultisourceArtworkService())
