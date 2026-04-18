@@ -312,4 +312,68 @@ struct FlowsheetConverterTests {
         #expect(playlist.breakpoints.count == 1)
         #expect(playlist.showMarkers.count == 1)
     }
+
+    // MARK: - V2 API response format
+
+    @Test("Decodes and converts V2 API response with entry_type field")
+    func decodesV2ResponseWrapper() throws {
+        let fixtureURL = Bundle.module.url(
+            forResource: "flowsheet-v2-sample",
+            withExtension: "json",
+            subdirectory: "Fixtures"
+        )!
+        let data = try Data(contentsOf: fixtureURL)
+
+        let response = try JSONDecoder().decode(FlowsheetResponse.self, from: data)
+        let playlist = FlowsheetConverter.convert(response.entries)
+
+        #expect(playlist.playcuts.count == 1)
+        #expect(playlist.talksets.count == 1)
+        #expect(playlist.breakpoints.count == 1)
+        #expect(playlist.showMarkers.count == 2)
+
+        let playcut = try #require(playlist.playcuts.first)
+        #expect(playcut.artistName == "Miyako Koda")
+        #expect(playcut.songTitle == "Sleep in Peace")
+        #expect(playcut.releaseTitle == "in the shadow of Jupiter")
+        #expect(playcut.labelName == "Grandisc")
+
+        let showStart = try #require(playlist.showMarkers.first { $0.isStart })
+        #expect(showStart.djName == "DJ Moonbeam")
+
+        let showEnd = try #require(playlist.showMarkers.first { !$0.isStart })
+        #expect(showEnd.djName == "DJ Moonbeam")
+    }
+
+    @Test("Converts V2 talkset with nil message using entry_type")
+    func convertsV2TalksetWithNilMessage() {
+        let entry = FlowsheetEntry(
+            id: 100, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 1,
+            add_time: "2026-04-17T22:00:00Z", entry_type: "talkset"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.talksets.count == 1)
+        #expect(playlist.playcuts.isEmpty)
+    }
+
+    @Test("Converts V2 breakpoint with nil message using entry_type")
+    func convertsV2BreakpointWithNilMessage() {
+        let entry = FlowsheetEntry(
+            id: 101, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 2,
+            add_time: "2026-04-17T22:00:00Z", entry_type: "breakpoint"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.breakpoints.count == 1)
+        #expect(playlist.playcuts.isEmpty)
+    }
 }

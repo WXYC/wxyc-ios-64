@@ -110,4 +110,89 @@ struct FlowsheetEntryTypeTests {
         let entryType = FlowsheetEntryType.from(message: "breakpoint")
         #expect(entryType == .playcut)
     }
+
+    // MARK: - entry_type field detection (v2 API)
+
+    @Test("entry_type 'track' returns playcut")
+    func entryTypeTrackIsPlaycut() {
+        let entry = FlowsheetEntry(
+            id: 1, show_id: nil, album_id: nil, artist_name: "Autechre",
+            album_title: "Confield", track_title: "VI Scose Poise",
+            record_label: "Warp", rotation_id: nil, rotation_play_freq: nil,
+            request_flag: false, message: nil, play_order: 1,
+            add_time: "2026-04-17T22:00:00Z", entry_type: "track"
+        )
+        #expect(FlowsheetEntryType.from(entry) == .playcut)
+    }
+
+    @Test("entry_type 'talkset' returns talkset even when message is nil")
+    func entryTypeTalksetWithNilMessage() {
+        let entry = FlowsheetEntry(
+            id: 2, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 2, add_time: "2026-04-17T22:05:00Z",
+            entry_type: "talkset"
+        )
+        #expect(FlowsheetEntryType.from(entry) == .talkset)
+    }
+
+    @Test("entry_type 'breakpoint' returns breakpoint even when message is nil")
+    func entryTypeBreakpointWithNilMessage() {
+        let entry = FlowsheetEntry(
+            id: 3, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 3, add_time: "2026-04-17T22:10:00Z",
+            entry_type: "breakpoint"
+        )
+        #expect(FlowsheetEntryType.from(entry) == .breakpoint)
+    }
+
+    @Test("entry_type 'show_start' returns showStart with dj_name")
+    func entryTypeShowStart() {
+        let entry = FlowsheetEntry(
+            id: 4, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 4, add_time: "2026-04-17T20:00:00Z",
+            entry_type: "show_start", dj_name: "DJ Moonbeam"
+        )
+        #expect(FlowsheetEntryType.from(entry) == .showStart(djName: "DJ Moonbeam"))
+    }
+
+    @Test("entry_type 'show_end' returns showEnd with dj_name")
+    func entryTypeShowEnd() {
+        let entry = FlowsheetEntry(
+            id: 5, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 5, add_time: "2026-04-17T23:00:00Z",
+            entry_type: "show_end", dj_name: "DJ Moonbeam"
+        )
+        #expect(FlowsheetEntryType.from(entry) == .showEnd(djName: "DJ Moonbeam"))
+    }
+
+    @Test("entry_type 'show_start' with empty dj_name returns nil djName")
+    func entryTypeShowStartEmptyDJName() {
+        let entry = FlowsheetEntry(
+            id: 6, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 6, add_time: "2026-04-17T20:00:00Z",
+            entry_type: "show_start", dj_name: ""
+        )
+        #expect(FlowsheetEntryType.from(entry) == .showStart(djName: nil))
+    }
+
+    @Test("Falls back to message-based detection when entry_type is nil")
+    func fallsBackToMessageDetection() {
+        let entry = FlowsheetEntry(
+            id: 7, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: "Talkset", play_order: 7, add_time: "2026-04-17T22:00:00Z"
+        )
+        #expect(FlowsheetEntryType.from(entry) == .talkset)
+    }
 }

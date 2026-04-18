@@ -24,7 +24,7 @@ enum FlowsheetConverter {
         var showMarkers: [ShowMarker] = []
 
         for entry in entries {
-            let entryType = FlowsheetEntryType.from(message: entry.message)
+            let entryType = FlowsheetEntryType.from(entry)
             let hour = parseHour(from: entry.add_time)
             let chronOrderID = UInt64(entry.play_order)
             let id = UInt64(entry.id)
