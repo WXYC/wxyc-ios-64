@@ -10,7 +10,8 @@
 
 import Foundation
 
-/// Represents the type of a flowsheet entry, determined by parsing the `message` field.
+/// Represents the type of a flowsheet entry, determined from the `entry_type` field
+/// with a fallback to the legacy `message`-based heuristic.
 enum FlowsheetEntryType: Equatable, Sendable {
     case playcut
     case talkset
@@ -18,7 +19,35 @@ enum FlowsheetEntryType: Equatable, Sendable {
     case showStart(djName: String?)
     case showEnd(djName: String?)
 
-    /// Determines the entry type from the message field.
+    /// Determines the entry type from a flowsheet entry's fields.
+    ///
+    /// Uses `entry_type` (v2 API) as the primary signal. Falls back to the
+    /// legacy `message`-based heuristic when `entry_type` is absent.
+    ///
+    /// - Parameter entry: A raw flowsheet entry.
+    /// - Returns: The detected entry type.
+    static func from(_ entry: FlowsheetEntry) -> FlowsheetEntryType {
+        if let entryType = entry.entry_type {
+            switch entryType {
+            case "track":
+                return .playcut
+            case "talkset":
+                return .talkset
+            case "breakpoint":
+                return .breakpoint
+            case "show_start":
+                return .showStart(djName: entry.dj_name?.nilIfEmpty)
+            case "show_end":
+                return .showEnd(djName: entry.dj_name?.nilIfEmpty)
+            default:
+                return .playcut
+            }
+        }
+
+        return from(message: entry.message)
+    }
+
+    /// Legacy entry type detection from the message field.
     ///
     /// - Parameter message: The message field from a FlowsheetEntry.
     /// - Returns: The detected entry type.
@@ -71,5 +100,11 @@ enum FlowsheetEntryType: Equatable, Sendable {
         }
         // Fallback: return the whole trimmed string
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

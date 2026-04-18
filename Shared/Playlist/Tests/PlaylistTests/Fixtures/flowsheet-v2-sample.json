@@ -1,0 +1,65 @@
+{
+    "entries": [
+        {
+            "id": 5194730,
+            "show_id": 1946226,
+            "play_order": 32,
+            "add_time": "2026-04-17T23:00:47.490Z",
+            "entry_type": "show_end",
+            "dj_name": "DJ Moonbeam",
+            "timestamp": ""
+        },
+        {
+            "id": 5194729,
+            "show_id": 1946226,
+            "play_order": 31,
+            "add_time": "2026-04-17T23:00:45.205Z",
+            "entry_type": "breakpoint",
+            "message": null
+        },
+        {
+            "id": 5194728,
+            "show_id": 1946226,
+            "play_order": 30,
+            "add_time": "2026-04-17T22:53:48.500Z",
+            "entry_type": "track",
+            "album_id": null,
+            "rotation_id": null,
+            "artist_name": "Miyako Koda",
+            "album_title": "in the shadow of Jupiter",
+            "track_title": "Sleep in Peace",
+            "record_label": "Grandisc",
+            "label_id": null,
+            "request_flag": false,
+            "segue": false,
+            "rotation_bin": null,
+            "artwork_url": null,
+            "discogs_url": null,
+            "release_year": null,
+            "spotify_url": null,
+            "apple_music_url": null,
+            "youtube_music_url": null,
+            "bandcamp_url": null,
+            "soundcloud_url": null,
+            "artist_bio": null,
+            "artist_wikipedia_url": null
+        },
+        {
+            "id": 5194724,
+            "show_id": 1946226,
+            "play_order": 28,
+            "add_time": "2026-04-17T22:43:17.263Z",
+            "entry_type": "talkset",
+            "message": null
+        },
+        {
+            "id": 5194720,
+            "show_id": 1946226,
+            "play_order": 1,
+            "add_time": "2026-04-17T20:00:01.000Z",
+            "entry_type": "show_start",
+            "dj_name": "DJ Moonbeam",
+            "timestamp": ""
+        }
+    ]
+}

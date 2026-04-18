@@ -10,13 +10,16 @@
 
 import Foundation
 
+/// Wrapper for the v2 flowsheet API response, which nests entries under an `"entries"` key.
+struct FlowsheetResponse: Codable, Sendable {
+    let entries: [FlowsheetEntry]
+}
+
 /// Raw response model for a single entry from the v2 flowsheet API.
 ///
-/// Entry type is determined by the `message` field:
-/// - `nil` = playcut (regular song)
-/// - `"Talkset"` = talkset
-/// - Contains `"Breakpoint"` = breakpoint
-/// - `"Start of Show: ..."` / `"End of Show: ..."` = show marker
+/// Entry type is determined by the `entry_type` field (`"track"`, `"talkset"`,
+/// `"breakpoint"`, `"show_start"`, `"show_end"`). The older `message`-based
+/// detection is used as a fallback when `entry_type` is absent.
 struct FlowsheetEntry: Codable, Sendable {
     let id: Int
     let show_id: Int?
@@ -31,6 +34,13 @@ struct FlowsheetEntry: Codable, Sendable {
     let message: String?
     let play_order: Int
     let add_time: String
+
+    /// Explicit entry type from the v2 API (e.g. `"track"`, `"talkset"`, `"breakpoint"`,
+    /// `"show_start"`, `"show_end"`). `nil` when decoding older response formats.
+    var entry_type: String? = nil
+
+    /// DJ name for show start/end markers. Present only in v2 responses.
+    var dj_name: String? = nil
 
     // Metadata fields from album_metadata/artist_metadata LEFT JOINs.
     // Present only in v2 responses after backend enrichment completes.
