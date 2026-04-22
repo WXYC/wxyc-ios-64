@@ -15,8 +15,10 @@ import Security
 
 /// Keychain-backed token storage for anonymous authentication sessions.
 ///
-/// Stores authentication sessions in the device Keychain. Anonymous session tokens
-/// are device-specific and not synchronized via iCloud Keychain (see issue #210).
+/// Stores authentication sessions in the Keychain with optional iCloud synchronization
+/// for cross-device session persistence. When iCloud Keychain is unavailable (e.g.,
+/// simulators or devices without an iCloud account), saves fall back to local-only
+/// storage to ensure sessions always persist across app launches (see issue #210).
 public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
 
     /// The service name for Keychain items.
@@ -41,10 +43,11 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
     /// - Parameters:
     ///   - accessGroup: The Keychain access group for sharing between targets.
     ///                  Pass `nil` for app-only storage. Format: `$(TeamID).group.name`
-    ///   - synchronizable: Whether to sync via iCloud Keychain. Defaults to `false`.
-    ///                      Anonymous session tokens are device-specific and should not sync.
+    ///   - synchronizable: Whether to sync via iCloud Keychain. Defaults to `true`.
+    ///                      When `true`, saves fall back to non-synchronizable storage if
+    ///                      iCloud Keychain is unavailable (e.g., simulators).
     ///   - analytics: Analytics service for tracking keychain errors.
-    public init(accessGroup: String?, synchronizable: Bool = false, analytics: AnalyticsService) {
+    public init(accessGroup: String?, synchronizable: Bool = true, analytics: AnalyticsService) {
         self.service = "org.wxyc.app.auth"
         self.account = "anonymous-session"
         self.accessGroup = accessGroup
@@ -96,10 +99,12 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
             }
 
         case errSecItemNotFound:
-            // One-time migration: check for items saved with the old synchronizable=true
-            // setting (issue #210). If found, migrate to non-synchronizable storage.
-            if !synchronizable {
-                return migrateFromSynchronizable()
+            // Fallback: when synchronizable=true, baseQuery includes
+            // kSecAttrSynchronizableAny which should match both sync and non-sync
+            // items. But if the query still found nothing, check without the sync
+            // flag in case of edge cases (issue #210).
+            if synchronizable {
+                return loadNonSynchronizable()
             }
             return nil
 
@@ -121,7 +126,7 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
             throw AuthenticationError.keychainError(status: errSecParam)
         }
 
-        // Try to update existing item first
+        // Try to update existing item first (matches both sync and non-sync items)
         var query = baseQuery()
         let attributes: [String: Any] = [
             kSecValueData as String: data
@@ -137,6 +142,14 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
                 query[kSecAttrSynchronizable as String] = true
             }
             status = SecItemAdd(query as CFDictionary, nil)
+
+            // Fall back to non-synchronizable if iCloud Keychain is unavailable
+            // (e.g., simulators, devices without iCloud). Local persistence is
+            // better than no persistence (issue #210).
+            if synchronizable && status != errSecSuccess {
+                query[kSecAttrSynchronizable as String] = false
+                status = SecItemAdd(query as CFDictionary, nil)
+            }
         }
 
         if status != errSecSuccess {
@@ -180,24 +193,18 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
         return query
     }
 
-    /// Attempts to find and migrate a session saved with `kSecAttrSynchronizable = true`.
+    /// Attempts to load a session saved without the synchronizable flag.
     ///
-    /// Prior to issue #210, anonymous session tokens were stored as synchronizable
-    /// Keychain items (iCloud Keychain sync). This caused persistence failures when
-    /// iCloud Keychain was unavailable, creating a new anonymous user on every launch.
+    /// When iCloud Keychain is unavailable (simulators, devices without iCloud),
+    /// `save()` falls back to storing items without `kSecAttrSynchronizable`. This
+    /// method finds those fallback items using a query without the sync attribute.
     ///
-    /// This method searches for any item matching the service/account regardless of
-    /// sync status, and if found, re-saves it as a non-synchronizable item.
-    ///
-    /// - Returns: The migrated session, or `nil` if no synchronizable item was found
-    ///   or migration failed.
-    private func migrateFromSynchronizable() -> AuthSession? {
-        // Build a standalone query (not baseQuery) that finds items regardless of sync status
+    /// - Returns: The session if found, or `nil`.
+    private func loadNonSynchronizable() -> AuthSession? {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -213,46 +220,12 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
             return nil
         }
 
-        // Decode the session
-        let session: AuthSession
         do {
-            session = try JSONDecoder.shared.decode(AuthSession.self, from: data)
+            return try JSONDecoder.shared.decode(AuthSession.self, from: data)
         } catch {
-            analytics.capture(RequestLineKeychainMigratedEvent(success: false))
+            trackKeychainError(operation: .read, status: errSecDecode)
             return nil
         }
-
-        // Delete the old synchronizable item
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        // Re-save as non-synchronizable (lock is already held by load())
-        let newData: Data
-        do {
-            newData = try JSONEncoder().encode(session)
-        } catch {
-            analytics.capture(RequestLineKeychainMigratedEvent(success: false))
-            return nil
-        }
-
-        var addQuery = baseQuery()
-        addQuery[kSecValueData as String] = newData
-        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-
-        if addStatus != errSecSuccess {
-            analytics.capture(RequestLineKeychainMigratedEvent(success: false))
-            // Still return the session — it's valid, just couldn't persist the migration
-            return session
-        }
-
-        analytics.capture(RequestLineKeychainMigratedEvent(success: true))
-        return session
     }
 
     private func trackKeychainError(operation: KeychainOperation, status: OSStatus) {
