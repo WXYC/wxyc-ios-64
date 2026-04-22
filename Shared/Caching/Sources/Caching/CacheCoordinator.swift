@@ -56,8 +56,10 @@ public final actor CacheCoordinator {
     /// Cache coordinator for album artwork images.
     ///
     /// Stores binary image data (JPEG, PNG) for album art fetched from various sources.
-    /// Uses the app's private caches directory.
-    public static let AlbumArt = CacheCoordinator(cache: DiskCache())
+    /// Uses ``MigratingDiskCache`` to store artwork in the shared App Group container,
+    /// enabling access from widgets and extensions, while transparently migrating
+    /// existing artwork from the app's private caches directory.
+    public static let AlbumArt = CacheCoordinator(cache: MigratingDiskCache())
 
     /// Cache coordinator for artwork fetch errors (negative cache).
     ///
