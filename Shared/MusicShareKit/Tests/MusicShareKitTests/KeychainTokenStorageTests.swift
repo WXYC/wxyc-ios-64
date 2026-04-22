@@ -2,8 +2,8 @@
 //  KeychainTokenStorageTests.swift
 //  MusicShareKit
 //
-//  Integration tests for KeychainTokenStorage using the real Keychain on simulator.
-//  Verifies round-trip persistence and migration from synchronizable items.
+//  Integration tests for KeychainTokenStorage using the real Keychain.
+//  Verifies round-trip persistence, synchronizable fallback, and load fallback.
 //
 //  Created by Jake Bromberg on 04/21/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -14,8 +14,6 @@ import Foundation
 import Security
 import Testing
 @testable import MusicShareKit
-
-// MARK: - Keychain Constants (mirrors KeychainTokenStorage private statics)
 
 private let testService = "org.wxyc.app.auth.test"
 private let testAccount = "anonymous-session-test"
@@ -41,7 +39,6 @@ struct KeychainTokenStorageTests {
             expiresAt: nil
         )
 
-        // Save with first instance
         let storage1 = makeStorage(synchronizable: false)
         try storage1.save(session)
 
@@ -52,101 +49,86 @@ struct KeychainTokenStorageTests {
         #expect(loaded?.token == session.token)
         #expect(loaded?.userId == session.userId)
 
-        // Clean up
         try storage2.delete()
     }
 
-    // MARK: - Migration from Synchronizable Items
+    // MARK: - Synchronizable Save Fallback
 
-    @Test("Migrates synchronizable item to non-synchronizable on load")
-    func migratesSynchronizableItem() throws {
+    @Test("Save falls back to non-synchronizable when iCloud Keychain is unavailable")
+    func saveFallsBackToNonSynchronizable() throws {
         let session = AuthSession(
-            token: "sync-token-xyz",
-            userId: "sync-user-456",
+            token: "fallback-token-xyz",
+            userId: "fallback-user-456",
             createdAt: Date(),
             expiresAt: nil
         )
 
-        // Save directly to keychain with kSecAttrSynchronizable = true (old behavior).
-        // Synchronizable items require entitlements only available on iOS simulator,
-        // so skip this test on macOS where swift test runs.
+        // Save with synchronizable=true. On macOS (swift test), iCloud Keychain
+        // is unavailable, so the sync save fails and falls back to non-sync.
+        let storage = makeStorage(synchronizable: true)
+        try storage.save(session)
+
+        // Load should find the item regardless of how it was saved
+        let loaded = try storage.load()
+        #expect(loaded?.token == session.token)
+        #expect(loaded?.userId == session.userId)
+
+        try storage.delete()
+    }
+
+    @Test("Save fallback persists across instances")
+    func saveFallbackPersistsAcrossInstances() throws {
+        let session = AuthSession(
+            token: "relaunch-token",
+            userId: "relaunch-user",
+            createdAt: Date(),
+            expiresAt: nil
+        )
+
+        // Save with synchronizable=true (may fall back to non-sync)
+        let storage1 = makeStorage(synchronizable: true)
+        try storage1.save(session)
+
+        // Load with a fresh synchronizable=true instance (simulates app relaunch)
+        let storage2 = makeStorage(synchronizable: true)
+        let loaded = try storage2.load()
+
+        #expect(loaded?.token == session.token)
+        #expect(loaded?.userId == session.userId)
+
+        try storage2.delete()
+    }
+
+    // MARK: - Load Fallback
+
+    @Test("Load with synchronizable=true finds non-synchronizable items")
+    func loadFindsFallbackItems() throws {
+        let session = AuthSession(
+            token: "nonsync-token",
+            userId: "nonsync-user",
+            createdAt: Date(),
+            expiresAt: nil
+        )
+
+        // Save directly as non-synchronizable (simulates a fallback save)
         let data = try JSONEncoder().encode(session)
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: testService,
             kSecAttrAccount as String: testAccount,
-            kSecAttrSynchronizable as String: true,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
             kSecValueData as String: data
         ]
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-        guard addStatus == errSecSuccess else {
-            // -34018 (errSecMissingEntitlement) on macOS; test requires iOS simulator
-            return
-        }
+        #expect(addStatus == errSecSuccess)
 
-        // Load with non-synchronizable storage — should migrate and return the session
-        let storage = makeStorage(synchronizable: false)
+        // Load with synchronizable=true should still find the non-sync item
+        let storage = makeStorage(synchronizable: true)
         let loaded = try storage.load()
 
         #expect(loaded?.token == session.token)
         #expect(loaded?.userId == session.userId)
 
-        // Verify the old synchronizable item is gone
-        let syncQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: testService,
-            kSecAttrAccount as String: testAccount,
-            kSecAttrSynchronizable as String: true
-        ]
-        let syncStatus = SecItemCopyMatching(syncQuery as CFDictionary, nil)
-        #expect(syncStatus == errSecItemNotFound, "Old synchronizable item should have been deleted")
-
-        // Verify the new non-synchronizable item exists
-        let nonSyncQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: testService,
-            kSecAttrAccount as String: testAccount,
-            kSecReturnData as String: true
-        ]
-        var result: AnyObject?
-        let nonSyncStatus = SecItemCopyMatching(nonSyncQuery as CFDictionary, &result)
-        #expect(nonSyncStatus == errSecSuccess, "New non-synchronizable item should exist")
-
-        // Clean up
-        try storage.delete()
-    }
-
-    @Test("Migration tracks analytics event")
-    func migrationTracksAnalytics() throws {
-        let session = AuthSession(
-            token: "analytics-token",
-            userId: "analytics-user",
-            createdAt: Date(),
-            expiresAt: nil
-        )
-
-        // Seed a synchronizable item (skip on macOS — see migratesSynchronizableItem)
-        let data = try JSONEncoder().encode(session)
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: testService,
-            kSecAttrAccount as String: testAccount,
-            kSecAttrSynchronizable as String: true,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
-            kSecValueData as String: data
-        ]
-        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-        guard addStatus == errSecSuccess else { return }
-
-        mockAnalytics.reset()
-        let storage = makeStorage(synchronizable: false)
-        _ = try storage.load()
-
-        let eventNames = mockAnalytics.capturedEventNames()
-        #expect(eventNames.contains("request_line_keychain_migrated_event"))
-
-        // Clean up
         try storage.delete()
     }
 
@@ -163,7 +145,6 @@ struct KeychainTokenStorageTests {
     }
 
     private func deleteAllTestKeychainItems() {
-        // Delete both synchronizable and non-synchronizable items
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: testService,
@@ -171,5 +152,14 @@ struct KeychainTokenStorageTests {
             kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
         ]
         SecItemDelete(query as CFDictionary)
+
+        // Also delete non-synchronizable items (queries without kSecAttrSynchronizable
+        // won't match synchronizable items and vice versa)
+        let nonSyncQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: testService,
+            kSecAttrAccount as String: testAccount
+        ]
+        SecItemDelete(nonSyncQuery as CFDictionary)
     }
 }
