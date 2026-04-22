@@ -67,6 +67,42 @@ struct AuthNetworkClientE2ETests {
 
         #expect(httpResponse.statusCode == 200)
     }
+
+    // MARK: - JWT Exchange Tests
+
+    @Test("JWT exchange returns a valid JWT with three segments")
+    func jwtExchangeReturnsValidJWT() async throws {
+        let client = makeClient()
+        let session = try await client.signInAnonymously(baseURL: baseURL)
+
+        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.token)
+
+        let segments = jwt.split(separator: ".")
+        #expect(segments.count == 3)
+
+        // Verify the JWT payload can be decoded with an exp claim
+        let payload = try JWTPayloadDecoder.decode(jwt)
+        #expect(payload.expiresAt > Date())
+    }
+
+    @Test("JWT from exchange authenticates against /config/secrets",
+          .disabled("Requires WXYC/Backend-Service#376 (JWT-only verification)"))
+    func jwtAuthenticatesAgainstSecrets() async throws {
+        let client = makeClient()
+        let session = try await client.signInAnonymously(baseURL: baseURL)
+        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.token)
+
+        var request = URLRequest(url: URL(string: "\(baseURL)/config/secrets")!)
+        request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let httpResponse = try #require(response as? HTTPURLResponse)
+
+        #expect(httpResponse.statusCode == 200)
+
+        let secrets = try JSONDecoder().decode(SecretsResponse.self, from: data)
+        #expect(!secrets.discogsApiKey.isEmpty)
+    }
 }
 
 /// Minimal decode type for /config/secrets response

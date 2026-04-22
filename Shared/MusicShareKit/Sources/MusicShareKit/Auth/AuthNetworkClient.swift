@@ -22,6 +22,15 @@ public protocol AuthNetworkClient: Sendable {
     /// - Returns: A new authentication session.
     /// - Throws: `AuthenticationError` if the sign-in fails.
     func signInAnonymously(baseURL: String) async throws -> AuthSession
+
+    /// Exchanges a session token for a JWT.
+    ///
+    /// - Parameters:
+    ///   - baseURL: The base URL for the authentication API.
+    ///   - sessionToken: The session token from anonymous sign-in.
+    /// - Returns: A JWT string.
+    /// - Throws: `AuthenticationError` if the exchange fails.
+    func fetchJWT(baseURL: String, sessionToken: String) async throws -> String
 }
 
 // MARK: - Default Implementation
@@ -75,9 +84,43 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
             throw AuthenticationError.invalidResponse
         }
     }
+
+    public func fetchJWT(baseURL: String, sessionToken: String) async throws -> String {
+        guard let url = URL(string: "\(baseURL)/auth/token") else {
+            throw AuthenticationError.notConfigured
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(baseURL, forHTTPHeaderField: "Origin")
+        request.addValue("Bearer \(sessionToken)", forHTTPHeaderField: "Authorization")
+
+        let response: (data: Data, response: URLResponse)
+        do {
+            response = try await session.data(for: request)
+        } catch {
+            throw AuthenticationError.networkError(error)
+        }
+
+        guard let httpResponse = response.response as? HTTPURLResponse else {
+            throw AuthenticationError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw AuthenticationError.serverError(statusCode: httpResponse.statusCode)
+        }
+
+        do {
+            let tokenResponse = try JSONDecoder.shared.decode(JWTTokenResponse.self, from: response.data)
+            return tokenResponse.token
+        } catch {
+            throw AuthenticationError.invalidResponse
+        }
+    }
 }
 
-// MARK: - Response Model
+// MARK: - Response Models
 
 /// Response from the anonymous sign-in endpoint.
 private struct AuthResponse: Decodable {
@@ -87,6 +130,11 @@ private struct AuthResponse: Decodable {
     struct AuthResponseUser: Decodable {
         let id: String
     }
+}
+
+/// Response from the JWT token exchange endpoint.
+private struct JWTTokenResponse: Decodable {
+    let token: String
 }
 
 // MARK: - Mock Implementation
@@ -100,8 +148,17 @@ public final class MockAuthNetworkClient: AuthNetworkClient, @unchecked Sendable
     /// The error to throw from sign-in.
     public var mockError: Error?
 
+    /// The JWT to return from token exchange, or `nil` to throw an error.
+    public var mockJWT: String?
+
+    /// The error to throw from JWT exchange.
+    public var mockJWTError: Error?
+
     /// The number of times sign-in was called.
     public private(set) var signInCallCount = 0
+
+    /// The number of times JWT exchange was called.
+    public private(set) var fetchJWTCallCount = 0
 
     private let lock = NSLock()
 
@@ -121,12 +178,29 @@ public final class MockAuthNetworkClient: AuthNetworkClient, @unchecked Sendable
         throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
     }
 
+    public func fetchJWT(baseURL: String, sessionToken: String) async throws -> String {
+        lock.withLock { fetchJWTCallCount += 1 }
+
+        if let error = mockJWTError {
+            throw error
+        }
+
+        if let jwt = mockJWT {
+            return jwt
+        }
+
+        throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
+    }
+
     /// Resets all mock state.
     public func reset() {
         lock.lock()
         defer { lock.unlock() }
         mockSession = nil
         mockError = nil
+        mockJWT = nil
+        mockJWTError = nil
         signInCallCount = 0
+        fetchJWTCallCount = 0
     }
 }

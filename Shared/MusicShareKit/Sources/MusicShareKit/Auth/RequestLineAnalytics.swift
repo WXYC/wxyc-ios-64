@@ -66,6 +66,7 @@ public enum AuthFailurePhase: String, Sendable {
     case keychain
     case network
     case parse
+    case jwtExchange
 }
 
 /// Event captured when authentication fails.
@@ -83,6 +84,24 @@ public struct RequestLineAuthFailedEvent: RequestLineAnalyticsEvent {
     public init(error: String, phase: AuthFailurePhase) {
         self.error = error
         self.phase = phase
+    }
+}
+
+/// Event captured when a JWT exchange completes.
+public struct RequestLineJWTExchangeEvent: RequestLineAnalyticsEvent {
+    public let success: Bool
+    public let durationMs: Double
+
+    public var properties: [String: Any]? {
+        [
+            "success": success,
+            "duration_ms": durationMs
+        ]
+    }
+
+    public init(success: Bool, durationMs: Double) {
+        self.success = success
+        self.durationMs = durationMs
     }
 }
 
