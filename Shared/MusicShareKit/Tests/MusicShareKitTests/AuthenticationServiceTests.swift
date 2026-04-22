@@ -51,6 +51,14 @@ struct AuthenticationServiceTests {
         )
     }
 
+    /// Creates a mock network client configured for the two-step auth flow.
+    func makeNetworkClient(session: AuthSession, jwtExpiresIn: TimeInterval = 3600) -> MockAuthNetworkClient {
+        let client = MockAuthNetworkClient()
+        client.mockSession = session
+        client.mockJWT = makeTestJWT(expiresIn: jwtExpiresIn)
+        return client
+    }
+
     // MARK: - ensureAuthenticated Tests
 
     @Test("Returns cached token when available and not expired")
@@ -89,42 +97,47 @@ struct AuthenticationServiceTests {
         #expect(networkClient.signInCallCount == 0)
     }
 
-    @Test("Signs in anonymously when no stored session")
+    @Test("Signs in and exchanges for JWT when no stored session")
     func signsInWhenNoStoredSession() async throws {
         let storage = InMemoryTokenStorage()
-        let networkClient = MockAuthNetworkClient()
-        let session = makeValidSession()
-        networkClient.mockSession = session
+        let signInSession = makeValidSession()
+        let networkClient = makeNetworkClient(session: signInSession)
 
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
-        #expect(token == session.token)
+        // Returned token should be the JWT, not the session token
+        #expect(token != signInSession.token)
+        #expect(token.contains("."))
         #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
 
-        // Verify session was saved to storage
+        // Verify stored session has the JWT and a non-nil expiration
         let storedSession = try storage.load()
-        #expect(storedSession?.token == session.token)
+        #expect(storedSession?.token == token)
+        #expect(storedSession?.expiresAt != nil)
     }
 
     @Test("Signs in when stored session is expired")
     func signsInWhenSessionExpired() async throws {
         let storage = InMemoryTokenStorage()
-        let networkClient = MockAuthNetworkClient()
 
         // Store an expired session
         let expiredSession = makeExpiredSession()
         try storage.save(expiredSession)
 
-        // Network will return a fresh session
+        // Network will return a fresh session + JWT
         let freshSession = makeValidSession()
-        networkClient.mockSession = freshSession
+        let networkClient = makeNetworkClient(session: freshSession)
 
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
-        #expect(token == freshSession.token)
+        // Should be the JWT, not the sign-in session token
+        #expect(token != freshSession.token)
+        #expect(token.contains("."))
         #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
     }
 
     @Test("Throws error when network sign-in fails")
@@ -140,20 +153,83 @@ struct AuthenticationServiceTests {
         }
     }
 
+    @Test("Throws error when JWT exchange fails")
+    func throwsOnJWTExchangeFailure() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = MockAuthNetworkClient()
+        networkClient.mockSession = makeValidSession()
+        networkClient.mockJWTError = AuthenticationError.serverError(statusCode: 500)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        await #expect(throws: AuthenticationError.self) {
+            _ = try await service.ensureAuthenticated()
+        }
+
+        // Sign-in should have been called, but JWT exchange failed
+        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
+    }
+
+    @Test("Stored JWT session with valid expiration skips network calls")
+    func cachedJWTSessionSkipsNetwork() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = MockAuthNetworkClient()
+
+        // Pre-populate storage with a JWT session (has expiresAt)
+        let jwtSession = AuthSession(
+            token: "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjk5OTk5OTk5OTl9.sig",
+            userId: "user-123",
+            createdAt: Date(),
+            expiresAt: Date().addingTimeInterval(3600)
+        )
+        try storage.save(jwtSession)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        let token = try await service.ensureAuthenticated()
+
+        #expect(token == jwtSession.token)
+        #expect(networkClient.signInCallCount == 0)
+        #expect(networkClient.fetchJWTCallCount == 0)
+    }
+
+    @Test("Expired JWT session triggers full re-auth with JWT exchange")
+    func expiredJWTSessionTriggersFullReauth() async throws {
+        let storage = InMemoryTokenStorage()
+
+        // Store an expired JWT session
+        let expiredJWT = AuthSession(
+            token: "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.sig",
+            userId: "user-123",
+            createdAt: Date().addingTimeInterval(-7200),
+            expiresAt: Date().addingTimeInterval(-3600)
+        )
+        try storage.save(expiredJWT)
+
+        let freshSession = makeValidSession()
+        let networkClient = makeNetworkClient(session: freshSession)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        let token = try await service.ensureAuthenticated()
+
+        #expect(token.contains("."))
+        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
+    }
+
     // MARK: - reauthenticate Tests
 
     @Test("Reauthenticate clears cache and fetches fresh token")
     func reauthenticateClearsCacheAndRefetches() async throws {
         let storage = InMemoryTokenStorage()
-        let networkClient = MockAuthNetworkClient()
 
-        // Initial session
+        // Initial session (already in storage, bypasses network)
         let initialSession = makeValidSession()
         try storage.save(initialSession)
 
-        // Fresh session from reauthentication
+        // Fresh session from reauthentication (will go through network)
         let freshSession = makeValidSession()
-        networkClient.mockSession = freshSession
+        let networkClient = makeNetworkClient(session: freshSession)
 
         let service = makeService(storage: storage, networkClient: networkClient)
 
@@ -163,8 +239,9 @@ struct AuthenticationServiceTests {
 
         // Now reauthenticate
         let token2 = try await service.reauthenticate(reason: .unauthorized)
-        #expect(token2 == freshSession.token)
+        #expect(token2 != initialSession.token)
         #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
     }
 
     // MARK: - currentUserId Tests
@@ -199,11 +276,10 @@ struct AuthenticationServiceTests {
     @Test("Sign out clears cached session and storage")
     func signOutClearsEverything() async throws {
         let storage = InMemoryTokenStorage()
-        let networkClient = MockAuthNetworkClient()
         let session = makeValidSession()
-
         try storage.save(session)
-        networkClient.mockSession = makeValidSession() // For re-auth after sign out
+
+        let networkClient = makeNetworkClient(session: makeValidSession())
 
         let service = makeService(storage: storage, networkClient: networkClient)
 
@@ -227,8 +303,8 @@ struct AuthenticationServiceTests {
     @Test("Tracks auth started and completed events")
     func tracksAuthEvents() async throws {
         let storage = InMemoryTokenStorage()
-        let networkClient = MockAuthNetworkClient()
-        networkClient.mockSession = makeValidSession()
+        let session = makeValidSession()
+        let networkClient = makeNetworkClient(session: session)
 
         let service = makeService(storage: storage, networkClient: networkClient)
         mockAnalytics.reset()
@@ -238,6 +314,21 @@ struct AuthenticationServiceTests {
         let eventNames = mockAnalytics.capturedEventNames()
         #expect(eventNames.contains("request_line_auth_started_event"))
         #expect(eventNames.contains("request_line_auth_completed_event"))
+    }
+
+    @Test("Tracks JWT exchange event on successful auth from network")
+    func tracksJWTExchangeEvent() async throws {
+        let storage = InMemoryTokenStorage()
+        let session = makeValidSession()
+        let networkClient = makeNetworkClient(session: session)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        mockAnalytics.reset()
+
+        _ = try await service.ensureAuthenticated()
+
+        let eventNames = mockAnalytics.capturedEventNames()
+        #expect(eventNames.contains("request_line_jwt_exchange_event"))
     }
 
     @Test("Tracks auth failed event on network error")
@@ -258,4 +349,47 @@ struct AuthenticationServiceTests {
         let eventNames = mockAnalytics.capturedEventNames()
         #expect(eventNames.contains("request_line_auth_failed_event"))
     }
+
+    @Test("Tracks auth failed event with jwtExchange phase on JWT exchange error")
+    func tracksJWTExchangeFailure() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = MockAuthNetworkClient()
+        networkClient.mockSession = makeValidSession()
+        networkClient.mockJWTError = AuthenticationError.serverError(statusCode: 500)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        mockAnalytics.reset()
+
+        do {
+            _ = try await service.ensureAuthenticated()
+        } catch {
+            // Expected
+        }
+
+        let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
+        let jwtExchangeFailure = failedEvents.first { $0.phase == .jwtExchange }
+        #expect(jwtExchangeFailure != nil)
+    }
+}
+
+// MARK: - Test Helpers
+
+/// Creates a test JWT with a valid payload containing the given expiration.
+///
+/// The JWT is structurally valid (three base64url segments with a decodable payload)
+/// but has a fake signature — this is sufficient for `JWTPayloadDecoder` which does
+/// not verify signatures.
+private func makeTestJWT(expiresIn: TimeInterval = 3600) -> String {
+    let header = Data("{\"alg\":\"HS256\"}".utf8).base64EncodedString()
+    let exp = Int(Date().addingTimeInterval(expiresIn).timeIntervalSince1970)
+    let payload = Data("{\"sub\":\"test\",\"exp\":\(exp)}".utf8).base64EncodedString()
+
+    func base64urlEncode(_ base64: String) -> String {
+        base64
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    return "\(base64urlEncode(header)).\(base64urlEncode(payload)).fakesignature"
 }

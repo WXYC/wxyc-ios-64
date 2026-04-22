@@ -162,6 +162,103 @@ struct DefaultAuthNetworkClientTests {
             _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
         }
     }
+
+    // MARK: - fetchJWT Tests
+
+    @Test("fetchJWT URL uses GET /auth/token path")
+    func fetchJWTURLPath() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "session-tok")
+
+        let capturedURL = try #require(interceptor.lastRequest?.url)
+        #expect(capturedURL.path == "/auth/token")
+        #expect(capturedURL.host() == "api.example.com")
+
+        let request = try #require(interceptor.lastRequest)
+        #expect(request.httpMethod == "GET")
+    }
+
+    @Test("fetchJWT includes Authorization: Bearer header with session token")
+    func fetchJWTAuthorizationHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "my-session-token")
+
+        let auth = interceptor.lastRequest?.value(forHTTPHeaderField: "Authorization")
+        #expect(auth == "Bearer my-session-token")
+    }
+
+    @Test("fetchJWT includes Origin header matching baseURL")
+    func fetchJWTOriginHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok")
+
+        let origin = interceptor.lastRequest?.value(forHTTPHeaderField: "Origin")
+        #expect(origin == "https://api.example.com")
+    }
+
+    @Test("fetchJWT returns token string from response")
+    func fetchJWTReturnsToken() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        let jwt = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok")
+
+        #expect(jwt == "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig")
+    }
+
+    @Test("fetchJWT throws serverError for non-200 status")
+    func fetchJWTThrowsServerError() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = """
+        {"error": "Unauthorized"}
+        """.data(using: .utf8)!
+        interceptor.responseStatusCode = 401
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        await #expect(throws: AuthenticationError.self) {
+            _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "bad-tok")
+        }
+    }
+
+    @Test("fetchJWT throws invalidResponse for missing token field")
+    func fetchJWTThrowsInvalidResponseForMissingToken() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = """
+        {"error": "nope"}
+        """.data(using: .utf8)!
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        await #expect(throws: AuthenticationError.self) {
+            _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok")
+        }
+    }
 }
 
 // MARK: - Test Helpers
@@ -174,6 +271,12 @@ private let validBetterAuthResponse = """
         "name": "Anonymous",
         "email": "temp@anonymous.wxyc.org"
     }
+}
+""".data(using: .utf8)!
+
+private let validJWTTokenResponse = """
+{
+    "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig"
 }
 """.data(using: .utf8)!
 

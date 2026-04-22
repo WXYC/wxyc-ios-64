@@ -53,14 +53,14 @@ public actor AuthenticationService: SessionTokenProvider {
 
     // MARK: - Public API
 
-    /// Ensures the user is authenticated and returns a valid token.
+    /// Ensures the user is authenticated and returns a valid JWT.
     ///
     /// Flow:
-    /// 1. Return cached token if available and not expired
+    /// 1. Return cached JWT if available and not expired
     /// 2. Load from Keychain if not in cache
-    /// 3. Sign in anonymously if no stored session
+    /// 3. Sign in anonymously, exchange session token for JWT
     ///
-    /// - Returns: A valid bearer token.
+    /// - Returns: A valid JWT bearer token.
     /// - Throws: `AuthenticationError` if authentication fails.
     public func ensureAuthenticated() async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -90,10 +90,10 @@ public actor AuthenticationService: SessionTokenProvider {
 
         trackAuthStarted(source: .network)
 
-        // 3. Sign in anonymously
-        let session: AuthSession
+        // 3. Sign in anonymously to get a session token
+        let signInSession: AuthSession
         do {
-            session = try await networkClient.signInAnonymously(baseURL: baseURL)
+            signInSession = try await networkClient.signInAnonymously(baseURL: baseURL)
         } catch {
             analytics.capture(RequestLineAuthFailedEvent(
                 error: error.localizedDescription,
@@ -101,6 +101,32 @@ public actor AuthenticationService: SessionTokenProvider {
             ))
             throw error
         }
+
+        // 4. Exchange session token for JWT
+        let jwtStartTime = CFAbsoluteTimeGetCurrent()
+        let jwt: String
+        do {
+            jwt = try await networkClient.fetchJWT(baseURL: baseURL, sessionToken: signInSession.token)
+        } catch {
+            analytics.capture(RequestLineAuthFailedEvent(
+                error: error.localizedDescription,
+                phase: .jwtExchange
+            ))
+            throw error
+        }
+        let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
+        analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
+
+        // 5. Decode JWT to extract expiration
+        let payload = try JWTPayloadDecoder.decode(jwt)
+
+        // 6. Build session with JWT as the bearer token
+        let session = AuthSession(
+            token: jwt,
+            userId: signInSession.userId,
+            createdAt: Date(),
+            expiresAt: payload.expiresAt
+        )
 
         // Save to Keychain
         do {
