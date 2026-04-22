@@ -83,7 +83,6 @@ public enum MusicShareKit {
         if let authBaseURL = configuration.authBaseURL {
             let storage = KeychainTokenStorage(
                 accessGroup: configuration.keychainAccessGroup,
-                synchronizable: true,
                 analytics: configuration.analyticsService
             )
             _authService = AuthenticationService(

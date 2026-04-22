@@ -162,6 +162,22 @@ public struct RequestLineKeychainErrorEvent: RequestLineAnalyticsEvent {
     }
 }
 
+/// Event captured when a Keychain item is migrated from synchronizable to non-synchronizable.
+///
+/// This one-time migration occurs on the first launch after the app stops using iCloud Keychain
+/// sync for anonymous session tokens (issue #210).
+public struct RequestLineKeychainMigratedEvent: RequestLineAnalyticsEvent {
+    public let success: Bool
+
+    public var properties: [String: Any]? {
+        ["success": success]
+    }
+
+    public init(success: Bool) {
+        self.success = success
+    }
+}
+
 // MARK: - Ban Events
 
 /// Event captured when a user is banned.
