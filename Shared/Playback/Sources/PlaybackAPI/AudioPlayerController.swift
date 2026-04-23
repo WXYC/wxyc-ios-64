@@ -71,7 +71,7 @@ public final class AudioPlayerController {
         case .radioPlayer:
             RadioPlayer()
         case .hlsPlayer:
-            HLSPlayer(url: RadioStation.WXYC.hlsStreamURL)
+            HLSPlayer(url: HLSEnvironment.loadActive().url)
         }
     }
     #endif
