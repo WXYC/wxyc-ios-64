@@ -26,7 +26,7 @@ struct ArtistDetailView: View {
     @State private var isLoading = true
     @State private var expandedBio = false
 
-    private let semanticService = SemanticIndexService()
+    private let semanticService = SemanticIndexService.shared
     private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.authService)
 
     var body: some View {
@@ -37,7 +37,7 @@ struct ArtistDetailView: View {
                 infoSection
 
                 if let bio, !bio.isEmpty {
-                    ArtistBioSection(bio: bio, expandedBio: $expandedBio)
+                    ArtistBioSection(bio: bio, bioTokens: nil, expandedBio: $expandedBio)
                         .padding()
                         .background(
                             RoundedRectangle(cornerRadius: 16)

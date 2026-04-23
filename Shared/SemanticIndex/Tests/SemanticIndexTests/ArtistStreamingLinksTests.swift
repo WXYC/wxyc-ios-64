@@ -45,7 +45,7 @@ struct ArtistStreamingLinksTests {
             appleMusicArtistId: "artist456"
         )
         let preview = SemanticIndexPreview(
-            albumUrl: "https://music.apple.com/album/tnt/123456"
+            albumURL: URL(string: "https://music.apple.com/album/tnt/123456")
         )
         let links = ArtistStreamingLinks(detail: detail, preview: preview)
         #expect(links.appleMusicURL == URL(string: "https://music.apple.com/album/tnt/123456"))

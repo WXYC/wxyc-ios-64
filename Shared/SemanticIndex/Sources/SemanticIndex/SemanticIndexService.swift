@@ -27,6 +27,9 @@ import struct Logger.Category
 ///
 /// All responses are cached via ``CacheCoordinator`` to reduce redundant API calls.
 public actor SemanticIndexService {
+    /// Shared instance for use by views. Uses the default base URL, cache, and error reporter.
+    public static let shared = SemanticIndexService()
+
     private let baseURL: URL
     private let session: WebSession
     private let cache: CacheCoordinator
@@ -38,14 +41,14 @@ public actor SemanticIndexService {
     ) {
         self.baseURL = baseURL
         self.session = URLSession.shared
-        self.cache = .Metadata
+        self.cache = .SemanticIndex
         self.errorReporter = errorReporter
     }
 
     init(
         baseURL: URL = URL(string: "https://explore.wxyc.org")!,
         session: WebSession,
-        cache: CacheCoordinator = .Metadata,
+        cache: CacheCoordinator = .SemanticIndex,
         errorReporter: any ErrorReporter = ErrorReporting.shared
     ) {
         self.baseURL = baseURL
