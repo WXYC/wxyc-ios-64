@@ -64,4 +64,19 @@ struct PlayerControllerTypeTests {
         // Assert
         #expect(PlayerControllerType.loadPersisted() == .defaultType)
     }
+
+    @Test("Each type has a non-empty display name", arguments: PlayerControllerType.allCases)
+    func displayNameIsNonEmpty(type: PlayerControllerType) {
+        #expect(!type.displayName.isEmpty)
+    }
+
+    @Test("Each type has a non-empty short description", arguments: PlayerControllerType.allCases)
+    func shortDescriptionIsNonEmpty(type: PlayerControllerType) {
+        #expect(!type.shortDescription.isEmpty)
+    }
+
+    @Test("HLS player display name mentions HLS")
+    func hlsDisplayNameMentionsHLS() {
+        #expect(PlayerControllerType.hlsPlayer.displayName.contains("HLS"))
+    }
 }

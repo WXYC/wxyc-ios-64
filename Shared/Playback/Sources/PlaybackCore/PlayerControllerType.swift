@@ -86,6 +86,30 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
     }
     
     // MARK: - Identifiable
-    
+
     public var id: String { rawValue }
+
+    // MARK: - Display
+
+    public var displayName: String {
+        switch self {
+        case .radioPlayer:
+            "RadioPlayer (AVPlayer)"
+        case .mp3Streamer:
+            "MP3Streamer (AudioToolbox)"
+        case .hlsPlayer:
+            "HLS (Time-Shift)"
+        }
+    }
+
+    public var shortDescription: String {
+        switch self {
+        case .radioPlayer:
+            "AVPlayer with custom buffering. No visualizer, no time-shift."
+        case .mp3Streamer:
+            "URLSession + AudioToolbox. Supports visualizer."
+        case .hlsPlayer:
+            "AVPlayer with HLS. Supports time-shift scrub bar, no visualizer."
+        }
+    }
 }
