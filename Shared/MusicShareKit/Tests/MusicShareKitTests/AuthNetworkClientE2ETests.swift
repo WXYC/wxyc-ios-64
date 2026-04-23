@@ -85,8 +85,7 @@ struct AuthNetworkClientE2ETests {
         #expect(payload.expiresAt > Date())
     }
 
-    @Test("JWT from exchange authenticates against /config/secrets",
-          .disabled("Requires WXYC/Backend-Service#376 (JWT-only verification)"))
+    @Test("JWT from exchange authenticates against /config/secrets")
     func jwtAuthenticatesAgainstSecrets() async throws {
         let client = makeClient()
         let session = try await client.signInAnonymously(baseURL: baseURL)
