@@ -34,8 +34,7 @@ struct PlaycutDetailView: View {
     @State private var showLightboxContainer = false
     @State private var hideHeaderArtwork = false
     @Namespace private var artworkNamespace
-    
-    @Environment(\.artworkService) private var artworkService
+
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.reviewRequestService) var reviewRequestService
 
