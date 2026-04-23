@@ -105,6 +105,7 @@ public actor PlaycutMetadataService {
             transform: { apiResult in
                 ArtistMetadata(
                     bio: apiResult.bio,
+                    bioTokens: apiResult.bioTokens,
                     wikipediaURL: apiResult.wikipediaUrl.flatMap { URL(string: $0) },
                     discogsArtistId: apiResult.discogsArtistId ?? artistId
                 )
@@ -226,6 +227,7 @@ private struct AlbumMetadataAPIResponse: Codable {
 private struct ArtistMetadataAPIResponse: Codable {
     let discogsArtistId: Int?
     let bio: String?
+    let bioTokens: [ResolvedBioToken]?
     let wikipediaUrl: String?
 }
 
