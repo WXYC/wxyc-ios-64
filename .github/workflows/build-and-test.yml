@@ -2,6 +2,8 @@ name: Build and Test
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [master]
 
 env:
   SCHEME: WXYC
@@ -11,7 +13,7 @@ env:
 jobs:
   build-and-test:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -117,10 +119,52 @@ jobs:
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Build remaining targets
+        run: |
+          # Build non-iOS targets to verify they compile.
+          # Most shared code is already compiled from the iOS build-for-testing step.
+          for scheme_dest in \
+            "WXYC TV:generic/platform=tvOS Simulator" \
+            "WatchXYC:generic/platform=watchOS Simulator" \
+            "NowPlayingWidget:generic/platform=iOS Simulator" \
+            "Request Share Extension:generic/platform=iOS Simulator"; do
+
+            scheme="${scheme_dest%%:*}"
+            dest="${scheme_dest#*:}"
+
+            echo "::group::Building $scheme for $dest"
+            xcodebuild build \
+              -project WXYC.xcodeproj \
+              -scheme "$scheme" \
+              -destination "$dest" \
+              -configuration Debug \
+              -skipMacroValidation \
+              CODE_SIGNING_ALLOWED=NO
+            echo "::endgroup::"
+          done
+
+      - name: Determine affected tests
+        id: affected
+        shell: zsh {0}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            export BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+            git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+          fi
+          zsh .github/scripts/affected-tests.sh
+
       - name: Run Tests (except CoreTests and UI)
         run: |
-          # Skip UI tests in CI - they require simulator graphics
-          # Skip CoreTests - run separately with explicit test list to avoid Swift Testing parallel issues
+          # On pull_request, skip unaffected test targets for faster CI.
+          # On workflow_dispatch (or when affected-tests can't determine scope), run all.
+          if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
+            SKIP_FLAGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
+          else
+            SKIP_FLAGS="${{ steps.affected.outputs.skip_testing_flags }}"
+          fi
+
+          echo "Skip flags: $SKIP_FLAGS"
+
           xcodebuild test-without-building \
             -project WXYC.xcodeproj \
             -scheme "$SCHEME" \
@@ -129,12 +173,12 @@ jobs:
             -configuration Debug \
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
-            -skip-testing:WXYCUITests \
-            -skip-testing:CoreTests \
+            $SKIP_FLAGS \
             -disable-concurrent-testing \
             -resultBundlePath TestResults.xcresult
 
       - name: Run CoreTests
+        if: steps.affected.outputs.run_all == 'true' || steps.affected.outputs.run_core_tests == 'true'
         run: |
           # Run CoreTests with explicit test identifiers to avoid Swift Testing parallel execution issues.
           # When selecting an entire test bundle (e.g., -only-testing:CoreTests), Swift Testing's internal
@@ -213,3 +257,4 @@ jobs:
           path: |
             TestResults.xcresult
             CoreTestResults.xcresult
+          if-no-files-found: ignore
