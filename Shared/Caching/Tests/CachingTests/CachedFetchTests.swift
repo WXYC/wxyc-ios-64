@@ -23,7 +23,7 @@ struct CachedFetchTests {
     @Test("Returns cached value without calling fetch closure")
     func returnsCachedValueWithoutFetch() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
         await cache.set(value: "cached result", for: "key", lifespan: 3600)
         var fetchCalled = false
 
@@ -48,8 +48,7 @@ struct CachedFetchTests {
     @Test("Fetches and caches value on cache miss")
     func fetchesAndCachesOnMiss() async throws {
         // Given
-        let mockCache = MockCache()
-        let cache = CacheCoordinator(cache: mockCache)
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When
         let result: String = try await cachedFetch(
@@ -70,7 +69,7 @@ struct CachedFetchTests {
     @Test("Propagates fetch errors when no fallback is provided")
     func propagatesFetchErrors() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When/Then
         await #expect(throws: TestFetchError.networkFailure) {
@@ -88,7 +87,7 @@ struct CachedFetchTests {
     @Test("Returns fallback value when fetch fails")
     func returnsFallbackOnFetchError() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When
         let result: String = try await cachedFetch(
@@ -106,7 +105,7 @@ struct CachedFetchTests {
     @Test("Does not cache fallback values")
     func doesNotCacheFallbackValues() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When
         let _: String = try await cachedFetch(
@@ -128,7 +127,7 @@ struct CachedFetchTests {
     @Test("Applies transform to fetched value before caching")
     func appliesTransformBeforeCaching() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When
         let result: String = try await cachedFetch(
@@ -151,7 +150,7 @@ struct CachedFetchTests {
     func fetchesFreshValueOnExpiredCache() async throws {
         // Given
         let mockClock = MockClock()
-        let cache = CacheCoordinator(cache: MockCache(), clock: mockClock)
+        let cache = CacheCoordinator(cache: InMemoryCache(), clock: mockClock)
         await cache.set(value: "stale", for: "key", lifespan: 60)
         mockClock.advance(by: 61)
 
@@ -172,7 +171,7 @@ struct CachedFetchTests {
     @Test("Works with custom Codable structs")
     func worksWithCustomCodableStructs() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
         let expected = CachedPerson(name: "Juana Molina", age: 62)
 
         // When
@@ -192,7 +191,7 @@ struct CachedFetchTests {
     @Test("Transforms fetched type to a different cached type")
     func transformsFetchedTypeToDifferentCachedType() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
         let rawResponse = RawAPIResponse(value: "42", label: "answer")
 
         // When
@@ -214,7 +213,7 @@ struct CachedFetchTests {
     @Test("Returns fallback when transform throws")
     func returnsFallbackWhenTransformThrows() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When
         let result: String = try await cachedFetch(
@@ -233,7 +232,7 @@ struct CachedFetchTests {
     @Test("Propagates transform error when no fallback provided")
     func propagatesTransformErrorWhenNoFallback() async throws {
         // Given
-        let cache = CacheCoordinator(cache: MockCache())
+        let cache = CacheCoordinator(cache: InMemoryCache())
 
         // When/Then
         await #expect(throws: TestFetchError.transformFailure) {
