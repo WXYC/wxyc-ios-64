@@ -146,6 +146,14 @@
         "identifier" : "AnalyticsTests",
         "name" : "AnalyticsTests"
       }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Shared\/SemanticIndex",
+        "identifier" : "SemanticIndexTests",
+        "name" : "SemanticIndexTests"
+      }
     }
   ],
   "version" : 1

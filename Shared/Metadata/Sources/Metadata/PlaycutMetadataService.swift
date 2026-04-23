@@ -81,6 +81,18 @@ public actor PlaycutMetadataService {
         )
     }
 
+    /// Fetches artist bio text by Discogs artist ID.
+    ///
+    /// Used by ArtistDetailView to display bio for recommended artists that
+    /// have a known Discogs artist ID from the semantic-index.
+    ///
+    /// - Parameter discogsArtistId: The Discogs artist ID.
+    /// - Returns: The artist bio string, or `nil` if unavailable.
+    public func fetchArtistBio(discogsArtistId: Int) async -> String? {
+        let metadata = await fetchArtistMetadata(discogsArtistId: discogsArtistId)
+        return metadata.bio
+    }
+
     // MARK: - Granular Caching Methods
 
     /// Fetches artist metadata, caching by Discogs artist ID.
