@@ -80,6 +80,12 @@ public final actor CacheCoordinator {
     /// and streaming service links.
     public static let Metadata = CacheCoordinator(cache: DiskCache())
 
+    /// Cache coordinator for semantic-index API responses.
+    ///
+    /// Stores artist search results, neighbor transitions, artist detail,
+    /// and preview data from the `explore.wxyc.org` graph API.
+    public static let SemanticIndex = CacheCoordinator(cache: DiskCache(subdirectory: "semantic-index"))
+
     // MARK: - Error Types
 
     /// Errors that can occur during cache operations.

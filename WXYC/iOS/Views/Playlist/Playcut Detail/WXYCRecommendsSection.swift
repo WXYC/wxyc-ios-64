@@ -21,7 +21,7 @@ struct WXYCRecommendsSection: View {
     @State private var neighbors: [SemanticIndexNeighbor] = []
     @State private var isLoading = true
 
-    private let service = SemanticIndexService()
+    private let service = SemanticIndexService.shared
 
     var body: some View {
         if isLoading {
