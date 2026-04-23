@@ -74,6 +74,30 @@ public struct ExternalLinkTapped {
     }
 }
 
+// MARK: - WXYC Recommends
+
+/// Event fired when a recommended artist is tapped in the WXYC Recommends section.
+@AnalyticsEvent
+public struct RecommendedArtistTapped {
+    public let sourceArtist: String
+    public let recommendedArtist: String
+
+    public init(sourceArtist: String, recommendedArtist: String) {
+        self.sourceArtist = sourceArtist
+        self.recommendedArtist = recommendedArtist
+    }
+}
+
+/// Event fired when an artist detail view is presented from WXYC Recommends.
+@AnalyticsEvent
+public struct ArtistDetailViewPresented {
+    public let artist: String
+
+    public init(artist: String) {
+        self.artist = artist
+    }
+}
+
 // MARK: - CarPlay
 
 /// Event fired when CarPlay connects.

@@ -37,6 +37,7 @@
 		3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 01BA6F026317213ACE8EE228 /* PostHog */; };
 		524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 35DC07836DEEE44F7B819265 /* PlayerHeaderView */; };
 		62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = BE7D47372C4F1F83B0F271DE /* Metadata */; };
+		640E864ECA804253A05BBCE8 /* SemanticIndex in Frameworks */ = {isa = PBXBuildFile; productRef = EF864A6DFCDF4E5F81D26B76 /* SemanticIndex */; };
 		7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 0852AD2E14147E5B270AD1F1 /* Playlist */; };
 		78F01F75D235BCEE06C05F71 /* Analytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9AA59EC6C2A143F5728D04F9 /* Analytics */; };
 		7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */ = {isa = PBXBuildFile; productRef = 3DF76684E122C2FAD4F26E27 /* PartyHorn */; };
@@ -140,6 +141,7 @@
 		236B51D12EFC651A0058AD01 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = /System/Library/Frameworks/SwiftUI.framework; sourceTree = "<absolute>"; };
 		23FD1F9E3836A69490D508B9 /* Artwork */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Artwork; path = Shared/Artwork; sourceTree = SOURCE_ROOT; };
 		2E2DA266F8734B81F467E9C3 /* Metadata */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Metadata; path = Shared/Metadata; sourceTree = SOURCE_ROOT; };
+		71601404AC044E9FBCDE2CD6 /* SemanticIndex */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SemanticIndex; path = Shared/SemanticIndex; sourceTree = SOURCE_ROOT; };
 		408862FFDA682059B46DBE38 /* PlayerHeaderView */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PlayerHeaderView; path = Shared/PlayerHeaderView; sourceTree = SOURCE_ROOT; };
 		4FA5098D4C45B1A40664F383 /* Playback */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Playback; path = Shared/Playback; sourceTree = SOURCE_ROOT; };
 		6D8ECE997571529CE8187362 /* WXYC TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WXYC TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -334,6 +336,7 @@
 				23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */,
 				23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */,
 				62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */,
+				640E864ECA804253A05BBCE8 /* SemanticIndex in Frameworks */,
 				A7CF425E5F8EBCE498636FAB /* Artwork in Frameworks */,
 				1F511646EB98B7621319A1DA /* AppServices in Frameworks */,
 				37327445A68BBA56C392BEF7 /* WXUI in Frameworks */,
@@ -419,6 +422,7 @@
 				INTENTSPKGFILEREF000001 /* Intents */,
 				21C88FF06CCC47E090003EAD /* Logger */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
+				71601404AC044E9FBCDE2CD6 /* SemanticIndex */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
 				FF0D2C45269DEE0E530C46D3 /* PartyHorn */,
 				4FA5098D4C45B1A40664F383 /* Playback */,
@@ -619,6 +623,7 @@
 				8FCE16D2F8F98E766EFCFFDF /* Caching */,
 				D1362165656CBF5DDD9E5DDA /* Playlist */,
 				BE7D47372C4F1F83B0F271DE /* Metadata */,
+				EF864A6DFCDF4E5F81D26B76 /* SemanticIndex */,
 				196F9D43ACA1827478F32D5D /* Artwork */,
 				EE16E35E8F1311399E5AD843 /* AppServices */,
 				01163D6D065337EB60F79C5B /* WXUI */,
@@ -688,6 +693,7 @@
 				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
+				D35890F59FD44C2E95EBF09F /* XCLocalSwiftPackageReference "Shared/SemanticIndex" */,
 				9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */,
 				F312D55190C505B9EE16903A /* XCLocalSwiftPackageReference "Shared/Playback" */,
 				6220DC310DFF2FC4A929FDB0 /* XCLocalSwiftPackageReference "Shared/PlayerHeaderView" */,
@@ -2407,6 +2413,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Metadata;
 		};
+		D35890F59FD44C2E95EBF09F /* XCLocalSwiftPackageReference "Shared/SemanticIndex" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/SemanticIndex;
+		};
 		9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/PartyHorn;
@@ -2651,6 +2661,10 @@
 		BE7D47372C4F1F83B0F271DE /* Metadata */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Metadata;
+		};
+		EF864A6DFCDF4E5F81D26B76 /* SemanticIndex */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SemanticIndex;
 		};
 		C0D1E2F30405162718192AC3 /* PostHog */ = {
 			isa = XCSwiftPackageProductDependency;
