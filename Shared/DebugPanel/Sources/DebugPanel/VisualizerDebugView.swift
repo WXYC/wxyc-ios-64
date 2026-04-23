@@ -11,6 +11,7 @@
 import SwiftUI
 import AppServices
 import Caching
+import Playback
 import PlayerHeaderView
 import Playlist
 import Wallpaper
@@ -20,6 +21,8 @@ public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
     @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
     @State private var skipNextAPIVersionPersist = false
+    @State private var selectedPlayerType: PlayerControllerType = .loadPersisted()
+    @State private var skipNextPlayerTypePersist = false
     @State private var cachePurged = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.playlistService) private var playlistService
@@ -124,6 +127,31 @@ public struct VisualizerDebugView: View {
                     Text("Playlist API")
                 } footer: {
                     Text(selectedAPIVersion.shortDescription)
+                }
+
+                // Player Controller
+                Section {
+                    Picker("Player", selection: $selectedPlayerType) {
+                        ForEach(PlayerControllerType.allCases) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .onChange(of: selectedPlayerType) { _, newValue in
+                        if skipNextPlayerTypePersist {
+                            skipNextPlayerTypePersist = false
+                        } else {
+                            newValue.persist()
+                        }
+                    }
+                    Button("Use Feature Flag") {
+                        PlayerControllerType.clearPersisted()
+                        skipNextPlayerTypePersist = true
+                        selectedPlayerType = .loadPersisted()
+                    }
+                } header: {
+                    Text("Player")
+                } footer: {
+                    Text(selectedPlayerType.shortDescription + " Restart the app to apply.")
                 }
 
                 // Processor & Settings
