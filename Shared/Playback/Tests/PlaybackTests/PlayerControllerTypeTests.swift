@@ -80,3 +80,45 @@ struct PlayerControllerTypeTests {
         #expect(PlayerControllerType.hlsPlayer.displayName.contains("HLS"))
     }
 }
+
+@Suite("HLSEnvironment Tests")
+@MainActor
+struct HLSEnvironmentTests {
+
+    init() {
+        HLSEnvironment.clearOverride()
+    }
+
+    @Test("Default environment is production")
+    func defaultIsProduction() {
+        #expect(HLSEnvironment.loadActive() == .production)
+    }
+
+    @Test("Manual override persists and loads")
+    func manualOverride() {
+        HLSEnvironment.staging.persist()
+        #expect(HLSEnvironment.loadActive() == .staging)
+    }
+
+    @Test("Clearing override reverts to default")
+    func clearOverride() {
+        HLSEnvironment.staging.persist()
+        HLSEnvironment.clearOverride()
+        #expect(HLSEnvironment.loadActive() == .production)
+    }
+
+    @Test("Each environment has a distinct URL", arguments: HLSEnvironment.allCases)
+    func urlIsNonEmpty(env: HLSEnvironment) {
+        #expect(!env.url.absoluteString.isEmpty)
+    }
+
+    @Test("Staging URL points to staging host")
+    func stagingURLIsCorrect() {
+        #expect(HLSEnvironment.staging.url.host() == "hls-staging.wxyc.org")
+    }
+
+    @Test("Production URL points to production host")
+    func productionURLIsCorrect() {
+        #expect(HLSEnvironment.production.url.host() == "hls.wxyc.org")
+    }
+}

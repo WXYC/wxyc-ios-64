@@ -23,6 +23,7 @@ public struct VisualizerDebugView: View {
     @State private var skipNextAPIVersionPersist = false
     @State private var selectedPlayerType: PlayerControllerType = .loadPersisted()
     @State private var skipNextPlayerTypePersist = false
+    @State private var selectedHLSEnvironment: HLSEnvironment = .loadActive()
     @State private var cachePurged = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.playlistService) private var playlistService
@@ -143,10 +144,22 @@ public struct VisualizerDebugView: View {
                             newValue.persist()
                         }
                     }
+                    if selectedPlayerType == .hlsPlayer {
+                        Picker("HLS Environment", selection: $selectedHLSEnvironment) {
+                            ForEach(HLSEnvironment.allCases) { env in
+                                Text(env.displayName).tag(env)
+                            }
+                        }
+                        .onChange(of: selectedHLSEnvironment) { _, newValue in
+                            newValue.persist()
+                        }
+                    }
                     Button("Use Feature Flag") {
                         PlayerControllerType.clearPersisted()
                         skipNextPlayerTypePersist = true
                         selectedPlayerType = .loadPersisted()
+                        HLSEnvironment.clearOverride()
+                        selectedHLSEnvironment = .loadActive()
                     }
                 } header: {
                     Text("Player")

@@ -10,6 +10,7 @@
 
 import Analytics
 import Caching
+import Core
 import Foundation
 
 /// Available PlaybackController implementations
@@ -110,6 +111,79 @@ public enum PlayerControllerType: String, CaseIterable, Identifiable, Hashable, 
             "URLSession + AudioToolbox. Supports visualizer."
         case .hlsPlayer:
             "AVPlayer with HLS. Supports time-shift scrub bar, no visualizer."
+        }
+    }
+}
+
+// MARK: - HLS Environment
+
+/// HLS backend environment (production vs staging).
+///
+/// Selectable in the debug menu when HLSPlayer is active. Defaults to production.
+public enum HLSEnvironment: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case production
+    case staging
+
+    // MARK: - URL
+
+    public var url: URL {
+        switch self {
+        case .production:
+            RadioStation.WXYC.hlsStreamURL
+        case .staging:
+            URL(string: "https://hls-staging.wxyc.org/live/live.m3u8")!
+        }
+    }
+
+    // MARK: - Persistence
+
+    private static var defaults: UserDefaults { .wxyc }
+    private static let userDefaultsKey = "debug.selectedHLSEnvironment"
+    private static let manualSelectionKey = "debug.isHLSEnvironmentManuallySelected"
+
+    public static func loadActive() -> HLSEnvironment {
+        loadActive(from: defaults)
+    }
+
+    static func loadActive(from defaults: DefaultsStorage) -> HLSEnvironment {
+        if defaults.bool(forKey: manualSelectionKey),
+           let rawValue = defaults.string(forKey: userDefaultsKey),
+           let env = HLSEnvironment(rawValue: rawValue) {
+            return env
+        }
+        return .production
+    }
+
+    public func persist() {
+        persist(to: Self.defaults)
+    }
+
+    func persist(to defaults: DefaultsStorage) {
+        defaults.set(rawValue, forKey: Self.userDefaultsKey)
+        defaults.set(true, forKey: Self.manualSelectionKey)
+    }
+
+    public static func clearOverride() {
+        clearOverride(from: defaults)
+    }
+
+    static func clearOverride(from defaults: DefaultsStorage) {
+        defaults.removeObject(forKey: userDefaultsKey)
+        defaults.removeObject(forKey: manualSelectionKey)
+    }
+
+    // MARK: - Identifiable
+
+    public var id: String { rawValue }
+
+    // MARK: - Display
+
+    public var displayName: String {
+        switch self {
+        case .production:
+            "Production (hls.wxyc.org)"
+        case .staging:
+            "Staging (hls-staging.wxyc.org)"
         }
     }
 }
