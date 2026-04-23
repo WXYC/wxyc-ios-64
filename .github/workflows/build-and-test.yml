@@ -21,6 +21,7 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULE_TOKEN }}
+          fetch-depth: 0
 
       - name: List available Xcode versions
         run: ls -la /Applications | grep Xcode
@@ -100,7 +101,6 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             export BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
-            git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
           fi
           zsh .github/scripts/affected-tests.sh
 
