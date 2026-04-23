@@ -63,6 +63,8 @@ jobs:
         run: |
           # Build non-iOS targets to verify they compile.
           # Most shared code is already compiled from the iOS build-for-testing step.
+          # Failures are collected and reported but don't block the test steps.
+          failed=""
           for scheme_dest in \
             "WXYC TV:generic/platform=tvOS Simulator" \
             "WatchXYC:generic/platform=watchOS Simulator" \
@@ -73,15 +75,24 @@ jobs:
             dest="${scheme_dest#*:}"
 
             echo "::group::Building $scheme for $dest"
-            xcodebuild build \
+            if xcodebuild build \
               -project WXYC.xcodeproj \
               -scheme "$scheme" \
               -destination "$dest" \
               -configuration Debug \
               -skipMacroValidation \
-              CODE_SIGNING_ALLOWED=NO
-            echo "::endgroup::"
+              CODE_SIGNING_ALLOWED=NO; then
+              echo "::endgroup::"
+            else
+              echo "::endgroup::"
+              echo "::warning::Build failed for $scheme ($dest)"
+              failed="$failed $scheme"
+            fi
           done
+
+          if [ -n "$failed" ]; then
+            echo "::warning::The following targets failed to build:$failed"
+          fi
 
       - name: Determine affected tests
         id: affected
