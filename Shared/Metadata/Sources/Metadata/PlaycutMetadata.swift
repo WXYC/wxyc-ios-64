@@ -16,19 +16,25 @@ import Foundation
 public struct ArtistMetadata: Sendable, Equatable, Codable {
     /// Artist biography from Discogs
     public let bio: String?
-    
+
+    /// Pre-parsed bio tokens from the server's Discogs markup parser.
+    /// When available, these can be rendered directly without client-side parsing.
+    public let bioTokens: [ResolvedBioToken]?
+
     /// Link to artist's Wikipedia page
     public let wikipediaURL: URL?
-    
+
     /// Discogs artist ID for cache key lookups
     public let discogsArtistId: Int?
-    
+
     public init(
         bio: String? = nil,
+        bioTokens: [ResolvedBioToken]? = nil,
         wikipediaURL: URL? = nil,
         discogsArtistId: Int? = nil
     ) {
         self.bio = bio
+        self.bioTokens = bioTokens
         self.wikipediaURL = wikipediaURL
         self.discogsArtistId = discogsArtistId
     }

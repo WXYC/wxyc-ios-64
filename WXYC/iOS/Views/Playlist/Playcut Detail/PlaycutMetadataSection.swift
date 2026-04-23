@@ -48,7 +48,7 @@ struct PlaycutMetadataSection: View {
 
             // Artist Bio
             if let bio = metadata.artistBio, !bio.isEmpty {
-                ArtistBioSection(bio: bio, expandedBio: $expandedBio)
+                ArtistBioSection(bio: bio, bioTokens: metadata.artist.bioTokens, expandedBio: $expandedBio)
             }
         }
         .padding()

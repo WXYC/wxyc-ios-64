@@ -45,7 +45,7 @@ struct DiscogsFormatter {
     // MARK: - Private
     
     /// Applies SwiftUI-specific styling to links (secondary foreground color)
-    private static func applyLinkStyling(to attributedString: AttributedString) -> AttributedString {
+    static func applyLinkStyling(to attributedString: AttributedString) -> AttributedString {
         var result = attributedString
         
         for run in result.runs {
