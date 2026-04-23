@@ -68,13 +68,16 @@ echo "$changed_files" | sed 's/^/  /'
 echo ""
 
 # ---------------------------------------------------------------------------
-# 3. Check for fallback triggers (changes outside Shared/)
+# 3. Check for fallback triggers (changes that could affect any test)
 # ---------------------------------------------------------------------------
 
 while IFS= read -r file; do
     case "$file" in
-        Shared/*) ;; # handled in step 4
-        *) run_all_and_exit "non-package file changed: $file" ;;
+        Shared/*)          ;; # handled in step 4
+        WXYC/*)            run_all_and_exit "app source changed: $file" ;;
+        *.xcodeproj/*)     run_all_and_exit "project file changed: $file" ;;
+        *.xctestplan)      run_all_and_exit "test plan changed: $file" ;;
+        *)                 echo "  ignoring non-code file: $file" ;;
     esac
 done <<< "$changed_files"
 
@@ -85,12 +88,15 @@ done <<< "$changed_files"
 typeset -A changed_packages
 
 while IFS= read -r file; do
-    # Extract package name: Shared/<PackageName>/...
-    local pkg="${file#Shared/}"
-    pkg="${pkg%%/*}"
-    if [[ -n "$pkg" ]]; then
-        changed_packages[$pkg]=1
-    fi
+    case "$file" in
+        Shared/*)
+            local pkg="${file#Shared/}"
+            pkg="${pkg%%/*}"
+            if [[ -n "$pkg" ]]; then
+                changed_packages[$pkg]=1
+            fi
+            ;;
+    esac
 done <<< "$changed_files"
 
 echo "Directly changed packages: ${(k)changed_packages}"

@@ -13,7 +13,7 @@ env:
 jobs:
   build-and-test:
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
