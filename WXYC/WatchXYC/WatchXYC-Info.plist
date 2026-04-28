@@ -22,6 +22,8 @@
 	<false/>
 	<key>WKApplication</key>
 	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>$(INFOPLIST_KEY_WKCompanionAppBundleIdentifier)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
