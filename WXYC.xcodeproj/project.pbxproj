@@ -1760,7 +1760,7 @@
 					"$(PROJECT_DIR)/WXYC/Shared",
 				);
 				INFOPLIST_FILE = WXYC/iOS/Assets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = WXYC;
+				INFOPLIST_KEY_CFBundleDisplayName = "WXYC 🐜";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
