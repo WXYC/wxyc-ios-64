@@ -22,8 +22,6 @@
 	<false/>
 	<key>WKApplication</key>
 	<true/>
-	<key>WKCompanionAppBundleIdentifier</key>
-	<string>org.wxyc.iphoneapp</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
