@@ -77,13 +77,16 @@ public actor SemanticIndexService {
                 cache: cache,
                 lifespan: .sevenDays,
                 fetch: {
-                    try await fetchJSON(
+                    // The /graph/artists/search endpoint returns
+                    // { "results": [...] } — decode the wrapper and unwrap.
+                    let response: SearchResponse = try await fetchJSON(
                         path: "graph/artists/search",
                         queryItems: [
                             URLQueryItem(name: "q", value: name),
                             URLQueryItem(name: "limit", value: "1"),
                         ]
                     )
+                    return response.results
                 }
             )
         }
@@ -112,7 +115,10 @@ public actor SemanticIndexService {
                 cache: cache,
                 lifespan: .sevenDays,
                 fetch: {
-                    try await fetchJSON(
+                    // The /graph/artists/{id}/neighbors endpoint returns
+                    // { "artist", "edge_type", "neighbors": [...] } —
+                    // decode the wrapper and unwrap to the neighbor list.
+                    let response: NeighborsResponse = try await fetchJSON(
                         path: "graph/artists/\(artistId)/neighbors",
                         queryItems: [
                             URLQueryItem(name: "type", value: "djTransition"),
@@ -120,6 +126,7 @@ public actor SemanticIndexService {
                             URLQueryItem(name: "limit", value: String(limit)),
                         ]
                     )
+                    return response.neighbors
                 },
                 fallback: { [] }
             )
@@ -216,4 +223,21 @@ extension SemanticIndexService {
     enum SemanticIndexError: Error {
         case invalidURL
     }
+}
+
+// MARK: - Response wrappers
+
+/// Wrapper for the `/graph/artists/search` endpoint, which returns
+/// `{ "results": [...] }`. iOS only consumes the inner array — these types
+/// exist to thread the decode through `JSONDecoder` without leaking the
+/// envelope into callers.
+private struct SearchResponse: Codable, Sendable {
+    let results: [SemanticIndexArtist]
+}
+
+/// Wrapper for the `/graph/artists/{id}/neighbors` endpoint, which returns
+/// `{ "artist", "edge_type", "neighbors": [...] }`. iOS only consumes
+/// `neighbors`; the `artist` and `edge_type` envelope fields are dropped.
+private struct NeighborsResponse: Codable, Sendable {
+    let neighbors: [SemanticIndexNeighbor]
 }

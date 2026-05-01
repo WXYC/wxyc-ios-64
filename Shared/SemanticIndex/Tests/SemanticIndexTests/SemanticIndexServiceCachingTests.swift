@@ -29,7 +29,7 @@ struct SemanticIndexServiceCachingTests {
         )
 
         mockSession.responses["graph/artists/search"] = """
-        [{"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}]
+        {"results": [{"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}]}
         """.data(using: .utf8)!
 
         let first = await service.searchArtist(name: "Stereolab")
@@ -53,7 +53,7 @@ struct SemanticIndexServiceCachingTests {
         )
 
         mockSession.responses["graph/artists/42/neighbors"] = """
-        [{"artist": {"id": 10, "canonical_name": "Tortoise", "genre": "Rock", "total_plays": 200}, "weight": 0.85}]
+        {"artist": {"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}, "edge_type": "djTransition", "neighbors": [{"artist": {"id": 10, "canonical_name": "Tortoise", "genre": "Rock", "total_plays": 200}, "weight": 0.85}]}
         """.data(using: .utf8)!
 
         let first = await service.neighbors(for: 42)
@@ -101,7 +101,7 @@ struct SemanticIndexServiceCachingTests {
         )
 
         mockSession.responses["graph/artists/42/neighbors"] = """
-        [{"artist": {"id": 10, "canonical_name": "Tortoise", "genre": "Rock", "total_plays": 200}, "weight": 0.85}]
+        {"artist": {"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}, "edge_type": "djTransition", "neighbors": [{"artist": {"id": 10, "canonical_name": "Tortoise", "genre": "Rock", "total_plays": 200}, "weight": 0.85}]}
         """.data(using: .utf8)!
 
         _ = await service.neighbors(for: 42, heat: 0.0)
