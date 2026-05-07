@@ -172,6 +172,16 @@ xcodebuild -scheme WXYC -destination 'generic/platform=iOS'
 xcodebuild -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone Air'
 ```
 
+### E2E Tests
+
+E2E tests tagged with `.e2e` (e.g., `MusicShareKitTests/AuthNetworkClientE2ETests`) hit real backends and are skipped by default. Run them on demand by setting `RUN_E2E=1`:
+
+```bash
+RUN_E2E=1 xcodebuild test -scheme WXYC \
+    -destination 'platform=iOS Simulator,name=iPhone Air' \
+    -only-testing:MusicShareKitTests/AuthNetworkClientE2ETests
+```
+
 ### UI Tests
 
 See `WXYC/iOS/Tests/WXYCUITests/README.md` for UI test documentation.
