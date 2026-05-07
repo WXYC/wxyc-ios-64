@@ -34,11 +34,26 @@ public struct RequestSentMessage: AsyncNotificationMessage, Sendable {
     }
 }
 
+/// Minimal seam over `URLSession` so tests can inject a mock without hitting the network.
+protocol RequestSession: Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
+}
+
+extension URLSession: RequestSession {}
+
 /// A service for sending song requests to WXYC
 public struct RequestService: Sendable {
     public static let shared = RequestService()
 
-    private init() {}
+    let session: any RequestSession
+
+    public init() {
+        self.init(session: URLSession.shared)
+    }
+
+    init(session: any RequestSession) {
+        self.session = session
+    }
 
     /// Sends a request message to the WXYC request service
     /// - Parameter message: The request message (e.g., "Song Title by Artist Name")
@@ -82,7 +97,7 @@ public struct RequestService: Sendable {
         // The request completion event below has the detailed tracking
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             let duration = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
 
             guard let httpResponse = response as? HTTPURLResponse else {
