@@ -80,11 +80,8 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 struct PlaycutRowView: View {
     let playcut: Playcut
-    let artworkLoadGeneration: Int
     let onSelect: (UIImage?) -> Void
 
-    @State private var artwork: UIImage?
-    @State private var isLoadingArtwork = true
     @State private var shadowYOffset: CGFloat = 0
 
     /// Stable time offset for animated mesh gradient (randomized once at init).
@@ -94,7 +91,7 @@ struct PlaycutRowView: View {
     private let shadowOffsetAtTop: CGFloat = -3
     private let shadowOffsetAtBottom: CGFloat = 3
 
-    @Environment(\.artworkService) private var artworkService
+    @Environment(Singletonia.self) private var appState
     @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
 
     /// Animated mesh gradient using wallpaper-derived palette when available.
@@ -103,6 +100,14 @@ struct PlaycutRowView: View {
             colors: wallpaperPalette,
             timeOffset: stableTimeOffset
         )
+    }
+
+    private var artworkState: ArtworkLoader.State {
+        appState.artworkLoader.state(for: playcut)
+    }
+
+    private var loadedArtwork: UIImage? {
+        if case .loaded(let image) = artworkState { image } else { nil }
     }
 
     var body: some View {
@@ -114,14 +119,15 @@ struct PlaycutRowView: View {
                     HStack(alignment: .center, spacing: 0) {
                         // Artwork
                         Group {
-                            if let artwork {
+                            switch artworkState {
+                            case .loaded(let image):
                                 LoadedArtworkView(
-                                    artwork: artwork,
+                                    artwork: image,
                                     shadowYOffset: shadowYOffset
                                 )
-                            } else if isLoadingArtwork {
+                            case .unloaded, .loading:
                                 LoadingArtworkView(shadowYOffset: shadowYOffset)
-                            } else {
+                            case .failed:
                                 PlaceholderArtworkView(
                                     cornerRadius: ArtworkStyle.cornerRadius,
                                     shadowYOffset: shadowYOffset,
@@ -136,7 +142,7 @@ struct PlaycutRowView: View {
                         .padding(12.0)
                         .clipRounded()
                         .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
-                        
+
                         // Song info
                         VStack(alignment: .leading, spacing: 4) {
                             Text(playcut.songTitle)
@@ -148,12 +154,12 @@ struct PlaycutRowView: View {
                                 .foregroundStyle(.white.opacity(0.7))
                         }
                         .padding(0)
-                        
+
                         Spacer()
-                        
+
                         // Info button
                         Button {
-                            onSelect(artwork)
+                            onSelect(loadedArtwork)
                         } label: {
                             Image(systemName: "info.circle")
                                 .font(.title3)
@@ -164,7 +170,7 @@ struct PlaycutRowView: View {
                     }
                 }
                 .onTapGesture {
-                    onSelect(artwork)
+                    onSelect(loadedArtwork)
                 }
             }
             .aspectRatio(2.5, contentMode: .fill)
@@ -174,7 +180,7 @@ struct PlaycutRowView: View {
             .overlay(
                 GeometryReader { scrollProxy in
                     let scrollFrame = scrollProxy.frame(in: .named("scroll"))
-                    
+
                     return Color.clear
                         .preference(
                             key: ScrollOffsetPreferenceKey.self,
@@ -185,51 +191,21 @@ struct PlaycutRowView: View {
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
                 // Calculate shadow offset based on scroll position
                 // scrollPosition is the midY of the row in the scroll view's coordinate space
-                
+
                 // Get screen bounds to understand visible area
                 let screenHeight = UIScreen.main.bounds.height
-                
+
                 // The scrollPosition tells us where the row's midY is relative to the scroll content
                 // When the row is at the top of the visible screen, scrollPosition ≈ 0
                 // When the row is at the bottom of the visible screen, scrollPosition ≈ screenHeight
-                
+
                 // Normalize position: 0 at top of screen, 1 at bottom of screen
                 let normalizedPosition = min(max(scrollPosition / screenHeight, 0), 1)
-                
+
                 // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
                 let range = shadowOffsetAtBottom - shadowOffsetAtTop
                 shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
             }
-            .task(id: artworkLoadGeneration) {
-                await loadArtwork()
-            }
-    }
-
-    private func loadArtwork() async {
-        guard artwork == nil else { return }
-
-        guard let artworkService = artworkService else {
-            await MainActor.run {
-                isLoadingArtwork = false
-            }
-            return
-        }
-
-        await MainActor.run { isLoadingArtwork = true }
-
-        do {
-            let cgImage = try await artworkService.fetchArtwork(for: playcut)
-            await MainActor.run {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    self.artwork = cgImage.toUIImage()
-                    self.isLoadingArtwork = false
-                }
-            }
-        } catch {
-            await MainActor.run {
-                isLoadingArtwork = false
-            }
-        }
     }
 }
 
@@ -251,7 +227,6 @@ extension View {
     PlaylistView(selectedPlaycut: .constant(nil))
         .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
-        .environment(\.artworkService, MultisourceArtworkService())
         .background(WXYCBackground())
 }
 
@@ -267,9 +242,8 @@ extension View {
             artistName: "Laurel Halo",
             releaseTitle: "Atlas"
         ),
-        artworkLoadGeneration: 0,
         onSelect: { _ in }
     )
-    .environment(\.artworkService, MultisourceArtworkService())
+    .environment(Singletonia.shared)
     .background(WXYCBackground())
 }

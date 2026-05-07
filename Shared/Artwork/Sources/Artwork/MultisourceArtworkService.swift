@@ -49,33 +49,21 @@ public final actor MultisourceArtworkService: ArtworkService {
         case nsfw
     }
 
-    private let fetchers: [ArtworkService]
+    private var fetchers: [any ArtworkService]
     private let cacheCoordinator: CacheCoordinator
     private let errorCache: CacheCoordinator
     private var inflightTasks: [String: Task<CGImage?, Never>] = [:]
 
     /// Creates the artwork service with the default fetcher chain (cache + URL fetcher).
+    ///
+    /// Additional fetchers (e.g. the Discogs fallback once backend secrets land) are
+    /// added at runtime via ``addFetcher(_:)``. This service is intended to be a
+    /// stable identity for the lifetime of the app.
     public init() {
         self.init(
             fetchers: [
                 CacheCoordinator.AlbumArt,
                 URLArtworkFetcher(),
-            ],
-            cacheCoordinator: .AlbumArt
-        )
-    }
-
-    /// Creates the artwork service with the Discogs API as a fallback fetcher.
-    ///
-    /// Use this when Discogs credentials are available from the backend `/config` endpoint.
-    /// The Discogs fallback handles v1 playcuts (no `artworkURL`) and v2 playcuts where
-    /// backend metadata enrichment hasn't completed yet.
-    public static func withDiscogsFallback(key: String, secret: String) -> MultisourceArtworkService {
-        MultisourceArtworkService(
-            fetchers: [
-                CacheCoordinator.AlbumArt,
-                URLArtworkFetcher(),
-                DiscogsArtworkService(key: key, secret: secret),
             ],
             cacheCoordinator: .AlbumArt
         )
@@ -90,6 +78,17 @@ public final actor MultisourceArtworkService: ArtworkService {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
         self.errorCache = errorCache
+    }
+
+    /// Appends a fetcher to the chain and clears the negative cache.
+    ///
+    /// The negative-cache clear is part of the contract: previously-failed lookups
+    /// must be retried against the augmented chain, otherwise the new fetcher would
+    /// be silently bypassed by 30-day "no artwork available" entries.
+    public func addFetcher(_ fetcher: any ArtworkService) async {
+        fetchers.append(fetcher)
+        await errorCache.clearAll()
+        Log(.info, category: .artwork, "Added fetcher \(fetcher) and cleared negative cache")
     }
 
     public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
@@ -136,17 +135,17 @@ public final actor MultisourceArtworkService: ArtworkService {
         let artworkLifespan: TimeInterval = playcut.rotation ? .thirtyDays : .oneDay
 
         let timer = Core.Timer.start()
-        var hadServerError = false
+        var hadTransientError = false
 
         for fetcher in self.fetchers {
             do {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
                 await self.cacheCoordinator.set(artwork: artwork, for: cacheKey, lifespan: artworkLifespan)
                 return artwork
-            } catch let error as URLError where error.code == .badServerResponse {
-                // Server error (5xx) — don't cache, retry later
-                Log(.warning, category: .artwork, "Server error for \(cacheKey) using fetcher \(fetcher): \(error)")
-                hadServerError = true
+            } catch let error as URLError where Self.isTransient(error) {
+                // Server-side or networking blip — retry next time, don't poison the cache.
+                Log(.warning, category: .artwork, "Transient error for \(cacheKey) using fetcher \(fetcher): \(error)")
+                hadTransientError = true
             } catch {
                 Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(error)")
             }
@@ -154,12 +153,38 @@ public final actor MultisourceArtworkService: ArtworkService {
 
         Log(.error, category: .artwork, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
 
-        // Only cache definitive "not found" errors, not transient server errors
-        if !hadServerError {
+        // Only cache definitive "not found" outcomes. Transient errors must retry —
+        // notably URLError.cancelled, which fires when a row's `.task` is torn down
+        // mid-flight on launch and would otherwise persist as a 30-day "no artwork"
+        // verdict for an album we never actually finished asking about.
+        if !hadTransientError {
             await self.errorCache.set(value: Error.noArtworkAvailable, for: cacheKey, lifespan: .thirtyDays)
         }
 
         return nil
+    }
+
+    /// URLError codes that represent transient conditions which should NOT be cached
+    /// as a definitive "no artwork available" verdict.
+    private static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .badServerResponse,
+             .timedOut,
+             .cancelled,
+             .networkConnectionLost,
+             .notConnectedToInternet,
+             .dnsLookupFailed,
+             .cannotConnectToHost,
+             .cannotFindHost,
+             .resourceUnavailable,
+             .internationalRoamingOff,
+             .callIsActive,
+             .dataNotAllowed,
+             .secureConnectionFailed:
+            true
+        default:
+            false
+        }
     }
 
     private func removeTask(for id: String) {
