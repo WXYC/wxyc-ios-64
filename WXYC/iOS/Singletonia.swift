@@ -28,7 +28,8 @@ final class Singletonia {
 
     let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
     let playlistService = PlaylistService()
-    private(set) var artworkService = MultisourceArtworkService()
+    let artworkService = MultisourceArtworkService()
+    let artworkLoader: ArtworkLoader
     let widgetStateService: WidgetStateService
     let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
 
@@ -42,6 +43,7 @@ final class Singletonia {
             playbackController: AudioPlayerController.shared,
             playlistService: playlistService
         )
+        self.artworkLoader = ArtworkLoader(service: artworkService)
 
         let screenWidth = UIScreen.main.bounds.size.width
         nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
@@ -115,8 +117,12 @@ final class Singletonia {
             }
 
             if !secrets.discogsApiKey.isEmpty, !secrets.discogsApiSecret.isEmpty {
-                artworkService = .withDiscogsFallback(key: secrets.discogsApiKey, secret: secrets.discogsApiSecret)
-                await artworkService.clearNegativeCache()
+                let discogs = DiscogsArtworkService(
+                    key: secrets.discogsApiKey,
+                    secret: secrets.discogsApiSecret
+                )
+                await artworkService.addFetcher(discogs)
+                artworkLoader.resetFailures()
                 Log(.info, "Artwork service upgraded with Discogs fallback (attempt \(attempt))")
             }
             return

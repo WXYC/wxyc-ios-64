@@ -49,33 +49,21 @@ public final actor MultisourceArtworkService: ArtworkService {
         case nsfw
     }
 
-    private let fetchers: [ArtworkService]
+    private var fetchers: [any ArtworkService]
     private let cacheCoordinator: CacheCoordinator
     private let errorCache: CacheCoordinator
     private var inflightTasks: [String: Task<CGImage?, Never>] = [:]
 
     /// Creates the artwork service with the default fetcher chain (cache + URL fetcher).
+    ///
+    /// Additional fetchers (e.g. the Discogs fallback once backend secrets land) are
+    /// added at runtime via ``addFetcher(_:)``. This service is intended to be a
+    /// stable identity for the lifetime of the app.
     public init() {
         self.init(
             fetchers: [
                 CacheCoordinator.AlbumArt,
                 URLArtworkFetcher(),
-            ],
-            cacheCoordinator: .AlbumArt
-        )
-    }
-
-    /// Creates the artwork service with the Discogs API as a fallback fetcher.
-    ///
-    /// Use this when Discogs credentials are available from the backend `/config` endpoint.
-    /// The Discogs fallback handles v1 playcuts (no `artworkURL`) and v2 playcuts where
-    /// backend metadata enrichment hasn't completed yet.
-    public static func withDiscogsFallback(key: String, secret: String) -> MultisourceArtworkService {
-        MultisourceArtworkService(
-            fetchers: [
-                CacheCoordinator.AlbumArt,
-                URLArtworkFetcher(),
-                DiscogsArtworkService(key: key, secret: secret),
             ],
             cacheCoordinator: .AlbumArt
         )
@@ -90,6 +78,17 @@ public final actor MultisourceArtworkService: ArtworkService {
         self.fetchers = fetchers
         self.cacheCoordinator = cacheCoordinator
         self.errorCache = errorCache
+    }
+
+    /// Appends a fetcher to the chain and clears the negative cache.
+    ///
+    /// The negative-cache clear is part of the contract: previously-failed lookups
+    /// must be retried against the augmented chain, otherwise the new fetcher would
+    /// be silently bypassed by 30-day "no artwork available" entries.
+    public func addFetcher(_ fetcher: any ArtworkService) async {
+        fetchers.append(fetcher)
+        await errorCache.clearAll()
+        Log(.info, category: .artwork, "Added fetcher \(fetcher) and cleared negative cache")
     }
 
     public func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
