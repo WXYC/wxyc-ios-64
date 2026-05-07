@@ -764,4 +764,96 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 2)
         #expect(result.width > 0)
     }
+
+    // MARK: - Transient Error Caching Tests
+    //
+    // Transient URLErrors (timeouts, cancellations, network drops) must not
+    // populate the negative cache. Cancellation in particular is the launch-race
+    // path: a row's `.task` can be cancelled mid-flight when the view is
+    // reconstructed for any reason, and persisting that as `noArtworkAvailable`
+    // for 30 days would block every retry.
+
+    @Test("Does not cache URLError.timedOut so subsequent fetches retry")
+    func doesNotCacheTimeoutErrors() async throws {
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = URLError(.timedOut)
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 2, "Timeout should not be negatively cached")
+    }
+
+    @Test("Does not cache URLError.cancelled so subsequent fetches retry")
+    func doesNotCacheCancellationErrors() async throws {
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = URLError(.cancelled)
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 2, "Cancellation should not be negatively cached")
+    }
+
+    @Test("Does not cache URLError.networkConnectionLost so subsequent fetches retry")
+    func doesNotCacheNetworkConnectionLostErrors() async throws {
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = URLError(.networkConnectionLost)
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 2, "Network drop should not be negatively cached")
+    }
+
+    @Test("Does not cache URLError.notConnectedToInternet so subsequent fetches retry")
+    func doesNotCacheNotConnectedToInternetErrors() async throws {
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = URLError(.notConnectedToInternet)
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 2, "Offline error should not be negatively cached")
+    }
 }
