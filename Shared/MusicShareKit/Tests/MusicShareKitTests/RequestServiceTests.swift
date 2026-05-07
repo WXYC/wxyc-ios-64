@@ -42,23 +42,34 @@ struct RequestServiceTests {
         #expect(config.requestOMaticURL == "https://example.com/request")
     }
     
-    @Test("sendRequest uses configured URL")
-    func sendRequestUsesConfiguredURL() async {
-        // This test verifies that sendRequest accesses the configuration
-        // without crashing. The actual network request will fail (expected),
-        // but we verify it gets past the configuration access.
-        do {
-            try await RequestService.shared.sendRequest(message: "Test Song by Test Artist")
-            // If we get here without a network error, the test server responded
-        } catch RequestServiceError.networkError {
-            // Expected - the test URL doesn't exist
-        } catch RequestServiceError.invalidResponse {
-            // Also acceptable - server responded but not as expected
-        } catch RequestServiceError.serverError {
-            // Also acceptable - server responded with error status
-        } catch {
-            #expect(Bool(false), "Unexpected error type: \(error)")
-        }
+    @Test("sendRequest hits the configured URL")
+    func sendRequestUsesConfiguredURL() async throws {
+        let session = MockRequestSession()
+        let service = RequestService(session: session)
+
+        try await service.sendRequest(message: "la paradoja by Juana Molina")
+
+        let recordedURL = try #require(await session.lastRequest?.url)
+        #expect(recordedURL.absoluteString == "https://example.com/request")
+        #expect(await session.invocationCount == 1)
+    }
+}
+
+/// In-memory `RequestSession` that records the last request and returns a 200 response.
+private actor MockRequestSession: RequestSession {
+    var lastRequest: URLRequest?
+    var invocationCount = 0
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        lastRequest = request
+        invocationCount += 1
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(), response)
     }
 }
 
