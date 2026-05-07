@@ -20,16 +20,19 @@ import UIKit
 import Wallpaper
 import WXUI
 
-struct PlaycutSelection {
+struct PlaycutSelection: Equatable {
     let playcut: Playcut
     let artwork: UIImage?
+
+    static func == (lhs: PlaycutSelection, rhs: PlaycutSelection) -> Bool {
+        lhs.playcut.id == rhs.playcut.id
+    }
 }
 
 struct PlaylistView: View {
     @Binding var selectedPlaycut: PlaycutSelection?
 
     @State private var playlistEntries: [any PlaylistEntry] = []
-    @State private var artworkLoadGeneration = 0
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
@@ -149,20 +152,21 @@ struct PlaylistView: View {
                 withAnimation {
                     self.playlistEntries = playlist.entries
                 }
+                let playcuts = playlist.entries.compactMap { $0 as? Playcut }
+                appState.artworkLoader.prune(keepingKeys: Set(playcuts.map(\.artworkCacheKey)))
+                for playcut in playcuts {
+                    appState.artworkLoader.load(playcut)
+                }
             }
         }
-        .onChange(of: selectedPlaycut != nil) { wasPresented, isPresented in
-            if wasPresented && !isPresented {
-                artworkLoadGeneration &+= 1
+        // After the detail sheet dismisses, re-poll the loader for the dismissed
+        // playcut. The detail view's metadata fallback may have written artwork
+        // into the positive cache via cacheExternalArtwork; calling load() on a
+        // .failed entry retries against the (now-populated) cache and succeeds.
+        .onChange(of: selectedPlaycut) { oldValue, newValue in
+            if let dismissed = oldValue, newValue == nil {
+                appState.artworkLoader.load(dismissed.playcut)
             }
-        }
-        // The artwork service is replaced when backend secrets land and the Discogs
-        // fallback comes online (Singletonia.fetchConfiguration). Rows that already
-        // fired their .task against the prior service are stuck on placeholder until
-        // their view is re-created — bumping the generation forces them to re-fetch
-        // against the new fetcher chain (and the freshly-cleared negative cache).
-        .onChange(of: ObjectIdentifier(appState.artworkService)) { _, _ in
-            artworkLoadGeneration &+= 1
         }
         .themePickerGesture(
             pickerState: appState.themePickerState,
@@ -175,7 +179,7 @@ struct PlaylistView: View {
     private func playlistRow(for entry: any PlaylistEntry) -> some View {
         switch entry {
         case let playcut as Playcut:
-            PlaycutRowView(playcut: playcut, artworkLoadGeneration: artworkLoadGeneration) { artwork in
+            PlaycutRowView(playcut: playcut) { artwork in
                 selectedPlaycut = PlaycutSelection(playcut: playcut, artwork: artwork)
             }
 
