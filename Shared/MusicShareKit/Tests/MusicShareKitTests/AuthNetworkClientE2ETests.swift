@@ -13,7 +13,11 @@ import Foundation
 import Testing
 @testable import MusicShareKit
 
-@Suite("AuthNetworkClient E2E Tests", .tags(.e2e))
+@Suite(
+    "AuthNetworkClient E2E Tests",
+    .tags(.e2e),
+    .disabled(if: ProcessInfo.processInfo.environment["RUN_E2E"] != "1")
+)
 struct AuthNetworkClientE2ETests {
 
     let baseURL = "https://api.wxyc.org"
