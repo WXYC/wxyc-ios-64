@@ -156,6 +156,14 @@ struct PlaylistView: View {
                 artworkLoadGeneration &+= 1
             }
         }
+        // The artwork service is replaced when backend secrets land and the Discogs
+        // fallback comes online (Singletonia.fetchConfiguration). Rows that already
+        // fired their .task against the prior service are stuck on placeholder until
+        // their view is re-created — bumping the generation forces them to re-fetch
+        // against the new fetcher chain (and the freshly-cleared negative cache).
+        .onChange(of: ObjectIdentifier(appState.artworkService)) { _, _ in
+            artworkLoadGeneration &+= 1
+        }
         .themePickerGesture(
             pickerState: appState.themePickerState,
             configuration: appState.themeConfiguration
