@@ -237,9 +237,48 @@ public final class PlayerControllerTestHarness {
         mockPlayer.simulateStateChange(to: .idle)
     }
 
-    /// Waits for async operations to complete
+    /// Lets any pending MainActor-isolated work drain — the controller's
+    /// `for await state in player.stateStream` observer task, queued
+    /// `Task { @MainActor … }` blocks, and so on.
+    ///
+    /// Implementation: yield repeatedly until the controller's mirrored
+    /// `playerState` has converged with the mock player's state, then yield a
+    /// few more times to drain anything else still queued. Capped by a
+    /// wall-clock deadline (using `ContinuousClock`, not `Task.sleep`) so a
+    /// stuck observer can't hang the test indefinitely.
     public func waitForAsync() async {
-        try? await Task.sleep(for: .milliseconds(100))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+
+        // Phase 1: drain until the controller's stored state mirrors the mock.
+        // The state observer is `Task { for await s in player.stateStream { … } }`
+        // hopping back to MainActor on each yielded value — that round-trip can
+        // need several `Task.yield()` to drain. Loop until convergence (or the
+        // deadline expires as a safety net).
+        while ContinuousClock.now < deadline,
+              !isControllerStateConverged() {
+            await Task.yield()
+        }
+
+        // Phase 2: a fixed burst of yields to flush any remaining queued work
+        // (analytics, audio-session activation, etc.) that doesn't surface
+        // through `playerState`.
+        for _ in 0..<16 {
+            await Task.yield()
+        }
+    }
+
+    /// Whether the controller's mirrored player-state matches the mock player.
+    /// Used by `waitForAsync` to block until the state observer has caught up.
+    /// Returns `true` for controllers that update state synchronously, since
+    /// they have nothing to drain.
+    private func isControllerStateConverged() -> Bool {
+        if let audioPlayerController {
+            return audioPlayerController.isPlaying == mockPlayer.isPlaying
+        }
+        // RadioPlayerController mirrors its mock player synchronously via
+        // `MainActorNotificationMessage`, so it's always converged by the
+        // time control returns to the test.
+        return true
     }
 
     /// Polls until condition is met or timeout expires
