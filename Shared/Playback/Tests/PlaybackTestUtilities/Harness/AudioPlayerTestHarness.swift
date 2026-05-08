@@ -261,19 +261,30 @@ public final class AudioPlayerTestHarness {
         }
     }
 
-    /// Simulates a playback stall
+    /// Simulates a playback stall.
+    ///
+    /// For MP3Streamer the stall flows: mock engine yields `.stalled` →
+    /// `MP3Streamer.handlePlayerEvent` flips `streamingState` to `.stalled` and
+    /// re-emits `.stall` on its own `eventStream`. We disable auto-buffer
+    /// requests, drain any pending engine events (so a buffered `.needsMoreBuffers`
+    /// can't race ahead of `.stalled`), yield the stall, and then deterministically
+    /// wait for `state == .stalled`.
     public func simulateStall() async {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
             // Stop buffer requests first to prevent auto-recovery
             mockAudioEngine?.immediatelyRequestMoreBuffers = false
-            // Give any in-flight operations time to complete
-            try? await Task.sleep(for: .milliseconds(100))
-            // Now yield stall event
+            // Drain any in-flight audio-engine events (e.g. queued .needsMoreBuffers)
+            // so they can't be processed after the stall and trigger recovery.
+            for _ in 0..<8 {
+                await Task.yield()
+            }
+            // Yield the stall event
             mockAudioEngine?.simulateStall()
-            // Give MP3Streamer's internal task time to process
-            try? await Task.sleep(for: .milliseconds(100))
+            // Wait for MP3Streamer's internal task to process the event and
+            // transition to .stalled.
+            await waitUntil({ self.player.state == .stalled }, timeout: .seconds(1))
         #endif
 
         case .radioPlayer:
@@ -285,15 +296,20 @@ public final class AudioPlayerTestHarness {
         }
     }
 
-    /// Simulates recovery from a stall
+    /// Simulates recovery from a stall.
+    ///
+    /// For MP3Streamer, the mock engine yields `.recoveredFromStall`, which
+    /// `MP3Streamer.handlePlayerEvent` translates into a transition back to
+    /// `.playing` (and re-emits `.recovery`). Wait for that state to land.
     public func simulateRecovery() async {
         switch testCase {
         #if !os(watchOS)
         case .mp3Streamer:
             // Yield recovery event to audio engine mock
             mockAudioEngine?.simulateRecovery()
-            // Give MP3Streamer's internal task time to process and re-yield the event
-            try? await Task.sleep(for: .milliseconds(50))
+            // Wait for MP3Streamer's internal task to process the event and
+            // transition back to .playing.
+            await waitUntil({ self.player.state == .playing }, timeout: .seconds(1))
         #endif
 
         case .radioPlayer:
@@ -306,31 +322,40 @@ public final class AudioPlayerTestHarness {
         }
     }
 
-    /// Waits for async operations to complete (only needed for MP3Streamer)
+    /// Yields enough times to let any pending MainActor-isolated work drain.
+    /// Only needed for MP3Streamer, whose internal event-listener tasks run on
+    /// `MainActor` and need a chance to consume buffered events. A short burst
+    /// of `Task.yield()` calls drains the cooperative-scheduler queue
+    /// deterministically — strictly stronger than a wall-clock sleep.
     public func waitForAsync() async {
         #if !os(watchOS)
         if testCase == .mp3Streamer {
-            try? await Task.sleep(for: .milliseconds(50))
+            for _ in 0..<8 {
+                await Task.yield()
+            }
         }
         #endif
     }
 
-    /// Polls until condition is met or timeout expires
+    /// Polls until `condition` is met or `timeout` expires. The inner backoff
+    /// is `Task.yield()` rather than a fixed sleep, so on a `MainActor`-isolated
+    /// test the loop progresses as fast as the executor can drain pending work.
     public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(1)) async {
-        let start = Date()
-        let timeoutSeconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
+        let deadline = ContinuousClock.now.advanced(by: timeout)
         while !condition() {
-            if Date().timeIntervalSince(start) > timeoutSeconds {
+            if ContinuousClock.now >= deadline {
                 return
             }
-            try? await Task.sleep(for: .milliseconds(10))
+            await Task.yield()
         }
     }
 
-    /// Awaits a task with timeout, cancelling if timeout expires
+    /// Awaits a task with timeout, cancelling if timeout expires.
+    /// Uses `ContinuousClock.sleep` (not `Task.sleep`) for the timeout deadline
+    /// — the wait itself is bounded by `task.value` completing, not by polling.
     public func awaitTask<T: Sendable>(_ task: Task<T, Never>, timeout: Duration) async {
         let timeoutTask = Task {
-            try? await Task.sleep(for: timeout)
+            try? await ContinuousClock().sleep(for: timeout)
             task.cancel()
         }
         _ = await task.value
