@@ -43,6 +43,26 @@ jobs:
       - name: List available simulators
         run: xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
 
+      - name: Cache SwiftPM artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            WXYC.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.pbxproj', '**/*.xcconfig') }}-${{ github.sha }}
+          restore-keys: |
+            derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.pbxproj', '**/*.xcconfig') }}-
+            derived-${{ runner.os }}-
+
       - name: Resolve packages
         run: |
           xcodebuild -resolvePackageDependencies \
