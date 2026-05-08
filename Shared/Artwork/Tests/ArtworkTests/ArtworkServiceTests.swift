@@ -267,41 +267,13 @@ struct ArtworkServiceTests {
         #expect(artworks.allSatisfy { $0.pngDataCompatibility == artwork.pngDataCompatibility })
     }
 
-    @Test("Uses release title as deduplication key")
-    func usesReleaseTitleAsKey() async throws {
-        // Given
+    @Test(
+        "In-flight deduplication is keyed by (artist, release ?? song)",
+        arguments: ArtworkDedupCase.allCases
+    )
+    func deduplicationKeyResolution(testCase: ArtworkDedupCase) async throws {
         let fetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.red)
-        fetcher.artworkToReturn = artwork
-        fetcher.delaySeconds = 0.05
-
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
-        )
-
-        // Two playcuts with same release title but different songs
-        let uniqueArtist = UUID().uuidString
-        let playcut1 = Playcut.stub(songTitle: "Song A", artistName: uniqueArtist)
-
-        let playcut2 = Playcut.stub(id: 2, hour: 2000, songTitle: "Song B", artistName: uniqueArtist)
-
-        // When - Request both concurrently
-        async let result1 = service.fetchArtwork(for: playcut1)
-        async let result2 = service.fetchArtwork(for: playcut2)
-
-        _ = try await [result1, result2]
-
-        // Then - Should deduplicate because same artist and same release title
-        #expect(fetcher.fetchCount == 1)
-    }
-
-    @Test("Different artists with same release title are NOT deduplicated")
-    func differentArtistsSameReleaseTitleNotDeduplicated() async throws {
-        // Given
-        let fetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.red)
-        fetcher.artworkToReturn = artwork
+        fetcher.artworkToReturn = CGImage.testImageWithColor(.red)
         fetcher.delaySeconds = 0.05
 
         let service = MultisourceArtworkService(
@@ -309,94 +281,24 @@ struct ArtworkServiceTests {
             cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
         )
 
-        // Two playcuts with same release title but DIFFERENT artists
-        // This can happen with compilation albums or common album names like "Greatest Hits"
-        let playcut1 = Playcut.stub(songTitle: "Song A", artistName: "Artist A", releaseTitle: "Greatest Hits")
-
+        let playcut1 = Playcut.stub(
+            songTitle: testCase.song1,
+            artistName: testCase.artist1,
+            releaseTitle: testCase.release1
+        )
         let playcut2 = Playcut.stub(
             id: 2,
             hour: 2000,
-            songTitle: "Song B",
-            artistName: "Artist B", // Different artist
-            releaseTitle: "Greatest Hits" // Same release title
+            songTitle: testCase.song2,
+            artistName: testCase.artist2,
+            releaseTitle: testCase.release2
         )
 
-        // When - Request both concurrently
         async let result1 = service.fetchArtwork(for: playcut1)
         async let result2 = service.fetchArtwork(for: playcut2)
-
         _ = try await [result1, result2]
 
-        // Then - Should NOT deduplicate because different artists
-        #expect(fetcher.fetchCount == 2)
-    }
-
-    @Test("Different artists with same song title are NOT deduplicated")
-    func differentArtistsSameSongTitleNotDeduplicated() async throws {
-        // Given
-        let fetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.yellow)
-        fetcher.artworkToReturn = artwork
-        fetcher.delaySeconds = 0.05
-
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
-        )
-
-        // Two playcuts with same song title but DIFFERENT artists, no release title
-        let playcut1 = Playcut.stub(songTitle: "Unique Song", artistName: "Artist A", releaseTitle: nil)
-
-        let playcut2 = Playcut.stub(
-            id: 2,
-            hour: 2000,
-            songTitle: "Unique Song",
-            artistName: "Artist B", // Different artist
-            releaseTitle: nil
-        )
-
-        // When - Request both concurrently
-        async let result1 = service.fetchArtwork(for: playcut1)
-        async let result2 = service.fetchArtwork(for: playcut2)
-
-        _ = try await [result1, result2]
-
-        // Then - Should NOT deduplicate because different artists
-        #expect(fetcher.fetchCount == 2)
-    }
-
-    @Test("Same artist with same song title and no release title IS deduplicated")
-    func sameArtistSameSongTitleDeduplicated() async throws {
-        // Given
-        let fetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.yellow)
-        fetcher.artworkToReturn = artwork
-        fetcher.delaySeconds = 0.05
-
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
-        )
-
-        // Two playcuts with same song title AND same artist, no release title
-        let playcut1 = Playcut.stub(songTitle: "Unique Song", artistName: "Same Artist", releaseTitle: nil)
-
-        let playcut2 = Playcut.stub(
-            id: 2,
-            hour: 2000,
-            songTitle: "Unique Song",
-            artistName: "Same Artist", // Same artist
-            releaseTitle: nil
-        )
-
-        // When - Request both concurrently
-        async let result1 = service.fetchArtwork(for: playcut1)
-        async let result2 = service.fetchArtwork(for: playcut2)
-
-        _ = try await [result1, result2]
-
-        // Then - Should deduplicate because same artist and same song title
-        #expect(fetcher.fetchCount == 1)
+        #expect(fetcher.fetchCount == testCase.expectedFetchCount, "\(testCase.description)")
     }
 
     @Test("Does not deduplicate different artworks")
@@ -773,10 +675,18 @@ struct ArtworkServiceTests {
     // reconstructed for any reason, and persisting that as `noArtworkAvailable`
     // for 30 days would block every retry.
 
-    @Test("Does not cache URLError.timedOut so subsequent fetches retry")
-    func doesNotCacheTimeoutErrors() async throws {
+    @Test(
+        "Does not cache transient URLErrors so subsequent fetches retry",
+        arguments: [
+            URLError.Code.timedOut,
+            URLError.Code.cancelled,
+            URLError.Code.networkConnectionLost,
+            URLError.Code.notConnectedToInternet,
+        ]
+    )
+    func doesNotCacheTransientErrors(code: URLError.Code) async throws {
         let fetcher = MockArtworkService()
-        fetcher.errorToThrow = URLError(.timedOut)
+        fetcher.errorToThrow = URLError(code)
 
         let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
         let service = MultisourceArtworkService(
@@ -791,70 +701,7 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 1)
 
         do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 2, "Timeout should not be negatively cached")
-    }
-
-    @Test("Does not cache URLError.cancelled so subsequent fetches retry")
-    func doesNotCacheCancellationErrors() async throws {
-        let fetcher = MockArtworkService()
-        fetcher.errorToThrow = URLError(.cancelled)
-
-        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
-            errorCache: errorCache
-        )
-
-        let playcut = uniquePlaycut()
-
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 1)
-
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 2, "Cancellation should not be negatively cached")
-    }
-
-    @Test("Does not cache URLError.networkConnectionLost so subsequent fetches retry")
-    func doesNotCacheNetworkConnectionLostErrors() async throws {
-        let fetcher = MockArtworkService()
-        fetcher.errorToThrow = URLError(.networkConnectionLost)
-
-        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
-            errorCache: errorCache
-        )
-
-        let playcut = uniquePlaycut()
-
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 1)
-
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 2, "Network drop should not be negatively cached")
-    }
-
-    @Test("Does not cache URLError.notConnectedToInternet so subsequent fetches retry")
-    func doesNotCacheNotConnectedToInternetErrors() async throws {
-        let fetcher = MockArtworkService()
-        fetcher.errorToThrow = URLError(.notConnectedToInternet)
-
-        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
-            errorCache: errorCache
-        )
-
-        let playcut = uniquePlaycut()
-
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 1)
-
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 2, "Offline error should not be negatively cached")
+        #expect(fetcher.fetchCount == 2, "\(code) should not be negatively cached")
     }
 
     // MARK: - addFetcher Tests
@@ -919,4 +766,51 @@ struct ArtworkServiceTests {
         #expect(added.fetchCount == 1, "Newly-added fetcher must run despite the prior negative-cache entry")
         #expect(result.width > 0)
     }
+}
+
+/// Inputs and expected outcome for `deduplicationKeyResolution`.
+struct ArtworkDedupCase: Sendable, CustomStringConvertible {
+    let description: String
+    let artist1: String
+    let artist2: String
+    let song1: String
+    let song2: String
+    let release1: String?
+    let release2: String?
+    let expectedFetchCount: Int
+
+    static let allCases: [ArtworkDedupCase] = [
+        // Same artist, same release title, different songs → release title wins, dedup.
+        ArtworkDedupCase(
+            description: "same artist + same release title ⇒ dedup",
+            artist1: "uniqueArtist", artist2: "uniqueArtist",
+            song1: "Song A", song2: "Song B",
+            release1: "Test Album", release2: "Test Album",
+            expectedFetchCount: 1
+        ),
+        // Different artists with the same release title (e.g., compilation) → different keys, no dedup.
+        ArtworkDedupCase(
+            description: "different artists + same release title ⇒ no dedup",
+            artist1: "Artist A", artist2: "Artist B",
+            song1: "Song A", song2: "Song B",
+            release1: "Greatest Hits", release2: "Greatest Hits",
+            expectedFetchCount: 2
+        ),
+        // Different artists with the same song title and no release → different keys, no dedup.
+        ArtworkDedupCase(
+            description: "different artists + same song title ⇒ no dedup",
+            artist1: "Artist A", artist2: "Artist B",
+            song1: "Unique Song", song2: "Unique Song",
+            release1: nil, release2: nil,
+            expectedFetchCount: 2
+        ),
+        // Same artist, same song, no release → same key, dedup.
+        ArtworkDedupCase(
+            description: "same artist + same song title ⇒ dedup",
+            artist1: "Same Artist", artist2: "Same Artist",
+            song1: "Unique Song", song2: "Unique Song",
+            release1: nil, release2: nil,
+            expectedFetchCount: 1
+        ),
+    ]
 }
