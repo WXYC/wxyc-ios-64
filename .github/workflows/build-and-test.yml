@@ -127,7 +127,7 @@ jobs:
             $SKIP_FLAGS \
             -disable-concurrent-testing \
             -parallel-testing-enabled YES \
-            -parallel-testing-worker-count 4 \
+            -parallel-testing-worker-count 2 \
             -resultBundlePath TestResults.xcresult
 
       - name: Run CoreTests
