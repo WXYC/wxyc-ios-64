@@ -125,6 +125,7 @@ jobs:
             -skipMacroValidation \
             CODE_SIGNING_ALLOWED=NO \
             $SKIP_FLAGS \
+            -disable-concurrent-testing \
             -parallel-testing-enabled YES \
             -parallel-testing-worker-count 4 \
             -resultBundlePath TestResults.xcresult
