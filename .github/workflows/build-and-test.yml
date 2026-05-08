@@ -91,6 +91,17 @@ jobs:
           fi
           zsh .github/scripts/affected-tests.sh
 
+      - name: Pre-boot iPhone 16 Pro simulator
+        # Workaround for "The test runner hung before establishing connection."
+        # Booting the simulator explicitly before running tests gives CoreSimulator
+        # time to fully come up, which the implicit boot inside `xcodebuild test` doesn't reliably do
+        # on macos-latest runners under load.
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep -m1 "iPhone 16 Pro " | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
+          echo "Booting $DEVICE_ID"
+          xcrun simctl boot "$DEVICE_ID" || true
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+
       - name: Run Tests (except CoreTests and UI)
         run: |
           # On pull_request, skip unaffected test targets for faster CI.
