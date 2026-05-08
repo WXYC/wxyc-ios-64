@@ -11,7 +11,11 @@
 /*
  CacheCoordinatorTests.swift
 
- Comprehensive unit tests for CacheCoordinator actor
+ Comprehensive unit tests for CacheCoordinator actor — the single source of
+ truth for direct cache-lookup correctness. Higher-level callers (e.g.
+ MultisourceArtworkService) should not re-assert this behavior through their
+ own actors; their tests live next to those actors and cover only their own
+ unique concerns (chain order, in-flight dedup, negative cache, etc.).
 
  Test Coverage:
  - Value storage and retrieval with TTL
