@@ -2,7 +2,14 @@
 //  ArtworkServiceTests.swift
 //  Artwork
 //
-//  Tests for MultisourceArtworkService aggregation, caching, and NSFW filtering.
+//  Actor-level concerns for MultisourceArtworkService: fetcher-chain ordering,
+//  in-flight deduplication, negative-cache (definitive vs. transient errors),
+//  and the `addFetcher` / `cacheExternalArtwork` / `clearNegativeCache` APIs.
+//
+//  Cache-lookup correctness (key shape, TTL, hit/miss, decoding) lives in
+//  CacheCoordinatorTests, CachedFetchTests, and CacheCoordinatorArtworkTests
+//  (the latter colocated in ArtworkFetcherTests.swift). Do not re-add through-
+//  the-actor tests that simply re-assert lower-level cache behavior.
 //
 //  Created by Jake Bromberg on 11/10/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -43,37 +50,6 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
         }
 
         return artwork
-    }
-}
-
-// MARK: - Mock CacheCoordinator
-
-actor MockCacheCoordinator {
-    private var storage: [String: Data] = [:]
-
-    func set(artwork: CGImage, for key: String, lifespan: TimeInterval = .thirtyDays) {
-        if let data = encodeCGImageAsPNG(artwork) {
-            storage[key] = data
-        }
-    }
-
-    func hasKey(_ key: String) -> Bool {
-        storage[key] != nil
-    }
-
-    private func encodeCGImageAsPNG(_ image: CGImage) -> Data? {
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            data as CFMutableData,
-            "public.png" as CFString,
-            1,
-            nil
-        ) else {
-            return nil
-        }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return data as Data
     }
 }
 
@@ -324,74 +300,7 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 2)
     }
 
-    // MARK: - Cache Integration Tests
-
-    @Test("Caches successful artwork fetch")
-    func cachesSuccessfulFetch() async throws {
-        // Given
-        let mockCache = MockCacheCoordinator()
-
-        let fetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.orange)
-        fetcher.artworkToReturn = artwork
-
-        // Create a mock cache fetcher that reads from our mockCache
-        let playcut = uniquePlaycut()
-
-        // First service with just the regular fetcher
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
-        )
-
-        // When - First fetch
-        let artwork1 = try await service.fetchArtwork(for: playcut)
-
-        // Then - Should have fetched once
-        #expect(fetcher.fetchCount == 1)
-
-        // Manually cache the artwork in our mock
-        let cacheKey = "Test Artist-Test Album"
-        await mockCache.set(artwork: artwork, for: cacheKey)
-
-        // Verify it's cached
-        let isCached = await mockCache.hasKey(cacheKey)
-        #expect(isCached == true)
-
-        // The test verifies that:
-        // 1. The service fetches artwork successfully
-        // 2. The artwork can be stored in cache
-        // This simulates the caching behavior without relying on singleton state
-        #expect(artwork1.pngDataCompatibility == artwork.pngDataCompatibility)
-    }
-
     // MARK: - Error Handling Tests
-
-    @Test("Continues to next fetcher on error")
-    func continuesToNextFetcherOnError() async throws {
-        // Given
-        let failingFetcher = MockArtworkService()
-        failingFetcher.errorToThrow = NSError(domain: "test", code: -1)
-
-        let successfulFetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.magenta)
-        successfulFetcher.artworkToReturn = artwork
-
-        let service = MultisourceArtworkService(
-            fetchers: [failingFetcher, successfulFetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
-        )
-
-        let playcut = uniquePlaycut()
-
-        // When
-        let result = try await service.fetchArtwork(for: playcut)
-
-        // Then
-        #expect(failingFetcher.fetchCount == 1)
-        #expect(successfulFetcher.fetchCount == 1)
-        #expect(result.pngDataCompatibility == artwork.pngDataCompatibility)
-    }
 
     @Test("Handles empty fetcher list gracefully")
     func handlesEmptyFetcherList() async throws {
@@ -486,30 +395,6 @@ struct ArtworkServiceTests {
         // Then - Should have fetched each one
         #expect(results.count == 5)
         #expect(fetcher.fetchCount == 5)
-    }
-
-    @Test("Sequential requests for same artwork serve from positive cache after first fetch")
-    func sequentialRequestsServeFromCache() async throws {
-        // Given
-        let fetcher = MockArtworkService()
-        let artwork = CGImage.testImageWithColor(.systemIndigo)
-        fetcher.artworkToReturn = artwork
-
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache())
-        )
-
-        let playcut = uniquePlaycut()
-
-        // When - Make sequential requests (each completes before the next starts)
-        _ = try await service.fetchArtwork(for: playcut)
-        _ = try await service.fetchArtwork(for: playcut)
-        _ = try await service.fetchArtwork(for: playcut)
-
-        // Then - First call hits the fetcher and caches the result;
-        // subsequent calls serve from the positive cache
-        #expect(fetcher.fetchCount == 1)
     }
 
     // MARK: - Default Initializer Test
