@@ -126,6 +126,12 @@ public actor PlaycutMetadataService {
     }
 
     /// Fetches album metadata and streaming links from the backend proxy in a single call.
+    ///
+    /// Deliberately not refactored onto `cachedFetch`: one network response feeds two
+    /// caches with different keys (`.album(artist, release)` and `.streaming(artist, song)`),
+    /// and a partial cache hit on either side must still issue the fetch but only write the
+    /// missing side. The existing single-key `cachedFetch` overloads can't model that without
+    /// a bespoke 2-cache variant, and this is the only caller that would need it. See #192.
     private func fetchAlbumAndStreaming(for playcut: Playcut) async -> (AlbumMetadata, StreamingLinks) {
         let albumCacheKey = MetadataCacheKey.album(
             artistName: playcut.artistName,
