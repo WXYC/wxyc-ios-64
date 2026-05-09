@@ -94,6 +94,14 @@ public final class AudioPlayerController {
         playbackIntended && (!isPlaying || playerState == .loading) && !playerState.isError
     }
 
+    /// Single-line snapshot of internal state, intended for diagnostics (e.g.
+    /// `Issue.record` on a test timeout). Captures the otherwise-private fields
+    /// that distinguish "audio session activation failed" from "stream took
+    /// too long to start" — see #251.
+    public var debugStateSnapshot: String {
+        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded)"
+    }
+
     // MARK: - Dependencies
     // These are nonisolated(unsafe) to allow cleanup in deinit
 
