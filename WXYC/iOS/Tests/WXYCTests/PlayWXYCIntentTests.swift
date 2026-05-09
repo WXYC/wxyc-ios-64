@@ -123,6 +123,10 @@ struct PlayWXYCIntentTests {
 // MARK: - Test Helpers
 
 /// Waits for playback to start, polling isPlaying with a timeout.
+///
+/// On timeout, records the controller's `debugStateSnapshot` so a CI failure
+/// shows whether the controller bailed in `play()` (audio session activation
+/// failed) versus actually waited the full timeout for playback to start. See #251.
 @MainActor
 private func waitForPlayback(timeout: Duration) async throws {
     let clock = ContinuousClock()
@@ -130,7 +134,7 @@ private func waitForPlayback(timeout: Duration) async throws {
 
     while !AudioPlayerController.shared.isPlaying {
         if clock.now >= deadline {
-            // Don't throw - just return and let the test assertion handle it
+            Issue.record("waitForPlayback timed out — \(AudioPlayerController.shared.debugStateSnapshot)")
             return
         }
         try await Task.sleep(for: .milliseconds(100))

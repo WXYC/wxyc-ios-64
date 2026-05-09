@@ -129,6 +129,32 @@ struct AudioPlayerControllerTests {
         #expect(mockPlayer.isPlaying == false)
     }
 
+    // MARK: - Debug Snapshot
+
+    @Test("debugStateSnapshot includes the documented diagnostic fields")
+    func debugStateSnapshotIncludesDocumentedFields() {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockPlayer = MockAudioPlayerForController()
+
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: MockStructuredAnalytics()
+        )
+
+        let snapshot = controller.debugStateSnapshot
+
+        // The snapshot exists so a future CI flake on PlayWXYCIntentTests can be
+        // diagnosed without reproducing locally; assert the field names we're
+        // committing to so a refactor that drops one is caught.
+        for field in ["playerState=", "playbackIntended=", "isPlaying=", "isLoading=", "audioSessionActivated=", "isForegrounded="] {
+            #expect(snapshot.contains(field), "debugStateSnapshot missing '\(field)': \(snapshot)")
+        }
+    }
+
     // MARK: - Output Latency Tests
 
     @Test("Output latency returns audio session's output latency")
