@@ -28,21 +28,17 @@ struct SemanticIndexServiceRecommendationsTests {
         )
 
         mockSession.responses["graph/artists/search"] = """
-        {"results": [{"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}]}
+        [{"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}]
         """.data(using: .utf8)!
 
         mockSession.responses["graph/artists/42/neighbors"] = """
-        {
-            "artist": {"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500},
-            "edge_type": "djTransition",
-            "neighbors": [
-                {
-                    "artist": {"id": 10, "canonical_name": "Tortoise", "genre": "Rock", "total_plays": 200},
-                    "weight": 0.85,
-                    "detail": {"raw_count": 15, "pmi": 2.3}
-                }
-            ]
-        }
+        [
+            {
+                "artist": {"id": 10, "canonical_name": "Tortoise", "genre": "Rock", "total_plays": 200},
+                "weight": 0.85,
+                "detail": {"raw_count": 15, "pmi": 2.3}
+            }
+        ]
         """.data(using: .utf8)!
 
         let recommendations = await service.recommendations(forArtistNamed: "Stereolab")
@@ -62,7 +58,7 @@ struct SemanticIndexServiceRecommendationsTests {
             cache: cache
         )
 
-        mockSession.responses["graph/artists/search"] = #"{"results": []}"#.data(using: .utf8)!
+        mockSession.responses["graph/artists/search"] = "[]".data(using: .utf8)!
 
         let recommendations = await service.recommendations(forArtistNamed: "Unknown")
 
@@ -98,7 +94,7 @@ struct SemanticIndexServiceRecommendationsTests {
         )
 
         mockSession.responses["graph/artists/search"] = """
-        {"results": [{"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}]}
+        [{"id": 42, "canonical_name": "Stereolab", "genre": "Rock", "total_plays": 500}]
         """.data(using: .utf8)!
 
         // No neighbors response — will fail
