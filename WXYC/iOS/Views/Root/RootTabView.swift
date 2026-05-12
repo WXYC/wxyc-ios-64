@@ -37,14 +37,8 @@ struct RootTabView: View {
             get: { selectedPlaycut != nil },
             set: { if !$0 { selectedPlaycut = nil } }
         )) {
-            NavigationStack {
-                if let selection = selectedPlaycut {
-                    PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                        .toolbar(.hidden, for: .navigationBar)
-                        .navigationDestination(for: RecommendedArtist.self) { artist in
-                            ArtistDetailView(artist: artist)
-                        }
-                }
+            if let selection = selectedPlaycut {
+                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
             }
         }
     }
