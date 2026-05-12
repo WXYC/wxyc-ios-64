@@ -26,7 +26,6 @@ struct PlaycutDetailView: View {
         self._artwork = State(initialValue: artwork)
     }
 
-    @Environment(\.artworkService) private var artworkService
     @State private var metadata: PlaycutMetadata = .empty
     @State private var isLoadingMetadata = true
     @State private var expandedBio = false
