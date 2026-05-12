@@ -151,14 +151,6 @@
     {
       "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:Shared\/SemanticIndex",
-        "identifier" : "SemanticIndexTests",
-        "name" : "SemanticIndexTests"
-      }
-    },
-    {
-      "parallelizable" : true,
-      "target" : {
         "containerPath" : "container:Shared\/PartyHorn",
         "identifier" : "PartyHornTests",
         "name" : "PartyHornTests"
