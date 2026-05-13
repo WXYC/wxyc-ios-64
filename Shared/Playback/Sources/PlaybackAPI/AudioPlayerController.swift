@@ -133,7 +133,11 @@ public final class AudioPlayerController {
 
     // Exponential backoff for reconnection
     @ObservationIgnored internal var backoffTimer: ExponentialBackoff
-    private var reconnectTask: Task<Void, Never>?
+    /// Exposed `internal` (rather than `private`) so `@testable` test code can
+    /// assert that `play(reason:)` cancels a pending reconnect — preventing an
+    /// orphan reconnect task from falsely crediting auto-recovery for a manual
+    /// play. See `StallRecoverySabotageTests`.
+    @ObservationIgnored internal var reconnectTask: Task<Void, Never>?
     
     // CPU Session Aggregation
     @ObservationIgnored private var cpuAggregator: CPUSessionAggregator?
@@ -231,6 +235,13 @@ public final class AudioPlayerController {
         Log(.info, category: .playback, "Play requested (reason: \(reason.rawValue))")
         let context: PlaybackContext = isForegrounded ? .foreground : .background
         cpuAggregator?.startSession(context: context)
+
+        // Cancel any pending reconnect attempt so an orphaned task can't wake
+        // up later and falsely credit the user's manual play as automatic
+        // recovery (see StallRecoverySabotageTests / Bug B).
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        backoffTimer.reset()
 
         playbackIntended = true
         wasPlayingBeforeRouteDisconnect = false
