@@ -26,16 +26,7 @@ public protocol PlaylistDataSource: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
-// MARK: - URLSession Playlist Fetching
-
-extension URLSession: PlaylistDataSource {
-    public func getPlaylist() async throws -> Playlist {
-        let (playlistData, response) = try await self.data(from: URL.WXYCPlaylist)
-        try (response as? HTTPURLResponse)?.validateSuccessStatus()
-        let repairedData = playlistData.repairingMojibake()
-        return try JSONDecoder.shared.decode(Playlist.self, from: repairedData)
-    }
-}
+// MARK: - Data Repair
 
 extension Data {
     /// Repairs mojibake caused by UTF-8 text being stored/sent as Latin-1.
@@ -88,7 +79,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     private static func createDataSource(for version: PlaylistAPIVersion) -> PlaylistDataSource {
         switch version {
         case .v1:
-            URLSession.shared
+            PlaylistDataSourceV1()
         case .v2:
             PlaylistDataSourceV2()
         }
