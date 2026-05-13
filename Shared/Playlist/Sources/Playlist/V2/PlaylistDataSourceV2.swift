@@ -25,7 +25,17 @@ public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable
     }
 
     public func getPlaylist() async throws -> Playlist {
-        let (data, response) = try await session.data(from: URL.WXYCFlowsheet)
+        // .reloadRevalidatingCacheData forces URLSession to consult the origin server
+        // on every poll. Without it, URLCache.shared can replay the previous process's
+        // stored response (zero network traffic) for as long as the server's
+        // Cache-Control: max-age window lasts, leaving the UI stuck on stale data
+        // after relaunch.
+        let request = URLRequest(
+            url: URL.WXYCFlowsheet,
+            cachePolicy: .reloadRevalidatingCacheData,
+            timeoutInterval: 30
+        )
+        let (data, response) = try await session.data(for: request)
         try (response as? HTTPURLResponse)?.validateSuccessStatus()
         let flowsheet = try JSONDecoder.shared.decode(FlowsheetResponse.self, from: data)
         return FlowsheetConverter.convert(flowsheet.entries)
