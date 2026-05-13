@@ -32,6 +32,10 @@ import AnalyticsTesting
 ///   (~1.3–1.4 s observed). The next retry then tore down the in-flight
 ///   connection. The fix waits on the player's state stream up to a longer
 ///   timeout.
+/// - **Bug C**: The "Recovery successful" branch emitted a `StallRecoveryEvent`
+///   and a log line without re-checking that `stallStartTime` was still set.
+///   When `play()` cleared `stallStartTime` mid-flight, the misleading log
+///   line still fired. Belt-and-braces with the Bug B fix.
 @Suite("Stall Recovery Sabotage Tests")
 @MainActor
 struct StallRecoverySabotageTests {
@@ -169,6 +173,33 @@ struct StallRecoverySabotageTests {
         let message = "Reconnect should issue exactly one player.play() during a 1s slow-connect; saw \(reconnectPlayCalls). More than one indicates the grace check fired before the player finished connecting."
         #expect(reconnectPlayCalls == 1, Comment(rawValue: message))
         #expect(fixture.controller.isPlaying, "Controller should report playing once state transitions")
+    }
+
+    // MARK: - Bug C: do not credit recovery when the user took over
+
+    @Test("Recovery is not credited when user manually started playback")
+    func recoveryNotCreditedWhenUserStartedPlayback() async {
+        // Quick backoff so the reconnect task wakes up promptly.
+        let quickBackoff = ExponentialBackoff(initialWaitTime: 0.05, maximumWaitTime: 0.05, maximumAttempts: 5)
+        let fixture = Self.makeFixture(backoff: quickBackoff)
+
+        await Self.startPlaying(fixture)
+        await Self.triggerStall(fixture)
+
+        // User takes over: manual play, then the mock player flips to .playing
+        // (auto-update re-enabled to simulate the user-initiated success path).
+        fixture.mockPlayer.shouldAutoUpdateState = true
+        fixture.controller.play(reason: .remotePlayCommand)
+        fixture.mockPlayer.simulateStateChange(to: .playing)
+        await Self.waitForAsync()
+
+        // Give any orphan reconnect task time to wake up and run its (now
+        // invalid) post-grace check before we assert.
+        try? await Task.sleep(for: .milliseconds(300))
+
+        let recoveryEvents = fixture.mockAnalytics.typedEvents(ofType: StallRecoveryEvent.self)
+        #expect(recoveryEvents.isEmpty,
+                "User-initiated play() must not be credited as automatic recovery; got \(recoveryEvents.count) StallRecoveryEvent(s)")
     }
 }
 

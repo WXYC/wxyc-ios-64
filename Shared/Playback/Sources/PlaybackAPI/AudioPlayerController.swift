@@ -836,10 +836,20 @@ extension AudioPlayerController {
 
                 if !reachedPlaying {
                     self.attemptReconnectWithExponentialBackoff()
-                } else {
-                    let totalStallTime = stallStartTime.map { Date().timeIntervalSince($0) } ?? 0
+                } else if let stallStart = self.stallStartTime {
+                    // Only credit auto-recovery when `stallStartTime` is still
+                    // set at the moment of the check. If something else (a
+                    // user `play()`, an external play command) cleared it,
+                    // we didn't actually recover anything — the audio is
+                    // playing for some other reason. See Bug C in
+                    // `StallRecoverySabotageTests`.
+                    let totalStallTime = Date().timeIntervalSince(stallStart)
                     Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s")
                     captureRecoveryIfNeeded()
+                    self.backoffTimer.reset()
+                } else {
+                    // Player is playing but the stall was already resolved by
+                    // someone else; just clear backoff state quietly.
                     self.backoffTimer.reset()
                 }
             } catch {
