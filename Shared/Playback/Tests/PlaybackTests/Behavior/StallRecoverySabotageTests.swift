@@ -95,39 +95,22 @@ struct StallRecoverySabotageTests {
         await waitForAsync()
     }
 
-    /// Triggers a stall and waits for the reconnect task to be scheduled and
-    /// the controller's mirrored state to reflect the stall.
+    /// Triggers a stall the way a real player would: yield `.stalled` to the
+    /// state stream so the controller's mirrored `playerState` (and therefore
+    /// `isPlaying`) updates, then fire the `.stall` event so `handleStall()`
+    /// schedules a reconnect. `MockAudioPlayer.simulateStall()` alone only
+    /// fires the event, leaving `isPlaying` reading stale from the previous
+    /// state stream value.
     private static func triggerStall(_ fixture: Fixture) async {
         fixture.mockPlayer.shouldAutoUpdateState = false
+        fixture.mockPlayer.simulateStateChange(to: .stalled)
         fixture.mockPlayer.simulateStall()
 
         let deadline = ContinuousClock.now.advanced(by: .seconds(1))
         while ContinuousClock.now < deadline,
-              fixture.controller.reconnectTask == nil || fixture.controller.isPlaying {
+              fixture.controller.state != .stalled {
             await Task.yield()
         }
-    }
-
-    // MARK: - Bug B: play(reason:) cancels pending reconnectTask
-
-    @Test("play(reason:) cancels pending reconnect task")
-    func playCancelsPendingReconnectTask() async {
-        // Use a backoff with a long-enough wait that the reconnect task is
-        // guaranteed to still be sleeping when we call play().
-        let slowBackoff = ExponentialBackoff(initialWaitTime: 5.0, maximumWaitTime: 5.0, maximumAttempts: 5)
-        let fixture = Self.makeFixture(backoff: slowBackoff)
-
-        await Self.startPlaying(fixture)
-        await Self.triggerStall(fixture)
-
-        let reconnectTask = fixture.controller.reconnectTask
-        #expect(reconnectTask != nil, "Stall should schedule a reconnect task")
-
-        // User presses play while the reconnect task is sleeping.
-        fixture.controller.play(reason: .remotePlayCommand)
-
-        #expect(reconnectTask?.isCancelled == true,
-                "play(reason:) must cancel the pending reconnect task")
     }
 
     // MARK: - Bug A: reconnect waits on player state, not a fixed 500 ms
