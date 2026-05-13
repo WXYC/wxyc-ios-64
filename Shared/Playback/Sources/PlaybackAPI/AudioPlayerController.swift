@@ -133,11 +133,7 @@ public final class AudioPlayerController {
 
     // Exponential backoff for reconnection
     @ObservationIgnored internal var backoffTimer: ExponentialBackoff
-    /// Exposed `internal` (rather than `private`) so `@testable` test code can
-    /// assert that `play(reason:)` cancels a pending reconnect — preventing an
-    /// orphan reconnect task from falsely crediting auto-recovery for a manual
-    /// play. See `StallRecoverySabotageTests`.
-    @ObservationIgnored internal var reconnectTask: Task<Void, Never>?
+    @ObservationIgnored private var reconnectTask: Task<Void, Never>?
     
     // CPU Session Aggregation
     @ObservationIgnored private var cpuAggregator: CPUSessionAggregator?
