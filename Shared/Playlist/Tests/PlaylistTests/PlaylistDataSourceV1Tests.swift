@@ -14,9 +14,9 @@ import Foundation
 
 // MARK: - PlaylistDataSourceV1 Tests
 
-// Serialized so the two tests don't race on `CapturingURLProtocol`'s
-// URL-keyed state — both stub the same URL and read it back, which would
-// otherwise overwrite each other when Swift Testing runs them in parallel.
+// Serialized so the tests don't race on `CapturingURLProtocol`'s URL-keyed
+// state — all stub the same URL and read it back, which would otherwise
+// overwrite each other when Swift Testing runs them in parallel.
 @Suite("PlaylistDataSourceV1 Tests", .serialized)
 struct PlaylistDataSourceV1Tests {
     @Test("Uses reloadRevalidatingCacheData cache policy so URLCache.shared cannot serve a stale playlist on relaunch")
