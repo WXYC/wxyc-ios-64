@@ -27,6 +27,11 @@ import AnalyticsTesting
 ///   An orphaned reconnect attempt could wake up later and emit a
 ///   `StallRecoveryEvent`, falsely crediting auto-recovery for the user's
 ///   manual play.
+/// - **Bug A**: The 500 ms fixed-grace check after `player.play()` resolved
+///   before the player had a chance to reach `.playing` on a slow cold connect
+///   (~1.3–1.4 s observed). The next retry then tore down the in-flight
+///   connection. The fix waits on the player's state stream up to a longer
+///   timeout.
 @Suite("Stall Recovery Sabotage Tests")
 @MainActor
 struct StallRecoverySabotageTests {
@@ -119,6 +124,51 @@ struct StallRecoverySabotageTests {
 
         #expect(reconnectTask?.isCancelled == true,
                 "play(reason:) must cancel the pending reconnect task")
+    }
+
+    // MARK: - Bug A: reconnect waits on player state, not a fixed 500 ms
+
+    @Test("reconnect waits for player to reach playing or error, not a fixed 500ms")
+    func reconnectWaitsForTerminalState() async {
+        // Quick first-wait so the reconnect runs promptly; the test pivots on
+        // the grace-wait behavior after `player.play()`.
+        let quickBackoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 10)
+        let fixture = Self.makeFixture(backoff: quickBackoff)
+
+        await Self.startPlaying(fixture)
+        // Snapshot playCallCount so we can count only the reconnect's calls.
+        let playCallsBeforeStall = fixture.mockPlayer.playCallCount
+        await Self.triggerStall(fixture)
+
+        // Simulate a slow cold-connect: leave the player non-playing for
+        // ~1.0 s (longer than the old 500 ms grace), then yield .playing.
+        // shouldAutoUpdateState is false (set by triggerStall), so the
+        // reconnect's `player.play()` won't auto-flip to .playing — the
+        // controller must wait for the explicit state transition.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1_000))
+            fixture.mockPlayer.simulateStateChange(to: .playing)
+        }
+
+        // Wait for the controller to mirror .playing (with a generous timeout).
+        let deadline = ContinuousClock.now.advanced(by: .seconds(4))
+        while ContinuousClock.now < deadline, !fixture.controller.isPlaying {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+
+        // Under the old 500 ms fixed grace, the first attempt would have been
+        // declared failed (player still not playing at the check), triggering
+        // a second retry which tears down the in-flight connect. The
+        // state-driven wait should resolve on the first attempt — i.e. only
+        // ONE player.play() call during the recovery period.
+        //
+        // With 1000ms of slow-connect and a 0.01s backoff between retries,
+        // the buggy 500ms grace would result in roughly 2 player.play() calls
+        // by the time .playing is yielded. The fix should produce exactly 1.
+        let reconnectPlayCalls = fixture.mockPlayer.playCallCount - playCallsBeforeStall
+        let message = "Reconnect should issue exactly one player.play() during a 1s slow-connect; saw \(reconnectPlayCalls). More than one indicates the grace check fired before the player finished connecting."
+        #expect(reconnectPlayCalls == 1, Comment(rawValue: message))
+        #expect(fixture.controller.isPlaying, "Controller should report playing once state transitions")
     }
 }
 

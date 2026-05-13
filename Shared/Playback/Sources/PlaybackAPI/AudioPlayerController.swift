@@ -824,11 +824,17 @@ extension AudioPlayerController {
                 #endif
                 self.player.play()
 
-                // Brief grace period for connection to establish
-                try await Task.sleep(for: .milliseconds(500))
+                // Wait for the player to reach a terminal state (playing or
+                // error) rather than declaring victory at a fixed 500 ms grace
+                // check. The cold-connect path (HTTP connect + buffer fill)
+                // observed in the field takes ~1.3–1.4 s; a fixed 500 ms grace
+                // always saw `isPlaying == false`, immediately triggered the
+                // next retry, and tore down the in-flight connection.
+                // See `StallRecoverySabotageTests` / Bug A.
+                let reachedPlaying = await self.waitForPlayingOrError(timeout: .seconds(3))
                 guard !Task.isCancelled else { return }
 
-                if !self.player.isPlaying {
+                if !reachedPlaying {
                     self.attemptReconnectWithExponentialBackoff()
                 } else {
                     let totalStallTime = stallStartTime.map { Date().timeIntervalSince($0) } ?? 0
@@ -840,6 +846,26 @@ extension AudioPlayerController {
                 self.backoffTimer.reset()
             }
         }
+    }
+
+    /// Polls the player's state until it reaches `.playing` (success) or
+    /// `.error` (terminal failure), or the timeout elapses. Returns `true`
+    /// only if the player reached `.playing` within the budget.
+    ///
+    /// Used by the reconnect loop instead of a fixed-duration grace sleep,
+    /// because cold-connect latency in the wild can exceed any short fixed
+    /// grace. The polling cadence is short enough that the wait resolves
+    /// promptly once the state transitions.
+    private func waitForPlayingOrError(timeout: Duration) async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while ContinuousClock.now < deadline {
+            if Task.isCancelled { return false }
+            let state = player.state
+            if state == .playing { return true }
+            if state.isError { return false }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return player.state == .playing
     }
 
     private func captureRecoveryIfNeeded() {
