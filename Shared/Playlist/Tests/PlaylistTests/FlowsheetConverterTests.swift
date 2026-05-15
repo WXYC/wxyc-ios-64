@@ -46,7 +46,7 @@ struct FlowsheetConverterTests {
         #expect(playcut.songTitle == "Test Song")
         #expect(playcut.releaseTitle == "Test Album")
         #expect(playcut.labelName == "Test Label")
-        #expect(playcut.chronOrderID == 1)
+        #expect(playcut.chronOrderID == 123)
     }
 
     @Test("Converts talkset entry correctly when message is 'Talkset'")
@@ -76,7 +76,7 @@ struct FlowsheetConverterTests {
 
         let talkset = playlist.talksets.first!
         #expect(talkset.id == 124)
-        #expect(talkset.chronOrderID == 2)
+        #expect(talkset.chronOrderID == 124)
     }
 
     @Test("Converts breakpoint entry correctly when message contains 'Breakpoint'")
@@ -106,7 +106,7 @@ struct FlowsheetConverterTests {
 
         let breakpoint = playlist.breakpoints.first!
         #expect(breakpoint.id == 125)
-        #expect(breakpoint.chronOrderID == 3)
+        #expect(breakpoint.chronOrderID == 125)
     }
 
     @Test("Converts show start marker correctly")
@@ -138,7 +138,7 @@ struct FlowsheetConverterTests {
         #expect(marker.id == 126)
         #expect(marker.isStart == true)
         #expect(marker.djName == "DJ Cool")
-        #expect(marker.chronOrderID == 4)
+        #expect(marker.chronOrderID == 126)
     }
 
     @Test("Converts show end marker correctly")
@@ -375,5 +375,50 @@ struct FlowsheetConverterTests {
 
         #expect(playlist.breakpoints.count == 1)
         #expect(playlist.playcuts.isEmpty)
+    }
+
+    // MARK: - Cross-show ordering (regression test for #265)
+
+    @Test("Sorts entries chronologically across shows when play_order resets")
+    func sortsEntriesChronologicallyAcrossShows() throws {
+        // A fetch can include the tail of a previous show alongside the head of
+        // the current show. `play_order` resets to 1 at the start of every show,
+        // so the previous show's tail has high play_orders and the current
+        // show's head has low play_orders. The Postgres `id` is strictly
+        // monotonic across all shows, so the freshly-inserted current-show
+        // entry has the higher id. `Playlist.entries` must rank by a globally
+        // monotonic key, otherwise the UI shows the previous show's tail as
+        // "Now Playing".
+        let entries = [
+            // Current show — freshly inserted, low play_order, high id
+            FlowsheetEntry(
+                id: 5210394, show_id: 1947064, album_id: nil,
+                artist_name: "Tortoise", album_title: "Standards",
+                track_title: "The Lithium Stiffs", record_label: "Thrill Jockey Records",
+                rotation_id: nil, rotation_play_freq: nil,
+                request_flag: false, message: nil,
+                play_order: 7, add_time: "2026-05-15T01:45:59.058Z",
+                entry_type: "track"
+            ),
+            // Previous show — already finished, high play_order, lower id
+            FlowsheetEntry(
+                id: 5210353, show_id: 1947063, album_id: nil,
+                artist_name: "Luomo", album_title: "Vocalcity",
+                track_title: "Tessio", record_label: "Force Tracks",
+                rotation_id: nil, rotation_play_freq: nil,
+                request_flag: false, message: nil,
+                play_order: 34, add_time: "2026-05-14T21:57:00.000Z",
+                entry_type: "track"
+            )
+        ]
+
+        let playlist = FlowsheetConverter.convert(entries)
+
+        #expect(playlist.playcuts.count == 2)
+
+        let sorted = playlist.entries
+        #expect(sorted.count == 2)
+        #expect(sorted[0].id == 5210394, "current show's fresh entry must rank first")
+        #expect(sorted[1].id == 5210353, "previous show's older entry must rank second")
     }
 }
