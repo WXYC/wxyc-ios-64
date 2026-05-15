@@ -26,8 +26,11 @@ enum FlowsheetConverter {
         for entry in entries {
             let entryType = FlowsheetEntryType.from(entry)
             let hour = parseHour(from: entry.add_time)
-            let chronOrderID = UInt64(entry.play_order)
+            // `play_order` resets to 1 per show, so it can't act as a global
+            // chronological key — see #265. `flowsheet.id` is a Postgres serial,
+            // strictly monotonic across all shows.
             let id = UInt64(entry.id)
+            let chronOrderID = id
 
             switch entryType {
             case .playcut:
