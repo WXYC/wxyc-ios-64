@@ -270,6 +270,11 @@ struct DiskCache: Cache, @unchecked Sendable {
         }
 
         if let data {
+            // Ensure the backing directory exists. CacheMigrationManager can wipe
+            // a DiskCache subdirectory out from under us on a version bump; without
+            // this guard, `createFile` would silently return false and the next
+            // `setxattr` would fail with ENOENT.
+            ensureCacheDirectoryExists()
             // Write data to file and attach metadata as xattr
             FileManager.default.createFile(atPath: fileURL.path, contents: data)
             setMetadata(metadata, for: fileURL)
@@ -279,9 +284,26 @@ struct DiskCache: Cache, @unchecked Sendable {
         }
     }
 
+    /// Recreates the backing cache directory if it was removed externally.
+    ///
+    /// Idempotent — `createDirectory(withIntermediateDirectories: true)` is a
+    /// no-op when the directory already exists.
+    private func ensureCacheDirectoryExists() {
+        guard let cacheDirectory else { return }
+        try? FileManager.default.createDirectory(
+            at: cacheDirectory,
+            withIntermediateDirectories: true
+        )
+    }
+
     /// Removes a cached entry from disk.
+    ///
+    /// A missing file is treated as "already removed" rather than an error —
+    /// `MigratingDiskCache` removes from both primary and legacy locations, and
+    /// every entry that lives in only one of them would otherwise log an ENOENT.
     func remove(for key: String) {
         guard let fileURL = fileURL(for: key) else { return }
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
 
         do {
             try FileManager.default.removeItem(at: fileURL)

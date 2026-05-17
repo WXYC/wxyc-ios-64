@@ -16,7 +16,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CachingTests",
-            dependencies: ["Caching"]
+            dependencies: ["Caching", "Logger"]
         )
     ]
 )

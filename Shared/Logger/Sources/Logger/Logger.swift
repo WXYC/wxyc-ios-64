@@ -63,6 +63,10 @@ public struct Category: Hashable, RawRepresentable, Codable, Sendable {
     public static let wallpaper = Category(rawValue: "Wallpaper")
 }
 
+/// Alias for ``Category`` that avoids the ``Logger.Category`` (module-vs-class)
+/// and bare-``Category`` (ObjC `objc_category`) name collisions in client code.
+public typealias LogCategory = Category
+
 // MARK: - Configuration
         
 /// Configuration for log level filtering.
