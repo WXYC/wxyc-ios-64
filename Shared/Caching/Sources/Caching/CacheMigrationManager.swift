@@ -92,16 +92,38 @@ public enum CacheMigrationManager {
     private static func purgeAllCaches() {
         // Clear the app's private cache directory
         if let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-            try? FileManager.default.contentsOfDirectory(at: cacheDir, includingPropertiesForKeys: nil)
-                .forEach { try? FileManager.default.removeItem(at: $0) }
+            purgeFiles(in: cacheDir)
         }
 
         // Clear the shared App Group container's cache directory
         if let sharedCacheDir = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
             .appendingPathComponent("Library/Caches", isDirectory: true) {
-            try? FileManager.default.contentsOfDirectory(at: sharedCacheDir, includingPropertiesForKeys: nil)
-                .forEach { try? FileManager.default.removeItem(at: $0) }
+            purgeFiles(in: sharedCacheDir)
+        }
+    }
+
+    /// Removes regular files from `directory`, preserving any subdirectories.
+    ///
+    /// `DiskCache(subdirectory:)` parks its files inside a named subdirectory of
+    /// `Library/Caches`. A version-bump purge that recursed into those subdirectories
+    /// would delete the subdirectory itself, leaving the in-memory `DiskCache`
+    /// holding a stale URL pointing at a path that no longer exists — every
+    /// subsequent `createFile`/`setxattr` then fails with ENOENT. Preserving
+    /// directories here keeps the `DiskCache` instance's invariants intact.
+    static func purgeFiles(in directory: URL) {
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        ) else {
+            return
+        }
+
+        for url in contents {
+            let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?
+                .isDirectory ?? false
+            if isDirectory { continue }
+            try? FileManager.default.removeItem(at: url)
         }
     }
 }
