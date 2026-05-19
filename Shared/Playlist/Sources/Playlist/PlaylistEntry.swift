@@ -357,11 +357,15 @@ public struct Playlist: Codable, Sendable {
 
     public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [], showMarkers: [])
     
+    // Compares full entry content, not just identifiers — metadata enrichment
+    // (artwork, streaming links, etc.) lands on existing rows, so an ID-only
+    // check would let enriched playlists slip past PlaylistService's broadcast
+    // gate as unchanged. See #266.
     public static func ==(lhs: Playlist, rhs: Playlist) -> Bool {
-        guard lhs.entries.count == rhs.entries.count else {
-            return false
-        }
-        return zip(lhs.entries.map(\.id), rhs.entries.map(\.id)).allSatisfy(==)
+        lhs.playcuts == rhs.playcuts
+            && lhs.breakpoints == rhs.breakpoints
+            && lhs.talksets == rhs.talksets
+            && lhs.showMarkers == rhs.showMarkers
     }
 
     public static func !=(lhs: Playlist, rhs: Playlist) -> Bool {
