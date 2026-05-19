@@ -95,8 +95,8 @@ struct NowPlayingServiceTests {
 
         // Then
         #expect(nowPlayingItem != nil)
-        #expect(nowPlayingItem?.playcut.songTitle == "Test Song")
-        #expect(nowPlayingItem?.playcut.artistName == "Test Artist")
+        #expect(nowPlayingItem?.playcut.songTitle == "la paradoja")
+        #expect(nowPlayingItem?.playcut.artistName == "Juana Molina")
         // Artwork is converted from CGImage to UIImage/NSImage, so check it's present and has expected dimensions
         #expect(nowPlayingItem?.artwork != nil)
         // Artwork logic converts CGImage to platform image, which applies screen scale.
@@ -134,7 +134,7 @@ struct NowPlayingServiceTests {
 
         // Then - Should get the valid playcut
         #expect(nowPlayingItem != nil)
-        #expect(nowPlayingItem?.playcut.songTitle == "Test Song")
+        #expect(nowPlayingItem?.playcut.songTitle == "la paradoja")
     }
 
     @Test("AsyncSequence updates when playlist changes")

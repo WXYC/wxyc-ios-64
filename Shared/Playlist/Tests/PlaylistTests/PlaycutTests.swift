@@ -20,19 +20,19 @@ struct PlaycutTests {
     @Test("artworkCacheKey uses releaseTitle when available")
     func artworkCacheKeyUsesReleaseTitle() {
         let playcut = Playcut.stub()
-        #expect(playcut.artworkCacheKey == "Test Artist-Test Album")
+        #expect(playcut.artworkCacheKey == "Juana Molina-DOGA")
     }
 
     @Test("artworkCacheKey uses songTitle when releaseTitle is nil")
     func artworkCacheKeyUsesSongTitleWhenReleaseTitleNil() {
         let playcut = Playcut.stub(releaseTitle: nil)
-        #expect(playcut.artworkCacheKey == "Test Artist-Test Song")
+        #expect(playcut.artworkCacheKey == "Juana Molina-la paradoja")
     }
 
     @Test("artworkCacheKey uses songTitle when releaseTitle is empty string")
     func artworkCacheKeyUsesSongTitleWhenReleaseTitleEmpty() {
         let playcut = Playcut.stub(releaseTitle: "")
-        #expect(playcut.artworkCacheKey == "Test Artist-Test Song")
+        #expect(playcut.artworkCacheKey == "Juana Molina-la paradoja")
     }
 
     @Test("artworkCacheKey is consistent for same content")

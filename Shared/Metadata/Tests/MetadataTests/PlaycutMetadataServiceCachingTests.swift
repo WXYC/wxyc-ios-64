@@ -118,8 +118,8 @@ struct PlaycutMetadataServiceCachingTests {
         let playcut = Playcut.stub(id: 12345, labelName: "Test Label")
 
         // Pre-populate cache with granular metadata
-        let albumKey = MetadataCacheKey.album(artistName: "Test Artist", releaseTitle: "Test Album")
-        let streamingKey = MetadataCacheKey.streaming(artistName: "Test Artist", songTitle: "Test Song")
+        let albumKey = MetadataCacheKey.album(artistName: "Juana Molina", releaseTitle: "DOGA")
+        let streamingKey = MetadataCacheKey.streaming(artistName: "Juana Molina", songTitle: "la paradoja")
 
         let cachedAlbum = AlbumMetadata(
             label: "Cached Label",
@@ -234,7 +234,7 @@ struct PlaycutMetadataServiceCachingTests {
 
         // Then - verify granular cache keys
         let expectedAlbumKey = "album-Artist Name-Album Title"
-        let expectedStreamingKey = "streaming-Artist Name-Test Song"
+        let expectedStreamingKey = "streaming-Artist Name-la paradoja"
 
         #expect(mockCache.accessedKeys.contains(expectedAlbumKey), "Should check album cache")
         #expect(mockCache.accessedKeys.contains(expectedStreamingKey), "Should check streaming cache")

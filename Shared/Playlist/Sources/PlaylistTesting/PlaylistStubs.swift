@@ -15,15 +15,18 @@ import Playlist
 extension Playcut {
     /// Creates a Playcut with sensible defaults for testing.
     ///
+    /// Defaults use a WXYC-canonical track (Juana Molina — "la paradoja" from DOGA) rather
+    /// than generic placeholder strings. See `CLAUDE.md` for the example pool.
+    ///
     /// - Parameters:
     ///   - id: Unique identifier. Defaults to 1.
     ///   - hour: Hour timestamp in milliseconds since epoch. Defaults to 1000.
     ///   - chronOrderID: Chronological order ID. Defaults to matching `id`.
     ///   - timeCreated: Creation timestamp in milliseconds since epoch. Defaults to matching `hour`.
-    ///   - songTitle: Song title. Defaults to "Test Song".
+    ///   - songTitle: Song title. Defaults to "la paradoja".
     ///   - labelName: Record label name. Defaults to nil.
-    ///   - artistName: Artist name. Defaults to "Test Artist".
-    ///   - releaseTitle: Album/release title. Defaults to "Test Album".
+    ///   - artistName: Artist name. Defaults to "Juana Molina".
+    ///   - releaseTitle: Album/release title. Defaults to "DOGA".
     ///   - rotation: Whether this is a rotation play. Defaults to false.
     ///   - artworkURL: Optional artwork URL. Defaults to nil.
     public static func stub(
@@ -31,10 +34,10 @@ extension Playcut {
         hour: UInt64 = 1000,
         chronOrderID: UInt64? = nil,
         timeCreated: UInt64? = nil,
-        songTitle: String = "Test Song",
+        songTitle: String = "la paradoja",
         labelName: String? = nil,
-        artistName: String = "Test Artist",
-        releaseTitle: String? = "Test Album",
+        artistName: String = "Juana Molina",
+        releaseTitle: String? = "DOGA",
         rotation: Bool = false,
         artworkURL: URL? = nil
     ) -> Playcut {
