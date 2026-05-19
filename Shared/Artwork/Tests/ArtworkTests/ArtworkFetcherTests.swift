@@ -581,7 +581,7 @@ struct CacheCoordinatorArtworkTests {
         let playcut = Playcut.stub()
 
         // Set cached artwork with correct key format: artistName-releaseTitle
-        await cache.set(artwork: testImage, for: "Test Artist-Test Album", lifespan: .thirtyDays)
+        await cache.set(artwork: testImage, for: "Juana Molina-DOGA", lifespan: .thirtyDays)
 
         // When
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
@@ -598,7 +598,7 @@ struct CacheCoordinatorArtworkTests {
         let playcut = Playcut.stub(releaseTitle: nil)
 
         // Set cached artwork with correct key format: artistName-songTitle (no release title)
-        await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)
+        await cache.set(artwork: testImage, for: "Juana Molina-la paradoja", lifespan: .thirtyDays)
 
         // When
         let fetchedArtwork = try await cache.fetchArtwork(for: playcut)
@@ -653,7 +653,7 @@ struct CacheCoordinatorArtworkTests {
         let testImage = CGImage.testImage
 
         // Set with correct key format: artistName-songTitle (empty release title is skipped)
-        await cache.set(artwork: testImage, for: "Test Artist-Test Song", lifespan: .thirtyDays)
+        await cache.set(artwork: testImage, for: "Juana Molina-la paradoja", lifespan: .thirtyDays)
 
         // Playcut with empty release title
         let playcut = Playcut.stub(releaseTitle: "")
