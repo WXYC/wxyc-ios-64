@@ -27,24 +27,8 @@ public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hasha
 }
 
 public extension PlaylistEntry {
-    static func ==(lhs: Self, rhs: any PlaylistEntry) -> Bool {
-        lhs.id == rhs.id
-    }
-        
-    static func !=(lhs: Self, rhs: any PlaylistEntry) -> Bool {
-        lhs.id != rhs.id
-    }
-    
-    static func <(lhs: Self, rhs: any PlaylistEntry) -> Bool {
-        lhs.chronOrderID < rhs.chronOrderID
-    }
-    
     static func <(lhs: Self, rhs: Self) -> Bool {
         lhs.chronOrderID < rhs.chronOrderID
-    }
-    
-    static func >(lhs: Self, rhs: any PlaylistEntry) -> Bool {
-        rhs.chronOrderID > lhs.chronOrderID
     }
 }
 
