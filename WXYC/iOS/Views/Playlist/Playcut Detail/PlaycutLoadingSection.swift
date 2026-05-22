@@ -15,7 +15,7 @@ struct PlaycutLoadingSection: View {
         VStack(spacing: 12) {
             ProgressView()
                 .tint(.white)
-            Text("Loading metadata...")
+            Text("Loading...")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
