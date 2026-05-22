@@ -55,4 +55,21 @@ struct FlowsheetEntry: Codable, Sendable {
     var soundcloud_url: String? = nil
     var artist_bio: String? = nil
     var artist_wikipedia_url: String? = nil
+
+    /// Raw enrichment-state string from the wire. Read via `metadataStatus`
+    /// for the typed accessor; the raw string is preserved so an older iOS
+    /// build that sees a future state can surface it diagnostically without
+    /// failing the row decode.
+    var metadata_status: String? = nil
 }
+
+extension FlowsheetEntry {
+    /// Typed accessor for `metadata_status`. Returns `nil` when the field
+    /// is absent OR carries an unrecognized value — the consumer (#270)
+    /// treats both as "fall back to the proxy-fetch path," which is the
+    /// safe default for forward-compat with future Backend enum extensions.
+    var metadataStatus: MetadataStatus? {
+        metadata_status.flatMap(MetadataStatus.init(rawValue:))
+    }
+}
+
