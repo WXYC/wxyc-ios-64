@@ -115,6 +115,7 @@ struct WXYCApp: App {
                         .environment(\.playbackController, AudioPlayerController.shared)
                         .environment(\.reviewRequestService, appState.reviewRequestService)
                         .forceLightStatusBar()
+                        .crossfadeColorSchemeTransitions()
                         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
                             handleMemoryWarning()
                         }
