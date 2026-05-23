@@ -27,7 +27,7 @@ struct PlaycutMetadataSection: View {
                 if let label = metadata.label {
                     GridRow {
                         MetadataLabel(title: "Label")
-                        MetadataValue(value: label)
+                        MetadataValue(value: DiscogsMarkupParser.stripDisambiguationSuffix(from: label))
                     }
                 }
                 if let year = metadata.releaseYear {

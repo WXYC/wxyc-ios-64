@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import Metadata
 import WXUI
 import Playlist
 
@@ -58,7 +59,7 @@ struct PlaycutHeaderSection: View {
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
                 
-                Text(playcut.artistName)
+                Text(DiscogsMarkupParser.stripDisambiguationSuffix(from: playcut.artistName))
                     .font(.title3)
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
