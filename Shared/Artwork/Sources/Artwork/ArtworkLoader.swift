@@ -23,8 +23,8 @@ import Playlist
 /// - The loader is constructed once at app launch and lives for the app's lifetime.
 /// - `load(_:)` is idempotent and safe to call repeatedly; it coalesces concurrent
 ///   requests for the same playcut and short-circuits when state is `.loaded`.
-/// - `reset(_:)` drops a single playcut's state; `resetFailures()` resets only
-///   `.failed` entries (used after the artwork service's fetcher chain or negative
+/// - `reset(_:)` drops a single playcut's state; `retryFailures()` re-fetches every
+///   `.failed` entry (used after the artwork service's fetcher chain or negative
 ///   cache changes); `prune(keepingKeys:)` bounds memory by dropping entries no
 ///   longer in the visible playlist.
 @MainActor
@@ -38,6 +38,9 @@ public final class ArtworkLoader {
     }
 
     public private(set) var states: [String: State] = [:]
+    /// Playcuts retained alongside `states` so `retryFailures()` can re-fetch
+    /// without the caller plumbing the visible-playcut list back through.
+    private var playcuts: [String: Playcut] = [:]
     private let service: any ArtworkService
 
     public init(service: any ArtworkService) {
@@ -52,6 +55,7 @@ public final class ArtworkLoader {
     /// Transitions `.unloaded`/`.failed` -> `.loading` -> `.loaded`/`.failed`.
     public func load(_ playcut: Playcut) {
         let key = playcut.artworkCacheKey
+        playcuts[key] = playcut
         switch states[key] ?? .unloaded {
         case .loaded, .loading:
             return
@@ -75,12 +79,15 @@ public final class ArtworkLoader {
         states[playcut.artworkCacheKey] = .unloaded
     }
 
-    /// Reset every `.failed` entry to `.unloaded`. Use after the artwork service
-    /// gains a new fetcher or its negative cache is cleared, so subsequent
-    /// `load(_:)` calls re-attempt those playcuts.
-    public func resetFailures() {
+    /// Re-fetch every `.failed` entry using the retained Playcut. Call this after
+    /// the artwork service gains a new fetcher or its negative cache is cleared,
+    /// so previously-failed lookups don't have to wait for the next poll to retry.
+    /// A coincident `load(_:)` coalesces because each retry transitions the entry
+    /// to `.loading` before yielding.
+    public func retryFailures() {
         for (key, state) in states where state == .failed {
-            states[key] = .unloaded
+            guard let playcut = playcuts[key] else { continue }
+            load(playcut)
         }
     }
 
@@ -88,6 +95,7 @@ public final class ArtworkLoader {
     /// `PlaylistView.task` on each playlist update to bound memory.
     public func prune(keepingKeys currentKeys: Set<String>) {
         states = states.filter { currentKeys.contains($0.key) }
+        playcuts = playcuts.filter { currentKeys.contains($0.key) }
     }
 }
 

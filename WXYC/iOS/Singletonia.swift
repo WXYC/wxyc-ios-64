@@ -122,7 +122,7 @@ final class Singletonia {
                     secret: secrets.discogsApiSecret
                 )
                 await artworkService.addFetcher(discogs)
-                artworkLoader.resetFailures()
+                artworkLoader.retryFailures()
                 Log(.info, "Artwork service upgraded with Discogs fallback (attempt \(attempt))")
             }
             return
