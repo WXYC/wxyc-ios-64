@@ -589,6 +589,66 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 2, "\(code) should not be negatively cached")
     }
 
+    // MARK: - Not-Attempted Caching Tests
+    //
+    // A fetcher that signals it didn't actually attempt — e.g. URLArtworkFetcher
+    // when the playcut has no artwork URL yet because backend enrichment hasn't
+    // completed — must not poison the 30-day negative cache. Otherwise a track
+    // whose artwork URL arrives on a later poll would stay blank for 30 days,
+    // the chain shadowed by a verdict that was never actually made.
+
+    @Test("Does not cache .notAttempted so subsequent fetches retry")
+    func doesNotCacheNotAttempted() async throws {
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = ServiceError.notAttempted
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 2, ".notAttempted must not be negatively cached")
+    }
+
+    @Test("Caches negative when a conclusive .noResults occurs alongside .notAttempted")
+    func cachesNegativeWhenMixedWithNotAttempted() async throws {
+        // Mixed chain: the URL fetcher had no URL (.notAttempted) but the Discogs
+        // fallback genuinely searched and came up empty (.noResults). That second
+        // outcome IS a conclusive verdict and should still be cached — otherwise
+        // we'd hammer Discogs every 30s poll for tracks that simply have no art.
+        let urlLike = MockArtworkService()
+        urlLike.errorToThrow = ServiceError.notAttempted
+
+        let discogsLike = MockArtworkService()
+        discogsLike.errorToThrow = ServiceError.noResults
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [urlLike, discogsLike],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(urlLike.fetchCount == 1)
+        #expect(discogsLike.fetchCount == 1)
+
+        // Second call must hit the negative cache — neither fetcher should run again.
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(urlLike.fetchCount == 1, "a conclusive .noResults must still poison the negative cache")
+        #expect(discogsLike.fetchCount == 1)
+    }
+
     // MARK: - addFetcher Tests
 
     @Test("addFetcher exposes the new fetcher to subsequent fetchArtwork calls")

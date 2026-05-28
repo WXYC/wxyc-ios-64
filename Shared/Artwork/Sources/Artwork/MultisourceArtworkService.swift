@@ -136,6 +136,7 @@ public final actor MultisourceArtworkService: ArtworkService {
 
         let timer = Core.Timer.start()
         var hadTransientError = false
+        var hadConclusiveNegative = false
 
         for fetcher in self.fetchers {
             do {
@@ -146,18 +147,37 @@ public final actor MultisourceArtworkService: ArtworkService {
                 // Server-side or networking blip — retry next time, don't poison the cache.
                 Log(.warning, category: .artwork, "Transient error for \(cacheKey) using fetcher \(fetcher): \(error)")
                 hadTransientError = true
+            } catch ServiceError.notAttempted {
+                // Fetcher had no input to act on (e.g. no artwork URL yet because backend
+                // enrichment hasn't completed). Not a verdict about whether artwork exists —
+                // must not contribute to the negative cache, or a later poll carrying a
+                // real URL would stay shadowed for 30 days.
+                Log(.info, category: .artwork, "Fetcher \(fetcher) made no attempt for \(cacheKey)")
+            } catch ServiceError.noResults {
+                // The fetcher genuinely looked and found nothing. This is the only
+                // outcome that justifies caching a definitive "no artwork available".
+                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): noResults")
+                hadConclusiveNegative = true
             } catch {
-                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(error)")
+                // Unknown / inconclusive (e.g. cache-miss `noCachedResult`). Treat
+                // conservatively as a non-verdict so a single odd error doesn't
+                // poison the cache against a track that may have art.
+                Log(.info, category: .artwork, "Inconclusive failure for \(cacheKey) using fetcher \(fetcher): \(error)")
             }
         }
 
         Log(.error, category: .artwork, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
 
-        // Only cache definitive "not found" outcomes. Transient errors must retry —
-        // notably URLError.cancelled, which fires when a row's `.task` is torn down
-        // mid-flight on launch and would otherwise persist as a 30-day "no artwork"
-        // verdict for an album we never actually finished asking about.
-        if !hadTransientError {
+        // Cache "no artwork available" only when at least one fetcher returned a
+        // conclusive verdict and no transient errors occurred. Skip when:
+        //   - any fetcher hit a transient error (might be art, network blipped) —
+        //     notably URLError.cancelled, which fires when a row's `.task` is torn
+        //     down mid-flight on launch and would otherwise persist as a 30-day
+        //     "no artwork" verdict for an album we never finished asking about;
+        //   - no fetcher actually returned a conclusive negative — the no-URL-yet
+        //     path, where the chain abstained because backend enrichment hadn't
+        //     resolved a URL. Caching here would shadow a real URL on the next poll.
+        if hadConclusiveNegative && !hadTransientError {
             await self.errorCache.set(value: Error.noArtworkAvailable, for: cacheKey, lifespan: .thirtyDays)
         }
 
