@@ -527,13 +527,18 @@ struct URLArtworkFetcherTests {
         #expect(mockSession.requestedURLs.first?.absoluteString == "https://example.com/artwork.jpg")
     }
 
-    @Test("Throws noResults when artworkURL is nil")
-    func throwsWhenNoArtworkURL() async throws {
+    @Test("Throws notAttempted when artworkURL is nil")
+    func throwsNotAttemptedWhenNoArtworkURL() async throws {
+        // Critically, this must NOT be `.noResults` — that case is reserved for
+        // "the fetcher looked and found nothing" and is what populates the 30-day
+        // negative cache in MultisourceArtworkService. A nil URL means backend
+        // enrichment hasn't completed yet; the fetcher made no attempt, so
+        // there is no verdict to cache.
         let mockSession = MockWebSession()
         let fetcher = URLArtworkFetcher(session: mockSession)
         let playcut = Playcut.stub(artworkURL: nil)
 
-        await #expect(throws: ServiceError.noResults) {
+        await #expect(throws: ServiceError.notAttempted) {
             try await fetcher.fetchArtwork(for: playcut)
         }
         #expect(mockSession.requestedURLs.isEmpty)
