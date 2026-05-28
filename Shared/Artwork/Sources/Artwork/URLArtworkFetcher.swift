@@ -19,8 +19,8 @@ import Playlist
 /// This is the primary fetcher for v2 API responses where the backend has already
 /// resolved the artwork URL during metadata enrichment. When the playcut carries
 /// no URL (v1 entries, or v2 entries where enrichment hasn't completed yet) it
-/// throws `ServiceError.notAttempted` so `MultisourceArtworkService.scanFetchers`
-/// can distinguish "no URL to try" from "tried and found nothing" — the latter is
+/// throws `ServiceError.notAttempted` so the multi-source chain coordinator can
+/// distinguish "no URL to try" from "tried and found nothing" — the latter is
 /// what populates the 30-day negative cache. A decode failure *after* a successful
 /// download is a real attempt and still surfaces as `ServiceError.noResults`.
 final class URLArtworkFetcher: ArtworkService {

@@ -156,7 +156,7 @@ public final actor MultisourceArtworkService: ArtworkService {
             } catch ServiceError.noResults {
                 // The fetcher genuinely looked and found nothing. This is the only
                 // outcome that justifies caching a definitive "no artwork available".
-                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(ServiceError.noResults)")
+                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher)")
                 hadConclusiveNegative = true
             } catch {
                 // Unknown / inconclusive (e.g. cache-miss `noCachedResult`). Treat
