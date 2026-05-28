@@ -145,8 +145,34 @@ struct ArtworkLoaderTests {
         #expect(service.fetchCount == 2)
     }
 
-    @Test("resetFailures only resets .failed entries")
-    func resetFailuresOnlyTouchesFailed() async throws {
+    @Test("retryFailures triggers re-fetch for .failed entries without external load")
+    func retryFailuresRefetchesFailedWithoutExternalLoad() async throws {
+        let service = MockArtworkService()
+        service.errorToThrow = ServiceError.noResults
+
+        let loader = ArtworkLoader(service: service)
+        let playcut = uniquePlaycut()
+
+        loader.load(playcut)
+        try await waitForState(loader, of: playcut) { $0 == .failed }
+        #expect(service.fetchCount == 1)
+
+        // Simulate the fetcher chain gaining a new source (e.g. Discogs fallback)
+        // by flipping the mock to succeed. The loader must re-attempt previously-
+        // failed entries without the caller re-issuing load().
+        service.errorToThrow = nil
+        service.artworkToReturn = CGImage.testImageWithColor(.magenta)
+
+        loader.retryFailures()
+
+        try await waitForState(loader, of: playcut) { state in
+            if case .loaded = state { true } else { false }
+        }
+        #expect(service.fetchCount == 2, "retryFailures must re-call the service for failed entries")
+    }
+
+    @Test("retryFailures leaves non-.failed entries alone")
+    func retryFailuresLeavesNonFailedAlone() async throws {
         let service = MockArtworkService()
         let loadedPlaycut = uniquePlaycut()
         let failedPlaycut = uniquePlaycut()
@@ -167,12 +193,49 @@ struct ArtworkLoaderTests {
         loader.load(failedPlaycut)
         try await waitForState(loader, of: failedPlaycut) { $0 == .failed }
 
-        loader.resetFailures()
+        let fetchCountBeforeRetry = service.fetchCount
+        loader.retryFailures()
+
+        // Wait for the retry to complete so we can assert final counts deterministically.
+        try await waitForState(loader, of: failedPlaycut) { state in
+            // Service is still failing — entry should re-fail.
+            state == .failed
+        }
 
         if case .loaded = loader.state(for: loadedPlaycut) {} else {
-            Issue.record("resetFailures must not touch .loaded entries")
+            Issue.record("retryFailures must not touch .loaded entries")
         }
-        #expect(loader.state(for: failedPlaycut) == .unloaded)
+        #expect(service.fetchCount == fetchCountBeforeRetry + 1,
+                "retryFailures must re-fetch only the .failed entry")
+    }
+
+    @Test("retryFailures coalesces with a coincident load()")
+    func retryFailuresCoalescesWithCoincidentLoad() async throws {
+        let service = MockArtworkService()
+        service.errorToThrow = ServiceError.noResults
+
+        let loader = ArtworkLoader(service: service)
+        let playcut = uniquePlaycut()
+
+        loader.load(playcut)
+        try await waitForState(loader, of: playcut) { $0 == .failed }
+        #expect(service.fetchCount == 1)
+
+        // Configure success and add a delay so the retry stays .loading long enough
+        // for the coincident load() to observe it.
+        service.errorToThrow = nil
+        service.artworkToReturn = CGImage.testImageWithColor(.brown)
+        service.delaySeconds = 0.1
+
+        loader.retryFailures()
+        // Mimic the next 30s poll firing while the retry is still in flight.
+        loader.load(playcut)
+
+        try await waitForState(loader, of: playcut) { state in
+            if case .loaded = state { true } else { false }
+        }
+        #expect(service.fetchCount == 2,
+                "coincident load() during a retry must coalesce on .loading")
     }
 
     @Test("prune drops entries whose keys are not in the keep-set")
