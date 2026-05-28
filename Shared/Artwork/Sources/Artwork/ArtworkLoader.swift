@@ -35,12 +35,21 @@ public final class ArtworkLoader {
         case loading
         case loaded(UIImage)
         case failed
+
+        public var isLoaded: Bool {
+            if case .loaded = self { true } else { false }
+        }
     }
 
-    public private(set) var states: [String: State] = [:]
-    /// Playcuts retained alongside `states` so `retryFailures()` can re-fetch
-    /// without the caller plumbing the visible-playcut list back through.
-    private var playcuts: [String: Playcut] = [:]
+    /// Per-key state + the Playcut that produced it. Retaining the Playcut lets
+    /// `retryFailures()` re-fetch without the caller plumbing the visible-playcut
+    /// list back through.
+    private struct Entry {
+        var state: State
+        let playcut: Playcut
+    }
+
+    private var entries: [String: Entry] = [:]
     private let service: any ArtworkService
 
     public init(service: any ArtworkService) {
@@ -48,35 +57,34 @@ public final class ArtworkLoader {
     }
 
     public func state(for playcut: Playcut) -> State {
-        states[playcut.artworkCacheKey] ?? .unloaded
+        entries[playcut.artworkCacheKey]?.state ?? .unloaded
     }
 
     /// Schedule a fetch for `playcut`. No-op when already `.loaded` or `.loading`.
     /// Transitions `.unloaded`/`.failed` -> `.loading` -> `.loaded`/`.failed`.
     public func load(_ playcut: Playcut) {
         let key = playcut.artworkCacheKey
-        playcuts[key] = playcut
-        switch states[key] ?? .unloaded {
+        switch entries[key]?.state ?? .unloaded {
         case .loaded, .loading:
             return
         case .unloaded, .failed:
-            states[key] = .loading
+            entries[key] = Entry(state: .loading, playcut: playcut)
         }
 
         let service = service
         Task { [weak self] in
             do {
                 let cg = try await service.fetchArtwork(for: playcut)
-                self?.states[key] = .loaded(cg.toUIImage())
+                self?.entries[key]?.state = .loaded(cg.toUIImage())
             } catch {
-                self?.states[key] = .failed
+                self?.entries[key]?.state = .failed
             }
         }
     }
 
     /// Drop a single playcut's state so the next `load(_:)` re-fetches.
     public func reset(_ playcut: Playcut) {
-        states[playcut.artworkCacheKey] = .unloaded
+        entries[playcut.artworkCacheKey] = nil
     }
 
     /// Re-fetch every `.failed` entry using the retained Playcut. Call this after
@@ -85,17 +93,18 @@ public final class ArtworkLoader {
     /// A coincident `load(_:)` coalesces because each retry transitions the entry
     /// to `.loading` before yielding.
     public func retryFailures() {
-        for (key, state) in states where state == .failed {
-            guard let playcut = playcuts[key] else { continue }
-            load(playcut)
+        // Snapshot before mutating, so the inner load() can rewrite entries
+        // without disturbing the iteration.
+        let failed = entries.values.filter { $0.state == .failed }
+        for entry in failed {
+            load(entry.playcut)
         }
     }
 
     /// Drop entries whose keys aren't in `currentKeys`. Called from
     /// `PlaylistView.task` on each playlist update to bound memory.
     public func prune(keepingKeys currentKeys: Set<String>) {
-        states = states.filter { currentKeys.contains($0.key) }
-        playcuts = playcuts.filter { currentKeys.contains($0.key) }
+        entries = entries.filter { currentKeys.contains($0.key) }
     }
 }
 

@@ -43,9 +43,7 @@ struct ArtworkLoaderTests {
         let playcut = uniquePlaycut()
 
         loader.load(playcut)
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 1)
     }
 
@@ -71,9 +69,7 @@ struct ArtworkLoaderTests {
         let playcut = uniquePlaycut()
 
         loader.load(playcut)
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 1)
 
         loader.load(playcut)
@@ -94,9 +90,7 @@ struct ArtworkLoaderTests {
         loader.load(playcut)
         loader.load(playcut)
         loader.load(playcut)
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 1, "concurrent load() calls must coalesce")
     }
 
@@ -116,9 +110,7 @@ struct ArtworkLoaderTests {
         service.artworkToReturn = CGImage.testImageWithColor(.purple)
 
         loader.load(playcut)
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 2, "second load() after .failed must re-call the service")
     }
 
@@ -131,17 +123,13 @@ struct ArtworkLoaderTests {
         let playcut = uniquePlaycut()
 
         loader.load(playcut)
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
 
         loader.reset(playcut)
         #expect(loader.state(for: playcut) == .unloaded)
 
         loader.load(playcut)
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 2)
     }
 
@@ -165,9 +153,7 @@ struct ArtworkLoaderTests {
 
         loader.retryFailures()
 
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 2, "retryFailures must re-call the service for failed entries")
     }
 
@@ -183,9 +169,7 @@ struct ArtworkLoaderTests {
         service.artworkToReturn = CGImage.testImageWithColor(.cyan)
         service.errorToThrow = nil
         loader.load(loadedPlaycut)
-        try await waitForState(loader, of: loadedPlaycut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: loadedPlaycut) { $0.isLoaded }
 
         // Drive failedPlaycut to .failed.
         service.artworkToReturn = nil
@@ -202,9 +186,7 @@ struct ArtworkLoaderTests {
             state == .failed
         }
 
-        if case .loaded = loader.state(for: loadedPlaycut) {} else {
-            Issue.record("retryFailures must not touch .loaded entries")
-        }
+        #expect(loader.state(for: loadedPlaycut).isLoaded, "retryFailures must not touch .loaded entries")
         #expect(service.fetchCount == fetchCountBeforeRetry + 1,
                 "retryFailures must re-fetch only the .failed entry")
     }
@@ -231,9 +213,7 @@ struct ArtworkLoaderTests {
         // Mimic the next 30s poll firing while the retry is still in flight.
         loader.load(playcut)
 
-        try await waitForState(loader, of: playcut) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: playcut) { $0.isLoaded }
         #expect(service.fetchCount == 2,
                 "coincident load() during a retry must coalesce on .loading")
     }
@@ -249,18 +229,12 @@ struct ArtworkLoaderTests {
 
         loader.load(kept)
         loader.load(dropped)
-        try await waitForState(loader, of: kept) { state in
-            if case .loaded = state { true } else { false }
-        }
-        try await waitForState(loader, of: dropped) { state in
-            if case .loaded = state { true } else { false }
-        }
+        try await waitForState(loader, of: kept) { $0.isLoaded }
+        try await waitForState(loader, of: dropped) { $0.isLoaded }
 
         loader.prune(keepingKeys: [kept.artworkCacheKey])
 
-        if case .loaded = loader.state(for: kept) {} else {
-            Issue.record("kept playcut should retain its loaded state")
-        }
+        #expect(loader.state(for: kept).isLoaded, "kept playcut should retain its loaded state")
         #expect(loader.state(for: dropped) == .unloaded)
     }
 }
