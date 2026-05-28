@@ -20,11 +20,13 @@ public extension TimeInterval {
 public enum ServiceError: String, Swift.Error, LocalizedError, Codable {
     case noResults
     case noNewData
-    /// The service had no input to act on and made no network attempt. This is
-    /// *not* a verdict that the underlying resource is absent; callers that
-    /// classify fetcher outcomes for negative-cache purposes must not treat
-    /// `.notAttempted` as a definitive result, otherwise a later attempt with
-    /// valid input would be shadowed by the cached negative entry.
+    /// The service had no input to act on — e.g. a required field on the request
+    /// was `nil` — and made no network call. Distinct from `.noResults`, which is
+    /// returned only after a real attempt that found nothing.
+    ///
+    /// Classifiers that distinguish "tried and failed" from "never tried" must
+    /// treat this as the latter, otherwise a later attempt with valid input would
+    /// be shadowed by a cached negative entry.
     case notAttempted
 }
 
