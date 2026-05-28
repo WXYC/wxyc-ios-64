@@ -20,12 +20,11 @@ public extension TimeInterval {
 public enum ServiceError: String, Swift.Error, LocalizedError, Codable {
     case noResults
     case noNewData
-    /// The service had no input to act on and made no network attempt — for example,
-    /// `URLArtworkFetcher` called with a playcut whose `artworkURL` is `nil` because
-    /// backend metadata enrichment hasn't completed. This is *not* a verdict that the
-    /// underlying resource is absent; callers (e.g. `MultisourceArtworkService.scanFetchers`)
-    /// must not treat it as a definitive negative result, or a track whose URL arrives
-    /// on a later poll will be shadowed by a 30-day "no artwork available" cache entry.
+    /// The service had no input to act on and made no network attempt. This is
+    /// *not* a verdict that the underlying resource is absent; callers that
+    /// classify fetcher outcomes for negative-cache purposes must not treat
+    /// `.notAttempted` as a definitive result, otherwise a later attempt with
+    /// valid input would be shadowed by the cached negative entry.
     case notAttempted
 }
 

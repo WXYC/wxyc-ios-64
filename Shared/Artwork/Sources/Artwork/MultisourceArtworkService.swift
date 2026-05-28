@@ -156,7 +156,7 @@ public final actor MultisourceArtworkService: ArtworkService {
             } catch ServiceError.noResults {
                 // The fetcher genuinely looked and found nothing. This is the only
                 // outcome that justifies caching a definitive "no artwork available".
-                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): noResults")
+                Log(.info, category: .artwork, "No artwork found for \(cacheKey) using fetcher \(fetcher): \(ServiceError.noResults)")
                 hadConclusiveNegative = true
             } catch {
                 // Unknown / inconclusive (e.g. cache-miss `noCachedResult`). Treat
@@ -166,7 +166,14 @@ public final actor MultisourceArtworkService: ArtworkService {
             }
         }
 
-        Log(.error, category: .artwork, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
+        // Distinguish "we tried real sources and they all came up empty" (worth
+        // surfacing) from "no fetcher ever made a real attempt" (the common
+        // not-yet-enriched case; per-playcut per-poll, would flood error logs).
+        if hadConclusiveNegative {
+            Log(.error, category: .artwork, "No artwork found for \(cacheKey) using any fetcher after \(timer.duration()) seconds")
+        } else {
+            Log(.info, category: .artwork, "Chain exhausted without conclusive verdict for \(cacheKey) after \(timer.duration()) seconds")
+        }
 
         // Cache "no artwork available" only when at least one fetcher returned a
         // conclusive verdict and no transient errors occurred. Skip when:
