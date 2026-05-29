@@ -125,7 +125,8 @@ public final class AudioPlayerController {
     /// Tracks when playback started for analytics duration reporting
     private var playbackStartTime: Date?
     private var stallStartTime: Date?
-    @ObservationIgnored private nonisolated(unsafe) var notificationObservers: [Any] = []
+    @ObservationIgnored private var interruptionObservation: (any NSObjectProtocol)?
+    @ObservationIgnored private var routeChangeObservation: (any NSObjectProtocol)?
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
@@ -204,9 +205,8 @@ public final class AudioPlayerController {
         stateObservationTask?.cancel()
         eventTask?.cancel()
         reconnectTask?.cancel()
-        for observer in notificationObservers {
-            notificationCenter.removeObserver(observer)
-        }
+        if let interruptionObservation { notificationCenter.removeObserver(interruptionObservation) }
+        if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
         #if os(iOS) || os(tvOS)
         removeRemoteCommandTargets()
         #endif
@@ -521,34 +521,17 @@ public final class AudioPlayerController {
 
     #if os(iOS) || os(tvOS)
     private func setUpNotifications() {
-        // Handle audio interruptions
-        let interruptionObserver = notificationCenter.addObserver(
-            forName: AVAudioSession.interruptionNotification,
-            object: nil,
-            queue: nil
-        ) { [weak self] notification in
-            let userInfo = notification.userInfo
-            let typeValue = userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-            let optionsValue = userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
-            Task { @MainActor [weak self] in
-                self?.handleInterruption(typeValue: typeValue, optionsValue: optionsValue)
-            }
+        interruptionObservation = notificationCenter.addMainActorObserver(
+            for: InterruptionMessage.self
+        ) { [weak self] message in
+            self?.handleInterruption(message)
         }
-        notificationObservers.append(interruptionObserver)
 
-        // Handle route changes
-        let routeChangeObserver = notificationCenter.addObserver(
-            forName: AVAudioSession.routeChangeNotification,
-            object: nil,
-            queue: nil
-        ) { [weak self] notification in
-            let userInfo = notification.userInfo
-            let reasonValue = userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
-            Task { @MainActor [weak self] in
-                self?.handleRouteChange(reasonValue: reasonValue)
-            }
+        routeChangeObservation = notificationCenter.addMainActorObserver(
+            for: RouteChangeMessage.self
+        ) { [weak self] message in
+            self?.handleRouteChange(message)
         }
-        notificationObservers.append(routeChangeObserver)
     }
     #endif
 
@@ -596,13 +579,8 @@ public final class AudioPlayerController {
     #endif
 
     #if os(iOS) || os(tvOS)
-    private func handleInterruption(typeValue: UInt?, optionsValue: UInt?) {
-        guard let typeValue = typeValue,
-              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
-            return
-        }
-
-        switch type {
+    private func handleInterruption(_ message: InterruptionMessage) {
+        switch message.type {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
@@ -611,26 +589,18 @@ public final class AudioPlayerController {
             }
 
         case .ended:
-            guard let optionsValue = optionsValue else { return }
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-
-            if options.contains(.shouldResume) && wasPlayingBeforeInterruption {
+            if message.options.contains(.shouldResume) && wasPlayingBeforeInterruption {
                 play(reason: .resumeAfterInterruption)
             }
             wasPlayingBeforeInterruption = false
-            
+
         @unknown default:
             break
         }
     }
 
-    private func handleRouteChange(reasonValue: UInt?) {
-        guard let reasonValue = reasonValue,
-              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
-            return
-        }
-
-        switch reason {
+    private func handleRouteChange(_ message: RouteChangeMessage) {
+        switch message.reason {
         case .oldDeviceUnavailable:
             // Headphones unplugged - stop playback per Apple HIG
             wasPlayingBeforeRouteDisconnect = isPlaying
