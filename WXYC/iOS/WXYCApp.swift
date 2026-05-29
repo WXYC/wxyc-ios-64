@@ -72,8 +72,6 @@ struct WXYCApp: App {
         setUpAnalytics()
         setUpSentry()
         setUpErrorReporting()
-        setUpQualityAnalytics()
-        setUpThemePickerAnalytics()
         StructuredPostHogAnalytics.shared.capture(AppLaunch(
             hasUsedThemePicker: appState.themePickerState.persistence.hasEverUsedPicker,
             buildType: buildConfiguration()
@@ -355,14 +353,6 @@ struct WXYCApp: App {
     private func setUpErrorReporting() {
         ErrorReporting.shared = CompositeErrorReporter()
         Logger.addDestination(SentryBreadcrumbDestination())
-    }
-
-    private func setUpQualityAnalytics() {
-        AdaptiveQualityController.shared.setAnalytics(StructuredPostHogAnalytics.shared)
-    }
-
-    private func setUpThemePickerAnalytics() {
-        appState.themePickerState.setAnalytics(StructuredPostHogAnalytics.shared)
     }
 
     private func buildConfiguration() -> String {

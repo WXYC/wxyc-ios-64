@@ -9,8 +9,7 @@
 //
 
 import Testing
-import UIKit
-@testable import WXYC
+import Analytics
 @testable import Wallpaper
 
 // MARK: - ThemePickerState Tests
@@ -21,7 +20,7 @@ struct ThemePickerStateTests {
 
     @Test("Initial state is inactive")
     func initialStateIsInactive() {
-        let state = ThemePickerState()
+        let state = makeState()
 
         #expect(state.isActive == false)
         #expect(state.centeredThemeID == "")
@@ -30,7 +29,7 @@ struct ThemePickerStateTests {
 
     @Test("Enter sets active state")
     func enterSetsActiveState() {
-        let state = ThemePickerState()
+        let state = makeState()
         let testThemeID = ThemeRegistry.shared.themes.first?.id ?? "test"
 
         state.enter(currentThemeID: testThemeID)
@@ -41,7 +40,7 @@ struct ThemePickerStateTests {
 
     @Test("Enter sets correct carousel index for each theme")
     func enterSetsCorrectCarouselIndex() {
-        let state = ThemePickerState()
+        let state = makeState()
         let themes = ThemeRegistry.shared.themes
 
         for (expectedIndex, theme) in themes.enumerated() {
@@ -54,7 +53,7 @@ struct ThemePickerStateTests {
 
     @Test("Exit clears active state")
     func exitClearsActiveState() {
-        let state = ThemePickerState()
+        let state = makeState()
 
         state.enter(currentThemeID: "test")
         #expect(state.isActive == true)
@@ -65,7 +64,7 @@ struct ThemePickerStateTests {
 
     @Test("Update centered theme")
     func updateCenteredTheme() {
-        let state = ThemePickerState()
+        let state = makeState()
         let themes = ThemeRegistry.shared.themes
 
         guard themes.count >= 2 else {
@@ -80,7 +79,7 @@ struct ThemePickerStateTests {
 
     @Test("Confirm selection updates configuration")
     func confirmSelectionUpdatesConfiguration() {
-        let state = ThemePickerState()
+        let state = makeState()
         let configuration = ThemeConfiguration()
 
         let themes = ThemeRegistry.shared.themes
@@ -131,3 +130,17 @@ struct ThemeRegistryTests {
         }
     }
 }
+
+// MARK: - Test Helpers
+
+@MainActor
+private func makeState() -> ThemePickerState {
+    ThemePickerState(analytics: NoopAnalytics())
+}
+
+/// No-op AnalyticsService for hermetic tests that don't assert on analytics.
+/// Avoids routing captures through the process-wide StructuredPostHogAnalytics.shared.
+private final class NoopAnalytics: AnalyticsService, @unchecked Sendable {
+    func capture<T: AnalyticsEvent>(_ event: T) {}
+}
+
