@@ -24,6 +24,7 @@ import UIKit
 @MainActor
 final class MockNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {
     var nowPlayingInfo: [String: Any]?
+    var playbackState: MPNowPlayingPlaybackState = .unknown
 }
     
 // MARK: - Test Helpers
@@ -149,6 +150,57 @@ struct NowPlayingInfoTests {
         manager.handleNowPlayingItem(item2)
         #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Song 2")
         #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyArtist] as? String == "Artist 2")
+    }
+}
+
+// MARK: - Playback State Tests
+
+@Suite("Playback State Updates")
+@MainActor
+struct NowPlayingPlaybackStateTests {
+
+    @Test("Setting playing writes rate 1.0 and playbackState .playing")
+    func setPlayingWritesRateAndState() {
+        let mockInfoCenter = MockNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: mockInfoCenter,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.setPlaybackState(isPlaying: true)
+
+        #expect(mockInfoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 1.0)
+        #expect(mockInfoCenter.playbackState == .playing)
+    }
+
+    @Test("Setting paused writes rate 0.0 and playbackState .paused")
+    func setPausedWritesRateAndState() {
+        let mockInfoCenter = MockNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: mockInfoCenter,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.setPlaybackState(isPlaying: false)
+
+        #expect(mockInfoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 0.0)
+        #expect(mockInfoCenter.playbackState == .paused)
+    }
+
+    @Test("Playback state survives subsequent track update")
+    func playbackStateSurvivesTrackUpdate() {
+        let mockInfoCenter = MockNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: mockInfoCenter,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.setPlaybackState(isPlaying: true)
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Next Song"))
+
+        #expect(mockInfoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 1.0)
+        #expect(mockInfoCenter.playbackState == .playing)
+        #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Next Song")
     }
 }
 

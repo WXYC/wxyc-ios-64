@@ -20,6 +20,7 @@ import Playlist
 @MainActor
 protocol NowPlayingInfoCenterProtocol {
     var nowPlayingInfo: [String: Any]? { get set }
+    var playbackState: MPNowPlayingPlaybackState { get set }
 }
 
 extension MPNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {}
@@ -48,6 +49,20 @@ final class NowPlayingInfoCenterManager {
     func handleNowPlayingItem(_ item: NowPlayingItem) {
         update(playcut: item.playcut)
         update(artwork: item.artwork)
+    }
+
+    /// Reflect the current playback state in MPNowPlayingInfoCenter.
+    ///
+    /// On macOS / Mac Catalyst this is required for the app to be selected as the
+    /// active Now Playing source: the system can't infer it from AVAudioSession the
+    /// way it does on iOS. Without it, Control Center's Now Playing widget stays
+    /// empty and the Music app receives the media keys instead.
+    func setPlaybackState(isPlaying: Bool) {
+        if infoCenter.nowPlayingInfo == nil {
+            infoCenter.nowPlayingInfo = [:]
+        }
+        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        infoCenter.playbackState = isPlaying ? .playing : .paused
     }
 
     /// Update the playback position for the Lock Screen scrub bar.
