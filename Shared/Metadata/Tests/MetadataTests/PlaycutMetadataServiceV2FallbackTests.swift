@@ -246,6 +246,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
 
         let playcut = Playcut.stub(
             songTitle: "Aluminum Tunes",
+            labelName: "Duophonic",
             artistName: "Stereolab",
             releaseTitle: "Aluminum Tunes"
         )
