@@ -22,8 +22,17 @@ import Playlist
 /// Uses multi-level caching to reduce redundant API calls:
 /// - Artist metadata is cached by Discogs artist ID (30-day TTL)
 /// - Album metadata is cached by artist+release key (7-day TTL)
-/// - Streaming links are cached by artist+song key (7-day TTL)
+/// - Streaming links are cached by artist+song key (7-day TTL when populated,
+///   ``emptyStreamingLifespan`` when every streaming URL came back nil)
 public actor PlaycutMetadataService {
+    /// Short TTL applied to streaming-cache entries that came back with every
+    /// URL nil. Long enough to absorb back-to-back views of the same playcut
+    /// within an iOS session without re-hitting the proxy, short enough that a
+    /// freshly-enriched row (BS read-path or LML reconciliation landing the
+    /// streaming URL minutes later) supersedes the empty entry rather than
+    /// being shadowed for a week.
+    public static let emptyStreamingLifespan: TimeInterval = 15 * 60
+
     private let baseURL: URL
     private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
@@ -66,18 +75,65 @@ public actor PlaycutMetadataService {
     /// This method caches at three levels:
     /// - Album metadata by artist+release (7-day TTL)
     /// - Artist metadata by Discogs artist ID (30-day TTL)
-    /// - Streaming links by artist+song (7-day TTL)
+    /// - Streaming links by artist+song (7-day TTL when populated,
+    ///   ``emptyStreamingLifespan`` when every URL came back nil)
     public func fetchMetadata(for playcut: Playcut) async -> PlaycutMetadata {
-        // Fetch album metadata (includes streaming links from backend)
+        await fetchMetadata(for: playcut, inline: nil)
+    }
+
+    /// Fetches metadata, optionally seeded by an inline V2 flowsheet row.
+    ///
+    /// When `inline` is non-nil and already carries at least one streaming URL,
+    /// the inline metadata is returned directly with no network call. When the
+    /// inline row exists but every streaming URL is nil (Tragic Magic shape —
+    /// the V2 writer landed the artwork/Discogs columns but no streaming side),
+    /// the service falls through to `/proxy/metadata/album` so the BS read path
+    /// can fill the streaming gap. Inline album- and artist-level fields are
+    /// preserved when the proxy omits them.
+    ///
+    /// - Parameters:
+    ///   - playcut: The playcut to resolve metadata for.
+    ///   - inline: Optional inline metadata constructed from the V2 flowsheet
+    ///     response. Pass `nil` to behave like the V1 path.
+    public func fetchMetadata(for playcut: Playcut, inline: PlaycutMetadata?) async -> PlaycutMetadata {
+        // Happy path: inline V2 already carries streaming URLs — no fetch needed.
+        if let inline, inline.streaming.hasAny {
+            return inline
+        }
+
+        // Either no inline metadata at all, or inline-but-empty-streaming.
+        // In both cases we want the proxy fetch so the BS read path can
+        // contribute streaming URLs that the inline V2 write path missed.
         let (album, streaming) = await fetchAlbumAndStreaming(for: playcut)
 
         // Artist metadata requires the Discogs artist ID from the album lookup
         let artist = await fetchArtistMetadata(discogsArtistId: album.discogsArtistId)
 
+        guard let inline else {
+            return PlaycutMetadata(artist: artist, album: album, streaming: streaming)
+        }
+
+        // Inline fallthrough: prefer the proxy result where present, else fall
+        // back to the inline values. This protects inline album fields (label,
+        // releaseYear) and the inline artist bio when the proxy returns only
+        // streaming URLs.
         return PlaycutMetadata(
-            artist: artist,
-            album: album,
+            artist: artist == .empty ? inline.artist : artist,
+            album: mergeAlbum(proxy: album, inline: inline.album),
             streaming: streaming
+        )
+    }
+
+    private func mergeAlbum(proxy: AlbumMetadata, inline: AlbumMetadata) -> AlbumMetadata {
+        AlbumMetadata(
+            label: proxy.label ?? inline.label,
+            releaseYear: proxy.releaseYear ?? inline.releaseYear,
+            discogsURL: proxy.discogsURL ?? inline.discogsURL,
+            discogsArtistId: proxy.discogsArtistId ?? inline.discogsArtistId,
+            genres: proxy.genres ?? inline.genres,
+            styles: proxy.styles ?? inline.styles,
+            fullReleaseDate: proxy.fullReleaseDate ?? inline.fullReleaseDate,
+            artworkURL: proxy.artworkURL ?? inline.artworkURL
         )
     }
 
@@ -181,7 +237,11 @@ public actor PlaycutMetadataService {
                 await cache.set(value: album, for: albumCacheKey, lifespan: .sevenDays)
             }
             if cachedStreaming == nil {
-                await cache.set(value: streaming, for: streamingCacheKey, lifespan: .sevenDays)
+                // Short-TTL on empty-streaming entries so a freshly-enriched row
+                // supersedes within the same iOS session rather than being shadowed
+                // for a week (#303).
+                let streamingLifespan: TimeInterval = streaming.hasAny ? .sevenDays : Self.emptyStreamingLifespan
+                await cache.set(value: streaming, for: streamingCacheKey, lifespan: streamingLifespan)
             }
 
             return (album, streaming)

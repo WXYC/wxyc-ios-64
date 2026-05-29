@@ -138,34 +138,28 @@ struct PlaycutDetailView: View {
     }
     
     private func loadMetadata() async {
-        // If the playcut carries inline metadata from the v2 flowsheet response, use it directly
-        if playcut.hasV2Metadata {
-            let v2Metadata = PlaycutMetadata(
-                artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
-                album: AlbumMetadata(
-                    label: playcut.labelName,
-                    releaseYear: playcut.releaseYear,
-                    discogsURL: playcut.discogsURL
-                ),
-                streaming: StreamingLinks(
-                    spotifyURL: playcut.spotifyURL,
-                    appleMusicURL: playcut.appleMusicURL,
-                    youtubeMusicURL: playcut.youtubeMusicURL,
-                    bandcampURL: playcut.bandcampURL,
-                    soundcloudURL: playcut.soundcloudURL
-                )
+        // Build inline metadata from the V2 flowsheet row when present. The
+        // service decides whether to also hit /proxy/metadata/album: it skips
+        // the call when inline streaming is non-empty, and falls through when
+        // the V2 writer landed everything except the streaming side (Tragic
+        // Magic shape — #303).
+        let inline = playcut.hasV2Metadata ? PlaycutMetadata(
+            artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
+            album: AlbumMetadata(
+                label: playcut.labelName,
+                releaseYear: playcut.releaseYear,
+                discogsURL: playcut.discogsURL
+            ),
+            streaming: StreamingLinks(
+                spotifyURL: playcut.spotifyURL,
+                appleMusicURL: playcut.appleMusicURL,
+                youtubeMusicURL: playcut.youtubeMusicURL,
+                bandcampURL: playcut.bandcampURL,
+                soundcloudURL: playcut.soundcloudURL
             )
-            await MainActor.run {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.metadata = v2Metadata
-                    self.isLoadingMetadata = false
-                }
-            }
-            return
-        }
+        ) : nil
 
-        // v1 fallback: fetch from metadata proxy
-        let fetchedMetadata = await metadataService.fetchMetadata(for: playcut)
+        let fetchedMetadata = await metadataService.fetchMetadata(for: playcut, inline: inline)
         await MainActor.run {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.metadata = fetchedMetadata
