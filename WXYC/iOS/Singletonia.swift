@@ -84,19 +84,20 @@ final class Singletonia {
     /// stays empty and media keys are routed to other apps.
     private func startNowPlayingPlaybackStateObservation() {
         nowPlayingPlaybackStateTask = Task { [weak self] in
-            guard let self else { return }
-
-            self.nowPlayingInfoCenterManager.setPlaybackState(
-                isPlaying: AudioPlayerController.shared.isPlaying
-            )
-
+            // Dedupe: Observations re-yields on every tracked-property change, but isPlaying
+            // collapses several player states (loading, stalled, error) to one Bool, so most
+            // transitions repeat the previous value. Each MPNowPlayingInfoCenter write is an
+            // IPC round-trip to mediaserverd, so skipping no-ops matters.
+            var last: Bool?
             let observations = Observations {
                 AudioPlayerController.shared.isPlaying
             }
 
             for await isPlaying in observations {
                 guard !Task.isCancelled else { break }
-                self.nowPlayingInfoCenterManager.setPlaybackState(isPlaying: isPlaying)
+                guard isPlaying != last else { continue }
+                last = isPlaying
+                self?.nowPlayingInfoCenterManager.setPlaybackState(isPlaying: isPlaying)
             }
         }
     }
