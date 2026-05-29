@@ -31,7 +31,7 @@ public actor PlaycutMetadataService {
     /// freshly-enriched row (BS read-path or LML reconciliation landing the
     /// streaming URL minutes later) supersedes the empty entry rather than
     /// being shadowed for a week.
-    public static let emptyStreamingLifespan: TimeInterval = 15 * 60
+    static let emptyStreamingLifespan: TimeInterval = 15 * 60
 
     private let baseURL: URL
     private let tokenProvider: SessionTokenProvider?
@@ -96,7 +96,6 @@ public actor PlaycutMetadataService {
     ///   - inline: Optional inline metadata constructed from the V2 flowsheet
     ///     response. Pass `nil` to behave like the V1 path.
     public func fetchMetadata(for playcut: Playcut, inline: PlaycutMetadata?) async -> PlaycutMetadata {
-        // Happy path: inline V2 already carries streaming URLs — no fetch needed.
         if let inline, inline.streaming.hasAny {
             return inline
         }
@@ -119,12 +118,16 @@ public actor PlaycutMetadataService {
         // streaming URLs.
         return PlaycutMetadata(
             artist: artist == .empty ? inline.artist : artist,
-            album: mergeAlbum(proxy: album, inline: inline.album),
+            album: Self.mergeAlbum(proxy: album, inline: inline.album),
             streaming: streaming
         )
     }
 
-    private func mergeAlbum(proxy: AlbumMetadata, inline: AlbumMetadata) -> AlbumMetadata {
+    /// Coalesces two `AlbumMetadata` records field-by-field, preferring `proxy`
+    /// values where present and falling back to `inline` otherwise. Used on the
+    /// V2 fallthrough path so inline album fields the proxy didn't refresh
+    /// (label, releaseYear, artworkURL on the LML synth-shape) survive.
+    private static func mergeAlbum(proxy: AlbumMetadata, inline: AlbumMetadata) -> AlbumMetadata {
         AlbumMetadata(
             label: proxy.label ?? inline.label,
             releaseYear: proxy.releaseYear ?? inline.releaseYear,
