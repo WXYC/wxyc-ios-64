@@ -89,7 +89,6 @@ public final class RadioPlayerController: PlaybackController {
         self.analytics = analytics
         self.backoffTimer = backoffTimer
 
-        self.inputObservations = []
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: remoteCommandCenter)
         setUpPlayerStateObservation()
     }
@@ -105,61 +104,67 @@ public final class RadioPlayerController: PlaybackController {
         self.analytics = analytics
         self.backoffTimer = backoffTimer
 
-        self.inputObservations = []
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: nil)
         setUpPlayerStateObservation()
     }
     #endif
 
+    @MainActor
+    deinit {
+        #if os(iOS) || os(tvOS)
+        if let interruptionObservation { notificationCenter.removeObserver(interruptionObservation) }
+        if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
+        #endif
+        if let stallObservation { notificationCenter.removeObserver(stallObservation) }
+        #if os(iOS)
+        if let backgroundObservation { notificationCenter.removeObserver(backgroundObservation) }
+        if let foregroundObservation { notificationCenter.removeObserver(foregroundObservation) }
+        #endif
+        reconnectTask?.cancel()
+    }
+
     private func setUpObservations(
         notificationCenter: NotificationCenter,
         remoteCommandCenter: MPRemoteCommandCenter?
     ) {
-        func notificationObserver(
-            for name: Notification.Name,
-            sink: @escaping @Sendable (Notification) -> ()
-        ) -> Any {
-            notificationCenter.addObserver(forName: name, object: nil, queue: nil, using: sink)
+        #if os(iOS) || os(tvOS)
+        interruptionObservation = notificationCenter.addMainActorObserver(
+            for: InterruptionMessage.self
+        ) { [weak self] message in
+            self?.handleSessionInterrupted(message)
+        }
+        routeChangeObservation = notificationCenter.addMainActorObserver(
+            for: RouteChangeMessage.self
+        ) { [weak self] message in
+            self?.handleRouteChanged(message)
+        }
+        #endif
+
+        stallObservation = notificationCenter.addMainActorObserver(
+            for: PlaybackStalledMessage.self
+        ) { [weak self] _ in
+            self?.handlePlaybackStalled()
         }
 
-        var observations: [Any] = []
+        #if os(iOS)
+        backgroundObservation = notificationCenter.addMainActorObserver(
+            for: AppDidEnterBackgroundMessage.self
+        ) { [weak self] _ in
+            self?.handleApplicationDidEnterBackground()
+        }
+        foregroundObservation = notificationCenter.addMainActorObserver(
+            for: AppWillEnterForegroundMessage.self
+        ) { [weak self] _ in
+            self?.handleApplicationWillEnterForeground()
+        }
+        #endif
 
-#if os(iOS)
-        observations += [
-            notificationObserver(for: UIApplication.didEnterBackgroundNotification, sink: self.applicationDidEnterBackground),
-            notificationObserver(for: UIApplication.willEnterForegroundNotification, sink: self.applicationWillEnterForeground),
-        ]
-#endif
-
-#if os(iOS) || os(tvOS)
-        observations += [
-            notificationObserver(for: AVAudioSession.interruptionNotification, sink: self.sessionInterrupted),
-            notificationObserver(for: AVAudioSession.routeChangeNotification, sink: self.routeChanged),
-        ]
-#endif
-
-        observations += [
-            notificationObserver(for: .AVPlayerItemPlaybackStalled, sink: self.playbackStalled),
-        ]
-
-        // Set up remote command handlers if a command center was provided
         if let remoteCommandCenter {
-            func remoteCommandObserver(
-                for command: KeyPath<MPRemoteCommandCenter, MPRemoteCommand>,
-                handler: @escaping (MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus
-            ) -> Any {
-                remoteCommandCenter[keyPath: command].addTarget(handler: handler)
-            }
-
-            observations += [
-                remoteCommandObserver(for: \.playCommand, handler: self.remotePlayCommand),
-                remoteCommandObserver(for: \.pauseCommand, handler: self.remotePauseOrStopCommand),
-                remoteCommandObserver(for: \.stopCommand, handler: self.remotePauseOrStopCommand),
-                remoteCommandObserver(for: \.togglePlayPauseCommand, handler: self.remoteTogglePlayPauseCommand(_:)),
-            ]
+            remoteCommandCenter.playCommand.addTarget(handler: self.remotePlayCommand)
+            remoteCommandCenter.pauseCommand.addTarget(handler: self.remotePauseOrStopCommand)
+            remoteCommandCenter.stopCommand.addTarget(handler: self.remotePauseOrStopCommand)
+            remoteCommandCenter.togglePlayPauseCommand.addTarget(handler: self.remoteTogglePlayPauseCommand(_:))
         }
-
-        self.inputObservations = observations
     }
 
     /// Callback fired when player state observation has started. Used by tests for synchronization.
@@ -254,11 +259,11 @@ public final class RadioPlayerController: PlaybackController {
     
     #if os(iOS)
     public func handleAppDidEnterBackground() {
-        applicationDidEnterBackground(Notification(name: UIApplication.didEnterBackgroundNotification))
+        handleApplicationDidEnterBackground()
     }
 
     public func handleAppWillEnterForeground() {
-        applicationWillEnterForeground(Notification(name: UIApplication.willEnterForegroundNotification))
+        handleApplicationWillEnterForeground()
     }
     #endif
 
@@ -266,7 +271,15 @@ public final class RadioPlayerController: PlaybackController {
 
     private let radioPlayer: any AudioPlayerProtocol
     private let notificationCenter: NotificationCenter
-    private var inputObservations: [Any] = []
+    #if os(iOS) || os(tvOS)
+    private var interruptionObservation: (any NSObjectProtocol)?
+    private var routeChangeObservation: (any NSObjectProtocol)?
+    #endif
+    private var stallObservation: (any NSObjectProtocol)?
+    #if os(iOS)
+    private var backgroundObservation: (any NSObjectProtocol)?
+    private var foregroundObservation: (any NSObjectProtocol)?
+    #endif
     
     #if os(iOS) || os(tvOS)
     private let audioSession: AudioSessionProtocol
@@ -286,101 +299,72 @@ public final class RadioPlayerController: PlaybackController {
 private extension RadioPlayerController {
     // MARK: AVPlayer handlers
 
-    nonisolated func playbackStalled(_ notification: Notification) {
-        Log(.error, category: .playback, "Playback stalled: \(notification)")
+    func handlePlaybackStalled() {
+        Log(.error, category: .playback, "Playback stalled")
 
-        Task { @MainActor in
-            self.state = .stalled
-            self.stallStartTime = Date()
+        self.state = .stalled
+        self.stallStartTime = Date()
 
-            analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackTimer.duration()))
-            self.radioPlayer.stop()
-            self.attemptReconnectWithExponentialBackoff()
-        }
+        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackTimer.duration()))
+        self.radioPlayer.stop()
+        self.attemptReconnectWithExponentialBackoff()
     }
 
-    nonisolated func sessionInterrupted(notification: Notification) {
 #if os(iOS) || os(tvOS)
-        Log(.info, category: .playback, "Session interrupted: \(notification)")
+    func handleSessionInterrupted(_ message: InterruptionMessage) {
+        Log(.info, category: .playback, "Session interrupted: type=\(message.type.rawValue)")
 
-        let userInfo = notification.userInfo
-        let typeValue = userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-        let optionsValue = userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+        switch message.type {
+        case .began:
+            // Per Apple's guidance: always stop on interruption began
+            wasPlayingBeforeInterruption = isPlaying
+            if isPlaying {
+                analytics.capture(InterruptionEvent(type: .began))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackTimer.duration()))
+                self.stop(reason: .interruptionBegan)
+            }
+            self.state = .interrupted
 
-        Task { @MainActor in
-            guard let typeValue,
-                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
-                return
+        case .ended:
+            if message.options.contains(.shouldResume) && wasPlayingBeforeInterruption {
+                try? self.play(reason: .resumeAfterInterruption)
+            }
+            wasPlayingBeforeInterruption = false
+
+        @unknown default:
+            break
+        }
+    }
+
+    func handleRouteChanged(_ message: RouteChangeMessage) {
+        Log(.info, category: .playback, "Session route changed: reason=\(message.reason.rawValue)")
+
+        switch message.reason {
+        case .oldDeviceUnavailable:
+            // Headphones unplugged - stop playback per Apple HIG
+            wasPlayingBeforeRouteDisconnect = isPlaying
+            if isPlaying {
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackTimer.duration()))
+                self.stop(reason: .routeDisconnected)
             }
 
-            switch type {
-            case .began:
-                // Per Apple's guidance: always stop on interruption began
-                wasPlayingBeforeInterruption = isPlaying
-                if isPlaying {
-                    analytics.capture(InterruptionEvent(type: .began))
-                    analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackTimer.duration()))
-                    self.stop(reason: .interruptionBegan)
-                }
-                self.state = .interrupted
-    
-            case .ended:
-                // Check shouldResume option to decide whether to resume
-                guard let optionsValue else { return }
-                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+        case .newDeviceAvailable:
+            // Device reconnected (e.g., AirPod reinserted) - resume if we were playing before disconnect
+            if wasPlayingBeforeRouteDisconnect {
+                try? self.play(reason: .resumeAfterRouteReconnect)
+            } else if playbackIntended && !radioPlayer.isPlaying {
+                radioPlayer.play()
+            }
 
-                if options.contains(.shouldResume) && wasPlayingBeforeInterruption {
-                    try self.play(reason: .resumeAfterInterruption)
-                }
-                wasPlayingBeforeInterruption = false
-    
-            @unknown default:
-                break
+        default:
+            // For all other route changes, check if playback was intended but
+            // the player stopped unexpectedly. Restart if needed.
+            if playbackIntended && !radioPlayer.isPlaying {
+                radioPlayer.play()
             }
         }
-#endif
     }
-    
-    nonisolated func routeChanged(_ notification: Notification) {
-#if os(iOS) || os(tvOS)
-        Log(.info, category: .playback, "Session route changed: \(notification)")
-
-        let userInfo = notification.userInfo
-        let reasonValue = userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
-
-        Task { @MainActor in
-            guard let reasonValue,
-                  let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
-                return
-            }
-
-            switch reason {
-            case .oldDeviceUnavailable:
-                // Headphones unplugged - stop playback per Apple HIG
-                wasPlayingBeforeRouteDisconnect = isPlaying
-                if isPlaying {
-                    analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackTimer.duration()))
-                    self.stop(reason: .routeDisconnected)
-                }
-
-            case .newDeviceAvailable:
-                // Device reconnected (e.g., AirPod reinserted) - resume if we were playing before disconnect
-                if wasPlayingBeforeRouteDisconnect {
-                    try? self.play(reason: .resumeAfterRouteReconnect)
-                } else if playbackIntended && !radioPlayer.isPlaying {
-                    radioPlayer.play()
-                }
-
-            default:
-                // For all other route changes, check if playback was intended but
-                // the player stopped unexpectedly. Restart if needed.
-                if playbackIntended && !radioPlayer.isPlaying {
-                    radioPlayer.play()
-                }
-            }
-        }
 #endif
-    }
 
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
@@ -441,33 +425,29 @@ private extension RadioPlayerController {
 
     // MARK: External playback command handlers
 
-    nonisolated func applicationDidEnterBackground(_: Notification) {
-#if os(iOS) || os(tvOS)
-        Task { @MainActor in
-            guard !self.radioPlayer.isPlaying else {
-                return
-            }
-    
-            do {
-                try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
-            } catch {
-                analytics.capture(Analytics.ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
-                Log(.error, category: .playback, "RadioPlayerController could not deactivate: \(error)")
-            }
+#if os(iOS)
+    func handleApplicationDidEnterBackground() {
+        guard !self.radioPlayer.isPlaying else {
+            return
         }
+
+        do {
+            try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            analytics.capture(Analytics.ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
+            Log(.error, category: .playback, "RadioPlayerController could not deactivate: \(error)")
+        }
+    }
+
+    func handleApplicationWillEnterForeground() {
+        if self.radioPlayer.isPlaying {
+            try? self.play(reason: .foregroundToggle)
+        } else {
+            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
+            self.stop(reason: .foregroundNotPlaying)
+        }
+    }
 #endif
-    }
-    
-    nonisolated func applicationWillEnterForeground(_: Notification) {
-        Task { @MainActor in
-            if self.radioPlayer.isPlaying {
-                try self.play(reason: .foregroundToggle)
-            } else {
-                analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
-                self.stop(reason: .foregroundNotPlaying)
-            }
-        }
-    }
 
     func remotePlayCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
