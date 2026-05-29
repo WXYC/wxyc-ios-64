@@ -159,32 +159,28 @@ struct NowPlayingInfoTests {
 @MainActor
 struct NowPlayingPlaybackStateTests {
 
-    @Test("Setting playing writes rate 1.0 and playbackState .playing")
-    func setPlayingWritesRateAndState() {
+    @Test(
+        "setPlaybackState writes rate and state",
+        arguments: [
+            (isPlaying: true, expectedRate: 1.0, expectedState: MPNowPlayingPlaybackState.playing),
+            (isPlaying: false, expectedRate: 0.0, expectedState: MPNowPlayingPlaybackState.paused),
+        ]
+    )
+    func setPlaybackStateWritesRateAndState(
+        isPlaying: Bool,
+        expectedRate: Double,
+        expectedState: MPNowPlayingPlaybackState
+    ) {
         let mockInfoCenter = MockNowPlayingInfoCenter()
         let manager = NowPlayingInfoCenterManager(
             infoCenter: mockInfoCenter,
             boundsSize: CGSize(width: 100, height: 100)
         )
 
-        manager.setPlaybackState(isPlaying: true)
+        manager.setPlaybackState(isPlaying: isPlaying)
 
-        #expect(mockInfoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 1.0)
-        #expect(mockInfoCenter.playbackState == .playing)
-    }
-
-    @Test("Setting paused writes rate 0.0 and playbackState .paused")
-    func setPausedWritesRateAndState() {
-        let mockInfoCenter = MockNowPlayingInfoCenter()
-        let manager = NowPlayingInfoCenterManager(
-            infoCenter: mockInfoCenter,
-            boundsSize: CGSize(width: 100, height: 100)
-        )
-
-        manager.setPlaybackState(isPlaying: false)
-
-        #expect(mockInfoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 0.0)
-        #expect(mockInfoCenter.playbackState == .paused)
+        #expect(mockInfoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == expectedRate)
+        #expect(mockInfoCenter.playbackState == expectedState)
     }
 
     @Test("Playback state survives subsequent track update")
