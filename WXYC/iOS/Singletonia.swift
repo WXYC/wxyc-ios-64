@@ -37,6 +37,7 @@ final class Singletonia {
     let themePickerState = ThemePickerState()
 
     private var nowPlayingObservationTask: Task<Void, Never>?
+    private var nowPlayingPlaybackStateTask: Task<Void, Never>?
 
     private init() {
         self.widgetStateService = WidgetStateService(
@@ -60,6 +61,7 @@ final class Singletonia {
             artworkService: artworkService
         )
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
+        startNowPlayingPlaybackStateObservation()
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
@@ -71,6 +73,30 @@ final class Singletonia {
                 }
             } catch {
                 Log(.error, "NowPlaying observation error: \(error)")
+            }
+        }
+    }
+
+    /// Mirror AudioPlayerController.isPlaying into MPNowPlayingInfoCenter.
+    ///
+    /// Required so the system promotes WXYC to the active Now Playing app on
+    /// macOS / Mac Catalyst — without an explicit playbackState, Control Center
+    /// stays empty and media keys are routed to other apps.
+    private func startNowPlayingPlaybackStateObservation() {
+        nowPlayingPlaybackStateTask = Task { [weak self] in
+            guard let self else { return }
+
+            self.nowPlayingInfoCenterManager.setPlaybackState(
+                isPlaying: AudioPlayerController.shared.isPlaying
+            )
+
+            let observations = Observations {
+                AudioPlayerController.shared.isPlaying
+            }
+
+            for await isPlaying in observations {
+                guard !Task.isCancelled else { break }
+                self.nowPlayingInfoCenterManager.setPlaybackState(isPlaying: isPlaying)
             }
         }
     }
