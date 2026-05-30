@@ -16,7 +16,7 @@ extension Playcut {
     /// Creates a Playcut with sensible defaults for testing.
     ///
     /// Defaults use a WXYC-canonical track (Juana Molina — "la paradoja" from DOGA) rather
-    /// than generic placeholder strings. See `CLAUDE.md` for the example pool.
+    /// than generic placeholder strings. See `docs/test-fixtures.md` for the example pool.
     ///
     /// - Parameters:
     ///   - id: Unique identifier. Defaults to 1.
