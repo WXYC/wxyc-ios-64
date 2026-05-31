@@ -95,9 +95,9 @@ public extension View {
     }
 }
 
-struct ContentView: View {
+private struct RequestSentHUDPreview: View {
     @State private var showRequestSentHUD = true
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Button("Send Request") {
@@ -114,5 +114,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    RequestSentHUDPreview()
 }
