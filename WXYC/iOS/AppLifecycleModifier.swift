@@ -2,40 +2,29 @@
 //  AppLifecycleModifier.swift
 //  WXYC
 //
-//  Bundles the per-window lifecycle hooks for the iOS app: scene-phase handling,
-//  memory-warning response, deep-link / user-activity routing, review-request
-//  observation, theme-picker exit, quick-actions registration, marketing mode,
-//  Settings-bundle cache clear, and wallpaper palette extraction.
+//  Bundles the per-window (View-level) lifecycle hooks for the iOS app:
+//  memory-warning response, deep-link / user-activity routing, .onAppear
+//  bootstrap (quick actions, marketing mode, first-launch palette). Scene-level
+//  observation (scenePhase, review-request, picker-exit) and the @State that
+//  tracks foreground/cleanup Tasks stay in `WXYCApp` so multi-window Catalyst
+//  doesn't fire them per window.
 //
 //  Created by Jake Bromberg on 05/31/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Analytics
-import Caching
 import Core
 import Intents
 import Logger
 import Playback
-import StoreKit
 import SwiftUI
 import Wallpaper
 
-private enum SettingsBundleKeys {
-    static let clearArtworkCache = "clear_artwork_cache"
-}
-
-/// Lifecycle modifier extracted from `WXYCApp.body`. Owns the per-window state
-/// (foreground refresh + cache cleanup tasks) and routes every observable
-/// transition through a small set of named handlers.
+/// View-level lifecycle modifier extracted from `WXYCApp.body`. Routes
+/// per-window observations through a small set of named handlers.
 struct AppLifecycleModifier: ViewModifier {
     let appState: Singletonia
-
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.requestReview) private var requestReview
-
-    @State private var foregroundRefreshTask: Task<Void, Never>?
-    @State private var cacheCleanupTask: Task<Void, Never>?
 
     func body(content: Content) -> some View {
         content
@@ -54,20 +43,6 @@ struct AppLifecycleModifier: ViewModifier {
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                 handleUserActivity(userActivity)
             }
-            .onChange(of: scenePhase) { oldPhase, newPhase in
-                handleScenePhaseChange(from: oldPhase, to: newPhase)
-            }
-            .onChange(of: appState.reviewRequestService.shouldRequestReview) { _, shouldRequest in
-                if shouldRequest {
-                    requestReview()
-                    appState.reviewRequestService.didRequestReview()
-                }
-            }
-            .onChange(of: appState.themePickerState.isActive) { wasActive, isActive in
-                if wasActive && !isActive {
-                    extractWallpaperPalette()
-                }
-            }
     }
 
     // MARK: - Appearance
@@ -78,8 +53,10 @@ struct AppLifecycleModifier: ViewModifier {
         appState.startWidgetStateService()
         appState.startReviewRequestTracking()
 
+        // First-launch path: the wallpaper isn't cached yet, so prime the
+        // mesh-gradient palette before the user sees the home screen.
         if appState.themeConfiguration.meshGradientPalette == nil {
-            extractWallpaperPalette()
+            Self.extractWallpaperPalette(into: appState.themeConfiguration)
         }
 
         #if os(iOS)
@@ -138,80 +115,24 @@ struct AppLifecycleModifier: ViewModifier {
         }
     }
 
-    // MARK: - Scene phase
-
-    private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
-        switch newPhase {
-        case .background:
-            StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
-                isPlaying: AudioPlayerController.shared.isPlaying
-            ))
-            AudioPlayerController.shared.handleAppDidEnterBackground()
-            AdaptiveQualityController.shared.handleBackgrounded()
-            appState.setForegrounded(false)
-
-        case .inactive:
-            appState.setForegrounded(false)
-
-        case .active:
-            AudioPlayerController.shared.handleAppWillEnterForeground()
-            AdaptiveQualityController.shared.handleForegrounded()
-            appState.setForegrounded(true)
-            BackgroundRefreshController.scheduleNext()
-            // Cancel previous tasks to avoid duplicated work from rapid phase changes
-            foregroundRefreshTask?.cancel()
-            cacheCleanupTask?.cancel()
-            foregroundRefreshTask = refreshPlaylistIfCacheExpired()
-            cacheCleanupTask = handleSettingsBundleCacheClear()
-
-        @unknown default:
-            break
-        }
-    }
-
-    @discardableResult
-    private func refreshPlaylistIfCacheExpired() -> Task<Void, Never> {
-        Task {
-            let isExpired = await appState.playlistService.isCacheExpired()
-            if isExpired {
-                Log(.info, category: .general, "Cache expired while backgrounded - triggering foreground refresh")
-                _ = await appState.playlistService.fetchAndCachePlaylist()
-            }
-        }
-    }
-
-    @discardableResult
-    private func handleSettingsBundleCacheClear() -> Task<Void, Never>? {
-        guard UserDefaults.standard.bool(forKey: SettingsBundleKeys.clearArtworkCache) else {
-            return nil
-        }
-
-        return Task {
-            let sizeBeforeClear = await CacheCoordinator.AlbumArt.totalSize()
-            await CacheCoordinator.AlbumArt.clearAll()
-            UserDefaults.standard.set(false, forKey: SettingsBundleKeys.clearArtworkCache)
-
-            Log(.info, category: .general, "Cleared artwork cache via Settings toggle (\(sizeBeforeClear) bytes)")
-            StructuredPostHogAnalytics.shared.capture(ArtworkCacheCleared(
-                source: "settings_toggle",
-                sizeBytes: sizeBeforeClear
-            ))
-        }
-    }
-
     // MARK: - Wallpaper palette
 
-    /// Captures the current wallpaper snapshot and caches its mesh-gradient palette.
-    /// Retries up to 5× with increasing delays to absorb renderer init timing.
-    private func extractWallpaperPalette() {
+    /// Captures the current wallpaper snapshot and caches its mesh-gradient
+    /// palette into `themeConfiguration`. Retries up to 5× (200, 400, 600, 800,
+    /// 1000 ms) to absorb renderer init timing.
+    ///
+    /// Exposed as a static func so both the View-level `.onAppear` (first
+    /// launch) and the Scene-level `.onChange(of: themePickerState.isActive)`
+    /// in `WXYCApp` can share the same implementation.
+    static func extractWallpaperPalette(into themeConfiguration: ThemeConfiguration) {
         Task {
             for attempt in 1...5 {
                 let delay = 200 * attempt
                 try? await Task.sleep(for: .milliseconds(delay))
 
                 if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
-                    appState.themeConfiguration.extractAndCachePalette(from: snapshot)
-                    Log(.info, category: .general, "Extracted wallpaper palette for theme: \(appState.themeConfiguration.selectedThemeID) (attempt \(attempt))")
+                    themeConfiguration.extractAndCachePalette(from: snapshot)
+                    Log(.info, category: .general, "Extracted wallpaper palette for theme: \(themeConfiguration.selectedThemeID) (attempt \(attempt))")
                     return
                 }
             }
