@@ -3,8 +3,9 @@
 //  WXYC
 //
 //  Main app entry point. Owns one-time `init()` setup (caches, analytics, Sentry,
-//  Siri donation) and the Scene wiring; per-window lifecycle, command menus, and
-//  background-refresh task live in their own files.
+//  Siri donation), Scene-level lifecycle observation (scenePhase, review-request,
+//  picker exit), and the Scene wiring. Per-window View-level lifecycle, command
+//  menus, and the background-refresh task body live in their own files.
 //
 //  Created by Jake Bromberg on 11/13/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -24,6 +25,7 @@ import Playback
 import PlayerHeaderView
 import Playlist
 import Sentry
+import StoreKit
 import SwiftUI
 import Wallpaper
 import WXUI
@@ -31,9 +33,17 @@ import WXUI
 import DebugPanel
 #endif
 
+private enum SettingsBundleKeys {
+    static let clearArtworkCache = "clear_artwork_cache"
+}
+
 @main
 struct WXYCApp: App {
     @State private var appState = Singletonia.shared
+    @State private var foregroundRefreshTask: Task<Void, Never>?
+    @State private var cacheCleanupTask: Task<Void, Never>?
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
 
     init() {
         // Cache migration - purge if version changed
@@ -113,6 +123,25 @@ struct WXYCApp: App {
                 }
             }
         }
+        // Scene-level lifecycle observation (kept here rather than inside
+        // AppLifecycleModifier so multi-window Catalyst doesn't fire them per
+        // window).
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            handleScenePhaseChange(from: oldPhase, to: newPhase)
+        }
+        .onChange(of: appState.reviewRequestService.shouldRequestReview) { _, shouldRequest in
+            if shouldRequest {
+                requestReview()
+                appState.reviewRequestService.didRequestReview()
+            }
+        }
+        .onChange(of: appState.themePickerState.isActive) { wasActive, isActive in
+            // Picker exited (was active, now inactive): re-extract palette for
+            // the newly selected theme so the home screen reflects it.
+            if wasActive && !isActive {
+                AppLifecycleModifier.extractWallpaperPalette(into: appState.themeConfiguration)
+            }
+        }
         .backgroundTask(.appRefresh(BackgroundRefreshController.taskIdentifier)) {
             await BackgroundRefreshController.handleRefresh(appState: appState)
         }
@@ -121,6 +150,68 @@ struct WXYCApp: App {
         #endif
         .commands {
             WXYCCommandMenus(appState: appState)
+        }
+    }
+
+    // MARK: - Scene phase
+
+    private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
+        switch newPhase {
+        case .background:
+            StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
+                isPlaying: AudioPlayerController.shared.isPlaying
+            ))
+            AudioPlayerController.shared.handleAppDidEnterBackground()
+            AdaptiveQualityController.shared.handleBackgrounded()
+            appState.setForegrounded(false)
+
+        case .inactive:
+            appState.setForegrounded(false)
+
+        case .active:
+            AudioPlayerController.shared.handleAppWillEnterForeground()
+            AdaptiveQualityController.shared.handleForegrounded()
+            appState.setForegrounded(true)
+            BackgroundRefreshController.scheduleNext()
+            // Cancel previous tasks to avoid duplicated work from rapid phase changes
+            foregroundRefreshTask?.cancel()
+            cacheCleanupTask?.cancel()
+            // Returning users see fresh data immediately rather than waiting
+            // for the next periodic fetch cycle.
+            foregroundRefreshTask = refreshPlaylistIfCacheExpired()
+            // Honour the "Clear Artwork Cache" toggle from the Settings app.
+            cacheCleanupTask = handleSettingsBundleCacheClear()
+
+        @unknown default:
+            break
+        }
+    }
+
+    private func refreshPlaylistIfCacheExpired() -> Task<Void, Never> {
+        Task {
+            let isExpired = await appState.playlistService.isCacheExpired()
+            if isExpired {
+                Log(.info, category: .general, "Cache expired while backgrounded - triggering foreground refresh")
+                _ = await appState.playlistService.fetchAndCachePlaylist()
+            }
+        }
+    }
+
+    private func handleSettingsBundleCacheClear() -> Task<Void, Never>? {
+        guard UserDefaults.standard.bool(forKey: SettingsBundleKeys.clearArtworkCache) else {
+            return nil
+        }
+
+        return Task {
+            let sizeBeforeClear = await CacheCoordinator.AlbumArt.totalSize()
+            await CacheCoordinator.AlbumArt.clearAll()
+            UserDefaults.standard.set(false, forKey: SettingsBundleKeys.clearArtworkCache)
+
+            Log(.info, category: .general, "Cleared artwork cache via Settings toggle (\(sizeBeforeClear) bytes)")
+            StructuredPostHogAnalytics.shared.capture(ArtworkCacheCleared(
+                source: "settings_toggle",
+                sizeBytes: sizeBeforeClear
+            ))
         }
     }
 

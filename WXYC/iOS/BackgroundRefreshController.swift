@@ -20,8 +20,6 @@ enum BackgroundRefreshController {
     static let taskIdentifier = "com.wxyc.refresh"
 
     /// Submits a new `BGAppRefreshTaskRequest` for ~15 minutes from now.
-    /// Must be called on the main actor (BGTaskScheduler requirement).
-    @MainActor
     static func scheduleNext() {
         let request = BGAppRefreshTaskRequest(identifier: taskIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
@@ -30,15 +28,19 @@ enum BackgroundRefreshController {
             try BGTaskScheduler.shared.submit(request)
             Log(.info, category: .general, "Scheduled background refresh for 15 minutes from now")
         } catch {
-            ErrorReporting.shared.report(error, context: "scheduleBackgroundRefresh")
+            ErrorReporting.shared.report(error, context: "BackgroundRefreshController.scheduleNext")
         }
     }
 
-    /// Body of the `.backgroundTask(.appRefresh(taskIdentifier))` closure: schedules
-    /// the next refresh first (so the cycle continues if iOS terminates us mid-fetch),
-    /// then fetches and caches a fresh playlist and reports completion to analytics.
+    /// Body of the `.backgroundTask(.appRefresh(taskIdentifier))` closure.
+    ///
+    /// Schedules the next refresh FIRST so the cycle continues even if iOS
+    /// terminates the app during the fetch. Then fetches a fresh playlist
+    /// (always hits the network, ignoring cache) with a 15-minute lifespan.
+    /// Widget reload is handled separately by `WidgetStateService` observing
+    /// playlist updates.
     static func handleRefresh(appState: Singletonia) async {
-        await MainActor.run { scheduleNext() }
+        scheduleNext()
 
         Log(.info, category: .general, "Background refresh started")
 
