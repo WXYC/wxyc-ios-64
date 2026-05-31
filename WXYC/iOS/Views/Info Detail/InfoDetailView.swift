@@ -106,13 +106,17 @@ struct InfoDetailView: View {
             Text("Please include song title and artist.")
         }
         .sheet(isPresented: $showingMailComposer) {
-            MailComposerView(attachLogs: false)
+            MailComposerView()
         }
         .sheet(isPresented: $showingBugReport) {
             BugReportView(
                 submitter: SentryBugReportSubmitter(),
                 analytics: StructuredPostHogAnalytics.shared,
-                logsProvider: { Logger.fetchLogs()?.data }
+                logsProvider: {
+                    guard let (logName, data) = Logger.fetchLogs() else { return nil }
+                    let contentType = UTType.plainText.preferredMIMEType ?? "text/plain"
+                    return LogAttachment(data: data, filename: logName, contentType: contentType)
+                }
             )
         }
         .themePickerGesture(
@@ -187,7 +191,6 @@ private struct GlassButtonModifier: ViewModifier {
 // MARK: - Mail Composer
 
 struct MailComposerView: UIViewControllerRepresentable {
-    let attachLogs: Bool
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
@@ -197,12 +200,6 @@ struct MailComposerView: UIViewControllerRepresentable {
         mailComposerVC.mailComposeDelegate = context.coordinator
         mailComposerVC.setToRecipients(["feedback@wxyc.org"])
         mailComposerVC.setSubject("Feedback on the \(RadioStation.WXYC.name) app")
-
-        if attachLogs,
-           let (fileName, data) = Logger.fetchLogs() {
-            let mimeType = UTType.plainText.preferredMIMEType ?? "plain/text"
-            mailComposerVC.addAttachmentData(data, mimeType: mimeType, fileName: fileName)
-        }
 
         return mailComposerVC
     }

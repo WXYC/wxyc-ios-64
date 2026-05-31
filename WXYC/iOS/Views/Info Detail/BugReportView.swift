@@ -21,7 +21,7 @@ struct BugReportView: View {
     init(
         submitter: any BugReportSubmitter,
         analytics: any AnalyticsService,
-        logsProvider: @escaping @Sendable () -> Data?
+        logsProvider: @escaping @Sendable () -> LogAttachment?
     ) {
         self._viewModel = State(
             wrappedValue: BugReportViewModel(
