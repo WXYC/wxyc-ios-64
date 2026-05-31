@@ -132,6 +132,49 @@ struct KeychainTokenStorageTests {
         try storage.delete()
     }
 
+    // MARK: - Access Group Plumbing
+
+    /// Verifies the `accessGroup` constructor argument is propagated into the
+    /// underlying Keychain query dictionary. Without this, both call sites'
+    /// keychain items live in per-process containers and the Share Extension
+    /// cannot read a session cached by the main app (issue #336).
+    ///
+    /// We cannot exercise a full cross-process round-trip in a Swift Package
+    /// unit-test bundle — Keychain access groups require a signed host with
+    /// matching entitlements — so this test introspects the query that
+    /// `KeychainTokenStorage` builds and asserts the `kSecAttrAccessGroup`
+    /// key is present iff `accessGroup` was set.
+    @Test("baseQuery omits kSecAttrAccessGroup when accessGroup is nil")
+    func baseQueryOmitsAccessGroupWhenNil() {
+        let storage = KeychainTokenStorage(
+            service: testService,
+            account: testAccount,
+            accessGroup: nil,
+            synchronizable: false,
+            analytics: mockAnalytics
+        )
+
+        let query = storage.baseQuery()
+
+        #expect(query[kSecAttrAccessGroup as String] == nil)
+    }
+
+    @Test("baseQuery includes kSecAttrAccessGroup when accessGroup is set")
+    func baseQueryIncludesAccessGroupWhenSet() {
+        let group = "92V374HC38.group.wxyc.iphone"
+        let storage = KeychainTokenStorage(
+            service: testService,
+            account: testAccount,
+            accessGroup: group,
+            synchronizable: false,
+            analytics: mockAnalytics
+        )
+
+        let query = storage.baseQuery()
+
+        #expect(query[kSecAttrAccessGroup as String] as? String == group)
+    }
+
     // MARK: - Helpers
 
     private func makeStorage(synchronizable: Bool) -> KeychainTokenStorage {

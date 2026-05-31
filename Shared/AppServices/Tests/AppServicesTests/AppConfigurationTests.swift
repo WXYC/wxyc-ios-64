@@ -42,6 +42,15 @@ struct AppConfigurationTests {
         #expect(AppConfiguration.apiBaseUrl == AppConfiguration.defaults.apiBaseUrl)
     }
 
+    @Test("keychainAccessGroup matches the entitlement format")
+    func keychainAccessGroupMatchesEntitlement() {
+        // Must exactly match the resolved value of
+        // $(AppIdentifierPrefix)group.wxyc.iphone in every target's
+        // keychain-access-groups entitlement. Mismatch silently breaks
+        // session sharing between the main app and Share Extension (issue #336).
+        #expect(AppConfiguration.keychainAccessGroup == "92V374HC38.group.wxyc.iphone")
+    }
+
     // MARK: - Network Fetch
 
     @Test("config returns fetched values when network succeeds")
