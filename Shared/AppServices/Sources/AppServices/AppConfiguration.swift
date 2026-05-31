@@ -54,6 +54,14 @@ public actor AppConfiguration {
     /// The Sentry DSN for crash reporting. Safe to embed (Sentry documents that DSNs are not secrets).
     public static let sentryDsn = "https://cf27cd29a02232e1a0f2682c7138119b@o4510807758143488.ingest.us.sentry.io/4510982175784960"
 
+    /// The Keychain access group shared between the main app and Share Extension.
+    ///
+    /// Used so a session cached by one target is readable by the other. Must match the
+    /// `keychain-access-groups` entitlement on every target that calls `MusicShareKit.configure(...)`.
+    /// Format is `<TeamID>.<group-name>`; `$(AppIdentifierPrefix)` resolves to the team ID at
+    /// build time in entitlement plists, but code references need it expanded literally.
+    public static let keychainAccessGroup = "92V374HC38.group.wxyc.iphone"
+
     /// Hardcoded defaults for when the network is unavailable.
     public static let defaults = AppConfig(
         posthogApiKey: "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD",

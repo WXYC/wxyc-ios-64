@@ -22,10 +22,13 @@ class ShareViewController: UIViewController {
         super.viewDidLoad()
         Log(.info, "ShareViewController viewDidLoad started")
 
-        // Configure MusicShareKit
+        // Configure MusicShareKit. Pass keychainAccessGroup so this extension
+        // shares its anonymous-auth session with the main app via the keychain
+        // group declared in ShareExtension.entitlements (issue #336).
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
+            keychainAccessGroup: AppConfiguration.keychainAccessGroup,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 

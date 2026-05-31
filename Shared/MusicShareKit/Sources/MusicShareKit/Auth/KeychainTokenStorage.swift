@@ -174,7 +174,11 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
 
     // MARK: - Private
 
-    private func baseQuery() -> [String: Any] {
+    // Internal (rather than private) so tests can verify the access-group
+    // plumbing — Keychain access groups require an entitled signed host, so a
+    // Swift Package unit-test bundle cannot exercise a full round-trip and
+    // must introspect the query instead (issue #336).
+    internal func baseQuery() -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

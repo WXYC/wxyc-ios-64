@@ -64,6 +64,7 @@ struct WXYCApp: App {
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
+            keychainAccessGroup: AppConfiguration.keychainAccessGroup,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
