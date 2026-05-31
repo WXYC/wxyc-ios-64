@@ -60,7 +60,10 @@ struct WXYCApp: App {
         // Enable battery monitoring for thermal context
         DeviceContext.enableBatteryMonitoring()
 
-        // Configure MusicShareKit for RequestService
+        // Configure MusicShareKit for RequestService. The keychainAccessGroup
+        // must match what the Share Extension passes so a session cached by
+        // one target is readable by the other (issue #336). Dropping it
+        // silently regresses to per-process keychain storage.
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,

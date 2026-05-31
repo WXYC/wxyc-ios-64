@@ -25,7 +25,7 @@ public enum AnalyticsBootstrap {
     ///   - host: PostHog instance host URL.
     ///   - buildConfiguration: A short label ("Debug", "TestFlight", "Release") registered as a super-property on every event.
     public static func start(apiKey: String, host: String, buildConfiguration: String) {
-        let config = PostHogConfig(projectToken: apiKey, host: host)
+        let config = PostHogConfig(apiKey: apiKey, host: host)
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration])
     }
