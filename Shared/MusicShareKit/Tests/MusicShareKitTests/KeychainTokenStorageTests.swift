@@ -161,6 +161,9 @@ struct KeychainTokenStorageTests {
 
     @Test("baseQuery includes kSecAttrAccessGroup when accessGroup is set")
     func baseQueryIncludesAccessGroupWhenSet() {
+        // Must match AppConfiguration.keychainAccessGroup; the pin lives in
+        // AppConfigurationTests.keychainAccessGroupMatchesEntitlement. We
+        // don't import AppServices here to avoid a cross-package test dep.
         let group = "92V374HC38.group.wxyc.iphone"
         let storage = KeychainTokenStorage(
             service: testService,
@@ -173,6 +176,33 @@ struct KeychainTokenStorageTests {
         let query = storage.baseQuery()
 
         #expect(query[kSecAttrAccessGroup as String] as? String == group)
+    }
+
+    /// Pins the production combination: when the configured Keychain item is
+    /// BOTH iCloud-synchronizable AND scoped to a custom access group, BOTH
+    /// attributes must coexist in the query. A future refactor that branched
+    /// (`if synchronizable { ... } else if let group { ... }`) would silently
+    /// regress one of them and only this test would catch it.
+    @Test("baseQuery sets both kSecAttrSynchronizable and kSecAttrAccessGroup when both are configured")
+    func baseQueryIncludesBothSyncAndAccessGroup() {
+        let group = "92V374HC38.group.wxyc.iphone"
+        let storage = KeychainTokenStorage(
+            service: testService,
+            account: testAccount,
+            accessGroup: group,
+            synchronizable: true,
+            analytics: mockAnalytics
+        )
+
+        let query = storage.baseQuery()
+
+        #expect(query[kSecAttrAccessGroup as String] as? String == group)
+        // The implementation sets kSecAttrSynchronizable to kSecAttrSynchronizableAny
+        // when synchronizable=true (so the query matches both synced and
+        // non-synced items). Compare as String — the CF constant bridges to
+        // a Swift String at the dictionary boundary.
+        let syncAttr = query[kSecAttrSynchronizable as String] as? String
+        #expect(syncAttr == kSecAttrSynchronizableAny as String)
     }
 
     // MARK: - Helpers
