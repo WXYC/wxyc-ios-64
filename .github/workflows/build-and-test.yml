@@ -13,6 +13,7 @@ on:
       - '.claude/**'
   pull_request:
     branches: [master]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -35,8 +36,11 @@ env:
 
 jobs:
   build-and-test:
+    # Skip drafts — they re-fire on `ready_for_review`. workflow_dispatch and
+    # push events have no pull_request context, so the OR keeps them firing.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -44,27 +48,15 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.SUBMODULE_TOKEN }}
-          fetch-depth: 0
-
-      - name: List available Xcode versions
-        run: ls -la /Applications | grep Xcode
+          fetch-depth: 50
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
-
-      - name: Show Xcode version
-        run: xcodebuild -version
-
-      - name: Show available SDKs
-        run: xcodebuild -showsdks
 
       - name: Set up Swift macro trust
         run: |
           mkdir -p ~/Library/org.swift.swiftpm/security/
           cp ci_scripts/macros.json ~/Library/org.swift.swiftpm/security/
-
-      - name: List available simulators
-        run: xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
 
       - name: Cache SwiftPM artifacts
         uses: actions/cache@v4
@@ -78,30 +70,18 @@ jobs:
             spm-${{ runner.os }}-
 
       - name: Cache DerivedData
+        # Key intentionally excludes github.sha and *.pbxproj. Including the SHA
+        # made the primary key a guaranteed miss on every push; the prefix-
+        # fallback restore-keys couldn't compensate because master never wrote
+        # a cache that matched. pbxproj was too aggressive an invalidator —
+        # most pbxproj edits don't affect compilation. Master pushes now warm
+        # a key PRs can restore.
         uses: actions/cache@v4
         with:
           path: ~/Library/Developer/Xcode/DerivedData
-          key: derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.pbxproj', '**/*.xcconfig') }}-${{ github.sha }}
+          key: derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.xcconfig') }}
           restore-keys: |
-            derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.pbxproj', '**/*.xcconfig') }}-
             derived-${{ runner.os }}-
-
-      - name: Resolve packages
-        run: |
-          xcodebuild -resolvePackageDependencies \
-            -project WXYC.xcodeproj \
-            -scheme "$SCHEME" \
-            -skipMacroValidation
-
-      - name: Build for testing
-        run: |
-          xcodebuild build-for-testing \
-            -project WXYC.xcodeproj \
-            -scheme "$SCHEME" \
-            -destination "$DESTINATION" \
-            -configuration Debug \
-            -skipMacroValidation \
-            CODE_SIGNING_ALLOWED=NO
 
       - name: Determine affected tests
         id: affected
@@ -112,11 +92,33 @@ jobs:
           fi
           zsh .github/scripts/affected-tests.sh
 
+      - name: Build for testing
+        # Scoped to the affected targets so the build graph shrinks for narrow
+        # PRs — xcodebuild only compiles what those test bundles transitively
+        # need. On run_all (workflow_dispatch, unknown scope), only_testing_flags
+        # is empty and the build covers the full scheme.
+        # COMPILER_INDEX_STORE_ENABLE=NO drops index-while-building (CI doesn't
+        # use it). -onlyUsePackageVersionsFromResolvedFile + -disableAutomatic-
+        # PackageResolution surface SPM drift fast without re-resolving.
+        run: |
+          ONLY_FLAGS="${{ steps.affected.outputs.only_testing_flags }}"
+          xcodebuild build-for-testing \
+            -project WXYC.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            -skipMacroValidation \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -disableAutomaticPackageResolution \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            $ONLY_FLAGS
+
       - name: Pre-boot iPhone 16 Pro simulator
         # Workaround for "The test runner hung before establishing connection."
         # Booting the simulator explicitly before running tests gives CoreSimulator
-        # time to fully come up, which the implicit boot inside `xcodebuild test` doesn't reliably do
-        # on macos-latest runners under load.
+        # time to fully come up, which the implicit boot inside `xcodebuild test`
+        # doesn't reliably do on macos-latest runners under load.
         run: |
           DEVICE_ID=$(xcrun simctl list devices available | grep -m1 "iPhone 16 Pro " | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
           echo "Booting $DEVICE_ID"
@@ -124,16 +126,18 @@ jobs:
           xcrun simctl bootstatus "$DEVICE_ID" -b
 
       - name: Run Tests (except CoreTests and UI)
+        # Use -only-testing for affected runs so xcodebuild doesn't install
+        # the 16 unaffected bundles onto the sim. Run-all keeps -skip-testing
+        # to drop UI + CoreTests (CoreTests has its own step).
+        # -disablePackageResolution stops the test step re-resolving SPM —
+        # log evidence showed ~49s wasted on this per run.
         run: |
-          # On pull_request, skip unaffected test targets for faster CI.
-          # On workflow_dispatch (or when affected-tests can't determine scope), run all.
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
-            SKIP_FLAGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
+            ARGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
           else
-            SKIP_FLAGS="${{ steps.affected.outputs.skip_testing_flags }}"
+            ARGS="${{ steps.affected.outputs.only_testing_flags }}"
           fi
-
-          echo "Skip flags: $SKIP_FLAGS"
+          echo "Test args: $ARGS"
 
           xcodebuild test-without-building \
             -project WXYC.xcodeproj \
@@ -142,9 +146,10 @@ jobs:
             -destination "$DESTINATION" \
             -configuration Debug \
             -skipMacroValidation \
+            -disablePackageResolution \
             CODE_SIGNING_ALLOWED=NO \
-            $SKIP_FLAGS \
-            -disable-concurrent-testing \
+            $ARGS \
+            -disable-concurrent-destination-testing \
             -resultBundlePath TestResults.xcresult
 
       - name: Run CoreTests
@@ -153,12 +158,14 @@ jobs:
           # Run CoreTests with explicit test identifiers to avoid Swift Testing parallel execution issues.
           # When selecting an entire test bundle (e.g., -only-testing:CoreTests), Swift Testing's internal
           # parallel scheduler overwhelms CI runners. Specifying individual tests bypasses this.
+          # Tracked for re-validation in #359.
           xcodebuild test-without-building \
             -project WXYC.xcodeproj \
             -scheme "$SCHEME" \
             -destination "$DESTINATION" \
             -configuration Debug \
             -skipMacroValidation \
+            -disablePackageResolution \
             CODE_SIGNING_ALLOWED=NO \
             -only-testing:CoreTests/ImageCompatibilityTests/heifDataReturnsValidDataForValidImage \
             -only-testing:CoreTests/ImageCompatibilityTests/heifDataRespectsCompressionQualityParameter \
@@ -223,12 +230,12 @@ jobs:
             -only-testing:CoreTests/MusicServiceTests/codableEmitsRawString \
             -only-testing:CoreTests/MusicServiceTests/allCasesCoversExactlySixServices \
             -only-testing:CoreTests/MusicServiceTests/displayNameMapsCorrectly \
-            -disable-concurrent-testing \
+            -disable-concurrent-destination-testing \
             -resultBundlePath CoreTestResults.xcresult
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure()
         with:
           name: test-results
           path: |
