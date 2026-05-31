@@ -23,7 +23,6 @@ import Observation
 import Playback
 import PlayerHeaderView
 import Playlist
-import PostHog
 import Sentry
 import StoreKit
 import SwiftUI
@@ -315,12 +314,11 @@ struct WXYCApp: App {
     }
 
     private func setUpAnalytics() {
-        let config = PostHogConfig(
+        AnalyticsBootstrap.start(
             apiKey: AppConfiguration.defaults.posthogApiKey,
-            host: AppConfiguration.defaults.posthogHost
+            host: AppConfiguration.defaults.posthogHost,
+            buildConfiguration: buildConfiguration()
         )
-        PostHogSDK.shared.setup(config)
-        PostHogSDK.shared.register(["Build Configuration": buildConfiguration()])
     }
 
     private func setUpSentry() {

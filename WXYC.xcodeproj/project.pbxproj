@@ -26,7 +26,6 @@
 		23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */ = {isa = PBXBuildFile; productRef = 23B42F962F0209CB007351F1 /* ColorPalette */; };
 		23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */ = {isa = PBXBuildFile; productRef = 23D418172EF2C80000WALLPA /* Wallpaper */; };
 		23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */ = {isa = PBXBuildFile; productRef = 23D4181A2EF2C8000DBGPNL /* DebugPanel */; };
-		23DD3EC12EFA090B0090636B /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = C0D1E2F30405162718192AC3 /* PostHog */; };
 		23E3942C2F0C85ED009D24CB /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = 23TV00012EFC67800058AD01 /* Playback */; };
 		23E3942D2F0C85ED009D24CB /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = 23TV00022EFC67570058AD01 /* Playlist */; };
 		23E3942E2F0C85ED009D24CB /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 23TV00032EFC676F0058AD01 /* AppServices */; };
@@ -35,7 +34,6 @@
 		2AD59B02211E454634324EEB /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 47B1D80EB160884F8DC37B6A /* Logger */; };
 		2C25163B4CC5F775E9F8409E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = 33A31E91AA56954894130F50 /* Logger */; };
 		37327445A68BBA56C392BEF7 /* WXUI in Frameworks */ = {isa = PBXBuildFile; productRef = 01163D6D065337EB60F79C5B /* WXUI */; };
-		3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 01BA6F026317213ACE8EE228 /* PostHog */; };
 		524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */ = {isa = PBXBuildFile; productRef = 35DC07836DEEE44F7B819265 /* PlayerHeaderView */; };
 		62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */ = {isa = PBXBuildFile; productRef = BE7D47372C4F1F83B0F271DE /* Metadata */; };
 		7127691612A44A229E553EDE /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 16E246AEBDDC40D3B97316A6 /* Sentry */; };
@@ -50,7 +48,6 @@
 		ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1E128B6E39E90EA57C68C69 /* MusicShareKit */; };
 		B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 3776C2184A667CCB7B4E0B67 /* Artwork */; };
 		B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 932CA5D4CF336582845E6C75 /* AppServices */; };
-		C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 51D35AECC049A83AE7575477 /* PostHog */; };
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
@@ -337,7 +334,6 @@
 				7FD230E5DD398FE4B7F0AE06 /* PartyHorn in Frameworks */,
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
 				23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */,
-				C13E02E83FC278A2247E0FAC /* PostHog in Frameworks */,
 				7127691612A44A229E553EDE /* Sentry in Frameworks */,
 				WXYCINTENTS00000001 /* WXYCIntents in Frameworks */,
 			);
@@ -358,7 +354,6 @@
 				7795E1821F6367CC00C37ED0 /* Playlist in Frameworks */,
 				B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */,
 				B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */,
-				3FE7F1333D67FB073FBB13EF /* PostHog in Frameworks */,
 				0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */,
 			);
 		};
@@ -370,7 +365,6 @@
 				23E3942E2F0C85ED009D24CB /* AppServices in Frameworks */,
 				23E3942D2F0C85ED009D24CB /* Playlist in Frameworks */,
 				23E3942C2F0C85ED009D24CB /* Playback in Frameworks */,
-				23DD3EC12EFA090B0090636B /* PostHog in Frameworks */,
 				A2726CC83A5E3D5A0F69D553 /* Core in Frameworks */,
 				DCF27381E7D5EC54633BE58E /* Logger in Frameworks */,
 			);
@@ -526,7 +520,6 @@
 				0852AD2E14147E5B270AD1F1 /* Playlist */,
 				3776C2184A667CCB7B4E0B67 /* Artwork */,
 				932CA5D4CF336582845E6C75 /* AppServices */,
-				01BA6F026317213ACE8EE228 /* PostHog */,
 				8A3693E141EF47CABE91D00F /* Sentry */,
 			);
 			productName = WatchXYC;
@@ -551,7 +544,6 @@
 			name = "WXYC TV";
 			packageProductDependencies = (
 				3CABF5AF82DAA2E0D9877A07 /* Core */,
-				C0D1E2F30405162718192AC3 /* PostHog */,
 				23TV00012EFC67800058AD01 /* Playback */,
 				23TV00022EFC67570058AD01 /* Playlist */,
 				23TV00032EFC676F0058AD01 /* AppServices */,
@@ -615,7 +607,6 @@
 				01163D6D065337EB60F79C5B /* WXUI */,
 				3DF76684E122C2FAD4F26E27 /* PartyHorn */,
 				35DC07836DEEE44F7B819265 /* PlayerHeaderView */,
-				51D35AECC049A83AE7575477 /* PostHog */,
 				16E246AEBDDC40D3B97316A6 /* Sentry */,
 				23D418172EF2C80000WALLPA /* Wallpaper */,
 				23D4181A2EF2C8000DBGPNL /* DebugPanel */,
@@ -668,7 +659,6 @@
 			mainGroup = C57C4FD34139E637E6F7B435;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 				17F14B03423533C80A6A4E69 /* XCRemoteSwiftPackageReference "Vortex" */,
 				6414443EB40D8B806FA6BAAA /* XCLocalSwiftPackageReference "Shared/Analytics" */,
@@ -2446,14 +2436,6 @@
 				minimumVersion = 1.0.4;
 			};
 		};
-		999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.35.0;
-			};
-		};
 		E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/getsentry/sentry-cocoa.git";
@@ -2468,11 +2450,6 @@
 		01163D6D065337EB60F79C5B /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WXUI;
-		};
-		01BA6F026317213ACE8EE228 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
 		};
 		0852AD2E14147E5B270AD1F1 /* Playlist */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -2620,11 +2597,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = AppServices;
 		};
-		51D35AECC049A83AE7575477 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
-		};
 		79AE74A2A92779E80E688376 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
@@ -2661,11 +2633,6 @@
 		BE7D47372C4F1F83B0F271DE /* Metadata */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Metadata;
-		};
-		C0D1E2F30405162718192AC3 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 999EC3ABE5481213568F4E18 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
 		};
 		CA0F906956044B14B8D02D31 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
