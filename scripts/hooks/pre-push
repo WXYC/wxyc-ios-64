@@ -1,0 +1,23 @@
+#!/bin/zsh
+#
+# Optional pre-push hook. Runs scripts/test-affected.sh to validate the
+# affected test subset before the push reaches GitHub. Opt in via:
+#
+#   ln -s ../../scripts/hooks/pre-push .git/hooks/pre-push
+#
+# Skip a single push (e.g. WIP, docs-only) with:
+#
+#   git push --no-verify
+#
+# Skip all pushes (until re-enabled) with:
+#
+#   git config wxyc.skipTests true
+#
+
+if [[ "$(git config --get wxyc.skipTests || echo false)" == "true" ]]; then
+    echo "pre-push: skipping (wxyc.skipTests=true)" >&2
+    exit 0
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+exec "$REPO_ROOT/scripts/test-affected.sh"

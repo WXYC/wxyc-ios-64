@@ -8,8 +8,12 @@
 # for new/unknown targets (fail-open via -skip-testing: instead of -only-testing:).
 #
 # Inputs:
-#   BASE_REF  — the base branch ref to diff against (e.g. "origin/master").
-#               If empty, outputs run_all=true (used for workflow_dispatch).
+#   BASE_REF       — the base branch ref to diff against (e.g. "origin/master").
+#                    If empty, outputs run_all=true (used for workflow_dispatch).
+#   CHANGED_FILES  — (optional) newline-separated file paths. If set, used
+#                    directly instead of computing a git diff. Used by the
+#                    local test-affected.sh wrapper to include working-tree
+#                    changes (which BASE_REF...HEAD excludes).
 #
 # Outputs (written to $GITHUB_OUTPUT):
 #   run_all            — "true" if all tests should run, "false" otherwise
@@ -55,9 +59,13 @@ fi
 # 2. Compute changed files
 # ---------------------------------------------------------------------------
 
-changed_files=$(git diff --name-only "$BASE_REF"...HEAD 2>/dev/null) || {
-    run_all_and_exit "git diff failed"
-}
+if [[ -n "${CHANGED_FILES:-}" ]]; then
+    changed_files="$CHANGED_FILES"
+else
+    changed_files=$(git diff --name-only "$BASE_REF"...HEAD 2>/dev/null) || {
+        run_all_and_exit "git diff failed"
+    }
+fi
 
 if [[ -z "$changed_files" ]]; then
     run_all_and_exit "no changed files"
