@@ -199,28 +199,6 @@ public struct InterruptionEvent: PlaybackAnalyticsEvent {
     }
 }
 
-/// Event capturing an error during playback.
-@available(*, deprecated, message: "Use Analytics.ErrorEvent instead")
-public struct ErrorEvent: PlaybackAnalyticsEvent {
-    public static let name = "error"
-    public let error: String
-    public let context: String
-    
-    public var properties: [String: Any]? {
-        ["error": error, "context": context]
-    }
-    
-    public init(error: Error, context: String) {
-        self.error = error.localizedDescription
-        self.context = context
-    }
-
-    public init(error: String, context: String) {
-        self.error = error
-        self.context = context
-    }
-}
-
 public struct CPUUsageEvent: PlaybackAnalyticsEvent {
     public static let name = "cpu_usage"
     public let playerType: PlayerControllerType
