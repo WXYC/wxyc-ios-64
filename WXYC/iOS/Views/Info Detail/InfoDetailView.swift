@@ -20,7 +20,7 @@ struct InfoDetailView: View {
     @State private var showingLogPrompt = false
     @State private var showingRequestAlert = false
     @State private var showingMailComposer = false
-    @State private var attachLogsToEmail = false
+    @State private var showingBugReport = false
     @State private var requestText = ""
     @Environment(Singletonia.self) private var appState
     
@@ -80,15 +80,13 @@ struct InfoDetailView: View {
         .padding(.horizontal)
         .alert("Is this a bug?", isPresented: $showingLogPrompt) {
             Button("Yes!") {
-                attachLogsToEmail = true
-                showingMailComposer = true
+                showingBugReport = true
             }
             Button("S'all good") {
-                attachLogsToEmail = false
                 showingMailComposer = true
             }
         } message: {
-            Text("If you're sending feedback because you spotted a bug, would you mind if we attached some debug logs? This will help us figure out what's going wrong and doesn't include any personal info.")
+            Text("If you're reporting a bug, we'll attach some debug logs to help us figure out what's going wrong. They don't include any personal info.")
         }
         .alert("What would you like to request?", isPresented: $showingRequestAlert) {
             TextField("Song title and artist", text: $requestText)
@@ -108,7 +106,14 @@ struct InfoDetailView: View {
             Text("Please include song title and artist.")
         }
         .sheet(isPresented: $showingMailComposer) {
-            MailComposerView(attachLogs: attachLogsToEmail)
+            MailComposerView(attachLogs: false)
+        }
+        .sheet(isPresented: $showingBugReport) {
+            BugReportView(
+                submitter: SentryBugReportSubmitter(),
+                analytics: StructuredPostHogAnalytics.shared,
+                logsProvider: { Logger.fetchLogs()?.data }
+            )
         }
         .themePickerGesture(
             pickerState: appState.themePickerState,

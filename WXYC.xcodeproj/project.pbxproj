@@ -178,6 +178,7 @@
 		23A10B242EF5F165001EF136 /* Exceptions for "WXYC" folder in "WXYCTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				iOS/Tests/WXYCTests/BugReportViewModelTests.swift,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
@@ -229,6 +230,7 @@
 				"iOS/Request Share Extension/Info.plist",
 				"iOS/Request Share Extension/ShareViewController.swift",
 				iOS/Tests/WXYC.xctestplan,
+				iOS/Tests/WXYCTests/BugReportViewModelTests.swift,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
 				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
