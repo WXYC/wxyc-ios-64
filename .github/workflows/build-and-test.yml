@@ -98,8 +98,10 @@ jobs:
         # need. On run_all (workflow_dispatch, unknown scope), only_testing_flags
         # is empty and the build covers the full scheme.
         # COMPILER_INDEX_STORE_ENABLE=NO drops index-while-building (CI doesn't
-        # use it). -onlyUsePackageVersionsFromResolvedFile + -disableAutomatic-
-        # PackageResolution surface SPM drift fast without re-resolving.
+        # use it). SPM resolution runs inline as part of the build — explicit
+        # Resolve step is unnecessary, and -disableAutomaticPackageResolution
+        # here would fail because the workspace-level Package.resolved is git-
+        # ignored and only exists after this step runs.
         run: |
           ONLY_FLAGS="${{ steps.affected.outputs.only_testing_flags }}"
           xcodebuild build-for-testing \
@@ -108,8 +110,6 @@ jobs:
             -destination "$DESTINATION" \
             -configuration Debug \
             -skipMacroValidation \
-            -onlyUsePackageVersionsFromResolvedFile \
-            -disableAutomaticPackageResolution \
             COMPILER_INDEX_STORE_ENABLE=NO \
             CODE_SIGNING_ALLOWED=NO \
             $ONLY_FLAGS
