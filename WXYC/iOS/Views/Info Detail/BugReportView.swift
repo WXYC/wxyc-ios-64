@@ -16,12 +16,11 @@ import SwiftUI
 struct BugReportView: View {
     @State private var viewModel: BugReportViewModel
     @Environment(\.dismiss) private var dismiss
-    private let analytics: any AnalyticsService
 
     init(
         submitter: any BugReportSubmitter,
         analytics: any AnalyticsService,
-        logsProvider: @escaping @Sendable () -> LogAttachment?
+        logsProvider: @escaping @Sendable () -> [LogAttachment]
     ) {
         self._viewModel = State(
             wrappedValue: BugReportViewModel(
@@ -30,7 +29,6 @@ struct BugReportView: View {
                 logsProvider: logsProvider
             )
         )
-        self.analytics = analytics
     }
 
     var body: some View {
@@ -39,6 +37,12 @@ struct BugReportView: View {
                 Section("What went wrong?") {
                     TextEditor(text: $viewModel.message)
                         .frame(minHeight: 160)
+                }
+
+                Section("Name (optional)") {
+                    TextField("So we know who's reporting", text: $viewModel.name)
+                        .textContentType(.name)
+                        .autocorrectionDisabled(true)
                 }
 
                 Section("Email (optional)") {
@@ -56,17 +60,48 @@ struct BugReportView: View {
                     Button("Cancel", role: .cancel) {
                         dismiss()
                     }
+                    .disabled(viewModel.isSubmitting)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") {
-                        viewModel.submit()
-                        dismiss()
+                    if viewModel.isSubmitting {
+                        ProgressView()
+                    } else {
+                        Button("Send") {
+                            Task { await viewModel.submit() }
+                        }
+                        .disabled(viewModel.canSend == false)
                     }
-                    .disabled(viewModel.canSend == false)
                 }
             }
             .onAppear {
-                analytics.capture(BugReportPresented())
+                viewModel.markPresented()
+            }
+            .alert(
+                "Report sent",
+                isPresented: Binding(
+                    get: { viewModel.presentResult == .sent },
+                    set: { if $0 == false { viewModel.presentResult = nil; dismiss() } }
+                )
+            ) {
+                Button("OK") {
+                    viewModel.presentResult = nil
+                    dismiss()
+                }
+            } message: {
+                Text("Thanks — we'll take a look.")
+            }
+            .alert(
+                "Couldn't send report",
+                isPresented: Binding(
+                    get: { viewModel.presentResult == .failed },
+                    set: { if $0 == false { viewModel.presentResult = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {
+                    viewModel.presentResult = nil
+                }
+            } message: {
+                Text("Bug reporting isn't available right now. Please try again later, or send feedback via email instead.")
             }
         }
     }

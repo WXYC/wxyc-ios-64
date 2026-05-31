@@ -112,11 +112,7 @@ struct InfoDetailView: View {
             BugReportView(
                 submitter: SentryBugReportSubmitter(),
                 analytics: StructuredPostHogAnalytics.shared,
-                logsProvider: {
-                    guard let (logName, data) = Logger.fetchLogs() else { return nil }
-                    let contentType = UTType.plainText.preferredMIMEType ?? "text/plain"
-                    return LogAttachment(data: data, filename: logName, contentType: contentType)
-                }
+                logsProvider: collectBugReportLogs
             )
         }
         .themePickerGesture(
@@ -132,6 +128,28 @@ struct InfoDetailView: View {
             ErrorReporting.shared.report(error, context: "Info ViewController", category: .ui)
         }
     }
+}
+
+/// Collects log files for a bug-report submission. Each file becomes its own
+/// `LogAttachment`; oversized files are truncated to their last 20 MB so they
+/// fit under Sentry's default per-attachment cap (anything larger is silently
+/// dropped server-side). `nonisolated` + top-level so it can be passed to
+/// `BugReportView`'s `@Sendable` `logsProvider` from the MainActor view body.
+nonisolated func collectBugReportLogs() -> [LogAttachment] {
+    let maxBytes = 20 * 1024 * 1024
+    let contentType = UTType.plainText.preferredMIMEType ?? "text/plain"
+    return Logger.fetchAllLogs()
+        .sorted { $0.logName > $1.logName }
+        .map { entry in
+            let trimmed = entry.data.count > maxBytes
+                ? entry.data.suffix(maxBytes)
+                : entry.data
+            return LogAttachment(
+                data: Data(trimmed),
+                filename: entry.logName,
+                contentType: contentType
+            )
+        }
 }
 
 // MARK: - Action Button
