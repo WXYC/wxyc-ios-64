@@ -4,8 +4,29 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'worklog'
+      - 'log'
+      - '.claude/**'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'worklog'
+      - 'log'
+      - '.claude/**'
+
+# Cancel superseded PR runs (each push to the same PR cancels the prior run).
+# Master pushes keep their full audit trail by using a per-event-name group key
+# and disabling cancel-in-progress for non-PR events.
+concurrency:
+  group: build-and-test-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   SCHEME: WXYC
