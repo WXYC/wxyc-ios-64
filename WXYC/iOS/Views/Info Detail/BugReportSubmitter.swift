@@ -19,18 +19,31 @@ nonisolated struct LogAttachment: Equatable, Sendable {
 }
 
 nonisolated protocol BugReportSubmitter: Sendable {
-    func submit(message: String, email: String?, attachments: [LogAttachment])
+    /// Submits a bug report to the underlying feedback backend.
+    ///
+    /// - Returns: `true` if the backend was enabled and accepted the envelope for transport,
+    ///   `false` if submission was skipped (e.g., the Sentry SDK is disabled). Callers should
+    ///   only fire success analytics when this returns `true`.
+    func submit(message: String, name: String?, email: String?, attachments: [LogAttachment]) -> Bool
 }
 
 nonisolated struct SentryBugReportSubmitter: BugReportSubmitter {
     // SentryFeedback's own `attachments` parameter rewrites every Data blob to
     // `screenshot.png` / `application/png` (see sentry-cocoa SentryFeedback.swift),
     // so log files sent through it arrive at Sentry mislabeled and the web UI
-    // refuses to render them. The scope-attachment path concatenates with the
-    // feedback envelope (SentryClient.captureFeedback:withScope:) and preserves
-    // the filename + content type, so we route attachments through the scope
-    // and clear it again to avoid leaking into subsequent events.
-    func submit(message: String, email: String?, attachments: [LogAttachment]) {
+    // refuses to render them. We route attachments through the global scope
+    // (SentryClient.captureFeedback:withScope: concatenates scope.attachments with
+    // the feedback envelope, preserving filename + content type) and unconditionally
+    // clear the scope's attachments afterwards so a previous submission whose clear
+    // was preempted does not leak into the next event.
+    //
+    // Trade-off: `clearAttachments` wipes the scope's full attachment list, not just
+    // the entries we added. This is safe today because nothing else in the WXYC app
+    // uses scope attachments. Revisit if another integration starts attaching to
+    // the global scope.
+    func submit(message: String, name: String?, email: String?, attachments: [LogAttachment]) -> Bool {
+        guard SentrySDK.isEnabled else { return false }
+
         let sentryAttachments = attachments.map { attachment in
             Attachment(
                 data: attachment.data,
@@ -47,7 +60,7 @@ nonisolated struct SentryBugReportSubmitter: BugReportSubmitter {
 
         let feedback = SentryFeedback(
             message: message,
-            name: nil,
+            name: name,
             email: email,
             source: .custom,
             associatedEventId: nil,
@@ -55,10 +68,10 @@ nonisolated struct SentryBugReportSubmitter: BugReportSubmitter {
         )
         SentrySDK.capture(feedback: feedback)
 
-        if sentryAttachments.isEmpty == false {
-            SentrySDK.configureScope { scope in
-                scope.clearAttachments()
-            }
+        SentrySDK.configureScope { scope in
+            scope.clearAttachments()
         }
+
+        return true
     }
 }

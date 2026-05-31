@@ -41,102 +41,134 @@ struct BugReportViewModelTests {
     }
 
     @Test("submit forwards trimmed message to submitter")
-    func submitForwardsMessage() {
+    func submitForwardsMessage() async {
         let submitter = RecordingSubmitter()
         let viewModel = makeViewModel(submitter: submitter)
         viewModel.message = "  Crashes on the playlist tab  "
 
-        viewModel.submit()
+        await viewModel.submit()
 
         #expect(submitter.calls.count == 1)
         #expect(submitter.calls.first?.message == "Crashes on the playlist tab")
     }
 
-    @Test("submit forwards non-empty email")
-    func submitForwardsEmail() {
+    @Test("submit forwards non-empty name and email")
+    func submitForwardsNameAndEmail() async {
         let submitter = RecordingSubmitter()
         let viewModel = makeViewModel(submitter: submitter)
         viewModel.message = "Playback stalls"
+        viewModel.name = "Pat Listener"
         viewModel.email = "listener@example.com"
 
-        viewModel.submit()
+        await viewModel.submit()
 
+        #expect(submitter.calls.first?.name == "Pat Listener")
         #expect(submitter.calls.first?.email == "listener@example.com")
     }
 
-    @Test("submit nils out empty email")
-    func submitNilsEmptyEmail() {
+    @Test("submit nils out empty/whitespace name and email")
+    func submitNilsEmptyContact() async {
         let submitter = RecordingSubmitter()
         let viewModel = makeViewModel(submitter: submitter)
         viewModel.message = "Playback stalls"
+        viewModel.name = "   "
         viewModel.email = ""
 
-        viewModel.submit()
+        await viewModel.submit()
 
-        #expect(submitter.calls.first?.email == nil)
-    }
-
-    @Test("submit nils out whitespace-only email")
-    func submitNilsWhitespaceEmail() {
-        let submitter = RecordingSubmitter()
-        let viewModel = makeViewModel(submitter: submitter)
-        viewModel.message = "Playback stalls"
-        viewModel.email = "   "
-
-        viewModel.submit()
-
+        #expect(submitter.calls.first?.name == nil)
         #expect(submitter.calls.first?.email == nil)
     }
 
     @Test("submit forwards log attachment with filename and content type intact")
-    func submitForwardsLogs() {
+    func submitForwardsLogs() async {
         let submitter = RecordingSubmitter()
         let attachment = LogAttachment(
             data: Data("debug log contents".utf8),
             filename: "wxyc-2026-05-30.log",
             contentType: "text/plain"
         )
-        let viewModel = makeViewModel(submitter: submitter, logs: { attachment })
+        let viewModel = makeViewModel(submitter: submitter, logs: { [attachment] })
         viewModel.message = "Crash"
 
-        viewModel.submit()
+        await viewModel.submit()
 
         #expect(submitter.calls.first?.attachments == [attachment])
     }
 
-    @Test("submit sends no attachments when logs unavailable")
-    func submitNoAttachmentsWhenLogsMissing() {
+    @Test("submit sends empty attachments when logs unavailable")
+    func submitNoAttachmentsWhenLogsMissing() async {
         let submitter = RecordingSubmitter()
-        let viewModel = makeViewModel(submitter: submitter, logs: { nil })
+        let viewModel = makeViewModel(submitter: submitter, logs: { [] })
         viewModel.message = "Crash"
 
-        viewModel.submit()
+        await viewModel.submit()
 
         #expect(submitter.calls.first?.attachments.isEmpty == true)
     }
 
-    @Test("submit fires BugReportSent analytics event")
-    func submitFiresAnalyticsEvent() {
+    @Test("submit fires BugReportSent when submitter returns true")
+    func submitFiresAnalyticsOnSuccess() async {
         let analytics = RecordingAnalytics()
-        let viewModel = makeViewModel(analytics: analytics)
+        let viewModel = makeViewModel(
+            submitter: RecordingSubmitter(returns: true),
+            analytics: analytics
+        )
         viewModel.message = "Crash"
 
-        viewModel.submit()
+        await viewModel.submit()
 
         #expect(analytics.capturedNames == [BugReportSent.name])
+        #expect(viewModel.presentResult == .sent)
+    }
+
+    @Test("submit does not fire BugReportSent when submitter returns false")
+    func submitSkipsAnalyticsOnFailure() async {
+        let analytics = RecordingAnalytics()
+        let viewModel = makeViewModel(
+            submitter: RecordingSubmitter(returns: false),
+            analytics: analytics
+        )
+        viewModel.message = "Crash"
+
+        await viewModel.submit()
+
+        #expect(analytics.capturedNames.isEmpty)
+        #expect(viewModel.presentResult == .failed)
     }
 
     @Test("submit is a no-op when canSend is false")
-    func submitNoOpWhenCannotSend() {
+    func submitNoOpWhenCannotSend() async {
         let submitter = RecordingSubmitter()
         let analytics = RecordingAnalytics()
         let viewModel = makeViewModel(submitter: submitter, analytics: analytics)
         viewModel.message = "   "
 
-        viewModel.submit()
+        await viewModel.submit()
 
         #expect(submitter.calls.isEmpty)
         #expect(analytics.capturedNames.isEmpty)
+        #expect(viewModel.presentResult == nil)
+    }
+
+    @Test("isSubmitting is false after submit completes")
+    func isSubmittingFalseAfterSubmit() async {
+        let viewModel = makeViewModel()
+        viewModel.message = "Crash"
+
+        await viewModel.submit()
+
+        #expect(viewModel.isSubmitting == false)
+    }
+
+    @Test("markPresented fires BugReportPresented")
+    func markPresentedFiresAnalytics() {
+        let analytics = RecordingAnalytics()
+        let viewModel = makeViewModel(analytics: analytics)
+
+        viewModel.markPresented()
+
+        #expect(analytics.capturedNames == [BugReportPresented.name])
     }
 }
 
@@ -146,7 +178,7 @@ struct BugReportViewModelTests {
 private func makeViewModel(
     submitter: RecordingSubmitter = RecordingSubmitter(),
     analytics: any AnalyticsService = RecordingAnalytics(),
-    logs: @escaping @Sendable () -> LogAttachment? = { nil }
+    logs: @escaping @Sendable () -> [LogAttachment] = { [] }
 ) -> BugReportViewModel {
     BugReportViewModel(submitter: submitter, analytics: analytics, logsProvider: logs)
 }
@@ -154,14 +186,21 @@ private func makeViewModel(
 private final class RecordingSubmitter: BugReportSubmitter, @unchecked Sendable {
     struct Call: Equatable {
         let message: String
+        let name: String?
         let email: String?
         let attachments: [LogAttachment]
     }
 
     private(set) var calls: [Call] = []
+    private let result: Bool
 
-    func submit(message: String, email: String?, attachments: [LogAttachment]) {
-        calls.append(Call(message: message, email: email, attachments: attachments))
+    init(returns result: Bool = true) {
+        self.result = result
+    }
+
+    func submit(message: String, name: String?, email: String?, attachments: [LogAttachment]) -> Bool {
+        calls.append(Call(message: message, name: name, email: email, attachments: attachments))
+        return result
     }
 }
 
