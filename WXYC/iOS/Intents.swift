@@ -178,6 +178,12 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     }
 }
 
+struct WXYCAppPackage: AppIntentsPackage {
+    static var includedPackages: [any AppIntentsPackage.Type] {
+        [WXYCIntentsPackage.self]
+    }
+}
+
 struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
