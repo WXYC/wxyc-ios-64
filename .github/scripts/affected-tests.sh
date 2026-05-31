@@ -190,12 +190,12 @@ TEST_TARGETS[Playlist]="PlaylistTests"
 TEST_TARGETS[Playback]="PlaybackTests RadioPlayerTests MP3StreamerTests HLSPlayerTests"
 TEST_TARGETS[Artwork]="ArtworkTests"
 TEST_TARGETS[ColorPalette]="ColorPaletteTests"
-TEST_TARGETS[SemanticIndex]="SemanticIndexTests"
 TEST_TARGETS[Wallpaper]="WallpaperTests"
 TEST_TARGETS[Metadata]="MetadataTests"
 TEST_TARGETS[MusicShareKit]="MusicShareKitTests"
 TEST_TARGETS[PlayerHeaderView]="PlayerHeaderViewTests"
 TEST_TARGETS[AppServices]="AppServicesTests"
+TEST_TARGETS[PartyHorn]="PartyHornTests"
 
 typeset -A affected_targets
 # WXYCTests always runs when any package changes
@@ -232,7 +232,7 @@ local all_test_plan_targets=(
     WallpaperTests
     ColorPaletteTests
     AnalyticsTests
-    SemanticIndexTests
+    PartyHornTests
 )
 
 local skip_flags="-skip-testing:WXYCUITests"
