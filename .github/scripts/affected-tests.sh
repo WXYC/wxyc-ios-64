@@ -42,6 +42,7 @@ run_all_and_exit() {
     echo "Running all tests: $reason"
     output "run_all" "true"
     output "skip_testing_flags" "-skip-testing:WXYCUITests -skip-testing:CoreTests"
+    output "only_testing_flags" ""
     output "run_core_tests" "true"
     output "affected_summary" "all tests ($reason)"
     exit 0
@@ -236,12 +237,18 @@ local all_test_plan_targets=(
 )
 
 local skip_flags="-skip-testing:WXYCUITests"
+local only_flags=""
 local skipped_count=0
 
 for target in $all_test_plan_targets; do
     if [[ -z "${affected_targets[$target]:-}" ]]; then
         skip_flags="$skip_flags -skip-testing:$target"
         skipped_count=$((skipped_count + 1))
+    elif [[ "$target" != "CoreTests" ]]; then
+        # Emit -only-testing for affected non-Core targets so the workflow can
+        # scope `build-for-testing` to just this target's dependency tree.
+        # CoreTests is handled by a dedicated step and excluded here.
+        only_flags="$only_flags -only-testing:$target"
     fi
 done
 
@@ -262,10 +269,12 @@ local summary="${(k)changed_packages} ($affected_count affected packages, $skipp
 
 echo ""
 echo "Skip flags: $skip_flags"
+echo "Only flags: $only_flags"
 echo "Run CoreTests: $run_core_tests"
 echo "Summary: $summary"
 
 output "run_all" "false"
 output "skip_testing_flags" "$skip_flags"
+output "only_testing_flags" "$only_flags"
 output "run_core_tests" "$run_core_tests"
 output "affected_summary" "$summary"
