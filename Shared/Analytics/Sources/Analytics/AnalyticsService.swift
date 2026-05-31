@@ -9,7 +9,6 @@
 //
 
 import Foundation
-import PostHog
 
 // MARK: - Analytics Protocol
 
