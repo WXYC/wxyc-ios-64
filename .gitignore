@@ -16,6 +16,9 @@ build/
 # Xcode build logs
 Build*.txt
 
+# Test result bundles emitted by scripts/test-affected.sh and CI
+*.xcresult
+
 # Local gitignore files in packages
 WXYC/Shared/*/.gitignore
 
