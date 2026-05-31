@@ -25,12 +25,14 @@ public enum AnalyticsBootstrap {
     ///   - host: PostHog instance host URL.
     ///   - buildConfiguration: A short label ("Debug", "TestFlight", "Release") registered as a super-property on every event.
     public static func start(apiKey: String, host: String, buildConfiguration: String) {
-        let config = PostHogConfig(apiKey: apiKey, host: host)
+        let config = PostHogConfig(projectToken: apiKey, host: host)
         PostHogSDK.shared.setup(config)
         PostHogSDK.shared.register(["Build Configuration": buildConfiguration])
     }
 
-    /// Flushes any buffered events. Used on watchOS where the process may be killed quickly after launch.
+    /// Asks the analytics SDK to send any buffered events. Fire-and-forget: the actual network
+    /// delivery happens on a background queue, so callers cannot rely on events being on the wire
+    /// by the time this returns.
     public static func flush() {
         PostHogSDK.shared.flush()
     }
