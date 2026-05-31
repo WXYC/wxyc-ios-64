@@ -8,10 +8,11 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
-final class AppleMusicService: MusicService {
-    let identifier: MusicServiceIdentifier = .appleMusic
+final class AppleMusicService: MusicServiceProvider {
+    let identifier: MusicService = .appleMusic
     
     init() {}
     

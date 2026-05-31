@@ -8,19 +8,20 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 public struct MusicTrack: Sendable {
-    public let service: MusicServiceIdentifier
+    public let service: MusicService
     public let url: URL
     public let title: String?
     public let artist: String?
     public let album: String?
     public let identifier: String?
     public var artworkURL: URL?
-    
+
     public init(
-        service: MusicServiceIdentifier,
+        service: MusicService,
         url: URL,
         title: String?,
         artist: String?,
@@ -62,25 +63,5 @@ public struct MusicTrack: Sendable {
         }
         
         return components.joined(separator: " ")
-    }
-}
-
-public enum MusicServiceIdentifier: String, Sendable, CaseIterable {
-    case appleMusic = "apple_music"
-    case spotify = "spotify"
-    case bandcamp = "bandcamp"
-    case youtubeMusic = "youtube_music"
-    case soundcloud = "soundcloud"
-    case unknown = "unknown"
-    
-    public var displayName: String {
-        switch self {
-        case .appleMusic: return "Apple Music"
-        case .spotify: return "Spotify"
-        case .bandcamp: return "Bandcamp"
-        case .youtubeMusic: return "YouTube Music"
-        case .soundcloud: return "SoundCloud"
-        case .unknown: return "Unknown"
-        }
     }
 }

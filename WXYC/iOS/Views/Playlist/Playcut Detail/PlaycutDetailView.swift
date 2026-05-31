@@ -10,6 +10,7 @@ import Analytics
 import AppIntents
 import AppServices
 import Artwork
+import Core
 import Metadata
 import MusicShareKit
 import Playlist
@@ -79,7 +80,7 @@ struct PlaycutDetailView: View {
                         isLoading: isLoadingMetadata,
                         onServiceTapped: { service in
                             StructuredPostHogAnalytics.shared.capture(StreamingLinkTapped(
-                                service: service.name,
+                                service: service.displayName,
                                 artist: playcut.artistName,
                                 album: playcut.releaseTitle ?? ""
                             ))
@@ -220,12 +221,12 @@ struct PlaycutDetailView: View {
         }
     }
 
-    private func donateAddedSongIntent(service: StreamingService) {
+    private func donateAddedSongIntent(service: MusicService) {
         let intent = AddedSongToLibrary(
             songTitle: playcut.songTitle,
             artistName: playcut.artistName,
             albumName: playcut.releaseTitle,
-            streamingService: service.name,
+            streamingService: service.displayName,
             artwork: artwork
         )
 

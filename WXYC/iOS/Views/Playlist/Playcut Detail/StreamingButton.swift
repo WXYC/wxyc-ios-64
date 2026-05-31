@@ -6,16 +6,17 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import SwiftUI
 import Metadata
 import Playlist
 
 struct StreamingButton: View {
-    let service: StreamingService
+    let service: MusicService
     let url: URL?
     let isLoading: Bool
-    var onTap: ((StreamingService) -> Void)?
+    var onTap: ((MusicService) -> Void)?
 
     @State private var showingSafari = false
 
@@ -53,7 +54,7 @@ struct StreamingButton: View {
     private func linkLabel(backgroundFill: AnyShapeStyle) -> some View {
         LinkButtonLabel(
             icon: icon,
-            title: service.name,
+            title: service.displayName,
             font: .caption,
             foregroundShapeStyle: AnyShapeStyle(.white),
             backgroundFill: backgroundFill,

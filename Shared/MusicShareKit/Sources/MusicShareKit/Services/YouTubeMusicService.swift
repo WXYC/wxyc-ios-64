@@ -8,10 +8,11 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
-final class YouTubeMusicService: MusicService {
-    let identifier: MusicServiceIdentifier = .youtubeMusic
+final class YouTubeMusicService: MusicServiceProvider {
+    let identifier: MusicService = .youtubeMusic
     
     init() {}
     

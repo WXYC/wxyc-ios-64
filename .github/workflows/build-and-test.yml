@@ -195,6 +195,13 @@ jobs:
             -only-testing:CoreTests/ExponentialBackoffTests/customConfiguration \
             -only-testing:CoreTests/ExponentialBackoffTests/nanosecondConversion \
             -only-testing:CoreTests/ExponentialBackoffTests/descriptionFormat \
+            -only-testing:CoreTests/MusicServiceTests/rawValueMapsForward \
+            -only-testing:CoreTests/MusicServiceTests/rawValueParsesReverse \
+            -only-testing:CoreTests/MusicServiceTests/unrecognisedRawValueReturnsNil \
+            -only-testing:CoreTests/MusicServiceTests/codableRoundTrip \
+            -only-testing:CoreTests/MusicServiceTests/codableEmitsRawString \
+            -only-testing:CoreTests/MusicServiceTests/allCasesCoversExactlySixServices \
+            -only-testing:CoreTests/MusicServiceTests/displayNameMapsCorrectly \
             -disable-concurrent-testing \
             -resultBundlePath CoreTestResults.xcresult
 

@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import SwiftUI
 import Metadata
 import WXUI
@@ -15,7 +16,7 @@ import WXUI
 struct StreamingLinksSection: View {
     let metadata: PlaycutMetadata
     let isLoading: Bool
-    var onServiceTapped: ((StreamingService) -> Void)?
+    var onServiceTapped: ((MusicService) -> Void)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
