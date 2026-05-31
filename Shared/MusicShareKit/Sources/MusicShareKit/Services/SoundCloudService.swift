@@ -8,10 +8,11 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
-final class SoundCloudService: MusicService {
-    let identifier: MusicServiceIdentifier = .soundcloud
+final class SoundCloudService: MusicServiceProvider {
+    let identifier: MusicService = .soundcloud
     
     init() {}
     

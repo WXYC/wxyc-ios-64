@@ -8,10 +8,11 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
-final class BandcampService: MusicService {
-    let identifier: MusicServiceIdentifier = .bandcamp
+final class BandcampService: MusicServiceProvider {
+    let identifier: MusicService = .bandcamp
     
     init() {}
     

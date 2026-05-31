@@ -18,8 +18,8 @@ enum SpotifyError: Error {
     case invalidResponse
 }
 
-final class SpotifyService: MusicService {
-    let identifier: MusicServiceIdentifier = .spotify
+final class SpotifyService: MusicServiceProvider {
+    let identifier: MusicService = .spotify
 
     init() {}
 

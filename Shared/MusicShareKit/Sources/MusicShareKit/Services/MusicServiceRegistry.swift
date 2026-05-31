@@ -12,9 +12,9 @@ import Foundation
 
 public final class MusicServiceRegistry: Sendable {
     public static let shared = MusicServiceRegistry()
-    
-    private let services: [MusicService]
-    
+
+    private let services: [MusicServiceProvider]
+
     private init() {
         services = [
             AppleMusicService(),
@@ -24,8 +24,8 @@ public final class MusicServiceRegistry: Sendable {
             SoundCloudService()
         ]
     }
-    
-    public func identifyService(for url: URL) -> MusicService? {
+
+    public func identifyService(for url: URL) -> MusicServiceProvider? {
         return services.first { $0.canHandle(url: url) }
     }
     

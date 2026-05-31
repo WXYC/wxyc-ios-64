@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Testing
 @testable import MusicShareKit
@@ -24,7 +25,7 @@ private enum TestURLs {
     static let all: [URL] = [appleMusic, spotify, bandcamp, youtube, soundcloud]
     
     /// Maps each URL to its owning service
-    static func expectedService(for url: URL) -> MusicServiceIdentifier {
+    static func expectedService(for url: URL) -> MusicService {
         switch url {
         case appleMusic: return .appleMusic
         case spotify: return .spotify
@@ -39,11 +40,11 @@ private enum TestURLs {
 // MARK: - Service Factory
 
 /// Services that have actual implementations (excludes .unknown)
-private let testableServices: [MusicServiceIdentifier] = [
+private let testableServices: [MusicService] = [
     .appleMusic, .spotify, .bandcamp, .youtubeMusic, .soundcloud
 ]
 
-private func makeService(for identifier: MusicServiceIdentifier) -> any MusicService {
+private func makeService(for identifier: MusicService) -> any MusicServiceProvider {
     switch identifier {
     case .appleMusic: return AppleMusicService()
     case .spotify: return SpotifyService()
@@ -63,7 +64,7 @@ struct MusicServiceURLHandlingTests {
         "Service handles URL correctly",
         arguments: testableServices, TestURLs.all
     )
-    func serviceHandlesURL(serviceId: MusicServiceIdentifier, url: URL) {
+    func serviceHandlesURL(serviceId: MusicService, url: URL) {
         let service = makeService(for: serviceId)
         let urlOwner = TestURLs.expectedService(for: url)
         let shouldHandle = (serviceId == urlOwner)
@@ -81,13 +82,13 @@ struct MusicServiceURLHandlingTests {
 struct URLParsingTests {
     
     @Test("Parses service URL and extracts identifier", arguments: [
-        (TestURLs.appleMusic, MusicServiceIdentifier.appleMusic, "1280171884"),
+        (TestURLs.appleMusic, MusicService.appleMusic, "1280171884"),
         (TestURLs.spotify, .spotify, "track:5ghb02xEjrv3ZSrURC6O57"),
         (TestURLs.bandcamp, .bandcamp, "album:afternooners"),
         (TestURLs.youtube, .youtubeMusic, "7SKorvPNRDI"),
         (TestURLs.soundcloud, .soundcloud, "darkentriesrecords/patrick-cowley-surfside-sex"),
     ])
-    func parsesURLCorrectly(url: URL, expectedService: MusicServiceIdentifier, expectedIdentifier: String) {
+    func parsesURLCorrectly(url: URL, expectedService: MusicService, expectedIdentifier: String) {
         let service = makeService(for: expectedService)
         let track = service.parse(url: url)
         
@@ -178,25 +179,25 @@ struct MusicServiceRegistryTests {
     let registry = MusicServiceRegistry.shared
     
     @Test("Identifies service from URL", arguments: [
-        (TestURLs.appleMusic, MusicServiceIdentifier.appleMusic),
+        (TestURLs.appleMusic, MusicService.appleMusic),
         (TestURLs.spotify, .spotify),
         (TestURLs.bandcamp, .bandcamp),
         (TestURLs.youtube, .youtubeMusic),
         (TestURLs.soundcloud, .soundcloud),
     ])
-    func identifiesServiceFromURL(url: URL, expectedService: MusicServiceIdentifier) {
+    func identifiesServiceFromURL(url: URL, expectedService: MusicService) {
         let service = registry.identifyService(for: url)
         #expect(service?.identifier == expectedService)
     }
     
     @Test("Parses URL to track", arguments: [
-        (TestURLs.appleMusic, MusicServiceIdentifier.appleMusic),
+        (TestURLs.appleMusic, MusicService.appleMusic),
         (TestURLs.spotify, .spotify),
         (TestURLs.bandcamp, .bandcamp),
         (TestURLs.youtube, .youtubeMusic),
         (TestURLs.soundcloud, .soundcloud),
     ])
-    func parsesURLToTrack(url: URL, expectedService: MusicServiceIdentifier) {
+    func parsesURLToTrack(url: URL, expectedService: MusicService) {
         let track = registry.parse(url: url)
         #expect(track?.service == expectedService)
     }
