@@ -32,6 +32,20 @@ public struct FeedbackEmailSent {
     public init() {}
 }
 
+// MARK: - Bug Report
+
+/// Event fired when the in-app bug report sheet is presented.
+@AnalyticsEvent
+public struct BugReportPresented {
+    public init() {}
+}
+
+/// Event fired when a bug report is submitted to Sentry.
+@AnalyticsEvent
+public struct BugReportSent {
+    public init() {}
+}
+
 // MARK: - Playcut Detail
 
 /// Event fired when a playcut detail view is presented.

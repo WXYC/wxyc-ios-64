@@ -52,7 +52,7 @@ public actor AppConfiguration {
     public static let apiBaseUrl = "https://api.wxyc.org"
 
     /// The Sentry DSN for crash reporting. Safe to embed (Sentry documents that DSNs are not secrets).
-    public static let sentryDsn = ""
+    public static let sentryDsn = "https://cf27cd29a02232e1a0f2682c7138119b@o4510807758143488.ingest.us.sentry.io/4510982175784960"
 
     /// Hardcoded defaults for when the network is unavailable.
     public static let defaults = AppConfig(

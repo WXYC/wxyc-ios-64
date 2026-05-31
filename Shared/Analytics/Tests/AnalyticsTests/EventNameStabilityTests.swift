@@ -28,6 +28,8 @@ private let expectedEventNames: [(String, String)] = [
     (PartyHornPresented.name, "party_horn_presented"),
     (FeedbackEmailPresented.name, "feedback_email_presented"),
     (FeedbackEmailSent.name, "feedback_email_sent"),
+    (BugReportPresented.name, "bug_report_presented"),
+    (BugReportSent.name, "bug_report_sent"),
     (PlaycutDetailViewPresented.name, "playcut_detail_view_presented"),
     (StreamingLinkTapped.name, "streaming_link_tapped"),
     (ExternalLinkTapped.name, "external_link_tapped"),
