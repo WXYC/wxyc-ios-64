@@ -88,16 +88,20 @@ struct BugReportViewModelTests {
         #expect(submitter.calls.first?.email == nil)
     }
 
-    @Test("submit forwards log attachment when logs available")
+    @Test("submit forwards log attachment with filename and content type intact")
     func submitForwardsLogs() {
         let submitter = RecordingSubmitter()
-        let logData = Data("debug log contents".utf8)
-        let viewModel = makeViewModel(submitter: submitter, logs: { logData })
+        let attachment = LogAttachment(
+            data: Data("debug log contents".utf8),
+            filename: "wxyc-2026-05-30.log",
+            contentType: "text/plain"
+        )
+        let viewModel = makeViewModel(submitter: submitter, logs: { attachment })
         viewModel.message = "Crash"
 
         viewModel.submit()
 
-        #expect(submitter.calls.first?.attachments == [logData])
+        #expect(submitter.calls.first?.attachments == [attachment])
     }
 
     @Test("submit sends no attachments when logs unavailable")
@@ -142,7 +146,7 @@ struct BugReportViewModelTests {
 private func makeViewModel(
     submitter: RecordingSubmitter = RecordingSubmitter(),
     analytics: any AnalyticsService = RecordingAnalytics(),
-    logs: @escaping @Sendable () -> Data? = { nil }
+    logs: @escaping @Sendable () -> LogAttachment? = { nil }
 ) -> BugReportViewModel {
     BugReportViewModel(submitter: submitter, analytics: analytics, logsProvider: logs)
 }
@@ -151,12 +155,12 @@ private final class RecordingSubmitter: BugReportSubmitter, @unchecked Sendable 
     struct Call: Equatable {
         let message: String
         let email: String?
-        let attachments: [Data]
+        let attachments: [LogAttachment]
     }
 
     private(set) var calls: [Call] = []
 
-    func submit(message: String, email: String?, attachments: [Data]) {
+    func submit(message: String, email: String?, attachments: [LogAttachment]) {
         calls.append(Call(message: message, email: email, attachments: attachments))
     }
 }

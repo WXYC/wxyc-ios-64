@@ -20,12 +20,12 @@ final class BugReportViewModel {
 
     private let submitter: any BugReportSubmitter
     private let analytics: any AnalyticsService
-    private let logsProvider: @Sendable () -> Data?
+    private let logsProvider: @Sendable () -> LogAttachment?
 
     init(
         submitter: any BugReportSubmitter,
         analytics: any AnalyticsService,
-        logsProvider: @escaping @Sendable () -> Data?
+        logsProvider: @escaping @Sendable () -> LogAttachment?
     ) {
         self.submitter = submitter
         self.analytics = analytics
