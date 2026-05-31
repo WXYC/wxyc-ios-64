@@ -129,7 +129,7 @@ jobs:
         # Use -only-testing for affected runs so xcodebuild doesn't install
         # the 16 unaffected bundles onto the sim. Run-all keeps -skip-testing
         # to drop UI + CoreTests (CoreTests has its own step).
-        # -disablePackageResolution stops the test step re-resolving SPM —
+        # -onlyUsePackageVersionsFromResolvedFile stops the test step re-resolving SPM —
         # log evidence showed ~49s wasted on this per run.
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
@@ -146,7 +146,7 @@ jobs:
             -destination "$DESTINATION" \
             -configuration Debug \
             -skipMacroValidation \
-            -disablePackageResolution \
+            -onlyUsePackageVersionsFromResolvedFile \
             CODE_SIGNING_ALLOWED=NO \
             $ARGS \
             -disable-concurrent-destination-testing \
@@ -165,7 +165,7 @@ jobs:
             -destination "$DESTINATION" \
             -configuration Debug \
             -skipMacroValidation \
-            -disablePackageResolution \
+            -onlyUsePackageVersionsFromResolvedFile \
             CODE_SIGNING_ALLOWED=NO \
             -only-testing:CoreTests/ImageCompatibilityTests/heifDataReturnsValidDataForValidImage \
             -only-testing:CoreTests/ImageCompatibilityTests/heifDataRespectsCompressionQualityParameter \
