@@ -26,7 +26,7 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
+        _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
         let capturedURL = try #require(interceptor.lastRequest?.url)
         #expect(capturedURL.path == "/auth/sign-in/anonymous")
@@ -42,7 +42,7 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
+        _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
         let origin = interceptor.lastRequest?.value(forHTTPHeaderField: "Origin")
         #expect(origin == "https://api.example.com")
@@ -57,11 +57,123 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
+        _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
         let request = try #require(interceptor.lastRequest)
         #expect(request.httpMethod == "POST")
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
+    }
+
+    @Test("Sign-in sends X-Device-Fingerprint header when provided")
+    func signInSendsDeviceFingerprintHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validBetterAuthResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.signInAnonymously(
+            baseURL: "https://api.example.com",
+            deviceFingerprint: "fingerprint-uuid-1234"
+        )
+
+        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        #expect(header == "fingerprint-uuid-1234")
+    }
+
+    @Test("Sign-in omits X-Device-Fingerprint header when nil")
+    func signInOmitsDeviceFingerprintHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validBetterAuthResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.signInAnonymously(
+            baseURL: "https://api.example.com",
+            deviceFingerprint: nil
+        )
+
+        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        #expect(header == nil)
+    }
+
+    @Test("fetchJWT sends X-Device-Fingerprint header when provided")
+    func fetchJWTSendsDeviceFingerprintHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.fetchJWT(
+            baseURL: "https://api.example.com",
+            sessionToken: "sess-tok",
+            deviceFingerprint: "fingerprint-uuid-5678"
+        )
+
+        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        #expect(header == "fingerprint-uuid-5678")
+    }
+
+    @Test("fetchJWT omits X-Device-Fingerprint header when nil")
+    func fetchJWTOmitsDeviceFingerprintHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.fetchJWT(
+            baseURL: "https://api.example.com",
+            sessionToken: "sess-tok",
+            deviceFingerprint: nil
+        )
+
+        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        #expect(header == nil)
+    }
+
+    @Test("Sign-in sends User-Agent header")
+    func signInSendsUserAgentHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validBetterAuthResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.signInAnonymously(
+            baseURL: "https://api.example.com", deviceFingerprint: nil
+        )
+
+        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "User-Agent")
+        #expect(header == UserAgentHeader.value)
+        // Format check: must match WXYC-iOS/<something>
+        #expect(header?.hasPrefix("WXYC-iOS/") == true)
+    }
+
+    @Test("fetchJWT sends User-Agent header")
+    func fetchJWTSendsUserAgentHeader() async throws {
+        let interceptor = AuthRequestInterceptor()
+        interceptor.responseBody = validJWTTokenResponse
+        interceptor.responseStatusCode = 200
+
+        let session = makeSession(interceptor: interceptor)
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.fetchJWT(
+            baseURL: "https://api.example.com",
+            sessionToken: "sess-tok",
+            deviceFingerprint: nil
+        )
+
+        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "User-Agent")
+        #expect(header == UserAgentHeader.value)
     }
 
     // MARK: - Response Parsing Tests
@@ -75,9 +187,9 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        let authSession = try await client.signInAnonymously(baseURL: "https://api.example.com")
+        let authSession = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
-        #expect(authSession.token == "test-token-abc123")
+        #expect(authSession.sessionToken == "test-token-abc123")
         #expect(authSession.userId == "user-xyz-789")
     }
 
@@ -107,9 +219,9 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        let authSession = try await client.signInAnonymously(baseURL: "https://api.example.com")
+        let authSession = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
-        #expect(authSession.token == "tok_123")
+        #expect(authSession.sessionToken == "tok_123")
         #expect(authSession.userId == "usr_456")
     }
 
@@ -127,7 +239,7 @@ struct DefaultAuthNetworkClientTests {
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
-            _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
+            _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
         }
     }
 
@@ -141,7 +253,7 @@ struct DefaultAuthNetworkClientTests {
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
-            _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
+            _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
         }
     }
 
@@ -159,7 +271,7 @@ struct DefaultAuthNetworkClientTests {
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
-            _ = try await client.signInAnonymously(baseURL: "https://api.example.com")
+            _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
         }
     }
 
@@ -174,7 +286,7 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "session-tok")
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "session-tok", deviceFingerprint: nil)
 
         let capturedURL = try #require(interceptor.lastRequest?.url)
         #expect(capturedURL.path == "/auth/token")
@@ -193,7 +305,7 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "my-session-token")
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "my-session-token", deviceFingerprint: nil)
 
         let auth = interceptor.lastRequest?.value(forHTTPHeaderField: "Authorization")
         #expect(auth == "Bearer my-session-token")
@@ -208,7 +320,7 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok")
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
 
         let origin = interceptor.lastRequest?.value(forHTTPHeaderField: "Origin")
         #expect(origin == "https://api.example.com")
@@ -223,7 +335,7 @@ struct DefaultAuthNetworkClientTests {
         let session = makeSession(interceptor: interceptor)
         let client = DefaultAuthNetworkClient(session: session)
 
-        let jwt = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok")
+        let jwt = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
 
         #expect(jwt == "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig")
     }
@@ -240,7 +352,7 @@ struct DefaultAuthNetworkClientTests {
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
-            _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "bad-tok")
+            _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "bad-tok", deviceFingerprint: nil)
         }
     }
 
@@ -256,7 +368,7 @@ struct DefaultAuthNetworkClientTests {
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
-            _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok")
+            _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
         }
     }
 }

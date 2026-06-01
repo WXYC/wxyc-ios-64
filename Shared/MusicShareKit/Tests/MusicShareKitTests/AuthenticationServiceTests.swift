@@ -10,6 +10,7 @@
 
 import AnalyticsTesting
 import Foundation
+import Security
 import Testing
 @testable import MusicShareKit
 
@@ -35,7 +36,8 @@ struct AuthenticationServiceTests {
 
     func makeValidSession(expiresIn: TimeInterval = 3600) -> AuthSession {
         AuthSession(
-            token: "test-token-\(UUID().uuidString)",
+            sessionToken: "test-session-\(UUID().uuidString)",
+            jwt: "test-jwt-\(UUID().uuidString)",
             userId: "test-user-\(UUID().uuidString)",
             createdAt: Date(),
             expiresAt: Date().addingTimeInterval(expiresIn)
@@ -44,17 +46,28 @@ struct AuthenticationServiceTests {
 
     func makeExpiredSession() -> AuthSession {
         AuthSession(
-            token: "expired-token",
+            sessionToken: "expired-session",
+            jwt: "expired-jwt",
             userId: "expired-user",
             createdAt: Date().addingTimeInterval(-7200),
             expiresAt: Date().addingTimeInterval(-3600)
         )
     }
 
+    func makeSignInResult() -> AnonymousSignInResult {
+        AnonymousSignInResult(
+            sessionToken: "signin-session-\(UUID().uuidString)",
+            userId: "signin-user-\(UUID().uuidString)"
+        )
+    }
+
     /// Creates a mock network client configured for the two-step auth flow.
-    func makeNetworkClient(session: AuthSession, jwtExpiresIn: TimeInterval = 3600) -> MockAuthNetworkClient {
+    func makeNetworkClient(
+        signInResult: AnonymousSignInResult? = nil,
+        jwtExpiresIn: TimeInterval = 3600
+    ) -> MockAuthNetworkClient {
         let client = MockAuthNetworkClient()
-        client.mockSession = session
+        client.mockSignInResult = signInResult ?? makeSignInResult()
         client.mockJWT = makeTestJWT(expiresIn: jwtExpiresIn)
         return client
     }
@@ -74,11 +87,11 @@ struct AuthenticationServiceTests {
 
         // First call should load from storage
         let token1 = try await service.ensureAuthenticated()
-        #expect(token1 == session.token)
+        #expect(token1 == session.jwt)
 
         // Second call should return cached (no additional storage/network calls)
         let token2 = try await service.ensureAuthenticated()
-        #expect(token2 == session.token)
+        #expect(token2 == session.jwt)
         #expect(networkClient.signInCallCount == 0)
     }
 
@@ -93,51 +106,52 @@ struct AuthenticationServiceTests {
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
-        #expect(token == session.token)
+        #expect(token == session.jwt)
         #expect(networkClient.signInCallCount == 0)
     }
 
     @Test("Signs in and exchanges for JWT when no stored session")
     func signsInWhenNoStoredSession() async throws {
         let storage = InMemoryTokenStorage()
-        let signInSession = makeValidSession()
-        let networkClient = makeNetworkClient(session: signInSession)
+        let signInSession = makeSignInResult()
+        let networkClient = makeNetworkClient(signInResult: signInSession)
 
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
         // Returned token should be the JWT, not the session token
-        #expect(token != signInSession.token)
+        #expect(token != signInSession.sessionToken)
         #expect(token.contains("."))
         #expect(networkClient.signInCallCount == 1)
         #expect(networkClient.fetchJWTCallCount == 1)
 
         // Verify stored session has the JWT and a non-nil expiration
         let storedSession = try storage.load()
-        #expect(storedSession?.token == token)
+        #expect(storedSession?.jwt == token)
         #expect(storedSession?.expiresAt != nil)
     }
 
-    @Test("Signs in when stored session is expired")
-    func signsInWhenSessionExpired() async throws {
+    @Test("Refreshes JWT via /auth/token when stored JWT is expired but session is valid")
+    func refreshesJWTWhenJWTExpired() async throws {
         let storage = InMemoryTokenStorage()
 
-        // Store an expired session
+        // Store an expired JWT but with a still-valid sessionToken.
         let expiredSession = makeExpiredSession()
         try storage.save(expiredSession)
 
-        // Network will return a fresh session + JWT
-        let freshSession = makeValidSession()
-        let networkClient = makeNetworkClient(session: freshSession)
+        // Network mock will return a fresh JWT from /auth/token. No sign-in.
+        let networkClient = makeNetworkClient()
 
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
-        // Should be the JWT, not the sign-in session token
-        #expect(token != freshSession.token)
         #expect(token.contains("."))
-        #expect(networkClient.signInCallCount == 1)
+        // KEY ASSERTION: /auth/token refresh, NOT re-sign-in (D5).
+        #expect(networkClient.signInCallCount == 0)
         #expect(networkClient.fetchJWTCallCount == 1)
+
+        // The fetchJWT call used the persisted sessionToken (not a fresh one).
+        #expect(networkClient.fetchJWTSessionTokens == [expiredSession.sessionToken])
     }
 
     @Test("Throws error when network sign-in fails")
@@ -157,7 +171,7 @@ struct AuthenticationServiceTests {
     func throwsOnJWTExchangeFailure() async throws {
         let storage = InMemoryTokenStorage()
         let networkClient = MockAuthNetworkClient()
-        networkClient.mockSession = makeValidSession()
+        networkClient.mockSignInResult = makeSignInResult()
         networkClient.mockJWTError = AuthenticationError.serverError(statusCode: 500)
 
         let service = makeService(storage: storage, networkClient: networkClient)
@@ -178,7 +192,8 @@ struct AuthenticationServiceTests {
 
         // Pre-populate storage with a JWT session (has expiresAt)
         let jwtSession = AuthSession(
-            token: "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjk5OTk5OTk5OTl9.sig",
+            sessionToken: "session-token-123",
+            jwt: "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjk5OTk5OTk5OTl9.sig",
             userId: "user-123",
             createdAt: Date(),
             expiresAt: Date().addingTimeInterval(3600)
@@ -188,33 +203,144 @@ struct AuthenticationServiceTests {
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
-        #expect(token == jwtSession.token)
+        #expect(token == jwtSession.jwt)
         #expect(networkClient.signInCallCount == 0)
         #expect(networkClient.fetchJWTCallCount == 0)
     }
 
-    @Test("Expired JWT session triggers full re-auth with JWT exchange")
-    func expiredJWTSessionTriggersFullReauth() async throws {
+    @Test("401 from /auth/token triggers fresh re-sign-in")
+    func refreshFallsBackToSignInOn401() async throws {
         let storage = InMemoryTokenStorage()
+        let expiredSession = makeExpiredSession()
+        try storage.save(expiredSession)
 
-        // Store an expired JWT session
-        let expiredJWT = AuthSession(
-            token: "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.sig",
-            userId: "user-123",
-            createdAt: Date().addingTimeInterval(-7200),
-            expiresAt: Date().addingTimeInterval(-3600)
-        )
-        try storage.save(expiredJWT)
+        // First fetchJWT (refresh attempt) returns 401, second (after re-sign-in)
+        // succeeds. Use a stateful mock to script this sequence.
+        let networkClient = SequentialJWTMock()
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.fetchJWTOutcomes = [
+            .failure(AuthenticationError.serverError(statusCode: 401)),
+            .success(makeTestJWT())
+        ]
 
-        let freshSession = makeValidSession()
-        let networkClient = makeNetworkClient(session: freshSession)
+        let service = makeService(storage: storage, networkClient: networkClient)
+        let token = try await service.ensureAuthenticated()
+
+        #expect(token.contains("."))
+        // Fresh sign-in DID happen because of the 401 fallback.
+        #expect(networkClient.signInCallCount == 1)
+        // Two fetchJWT calls: the failed refresh, then the post-sign-in mint.
+        #expect(networkClient.fetchJWTCallCount == 2)
+    }
+
+    @Test("404 from /auth/token triggers fresh re-sign-in")
+    func refreshFallsBackToSignInOn404() async throws {
+        let storage = InMemoryTokenStorage()
+        let expiredSession = makeExpiredSession()
+        try storage.save(expiredSession)
+
+        let networkClient = SequentialJWTMock()
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.fetchJWTOutcomes = [
+            .failure(AuthenticationError.serverError(statusCode: 404)),
+            .success(makeTestJWT())
+        ]
 
         let service = makeService(storage: storage, networkClient: networkClient)
         let token = try await service.ensureAuthenticated()
 
         #expect(token.contains("."))
         #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 2)
+    }
+
+    @Test("500 from /auth/token propagates without re-sign-in")
+    func refreshDoesNotFallBackOn500() async throws {
+        let storage = InMemoryTokenStorage()
+        let expiredSession = makeExpiredSession()
+        try storage.save(expiredSession)
+
+        let networkClient = SequentialJWTMock()
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.fetchJWTOutcomes = [
+            .failure(AuthenticationError.serverError(statusCode: 500))
+        ]
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        await #expect(throws: AuthenticationError.self) {
+            _ = try await service.ensureAuthenticated()
+        }
+        // No re-sign-in for non-401/404.
+        #expect(networkClient.signInCallCount == 0)
+    }
+
+    // MARK: - D5 Concurrent-Call Dedup
+
+    @Test("Concurrent callers share one in-flight refresh")
+    func concurrentCallersDedup() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = GatedNetworkMock()
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.gateJWT = true
+        let mintedJWT = makeTestJWT()
+        networkClient.jwtToReturn = mintedJWT
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        // Spawn N concurrent callers. They should all race into the
+        // dedup branch and share a single in-flight refresh.
+        let n = 5
+        async let results: [String] = withThrowingTaskGroup(of: String.self) { group in
+            for _ in 0..<n {
+                group.addTask {
+                    try await service.ensureAuthenticated()
+                }
+            }
+            var collected: [String] = []
+            for try await value in group {
+                collected.append(value)
+            }
+            return collected
+        }
+
+        // Give all callers a moment to enter the actor before we release the gate.
+        try await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+        networkClient.releaseJWT()
+
+        let tokens = try await results
+        #expect(tokens.count == n)
+        #expect(tokens.allSatisfy { $0 == mintedJWT })
+        // Critical: exactly ONE fetchJWT call, not N.
         #expect(networkClient.fetchJWTCallCount == 1)
+        #expect(networkClient.signInCallCount == 1)
+    }
+
+    @Test("Refresh failure propagates and clears in-flight handle for next call")
+    func refreshFailureDoesNotPoisonDedup() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = SequentialJWTMock()
+        // Configure: signIn always succeeds, first fetchJWT throws (non-401),
+        // second fetchJWT succeeds.
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.fetchJWTOutcomes = [
+            .failure(AuthenticationError.networkError(URLError(.timedOut))),
+            .success(makeTestJWT())
+        ]
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        await #expect(throws: AuthenticationError.self) {
+            _ = try await service.ensureAuthenticated()
+        }
+
+        // Next call must start a NEW refresh — inFlightAuth was cleared by
+        // the defer, so the second caller isn't blocked waiting on a stale
+        // Task that already threw.
+        let token = try await service.ensureAuthenticated()
+        #expect(token.contains("."))
+        // Two sign-ins (both attempts), two fetchJWT calls (failure + success).
+        #expect(networkClient.signInCallCount == 2)
+        #expect(networkClient.fetchJWTCallCount == 2)
     }
 
     // MARK: - reauthenticate Tests
@@ -228,18 +354,18 @@ struct AuthenticationServiceTests {
         try storage.save(initialSession)
 
         // Fresh session from reauthentication (will go through network)
-        let freshSession = makeValidSession()
-        let networkClient = makeNetworkClient(session: freshSession)
+        let freshSession = makeSignInResult()
+        let networkClient = makeNetworkClient(signInResult: freshSession)
 
         let service = makeService(storage: storage, networkClient: networkClient)
 
         // First, get the initial token (from storage)
         let token1 = try await service.ensureAuthenticated()
-        #expect(token1 == initialSession.token)
+        #expect(token1 == initialSession.jwt)
 
         // Now reauthenticate
         let token2 = try await service.reauthenticate(reason: .unauthorized)
-        #expect(token2 != initialSession.token)
+        #expect(token2 != initialSession.jwt)
         #expect(networkClient.signInCallCount == 1)
         #expect(networkClient.fetchJWTCallCount == 1)
     }
@@ -279,7 +405,7 @@ struct AuthenticationServiceTests {
         let session = makeValidSession()
         try storage.save(session)
 
-        let networkClient = makeNetworkClient(session: makeValidSession())
+        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
 
         let service = makeService(storage: storage, networkClient: networkClient)
 
@@ -304,7 +430,7 @@ struct AuthenticationServiceTests {
     func tracksAuthEvents() async throws {
         let storage = InMemoryTokenStorage()
         let session = makeValidSession()
-        let networkClient = makeNetworkClient(session: session)
+        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
 
         let service = makeService(storage: storage, networkClient: networkClient)
         mockAnalytics.reset()
@@ -320,7 +446,7 @@ struct AuthenticationServiceTests {
     func tracksJWTExchangeEvent() async throws {
         let storage = InMemoryTokenStorage()
         let session = makeValidSession()
-        let networkClient = makeNetworkClient(session: session)
+        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
 
         let service = makeService(storage: storage, networkClient: networkClient)
         mockAnalytics.reset()
@@ -354,7 +480,7 @@ struct AuthenticationServiceTests {
     func tracksJWTExchangeFailure() async throws {
         let storage = InMemoryTokenStorage()
         let networkClient = MockAuthNetworkClient()
-        networkClient.mockSession = makeValidSession()
+        networkClient.mockSignInResult = makeSignInResult()
         networkClient.mockJWTError = AuthenticationError.serverError(statusCode: 500)
 
         let service = makeService(storage: storage, networkClient: networkClient)
@@ -369,6 +495,176 @@ struct AuthenticationServiceTests {
         let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
         let jwtExchangeFailure = failedEvents.first { $0.phase == .jwtExchange }
         #expect(jwtExchangeFailure != nil)
+    }
+
+    // MARK: - D1 Migration Tests (decode-failure vs operational-failure)
+
+    @Test("V1 (old-shape) AuthSession JSON fails to decode")
+    func v1JSONDecodeFails() throws {
+        // The pre-#351 AuthSession had a single `token` field instead of
+        // separate sessionToken + jwt. Verify that the decoder rejects that
+        // shape — this is the trigger for the migration path in
+        // KeychainTokenStorage.load() (which wraps the throw as
+        // keychainError(status: errSecDecode)).
+        let v1JSON = """
+        {
+            "token": "v1-flat-token",
+            "userId": "v1-user",
+            "createdAt": 0,
+            "expiresAt": null
+        }
+        """.data(using: .utf8)!
+
+        #expect(throws: (any Error).self) {
+            _ = try JSONDecoder().decode(AuthSession.self, from: v1JSON)
+        }
+    }
+
+    @Test("Decode-failure on storage load triggers silent re-sign-in")
+    func decodeFailureSilentReauth() async throws {
+        let storage = MockThrowingTokenStorage(
+            loadError: AuthenticationError.keychainError(status: errSecDecode)
+        )
+        let freshSession = makeSignInResult()
+        let networkClient = makeNetworkClient(signInResult: freshSession)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        mockAnalytics.reset()
+
+        let token = try await service.ensureAuthenticated()
+
+        // Sign-in happened (decode-failure → re-sign-in)
+        #expect(networkClient.signInCallCount == 1)
+        #expect(token.contains("."))
+
+        // CRITICAL: no operational-failure event for the decode case. The
+        // keychain-decode-error event fires inside KeychainTokenStorage.load()
+        // (not exercised here since we mock storage) — the catch arm in
+        // ensureAuthenticated() deliberately suppresses RequestLineAuthFailedEvent
+        // so ops can tell migration churn apart from real Keychain trouble.
+        let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
+            .filter { $0.phase == .keychain }
+        #expect(failedEvents.isEmpty)
+    }
+
+    @Test("Operational-failure on storage load emits RequestLineAuthFailedEvent")
+    func operationalFailureCapturesEvent() async throws {
+        let storage = MockThrowingTokenStorage(
+            loadError: AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
+        )
+        let freshSession = makeSignInResult()
+        let networkClient = makeNetworkClient(signInResult: freshSession)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        mockAnalytics.reset()
+
+        _ = try await service.ensureAuthenticated()
+
+        // Sign-in still happens (operational failure → fall-through), but
+        // the operational-failure event IS emitted.
+        #expect(networkClient.signInCallCount == 1)
+        let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
+            .filter { $0.phase == .keychain }
+        #expect(failedEvents.count == 1)
+    }
+}
+
+// MARK: - MockThrowingTokenStorage
+
+/// `TokenStorage` test double whose `load()` always throws the configured
+/// error. Used by the D1 migration tests to drive the
+/// decode-vs-operational disambiguation in `ensureAuthenticated()`'s catch
+/// without standing up a real Keychain (which the SPM unit-test bundle
+/// can't access on the simulator due to errSecMissingEntitlement).
+private final class MockThrowingTokenStorage: TokenStorage, @unchecked Sendable {
+    let loadError: Error
+    init(loadError: Error) { self.loadError = loadError }
+    func load() throws -> AuthSession? { throw loadError }
+    func save(_ session: AuthSession) throws {}
+    func delete() throws {}
+}
+
+// MARK: - SequentialJWTMock
+
+/// `AuthNetworkClient` that returns a scripted sequence of fetchJWT outcomes
+/// so a single test can drive the refresh→401→re-sign-in→success flow.
+private final class SequentialJWTMock: AuthNetworkClient, @unchecked Sendable {
+
+    var mockSignInResult: AnonymousSignInResult?
+    var fetchJWTOutcomes: [Result<String, Error>] = []
+
+    private(set) var signInCallCount = 0
+    private(set) var fetchJWTCallCount = 0
+    private let lock = NSLock()
+
+    func signInAnonymously(baseURL: String, deviceFingerprint: String?) async throws -> AnonymousSignInResult {
+        lock.withLock { signInCallCount += 1 }
+        if let result = mockSignInResult {
+            return result
+        }
+        throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
+    }
+
+    func fetchJWT(baseURL: String, sessionToken: String, deviceFingerprint: String?) async throws -> String {
+        let outcome: Result<String, Error>? = lock.withLock {
+            fetchJWTCallCount += 1
+            return fetchJWTOutcomes.isEmpty ? nil : fetchJWTOutcomes.removeFirst()
+        }
+        switch outcome {
+        case .success(let jwt): return jwt
+        case .failure(let error): throw error
+        case .none:
+            throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
+        }
+    }
+}
+
+// MARK: - GatedNetworkMock
+
+/// `AuthNetworkClient` whose `fetchJWT` blocks until `releaseJWT()` is called,
+/// so a test can verify concurrent callers share a single in-flight refresh.
+private final class GatedNetworkMock: AuthNetworkClient, @unchecked Sendable {
+
+    var mockSignInResult: AnonymousSignInResult?
+    var jwtToReturn: String = "gated.jwt.value"
+    var gateJWT = false
+
+    private(set) var signInCallCount = 0
+    private(set) var fetchJWTCallCount = 0
+    private let lock = NSLock()
+
+    // CheckedContinuations used to gate the fetchJWT call. The test calls
+    // releaseJWT() to resume them.
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func signInAnonymously(baseURL: String, deviceFingerprint: String?) async throws -> AnonymousSignInResult {
+        lock.withLock { signInCallCount += 1 }
+        guard let result = mockSignInResult else {
+            throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
+        }
+        return result
+    }
+
+    func fetchJWT(baseURL: String, sessionToken: String, deviceFingerprint: String?) async throws -> String {
+        lock.withLock { fetchJWTCallCount += 1 }
+
+        if gateJWT {
+            await withCheckedContinuation { cont in
+                lock.withLock { waiters.append(cont) }
+            }
+        }
+        return jwtToReturn
+    }
+
+    func releaseJWT() {
+        let pending = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            let snapshot = waiters
+            waiters.removeAll()
+            return snapshot
+        }
+        for cont in pending {
+            cont.resume()
+        }
     }
 }
 

@@ -75,6 +75,7 @@ public struct RequestService: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-type")
+        request.addValue(UserAgentHeader.value, forHTTPHeaderField: "User-Agent")
 
         // Add auth header if enabled
         if useAuth, let authService = MusicShareKit.authService {
@@ -85,6 +86,13 @@ public struct RequestService: Sendable {
                 Log(.error, category: .network, "Failed to authenticate: \(error)")
                 throw RequestServiceError.authenticationFailed(error)
             }
+        }
+
+        // Add stable device fingerprint so BS can ban an abusive listener
+        // even when the JWT churns. Omitted if the fingerprint could not be
+        // initialized — ROM proceeds-as-unauth in that case (iOS#351 D3).
+        if let fingerprint = MusicShareKit.deviceFingerprint {
+            request.addValue(fingerprint, forHTTPHeaderField: "X-Device-Fingerprint")
         }
 
         let json: [String: Any] = ["message": message]
@@ -131,13 +139,29 @@ public struct RequestService: Sendable {
                 }
 
             case 403 where useAuth:
-                // User is banned
+                // Shadow-ban (D2 in the iOS#351 plan): the user is banned by
+                // ROM, but iOS treats this as success. We post the same
+                // RequestSentMessage notification as the 200 case so the
+                // share-extension UI advances to "request sent" — the listener
+                // never learns they were filtered. We still capture the
+                // ban-event for telemetry; a user who sniffs their own HTTPS
+                // traffic can already see the 403, so no leak surface added.
+                //
+                // Note: there is no unit test for this branch — `RequestService`
+                // reads `MusicShareKit.configuration.analyticsService` after
+                // its first `await`, so a parallelizable test target like
+                // MusicShareKitTests can't reliably exercise the assertion
+                // without first refactoring RequestService to take dependencies
+                // via init/parameters. The plan calls that out as follow-up.
                 let userId = await MusicShareKit.authService?.currentUserId()
                 MusicShareKit.configuration.analyticsService.capture(
                     RequestLineUserBannedEvent(userId: userId ?? "unknown")
                 )
-                Log(.error, category: .network, "User banned from request service")
-                throw RequestServiceError.userBanned
+                Log(.info, category: .network, "Request shadow-banned by request service")
+                let notification = RequestSentMessage.makeNotification(
+                    RequestSentMessage(), object: RequestServiceSubject.shared
+                )
+                NotificationCenter.default.post(notification)
 
             default:
                 Log(.error, category: .network, "Request failed. Status code: \(httpResponse.statusCode)")

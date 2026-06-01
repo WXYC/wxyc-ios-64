@@ -196,6 +196,28 @@ public struct RequestLineUserBannedEvent: RequestLineAnalyticsEvent {
     }
 }
 
+// MARK: - Device Fingerprint Events
+
+/// Event captured when the device fingerprint cannot be initialized at
+/// `MusicShareKit.configure(...)` time (e.g., Keychain locked pre-first-unlock,
+/// missing entitlement, iCloud Keychain in an inconsistent state).
+///
+/// A failure here causes the `X-Device-Fingerprint` header to be omitted from
+/// subsequent requests. ROM proceeds-as-unauth for those requests, so the
+/// listener can still send a request — the only user-visible effect is that
+/// the ban-evasion vector temporarily opens for that user.
+public struct DeviceFingerprintInitFailedEvent: RequestLineAnalyticsEvent {
+    public let error: String
+
+    public var properties: [String: Any]? {
+        ["error": error]
+    }
+
+    public init(error: String) {
+        self.error = error
+    }
+}
+
 // MARK: - Feature Flag Events
 
 /// Source of a feature flag evaluation.

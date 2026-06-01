@@ -17,7 +17,8 @@ struct InMemoryTokenStorageTests {
 
     func makeValidSession() -> AuthSession {
         AuthSession(
-            token: "test-token",
+            sessionToken: "test-session-token",
+            jwt: "test-jwt",
             userId: "test-user",
             createdAt: Date(),
             expiresAt: Date().addingTimeInterval(3600)
@@ -39,7 +40,8 @@ struct InMemoryTokenStorageTests {
         try storage.save(session)
         let loaded = try storage.load()
 
-        #expect(loaded?.token == session.token)
+        #expect(loaded?.jwt == session.jwt)
+        #expect(loaded?.sessionToken == session.sessionToken)
         #expect(loaded?.userId == session.userId)
     }
 
@@ -66,13 +68,15 @@ struct InMemoryTokenStorageTests {
         let storage = InMemoryTokenStorage()
 
         let session1 = AuthSession(
-            token: "token-1",
+            sessionToken: "session-1",
+            jwt: "jwt-1",
             userId: "user-1",
             createdAt: Date(),
             expiresAt: nil
         )
         let session2 = AuthSession(
-            token: "token-2",
+            sessionToken: "session-2",
+            jwt: "jwt-2",
             userId: "user-2",
             createdAt: Date(),
             expiresAt: nil
@@ -82,7 +86,8 @@ struct InMemoryTokenStorageTests {
         try storage.save(session2)
 
         let loaded = try storage.load()
-        #expect(loaded?.token == "token-2")
+        #expect(loaded?.jwt == "jwt-2")
+        #expect(loaded?.sessionToken == "session-2")
         #expect(loaded?.userId == "user-2")
     }
 }
