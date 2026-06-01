@@ -44,5 +44,7 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>WXYC_BUILD_TYPE</key>
+	<string>$(CONFIGURATION)</string>
 </dict>
 </plist>

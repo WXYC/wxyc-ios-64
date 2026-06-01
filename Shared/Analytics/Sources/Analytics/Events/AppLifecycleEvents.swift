@@ -13,14 +13,15 @@ import Foundation
 // MARK: - App Launch
 
 /// Event fired when the app launches.
+///
+/// `build_type` is no longer carried as a typed field — it is stamped onto every event
+/// by `StructuredPostHogAnalytics` from the `WXYC_BUILD_TYPE` Info.plist key.
 @AnalyticsEvent
 public struct AppLaunch {
     public let hasUsedThemePicker: Bool
-    public let buildType: String
 
-    public init(hasUsedThemePicker: Bool, buildType: String) {
+    public init(hasUsedThemePicker: Bool) {
         self.hasUsedThemePicker = hasUsedThemePicker
-        self.buildType = buildType
     }
 }
 
