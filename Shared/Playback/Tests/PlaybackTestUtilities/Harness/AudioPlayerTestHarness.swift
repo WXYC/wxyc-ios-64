@@ -67,6 +67,20 @@ public enum AudioPlayerTestCase: String, CaseIterable, CustomTestStringConvertib
             false
         }
     }
+
+    /// Cases to exercise on the current run. On CI (when `WXYC_SKIP_KNOWN_FLAKES=1`,
+    /// set via the `TEST_RUNNER_` prefix from the workflow), the `.mp3Streamer` arm
+    /// is excluded — the simulator's virtualized CoreAudio path through `AVAudioEngine`
+    /// flakes on macos-latest. The `.radioPlayer` arm still runs, preserving the
+    /// AudioPlayerProtocol contract coverage. Tracked in #371.
+    public static var flakeFiltered: [AudioPlayerTestCase] {
+        #if !os(watchOS)
+        if ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1" {
+            return allCases.filter { $0 != .mp3Streamer }
+        }
+        #endif
+        return allCases
+    }
 }
 
 // MARK: - Unified Test Harness

@@ -21,26 +21,27 @@ import AVFoundation
 
 // MARK: - Core State Tests
 
-@Suite(
-    "AudioPlayer Core State Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+// Suite-level skip removed in favor of per-arm filtering via `AudioPlayerTestCase.flakeFiltered`.
+// The `.mp3Streamer` arm is the one that flakes on the virtualized CI runner (AVAudioEngine);
+// the `.radioPlayer` arm still runs on CI and preserves the AudioPlayerProtocol contract coverage.
+
+@Suite("AudioPlayer Core State Tests")
 @MainActor
 struct AudioPlayerCoreStateTests {
 
-    @Test("Initial state is idle", arguments: AudioPlayerTestCase.allCases)
+    @Test("Initial state is idle", arguments: AudioPlayerTestCase.flakeFiltered)
     func initialStateIsIdle(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
         #expect(harness.player.state == .idle, "Initial state should be idle")
     }
 
-    @Test("Initial isPlaying is false", arguments: AudioPlayerTestCase.allCases)
+    @Test("Initial isPlaying is false", arguments: AudioPlayerTestCase.flakeFiltered)
     func initialIsPlayingIsFalse(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
         #expect(!harness.player.isPlaying, "Initial isPlaying should be false")
     }
 
-    @Test("play() transitions to loading", arguments: AudioPlayerTestCase.allCases)
+    @Test("play() transitions to loading", arguments: AudioPlayerTestCase.flakeFiltered)
     func playTransitionsToLoading(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
         harness.player.play()
@@ -51,7 +52,7 @@ struct AudioPlayerCoreStateTests {
         #expect(validStates.contains(harness.player.state), "play() should transition to loading or playing state")
     }
 
-    @Test("play() eventually transitions to playing", arguments: AudioPlayerTestCase.allCases)
+    @Test("play() eventually transitions to playing", arguments: AudioPlayerTestCase.flakeFiltered)
     func playEventuallyTransitionsToPlaying(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
         harness.player.play()
@@ -61,7 +62,7 @@ struct AudioPlayerCoreStateTests {
         #expect(harness.player.state == .playing, "play() should eventually transition to playing")
     }
 
-    @Test("isPlaying is true when playing", arguments: AudioPlayerTestCase.allCases)
+    @Test("isPlaying is true when playing", arguments: AudioPlayerTestCase.flakeFiltered)
     func isPlayingTrueWhenPlaying(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
         harness.player.play()
@@ -71,7 +72,7 @@ struct AudioPlayerCoreStateTests {
         #expect(harness.player.isPlaying, "isPlaying should be true when state is playing")
     }
 
-    @Test("stop() transitions to idle", arguments: AudioPlayerTestCase.allCases)
+    @Test("stop() transitions to idle", arguments: AudioPlayerTestCase.flakeFiltered)
     func stopTransitionsToIdle(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -88,7 +89,7 @@ struct AudioPlayerCoreStateTests {
         #expect(harness.player.state == .idle, "stop() should transition to idle state")
     }
 
-    @Test("isPlaying is false after stop", arguments: AudioPlayerTestCase.allCases)
+    @Test("isPlaying is false after stop", arguments: AudioPlayerTestCase.flakeFiltered)
     func isPlayingFalseAfterStop(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -108,14 +109,11 @@ struct AudioPlayerCoreStateTests {
 
 // MARK: - Idempotency Tests
 
-@Suite(
-    "AudioPlayer Idempotency Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+@Suite("AudioPlayer Idempotency Tests")
 @MainActor
 struct AudioPlayerIdempotencyTests {
 
-    @Test("play() while playing is idempotent", arguments: AudioPlayerTestCase.allCases)
+    @Test("play() while playing is idempotent", arguments: AudioPlayerTestCase.flakeFiltered)
     func playWhilePlayingIsIdempotent(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -133,7 +131,7 @@ struct AudioPlayerIdempotencyTests {
         #expect(harness.player.isPlaying, "Multiple play() calls should keep playing")
     }
 
-    @Test("stop() while idle is idempotent", arguments: AudioPlayerTestCase.allCases)
+    @Test("stop() while idle is idempotent", arguments: AudioPlayerTestCase.flakeFiltered)
     func stopWhileIdleIsIdempotent(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -147,7 +145,7 @@ struct AudioPlayerIdempotencyTests {
         #expect(harness.player.state == .idle, "stop() while idle should remain idle")
     }
 
-    @Test("Multiple stop() calls are safe", arguments: AudioPlayerTestCase.allCases)
+    @Test("Multiple stop() calls are safe", arguments: AudioPlayerTestCase.flakeFiltered)
     func multipleStopCallsAreSafe(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -167,7 +165,7 @@ struct AudioPlayerIdempotencyTests {
         #expect(harness.player.state == .idle, "Multiple stop() calls should be safe")
     }
 
-    @Test("play() after stop() works", arguments: AudioPlayerTestCase.allCases)
+    @Test("play() after stop() works", arguments: AudioPlayerTestCase.flakeFiltered)
     func playAfterStopWorks(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -190,7 +188,7 @@ struct AudioPlayerIdempotencyTests {
         #expect(harness.player.isPlaying, "play() after stop() should work")
     }
 
-    @Test("Rapid play/stop cycles are safe", arguments: AudioPlayerTestCase.allCases)
+    @Test("Rapid play/stop cycles are safe", arguments: AudioPlayerTestCase.flakeFiltered)
     func rapidPlayStopCyclesAreSafe(testCase: AudioPlayerTestCase) async {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -211,14 +209,11 @@ struct AudioPlayerIdempotencyTests {
 
 // MARK: - State Stream Tests
 
-@Suite(
-    "AudioPlayer State Stream Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+@Suite("AudioPlayer State Stream Tests")
 @MainActor
 struct AudioPlayerStateStreamTests {
 
-    @Test("stateStream yields on play", arguments: AudioPlayerTestCase.allCases)
+    @Test("stateStream yields on play", arguments: AudioPlayerTestCase.flakeFiltered)
     func stateStreamYieldsOnPlay(testCase: AudioPlayerTestCase) async throws {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -252,7 +247,7 @@ struct AudioPlayerStateStreamTests {
         #expect(receivedStates.contains(.loading), "stateStream should yield .loading on play()")
     }
 
-    @Test("stateStream yields on stop", arguments: AudioPlayerTestCase.allCases)
+    @Test("stateStream yields on stop", arguments: AudioPlayerTestCase.flakeFiltered)
     func stateStreamYieldsOnStop(testCase: AudioPlayerTestCase) async throws {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -295,14 +290,11 @@ struct AudioPlayerStateStreamTests {
 
 // MARK: - Event Stream Tests
 
-@Suite(
-    "AudioPlayer Event Stream Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+@Suite("AudioPlayer Event Stream Tests")
 @MainActor
 struct AudioPlayerEventStreamTests {
 
-    @Test("eventStream yields stall event", arguments: AudioPlayerTestCase.allCases)
+    @Test("eventStream yields stall event", arguments: AudioPlayerTestCase.flakeFiltered)
     func eventStreamYieldsStallEvent(testCase: AudioPlayerTestCase) async throws {
         let harness = AudioPlayerTestHarness.make(for: testCase)
 
@@ -389,10 +381,10 @@ struct AudioPlayerEventStreamTests {
 
 // MARK: - Stall State Tests
 
-@Suite(
-    "AudioPlayer Stall State Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+// Both tests in this suite use only the `.radioPlayer` arm directly — they don't share
+// the AVAudioEngine flake mechanism. No trait needed.
+
+@Suite("AudioPlayer Stall State Tests")
 @MainActor
 struct AudioPlayerStallStateTests {
 
