@@ -33,12 +33,6 @@ env:
   SCHEME: WXYC
   TEST_PLAN: WXYC
   DESTINATION: platform=iOS Simulator,name=iPhone 16 Pro
-  # Surfaces known-flaky suites via .disabled(if:) traits in source. The
-  # TEST_RUNNER_ prefix is xcodebuild's mechanism for passing host-shell env
-  # vars through to the simulator test process — the prefix is stripped at
-  # runtime, so the traits check the un-prefixed `WXYC_SKIP_KNOWN_FLAKES`.
-  # Drop this var and the traits as #371 retires each suite from the skip set.
-  TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES: '1'
 
 jobs:
   build-and-test:
@@ -142,6 +136,15 @@ jobs:
         # to drop UI + CoreTests (CoreTests has its own step).
         # -onlyUsePackageVersionsFromResolvedFile stops the test step re-resolving SPM —
         # log evidence showed ~49s wasted on this per run.
+        env:
+          # xcodebuild strips the TEST_RUNNER_ prefix when forwarding env vars to
+          # the simulator test runner process, so the .disabled(if:) traits in
+          # source check the un-prefixed `WXYC_SKIP_KNOWN_FLAKES`. Scoping at the
+          # step (not job) keeps this out of the Run CoreTests step, which has no
+          # flake traits today — preventing accidental skip of any future CoreTests
+          # suite that copies the .disabled(if:) pattern. Drop with the traits as
+          # #371 retires each suite from the skip set.
+          TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES: '1'
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
             ARGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
@@ -243,6 +246,30 @@ jobs:
             -only-testing:CoreTests/MusicServiceTests/displayNameMapsCorrectly \
             -disable-concurrent-destination-testing \
             -resultBundlePath CoreTestResults.xcresult
+
+      - name: Summarize test results
+        # Surfaces pass/fail/skip counts on every run — including green ones — so the
+        # `.disabled(if: WXYC_SKIP_KNOWN_FLAKES)` skip set can't grow invisibly. Each
+        # added trait shows up in this summary even when CI is green.
+        if: always() && (steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true')
+        run: |
+          {
+            echo "## Test summary"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          for bundle in TestResults.xcresult CoreTestResults.xcresult; do
+            if [ -d "$bundle" ]; then
+              {
+                echo "### $bundle"
+                echo ""
+                echo '```'
+                xcrun xcresulttool get test-results summary --path "$bundle" 2>/dev/null | head -40
+                echo '```'
+                echo ""
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          echo "Skipped tests include any \`.disabled(if: WXYC_SKIP_KNOWN_FLAKES)\` traits — tracked in #371." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

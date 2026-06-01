@@ -81,10 +81,7 @@ struct PlayerControllerTypeTests {
     }
 }
 
-@Suite(
-    "HLSEnvironment Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+@Suite("HLSEnvironment Tests")
 @MainActor
 struct HLSEnvironmentTests {
 
@@ -92,18 +89,31 @@ struct HLSEnvironmentTests {
         HLSEnvironment.clearOverride()
     }
 
-    @Test("Default environment is production")
+    // The three UserDefaults-touching tests below carry the flake trait. The remaining
+    // pure-value tests (urlIsNonEmpty / stagingURLIsCorrect / productionURLIsCorrect)
+    // don't share the parallel-instance UserDefaults bleed mechanism and stay on. #371.
+
+    @Test(
+        "Default environment is production",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func defaultIsProduction() {
         #expect(HLSEnvironment.loadActive() == .production)
     }
 
-    @Test("Manual override persists and loads")
+    @Test(
+        "Manual override persists and loads",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func manualOverride() {
         HLSEnvironment.staging.persist()
         #expect(HLSEnvironment.loadActive() == .staging)
     }
 
-    @Test("Clearing override reverts to default")
+    @Test(
+        "Clearing override reverts to default",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func clearOverride() {
         HLSEnvironment.staging.persist()
         HLSEnvironment.clearOverride()

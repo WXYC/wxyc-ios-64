@@ -9,6 +9,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Foundation
 import Testing
 import PlaybackTestUtilities
 import AVFoundation
