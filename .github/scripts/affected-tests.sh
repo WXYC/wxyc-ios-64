@@ -18,7 +18,12 @@
 # Outputs (written to $GITHUB_OUTPUT):
 #   run_all            — "true" if all tests should run, "false" otherwise
 #   skip_testing_flags — space-separated -skip-testing: flags for xcodebuild
-#   run_core_tests     — "true" if CoreTests is in the affected set
+#   only_testing_flags — space-separated -only-testing: flags for xcodebuild
+#   spm_affected       — space-separated SPM-runnable package names (host-tested
+#                        via `swift test --package-path Shared/<pkg>`)
+#   xcb_required       — "true" when xcodebuild + simulator is required (any
+#                        non-SPM-runnable affected package, or the WXYCTests
+#                        app-integration safety net)
 #   affected_summary   — human-readable summary for the step log
 #
 # The dependency graph is hardcoded from Shared/*/Package.swift. Update it
@@ -40,10 +45,20 @@ output() {
 run_all_and_exit() {
     local reason="$1"
     echo "Running all tests: $reason"
+    # SPM-runnable packages run via swift test on host; xcodebuild skips their
+    # test targets to avoid double coverage. Keep in sync with SPM_RUNNABLE in
+    # step 8a below.
+    local spm_all="AnalyticsMacros Core Caching Analytics ColorPalette Playlist Artwork Metadata"
+    local skip="-skip-testing:WXYCUITests"
+    skip="$skip -skip-testing:AnalyticsMacrosTests"
+    skip="$skip -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests"
+    skip="$skip -skip-testing:ColorPaletteTests -skip-testing:PlaylistTests -skip-testing:ArtworkTests"
+    skip="$skip -skip-testing:MetadataTests"
     output "run_all" "true"
-    output "skip_testing_flags" "-skip-testing:WXYCUITests -skip-testing:CoreTests"
+    output "skip_testing_flags" "$skip"
     output "only_testing_flags" ""
-    output "run_core_tests" "true"
+    output "spm_affected" "$spm_all"
+    output "xcb_required" "true"
     output "affected_summary" "all tests ($reason)"
     exit 0
 }
@@ -82,11 +97,13 @@ echo ""
 
 while IFS= read -r file; do
     case "$file" in
-        Shared/*)          ;; # handled in step 4
-        WXYC/*)            run_all_and_exit "app source changed: $file" ;;
-        *.xcodeproj/*)     run_all_and_exit "project file changed: $file" ;;
-        *.xctestplan)      run_all_and_exit "test plan changed: $file" ;;
-        *)                 echo "  ignoring non-code file: $file" ;;
+        Shared/*)                                 ;; # handled in step 4
+        WXYC/*)                                   run_all_and_exit "app source changed: $file" ;;
+        *.xcodeproj/*)                            run_all_and_exit "project file changed: $file" ;;
+        *.xctestplan)                             run_all_and_exit "test plan changed: $file" ;;
+        .github/scripts/affected-tests.sh)        run_all_and_exit "affected-tests.sh changed" ;;
+        .github/workflows/build-and-test.yml)     run_all_and_exit "build-and-test workflow changed" ;;
+        *)                                        echo "  ignoring non-code file: $file" ;;
     esac
 done <<< "$changed_files"
 
@@ -198,22 +215,78 @@ TEST_TARGETS[PlayerHeaderView]="PlayerHeaderViewTests"
 TEST_TARGETS[AppServices]="AppServicesTests"
 TEST_TARGETS[PartyHorn]="PartyHornTests"
 
-typeset -A affected_targets
-# WXYCTests always runs when any package changes
-affected_targets[WXYCTests]=1
+# ---------------------------------------------------------------------------
+# 8a. Partition affected packages into SPM-runnable vs xcodebuild-required.
+#     SPM-runnable packages run via `swift test --package-path Shared/<pkg>` on
+#     the macOS host, bypassing xcodebuild + simulator. Their test targets are
+#     also excluded from xcodebuild's only_testing scope to avoid double
+#     coverage.
+#
+#     Excluded (forces xcb):
+#       - AppServices       — MockURLProtocol static handler + WidgetCenter
+#                             cause host hangs
+#       - Logger            — global Logger.addDestination shared mutable state
+#                             races (suite-level test interference)
+#       - Playback          — MP3Streamer state-tracking test diverges between
+#                             macOS host AudioToolbox and iOS simulator
+#       - PartyHorn         — Vortex / Bundle.module not host-portable
+#       - MusicShareKit     — uses SwiftUI #Preview macro at host build time
+#       - PlayerHeaderView  — depends on Wallpaper (a git submodule)
+#       - Wallpaper         — submodule
+# ---------------------------------------------------------------------------
+
+local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics ColorPalette Playlist Artwork Metadata)
+typeset -A SPM_RUNNABLE_SET
+for pkg in $SPM_RUNNABLE; do
+    SPM_RUNNABLE_SET[$pkg]=1
+done
+
+local spm_affected_list=""
+local xcb_required="false"
 
 for pkg in ${(k)affected}; do
+    if [[ -n "${SPM_RUNNABLE_SET[$pkg]:-}" ]]; then
+        if [[ -z "$spm_affected_list" ]]; then
+            spm_affected_list="$pkg"
+        else
+            spm_affected_list="$spm_affected_list $pkg"
+        fi
+    else
+        xcb_required="true"
+    fi
+done
+
+# WXYCTests is an app-target integration safety net for changes that aren't
+# fully covered by per-package tests. Only force it when xcodebuild is already
+# required — pure-SPM affected sets are covered by their `swift test` runs.
+typeset -A affected_targets
+if [[ "$xcb_required" == "true" ]]; then
+    affected_targets[WXYCTests]=1
+fi
+
+# Only add xcb test targets for non-SPM-runnable affected packages. SPM-runnable
+# packages are covered by the swift-test step; adding their xcb targets here
+# would double-cover and waste simulator time.
+for pkg in ${(k)affected}; do
+    if [[ -n "${SPM_RUNNABLE_SET[$pkg]:-}" ]]; then
+        continue
+    fi
     for target in ${=TEST_TARGETS[$pkg]:-}; do
         affected_targets[$target]=1
     done
 done
 
+echo "SPM-affected (host-runnable): $spm_affected_list"
+echo "xcb required: $xcb_required"
 echo "Affected test targets: ${(k)affected_targets}"
 
 # ---------------------------------------------------------------------------
-# 9. Determine which test plan targets to skip
-#    These are the 18 targets in WXYC.xctestplan. WXYCUITests is always
-#    skipped (existing behavior). CoreTests is handled by a separate step.
+# 9. Determine which test plan targets to skip in the xcodebuild step.
+#    These are the 17 targets in WXYC.xctestplan. WXYCUITests is always
+#    skipped. CoreTests runs via `swift test --package-path Shared/Core`
+#    (host) instead of xcodebuild, bypassing Swift Testing's parallel-scheduler
+#    hang under load — so it's always in skip_flags here, and the workflow's
+#    swift-test step covers it when Core is affected.
 # ---------------------------------------------------------------------------
 
 local all_test_plan_targets=(
@@ -236,33 +309,21 @@ local all_test_plan_targets=(
     PartyHornTests
 )
 
-local skip_flags="-skip-testing:WXYCUITests"
+local skip_flags="-skip-testing:WXYCUITests -skip-testing:CoreTests"
 local only_flags=""
 local skipped_count=0
 
 for target in $all_test_plan_targets; do
+    if [[ "$target" == "CoreTests" ]]; then
+        continue # always skipped from xcodebuild; covered by swift test
+    fi
     if [[ -z "${affected_targets[$target]:-}" ]]; then
         skip_flags="$skip_flags -skip-testing:$target"
         skipped_count=$((skipped_count + 1))
-    elif [[ "$target" != "CoreTests" ]]; then
-        # Emit -only-testing for affected non-Core targets so the workflow can
-        # scope `build-for-testing` to just this target's dependency tree.
-        # CoreTests is handled by a dedicated step and excluded here.
+    else
         only_flags="$only_flags -only-testing:$target"
     fi
 done
-
-# CoreTests is always skipped from the main test step (it runs in its own step)
-if [[ -z "${skip_flags##*-skip-testing:CoreTests*}" ]]; then
-    : # already skipped because it's unaffected
-else
-    skip_flags="$skip_flags -skip-testing:CoreTests"
-fi
-
-local run_core_tests="false"
-if [[ -n "${affected_targets[CoreTests]:-}" ]]; then
-    run_core_tests="true"
-fi
 
 local affected_count=${#affected[@]}
 local summary="${(k)changed_packages} ($affected_count affected packages, $skipped_count test targets skipped)"
@@ -270,11 +331,11 @@ local summary="${(k)changed_packages} ($affected_count affected packages, $skipp
 echo ""
 echo "Skip flags: $skip_flags"
 echo "Only flags: $only_flags"
-echo "Run CoreTests: $run_core_tests"
 echo "Summary: $summary"
 
 output "run_all" "false"
 output "skip_testing_flags" "$skip_flags"
 output "only_testing_flags" "$only_flags"
-output "run_core_tests" "$run_core_tests"
+output "spm_affected" "$spm_affected_list"
+output "xcb_required" "$xcb_required"
 output "affected_summary" "$summary"
