@@ -177,9 +177,7 @@
 			membershipExceptions = (
 				iOS/Tests/WXYCTests/BugReportViewModelTests.swift,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
-				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
-				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
@@ -229,9 +227,7 @@
 				iOS/Tests/WXYC.xctestplan,
 				iOS/Tests/WXYCTests/BugReportViewModelTests.swift,
 				iOS/Tests/WXYCTests/DiscogsFormatterTests.swift,
-				iOS/Tests/WXYCTests/LinkButtonLabelTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
-				iOS/Tests/WXYCTests/NowPlayingWidgetTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/MarketingRecordingUITests.swift,
