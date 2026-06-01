@@ -59,6 +59,22 @@ struct ErrorEventsTests {
         #expect(props["domain"] == nil)
     }
 
+    @Test("Category is included in properties when set")
+    func categoryIncluded() throws {
+        let event = ErrorEvent(error: "Read failed", context: "DiskCache", category: "Caching")
+        let props = try #require(event.properties)
+
+        #expect(props["category"] as? String == "Caching")
+    }
+
+    @Test("Category is omitted from properties when nil")
+    func categoryOmittedWhenNil() throws {
+        let event = ErrorEvent(error: "Read failed", context: "DiskCache")
+        let props = try #require(event.properties)
+
+        #expect(props["category"] == nil)
+    }
+
     @Test("Error initializer extracts localizedDescription, code, and domain")
     func errorInitializer() throws {
         let nsError = NSError(domain: "TestDomain", code: 42, userInfo: [
@@ -70,6 +86,16 @@ struct ErrorEventsTests {
         #expect(event.context == "UnitTest")
         #expect(event.code == 42)
         #expect(event.domain == "TestDomain")
+    }
+
+    @Test("Error initializer carries category through")
+    func errorInitializerWithCategory() throws {
+        let nsError = NSError(domain: "TestDomain", code: 42, userInfo: [
+            NSLocalizedDescriptionKey: "Test error description"
+        ])
+        let event = ErrorEvent(error: nsError, context: "UnitTest", category: "Network")
+
+        #expect(event.category == "Network")
     }
 }
 

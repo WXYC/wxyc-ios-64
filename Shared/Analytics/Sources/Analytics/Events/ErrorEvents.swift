@@ -22,6 +22,7 @@ public struct ErrorEvent: AnalyticsEvent {
     public let context: String
     public let code: Int?
     public let domain: String?
+    public let category: String?
 
     public var properties: [String: Any]? {
         var props: [String: Any] = [
@@ -30,21 +31,24 @@ public struct ErrorEvent: AnalyticsEvent {
         ]
         if let code { props["code"] = code }
         if let domain { props["domain"] = domain }
+        if let category { props["category"] = category }
         return props
     }
 
-    public init(error: String, context: String, code: Int? = nil, domain: String? = nil) {
+    public init(error: String, context: String, code: Int? = nil, domain: String? = nil, category: String? = nil) {
         self.error = error
         self.context = context
         self.code = code
         self.domain = domain
+        self.category = category
     }
 
-    public init(error: Error, context: String) {
+    public init(error: Error, context: String, category: String? = nil) {
         let nsError = error as NSError
         self.error = error.localizedDescription
         self.context = context
         self.code = nsError.code
         self.domain = nsError.domain
+        self.category = category
     }
 }

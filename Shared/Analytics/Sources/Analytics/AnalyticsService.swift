@@ -25,13 +25,14 @@ extension AnalyticsService {
         _ error: String,
         context: String,
         code: Int? = nil,
-        domain: String? = nil
+        domain: String? = nil,
+        category: String? = nil
     ) {
-        capture(ErrorEvent(error: error, context: context, code: code, domain: domain))
+        capture(ErrorEvent(error: error, context: context, code: code, domain: domain, category: category))
     }
 
     /// Captures a structured error event from an `Error` value.
-    public func captureError(_ error: Error, context: String) {
-        capture(ErrorEvent(error: error, context: context))
+    public func captureError(_ error: Error, context: String, category: String? = nil) {
+        capture(ErrorEvent(error: error, context: context, category: category))
     }
 }
