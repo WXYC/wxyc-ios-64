@@ -140,12 +140,19 @@ public struct RequestService: Sendable {
 
             case 403 where useAuth:
                 // Shadow-ban (D2 in the iOS#351 plan): the user is banned by
-                // ROM, but iOS treats this as success. We post the same
-                // RequestSentMessage notification as the 200 case so the
-                // share-extension UI advances to "request sent" — the listener
-                // never learns they were filtered. We still capture the
-                // ban-event for telemetry; a user who sniffs their own HTTPS
-                // traffic can already see the 403, so no leak surface added.
+                // ROM, but iOS treats this as success. We return without
+                // throwing so the share-extension UI's submit() success-path
+                // runs (it shows the HUD from the no-throw branch, not from
+                // a notification observer). We deliberately do NOT post
+                // RequestSentMessage — that notification's only observer is
+                // Singletonia.recordRequestSent (WXYC/iOS/Singletonia.swift),
+                // which bumps the App Store review-prompt counter on real
+                // engagement. Banned users' phantom requests must not pollute
+                // that signal (also an App Store guideline risk).
+                //
+                // We still capture RequestLineUserBannedEvent for telemetry —
+                // a user who sniffs their own HTTPS traffic already sees the
+                // 403, so no new leak surface.
                 //
                 // Note: there is no unit test for this branch — `RequestService`
                 // reads `MusicShareKit.configuration.analyticsService` after
@@ -158,10 +165,6 @@ public struct RequestService: Sendable {
                     RequestLineUserBannedEvent(userId: userId ?? "unknown")
                 )
                 Log(.info, category: .network, "Request shadow-banned by request service")
-                let notification = RequestSentMessage.makeNotification(
-                    RequestSentMessage(), object: RequestServiceSubject.shared
-                )
-                NotificationCenter.default.post(notification)
 
             default:
                 Log(.error, category: .network, "Request failed. Status code: \(httpResponse.statusCode)")

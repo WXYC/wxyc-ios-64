@@ -109,7 +109,12 @@ public actor AuthenticationService: SessionTokenProvider {
     /// kept defensively for any future call site (e.g., a manual
     /// "sign out + back in" UI).
     public func reauthenticate(reason: TokenRefreshReason) async throws -> String {
-        analytics.capture(RequestLineTokenRefreshedEvent(reason: reason, success: true))
+        // Cancel any in-flight refresh and clear the dedup handle BEFORE
+        // re-entering ensureAuthenticated — otherwise the dedup branch
+        // (`if let existing = inFlightAuth`) would return the stale Task's
+        // JWT, defeating the "force fresh" contract.
+        inFlightAuth?.cancel()
+        inFlightAuth = nil
 
         cachedSession = nil
         do {
@@ -121,7 +126,16 @@ public actor AuthenticationService: SessionTokenProvider {
             ))
         }
 
-        return try await ensureAuthenticated()
+        do {
+            let token = try await ensureAuthenticated()
+            analytics.capture(RequestLineTokenRefreshedEvent(reason: reason, success: true))
+            return token
+        } catch {
+            // Emit success=false so dashboards distinguish "reauth attempted
+            // and succeeded" from "reauth attempted and hard-failed".
+            analytics.capture(RequestLineTokenRefreshedEvent(reason: reason, success: false))
+            throw error
+        }
     }
 
     /// Returns the current user ID if authenticated.
@@ -144,6 +158,13 @@ public actor AuthenticationService: SessionTokenProvider {
 
     /// Clears all authentication state.
     public func signOut() async {
+        // Cancel any in-flight refresh and clear the dedup handle — otherwise
+        // a Task still running at sign-out time would write a fresh session
+        // into cachedSession + Keychain after we return, silently
+        // re-authenticating the just-signed-out user.
+        inFlightAuth?.cancel()
+        inFlightAuth = nil
+
         cachedSession = nil
         try? storage.delete()
     }
@@ -169,17 +190,25 @@ public actor AuthenticationService: SessionTokenProvider {
     }
 
     /// The actual refresh flow: Keychain → `/auth/token` → re-sign-in.
+    ///
+    /// Emits exactly one matched `RequestLineAuthStartedEvent` /
+    /// `RequestLineAuthCompletedEvent` pair per call, sourced from the
+    /// branch that actually serves the JWT. The 401/404 fallthrough is a
+    /// single logical "network" auth even though it spans both
+    /// `/auth/token` and `/sign-in/anonymous`.
     private func performRefresh() async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
-
-        // 3a. Try Keychain (restored from another process or cold start).
-        trackAuthStarted(source: .keychain)
         let loaded = loadFromKeychain()
+
+        // 3a. Keychain hit on a fresh JWT — fast path.
         if let session = loaded, !session.jwtIsStale(margin: Self.freshnessMargin) {
+            trackAuthStarted(source: .keychain)
             cachedSession = session
             trackAuthCompleted(source: .keychain, startTime: startTime, success: true)
             return session.jwt
         }
+
+        trackAuthStarted(source: .network)
 
         // 3b. JWT stale but session token might still be valid — refresh via /auth/token.
         if let session = loaded {
@@ -198,7 +227,6 @@ public actor AuthenticationService: SessionTokenProvider {
         }
 
         // 3c. No session, or session just nuked — fresh anonymous sign-in.
-        trackAuthStarted(source: .network)
         let session = try await freshSignIn()
         trackAuthCompleted(source: .network, startTime: startTime, success: true)
         return session.jwt
@@ -237,6 +265,23 @@ public actor AuthenticationService: SessionTokenProvider {
                 sessionToken: session.sessionToken,
                 deviceFingerprint: MusicShareKit.deviceFingerprint
             )
+        } catch let error as AuthenticationError {
+            // Recoverable 401/404 means the session was deleted (banned) or
+            // expired server-side. performRefresh's catch arm falls through
+            // to freshSignIn() — this is the intended ban-recovery path, not
+            // a true exchange failure, so don't pollute the auth-failed
+            // funnel with it.
+            if case .serverError(statusCode: 401) = error {
+                throw error
+            }
+            if case .serverError(statusCode: 404) = error {
+                throw error
+            }
+            analytics.capture(RequestLineAuthFailedEvent(
+                error: error.localizedDescription,
+                phase: .jwtExchange
+            ))
+            throw error
         } catch {
             analytics.capture(RequestLineAuthFailedEvent(
                 error: error.localizedDescription,
@@ -244,12 +289,26 @@ public actor AuthenticationService: SessionTokenProvider {
             ))
             throw error
         }
+
+        // If signOut/reauthenticate cancelled us between the await above and
+        // here, exit before persisting — otherwise we'd resurrect the just-
+        // cleared state. Awaiters of this Task see CancellationError; that
+        // matches the user's intent in calling signOut.
+        try Task.checkCancellation()
+
+        let payload = try JWTPayloadDecoder.decode(newJWT)
         let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
         analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
 
-        let payload = try JWTPayloadDecoder.decode(newJWT)
         let refreshed = session.with(jwt: newJWT, expiresAt: payload.expiresAt)
-        try? storage.save(refreshed)
+        do {
+            try storage.save(refreshed)
+        } catch {
+            analytics.capture(RequestLineAuthFailedEvent(
+                error: error.localizedDescription,
+                phase: .keychain
+            ))
+        }
         cachedSession = refreshed
         return refreshed
     }
@@ -288,10 +347,15 @@ public actor AuthenticationService: SessionTokenProvider {
             ))
             throw error
         }
+
+        // Bail before persisting if signOut/reauthenticate cancelled us; see
+        // the matching check in mintJWT for the rationale.
+        try Task.checkCancellation()
+
+        let payload = try JWTPayloadDecoder.decode(jwt)
         let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
         analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
 
-        let payload = try JWTPayloadDecoder.decode(jwt)
         let session = AuthSession(
             sessionToken: signInResult.sessionToken,
             jwt: jwt,

@@ -70,6 +70,11 @@ public enum MusicShareKit {
     nonisolated(unsafe) private static var _configuration: MusicShareKitConfiguration?
     nonisolated(unsafe) private static var _authService: AuthenticationService?
     nonisolated(unsafe) private static var _deviceFingerprint: String?
+    /// True once we've attempted the inline retry-on-read for a failed
+    /// eager init. Prevents `MusicShareKit.deviceFingerprint` from
+    /// re-entering `storage.ensure()` (which does synchronous Keychain IO)
+    /// on every request when the Keychain is wedged.
+    nonisolated(unsafe) private static var _fingerprintRetryAttempted: Bool = false
     private static let fingerprintLock = NSLock()
 
     /// The current configuration. Fatal error if not set.
@@ -92,8 +97,9 @@ public enum MusicShareKit {
     /// is a defensive backstop for the narrow window where `configure()` ran
     /// pre-first-unlock (e.g., a background-launched share extension) and the
     /// actual request happens after the user has unlocked the device. The
-    /// retry is NOT lazy initialization — lazy as the primary path would
-    /// reintroduce the cross-process race.
+    /// retry fires AT MOST ONCE per process lifetime — otherwise every
+    /// authenticated request would hammer the Keychain when the device is
+    /// permanently wedged (locked daemon, missing entitlement, etc.).
     public static var deviceFingerprint: String? {
         fingerprintLock.lock()
         defer { fingerprintLock.unlock() }
@@ -102,15 +108,23 @@ public enum MusicShareKit {
             return cached
         }
 
+        // We've already tried the inline retry; respect the cached-nil
+        // verdict so we don't repeatedly round-trip to securityd.
+        if _fingerprintRetryAttempted {
+            return nil
+        }
+
         guard let config = _configuration else {
             return nil
         }
 
-        // Retry once. If it still fails, return nil — downstream callers omit
-        // the header, ROM proceeds-as-unauth, listener can still request, the
-        // ban-evasion vector temporarily opens. Analytics already captured
-        // during the eager attempt in configure(); don't double-emit.
+        _fingerprintRetryAttempted = true
         guard let value = try? config.deviceFingerprintStorage.ensure() else {
+            // Retry burned. Downstream callers omit the header, ROM
+            // proceeds-as-unauth, the listener can still request, the
+            // ban-evasion vector temporarily opens until next launch.
+            // Analytics already captured during the eager attempt in
+            // configure(); don't double-emit.
             return nil
         }
         _deviceFingerprint = value
@@ -133,6 +147,7 @@ public enum MusicShareKit {
         // second sees the value committed by the first via the atomic
         // add-or-reread inside ensure().
         fingerprintLock.lock()
+        _fingerprintRetryAttempted = false  // fresh configure resets the retry budget
         do {
             _deviceFingerprint = try configuration.deviceFingerprintStorage.ensure()
         } catch {

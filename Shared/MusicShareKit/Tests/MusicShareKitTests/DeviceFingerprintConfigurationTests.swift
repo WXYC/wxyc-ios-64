@@ -96,25 +96,25 @@ struct DeviceFingerprintConfigurationTests {
         #expect(failures.count == 1)
     }
 
-    @Test("Accessor retries when eager init failed but later succeeds")
+    @Test("Accessor's inline retry recovers when Keychain comes online between configure() and first access")
     func retryAfterFailedEager() throws {
         let storage = InMemoryDeviceFingerprintStorage()
-        // Eager init fails…
+        // Eager init fails (e.g., pre-first-unlock).
         storage.stubError = AuthenticationError.keychainError(
             status: errSecInteractionNotAllowed
         )
 
         MusicShareKit.configure(makeConfiguration(storage: storage))
-        #expect(MusicShareKit.deviceFingerprint == nil)
 
         // …then later (e.g., after first-unlock) Keychain comes online.
+        // The accessor's at-most-once retry fires on the next read.
         storage.stubError = nil
         storage.stubFingerprint = "recovered-after-unlock"
 
         #expect(MusicShareKit.deviceFingerprint == "recovered-after-unlock")
     }
 
-    @Test("Accessor returns nil when storage continues to fail")
+    @Test("Retry burns at-most-once: continuing-failure path returns nil without hammering Keychain")
     func accessorNilWhenStorageBroken() throws {
         let storage = InMemoryDeviceFingerprintStorage()
         storage.stubError = AuthenticationError.keychainError(
@@ -122,8 +122,16 @@ struct DeviceFingerprintConfigurationTests {
         )
 
         MusicShareKit.configure(makeConfiguration(storage: storage))
-        #expect(MusicShareKit.deviceFingerprint == nil)
-        #expect(MusicShareKit.deviceFingerprint == nil)
+        let preCount = storage.ensureCallCount  // 1 from eager configure
+
+        // Multiple accesses while storage continues failing.
+        for _ in 0..<5 {
+            #expect(MusicShareKit.deviceFingerprint == nil)
+        }
+
+        // Exactly one retry attempt should have been made, regardless of
+        // how many times the accessor was called.
+        #expect(storage.ensureCallCount == preCount + 1)
     }
 
     @Test("Configuration default storage is a KeychainDeviceFingerprintStorage")

@@ -24,11 +24,15 @@ class ShareViewController: UIViewController {
 
         // Configure MusicShareKit. Pass keychainAccessGroup so this extension
         // shares its anonymous-auth session with the main app via the keychain
-        // group declared in ShareExtension.entitlements (issue #336).
+        // group declared in ShareExtension.entitlements (issue #336). Pass
+        // featureFlagProvider so `MusicShareKit.isAuthEnabled()` evaluates
+        // the request_line_auth_enabled flag — without it, the JWT+fingerprint
+        // pipeline is dead in production (iOS#351).
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
             keychainAccessGroup: AppConfiguration.keychainAccessGroup,
+            featureFlagProvider: PostHogFeatureFlagProvider.shared,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
