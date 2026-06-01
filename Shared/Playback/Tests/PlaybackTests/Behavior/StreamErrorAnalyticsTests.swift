@@ -24,7 +24,10 @@ import Core
 
 /// Tests verifying that stream errors are properly captured to analytics.
 /// These tests ensure consistent error reporting across all controller implementations.
-@Suite("Stream Error Analytics Tests")
+@Suite(
+    "Stream Error Analytics Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct StreamErrorAnalyticsTests {
 

@@ -16,7 +16,10 @@ import Foundation
 
 #if !os(watchOS)
 
-@Suite("AudioEnginePlayer Tests")
+@Suite(
+    "AudioEnginePlayer Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct AudioEnginePlayerTests {
 

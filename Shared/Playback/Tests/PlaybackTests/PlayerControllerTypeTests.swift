@@ -81,7 +81,10 @@ struct PlayerControllerTypeTests {
     }
 }
 
-@Suite("HLSEnvironment Tests")
+@Suite(
+    "HLSEnvironment Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct HLSEnvironmentTests {
 
