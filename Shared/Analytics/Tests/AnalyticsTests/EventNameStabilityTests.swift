@@ -38,7 +38,6 @@ private let expectedEventNames: [(String, String)] = [
     (WidgetGetTimeline.name, "widget_get_timeline"),
     // Error
     (ErrorEvent.name, "error"),
-    (AppErrorEvent.name, "error"),
 ]
 
 @Suite("Event Name Stability")
