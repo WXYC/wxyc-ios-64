@@ -33,7 +33,7 @@ struct KeychainTokenStorageTests {
     @Test("Save and load round-trips session across instances")
     func saveAndLoadRoundTripsAcrossInstances() throws {
         let session = AuthSession(
-            token: "persist-token-abc",
+            sessionToken: "persist-session", jwt: "persist-jwt",
             userId: "persist-user-123",
             createdAt: Date(),
             expiresAt: nil
@@ -46,7 +46,7 @@ struct KeychainTokenStorageTests {
         let storage2 = makeStorage(synchronizable: false)
         let loaded = try storage2.load()
 
-        #expect(loaded?.token == session.token)
+        #expect(loaded?.jwt == session.jwt)
         #expect(loaded?.userId == session.userId)
 
         try storage2.delete()
@@ -57,7 +57,7 @@ struct KeychainTokenStorageTests {
     @Test("Save falls back to non-synchronizable when iCloud Keychain is unavailable")
     func saveFallsBackToNonSynchronizable() throws {
         let session = AuthSession(
-            token: "fallback-token-xyz",
+            sessionToken: "fallback-session", jwt: "fallback-jwt",
             userId: "fallback-user-456",
             createdAt: Date(),
             expiresAt: nil
@@ -70,7 +70,7 @@ struct KeychainTokenStorageTests {
 
         // Load should find the item regardless of how it was saved
         let loaded = try storage.load()
-        #expect(loaded?.token == session.token)
+        #expect(loaded?.jwt == session.jwt)
         #expect(loaded?.userId == session.userId)
 
         try storage.delete()
@@ -79,7 +79,7 @@ struct KeychainTokenStorageTests {
     @Test("Save fallback persists across instances")
     func saveFallbackPersistsAcrossInstances() throws {
         let session = AuthSession(
-            token: "relaunch-token",
+            sessionToken: "relaunch-session", jwt: "relaunch-jwt",
             userId: "relaunch-user",
             createdAt: Date(),
             expiresAt: nil
@@ -93,7 +93,7 @@ struct KeychainTokenStorageTests {
         let storage2 = makeStorage(synchronizable: true)
         let loaded = try storage2.load()
 
-        #expect(loaded?.token == session.token)
+        #expect(loaded?.jwt == session.jwt)
         #expect(loaded?.userId == session.userId)
 
         try storage2.delete()
@@ -104,7 +104,7 @@ struct KeychainTokenStorageTests {
     @Test("Load with synchronizable=true finds non-synchronizable items")
     func loadFindsFallbackItems() throws {
         let session = AuthSession(
-            token: "nonsync-token",
+            sessionToken: "nonsync-session", jwt: "nonsync-jwt",
             userId: "nonsync-user",
             createdAt: Date(),
             expiresAt: nil
@@ -126,7 +126,7 @@ struct KeychainTokenStorageTests {
         let storage = makeStorage(synchronizable: true)
         let loaded = try storage.load()
 
-        #expect(loaded?.token == session.token)
+        #expect(loaded?.jwt == session.jwt)
         #expect(loaded?.userId == session.userId)
 
         try storage.delete()

@@ -18,7 +18,7 @@ struct AuthSessionTests {
     @Test("Session without expiration is never expired")
     func sessionWithoutExpirationNeverExpires() {
         let session = AuthSession(
-            token: "test-token",
+            sessionToken: "test-session", jwt: "test-token",
             userId: "test-user",
             createdAt: Date().addingTimeInterval(-86400), // Created yesterday
             expiresAt: nil
@@ -30,7 +30,7 @@ struct AuthSessionTests {
     @Test("Session with future expiration is not expired")
     func sessionWithFutureExpirationNotExpired() {
         let session = AuthSession(
-            token: "test-token",
+            sessionToken: "test-session", jwt: "test-token",
             userId: "test-user",
             createdAt: Date(),
             expiresAt: Date().addingTimeInterval(3600) // Expires in 1 hour
@@ -42,7 +42,7 @@ struct AuthSessionTests {
     @Test("Session with past expiration is expired")
     func sessionWithPastExpirationIsExpired() {
         let session = AuthSession(
-            token: "test-token",
+            sessionToken: "test-session", jwt: "test-token",
             userId: "test-user",
             createdAt: Date().addingTimeInterval(-7200), // Created 2 hours ago
             expiresAt: Date().addingTimeInterval(-3600) // Expired 1 hour ago
@@ -54,7 +54,7 @@ struct AuthSessionTests {
     @Test("Session expiring now is considered expired")
     func sessionExpiringNowIsExpired() {
         let session = AuthSession(
-            token: "test-token",
+            sessionToken: "test-session", jwt: "test-token",
             userId: "test-user",
             createdAt: Date().addingTimeInterval(-3600),
             expiresAt: Date() // Expires right now
@@ -66,7 +66,7 @@ struct AuthSessionTests {
     @Test("Session is Codable")
     func sessionIsCodable() throws {
         let original = AuthSession(
-            token: "test-token",
+            sessionToken: "test-session", jwt: "test-token",
             userId: "test-user",
             createdAt: Date(timeIntervalSince1970: 1000000),
             expiresAt: Date(timeIntervalSince1970: 2000000)
@@ -78,7 +78,7 @@ struct AuthSessionTests {
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(AuthSession.self, from: data)
 
-        #expect(decoded.token == original.token)
+        #expect(decoded.jwt == original.jwt)
         #expect(decoded.userId == original.userId)
         #expect(decoded.createdAt == original.createdAt)
         #expect(decoded.expiresAt == original.expiresAt)
@@ -87,7 +87,7 @@ struct AuthSessionTests {
     @Test("Session with nil expiresAt is Codable")
     func sessionWithNilExpiresAtIsCodable() throws {
         let original = AuthSession(
-            token: "test-token",
+            sessionToken: "test-session", jwt: "test-token",
             userId: "test-user",
             createdAt: Date(timeIntervalSince1970: 1000000),
             expiresAt: nil
@@ -99,7 +99,7 @@ struct AuthSessionTests {
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(AuthSession.self, from: data)
 
-        #expect(decoded.token == original.token)
+        #expect(decoded.jwt == original.jwt)
         #expect(decoded.userId == original.userId)
         #expect(decoded.expiresAt == nil)
     }

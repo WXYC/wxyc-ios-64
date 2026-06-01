@@ -29,18 +29,18 @@ struct AuthNetworkClientE2ETests {
 
     @Test("Anonymous sign-in returns a valid session")
     func anonymousSignInReturnsValidSession() async throws {
-        let session = try await makeClient().signInAnonymously(baseURL: baseURL)
+        let session = try await makeClient().signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
 
-        #expect(!session.token.isEmpty)
+        #expect(!session.sessionToken.isEmpty)
         #expect(!session.userId.isEmpty)
     }
 
     @Test("Token from anonymous sign-in authenticates against /config/secrets")
     func tokenAuthenticatesAgainstSecrets() async throws {
-        let session = try await makeClient().signInAnonymously(baseURL: baseURL)
+        let session = try await makeClient().signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
 
         var request = URLRequest(url: URL(string: "\(baseURL)/config/secrets")!)
-        request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(session.sessionToken)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await URLSession.shared.data(for: request)
         let httpResponse = try #require(response as? HTTPURLResponse)
@@ -54,7 +54,7 @@ struct AuthNetworkClientE2ETests {
 
     @Test("Token from anonymous sign-in authenticates against metadata proxy")
     func tokenAuthenticatesAgainstMetadataProxy() async throws {
-        let session = try await makeClient().signInAnonymously(baseURL: baseURL)
+        let session = try await makeClient().signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
 
         var components = URLComponents(string: "\(baseURL)/proxy/metadata/album")!
         components.queryItems = [
@@ -64,7 +64,7 @@ struct AuthNetworkClientE2ETests {
         ]
 
         var request = URLRequest(url: components.url!)
-        request.setValue("Bearer \(session.token)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(session.sessionToken)", forHTTPHeaderField: "Authorization")
 
         let (_, response) = try await URLSession.shared.data(for: request)
         let httpResponse = try #require(response as? HTTPURLResponse)
@@ -77,9 +77,9 @@ struct AuthNetworkClientE2ETests {
     @Test("JWT exchange returns a valid JWT with three segments")
     func jwtExchangeReturnsValidJWT() async throws {
         let client = makeClient()
-        let session = try await client.signInAnonymously(baseURL: baseURL)
+        let session = try await client.signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
 
-        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.token)
+        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.sessionToken, deviceFingerprint: nil)
 
         let segments = jwt.split(separator: ".")
         #expect(segments.count == 3)
@@ -92,8 +92,8 @@ struct AuthNetworkClientE2ETests {
     @Test("JWT from exchange authenticates against /config/secrets")
     func jwtAuthenticatesAgainstSecrets() async throws {
         let client = makeClient()
-        let session = try await client.signInAnonymously(baseURL: baseURL)
-        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.token)
+        let session = try await client.signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
+        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.sessionToken, deviceFingerprint: nil)
 
         var request = URLRequest(url: URL(string: "\(baseURL)/config/secrets")!)
         request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
