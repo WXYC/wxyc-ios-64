@@ -30,7 +30,8 @@ struct CompositeErrorReporter: ErrorReporter {
         StructuredPostHogAnalytics.shared.capture(ErrorEvent(
             error: error,
             context: context,
-            category: category.rawValue
+            category: category.rawValue,
+            additionalData: additionalData
         ))
 
         // 3. Sentry

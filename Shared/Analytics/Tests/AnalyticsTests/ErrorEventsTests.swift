@@ -88,14 +88,65 @@ struct ErrorEventsTests {
         #expect(event.domain == "TestDomain")
     }
 
-    @Test("Error initializer carries category through")
+    @Test("Error initializer carries category through and preserves NSError unpacking")
     func errorInitializerWithCategory() throws {
         let nsError = NSError(domain: "TestDomain", code: 42, userInfo: [
             NSLocalizedDescriptionKey: "Test error description"
         ])
         let event = ErrorEvent(error: nsError, context: "UnitTest", category: "Network")
 
+        #expect(event.error == "Test error description")
+        #expect(event.context == "UnitTest")
+        #expect(event.code == 42)
+        #expect(event.domain == "TestDomain")
         #expect(event.category == "Network")
+    }
+
+    @Test("additionalData is merged into properties when set")
+    func additionalDataMerged() throws {
+        let event = ErrorEvent(
+            error: "Decode failed",
+            context: "CacheCoordinator",
+            additionalData: ["value type": "Playlist", "key": "current_playlist"]
+        )
+        let props = try #require(event.properties)
+
+        #expect(props["value type"] as? String == "Playlist")
+        #expect(props["key"] as? String == "current_playlist")
+    }
+
+    @Test("additionalData is omitted from properties when nil")
+    func additionalDataOmittedWhenNil() throws {
+        let event = ErrorEvent(error: "Decode failed", context: "CacheCoordinator")
+        let props = try #require(event.properties)
+
+        #expect(props["value type"] == nil)
+        #expect(props["key"] == nil)
+    }
+
+    @Test("additionalData cannot override base keys (typed wins on collision)")
+    func additionalDataCannotOverrideBaseKeys() throws {
+        let event = ErrorEvent(
+            error: "real error",
+            context: "real context",
+            code: 1,
+            domain: "real-domain",
+            category: "Caching",
+            additionalData: [
+                "error": "caller-attempted-override",
+                "context": "caller-attempted-override",
+                "code": "caller-attempted-override",
+                "domain": "caller-attempted-override",
+                "category": "caller-attempted-override",
+            ]
+        )
+        let props = try #require(event.properties)
+
+        #expect(props["error"] as? String == "real error")
+        #expect(props["context"] as? String == "real context")
+        #expect(props["code"] as? Int == 1)
+        #expect(props["domain"] as? String == "real-domain")
+        #expect(props["category"] as? String == "Caching")
     }
 }
 
