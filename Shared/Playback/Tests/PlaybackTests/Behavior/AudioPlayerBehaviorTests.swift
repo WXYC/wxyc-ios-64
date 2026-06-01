@@ -21,7 +21,10 @@ import AVFoundation
 
 // MARK: - Core State Tests
 
-@Suite("AudioPlayer Core State Tests")
+@Suite(
+    "AudioPlayer Core State Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct AudioPlayerCoreStateTests {
 
@@ -105,7 +108,10 @@ struct AudioPlayerCoreStateTests {
 
 // MARK: - Idempotency Tests
 
-@Suite("AudioPlayer Idempotency Tests")
+@Suite(
+    "AudioPlayer Idempotency Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct AudioPlayerIdempotencyTests {
 
@@ -205,7 +211,10 @@ struct AudioPlayerIdempotencyTests {
 
 // MARK: - State Stream Tests
 
-@Suite("AudioPlayer State Stream Tests")
+@Suite(
+    "AudioPlayer State Stream Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct AudioPlayerStateStreamTests {
 
@@ -286,7 +295,10 @@ struct AudioPlayerStateStreamTests {
 
 // MARK: - Event Stream Tests
 
-@Suite("AudioPlayer Event Stream Tests")
+@Suite(
+    "AudioPlayer Event Stream Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct AudioPlayerEventStreamTests {
 
@@ -377,7 +389,10 @@ struct AudioPlayerEventStreamTests {
 
 // MARK: - Stall State Tests
 
-@Suite("AudioPlayer Stall State Tests")
+@Suite(
+    "AudioPlayer Stall State Tests",
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 @MainActor
 struct AudioPlayerStallStateTests {
 

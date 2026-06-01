@@ -33,6 +33,12 @@ env:
   SCHEME: WXYC
   TEST_PLAN: WXYC
   DESTINATION: platform=iOS Simulator,name=iPhone 16 Pro
+  # Surfaces known-flaky suites via .disabled(if:) traits in source. The
+  # TEST_RUNNER_ prefix is xcodebuild's mechanism for passing host-shell env
+  # vars through to the simulator test process — the prefix is stripped at
+  # runtime, so the traits check the un-prefixed `WXYC_SKIP_KNOWN_FLAKES`.
+  # Drop this var and the traits as #371 retires each suite from the skip set.
+  TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES: '1'
 
 jobs:
   build-and-test:

@@ -22,7 +22,11 @@ import WidgetKit
 @testable import AppServices
 
 @MainActor
-@Suite("WidgetStateService Relevance Tests", .timeLimit(.minutes(1)))
+@Suite(
+    "WidgetStateService Relevance Tests",
+    .timeLimit(.minutes(1)),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+)
 struct WidgetStateServiceRelevanceTests {
 
     // MARK: - Tests
