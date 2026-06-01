@@ -150,14 +150,15 @@ jobs:
 
       - name: Run Tests (except CoreTests and UI)
         # Use -only-testing for affected runs so xcodebuild doesn't install
-        # the 16 unaffected bundles onto the sim. Run-all keeps -skip-testing
-        # to drop UI + CoreTests (CoreTests runs via swift test).
+        # the 16 unaffected bundles onto the sim. Run-all uses the affected
+        # step's skip_testing_flags which excludes UI plus every SPM-runnable
+        # target (those run via swift test on host).
         # -onlyUsePackageVersionsFromResolvedFile stops the test step re-resolving SPM —
         # log evidence showed ~49s wasted on this per run.
         if: steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true'
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
-            ARGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
+            ARGS="${{ steps.affected.outputs.skip_testing_flags }}"
           else
             ARGS="${{ steps.affected.outputs.only_testing_flags }}"
           fi
