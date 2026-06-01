@@ -13,6 +13,7 @@ import AppIntents
 import AppServices
 import Artwork
 import Caching
+import Core
 import Playlist
 import PostHog
 import SwiftUI
@@ -44,7 +45,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             NowPlayingItem.placeholder,
         ]
 
-        guard let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst() else {
+        guard let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() else {
             return .placeholder(family: context.family)
         }
 
@@ -74,7 +75,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             }
 
         // Handle empty playlist gracefully with empty state
-        guard let (nowPlayingItem, recentItems) = nowPlayingItems.popFirst() else {
+        guard let (nowPlayingItem, recentItems) = nowPlayingItems.safePopFirst() else {
             return .emptyState(family: family)
         }
 
@@ -113,7 +114,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         }
 
         nowPlayingItemsWithArtwork.sort(by: >)
-        if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.popFirst() {
+        if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
             entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
                 recentItems: Array(recentItems),
