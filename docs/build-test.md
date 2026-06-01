@@ -57,12 +57,25 @@ xcodebuild -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone Air'
 
 ## E2E Tests
 
-E2E tests tagged with `.e2e` (e.g., `MusicShareKitTests/AuthNetworkClientE2ETests`) hit real backends and are skipped by default. Run them on demand by setting `RUN_E2E=1`:
+E2E tests tagged with `.e2e` hit real backends or real CoreAudio/AVAudioEngine and are skipped by default. Currently gated:
+
+- `MusicShareKitTests/AuthNetworkClient E2E Tests` — real Backend-Service auth endpoint
+- `WXYCTests/PlayWXYC Intent Tests` — singleton `AudioPlayerController.shared` with real network playback
+- `PlaybackTests/AudioEnginePlayer Tests` — real `AVAudioEngine` lifecycle (hangs on the paravirt CI simulator)
+- `PlaybackTests/MP3StreamDecoder Tests` — real `AVAudioConverter` with 30-120s decode timeouts
+- `PlaybackTests/AudioEnginePlayer Analytics Tests` — real `AVAudioEngine` analytics path
+
+Run them on demand by setting `RUN_E2E=1`:
 
 ```bash
-RUN_E2E=1 xcodebuild test -scheme WXYC \
+# swift test (host): plain env var
+RUN_E2E=1 swift test --package-path Shared/MusicShareKit --filter AuthNetworkClient
+
+# xcodebuild test (sim): needs TEST_RUNNER_ prefix — xcodebuild strips it
+# when forwarding to the simulator test runner.
+TEST_RUNNER_RUN_E2E=1 xcodebuild test -scheme WXYC \
     -destination 'platform=iOS Simulator,name=iPhone Air' \
-    -only-testing:MusicShareKitTests/AuthNetworkClientE2ETests
+    -only-testing:'PlaybackTests/AudioEnginePlayer Tests'
 ```
 
 ## UI Tests
