@@ -236,9 +236,15 @@ run_or_print() {
 }
 
 spm_exit=0
+typeset -A SPM_SKIP
+SPM_SKIP[Core]='ImageCompatibilityTests' # HEIF/HEVC unsupported on macos-latest virtualization
 if [[ -n "$SPM_AFFECTED" ]]; then
     for pkg in ${=SPM_AFFECTED}; do
-        run_or_print "swift test $pkg" swift test --package-path "Shared/$pkg" || spm_exit=$?
+        skip_args=()
+        if [[ -n "${SPM_SKIP[$pkg]:-}" ]]; then
+            skip_args=(--skip "${SPM_SKIP[$pkg]}")
+        fi
+        run_or_print "swift test $pkg" swift test --package-path "Shared/$pkg" "${skip_args[@]}" || spm_exit=$?
         if (( spm_exit != 0 )); then
             break # fail fast — don't run xcodebuild after a swift test failure
         fi
