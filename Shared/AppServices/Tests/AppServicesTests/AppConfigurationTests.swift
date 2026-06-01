@@ -12,7 +12,11 @@ import Foundation
 import Testing
 @testable import AppServices
 
-@Suite("AppConfiguration Tests")
+// `.serialized` because the network-fetch tests share `MockURLProtocol.handler`
+// (URLProtocol registration is class-level, so the handler has to be static).
+// Without serialization, two tests set the handler at the same time and one
+// of them ends up routing its URLSession call through the other's handler.
+@Suite("AppConfiguration Tests", .serialized)
 struct AppConfigurationTests {
 
     // MARK: - Static Defaults
