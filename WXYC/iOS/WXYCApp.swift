@@ -63,13 +63,6 @@ struct WXYCApp: App {
         // must match what the Share Extension passes so a session cached by
         // one target is readable by the other (issue #336). Dropping it
         // silently regresses to per-process keychain storage.
-        //
-        // Note: `featureFlagProvider` is intentionally omitted here pending a
-        // follow-up. Without it, `MusicShareKit.isAuthEnabled()` returns false
-        // in production and the JWT+fingerprint pipeline is dark; activating
-        // it is a one-line change but lives in its own PR so this one stays
-        // scoped to MusicShareKit and avoids the WXYC/** trigger that pushes
-        // CI off the affected-only fast path.
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
