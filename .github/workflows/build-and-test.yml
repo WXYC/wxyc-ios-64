@@ -97,6 +97,22 @@ jobs:
           fi
           zsh .github/scripts/affected-tests.sh
 
+      - name: swift test SPM-runnable packages
+        # Host-runs Swift Testing/XCTest for affected SPM-runnable packages,
+        # skipping xcodebuild + simulator. For pure-SPM PRs (xcb_required=false)
+        # this is the only test step. For mixed PRs it runs first as an early
+        # signal — if it fails, the xcodebuild step below is skipped via fail-fast.
+        # Also covers CoreTests when Core is affected, replacing the old
+        # hand-enumerated xcodebuild CoreTests step (Swift Testing's host-side
+        # scheduler doesn't hit the xcodebuild-simulator parallel-scheduler bug).
+        if: steps.affected.outputs.spm_affected != ''
+        run: |
+          for pkg in ${{ steps.affected.outputs.spm_affected }}; do
+            echo "::group::swift test --package-path Shared/$pkg"
+            swift test --package-path Shared/$pkg
+            echo "::endgroup::"
+          done
+
       - name: Build for testing
         # Scoped to the affected targets so the build graph shrinks for narrow
         # PRs — xcodebuild only compiles what those test bundles transitively
@@ -107,6 +123,7 @@ jobs:
         # Resolve step is unnecessary, and -disableAutomaticPackageResolution
         # here would fail because the workspace-level Package.resolved is git-
         # ignored and only exists after this step runs.
+        if: steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true'
         run: |
           ONLY_FLAGS="${{ steps.affected.outputs.only_testing_flags }}"
           xcodebuild build-for-testing \
@@ -124,6 +141,7 @@ jobs:
         # Booting the simulator explicitly before running tests gives CoreSimulator
         # time to fully come up, which the implicit boot inside `xcodebuild test`
         # doesn't reliably do on macos-latest runners under load.
+        if: steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true'
         run: |
           DEVICE_ID=$(xcrun simctl list devices available | grep -m1 "iPhone 16 Pro " | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
           echo "Booting $DEVICE_ID"
@@ -133,9 +151,10 @@ jobs:
       - name: Run Tests (except CoreTests and UI)
         # Use -only-testing for affected runs so xcodebuild doesn't install
         # the 16 unaffected bundles onto the sim. Run-all keeps -skip-testing
-        # to drop UI + CoreTests (CoreTests has its own step).
+        # to drop UI + CoreTests (CoreTests runs via swift test).
         # -onlyUsePackageVersionsFromResolvedFile stops the test step re-resolving SPM —
         # log evidence showed ~49s wasted on this per run.
+        if: steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true'
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
             ARGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
@@ -157,87 +176,6 @@ jobs:
             -disable-concurrent-destination-testing \
             -resultBundlePath TestResults.xcresult
 
-      - name: Run CoreTests
-        if: steps.affected.outputs.run_all == 'true' || steps.affected.outputs.run_core_tests == 'true'
-        run: |
-          # Run CoreTests with explicit test identifiers to avoid Swift Testing parallel execution issues.
-          # When selecting an entire test bundle (e.g., -only-testing:CoreTests), Swift Testing's internal
-          # parallel scheduler overwhelms CI runners. Specifying individual tests bypasses this.
-          # Tracked for re-validation in #359.
-          xcodebuild test-without-building \
-            -project WXYC.xcodeproj \
-            -scheme "$SCHEME" \
-            -destination "$DESTINATION" \
-            -configuration Debug \
-            -skipMacroValidation \
-            -onlyUsePackageVersionsFromResolvedFile \
-            CODE_SIGNING_ALLOWED=NO \
-            -only-testing:CoreTests/ImageCompatibilityTests/heifDataReturnsValidDataForValidImage \
-            -only-testing:CoreTests/ImageCompatibilityTests/heifDataRespectsCompressionQualityParameter \
-            -only-testing:CoreTests/ImageCompatibilityTests/heifDataProducesDecodableImage \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledToWidthScalesLargeImages \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledToWidthReturnsOriginalAtTargetWidth \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledToWidthReturnsOriginalBelowTargetWidth \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledToWidthMaintainsAspectRatio \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledToWidthHandlesSquareImages \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledToWidthHandlesTallImages \
-            -only-testing:CoreTests/ImageCompatibilityTests/scaledHeifIsSmallerThanScaledPng \
-            -only-testing:CoreTests/AsyncMessageTests/postAndReceive \
-            -only-testing:CoreTests/AsyncMessageTests/multipleMessages \
-            -only-testing:CoreTests/AsyncMessageTests/subjectFiltering \
-            -only-testing:CoreTests/AsyncMessageTests/makeMessageReturnsNil \
-            -only-testing:CoreTests/AsyncMessageTests/makeNotificationCreatesValidNotification \
-            -only-testing:CoreTests/AsyncMessageTests/cancellationStopsReceiving \
-            -only-testing:CoreTests/MainActorMessageTests/postAndReceiveViaSequence \
-            -only-testing:CoreTests/MainActorMessageTests/postAndReceiveViaObserver \
-            -only-testing:CoreTests/MainActorMessageTests/subjectFiltering \
-            -only-testing:CoreTests/MainActorMessageTests/makeMessageReturnsNil \
-            -only-testing:CoreTests/MainActorMessageTests/makeNotificationCreatesValidNotification \
-            -only-testing:CoreTests/MainActorMessageTests/multipleMessages \
-            -only-testing:CoreTests/DequeTests/testEmptyDeque \
-            -only-testing:CoreTests/DequeTests/testAppend \
-            -only-testing:CoreTests/DequeTests/testRemoveFirst \
-            -only-testing:CoreTests/DequeTests/testRemoveFirstMultiple \
-            -only-testing:CoreTests/DequeTests/testRemoveAll \
-            -only-testing:CoreTests/DequeTests/testArrayConversion \
-            -only-testing:CoreTests/DequeTests/testCopyOnWrite \
-            -only-testing:CoreTests/DequeTests/testCircularBuffer \
-            -only-testing:CoreTests/DequeTests/testSubscript \
-            -only-testing:CoreTests/DequeTests/testPrepend \
-            -only-testing:CoreTests/DequeTests/testPrependAndAppend \
-            -only-testing:CoreTests/DequeTests/testRemoveLast \
-            -only-testing:CoreTests/DequeTests/testRemoveLastFromSingleElement \
-            -only-testing:CoreTests/DequeTests/testExpressibleByArrayLiteral \
-            -only-testing:CoreTests/DequeTests/testEquatable \
-            -only-testing:CoreTests/DequeTests/testHashable \
-            -only-testing:CoreTests/DequeTests/testCapacityGrowth \
-            -only-testing:CoreTests/DequeTests/testCapacityShrinking \
-            -only-testing:CoreTests/DequeTests/testRemoveFirstZero \
-            -only-testing:CoreTests/DequeTests/testRemoveFirstAll \
-            -only-testing:CoreTests/DequeTests/testCircularBufferWrapping \
-            -only-testing:CoreTests/DequeTests/testPrependMany \
-            -only-testing:CoreTests/DequeTests/testCollectionIndices \
-            -only-testing:CoreTests/DequeTests/testRandomAccessCollection \
-            -only-testing:CoreTests/ExponentialBackoffTests/defaultConfiguration \
-            -only-testing:CoreTests/ExponentialBackoffTests/firstAttemptReturnsZero \
-            -only-testing:CoreTests/ExponentialBackoffTests/returnsNilWhenExhausted \
-            -only-testing:CoreTests/ExponentialBackoffTests/waitTimesIncreaseExponentially \
-            -only-testing:CoreTests/ExponentialBackoffTests/waitTimeIsCapped \
-            -only-testing:CoreTests/ExponentialBackoffTests/resetClearsState \
-            -only-testing:CoreTests/ExponentialBackoffTests/totalWaitTimeAccumulates \
-            -only-testing:CoreTests/ExponentialBackoffTests/customConfiguration \
-            -only-testing:CoreTests/ExponentialBackoffTests/nanosecondConversion \
-            -only-testing:CoreTests/ExponentialBackoffTests/descriptionFormat \
-            -only-testing:CoreTests/MusicServiceTests/rawValueMapsForward \
-            -only-testing:CoreTests/MusicServiceTests/rawValueParsesReverse \
-            -only-testing:CoreTests/MusicServiceTests/unrecognisedRawValueReturnsNil \
-            -only-testing:CoreTests/MusicServiceTests/codableRoundTrip \
-            -only-testing:CoreTests/MusicServiceTests/codableEmitsRawString \
-            -only-testing:CoreTests/MusicServiceTests/allCasesCoversExactlySixServices \
-            -only-testing:CoreTests/MusicServiceTests/displayNameMapsCorrectly \
-            -disable-concurrent-destination-testing \
-            -resultBundlePath CoreTestResults.xcresult
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: failure()
@@ -245,5 +183,4 @@ jobs:
           name: test-results
           path: |
             TestResults.xcresult
-            CoreTestResults.xcresult
           if-no-files-found: ignore
