@@ -169,7 +169,7 @@ jobs:
         #
         # FLAKE_SKIPS: temporary skips for tests that consistently hang or fail
         # on macos-latest, exhausting the 20-minute job budget. Each entry should
-        # be removed as its root-cause fix lands. Tracked in a follow-up issue.
+        # be removed as its root-cause fix lands. Tracked in #371.
         if: steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true'
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
