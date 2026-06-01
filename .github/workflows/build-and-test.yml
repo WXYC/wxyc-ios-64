@@ -40,7 +40,10 @@ jobs:
     # push events have no pull_request context, so the OR keeps them firing.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: macos-latest
-    timeout-minutes: 20
+    # Temporary bump from 20 → 30 to absorb pre-existing simulator slowness on
+    # macos-latest while #371 fixes the underlying flakes/hangs. Should drop
+    # back to 20 (and ultimately 5) as #371 lands and #365 shrinks the build.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
