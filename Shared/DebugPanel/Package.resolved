@@ -1,13 +1,13 @@
 {
-  "originHash" : "b287babf5bf3f9929140e47e3307d24d784d785d6cdd7559d46b3dfda4d90538",
+  "originHash" : "545e9f9f61364055d33c2d1fdfd028494470a1b2c80236b238c4720a233143cd",
   "pins" : [
     {
-      "identity" : "obfuscatemacro",
+      "identity" : "lerpable",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/p-x9/ObfuscateMacro.git",
+      "location" : "https://github.com/jakebromberg/Lerpable.git",
       "state" : {
-        "revision" : "116c9747ed2dd50d6b058a49bbb79e96b5e2e1a2",
-        "version" : "0.13.0"
+        "revision" : "a2a6f2fd4b0ecd8ea7540fc92514d1728d4c65f6",
+        "version" : "0.1.0"
       }
     },
     {
@@ -15,44 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/PostHog/posthog-ios.git",
       "state" : {
-        "revision" : "6146a9f0bc41e687b1978a5d10d76dd85331c410",
-        "version" : "3.37.0"
-      }
-    },
-    {
-      "identity" : "swift-algorithms",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-algorithms",
-      "state" : {
-        "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
-        "version" : "1.2.1"
-      }
-    },
-    {
-      "identity" : "swift-asn1",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-asn1.git",
-      "state" : {
-        "revision" : "810496cf121e525d660cd0ea89a758740476b85f",
-        "version" : "1.5.1"
-      }
-    },
-    {
-      "identity" : "swift-crypto",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-crypto.git",
-      "state" : {
-        "revision" : "6f70fa9eab24c1fd982af18c281c4525d05e3095",
-        "version" : "4.2.0"
-      }
-    },
-    {
-      "identity" : "swift-numerics",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-numerics.git",
-      "state" : {
-        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
-        "version" : "1.1.1"
+        "revision" : "15c15c48cfe55613255badb2ff23a0359a743293",
+        "version" : "3.59.2"
       }
     },
     {
