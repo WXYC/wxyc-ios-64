@@ -105,11 +105,21 @@ jobs:
         # Also covers CoreTests when Core is affected, replacing the old
         # hand-enumerated xcodebuild CoreTests step (Swift Testing's host-side
         # scheduler doesn't hit the xcodebuild-simulator parallel-scheduler bug).
+        #
+        # Per-package SPM_SKIP entries name `swift test --skip <regex>` patterns
+        # for tests that work on local macOS but fail on macos-latest's
+        # virtualized runner (HEIF/HEVC unsupported via AppleM2ScalerParavirtDriver).
         if: steps.affected.outputs.spm_affected != ''
         run: |
+          declare -A SPM_SKIP
+          SPM_SKIP[Core]='ImageCompatibilityTests' # HEIF/HEVC profile unsupported on virtualized macOS-latest
           for pkg in ${{ steps.affected.outputs.spm_affected }}; do
-            echo "::group::swift test --package-path Shared/$pkg"
-            swift test --package-path Shared/$pkg
+            skip_args=()
+            if [[ -n "${SPM_SKIP[$pkg]:-}" ]]; then
+              skip_args=(--skip "${SPM_SKIP[$pkg]}")
+            fi
+            echo "::group::swift test --package-path Shared/$pkg ${skip_args[*]}"
+            swift test --package-path Shared/$pkg "${skip_args[@]}"
             echo "::endgroup::"
           done
 
