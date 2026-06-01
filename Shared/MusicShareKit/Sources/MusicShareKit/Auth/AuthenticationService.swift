@@ -271,17 +271,20 @@ public actor AuthenticationService: SessionTokenProvider {
             // to freshSignIn() — this is the intended ban-recovery path, not
             // a true exchange failure, so don't pollute the auth-failed
             // funnel with it.
-            if case .serverError(statusCode: 401) = error {
-                throw error
-            }
-            if case .serverError(statusCode: 404) = error {
-                throw error
-            }
+            if case .serverError(statusCode: 401) = error { throw error }
+            if case .serverError(statusCode: 404) = error { throw error }
+            // signOut/reauthenticate cancellation surfaces as URLError.cancelled
+            // wrapped in AuthenticationError.networkError. The user-initiated
+            // sign-out should not look like a transient exchange failure in
+            // the funnel.
+            if isCancellationError(error) { throw error }
             analytics.capture(RequestLineAuthFailedEvent(
                 error: error.localizedDescription,
                 phase: .jwtExchange
             ))
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             analytics.capture(RequestLineAuthFailedEvent(
                 error: error.localizedDescription,
@@ -324,7 +327,11 @@ public actor AuthenticationService: SessionTokenProvider {
             signInResult = try await networkClient.signInAnonymously(
                 baseURL: baseURL, deviceFingerprint: fingerprint
             )
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
+            // Treat signOut/reauthenticate cancellation as not-an-auth-failure.
+            if isCancellationError(error) { throw error }
             analytics.capture(RequestLineAuthFailedEvent(
                 error: error.localizedDescription,
                 phase: .network
@@ -340,7 +347,10 @@ public actor AuthenticationService: SessionTokenProvider {
                 sessionToken: signInResult.sessionToken,
                 deviceFingerprint: fingerprint
             )
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
+            if isCancellationError(error) { throw error }
             analytics.capture(RequestLineAuthFailedEvent(
                 error: error.localizedDescription,
                 phase: .jwtExchange
@@ -376,6 +386,23 @@ public actor AuthenticationService: SessionTokenProvider {
 
         cachedSession = session
         return session
+    }
+
+    // MARK: - Helpers
+
+    /// True when `error` is a Task / URLSession cancellation surfaced through
+    /// the auth-network layer. Used by the catch arms in `mintJWT` and
+    /// `freshSignIn` so a user-initiated signOut/reauthenticate that
+    /// interrupts an in-flight refresh isn't reported as an auth failure.
+    private nonisolated func isCancellationError(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if case AuthenticationError.networkError(let underlying) = error {
+            if underlying is CancellationError { return true }
+            if let urlError = underlying as? URLError, urlError.code == .cancelled {
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - Analytics
