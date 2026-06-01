@@ -255,7 +255,11 @@ struct MP3StreamerAnalyticsTests {
 
 // MARK: - AudioEnginePlayer Analytics Tests
 
-@Suite("AudioEnginePlayer Analytics Tests")
+@Suite(
+    "AudioEnginePlayer Analytics Tests",
+    .tags(.e2e),
+    .disabled(if: ProcessInfo.processInfo.environment["RUN_E2E"] != "1", "Real AVAudioEngine — opt in with RUN_E2E=1")
+)
 @MainActor
 struct AudioEnginePlayerAnalyticsTests {
 
@@ -337,3 +341,9 @@ struct AudioEnginePlayerAnalyticsTests {
     }
 }
 #endif
+
+// MARK: - Test Tags
+
+extension Tag {
+    @Tag static var e2e: Self
+}

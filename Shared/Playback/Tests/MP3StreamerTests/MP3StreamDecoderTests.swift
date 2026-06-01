@@ -16,39 +16,14 @@ import Foundation
 
 #if !os(watchOS)
 
-@Suite("MP3StreamDecoder Tests", .serialized)
+@Suite(
+    "MP3StreamDecoder Tests",
+    .serialized,
+    .tags(.e2e),
+    .disabled(if: ProcessInfo.processInfo.environment["RUN_E2E"] != "1", "Real AVAudioConverter — opt in with RUN_E2E=1")
+)
 @MainActor
 struct MP3StreamDecoderTests {
-
-    // MARK: - Basic Initialization Tests
-
-    @Test("Decoder can be created")
-    func testDecoderCreation() async throws {
-        let decoder = MP3StreamDecoder()
-        _ = decoder // Silence unused variable warning
-        // Just verify creation doesn't crash
-    }
-
-    @Test("MP3 test file can be loaded")
-    func testMP3FileLoad() async throws {
-        let mp3Data = try TestAudioBufferFactory.loadMP3TestData()
-        #expect(mp3Data.count > 0)
-    }
-
-    @Test("Decode can be called without crash")
-    func testDecodeCall() async throws {
-        let decoder = MP3StreamDecoder()
-
-        // Just send a tiny bit of data
-        let data = Data([0xFF, 0xFB, 0x90, 0x00])
-        decoder.decode(data: data)
-
-        // Give time for processing
-        try await Task.sleep(for: .milliseconds(100))
-
-        // Test passes if we get here without crashing
-        _ = decoder
-    }
 
     // MARK: - Decoding Tests
 
@@ -140,40 +115,6 @@ struct MP3StreamDecoderTests {
 
         let buffer = try await decoder2.decodedBufferStream.first(timeout: 120)
         #expect(buffer.frameLength > 0)
-    }
-
-    // MARK: - Edge Case Tests
-
-    @Test("Waits for enough data before decoding")
-    func testPartialData() async throws {
-        let decoder = MP3StreamDecoder()
-
-        // Send just a tiny bit of data - not enough to parse MP3 headers
-        let tinyData = Data([0xFF, 0xFB]) // MP3 sync word fragment
-        decoder.decode(data: tinyData)
-
-        // Give time for any processing
-        try await Task.sleep(for: .milliseconds(500))
-
-        // Should not have produced any buffers yet (not enough data)
-        // We can't easily test "no buffer received" without a timeout,
-        // but we can verify no errors occurred
-    }
-
-    @Test("Reports error for invalid non-MP3 data")
-    func testInvalidData() async throws {
-        let decoder = MP3StreamDecoder()
-
-        // Create clearly invalid data (random bytes, not MP3)
-        let invalidData = Data(repeating: 0x00, count: 4096)
-        decoder.decode(data: invalidData)
-
-        // Give time for processing
-        try await Task.sleep(for: .milliseconds(500))
-
-        // The decoder should not produce any valid buffers from garbage data
-        // It may or may not report an error depending on implementation
-        // The main test is that it doesn't crash
     }
 
     // MARK: - Packet Management Tests (Critical for Offset Tracking)

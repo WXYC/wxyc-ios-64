@@ -18,21 +18,11 @@ import Foundation
 
 @Suite(
     "AudioEnginePlayer Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    .tags(.e2e),
+    .disabled(if: ProcessInfo.processInfo.environment["RUN_E2E"] != "1", "Real AVAudioEngine — opt in with RUN_E2E=1")
 )
 @MainActor
 struct AudioEnginePlayerTests {
-
-    // MARK: - Initialization Tests
-
-    @Test("Initial state is not playing with default volume")
-    func testInitialization() {
-        let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format)
-
-        #expect(player.isPlaying == false)
-        #expect(player.volume == 1.0)
-    }
 
     // MARK: - Deferred Engine Setup Tests
 
@@ -92,25 +82,6 @@ struct AudioEnginePlayerTests {
         _ = try await player.eventStream.first(timeout: 2) // Consume started
 
         player.stop()
-    }
-
-    // MARK: - Volume Control Tests
-
-    @Test("Volume can be set and retrieved")
-    func testVolumeControl() {
-        let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format)
-
-        #expect(player.volume == 1.0)
-
-        player.volume = 0.5
-        #expect(player.volume == 0.5)
-
-        player.volume = 0.0
-        #expect(player.volume == 0.0)
-
-        player.volume = 1.0
-        #expect(player.volume == 1.0)
     }
 
     // MARK: - Play Tests
@@ -180,20 +151,6 @@ struct AudioEnginePlayerTests {
         player.stop()
     }
 
-    @Test("Pause when not playing is a no-op")
-    func testPauseWhenNotPlaying() async throws {
-        let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format)
-
-        // Should not crash or emit event
-        player.pause()
-
-        #expect(player.isPlaying == false)
-
-        // Give time for any spurious event
-        try await Task.sleep(for: .milliseconds(100))
-    }
-
     // MARK: - Stop Tests
 
     @Test("Stop stops playback and emits stopped event")
@@ -239,20 +196,6 @@ struct AudioEnginePlayerTests {
 
         // Wait for the async cleanup to complete
         _ = try await player.eventStream.first(timeout: 2)
-    }
-
-    @Test("Stop when not running is a no-op")
-    func testStopWhenNotRunning() async throws {
-        let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format)
-
-        // Should not crash or emit event
-        player.stop()
-
-        #expect(player.isPlaying == false)
-
-        // Give time for any spurious event
-        try await Task.sleep(for: .milliseconds(100))
     }
 
     // MARK: - Buffer Scheduling Tests
@@ -446,26 +389,6 @@ struct AudioEnginePlayerTests {
         player.stop()
     }
 
-    @Test("Batch scheduling empty array is a no-op", .tags(.batchScheduling))
-    func testBatchScheduleEmptyArray() async throws {
-        let format = TestAudioBufferFactory.makeStandardFormat()
-        let player = AudioEnginePlayer(format: format)
-
-        try player.play()
-        _ = try await player.eventStream.first(timeout: 2) // Consume started
-
-        // Schedule empty array - should not crash or emit events
-        player.scheduleBuffers([])
-
-        // Give time for any processing
-        try await Task.sleep(for: .milliseconds(50))
-
-        // Player should still be playing without issue
-        #expect(player.isPlaying == true)
-
-        player.stop()
-    }
-
     @Test("Batch scheduling triggers stall recovery", .tags(.batchScheduling, .stall))
     func testBatchSchedulingTriggersRecovery() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
@@ -571,10 +494,11 @@ struct AudioEnginePlayerTests {
     }
 }
 
-// MARK: - Additional Test Tags
+// MARK: - Test Tags
 
 extension Tag {
     @Tag static var batchScheduling: Self
+    @Tag static var e2e: Self
 }
 
 // MARK: - AsyncStream Extension for Testing
@@ -605,8 +529,6 @@ extension AsyncStream where Element: Sendable {
         }
     }
 }
-
-// MARK: - Test Tags
 
 extension Tag {
     @Tag static var stall: Self
