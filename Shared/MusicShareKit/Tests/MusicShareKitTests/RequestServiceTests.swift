@@ -17,10 +17,19 @@ import Testing
 struct RequestServiceTests {
 
     init() {
-        // Configure MusicShareKit before running tests
+        // Configure MusicShareKit before running tests.
+        //
+        // Explicitly pass `InMemoryDeviceFingerprintStorage` — the default is
+        // `KeychainDeviceFingerprintStorage` which round-trips through the
+        // system Keychain. Under MusicShareKitTests' parallelizable execution,
+        // many concurrent test inits cause Keychain-daemon contention that
+        // can hang the test process on CI simulators (the local iPhone 17 sim
+        // returns errSecMissingEntitlement instantly; the iPhone 16 Pro CI sim
+        // does not).
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
-            analyticsService: MockStructuredAnalytics()
+            analyticsService: MockStructuredAnalytics(),
+            deviceFingerprintStorage: InMemoryDeviceFingerprintStorage()
         ))
     }
     
