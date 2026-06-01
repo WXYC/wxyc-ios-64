@@ -9,10 +9,10 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import Foundation
 import Logger
 import struct Logger.Category
-import PostHog
 import Sentry
 
 /// Reports errors to all three backends: local log, PostHog, and Sentry.
@@ -27,12 +27,12 @@ struct CompositeErrorReporter: ErrorReporter {
         Log(.error, category: category, "\(context): \(error)")
 
         // 2. PostHog
-        var properties: [String: Any] = [
-            "description": error.localizedDescription,
-            "context": context,
-        ]
-        properties.merge(additionalData) { _, new in new }
-        PostHogSDK.shared.capture("error", properties: properties)
+        StructuredPostHogAnalytics.shared.capture(AppErrorEvent(
+            description: error.localizedDescription,
+            context: context,
+            category: category.rawValue,
+            extra: additionalData
+        ))
 
         // 3. Sentry
         let event = Event(level: .error)
