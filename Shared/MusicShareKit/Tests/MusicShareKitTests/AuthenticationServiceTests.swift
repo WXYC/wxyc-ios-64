@@ -315,6 +315,75 @@ struct AuthenticationServiceTests {
         #expect(networkClient.signInCallCount == 1)
     }
 
+    // MARK: - Device Fingerprint Threading
+
+    @Test("freshSignIn threads a non-nil deviceFingerprint into signInAnonymously and fetchJWT")
+    func freshSignInThreadsDeviceFingerprint() async throws {
+        // Pin a fingerprint into MusicShareKit's globals. The asserted
+        // value is intentionally weaker than `== "specific-uuid"` —
+        // AuthenticationServiceTests is not `.serialized`, so a parallel
+        // test can reconfigure MusicShareKit between our configure() and
+        // the freshSignIn() network reads. The load-bearing claim is
+        // "the global is threaded through, not hardcoded to nil," which a
+        // non-nil assertion catches without depending on the specific
+        // value surviving the race.
+        let fingerprintStorage = InMemoryDeviceFingerprintStorage()
+        fingerprintStorage.stubFingerprint = "fp-thread-test-\(UUID().uuidString)"
+        MusicShareKit.configure(MusicShareKitConfiguration(
+            requestOMaticURL: "https://example.com/request",
+            authBaseURL: nil,
+            keychainAccessGroup: nil,
+            featureFlagProvider: nil,
+            defaults: UserDefaults.standard,
+            analyticsService: mockAnalytics,
+            deviceFingerprintStorage: fingerprintStorage
+        ))
+
+        let storage = InMemoryTokenStorage()
+        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        _ = try await service.ensureAuthenticated()
+
+        // CRITICAL: a regression that hardcodes deviceFingerprint: nil in
+        // freshSignIn/mintJWT silently disables ban-evasion protection on
+        // auth endpoints. Either fingerprint slot being nil catches that.
+        #expect(networkClient.signInDeviceFingerprints.allSatisfy { $0 != nil })
+        #expect(networkClient.fetchJWTDeviceFingerprints.allSatisfy { $0 != nil })
+        #expect(networkClient.signInDeviceFingerprints.count == 1)
+        #expect(networkClient.fetchJWTDeviceFingerprints.count == 1)
+    }
+
+    @Test("mintJWT threads a non-nil deviceFingerprint into fetchJWT during /auth/token refresh")
+    func mintJWTThreadsDeviceFingerprint() async throws {
+        // See note in freshSignInThreadsDeviceFingerprint for why the
+        // assertion is on non-nil rather than equality.
+        let fingerprintStorage = InMemoryDeviceFingerprintStorage()
+        fingerprintStorage.stubFingerprint = "fp-mint-test-\(UUID().uuidString)"
+        MusicShareKit.configure(MusicShareKitConfiguration(
+            requestOMaticURL: "https://example.com/request",
+            authBaseURL: nil,
+            keychainAccessGroup: nil,
+            featureFlagProvider: nil,
+            defaults: UserDefaults.standard,
+            analyticsService: mockAnalytics,
+            deviceFingerprintStorage: fingerprintStorage
+        ))
+
+        let storage = InMemoryTokenStorage()
+        try storage.save(makeExpiredSession())  // forces /auth/token refresh path
+
+        let networkClient = makeNetworkClient()
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        _ = try await service.ensureAuthenticated()
+
+        // Only fetchJWT is called in the refresh path; signInAnonymously is not.
+        #expect(networkClient.signInCallCount == 0)
+        #expect(networkClient.fetchJWTDeviceFingerprints.allSatisfy { $0 != nil })
+        #expect(networkClient.fetchJWTDeviceFingerprints.count == 1)
+    }
+
     @Test("Refresh failure propagates and clears in-flight handle for next call")
     func refreshFailureDoesNotPoisonDedup() async throws {
         let storage = InMemoryTokenStorage()

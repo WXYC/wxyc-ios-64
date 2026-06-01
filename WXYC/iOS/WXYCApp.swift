@@ -62,11 +62,15 @@ struct WXYCApp: App {
         // Configure MusicShareKit for RequestService. The keychainAccessGroup
         // must match what the Share Extension passes so a session cached by
         // one target is readable by the other (issue #336). Dropping it
-        // silently regresses to per-process keychain storage.
+        // silently regresses to per-process keychain storage. The
+        // featureFlagProvider gates `MusicShareKit.isAuthEnabled()` — without
+        // it, `useAuth=false` everywhere and the JWT+fingerprint pipeline is
+        // dead in production (iOS#351).
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
             keychainAccessGroup: AppConfiguration.keychainAccessGroup,
+            featureFlagProvider: PostHogFeatureFlagProvider.shared,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 

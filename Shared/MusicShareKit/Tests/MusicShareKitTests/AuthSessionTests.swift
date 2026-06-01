@@ -78,6 +78,7 @@ struct AuthSessionTests {
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(AuthSession.self, from: data)
 
+        #expect(decoded.sessionToken == original.sessionToken)
         #expect(decoded.jwt == original.jwt)
         #expect(decoded.userId == original.userId)
         #expect(decoded.createdAt == original.createdAt)
@@ -99,8 +100,38 @@ struct AuthSessionTests {
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(AuthSession.self, from: data)
 
+        #expect(decoded.sessionToken == original.sessionToken)
         #expect(decoded.jwt == original.jwt)
         #expect(decoded.userId == original.userId)
         #expect(decoded.expiresAt == nil)
+    }
+
+    @Test("with(jwt:expiresAt:) preserves sessionToken, userId, createdAt")
+    func withPreservesNonJWTFields() {
+        let original = AuthSession(
+            sessionToken: "long-lived-session-token",
+            jwt: "old-jwt",
+            userId: "stable-user-id",
+            createdAt: Date(timeIntervalSince1970: 1_000_000),
+            expiresAt: Date(timeIntervalSince1970: 2_000_000)
+        )
+
+        let updated = original.with(
+            jwt: "new-jwt",
+            expiresAt: Date(timeIntervalSince1970: 3_000_000)
+        )
+
+        // The new JWT + expiry land on the result.
+        #expect(updated.jwt == "new-jwt")
+        #expect(updated.expiresAt == Date(timeIntervalSince1970: 3_000_000))
+
+        // CRITICAL: the long-lived refresh credential, user identity, and
+        // creation timestamp must NOT change across JWT rotations. The
+        // ban-target stability (server-side user.id ban) and the persisted
+        // session reuse (no re-sign-in on every JWT cycle) both depend on
+        // these surviving every call to with().
+        #expect(updated.sessionToken == original.sessionToken)
+        #expect(updated.userId == original.userId)
+        #expect(updated.createdAt == original.createdAt)
     }
 }

@@ -230,15 +230,34 @@ struct DeviceFingerprintTests {
     @Suite("KeychainDeviceFingerprintStorage real Keychain", .serialized)
     struct RealKeychainTests {
 
+        /// Use a test-isolated service so running these tests on a developer's
+        /// machine (or any device with WXYC installed) doesn't wipe the host
+        /// app's real production fingerprint — which would force a fresh
+        /// UUID generation on next app launch and break server-side
+        /// ban-evasion tracking for that user.
+        static let testService = "fm.wxyc.devicefingerprint.test"
+        static let testAccount = "fingerprint.test"
+
+        static func makeStorage() -> KeychainDeviceFingerprintStorage {
+            KeychainDeviceFingerprintStorage(
+                accessGroup: nil,
+                operations: DefaultKeychainOperations(),
+                service: testService,
+                account: testAccount
+            )
+        }
+
         init() {
             // Clean up any leftover test items so each suite run starts fresh.
-            deleteRealKeychainFingerprint()
+            deleteRealKeychainFingerprint(
+                service: Self.testService, account: Self.testAccount
+            )
         }
 
         @Test("Two instances see the same UUID")
         func twoInstancesShareValue() throws {
-            let a = KeychainDeviceFingerprintStorage(accessGroup: nil)
-            let b = KeychainDeviceFingerprintStorage(accessGroup: nil)
+            let a = Self.makeStorage()
+            let b = Self.makeStorage()
 
             let valueA = try a.ensure()
             let valueB = try b.ensure()
@@ -246,12 +265,14 @@ struct DeviceFingerprintTests {
             #expect(valueA == valueB)
             #expect(UUID(uuidString: valueA) != nil)
 
-            deleteRealKeychainFingerprint()
+            deleteRealKeychainFingerprint(
+                service: Self.testService, account: Self.testAccount
+            )
         }
 
         @Test("Repeated calls on the same instance are idempotent")
         func repeatedCallsIdempotent() throws {
-            let storage = KeychainDeviceFingerprintStorage(accessGroup: nil)
+            let storage = Self.makeStorage()
             let first = try storage.ensure()
             let second = try storage.ensure()
             let third = try storage.ensure()
@@ -259,7 +280,9 @@ struct DeviceFingerprintTests {
             #expect(first == second)
             #expect(second == third)
 
-            deleteRealKeychainFingerprint()
+            deleteRealKeychainFingerprint(
+                service: Self.testService, account: Self.testAccount
+            )
         }
     }
 }
@@ -329,11 +352,11 @@ final class MockKeychainOperations: KeychainOperations, @unchecked Sendable {
 
 // MARK: - Real-Keychain Cleanup
 
-private func deleteRealKeychainFingerprint() {
+private func deleteRealKeychainFingerprint(service: String, account: String) {
     let query: [String: Any] = [
         kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: KeychainDeviceFingerprintStorage.service,
-        kSecAttrAccount as String: KeychainDeviceFingerprintStorage.account,
+        kSecAttrService as String: service,
+        kSecAttrAccount as String: account,
         kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
     ]
     _ = SecItemDelete(query as CFDictionary)

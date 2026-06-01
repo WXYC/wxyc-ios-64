@@ -67,14 +67,32 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
 
     private let accessGroup: String?
     private let operations: any KeychainOperations
+    private let service: String
+    private let account: String
 
     public init(accessGroup: String?) {
-        self.init(accessGroup: accessGroup, operations: DefaultKeychainOperations())
+        self.init(
+            accessGroup: accessGroup,
+            operations: DefaultKeychainOperations(),
+            service: Self.defaultService,
+            account: Self.defaultAccount
+        )
     }
 
-    internal init(accessGroup: String?, operations: any KeychainOperations) {
+    /// Internal initializer used by tests to override the Keychain
+    /// service+account so real-Keychain integration tests don't collide
+    /// with (and wipe) the host app's production fingerprint when run on
+    /// a developer's device or simulator.
+    internal init(
+        accessGroup: String?,
+        operations: any KeychainOperations,
+        service: String = KeychainDeviceFingerprintStorage.defaultService,
+        account: String = KeychainDeviceFingerprintStorage.defaultAccount
+    ) {
         self.accessGroup = accessGroup
         self.operations = operations
+        self.service = service
+        self.account = account
     }
 
     public func ensure() throws -> String {
@@ -147,8 +165,8 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
     private func readQueryDictionary() -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
-            kSecAttrAccount as String: Self.account,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
             kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
@@ -162,8 +180,8 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
     private func addAttributesDictionary(value: String, synchronizable: Bool) -> [String: Any] {
         var attributes: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
-            kSecAttrAccount as String: Self.account,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
             kSecValueData as String: Data(value.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
@@ -178,8 +196,10 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
 
     // MARK: - Constants
 
-    internal static let service = "fm.wxyc.devicefingerprint"
-    internal static let account = "fingerprint"
+    /// Production Keychain service identifier. Tests can override via the
+    /// internal init to avoid colliding with the host app's real fingerprint.
+    internal static let defaultService = "fm.wxyc.devicefingerprint"
+    internal static let defaultAccount = "fingerprint"
 }
 
 // MARK: - In-Memory Implementation
