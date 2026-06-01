@@ -15,15 +15,19 @@
 #   --simulator <value>   Destination value (passed to -destination as the body
 #                         after "platform=iOS Simulator,"). Accepts "id=<UUID>"
 #                         or "name=<name>". Default: name=iPhone 17.
-#   --dry-run             Print the xcodebuild commands without executing.
-#   --full                Run the full test plan; skip the affected-tests logic.
-#   --core                Also run the CoreTests step. CoreTests defaults to
-#                         OFF locally because -only-testing:CoreTests (whole
-#                         bundle) is known to trigger a Swift Testing scheduler
-#                         hang under load — see issue #359. The CI workflow
-#                         works around this by enumerating tests individually;
-#                         the wrapper does not.
+#   --dry-run             Print the swift test / xcodebuild commands without
+#                         executing.
+#   --full                Run the full test plan via xcodebuild; skip the
+#                         affected-tests scoping and the SPM-direct fast path.
+#   --skip-spm            Skip the swift-test SPM-direct step (use xcodebuild
+#                         even when only SPM-runnable packages are affected).
 #   -h, --help            Show this message.
+#
+# Two-step execution mirroring CI:
+#   1. swift test --package-path Shared/<pkg> for affected SPM-runnable
+#      packages (host, fast). Also covers CoreTests.
+#   2. xcodebuild test on simulator for the remaining affected targets, only
+#      when xcb_required (a non-SPM-runnable package is affected, or run_all).
 #
 # The local diff uses the merge-base of HEAD and BASE_REF, then layers staged,
 # unstaged, and untracked-non-ignored changes on top. Untracked Package.resolved
@@ -31,7 +35,8 @@
 # inflate the affected set.
 #
 # Fail-open: when affected-tests.sh signals run_all=true (no upstream, project
-# file change, etc.), this script falls back to the full plan, matching CI.
+# file change, etc.), this script falls back to the full xcodebuild plan,
+# matching CI.
 #
 
 set -euo pipefail
@@ -48,7 +53,7 @@ BASE_REF="origin/master"
 SIMULATOR="name=iPhone 17"
 DRY_RUN=0
 FORCE_FULL=0
-RUN_CORE_OVERRIDE=""
+SKIP_SPM=0
 
 # ---------------------------------------------------------------------------
 # Arg parsing
@@ -70,18 +75,20 @@ Options:
   --simulator <value>   Destination value (passed to -destination as the body
                         after "platform=iOS Simulator,"). Accepts "id=<UUID>"
                         or "name=<name>". Default: name=iPhone 17.
-  --dry-run             Print the xcodebuild commands without executing.
-  --full                Run the full test plan; skip the affected-tests logic.
-  --core                Also run the CoreTests step. CoreTests defaults to OFF
-                        locally because -only-testing:CoreTests (whole bundle)
-                        is known to trigger a Swift Testing scheduler hang
-                        under load — see issue #359. The CI workflow works
-                        around this by enumerating tests individually; the
-                        wrapper does not.
+  --dry-run             Print swift test / xcodebuild commands without executing.
+  --full                Run the full test plan via xcodebuild; skip affected
+                        scoping and the SPM-direct fast path.
+  --skip-spm            Skip the swift-test SPM-direct step.
   -h, --help            Show this message.
 
-Fail-open: when affected-tests.sh signals run_all=true (no upstream, project
-file change, etc.), this script falls back to the full plan, matching CI.
+Two-step execution mirroring CI:
+  1. swift test --package-path Shared/<pkg> for affected SPM-runnable
+     packages (host, fast). Also covers CoreTests when Core is affected.
+  2. xcodebuild test on simulator for the remaining affected targets, only
+     when xcb_required (a non-SPM-runnable package is affected, or run_all).
+
+Fail-open: when affected-tests.sh signals run_all=true, falls back to the full
+xcodebuild plan, matching CI.
 EOF
 }
 
@@ -101,7 +108,7 @@ while (( $# > 0 )); do
         --simulator)  require_value "$1" "$#"; SIMULATOR="$2"; shift 2 ;;
         --dry-run)    DRY_RUN=1; shift ;;
         --full)       FORCE_FULL=1; shift ;;
-        --core)       RUN_CORE_OVERRIDE="true"; shift ;;
+        --skip-spm)   SKIP_SPM=1; shift ;;
         -h|--help)    usage; exit 0 ;;
         *)            echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -114,8 +121,10 @@ DESTINATION="platform=iOS Simulator,${SIMULATOR}"
 # ---------------------------------------------------------------------------
 
 SKIP_FLAGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
+ONLY_FLAGS=""
+SPM_AFFECTED=""
+XCB_REQUIRED="true"
 RUN_ALL="false"
-RUN_CORE_TESTS="false"
 AFFECTED_SUMMARY="all tests (forced via --full)"
 
 if (( FORCE_FULL == 0 )); then
@@ -128,6 +137,15 @@ fi
 
 if (( FORCE_FULL == 1 )); then
     RUN_ALL="true"
+    XCB_REQUIRED="true"
+    # Match affected-tests.sh's run_all_and_exit: swift-test all SPM-runnable
+    # packages on host, xcodebuild runs the rest (skip spm-covered targets to
+    # avoid double coverage).
+    SPM_AFFECTED="AnalyticsMacros Core Caching Analytics ColorPalette Playlist"
+    SKIP_FLAGS="-skip-testing:WXYCUITests \
+-skip-testing:AnalyticsMacrosTests \
+-skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests \
+-skip-testing:ColorPaletteTests -skip-testing:PlaylistTests"
 fi
 
 if (( FORCE_FULL == 0 )); then
@@ -167,6 +185,7 @@ if (( FORCE_FULL == 0 )); then
         rm -f "$OUTPUT_FILE"
         OUTPUT_FILE=""
         RUN_ALL="true"
+        XCB_REQUIRED="true"
     }
     rm -f "$STDERR_FILE"
 
@@ -175,7 +194,9 @@ if (( FORCE_FULL == 0 )); then
             case "$key" in
                 run_all)            RUN_ALL="$value" ;;
                 skip_testing_flags) SKIP_FLAGS="$value" ;;
-                run_core_tests)     RUN_CORE_TESTS="$value" ;;
+                only_testing_flags) ONLY_FLAGS="$value" ;;
+                spm_affected)       SPM_AFFECTED="$value" ;;
+                xcb_required)       XCB_REQUIRED="$value" ;;
                 affected_summary)   AFFECTED_SUMMARY="$value" ;;
             esac
         done < "$OUTPUT_FILE"
@@ -183,57 +204,23 @@ if (( FORCE_FULL == 0 )); then
     fi
 fi
 
-# CoreTests defaults to off locally (Swift Testing scheduler hang risk).
-# --core opts back in; affected-tests.sh's run_core_tests signal is ignored.
-if [[ -n "$RUN_CORE_OVERRIDE" ]]; then
-    RUN_CORE_TESTS="$RUN_CORE_OVERRIDE"
-else
-    RUN_CORE_TESTS="false"
+if (( SKIP_SPM == 1 )); then
+    SPM_AFFECTED=""
+    XCB_REQUIRED="true"
 fi
 
 echo "Base ref:    $BASE_REF"
 echo "Destination: $DESTINATION"
 echo "Run all:     $RUN_ALL"
 echo "Summary:     $AFFECTED_SUMMARY"
-echo "Skip flags:  $SKIP_FLAGS"
-echo "Run Core:    $RUN_CORE_TESTS"
+echo "SPM steps:   ${SPM_AFFECTED:-(none)}"
+echo "xcb step:    $XCB_REQUIRED"
 echo ""
 
 # ---------------------------------------------------------------------------
-# Build xcodebuild invocations
+# Step 1: swift test for affected SPM-runnable packages (host)
+# Step 2: xcodebuild test on simulator (only when xcb_required)
 # ---------------------------------------------------------------------------
-
-XCODEBUILD_BASE=(
-    xcodebuild test
-    -project WXYC.xcodeproj
-    -scheme WXYC
-    -testPlan WXYC
-    -destination "$DESTINATION"
-    -skipMacroValidation
-    -disable-concurrent-testing
-    CODE_SIGNING_ALLOWED=NO
-)
-
-MAIN_CMD=(
-    "${XCODEBUILD_BASE[@]}"
-    -resultBundlePath TestResults.xcresult
-    ${=SKIP_FLAGS}
-)
-
-# CoreTests runs separately, matching the CI workflow's handling of the Swift
-# Testing scheduler issue. See .github/workflows/build-and-test.yml.
-CORE_CMD=(
-    xcodebuild test
-    -project WXYC.xcodeproj
-    -scheme WXYC
-    -testPlan WXYC
-    -destination "$DESTINATION"
-    -skipMacroValidation
-    -disable-concurrent-testing
-    CODE_SIGNING_ALLOWED=NO
-    -resultBundlePath CoreTestResults.xcresult
-    -only-testing:CoreTests
-)
 
 run_or_print() {
     local label="$1"; shift
@@ -247,18 +234,47 @@ run_or_print() {
     "$@"
 }
 
-main_exit=0
-run_or_print "Main test step" "${MAIN_CMD[@]}" || main_exit=$?
-
-core_exit=0
-if [[ "$RUN_CORE_TESTS" == "true" ]]; then
-    echo ""
-    run_or_print "CoreTests step" "${CORE_CMD[@]}" || core_exit=$?
+spm_exit=0
+typeset -A SPM_SKIP
+SPM_SKIP[Core]='ImageCompatibilityTests' # HEIF/HEVC unsupported on macos-latest virtualization
+if [[ -n "$SPM_AFFECTED" ]]; then
+    for pkg in ${=SPM_AFFECTED}; do
+        skip_args=()
+        if [[ -n "${SPM_SKIP[$pkg]:-}" ]]; then
+            skip_args=(--skip "${SPM_SKIP[$pkg]}")
+        fi
+        run_or_print "swift test $pkg" swift test --package-path "Shared/$pkg" "${skip_args[@]}" || spm_exit=$?
+        if (( spm_exit != 0 )); then
+            break # fail fast — don't run xcodebuild after a swift test failure
+        fi
+        echo ""
+    done
 fi
 
-if (( main_exit != 0 || core_exit != 0 )); then
+xcb_exit=0
+if (( spm_exit == 0 )) && [[ "$XCB_REQUIRED" == "true" ]]; then
+    XCB_CMD=(
+        xcodebuild test
+        -project WXYC.xcodeproj
+        -scheme WXYC
+        -testPlan WXYC
+        -destination "$DESTINATION"
+        -skipMacroValidation
+        -disable-concurrent-testing
+        CODE_SIGNING_ALLOWED=NO
+        -resultBundlePath TestResults.xcresult
+    )
+    if [[ "$RUN_ALL" == "true" ]]; then
+        XCB_CMD+=(${=SKIP_FLAGS})
+    else
+        XCB_CMD+=(${=ONLY_FLAGS})
+    fi
+    run_or_print "xcodebuild test" "${XCB_CMD[@]}" || xcb_exit=$?
+fi
+
+if (( spm_exit != 0 || xcb_exit != 0 )); then
     echo ""
-    echo "FAILED (main=$main_exit, core=$core_exit)" >&2
+    echo "FAILED (swift test=$spm_exit, xcodebuild=$xcb_exit)" >&2
     exit 1
 fi
 
