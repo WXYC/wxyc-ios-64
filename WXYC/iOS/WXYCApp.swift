@@ -75,8 +75,7 @@ struct WXYCApp: App {
         setUpSentry()
         setUpErrorReporting()
         StructuredPostHogAnalytics.shared.capture(AppLaunch(
-            hasUsedThemePicker: appState.themePickerState.persistence.hasEverUsedPicker,
-            buildType: buildConfiguration()
+            hasUsedThemePicker: appState.themePickerState.persistence.hasEverUsedPicker
         ))
 
         // Note: AVAudioSession category is set by AudioPlayerController when playback starts.
@@ -224,8 +223,7 @@ struct WXYCApp: App {
     private func setUpAnalytics() {
         AnalyticsBootstrap.start(
             apiKey: AppConfiguration.defaults.posthogApiKey,
-            host: AppConfiguration.defaults.posthogHost,
-            buildConfiguration: buildConfiguration()
+            host: AppConfiguration.defaults.posthogHost
         )
     }
 
@@ -261,16 +259,6 @@ struct WXYCApp: App {
         Logger.addDestination(SentryBreadcrumbDestination())
     }
 
-    private func buildConfiguration() -> String {
-        #if DEBUG
-        return "Debug"
-        #elseif TEST_FLIGHT
-        return "TestFlight"
-        #else
-        return "Release"
-        #endif
-    }
-    
     // MARK: - Siri Intents
 
     static func donateSiriIntent() {

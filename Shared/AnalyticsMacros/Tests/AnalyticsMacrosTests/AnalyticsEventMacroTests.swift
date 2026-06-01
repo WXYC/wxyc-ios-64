@@ -27,20 +27,17 @@ final class AnalyticsEventMacroTests: XCTestCase {
             @AnalyticsEvent
             public struct AppLaunch {
                 public let hasUsedThemePicker: Bool
-                public let buildType: String
             }
             """,
             expandedSource: """
             public struct AppLaunch {
                 public let hasUsedThemePicker: Bool
-                public let buildType: String
 
                 public static let name: String = "app_launch"
 
                 public var properties: [String: Any]? {
                     [
-                        "has_used_theme_picker": hasUsedThemePicker,
-                        "build_type": buildType
+                        "has_used_theme_picker": hasUsedThemePicker
                     ]
                 }
             }

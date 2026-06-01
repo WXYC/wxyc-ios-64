@@ -124,5 +124,7 @@
 	<string>UIStatusBarStyleLightContent</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>WXYC_BUILD_TYPE</key>
+	<string>$(CONFIGURATION)</string>
 </dict>
 </plist>

@@ -20,14 +20,20 @@ import PostHog
 public enum AnalyticsBootstrap {
     /// Initializes the analytics SDK. Call exactly once at app launch, before any event capture.
     ///
+    /// The build type is read from the `WXYC_BUILD_TYPE` key on `Bundle.main.infoDictionary`,
+    /// which is populated at build time by the `WXYC_BUILD_TYPE` xcconfig variable. The value
+    /// is registered as the `"Build Configuration"` super-property on every event for backward
+    /// compatibility with existing PostHog insights that filter on that key.
+    ///
     /// - Parameters:
     ///   - apiKey: PostHog project API key.
     ///   - host: PostHog instance host URL.
-    ///   - buildConfiguration: A short label ("Debug", "TestFlight", "Release") registered as a super-property on every event.
-    public static func start(apiKey: String, host: String, buildConfiguration: String) {
+    public static func start(apiKey: String, host: String) {
         let config = PostHogConfig(apiKey: apiKey, host: host)
         PostHogSDK.shared.setup(config)
-        PostHogSDK.shared.register(["Build Configuration": buildConfiguration])
+
+        let buildType = (Bundle.main.infoDictionary?["WXYC_BUILD_TYPE"] as? String) ?? "unknown"
+        PostHogSDK.shared.register(["Build Configuration": buildType])
     }
 
     /// Asks the analytics SDK to send any buffered events. Fire-and-forget: the actual network

@@ -23,8 +23,7 @@ struct WatchXYC: App {
     init() {
         AnalyticsBootstrap.start(
             apiKey: AppConfiguration.defaults.posthogApiKey,
-            host: AppConfiguration.defaults.posthogHost,
-            buildConfiguration: buildConfiguration()
+            host: AppConfiguration.defaults.posthogHost
         )
         ErrorReporting.shared = PostHogErrorReporter.shared
         StructuredPostHogAnalytics.shared.capture(AppLaunchSimple())
@@ -42,15 +41,5 @@ struct WatchXYC: App {
             RootTabView(playbackController: RadioPlayerController.shared)
                 .environment(\.playlistService, playlistService)
         }
-    }
-
-    private func buildConfiguration() -> String {
-        #if DEBUG
-        return "Debug"
-        #elseif TEST_FLIGHT
-        return "TestFlight"
-        #else
-        return "Release"
-        #endif
     }
 }

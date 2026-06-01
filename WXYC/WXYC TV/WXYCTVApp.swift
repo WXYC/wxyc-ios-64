@@ -26,25 +26,15 @@ struct WXYCTVApp: App {
     }
 
     init() {
+        setUpAnalytics()
         StructuredPostHogAnalytics.shared.capture(AppLaunchSimple())
     }
-    
+
     private func setUpAnalytics() {
         AnalyticsBootstrap.start(
             apiKey: AppConfiguration.defaults.posthogApiKey,
-            host: AppConfiguration.defaults.posthogHost,
-            buildConfiguration: buildConfiguration()
+            host: AppConfiguration.defaults.posthogHost
         )
-    }
-    
-    private func buildConfiguration() -> String {
-        #if DEBUG
-        return "Debug"
-        #elseif TEST_FLIGHT
-        return "TestFlight"
-        #else
-        return "Release"
-        #endif
     }
 }
 
