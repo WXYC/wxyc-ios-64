@@ -17,7 +17,12 @@ import UIKit
 @testable import Playback
 @testable import PlaybackCore
 
-@Suite("PlayWXYC Intent Tests", .serialized)
+@Suite(
+    "PlayWXYC Intent Tests",
+    .serialized,
+    .tags(.e2e),
+    .disabled(if: ProcessInfo.processInfo.environment["RUN_E2E"] != "1")
+)
 @MainActor
 struct PlayWXYCIntentTests {
 
@@ -139,4 +144,8 @@ private func waitForPlayback(timeout: Duration) async throws {
         }
         try await Task.sleep(for: .milliseconds(100))
     }
+}
+
+extension Tag {
+    @Tag static var e2e: Self
 }
