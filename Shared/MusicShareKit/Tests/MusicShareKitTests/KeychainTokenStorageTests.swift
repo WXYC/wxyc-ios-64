@@ -30,7 +30,13 @@ struct KeychainTokenStorageTests {
 
     // MARK: - Round-Trip Persistence
 
-    @Test("Save and load round-trips session across instances")
+    @Test(
+        "Save and load round-trips session across instances",
+        .disabled(
+            if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
+            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+        )
+    )
     func saveAndLoadRoundTripsAcrossInstances() throws {
         let session = AuthSession(
             sessionToken: "persist-session", jwt: "persist-jwt",
@@ -54,7 +60,13 @@ struct KeychainTokenStorageTests {
 
     // MARK: - Synchronizable Save Fallback
 
-    @Test("Save falls back to non-synchronizable when iCloud Keychain is unavailable")
+    @Test(
+        "Save falls back to non-synchronizable when iCloud Keychain is unavailable",
+        .disabled(
+            if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
+            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+        )
+    )
     func saveFallsBackToNonSynchronizable() throws {
         let session = AuthSession(
             sessionToken: "fallback-session", jwt: "fallback-jwt",
@@ -76,7 +88,13 @@ struct KeychainTokenStorageTests {
         try storage.delete()
     }
 
-    @Test("Save fallback persists across instances")
+    @Test(
+        "Save fallback persists across instances",
+        .disabled(
+            if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
+            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+        )
+    )
     func saveFallbackPersistsAcrossInstances() throws {
         let session = AuthSession(
             sessionToken: "relaunch-session", jwt: "relaunch-jwt",
@@ -101,7 +119,13 @@ struct KeychainTokenStorageTests {
 
     // MARK: - Load Fallback
 
-    @Test("Load with synchronizable=true finds non-synchronizable items")
+    @Test(
+        "Load with synchronizable=true finds non-synchronizable items",
+        .disabled(
+            if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
+            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+        )
+    )
     func loadFindsFallbackItems() throws {
         let session = AuthSession(
             sessionToken: "nonsync-session", jwt: "nonsync-jwt",
