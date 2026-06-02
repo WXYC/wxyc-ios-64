@@ -498,7 +498,6 @@ struct AudioEnginePlayerTests {
 
 extension Tag {
     @Tag static var batchScheduling: Self
-    @Tag static var e2e: Self
 }
 
 // MARK: - AsyncStream Extension for Testing
