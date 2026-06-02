@@ -276,7 +276,10 @@ struct AuthenticationServiceTests {
 
     // MARK: - D5 Concurrent-Call Dedup
 
-    @Test("Concurrent callers share one in-flight refresh")
+    @Test(
+        "Concurrent callers share one in-flight refresh",
+        .timeLimit(.minutes(1))
+    )
     func concurrentCallersDedup() async throws {
         let storage = InMemoryTokenStorage()
         let networkClient = GatedNetworkMock()
@@ -287,30 +290,40 @@ struct AuthenticationServiceTests {
 
         let service = makeService(storage: storage, networkClient: networkClient)
 
-        // Spawn N concurrent callers. They should all race into the
-        // dedup branch and share a single in-flight refresh.
-        let n = 5
-        async let results: [String] = withThrowingTaskGroup(of: String.self) { group in
-            for _ in 0..<n {
-                group.addTask {
-                    try await service.ensureAuthenticated()
-                }
-            }
-            var collected: [String] = []
-            for try await value in group {
-                collected.append(value)
-            }
-            return collected
+        // Spawn the first caller and wait for it to reach the gated fetchJWT.
+        // Polling on `waiterCount` instead of a fixed sleep makes this
+        // deterministic: when the first waiter is queued in the gate, caller 1
+        // has installed `inFlightAuth` on the actor and is suspended inside
+        // fetchJWT. Subsequent callers spawned after this point will observe
+        // `inFlightAuth` non-nil and take the dedup branch.
+        let caller1: Task<String, Error> = Task {
+            try await service.ensureAuthenticated()
+        }
+        while networkClient.waiterCount == 0 {
+            await Task.yield()
         }
 
-        // Give all callers a moment to enter the actor before we release the gate.
-        try await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+        // Now spawn the dedup callers. The actor's reentrancy semantics
+        // serialize entry; each of these will observe `inFlightAuth` set and
+        // await `existing.value` — no second refresh starts.
+        let dedupCallers: [Task<String, Error>] = (0..<4).map { _ in
+            Task { try await service.ensureAuthenticated() }
+        }
+        // Yield generously so the dedup callers have a chance to actually
+        // reach the actor before we release the gate. If they didn't, the
+        // .timeLimit trait above fails the test loudly instead of hanging.
+        for _ in 0..<20 { await Task.yield() }
+
         networkClient.releaseJWT()
 
-        let tokens = try await results
-        #expect(tokens.count == n)
+        var tokens: [String] = [try await caller1.value]
+        for task in dedupCallers {
+            tokens.append(try await task.value)
+        }
+
+        #expect(tokens.count == 5)
         #expect(tokens.allSatisfy { $0 == mintedJWT })
-        // Critical: exactly ONE fetchJWT call, not N.
+        // Critical: exactly ONE fetchJWT call, not 5.
         #expect(networkClient.fetchJWTCallCount == 1)
         #expect(networkClient.signInCallCount == 1)
     }
@@ -705,6 +718,9 @@ private final class GatedNetworkMock: AuthNetworkClient, @unchecked Sendable {
     // CheckedContinuations used to gate the fetchJWT call. The test calls
     // releaseJWT() to resume them.
     private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Number of fetchJWT calls currently suspended on the gate.
+    var waiterCount: Int { lock.withLock { waiters.count } }
 
     func signInAnonymously(baseURL: String, deviceFingerprint: String?) async throws -> AnonymousSignInResult {
         lock.withLock { signInCallCount += 1 }
