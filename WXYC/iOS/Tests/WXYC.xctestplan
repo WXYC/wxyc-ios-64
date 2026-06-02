@@ -49,20 +49,6 @@
       }
     },
     {
-      "target" : {
-        "containerPath" : "container:Shared\/Playback",
-        "identifier" : "RadioPlayerTests",
-        "name" : "RadioPlayerTests"
-      }
-    },
-    {
-      "target" : {
-        "containerPath" : "container:Shared\/Playback",
-        "identifier" : "MP3StreamerTests",
-        "name" : "MP3StreamerTests"
-      }
-    },
-    {
       "parallelizable" : true,
       "target" : {
         "containerPath" : "container:Shared\/Caching",
@@ -115,13 +101,6 @@
         "containerPath" : "container:Shared\/Playback",
         "identifier" : "PlaybackTests",
         "name" : "PlaybackTests"
-      }
-    },
-    {
-      "target" : {
-        "containerPath" : "container:Shared\/Playback",
-        "identifier" : "HLSPlayerTests",
-        "name" : "HLSPlayerTests"
       }
     },
     {

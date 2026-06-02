@@ -109,23 +109,13 @@ let package = Package(
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")],
-            resources: [.process("Resources")]
-        ),
-        .testTarget(
-            name: "RadioPlayerTests",
-            dependencies: ["RadioPlayerModule", "PlaybackCore", "Analytics", "Core", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")]
-        ),
-        .testTarget(
-            name: "MP3StreamerTests",
-            dependencies: ["MP3StreamerModule", "PlaybackCore", "Core", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")],
-            resources: [.process("Resources")]
-        ),
-        .testTarget(
-            name: "HLSPlayerTests",
             dependencies: [
-                "HLSPlayerModule",
+                "Playback",
                 "PlaybackCore",
+                "RadioPlayerModule",
+                "MP3StreamerModule",
+                "HLSPlayerModule",
+                "Analytics",
                 "Core",
                 "PlaybackTestUtilities",
                 .product(name: "AnalyticsTesting", package: "Analytics"),

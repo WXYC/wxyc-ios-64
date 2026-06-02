@@ -204,7 +204,7 @@ TEST_TARGETS[Core]="CoreTests"
 TEST_TARGETS[Caching]="CachingTests"
 TEST_TARGETS[Analytics]="AnalyticsTests"
 TEST_TARGETS[Playlist]="PlaylistTests"
-TEST_TARGETS[Playback]="PlaybackTests RadioPlayerTests MP3StreamerTests HLSPlayerTests"
+TEST_TARGETS[Playback]="PlaybackTests"
 TEST_TARGETS[Artwork]="ArtworkTests"
 TEST_TARGETS[ColorPalette]="ColorPaletteTests"
 TEST_TARGETS[Wallpaper]="WallpaperTests"
@@ -297,8 +297,6 @@ local all_test_plan_targets=(
     PlaylistTests
     WXYCTests
     ArtworkTests
-    RadioPlayerTests
-    MP3StreamerTests
     CachingTests
     MusicShareKitTests
     PlayerHeaderViewTests
@@ -306,7 +304,6 @@ local all_test_plan_targets=(
     CoreTests
     AppServicesTests
     PlaybackTests
-    HLSPlayerTests
     WallpaperTests
     ColorPaletteTests
     AnalyticsTests

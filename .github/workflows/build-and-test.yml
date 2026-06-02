@@ -87,10 +87,18 @@ jobs:
         # a cache that matched. pbxproj was too aggressive an invalidator —
         # most pbxproj edits don't affect compilation. Master pushes now warm
         # a key PRs can restore.
+        #
+        # Package.swift is in the key because structural test-target changes
+        # (testTarget merges, dependency rearrangements) leave the cached
+        # build graph and per-target module hashes mismatched with the live
+        # Package.swift, producing "Corrupted JSON" build-graph errors and
+        # bogus "no member" diagnostics on downstream compiles. Source-only
+        # Package.swift edits (comments, formatting) also re-key, which is
+        # acceptable overhead for the safety.
         uses: actions/cache@v4
         with:
           path: ~/Library/Developer/Xcode/DerivedData
-          key: derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.xcconfig') }}
+          key: derived-${{ runner.os }}-${{ hashFiles('**/Package.resolved', '**/*.xcconfig', '**/Package.swift') }}
           restore-keys: |
             derived-${{ runner.os }}-
 

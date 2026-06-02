@@ -34,8 +34,13 @@ import Core
 
 // MARK: - Mock Audio Session
 
+// Local minimal mock — `fileprivate` to avoid shadowing the public
+// MockAudioSession in PlaybackTestUtilities, which AudioPlayerControllerTests
+// in this same merged target depends on. (Before the four Playback test
+// targets were merged into one, this lived in a separate target and the name
+// clash didn't matter.)
 #if os(iOS) || os(tvOS)
-final class MockAudioSession: AudioSessionProtocol {
+fileprivate final class MockAudioSession: AudioSessionProtocol {
     var setActiveCallCount = 0
     var lastActiveState: Bool?
     var outputLatency: TimeInterval = 0
