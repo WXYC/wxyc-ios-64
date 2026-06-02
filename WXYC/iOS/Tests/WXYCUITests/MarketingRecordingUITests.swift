@@ -32,7 +32,11 @@ final class MarketingRecordingUITests: XCTestCase {
     /// - Enters theme picker, navigates to random theme, exits
     /// - Waits 3 seconds
     /// - Repeats until at least 15 seconds have elapsed
-    func testMarketingRecordingSequence() {
+    func testMarketingRecordingSequence() throws {
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1",
+            "Slow test — excluded from CI"
+        )
         let app = XCUIApplication()
         app.launchArguments = ["-marketing"]
         app.launch()

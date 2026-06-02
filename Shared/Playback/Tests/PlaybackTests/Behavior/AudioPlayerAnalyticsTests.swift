@@ -351,4 +351,5 @@ struct AudioEnginePlayerAnalyticsTests {
 
 extension Tag {
     @Tag static var e2e: Self
+    @Tag static var slow: Self
 }

@@ -336,7 +336,11 @@ struct HLSPlayerTests {
 
     // MARK: - Time Position Stream
 
-    @Test("Time position stream emits updates while playing")
+    @Test(
+        "Time position stream emits updates while playing",
+        .tags(.slow),
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+    )
     func timePositionStreamEmits() async throws {
         let (player, mock, nc) = makePlayer()
         mock.setSeekableRange(start: 0, duration: 3600)

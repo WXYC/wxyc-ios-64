@@ -190,6 +190,7 @@
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
 				iOS/Tests/WXYCUITests/PlayWXYCIntentUITests.swift,
+				iOS/Tests/WXYCUITests/TestTags.swift,
 				iOS/Tests/WXYCUITests/UITestUtilities.swift,
 				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
 			);
@@ -235,6 +236,7 @@
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
 				iOS/Tests/WXYCUITests/PlayWXYCIntentUITests.swift,
 				iOS/Tests/WXYCUITests/README.md,
+				iOS/Tests/WXYCUITests/TestTags.swift,
 				iOS/Tests/WXYCUITests/UITestUtilities.swift,
 				iOS/Tests/WXYCUITests/WallpaperUITests.swift,
 				WatchXYC/Assets.xcassets,

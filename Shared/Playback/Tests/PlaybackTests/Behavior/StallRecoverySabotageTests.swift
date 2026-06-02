@@ -115,7 +115,11 @@ struct StallRecoverySabotageTests {
 
     // MARK: - Bug A: reconnect waits on player state, not a fixed 500 ms
 
-    @Test("reconnect waits for player to reach playing or error, not a fixed 500ms")
+    @Test(
+        "reconnect waits for player to reach playing or error, not a fixed 500ms",
+        .tags(.slow),
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+    )
     func reconnectWaitsForTerminalState() async {
         // Quick first-wait so the reconnect runs promptly; the test pivots on
         // the grace-wait behavior after `player.play()`.

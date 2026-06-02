@@ -11,7 +11,12 @@
 import Testing
 import XCTest
 
-@Suite("Playback UI Tests", .serialized)
+@Suite(
+    "Playback UI Tests",
+    .serialized,
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+)
 @MainActor
 struct PlaybackUITests {
 

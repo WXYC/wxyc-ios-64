@@ -567,7 +567,11 @@ struct MP3StreamerStuckStateRecoveryTests {
                 "play() recovery should trigger exactly 1 new connect, not more")
     }
 
-    @Test("play() from stuck state does not schedule stale buffers", .tags(.stuckStateRecovery))
+    @Test(
+        "play() from stuck state does not schedule stale buffers",
+        .tags(.stuckStateRecovery, .slow),
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+    )
     func playFromStuckStateNoStaleBuffers() async throws {
         let config = MP3StreamerConfiguration(
             url: Self.testStreamURL,
