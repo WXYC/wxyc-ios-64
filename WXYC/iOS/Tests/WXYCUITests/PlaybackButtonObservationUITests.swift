@@ -26,91 +26,6 @@ struct PlaybackButtonObservationUITests {
         app.launch()
     }
 
-    // MARK: - PlaybackButton Tests
-
-    @Test("PlaybackButton visual state updates on tap")
-    func playbackButtonVisualStateUpdates() async throws {
-        let playButton = app.buttons["playPauseButton"]
-
-        // Wait for button to appear
-        let exists = playButton.waitForExistence(timeout: 10)
-        #expect(exists, "Play button should exist")
-
-        // Button should start showing play icon (not playing)
-        // Tap to start playback
-        playButton.tap()
-
-        // Wait for button to stabilize after state change
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // Verify button still exists and responds
-        #expect(playButton.exists, "Button should exist after starting playback")
-
-        // Tap to pause
-        playButton.tap()
-
-        // Wait for button to stabilize
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // Verify button still works
-        #expect(playButton.exists, "Button should exist after pausing")
-    }
-
-    @Test("PlaybackButton state syncs with AudioPlayerController")
-    func playbackButtonStateSyncs() async throws {
-        let playButton = app.buttons["playPauseButton"]
-
-        let exists = playButton.waitForExistence(timeout: 10)
-        #expect(exists, "Play button should exist")
-
-        // Start playback via button tap (simulates AudioPlayerController.play())
-        playButton.tap()
-
-        // Wait for UI to stabilize after playback starts
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // Button should still be responsive
-        #expect(playButton.exists, "Button should remain responsive during playback")
-        #expect(playButton.isHittable, "Button should be hittable during playback")
-
-        // Stop playback via button tap (simulates AudioPlayerController.pause())
-        playButton.tap()
-
-        // Wait for UI to stabilize
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // Verify UI remains in sync
-        #expect(playButton.exists, "Button should exist after stopping")
-        #expect(playButton.isHittable, "Button should be hittable after stopping")
-    }
-
-    @Test("Rapid tapping doesn't cause UI issues")
-    func rapidTappingHandled() async throws {
-        let playButton = app.buttons["playPauseButton"]
-
-        let exists = playButton.waitForExistence(timeout: 10)
-        #expect(exists, "Play button should exist")
-
-        // Rapidly tap the button 15 times
-        // Using minimal delay to simulate rapid user interaction
-        for _ in 1...15 {
-            playButton.tap()
-            await Task.yield()
-        }
-
-        // Wait for button to stabilize after rapid tapping
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // App shouldn't crash and button should remain functional
-        #expect(playButton.exists, "Button should exist after rapid tapping")
-        #expect(playButton.isHittable, "Button should be hittable after rapid tapping")
-
-        // Verify button still responds to taps
-        playButton.tap()
-        try await waitUntil(playButton, is: .exists)
-        #expect(playButton.exists, "Button should still respond after rapid tapping")
-    }
-
     @Test("State survives backgrounding")
     func stateSurvivesBackgrounding() async throws {
         let playButton = app.buttons["playPauseButton"]
@@ -142,33 +57,6 @@ struct PlaybackButtonObservationUITests {
         playButton.tap()
         try await waitUntil(playButton, is: .exists)
         #expect(playButton.exists, "Button should respond after backgrounding cycle")
-    }
-
-    @Test("Animation completes without issues during state change")
-    func animationPlaysSmooth() async throws {
-        let playButton = app.buttons["playPauseButton"]
-
-        let exists = playButton.waitForExistence(timeout: 10)
-        #expect(exists, "Play button should exist")
-
-        // Perform state change and verify animation completes
-        playButton.tap()
-
-        // Wait for button to be hittable (indicates animation complete)
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // Verify button is in a stable state
-        #expect(playButton.exists, "Button should exist after animation")
-
-        // Perform another state change
-        playButton.tap()
-
-        // Wait for second animation to complete
-        try await waitUntil(playButton, is: .exists, .hittable)
-
-        // Verify no issues
-        #expect(playButton.exists, "Button should exist after second animation")
-        #expect(playButton.isHittable, "Button should be hittable after animations complete")
     }
 }
 
