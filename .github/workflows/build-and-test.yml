@@ -182,6 +182,12 @@ jobs:
           # there. Drop along with the traits as #371 retires each suite from the
           # skip set.
           TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES: '1'
+          # WXYC_SKIP_SLOW excludes the >1s test set (UI tests + a handful of
+          # timer/network paths) from CI. The full plan locally takes ~91 minutes
+          # of which 14 UI tests are 98% of the time; this gate cuts CI back to
+          # the fast unit/integration tests. Drop the trait per test as each gets
+          # rewritten to run faster than 1s.
+          TEST_RUNNER_WXYC_SKIP_SLOW: '1'
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
             ARGS="${{ steps.affected.outputs.skip_testing_flags }}"
