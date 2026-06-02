@@ -30,6 +30,7 @@ struct AudioEnginePlayerTests {
     func testInstallRenderTapBeforePlayMarksPending() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         // Install render tap BEFORE play - should be marked as pending
         player.installRenderTap()
@@ -51,6 +52,7 @@ struct AudioEnginePlayerTests {
     func testRenderTapAfterPlayWorksNormally() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         // Play first - sets up engine
         try player.play()
@@ -69,6 +71,7 @@ struct AudioEnginePlayerTests {
     func testMultipleRenderTapCallsBeforePlay() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         // Call installRenderTap multiple times before play
         player.installRenderTap()
@@ -90,6 +93,7 @@ struct AudioEnginePlayerTests {
     func testPlay() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
 
@@ -109,6 +113,7 @@ struct AudioEnginePlayerTests {
     func testPlayIdempotent() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         try player.play() // Second call should be no-op
@@ -134,6 +139,7 @@ struct AudioEnginePlayerTests {
     func testPause() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -157,6 +163,7 @@ struct AudioEnginePlayerTests {
     func testStop() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -176,6 +183,7 @@ struct AudioEnginePlayerTests {
     func testStopIsNonBlocking() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2)
@@ -204,6 +212,7 @@ struct AudioEnginePlayerTests {
     func testScheduleBuffer() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -223,6 +232,7 @@ struct AudioEnginePlayerTests {
     func testStallDetection() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -248,6 +258,7 @@ struct AudioEnginePlayerTests {
     func testRecoveryFromStall() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -282,6 +293,7 @@ struct AudioEnginePlayerTests {
     func testRequestMoreBuffers() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -312,6 +324,7 @@ struct AudioEnginePlayerTests {
     func testPlaySucceedsAfterEngineTearDown() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         // First play sets up and starts the engine
         try player.play()
@@ -342,6 +355,7 @@ struct AudioEnginePlayerTests {
     func testRenderTapReinstalledAfterRecovery() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         // Install render tap and play
         player.installRenderTap()
@@ -369,6 +383,7 @@ struct AudioEnginePlayerTests {
     func testBatchScheduleBuffers() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -393,6 +408,7 @@ struct AudioEnginePlayerTests {
     func testBatchSchedulingTriggersRecovery() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         try player.play()
         _ = try await player.eventStream.first(timeout: 2) // Consume started
@@ -431,6 +447,7 @@ struct AudioEnginePlayerTests {
     func testMakeRenderTapStreamAfterCancellation() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format)
+        player.volume = 0  // silence test output
 
         // Set up engine and install render tap
         try player.play()
