@@ -254,7 +254,13 @@ struct DeviceFingerprintTests {
             )
         }
 
-        @Test("Two instances see the same UUID")
+        @Test(
+            "Two instances see the same UUID",
+            .disabled(
+                if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
+                "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+            )
+        )
         func twoInstancesShareValue() throws {
             let a = Self.makeStorage()
             let b = Self.makeStorage()
@@ -270,7 +276,13 @@ struct DeviceFingerprintTests {
             )
         }
 
-        @Test("Repeated calls on the same instance are idempotent")
+        @Test(
+            "Repeated calls on the same instance are idempotent",
+            .disabled(
+                if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
+                "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+            )
+        )
         func repeatedCallsIdempotent() throws {
             let storage = Self.makeStorage()
             let first = try storage.ensure()
