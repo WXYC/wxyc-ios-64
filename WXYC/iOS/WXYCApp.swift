@@ -67,6 +67,7 @@ struct WXYCApp: App {
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
             keychainAccessGroup: AppConfiguration.keychainAccessGroup,
+            featureFlagProvider: PostHogFeatureFlagProvider.shared,
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
