@@ -1,26 +1,9 @@
 name: Build and Test
 
 on:
+  # Disabled. Run manually via `gh workflow run build-and-test.yml` or the
+  # Actions tab. To re-enable, restore the push/pull_request triggers below.
   workflow_dispatch:
-  push:
-    branches: [master]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.gitignore'
-      - 'worklog'
-      - 'log'
-      - '.claude/**'
-  pull_request:
-    branches: [master]
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.gitignore'
-      - 'worklog'
-      - 'log'
-      - '.claude/**'
 
 # Cancel superseded PR runs (each push to the same PR cancels the prior run).
 # Master pushes keep their full audit trail by using a per-event-name group key
