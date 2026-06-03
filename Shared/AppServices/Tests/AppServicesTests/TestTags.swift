@@ -1,0 +1,16 @@
+//
+//  TestTags.swift
+//  AppServicesTests
+//
+//  Per-target Tag declarations for Swift Testing. Each test target is its
+//  own Swift module, so the .slow tag is declared once per target.
+//
+//  Created by Jake Bromberg on 06/03/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Testing
+
+extension Tag {
+    @Tag static var slow: Self
+}

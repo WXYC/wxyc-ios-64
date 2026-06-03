@@ -14,7 +14,11 @@ import Testing
 @testable import AppServices
 
 @MainActor
-@Suite("ReviewRequestService Tests")
+@Suite(
+    "ReviewRequestService Tests",
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt — excluded from CI")
+)
 struct ReviewRequestServiceTests {
 
     // MARK: - Action Recording Tests
