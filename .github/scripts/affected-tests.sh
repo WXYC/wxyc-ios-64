@@ -48,12 +48,12 @@ run_all_and_exit() {
     # SPM-runnable packages run via swift test on host; xcodebuild skips their
     # test targets to avoid double coverage. Keep in sync with SPM_RUNNABLE in
     # step 8a below.
-    local spm_all="AnalyticsMacros Core Caching Analytics Playlist Artwork Metadata MusicShareKit"
+    local spm_all="AnalyticsMacros Core Caching Analytics Playlist Metadata MusicShareKit"
     local skip="-skip-testing:WXYCUITests"
     skip="$skip -skip-testing:AnalyticsMacrosTests"
     skip="$skip -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests"
     skip="$skip -skip-testing:PlaylistTests"
-    skip="$skip -skip-testing:ArtworkTests -skip-testing:MetadataTests -skip-testing:MusicShareKitTests"
+    skip="$skip -skip-testing:MetadataTests -skip-testing:MusicShareKitTests"
     output "run_all" "true"
     output "skip_testing_flags" "$skip"
     output "only_testing_flags" ""
@@ -233,12 +233,17 @@ TEST_TARGETS[PartyHorn]="PartyHornTests"
 #                             suites are wrapped in #if canImport(UIKit) and
 #                             would silently skip on the macOS host. Run via
 #                             xcb in the iOS simulator instead.
+#       - Artwork           — ArtworkTests bundle hangs at 0% CPU on
+#                             macos-latest paravirt (root cause unclear;
+#                             suspected module-init or shared-singleton
+#                             interaction with @testable import Artwork).
+#                             Re-add once the hang is diagnosed.
 #       - PartyHorn         — Vortex / Bundle.module not host-portable
 #       - PlayerHeaderView  — depends on Wallpaper (a git submodule)
 #       - Wallpaper         — submodule
 # ---------------------------------------------------------------------------
 
-local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist Artwork Metadata MusicShareKit)
+local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist Metadata MusicShareKit)
 typeset -A SPM_RUNNABLE_SET
 for pkg in $SPM_RUNNABLE; do
     SPM_RUNNABLE_SET[$pkg]=1
