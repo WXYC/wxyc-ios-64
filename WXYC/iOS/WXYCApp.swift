@@ -250,6 +250,10 @@ struct WXYCApp: App {
             // StreamErrorEvent and appear as Sentry breadcrumbs via SentryBreadcrumbDestination.
             options.enableCaptureFailedRequests = false
 
+            // Structured server-side logs. Forwarded from the Logger via
+            // SentryLogsDestination at info-and-above.
+            options.experimental.enableLogs = true
+
             #if DEBUG
             options.debug = true
             #endif
@@ -259,6 +263,7 @@ struct WXYCApp: App {
     private func setUpErrorReporting() {
         ErrorReporting.shared = CompositeErrorReporter()
         Logger.addDestination(SentryBreadcrumbDestination())
+        Logger.addDestination(SentryLogsDestination())
     }
 
     private func buildConfiguration() -> String {
