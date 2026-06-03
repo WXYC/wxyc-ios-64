@@ -62,7 +62,11 @@ enum ArtworkServiceError: Error {
 // MARK: - Tests
 
 @MainActor
-@Suite("NowPlayingService Tests")
+@Suite(
+    "NowPlayingService Tests",
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt — excluded from CI")
+)
 struct NowPlayingServiceTests {
 
     // MARK: - AsyncSequence Tests
