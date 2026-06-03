@@ -113,6 +113,8 @@ private struct RequestSentHUDPreview: View {
     }
 }
 
+#if canImport(UIKit)
 #Preview {
     RequestSentHUDPreview()
 }
+#endif
