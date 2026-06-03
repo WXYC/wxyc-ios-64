@@ -105,11 +105,12 @@ struct SentryLogsDestinationTests {
 
 // MARK: - Test Doubles
 
+/// File-local but referenced from a `@Test` parameter, so it cannot be `private`.
 enum EmitterMethod: Sendable {
     case info, warn, error
 }
 
-final class RecordingEmitter: SentryLogEmitter, @unchecked Sendable {
+private final class RecordingEmitter: SentryLogEmitter, @unchecked Sendable {
     struct Call {
         let method: EmitterMethod
         let message: String
