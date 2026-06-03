@@ -308,7 +308,11 @@ struct LastFMArtworkServiceTests {
 
 // MARK: - DiscogsArtworkService Tests
 
-@Suite("DiscogsArtworkService Tests")
+@Suite(
+    "DiscogsArtworkService Tests",
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt — excluded from CI")
+)
 struct DiscogsArtworkServiceTests {
 
     @Test("Fetches album artwork successfully")
@@ -507,7 +511,11 @@ struct DiscogsArtworkServiceTests {
 
 // MARK: - URLArtworkFetcher Tests
 
-@Suite("URLArtworkFetcher Tests")
+@Suite(
+    "URLArtworkFetcher Tests",
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt — excluded from CI")
+)
 struct URLArtworkFetcherTests {
 
     @Test("Fetches image when artworkURL is present")
@@ -575,7 +583,11 @@ struct URLArtworkFetcherTests {
 
 // MARK: - CacheCoordinator Extension Tests
 
-@Suite("CacheCoordinator ArtworkService Tests")
+@Suite(
+    "CacheCoordinator ArtworkService Tests",
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt — excluded from CI")
+)
 struct CacheCoordinatorArtworkTests {
 
     @Test("Fetches cached artwork with release title")

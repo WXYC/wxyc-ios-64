@@ -20,7 +20,11 @@ import PlaylistTesting
 import UIKit
 
 @MainActor
-@Suite("ArtworkLoader Tests")
+@Suite(
+    "ArtworkLoader Tests",
+    .tags(.slow),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt — excluded from CI")
+)
 struct ArtworkLoaderTests {
 
     private func uniquePlaycut() -> Playcut {
