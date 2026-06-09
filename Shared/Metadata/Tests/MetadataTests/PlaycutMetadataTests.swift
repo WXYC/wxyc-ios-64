@@ -41,6 +41,23 @@ struct PlaycutMetadataTests {
         #expect(empty.bio == nil)
         #expect(empty.wikipediaURL == nil)
         #expect(empty.discogsArtistId == nil)
+        #expect(empty.imageURL == nil)
+    }
+
+    @Test("ArtistMetadata carries an imageURL through encode/decode")
+    func artistMetadataImageURLRoundTrips() throws {
+        let artist = ArtistMetadata(
+            bio: "Argentine singer-songwriter.",
+            wikipediaURL: URL(string: "https://en.wikipedia.org/wiki/Juana_Molina"),
+            discogsArtistId: 12345,
+            imageURL: URL(string: "https://img.discogs.com/artists/12345.jpg")
+        )
+
+        let encoded = try JSONEncoder().encode(artist)
+        let decoded = try JSONDecoder().decode(ArtistMetadata.self, from: encoded)
+
+        #expect(decoded == artist)
+        #expect(decoded.imageURL?.absoluteString == "https://img.discogs.com/artists/12345.jpg")
     }
 
     // MARK: - AlbumMetadata Tests

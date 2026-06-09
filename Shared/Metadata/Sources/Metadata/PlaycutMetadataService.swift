@@ -166,7 +166,8 @@ public actor PlaycutMetadataService {
                     bio: apiResult.bio,
                     bioTokens: apiResult.bioTokens,
                     wikipediaURL: apiResult.wikipediaUrl.flatMap { URL(string: $0) },
-                    discogsArtistId: apiResult.discogsArtistId ?? artistId
+                    discogsArtistId: apiResult.discogsArtistId ?? artistId,
+                    imageURL: apiResult.artistImageUrl.flatMap { URL(string: $0) }
                 )
             }
         )) ?? .empty
@@ -298,6 +299,7 @@ private struct ArtistMetadataAPIResponse: Codable {
     let bio: String?
     let bioTokens: [ResolvedBioToken]?
     let wikipediaUrl: String?
+    let artistImageUrl: String?
 }
 
 // MARK: - Errors

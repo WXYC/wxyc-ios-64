@@ -16,10 +16,13 @@ struct MetadataCacheKeyTests {
 
     // MARK: - Existing Key Tests
 
-    @Test("artist key uses discogs ID")
+    @Test("artist key uses v2 prefix and discogs ID")
     func artistKeyUsesDiscogsId() {
+        // v2 prefix bump (#270): the ArtistMetadata Codable shape grew an
+        // `imageURL` field, so cached v1 payloads must not be decoded under
+        // the new shape. 30-day TTL drains the v1 entries naturally.
         let key = MetadataCacheKey.artist(discogsId: 12345)
-        #expect(key == "artist-12345")
+        #expect(key == "artist-v2-12345")
     }
 
     @Test("album key uses artist name and release title")

@@ -13,6 +13,10 @@ import Foundation
 // MARK: - Artist Metadata
 
 /// Metadata specific to an artist, cached by Discogs artist ID.
+///
+/// Note: when this struct's stored-property shape changes, bump the
+/// `MetadataCacheKey.artist` prefix so cached payloads under the old shape
+/// can't be decoded under the new one.
 public struct ArtistMetadata: Sendable, Equatable, Codable {
     /// Artist biography from Discogs
     public let bio: String?
@@ -27,16 +31,23 @@ public struct ArtistMetadata: Sendable, Equatable, Codable {
     /// Discogs artist ID for cache key lookups
     public let discogsArtistId: Int?
 
+    /// Artist primary image URL (from Discogs). Populated by the BS proxy
+    /// when the artist proxy response forwards `artistImageUrl` (wired in
+    /// `WXYC/Backend-Service#885`).
+    public let imageURL: URL?
+
     public init(
         bio: String? = nil,
         bioTokens: [ResolvedBioToken]? = nil,
         wikipediaURL: URL? = nil,
-        discogsArtistId: Int? = nil
+        discogsArtistId: Int? = nil,
+        imageURL: URL? = nil
     ) {
         self.bio = bio
         self.bioTokens = bioTokens
         self.wikipediaURL = wikipediaURL
         self.discogsArtistId = discogsArtistId
+        self.imageURL = imageURL
     }
 
     public static let empty = ArtistMetadata()

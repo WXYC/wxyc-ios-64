@@ -20,11 +20,19 @@ public enum MetadataCacheKey {
 
     /// Cache key for artist metadata, keyed by Discogs artist ID.
     ///
-    /// Artist metadata (bio, Wikipedia link) rarely changes and can be cached for 30 days.
+    /// Artist metadata (bio, Wikipedia link, image URL) rarely changes and
+    /// can be cached for 30 days.
+    ///
+    /// The `v2` prefix segment is a shape sentinel: bump it whenever the
+    /// stored ``ArtistMetadata`` Codable shape changes so cached payloads
+    /// under the old shape can't be silently decoded under the new shape
+    /// (Swift Codable behavior on field-add varies by what's added — see
+    /// the salvage notes on WXYC/wxyc-ios-64#270 for context). The
+    /// 30-day TTL drains the old entries naturally; no manual wipe needed.
     /// - Parameter discogsId: The Discogs artist ID
-    /// - Returns: Cache key in format `artist-{discogsId}`
+    /// - Returns: Cache key in format `artist-v2-{discogsId}`
     public static func artist(discogsId: Int) -> String {
-        "artist-\(discogsId)"
+        "artist-v2-\(discogsId)"
     }
 
     /// Cache key for album metadata, keyed by artist name and release title.

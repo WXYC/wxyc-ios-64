@@ -550,4 +550,49 @@ struct PlaycutMetadataServiceCachingTests {
         #expect(result2.label == "Label B")
         #expect(mockSession.requestCount == 0, "No API calls needed when all cached")
     }
+
+    // MARK: - artistImageUrl plumbing (#270 salvage)
+
+    @Test("artistImageUrl from the artist proxy flows through to ArtistMetadata.imageURL")
+    func artistImageURLPlumbsThrough() async throws {
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": 27500000,
+            "discogsArtistId": 67890,
+            "discogsUrl": "https://www.discogs.com/release/27500000",
+            "releaseYear": 2022,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        let artistResponse = """
+        {
+            "discogsArtistId": 67890,
+            "bio": "Argentine singer-songwriter.",
+            "wikipediaUrl": null,
+            "artistImageUrl": "https://img.discogs.com/artists/67890.jpg"
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/artist"] = artistResponse
+
+        let result = await service.fetchMetadata(for: playcut)
+
+        #expect(result.artist.imageURL?.absoluteString == "https://img.discogs.com/artists/67890.jpg")
+    }
 }
