@@ -221,4 +221,66 @@ struct PlaycutMetadataTests {
         #expect(empty.streaming == StreamingLinks.empty)
         #expect(empty.hasStreamingLinks == false)
     }
+
+    // MARK: - hasMetadataSectionContent Tests
+
+    @Test("hasMetadataSectionContent is true when only artistBio is populated (issue #399 regression)")
+    func hasMetadataSectionContentBioOnly() {
+        // Synthesis-path response shape: bio belongs to the request artist (Noura Mint Seymali)
+        // but the matched library row is for a sibling album (Yenbett, not Tzenni), so all
+        // album-scoped fields are suppressed by library-metadata-lookup#504. Apple Music probe
+        // also returned no releaseYear (probe miss / unconfigured / timeout).
+        let metadata = PlaycutMetadata(
+            artist: ArtistMetadata(bio: "Noura Mint Seymali is a Mauritanian singer..."),
+            album: .empty,
+            streaming: .empty
+        )
+
+        #expect(metadata.hasMetadataSectionContent == true)
+    }
+
+    @Test("hasMetadataSectionContent is false when every gated field is nil/empty")
+    func hasMetadataSectionContentEmpty() {
+        #expect(PlaycutMetadata.empty.hasMetadataSectionContent == false)
+    }
+
+    @Test(
+        "hasMetadataSectionContent is true when any single gated field is populated",
+        arguments: ["label", "releaseYear", "genres", "styles", "artistBio"]
+    )
+    func hasMetadataSectionContentPerField(field: String) {
+        let metadata: PlaycutMetadata
+        switch field {
+        case "label":
+            metadata = PlaycutMetadata(album: AlbumMetadata(label: "Warp"))
+        case "releaseYear":
+            metadata = PlaycutMetadata(album: AlbumMetadata(releaseYear: 2001))
+        case "genres":
+            metadata = PlaycutMetadata(album: AlbumMetadata(genres: ["Electronic"]))
+        case "styles":
+            metadata = PlaycutMetadata(album: AlbumMetadata(styles: ["IDM"]))
+        case "artistBio":
+            metadata = PlaycutMetadata(artist: ArtistMetadata(bio: "Bio"))
+        default:
+            Issue.record("Unhandled field \(field)")
+            return
+        }
+
+        #expect(metadata.hasMetadataSectionContent == true, "field \(field) should gate the section open")
+    }
+
+    @Test("hasMetadataSectionContent ignores fields that do not mount in PlaycutMetadataSection")
+    func hasMetadataSectionContentIgnoresUngatedFields() {
+        // wikipediaURL renders in ExternalLinksSection (gated separately at PlaycutDetailView:94).
+        // streaming links render in StreamingLinksSection (gated by hasStreamingLinks).
+        // discogsURL likewise renders in ExternalLinksSection.
+        // None should flip the metadata section card on by themselves.
+        let metadata = PlaycutMetadata(
+            artist: ArtistMetadata(wikipediaURL: URL(string: "https://en.wikipedia.org/wiki/Stereolab")),
+            album: AlbumMetadata(discogsURL: URL(string: "https://www.discogs.com/release/1")),
+            streaming: StreamingLinks(spotifyURL: URL(string: "https://open.spotify.com/track/abc"))
+        )
+
+        #expect(metadata.hasMetadataSectionContent == false)
+    }
 }

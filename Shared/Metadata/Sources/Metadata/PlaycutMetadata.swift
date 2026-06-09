@@ -234,4 +234,15 @@ public struct PlaycutMetadata: Sendable, Equatable, Codable {
 
     /// Check if any streaming links are available
     public var hasStreamingLinks: Bool { streaming.hasAny }
+
+    /// Whether the playcut metadata section card (label, year, genre/style tags, artist bio)
+    /// has any field worth rendering. Gates `PlaycutMetadataSection` in the detail view —
+    /// keep in sync with that view's rendered fields.
+    public var hasMetadataSectionContent: Bool {
+        label?.isEmpty == false
+            || releaseYear != nil
+            || album.genres?.isEmpty == false
+            || album.styles?.isEmpty == false
+            || artistBio?.isEmpty == false
+    }
 }

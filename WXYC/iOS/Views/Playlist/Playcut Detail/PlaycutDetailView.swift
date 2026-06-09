@@ -67,7 +67,7 @@ struct PlaycutDetailView: View {
                 if isLoadingMetadata {
                     PlaycutLoadingSection()
                         .foregroundStyle(.white)
-                } else if metadata.label?.isEmpty == false || metadata.releaseYear != nil || metadata.album.genres?.isEmpty == false || metadata.album.styles?.isEmpty == false {
+                } else if metadata.hasMetadataSectionContent {
                     PlaycutMetadataSection(metadata: metadata, expandedBio: $expandedBio)
                         .frame(maxWidth: .infinity)
                         .foregroundStyle(.white)
