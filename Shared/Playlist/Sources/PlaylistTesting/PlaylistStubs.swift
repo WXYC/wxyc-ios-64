@@ -29,6 +29,9 @@ extension Playcut {
     ///   - releaseTitle: Album/release title. Defaults to "DOGA".
     ///   - rotation: Whether this is a rotation play. Defaults to false.
     ///   - artworkURL: Optional artwork URL. Defaults to nil.
+    ///   - metadataStatus: Optional v2 enrichment state. Defaults to nil
+    ///     (matches the v1-row / pre-Epic-C path). Pass an explicit value
+    ///     to exercise the inline-metadata branch under test.
     public static func stub(
         id: UInt64 = 1,
         hour: UInt64 = 1000,
@@ -39,7 +42,8 @@ extension Playcut {
         artistName: String = "Juana Molina",
         releaseTitle: String? = "DOGA",
         rotation: Bool = false,
-        artworkURL: URL? = nil
+        artworkURL: URL? = nil,
+        metadataStatus: MetadataStatus? = nil
     ) -> Playcut {
         Playcut(
             id: id,
@@ -51,7 +55,8 @@ extension Playcut {
             artistName: artistName,
             releaseTitle: releaseTitle,
             rotation: rotation,
-            artworkURL: artworkURL
+            artworkURL: artworkURL,
+            metadataStatus: metadataStatus
         )
     }
 }

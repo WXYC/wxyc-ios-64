@@ -188,10 +188,12 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Artist Wikipedia page URL.
     public let artistWikipediaURL: URL?
 
-    /// Whether this playcut carries inline metadata from the v2 flowsheet API.
-    public var hasV2Metadata: Bool {
-        artworkURL != nil || discogsURL != nil || spotifyURL != nil
-    }
+    /// Enrichment state for this v2 flowsheet row. `nil` for v1 rows, for
+    /// pre-Epic-C Backend deploys, and for any future enum value the iOS
+    /// build doesn't recognize. See ``MetadataStatus`` for the typed states
+    /// and `WXYC/wxyc-ios-64#270` for the consumer logic in
+    /// `PlaycutDetailView`.
+    public let metadataStatus: MetadataStatus?
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -213,6 +215,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         case soundcloudURL
         case artistBio
         case artistWikipediaURL
+        case metadataStatus
     }
 
     public init(
@@ -234,7 +237,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         bandcampURL: URL? = nil,
         soundcloudURL: URL? = nil,
         artistBio: String? = nil,
-        artistWikipediaURL: URL? = nil
+        artistWikipediaURL: URL? = nil,
+        metadataStatus: MetadataStatus? = nil
     ) {
         self.id = id
         self.hour = hour
@@ -255,6 +259,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.soundcloudURL = soundcloudURL
         self.artistBio = artistBio
         self.artistWikipediaURL = artistWikipediaURL
+        self.metadataStatus = metadataStatus
     }
 
     public init(from decoder: Decoder) throws {
@@ -290,6 +295,11 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.soundcloudURL = try container.decodeIfPresent(URL.self, forKey: .soundcloudURL)
             self.artistBio = try container.decodeIfPresent(String.self, forKey: .artistBio)
             self.artistWikipediaURL = try container.decodeIfPresent(URL.self, forKey: .artistWikipediaURL)
+            // Decode via the raw string so an unrecognized future enum value
+            // collapses to `nil` rather than failing the whole row — matches
+            // the forward-compat policy on `FlowsheetEntry.metadataStatus`.
+            self.metadataStatus = try container.decodeIfPresent(String.self, forKey: .metadataStatus)
+                .flatMap(MetadataStatus.init(rawValue:))
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error

@@ -26,7 +26,7 @@ import Foundation
 ///   from the inline `FlowsheetEntry` fields. No outbound proxy request.
 ///
 /// See https://github.com/WXYC/wxyc-ios-64/issues/270 for the consumer logic.
-enum MetadataStatus: String, Codable, Sendable, Equatable {
+public enum MetadataStatus: String, Codable, Sendable, Equatable {
     /// Row inserted; no enrichment attempt yet, OR a transient failure left
     /// the row eligible for retry.
     case pending

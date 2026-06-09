@@ -327,16 +327,25 @@ struct FlowsheetConverterTests {
         let response = try JSONDecoder().decode(FlowsheetResponse.self, from: data)
         let playlist = FlowsheetConverter.convert(response.entries)
 
-        #expect(playlist.playcuts.count == 1)
+        #expect(playlist.playcuts.count == 3)
         #expect(playlist.talksets.count == 1)
         #expect(playlist.breakpoints.count == 1)
         #expect(playlist.showMarkers.count == 2)
 
-        let playcut = try #require(playlist.playcuts.first)
-        #expect(playcut.artistName == "Miyako Koda")
-        #expect(playcut.songTitle == "Sleep in Peace")
-        #expect(playcut.releaseTitle == "in the shadow of Jupiter")
-        #expect(playcut.labelName == "Grandisc")
+        // Canonical examples per docs/test-fixtures.md, each carrying a
+        // distinct metadata_status so the inline-metadata branching in
+        // PlaycutDetailView (#270) has fixture coverage.
+        let juana = try #require(playlist.playcuts.first { $0.artistName == "Juana Molina" })
+        #expect(juana.songTitle == "la paradoja")
+        #expect(juana.releaseTitle == "DOGA")
+        #expect(juana.labelName == "Sonamos")
+        #expect(juana.metadataStatus == .enrichedMatch)
+
+        let stereolab = try #require(playlist.playcuts.first { $0.artistName == "Stereolab" })
+        #expect(stereolab.metadataStatus == .enrichedNoMatch)
+
+        let catPower = try #require(playlist.playcuts.first { $0.artistName == "Cat Power" })
+        #expect(catPower.metadataStatus == .failedNoRetry)
 
         let showStart = try #require(playlist.showMarkers.first { $0.isStart })
         #expect(showStart.djName == "DJ Moonbeam")
@@ -375,6 +384,65 @@ struct FlowsheetConverterTests {
 
         #expect(playlist.breakpoints.count == 1)
         #expect(playlist.playcuts.isEmpty)
+    }
+
+    // MARK: - metadata_status propagation (#270)
+
+    @Test("Propagates each known metadata_status raw value onto the Playcut", arguments: [
+        ("pending", MetadataStatus.pending),
+        ("enriching", MetadataStatus.enriching),
+        ("enriched_match", MetadataStatus.enrichedMatch),
+        ("enriched_no_match", MetadataStatus.enrichedNoMatch),
+        ("failed_no_retry", MetadataStatus.failedNoRetry),
+    ])
+    func propagatesMetadataStatusToPlaycut(raw: String, expected: MetadataStatus) throws {
+        var entry = FlowsheetEntry(
+            id: 5_300_000,
+            show_id: 1,
+            album_id: nil,
+            artist_name: "Juana Molina",
+            album_title: "DOGA",
+            track_title: "la paradoja",
+            record_label: "Sonamos",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 1,
+            add_time: "2026-04-17T22:00:00Z",
+            entry_type: "track"
+        )
+        entry.metadata_status = raw
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let playcut = try #require(playlist.playcuts.first)
+
+        #expect(playcut.metadataStatus == expected)
+    }
+
+    @Test("Propagates nil metadata_status as nil on the Playcut")
+    func propagatesNilMetadataStatus() throws {
+        let entry = FlowsheetEntry(
+            id: 5_300_001,
+            show_id: 1,
+            album_id: nil,
+            artist_name: "Cat Power",
+            album_title: "Moon Pix",
+            track_title: "Moon Pix",
+            record_label: "Matador Records",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 1,
+            add_time: "2026-04-17T22:00:00Z",
+            entry_type: "track"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let playcut = try #require(playlist.playcuts.first)
+
+        #expect(playcut.metadataStatus == nil)
     }
 
     // MARK: - Cross-show ordering (regression test for #265)

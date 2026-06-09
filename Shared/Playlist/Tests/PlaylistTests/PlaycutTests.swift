@@ -69,6 +69,53 @@ struct PlaycutTests {
 
     // MARK: - HTML Entity Decoding Tests
 
+    // MARK: - metadataStatus decoding (#270)
+
+    @Test("Decodes inline metadataStatus from JSON", arguments: [
+        ("pending", MetadataStatus.pending),
+        ("enriching", MetadataStatus.enriching),
+        ("enriched_match", MetadataStatus.enrichedMatch),
+        ("enriched_no_match", MetadataStatus.enrichedNoMatch),
+        ("failed_no_retry", MetadataStatus.failedNoRetry),
+    ])
+    func decodesMetadataStatusFromJSON(raw: String, expected: MetadataStatus) throws {
+        let json = """
+        {
+            "id": 4242,
+            "hour": 1000,
+            "chronOrderID": 4242,
+            "timeCreated": 1000,
+            "songTitle": "la paradoja",
+            "artistName": "Juana Molina",
+            "releaseTitle": "DOGA",
+            "labelName": "Sonamos",
+            "rotation": false,
+            "metadataStatus": "\(raw)"
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.metadataStatus == expected)
+    }
+
+    @Test("Decodes Playcut without metadataStatus field as nil (forward-compat)")
+    func decodesPlaycutWithoutMetadataStatusAsNil() throws {
+        let json = """
+        {
+            "id": 4243,
+            "hour": 1000,
+            "chronOrderID": 4243,
+            "timeCreated": 1000,
+            "songTitle": "Moon Pix",
+            "artistName": "Cat Power",
+            "releaseTitle": "Moon Pix",
+            "labelName": "Matador Records",
+            "rotation": false
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.metadataStatus == nil)
+    }
+
     @Test("Decoder decodes HTML entities in string fields")
     func decoderDecodesHTMLEntities() throws {
         let json = """

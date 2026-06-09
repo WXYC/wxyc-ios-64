@@ -53,7 +53,8 @@ enum FlowsheetConverter {
                     bandcampURL: entry.bandcamp_url.flatMap { URL(string: $0) },
                     soundcloudURL: entry.soundcloud_url.flatMap { URL(string: $0) },
                     artistBio: entry.artist_bio,
-                    artistWikipediaURL: entry.artist_wikipedia_url.flatMap { URL(string: $0) }
+                    artistWikipediaURL: entry.artist_wikipedia_url.flatMap { URL(string: $0) },
+                    metadataStatus: entry.metadataStatus
                 )
                 playcuts.append(playcut)
 

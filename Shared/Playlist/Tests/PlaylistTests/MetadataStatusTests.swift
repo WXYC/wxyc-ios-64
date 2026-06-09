@@ -95,8 +95,8 @@ struct MetadataStatusTests {
         #expect(entry.metadataStatus == nil)
     }
 
-    @Test("Decodes existing v2 fixture (no metadata_status field) without regressing")
-    func decodesExistingV2FixtureWithoutRegression() throws {
+    @Test("Decodes canonical-example v2 fixture with mixed metadata_status values")
+    func decodesV2FixtureWithMetadataStatus() throws {
         let fixtureURL = Bundle.module.url(
             forResource: "flowsheet-v2-sample",
             withExtension: "json",
@@ -105,8 +105,16 @@ struct MetadataStatusTests {
         let data = try Data(contentsOf: fixtureURL)
         let response = try JSONDecoder().decode(FlowsheetResponse.self, from: data)
 
-        for entry in response.entries {
-            #expect(entry.metadata_status == nil, "fixture predates metadata_status field")
+        // The canonical examples cover the three enriched states the
+        // inline-metadata branch of `PlaycutDetailView` (#270) renders directly.
+        let track = response.entries.filter { $0.entry_type == "track" }
+        let statuses = track.compactMap(\.metadataStatus)
+        #expect(statuses.contains(.enrichedMatch))
+        #expect(statuses.contains(.enrichedNoMatch))
+        #expect(statuses.contains(.failedNoRetry))
+
+        // Non-track entries (talkset, breakpoint, show_*) carry no metadata_status.
+        for entry in response.entries where entry.entry_type != "track" {
             #expect(entry.metadataStatus == nil)
         }
     }
