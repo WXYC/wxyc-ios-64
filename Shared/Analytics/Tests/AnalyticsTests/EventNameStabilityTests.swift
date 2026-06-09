@@ -31,6 +31,7 @@ private let expectedEventNames: [(String, String)] = [
     (BugReportPresented.name, "bug_report_presented"),
     (BugReportSent.name, "bug_report_sent"),
     (PlaycutDetailViewPresented.name, "playcut_detail_view_presented"),
+    (PlaycutMetadataResolved.name, "playcut_metadata_resolved"),
     (StreamingLinkTapped.name, "streaming_link_tapped"),
     (ExternalLinkTapped.name, "external_link_tapped"),
     (CarPlayConnected.name, "carplay_connected"),

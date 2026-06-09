@@ -192,7 +192,8 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// pre-Epic-C Backend deploys, and for any future enum value the iOS
     /// build doesn't recognize. See ``MetadataStatus`` for the typed states
     /// and `WXYC/wxyc-ios-64#270` for the consumer logic in
-    /// `PlaycutDetailView`.
+    /// `PlaycutDetailView` — which retired the interim
+    /// `hasV2Metadata` heuristic from #286 in favor of this typed accessor.
     public let metadataStatus: MetadataStatus?
 
     private enum CodingKeys: String, CodingKey {

@@ -60,6 +60,28 @@ public struct PlaycutDetailViewPresented {
     }
 }
 
+/// Event fired when PlaycutDetailView resolves metadata, dimensioned by source.
+///
+/// `source` is `"inline"` when the v2 flowsheet row's inline fields were
+/// authoritative (no `/proxy/metadata/album` call), `"fallback"` when the
+/// service issued a proxy fetch.
+///
+/// `metadataStatus` is the row's wire enum value (`"enriched_match"`,
+/// `"enriching"`, etc.) or `"absent"` for V1 rows / pre-Epic-C deploys.
+///
+/// Lets us measure whether `WXYC/wxyc-ios-64#270` actually shifted the
+/// hot path off the proxy without conflating with the fallback path.
+@AnalyticsEvent
+public struct PlaycutMetadataResolved {
+    public let source: String
+    public let metadataStatus: String
+
+    public init(source: String, metadataStatus: String) {
+        self.source = source
+        self.metadataStatus = metadataStatus
+    }
+}
+
 /// Event fired when a streaming service link is tapped.
 @AnalyticsEvent
 public struct StreamingLinkTapped {

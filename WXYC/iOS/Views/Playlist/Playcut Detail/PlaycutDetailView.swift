@@ -139,28 +139,27 @@ struct PlaycutDetailView: View {
     }
     
     private func loadMetadata() async {
-        // Build inline metadata from the V2 flowsheet row when present. The
-        // service decides whether to also hit /proxy/metadata/album: it skips
-        // the call when inline streaming is non-empty, and falls through when
-        // the V2 writer landed everything except the streaming side (Tragic
-        // Magic shape — #303).
-        let inline = playcut.hasV2Metadata ? PlaycutMetadata(
-            artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
-            album: AlbumMetadata(
-                label: playcut.labelName,
-                releaseYear: playcut.releaseYear,
-                discogsURL: playcut.discogsURL
-            ),
-            streaming: StreamingLinks(
-                spotifyURL: playcut.spotifyURL,
-                appleMusicURL: playcut.appleMusicURL,
-                youtubeMusicURL: playcut.youtubeMusicURL,
-                bandcampURL: playcut.bandcampURL,
-                soundcloudURL: playcut.soundcloudURL
-            )
-        ) : nil
+        // Branch on the V2 row's enrichment state (#270). When status is one
+        // of the three terminal states (`enrichedMatch`, `enrichedNoMatch`,
+        // `failedNoRetry`), inline fields are authoritative and we render
+        // directly — zero outbound `/proxy/metadata/album` calls. Otherwise
+        // (`pending`, `enriching`, or `nil` on V1 / pre-Epic-C rows) we fall
+        // back to the proxy fetch.
+        let fetchedMetadata: PlaycutMetadata
+        let source: PlaycutMetadataSource
+        if let inline = PlaycutInlineMetadata.from(playcut) {
+            fetchedMetadata = inline
+            source = .inline
+        } else {
+            fetchedMetadata = await metadataService.fetchMetadata(for: playcut, inline: nil)
+            source = .fallback
+        }
 
-        let fetchedMetadata = await metadataService.fetchMetadata(for: playcut, inline: inline)
+        StructuredPostHogAnalytics.shared.capture(PlaycutMetadataResolved(
+            source: source.rawValue,
+            metadataStatus: playcut.metadataStatus?.rawValue ?? "absent"
+        ))
+
         await MainActor.run {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.metadata = fetchedMetadata
@@ -172,6 +171,11 @@ struct PlaycutDetailView: View {
         if artwork == nil, let artworkURL = fetchedMetadata.album.artworkURL {
             await loadArtwork(from: artworkURL)
         }
+    }
+
+    private enum PlaycutMetadataSource: String {
+        case inline
+        case fallback
     }
 
     private func loadArtwork(from url: URL) async {
