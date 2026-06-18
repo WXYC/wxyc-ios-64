@@ -56,6 +56,51 @@ struct PlaycutMetadataServiceV2FallbackTests {
         #expect(result.artistBio == "Argentine singer-songwriter.")
     }
 
+    @Test("Inline V2 genres/styles ride through the short-circuit without a proxy fetch")
+    func inlineV2GenresStylesRideThroughShortCircuit() async throws {
+        // Mirrors PlaycutDetailView.loadMetadata()'s inline-PlaycutMetadata
+        // construction: a V2 playcut carrying genres/styles plus at least one
+        // streaming URL. The service must return the inline metadata verbatim
+        // (genres/styles intact) and never touch the proxy (#402). Asserting at
+        // the PlaycutMetadata inline-construction boundary because loadMetadata
+        // lives in the app target and isn't reachable from a package unit test.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            genres: ["Rock"],
+            styles: ["Folk, World, & Country"]
+        )
+        // Same construction PlaycutDetailView.loadMetadata() performs for an
+        // inline V2 row, including the genres/styles threaded through #402.
+        let inline = PlaycutMetadata(
+            artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
+            album: AlbumMetadata(
+                label: playcut.labelName,
+                releaseYear: playcut.releaseYear,
+                discogsURL: playcut.discogsURL,
+                genres: playcut.genres,
+                styles: playcut.styles
+            ),
+            streaming: StreamingLinks(spotifyURL: URL(string: "https://open.spotify.com/track/x"))
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then — genres/styles survive and the short-circuit skips the proxy
+        #expect(mockSession.requestCount == 0, "Inline streaming should still skip the proxy fetch")
+        #expect(result.album.genres == ["Rock"])
+        #expect(result.album.styles == ["Folk, World, & Country"])
+        #expect(result.hasMetadataSectionContent, "genres/styles should make the metadata section render")
+    }
+
     @Test("Inline V2 with empty streaming falls through to /proxy/metadata/album")
     func inlineV2WithEmptyStreamingHitsProxy() async throws {
         // Given

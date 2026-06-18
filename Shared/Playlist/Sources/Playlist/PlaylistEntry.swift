@@ -188,6 +188,12 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Artist Wikipedia page URL.
     public let artistWikipediaURL: URL?
 
+    /// Discogs genre classifications for the release.
+    public let genres: [String]?
+
+    /// Discogs style classifications (more specific than genres).
+    public let styles: [String]?
+
     /// Whether this playcut carries inline metadata from the v2 flowsheet API.
     public var hasV2Metadata: Bool {
         artworkURL != nil || discogsURL != nil || spotifyURL != nil
@@ -213,6 +219,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         case soundcloudURL
         case artistBio
         case artistWikipediaURL
+        case genres
+        case styles
     }
 
     public init(
@@ -234,7 +242,9 @@ public struct Playcut: PlaylistEntry, Hashable {
         bandcampURL: URL? = nil,
         soundcloudURL: URL? = nil,
         artistBio: String? = nil,
-        artistWikipediaURL: URL? = nil
+        artistWikipediaURL: URL? = nil,
+        genres: [String]? = nil,
+        styles: [String]? = nil
     ) {
         self.id = id
         self.hour = hour
@@ -255,6 +265,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.soundcloudURL = soundcloudURL
         self.artistBio = artistBio
         self.artistWikipediaURL = artistWikipediaURL
+        self.genres = genres
+        self.styles = styles
     }
 
     public init(from decoder: Decoder) throws {
@@ -290,6 +302,8 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.soundcloudURL = try container.decodeIfPresent(URL.self, forKey: .soundcloudURL)
             self.artistBio = try container.decodeIfPresent(String.self, forKey: .artistBio)
             self.artistWikipediaURL = try container.decodeIfPresent(URL.self, forKey: .artistWikipediaURL)
+            self.genres = try container.decodeIfPresent([String].self, forKey: .genres)
+            self.styles = try container.decodeIfPresent([String].self, forKey: .styles)
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error
