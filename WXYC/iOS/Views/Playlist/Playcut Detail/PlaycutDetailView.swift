@@ -149,7 +149,9 @@ struct PlaycutDetailView: View {
             album: AlbumMetadata(
                 label: playcut.labelName,
                 releaseYear: playcut.releaseYear,
-                discogsURL: playcut.discogsURL
+                discogsURL: playcut.discogsURL,
+                genres: playcut.genres,
+                styles: playcut.styles
             ),
             streaming: StreamingLinks(
                 spotifyURL: playcut.spotifyURL,

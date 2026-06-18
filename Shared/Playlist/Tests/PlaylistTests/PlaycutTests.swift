@@ -69,6 +69,74 @@ struct PlaycutTests {
 
     // MARK: - HTML Entity Decoding Tests
 
+    // MARK: - Genres/Styles Codable Tests (#402)
+
+    @Test("Decoder reads inline genres and styles")
+    func decoderReadsGenresAndStyles() throws {
+        let json = """
+        {
+            "id": 402,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "la paradoja",
+            "artistName": "Juana Molina",
+            "releaseTitle": "DOGA",
+            "labelName": "Sonamos",
+            "rotation": false,
+            "genres": ["Rock"],
+            "styles": ["Folk, World, & Country"]
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+
+        #expect(playcut.genres == ["Rock"])
+        #expect(playcut.styles == ["Folk, World, & Country"])
+    }
+
+    @Test("Genres and styles are nil when absent from the wire")
+    func genresAndStylesNilWhenAbsent() throws {
+        let json = """
+        {
+            "id": 403,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "Call Your Name",
+            "artistName": "Chuquimamani-Condori",
+            "releaseTitle": "Edits",
+            "rotation": false
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+
+        #expect(playcut.genres == nil)
+        #expect(playcut.styles == nil)
+    }
+
+    @Test("Genres and styles survive an encode/decode round-trip")
+    func genresAndStylesRoundTrip() throws {
+        let original = Playcut(
+            id: 402,
+            hour: 1000,
+            chronOrderID: 402,
+            timeCreated: 1000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            genres: ["Rock"],
+            styles: ["Folk, World, & Country"]
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Playcut.self, from: data)
+
+        #expect(decoded.genres == ["Rock"])
+        #expect(decoded.styles == ["Folk, World, & Country"])
+        #expect(decoded == original)
+    }
+
     @Test("Decoder decodes HTML entities in string fields")
     func decoderDecodesHTMLEntities() throws {
         let json = """

@@ -377,6 +377,57 @@ struct FlowsheetConverterTests {
         #expect(playlist.playcuts.isEmpty)
     }
 
+    // MARK: - Inline genres/styles (#402)
+
+    @Test("Decodes inline genres/styles from a V2 entry onto the Playcut")
+    func decodesInlineGenresAndStyles() throws {
+        let json = """
+        {
+            "id": 402,
+            "show_id": 1947064,
+            "album_id": 789,
+            "artist_name": "Juana Molina",
+            "album_title": "DOGA",
+            "track_title": "la paradoja",
+            "record_label": "Sonamos",
+            "rotation_id": null,
+            "rotation_play_freq": null,
+            "request_flag": false,
+            "message": null,
+            "play_order": 1,
+            "add_time": "2026-05-15T01:45:59.058Z",
+            "entry_type": "track",
+            "genres": ["Rock"],
+            "styles": ["Folk, World, & Country"]
+        }
+        """
+        let entry = try JSONDecoder().decode(FlowsheetEntry.self, from: Data(json.utf8))
+        #expect(entry.genres == ["Rock"])
+        #expect(entry.styles == ["Folk, World, & Country"])
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let playcut = try #require(playlist.playcuts.first)
+        #expect(playcut.genres == ["Rock"])
+        #expect(playcut.styles == ["Folk, World, & Country"])
+    }
+
+    @Test("Inline genres/styles are absent when the V2 entry omits them")
+    func inlineGenresAndStylesAbsentWhenOmitted() {
+        let entry = FlowsheetEntry(
+            id: 403, show_id: nil, album_id: nil,
+            artist_name: "Chuquimamani-Condori", album_title: "Edits",
+            track_title: "Call Your Name", record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil,
+            request_flag: false, message: nil, play_order: 1,
+            add_time: "2026-05-15T01:45:59.058Z", entry_type: "track"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let playcut = playlist.playcuts.first!
+        #expect(playcut.genres == nil)
+        #expect(playcut.styles == nil)
+    }
+
     // MARK: - Cross-show ordering (regression test for #265)
 
     @Test("Sorts entries chronologically across shows when play_order resets")

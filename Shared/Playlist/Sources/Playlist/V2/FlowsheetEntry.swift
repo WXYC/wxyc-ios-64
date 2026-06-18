@@ -56,6 +56,14 @@ struct FlowsheetEntry: Codable, Sendable {
     var artist_bio: String? = nil
     var artist_wikipedia_url: String? = nil
 
+    /// Discogs genre classifications for the release. Present only in v2
+    /// responses once the backend emits them; decodes as `nil` until then.
+    var genres: [String]? = nil
+
+    /// Discogs style classifications (more specific than genres). Present only
+    /// in v2 responses once the backend emits them; decodes as `nil` until then.
+    var styles: [String]? = nil
+
     /// Raw enrichment-state string from the wire. Read via `metadataStatus`
     /// for the typed accessor; the raw string is preserved so an older iOS
     /// build that sees a future state can surface it diagnostically without
