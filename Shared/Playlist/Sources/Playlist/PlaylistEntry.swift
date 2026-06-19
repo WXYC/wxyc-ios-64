@@ -74,35 +74,45 @@ public struct Breakpoint: PlaylistEntry {
     /// `"3PM ET"`. A listener elsewhere sees their local hour first, then the
     /// station's, e.g. `"12PM PT / 3PM ET"`.
     ///
+    /// The label vocabulary is intentionally fixed US-English (see `labelLocale`):
+    /// the station's schedule is inherently US Eastern and the compact zone
+    /// abbreviations ("ET", "PT") only exist in English, so the output does not
+    /// vary with the device locale.
+    ///
     /// - Parameters:
     ///   - localTimeZone: The listener's time zone. Defaults to the device's.
     ///   - stationTimeZone: The station's broadcast zone. Defaults to Eastern.
-    ///   - locale: Locale for the hour and zone abbreviation. Defaults to the device's.
     /// - Returns: The formatted hour-marker label.
     func hourLabel(
         localTimeZone: TimeZone = .current,
-        stationTimeZone: TimeZone = .wxycStation,
-        locale: Locale = .current
+        stationTimeZone: TimeZone = .wxycStation
     ) -> String {
         let date = Date(timeIntervalSince1970: Double(hour) / 1000)
-        let station = Self.hourComponent(for: date, in: stationTimeZone, locale: locale)
+        let station = Self.hourComponent(for: date, in: stationTimeZone)
         // Same UTC offset means the listener already reads station time; collapse
         // to a single label rather than printing the same hour twice.
         guard localTimeZone.secondsFromGMT(for: date) != stationTimeZone.secondsFromGMT(for: date) else {
             return station
         }
-        let local = Self.hourComponent(for: date, in: localTimeZone, locale: locale)
+        let local = Self.hourComponent(for: date, in: localTimeZone)
         return "\(local) / \(station)"
     }
 
+    /// Fixed locale for the hour-marker label. The vocabulary ("ET", "PT", "AM",
+    /// "PM") is deliberately US-English and must not change with the device
+    /// locale, so both the hour format and the `.shortGeneric` zone name are
+    /// resolved against `en_US_POSIX` rather than `.current` — which would yield
+    /// e.g. `"3p. m. hora de Nueva York"` on a Spanish device.
+    private static let labelLocale = Locale(identifier: "en_US_POSIX")
+
     /// Formats a single `"<hour><AM/PM> <zone>"` component, e.g. `"3PM ET"`.
-    private static func hourComponent(for date: Date, in timeZone: TimeZone, locale: Locale) -> String {
+    private static func hourComponent(for date: Date, in timeZone: TimeZone) -> String {
         let formatter = DateFormatter()
-        formatter.locale = locale
+        formatter.locale = labelLocale
         formatter.timeZone = timeZone
         formatter.dateFormat = "ha"
         let hour = formatter.string(from: date)
-        let zone = timeZone.localizedName(for: .shortGeneric, locale: locale)
+        let zone = timeZone.localizedName(for: .shortGeneric, locale: labelLocale)
             ?? timeZone.abbreviation(for: date)
             ?? ""
         return "\(hour) \(zone)"

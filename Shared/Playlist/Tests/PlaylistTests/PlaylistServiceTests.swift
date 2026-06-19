@@ -196,13 +196,14 @@ struct PlaylistServiceTests {
         let millisecondsSince1970: UInt64 = 1577890800000 // Wed Jan 01 2020 15:00:00 GMT+0000
         let breakpoint = Breakpoint.stub(hour: millisecondsSince1970, timeCreated: millisecondsSince1970)
 
-        // When
+        // When - exercises the production `formattedDate` path (the property the
+        // iOS/CarPlay/Watch render sites call), unlike the injected-zone tests.
         let formattedDate = breakpoint.formattedDate
 
-        // Then
-        // The exact format will depend on timezone, but it should contain a time
-        #expect(!formattedDate.isEmpty)
+        // Then - the label is anchored to the station's zone, so it always carries
+        // the "ET" abbreviation regardless of the device's time zone or locale.
         #expect(formattedDate.contains("AM") || formattedDate.contains("PM"))
+        #expect(formattedDate.contains("ET"))
     }
 
     // MARK: - Empty Playlist Protection Tests
