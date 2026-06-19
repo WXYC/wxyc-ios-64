@@ -63,10 +63,11 @@ enum FlowsheetConverter {
                 talksets.append(Talkset(id: id, hour: hour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .breakpoint:
-                // Display the exact top-of-hour from `radio_hour` when present,
-                // falling back to `add_time` for servers that predate the field
-                // (ios#404). `timeCreated` keeps the original logging instant.
-                let breakpointHour = entry.radio_hour.flatMap { parseHour(from: $0) } ?? hour
+                // Display the exact top-of-hour from `radio_hour` when present
+                // and parseable, falling back to `add_time` for servers that
+                // predate the field or send an unparseable value (ios#404).
+                // `timeCreated` keeps the original logging instant.
+                let breakpointHour = entry.radio_hour.flatMap { parseHourIfValid(from: $0) } ?? hour
                 breakpoints.append(Breakpoint(id: id, hour: breakpointHour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .showStart(let djName):
@@ -107,7 +108,25 @@ enum FlowsheetConverter {
     ///
     /// - Parameter isoString: ISO 8601 formatted date string.
     /// - Returns: Milliseconds since 1970, or current time in milliseconds if parsing fails.
+    ///   The current-time fallback keeps unparseable entries sorting near the
+    ///   top rather than at the epoch; callers that have their own fallback
+    ///   (e.g. a breakpoint's `add_time`) should use `parseHourIfValid` instead.
     private static func parseHour(from isoString: String) -> UInt64 {
+        // Use current time as fallback so entries sort correctly rather than
+        // appearing at epoch (Jan 1, 1970).
+        parseHourIfValid(from: isoString) ?? UInt64(Date.now.timeIntervalSince1970 * 1000)
+    }
+
+    /// Parses an ISO 8601 timestamp string to milliseconds since 1970, returning
+    /// `nil` when the string can't be parsed.
+    ///
+    /// Unlike `parseHour`, this never substitutes the current time, so a caller
+    /// with its own fallback (the breakpoint chip falls back to `add_time`) can
+    /// distinguish "absent or malformed" from a real instant.
+    ///
+    /// - Parameter isoString: ISO 8601 formatted date string.
+    /// - Returns: Milliseconds since 1970, or `nil` if parsing fails.
+    private static func parseHourIfValid(from isoString: String) -> UInt64? {
         // Use modern Swift Foundation parsing
         if let date = try? Date(isoString, strategy: .iso8601) {
             return UInt64(date.timeIntervalSince1970 * 1000)
@@ -117,8 +136,6 @@ enum FlowsheetConverter {
         if let date = try? Date(isoString, strategy: fractionalStrategy) {
             return UInt64(date.timeIntervalSince1970 * 1000)
         }
-        // Use current time as fallback so entries sort correctly rather than
-        // appearing at epoch (Jan 1, 1970).
-        return UInt64(Date.now.timeIntervalSince1970 * 1000)
+        return nil
     }
 }

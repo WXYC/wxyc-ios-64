@@ -473,6 +473,49 @@ struct FlowsheetConverterTests {
         #expect(breakpoint.timeCreated == expectedAddTime)
     }
 
+    @Test("Breakpoint hour falls back to add_time when radio_hour is present but unparseable")
+    func breakpointFallsBackToAddTimeWhenRadioHourMalformed() throws {
+        // A server that emits a malformed/unrecognized `radio_hour` must be no
+        // worse than one that omits it: the chip falls back to `add_time`, never
+        // to the current wall-clock time.
+        let entry = FlowsheetEntry(
+            id: 302, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 1,
+            add_time: "2024-01-15T15:58:42Z",
+            entry_type: "breakpoint",
+            radio_hour: "not-a-date"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let breakpoint = try #require(playlist.breakpoints.first)
+
+        let expectedAddTime = UInt64(try Date("2024-01-15T15:58:42Z", strategy: .iso8601).timeIntervalSince1970 * 1000)
+        #expect(breakpoint.hour == expectedAddTime)
+        #expect(breakpoint.timeCreated == expectedAddTime)
+    }
+
+    @Test("Breakpoint hour falls back to add_time when radio_hour is an empty string")
+    func breakpointFallsBackToAddTimeWhenRadioHourEmpty() throws {
+        let entry = FlowsheetEntry(
+            id: 303, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 1,
+            add_time: "2024-01-15T15:58:42Z",
+            entry_type: "breakpoint",
+            radio_hour: ""
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let breakpoint = try #require(playlist.breakpoints.first)
+
+        let expectedAddTime = UInt64(try Date("2024-01-15T15:58:42Z", strategy: .iso8601).timeIntervalSince1970 * 1000)
+        #expect(breakpoint.hour == expectedAddTime)
+        #expect(breakpoint.timeCreated == expectedAddTime)
+    }
+
     // MARK: - Cross-show ordering (regression test for #265)
 
     @Test("Sorts entries chronologically across shows when play_order resets")
