@@ -428,6 +428,51 @@ struct FlowsheetConverterTests {
         #expect(playcut.styles == nil)
     }
 
+    // MARK: - Breakpoint radio_hour (ios#404)
+
+    @Test("Breakpoint hour comes from radio_hour (exact top-of-hour); timeCreated keeps add_time")
+    func breakpointUsesRadioHourWhenPresent() throws {
+        // `add_time` is the logging instant (~1 min before the hour); `radio_hour`
+        // is the exact top-of-hour the chip should display.
+        let entry = FlowsheetEntry(
+            id: 300, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 1,
+            add_time: "2024-01-15T15:58:42Z",
+            entry_type: "breakpoint",
+            radio_hour: "2024-01-15T16:00:00Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let breakpoint = try #require(playlist.breakpoints.first)
+
+        let expectedHour = UInt64(try Date("2024-01-15T16:00:00Z", strategy: .iso8601).timeIntervalSince1970 * 1000)
+        let expectedCreated = UInt64(try Date("2024-01-15T15:58:42Z", strategy: .iso8601).timeIntervalSince1970 * 1000)
+        #expect(breakpoint.hour == expectedHour)
+        #expect(breakpoint.timeCreated == expectedCreated)
+    }
+
+    @Test("Breakpoint hour falls back to add_time when radio_hour is absent")
+    func breakpointFallsBackToAddTimeWhenRadioHourMissing() throws {
+        // Older servers omit `radio_hour`; the chip must still render from add_time.
+        let entry = FlowsheetEntry(
+            id: 301, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 1,
+            add_time: "2024-01-15T15:58:42Z",
+            entry_type: "breakpoint"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let breakpoint = try #require(playlist.breakpoints.first)
+
+        let expectedAddTime = UInt64(try Date("2024-01-15T15:58:42Z", strategy: .iso8601).timeIntervalSince1970 * 1000)
+        #expect(breakpoint.hour == expectedAddTime)
+        #expect(breakpoint.timeCreated == expectedAddTime)
+    }
+
     // MARK: - Cross-show ordering (regression test for #265)
 
     @Test("Sorts entries chronologically across shows when play_order resets")
