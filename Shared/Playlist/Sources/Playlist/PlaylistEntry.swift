@@ -19,6 +19,13 @@ extension URL {
 #endif
 }
 
+extension TimeZone {
+    /// The station's broadcast time zone. WXYC broadcasts from Chapel Hill, NC
+    /// (US Eastern). The `?? .gmt` fallback is unreachable for this fixed,
+    /// always-known identifier but keeps the declaration force-unwrap-free.
+    static let wxycStation = TimeZone(identifier: "America/New_York") ?? .gmt
+}
+
 public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hashable, Comparable {
     var id: UInt64 { get }
     var hour: UInt64 { get }
@@ -58,17 +65,48 @@ public struct Breakpoint: PlaylistEntry {
     }
 
     public var formattedDate: String {
-        let timeSince1970 = Double(hour) / 1000.0
-        let date = Date(timeIntervalSince1970: timeSince1970)
-        
-        return Self.dateFormatter.string(from: date)
+        hourLabel()
     }
-    
-    private static let dateFormatter: DateFormatter = {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "h a"
-        return dateFormatter
-    }()
+
+    /// Renders the breakpoint's hour anchored to the station's time zone.
+    ///
+    /// A listener already in the station's zone sees the hour once, e.g.
+    /// `"3PM ET"`. A listener elsewhere sees their local hour first, then the
+    /// station's, e.g. `"12PM PT / 3PM ET"`.
+    ///
+    /// - Parameters:
+    ///   - localTimeZone: The listener's time zone. Defaults to the device's.
+    ///   - stationTimeZone: The station's broadcast zone. Defaults to Eastern.
+    ///   - locale: Locale for the hour and zone abbreviation. Defaults to the device's.
+    /// - Returns: The formatted hour-marker label.
+    func hourLabel(
+        localTimeZone: TimeZone = .current,
+        stationTimeZone: TimeZone = .wxycStation,
+        locale: Locale = .current
+    ) -> String {
+        let date = Date(timeIntervalSince1970: Double(hour) / 1000)
+        let station = Self.hourComponent(for: date, in: stationTimeZone, locale: locale)
+        // Same UTC offset means the listener already reads station time; collapse
+        // to a single label rather than printing the same hour twice.
+        guard localTimeZone.secondsFromGMT(for: date) != stationTimeZone.secondsFromGMT(for: date) else {
+            return station
+        }
+        let local = Self.hourComponent(for: date, in: localTimeZone, locale: locale)
+        return "\(local) / \(station)"
+    }
+
+    /// Formats a single `"<hour><AM/PM> <zone>"` component, e.g. `"3PM ET"`.
+    private static func hourComponent(for date: Date, in timeZone: TimeZone, locale: Locale) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "ha"
+        let hour = formatter.string(from: date)
+        let zone = timeZone.localizedName(for: .shortGeneric, locale: locale)
+            ?? timeZone.abbreviation(for: date)
+            ?? ""
+        return "\(hour) \(zone)"
+    }
 }
 
 public struct Talkset: PlaylistEntry {
