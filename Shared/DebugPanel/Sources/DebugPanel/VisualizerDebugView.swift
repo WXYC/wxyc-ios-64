@@ -29,6 +29,7 @@ public struct VisualizerDebugView: View {
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
+    private var onAirDebugState = OnAirDebugState.shared
     private var onResetThemePickerState: (() -> Void)?
     private var onResetSiriTip: (() -> Void)?
 
@@ -83,6 +84,18 @@ public struct VisualizerDebugView: View {
                     Text("Tips & Discoverability")
                 } footer: {
                     Text("Resets tip dismissal state and theme picker usage tracking for testing analytics.")
+                }
+
+                // On Air Banner
+                Section {
+                    Toggle("Force On Air Banner", isOn: Binding(
+                        get: { onAirDebugState.forceOnAir },
+                        set: { onAirDebugState.forceOnAir = $0 }
+                    ))
+                } header: {
+                    Text("On Air")
+                } footer: {
+                    Text("Shows the on-air banner with a placeholder DJ even when no one is signed on.")
                 }
 
                 // Cache
