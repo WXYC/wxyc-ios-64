@@ -125,17 +125,28 @@ enum FlowsheetConverter {
     /// distinguish "absent or malformed" from a real instant.
     ///
     /// - Parameter isoString: ISO 8601 formatted date string.
-    /// - Returns: Milliseconds since 1970, or `nil` if parsing fails.
+    /// - Returns: Milliseconds since 1970, or `nil` if parsing fails or the
+    ///   instant predates 1970 (see `milliseconds(since1970:)`).
     private static func parseHourIfValid(from isoString: String) -> UInt64? {
         // Use modern Swift Foundation parsing
         if let date = try? Date(isoString, strategy: .iso8601) {
-            return UInt64(date.timeIntervalSince1970 * 1000)
+            return milliseconds(since1970: date)
         }
         // Fallback: try with fractional seconds strategy
         let fractionalStrategy = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
         if let date = try? Date(isoString, strategy: fractionalStrategy) {
-            return UInt64(date.timeIntervalSince1970 * 1000)
+            return milliseconds(since1970: date)
         }
         return nil
+    }
+
+    /// Converts a date to unsigned milliseconds since 1970, returning `nil` for a
+    /// pre-1970 instant. `UInt64(_:)` traps on a negative `Double`, so a
+    /// parseable-but-negative timestamp (e.g. a server bug emitting a pre-epoch
+    /// `radio_hour`) must be rejected here rather than crashing the conversion.
+    private static func milliseconds(since1970 date: Date) -> UInt64? {
+        let ms = date.timeIntervalSince1970 * 1000
+        guard ms >= 0, ms.isFinite else { return nil }
+        return UInt64(ms)
     }
 }

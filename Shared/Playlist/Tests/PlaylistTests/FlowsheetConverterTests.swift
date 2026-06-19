@@ -516,6 +516,29 @@ struct FlowsheetConverterTests {
         #expect(breakpoint.timeCreated == expectedAddTime)
     }
 
+    @Test("Breakpoint hour falls back to add_time when radio_hour is a pre-1970 instant")
+    func breakpointFallsBackToAddTimeWhenRadioHourPre1970() throws {
+        // A pre-1970 `radio_hour` parses to a negative interval; converting it to
+        // an unsigned millisecond count must not trap. Treat it as invalid and
+        // fall back to `add_time` rather than crashing the whole conversion.
+        let entry = FlowsheetEntry(
+            id: 304, show_id: nil, album_id: nil,
+            artist_name: nil, album_title: nil, track_title: nil,
+            record_label: nil, rotation_id: nil, rotation_play_freq: nil,
+            request_flag: nil, message: nil, play_order: 1,
+            add_time: "2024-01-15T15:58:42Z",
+            entry_type: "breakpoint",
+            radio_hour: "1969-12-31T23:00:00Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let breakpoint = try #require(playlist.breakpoints.first)
+
+        let expectedAddTime = UInt64(try Date("2024-01-15T15:58:42Z", strategy: .iso8601).timeIntervalSince1970 * 1000)
+        #expect(breakpoint.hour == expectedAddTime)
+        #expect(breakpoint.timeCreated == expectedAddTime)
+    }
+
     // MARK: - Cross-show ordering (regression test for #265)
 
     @Test("Sorts entries chronologically across shows when play_order resets")
