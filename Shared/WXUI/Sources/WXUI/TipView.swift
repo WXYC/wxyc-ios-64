@@ -40,40 +40,40 @@ public struct TipView<Background: View>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: iconName)
-                .font(.system(size: 32))
-                .foregroundStyle(.white)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
-
-                Text(headline)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+        TipCard {
+            background()
+        } content: {
+            HStack(spacing: 12) {
+                Image(systemName: iconName)
+                    .font(.system(size: 32))
                     .foregroundStyle(.white)
-            }
 
-            Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
 
-            Button {
-                withAnimation(.easeOut(duration: 0.25)) {
-                    isVisible = false
+                    Text(headline)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
                 }
-                onDismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Button {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        isVisible = false
+                    }
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background { background() }
-        .clipShape(.rect(cornerRadius: 16))
         .transition(.asymmetric(
             insertion: .scale(scale: 0.9).combined(with: .opacity),
             removal: .scale(scale: 0.9).combined(with: .opacity)

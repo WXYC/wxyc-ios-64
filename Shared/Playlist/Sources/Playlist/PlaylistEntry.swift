@@ -189,6 +189,16 @@ public struct ShowMarker: PlaylistEntry {
     }
 }
 
+public extension ShowMarker {
+    /// Title for the on-air banner — the DJ's name.
+    ///
+    /// Falls back to the station name ("WXYC") when the flowsheet carries no DJ name,
+    /// e.g. an unnamed sign-on or automation.
+    var onAirTitle: String {
+        djName ?? "WXYC"
+    }
+}
+
 public struct Playcut: PlaylistEntry, Hashable {
     public let id: UInt64
     public let hour: UInt64
@@ -423,5 +433,26 @@ public extension Playlist {
     var entries: [any PlaylistEntry] {
         let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers)
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
+    }
+
+    /// The show marker for the DJ currently on the air, if any.
+    ///
+    /// Returns the most recent show marker — highest `chronOrderID`, which the API
+    /// assigns in chronological order — but only when it is a sign-on. When the latest
+    /// marker is a sign-off (nobody is on the air) or there are no markers, returns nil.
+    /// This is the marker promoted to the dedicated "on air" banner.
+    var onAirSignOn: ShowMarker? {
+        guard let latest = showMarkers.max(by: { $0.chronOrderID < $1.chronOrderID }),
+              latest.isStart else { return nil }
+        return latest
+    }
+
+    /// `entries` with the on-air sign-on removed, since it is promoted to its own banner.
+    ///
+    /// Historical markers (a previous DJ's sign-off, earlier sign-ons) remain in place.
+    /// Equal to `entries` when no DJ is currently on the air.
+    var timelineEntries: [any PlaylistEntry] {
+        guard let onAir = onAirSignOn else { return entries }
+        return entries.filter { !($0 is ShowMarker) || $0.id != onAir.id }
     }
 }

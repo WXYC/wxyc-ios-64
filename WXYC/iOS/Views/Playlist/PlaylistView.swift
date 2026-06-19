@@ -33,6 +33,7 @@ struct PlaylistView: View {
     @Binding var selectedPlaycut: PlaycutSelection?
 
     @State private var playlistEntries: [any PlaylistEntry] = []
+    @State private var onAirSignOn: ShowMarker?
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
@@ -81,6 +82,12 @@ struct PlaylistView: View {
                         appState.themePickerState.recordTipDismissedByUser()
                     }
                     .padding(.vertical, 8)
+                }
+
+                // On air banner — the current DJ's sign-on, promoted to the top.
+                if let onAirBannerTitle {
+                    OnAirBannerView(headline: onAirBannerTitle)
+                        .padding(.vertical, 8)
                 }
 
                 // Playlist entries
@@ -150,7 +157,8 @@ struct PlaylistView: View {
             guard let playlistService else { return }
             for await playlist in playlistService.updates() {
                 withAnimation {
-                    self.playlistEntries = playlist.entries
+                    self.onAirSignOn = playlist.onAirSignOn
+                    self.playlistEntries = playlist.timelineEntries
                 }
                 let playcuts = playlist.entries.compactMap { $0 as? Playcut }
                 appState.artworkLoader.prune(keepingKeys: Set(playcuts.map(\.artworkCacheKey)))
@@ -173,6 +181,19 @@ struct PlaylistView: View {
             configuration: appState.themeConfiguration
         )
         .accessibilityIdentifier("playlistView")
+    }
+
+    /// The headline for the on-air banner: the current DJ's name, or a placeholder
+    /// when the debug "Force On Air Banner" toggle is on and no one is signed on.
+    /// Returns nil when the banner should be hidden.
+    private var onAirBannerTitle: String? {
+        if let onAirSignOn {
+            return onAirSignOn.onAirTitle
+        }
+        if OnAirDebugState.shared.forceOnAir {
+            return "Test DJ"
+        }
+        return nil
     }
 
     @ViewBuilder

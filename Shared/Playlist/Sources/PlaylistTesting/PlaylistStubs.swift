@@ -96,17 +96,44 @@ extension Talkset {
     }
 }
 
+extension ShowMarker {
+    /// Creates a ShowMarker with sensible defaults for testing.
+    ///
+    /// Defaults to a sign-on with no DJ name. Pass `isStart: false` for a sign-off.
+    public static func stub(
+        id: UInt64 = 1,
+        hour: UInt64 = 1000,
+        chronOrderID: UInt64? = nil,
+        timeCreated: UInt64? = nil,
+        isStart: Bool = true,
+        djName: String? = nil,
+        message: String = "Start of show"
+    ) -> ShowMarker {
+        ShowMarker(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID ?? id,
+            timeCreated: timeCreated ?? hour,
+            isStart: isStart,
+            djName: djName,
+            message: message
+        )
+    }
+}
+
 extension Playlist {
     /// Creates a Playlist stub for testing.
     public static func stub(
         playcuts: [Playcut] = [],
         breakpoints: [Breakpoint] = [],
-        talksets: [Talkset] = []
+        talksets: [Talkset] = [],
+        showMarkers: [ShowMarker] = []
     ) -> Playlist {
         Playlist(
             playcuts: playcuts,
             breakpoints: breakpoints,
-            talksets: talksets
+            talksets: talksets,
+            showMarkers: showMarkers
         )
     }
 }
