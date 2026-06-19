@@ -18,7 +18,7 @@ import PlaylistTesting
 struct BreakpointHourLabelTests {
     private let eastern = TimeZone(identifier: "America/New_York")!
     private let pacific = TimeZone(identifier: "America/Los_Angeles")!
-    private let enUS = Locale(identifier: "en_US")
+    private let toronto = TimeZone(identifier: "America/Toronto")!
 
     private func milliseconds(_ iso: String) throws -> UInt64 {
         UInt64(try Date(iso, strategy: .iso8601).timeIntervalSince1970 * 1000)
@@ -28,14 +28,32 @@ struct BreakpointHourLabelTests {
     func easternListenerSeesSingleLabel() throws {
         // 2026-06-18T19:00:00Z == 3 PM EDT
         let breakpoint = Breakpoint.stub(hour: try milliseconds("2026-06-18T19:00:00Z"))
-        #expect(breakpoint.hourLabel(localTimeZone: eastern, locale: enUS) == "3PM ET")
+        #expect(breakpoint.hourLabel(localTimeZone: eastern) == "3PM ET")
     }
 
     @Test("Non-Eastern listener sees local hour then station hour, e.g. \"12PM PT / 3PM ET\"")
     func pacificListenerSeesBothLabels() throws {
         // 2026-06-18T19:00:00Z == 12 PM PDT == 3 PM EDT
         let breakpoint = Breakpoint.stub(hour: try milliseconds("2026-06-18T19:00:00Z"))
-        #expect(breakpoint.hourLabel(localTimeZone: pacific, locale: enUS) == "12PM PT / 3PM ET")
+        #expect(breakpoint.hourLabel(localTimeZone: pacific) == "12PM PT / 3PM ET")
+    }
+
+    @Test("A non-Eastern zone sharing Eastern's offset still collapses to one label")
+    func sameOffsetZoneCollapsesToSingleLabel() throws {
+        // America/Toronto observes US Eastern — same UTC offset as New York, but a
+        // different identifier — so the listener reads station time directly. The
+        // collapse keys on the offset, not the identifier. 16:00:00Z == 11 AM EST.
+        let breakpoint = Breakpoint.stub(hour: try milliseconds("2024-01-15T16:00:00Z"))
+        #expect(breakpoint.hourLabel(localTimeZone: toronto) == "11AM ET")
+    }
+
+    @Test("Noon and midnight render as 12PM and 12AM, not 0")
+    func noonAndMidnightFormatting() throws {
+        // 2026-06-18T16:00:00Z == 12 PM EDT; 2026-06-18T04:00:00Z == 12 AM EDT.
+        let noon = Breakpoint.stub(hour: try milliseconds("2026-06-18T16:00:00Z"))
+        let midnight = Breakpoint.stub(hour: try milliseconds("2026-06-18T04:00:00Z"))
+        #expect(noon.hourLabel(localTimeZone: eastern) == "12PM ET")
+        #expect(midnight.hourLabel(localTimeZone: eastern) == "12AM ET")
     }
 
     @Test("Converted breakpoint renders the radio_hour hour, not the add_time hour (ios#404)")
@@ -52,6 +70,6 @@ struct BreakpointHourLabelTests {
             radio_hour: "2024-01-15T16:00:00Z"
         )
         let breakpoint = try #require(FlowsheetConverter.convert([entry]).breakpoints.first)
-        #expect(breakpoint.hourLabel(localTimeZone: eastern, locale: enUS) == "11AM ET")
+        #expect(breakpoint.hourLabel(localTimeZone: eastern) == "11AM ET")
     }
 }
