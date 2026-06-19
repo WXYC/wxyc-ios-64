@@ -63,7 +63,11 @@ enum FlowsheetConverter {
                 talksets.append(Talkset(id: id, hour: hour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .breakpoint:
-                breakpoints.append(Breakpoint(id: id, hour: hour, chronOrderID: chronOrderID, timeCreated: hour))
+                // Display the exact top-of-hour from `radio_hour` when present,
+                // falling back to `add_time` for servers that predate the field
+                // (ios#404). `timeCreated` keeps the original logging instant.
+                let breakpointHour = entry.radio_hour.flatMap { parseHour(from: $0) } ?? hour
+                breakpoints.append(Breakpoint(id: id, hour: breakpointHour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .showStart(let djName):
                 let marker = ShowMarker(

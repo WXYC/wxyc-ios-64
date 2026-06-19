@@ -39,6 +39,13 @@ struct FlowsheetEntry: Codable, Sendable {
     /// `"show_start"`, `"show_end"`). `nil` when decoding older response formats.
     var entry_type: String? = nil
 
+    /// Exact top-of-the-hour for a breakpoint marker (ISO 8601, same format as
+    /// `add_time`). The breakpoint's `add_time` is its logging instant — typically
+    /// ~1 min before the hour — so flooring it to an hour label renders one hour
+    /// early. `radio_hour` carries the real top-of-hour. Optional on the wire:
+    /// older servers omit it, so consumers fall back to `add_time`. See ios#404.
+    var radio_hour: String? = nil
+
     /// DJ name for show start/end markers. Present only in v2 responses.
     var dj_name: String? = nil
 
