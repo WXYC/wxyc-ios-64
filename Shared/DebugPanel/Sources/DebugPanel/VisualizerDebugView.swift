@@ -41,220 +41,243 @@ public struct VisualizerDebugView: View {
         self.onResetThemePickerState = onResetThemePickerState
         self.onResetSiriTip = onResetSiriTip
     }
-    
+
+    private var processorFooter: String {
+        switch visualizer.displayProcessor {
+        case .fft:
+            "FFT analyzes frequency content. Bass appears in left bars, treble in right bars."
+        case .rms:
+            "RMS measures loudness over time slices. Does not separate frequencies."
+        case .both:
+            "Shows both processors side-by-side for comparison."
+        }
+    }
+
     public var body: some View {
         NavigationStack {
-            Form {
-                // Performance HUD
-                Section {
-                    Toggle("Show Performance HUD", isOn: Binding(
-                        get: { hudState.isVisible },
-                        set: { hudState.isVisible = $0 }
-                    ))
-                } header: {
-                    Text("Performance")
-                } footer: {
-                    Text("Displays FPS, CPU, GPU memory, RAM, and thermal state.")
-                }
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Performance HUD
+                    DebugSection(
+                        header: "Performance",
+                        footer: "Displays FPS, CPU, GPU memory, RAM, and thermal state."
+                    ) {
+                        Toggle("Show Performance HUD", isOn: Binding(
+                            get: { hudState.isVisible },
+                            set: { hudState.isVisible = $0 }
+                        ))
+                    }
 
-                // Wallpaper Debug Overlay
-                Section {
-                    Toggle("Show Theme Debug Button", isOn: Binding(
-                        get: { themeDebugState.showOverlay },
-                        set: { themeDebugState.showOverlay = $0 }
-                    ))
-                } header: {
-                    Text("Wallpaper")
-                } footer: {
-                    Text("Shows a floating button to access wallpaper picker, parameter controls, and quality throttling settings.")
-                }
+                    // Wallpaper Debug Overlay
+                    DebugSection(
+                        header: "Wallpaper",
+                        footer: "Shows a floating button to access wallpaper picker, parameter controls, and quality throttling settings."
+                    ) {
+                        Toggle("Show Theme Debug Button", isOn: Binding(
+                            get: { themeDebugState.showOverlay },
+                            set: { themeDebugState.showOverlay = $0 }
+                        ))
+                    }
 
-                // Tip Views & Picker Usage
-                Section {
-                    Button("Reset Siri Tip") {
-                        onResetSiriTip?()
+                    // Tip Views & Picker Usage
+                    DebugSection(
+                        header: "Tips & Discoverability",
+                        footer: "Resets tip dismissal state and theme picker usage tracking for testing analytics."
+                    ) {
+                        Button("Reset Siri Tip") {
+                            onResetSiriTip?()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(onResetSiriTip == nil)
+                        Button("Reset Theme Picker State") {
+                            onResetThemePickerState?()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(onResetThemePickerState == nil)
                     }
-                    .disabled(onResetSiriTip == nil)
-                    Button("Reset Theme Picker State") {
-                        onResetThemePickerState?()
-                    }
-                    .disabled(onResetThemePickerState == nil)
-                } header: {
-                    Text("Tips & Discoverability")
-                } footer: {
-                    Text("Resets tip dismissal state and theme picker usage tracking for testing analytics.")
-                }
 
-                // Cache
-                Section {
-                    Button("Purge All Caches", role: .destructive) {
-                        Task {
-                            await CacheCoordinator.AlbumArt.clearAll()
-                            await CacheCoordinator.Playlist.clearAll()
-                            await CacheCoordinator.Metadata.clearAll()
-                            cachePurged = true
-                        }
-                    }
-                    .disabled(cachePurged)
-                } header: {
-                    Text("Cache")
-                } footer: {
-                    Text(cachePurged ? "All caches purged." : "Removes all cached album art, playlist data, and metadata.")
-                }
-
-                // Playlist API Version
-                Section {
-                    Picker("API Version", selection: $selectedAPIVersion) {
-                        ForEach(PlaylistAPIVersion.allCases) { version in
-                            Text(version.displayName).tag(version)
-                        }
-                    }
-                    .onChange(of: selectedAPIVersion) { _, newValue in
-                        if skipNextAPIVersionPersist {
-                            skipNextAPIVersionPersist = false
-                        } else {
-                            newValue.persist()
-                        }
-                        Task {
-                            await playlistService?.switchAPIVersion(to: newValue)
-                        }
-                    }
-                    Button("Use Feature Flag") {
-                        PlaylistAPIVersion.clearOverride()
-                        skipNextAPIVersionPersist = true
-                        selectedAPIVersion = .loadActive()
-                    }
-                } header: {
-                    Text("Playlist API")
-                } footer: {
-                    Text(selectedAPIVersion.shortDescription)
-                }
-
-                // Player Controller
-                Section {
-                    Picker("Player", selection: $selectedPlayerType) {
-                        ForEach(PlayerControllerType.allCases) { type in
-                            Text(type.displayName).tag(type)
-                        }
-                    }
-                    .onChange(of: selectedPlayerType) { _, newValue in
-                        if skipNextPlayerTypePersist {
-                            skipNextPlayerTypePersist = false
-                        } else {
-                            newValue.persist()
-                        }
-                    }
-                    if selectedPlayerType == .hlsPlayer {
-                        Picker("HLS Environment", selection: $selectedHLSEnvironment) {
-                            ForEach(HLSEnvironment.allCases) { env in
-                                Text(env.displayName).tag(env)
+                    // Cache
+                    DebugSection(
+                        header: "Cache",
+                        footer: cachePurged ? "All caches purged." : "Removes all cached album art, playlist data, and metadata."
+                    ) {
+                        Button("Purge All Caches", role: .destructive) {
+                            Task {
+                                await CacheCoordinator.AlbumArt.clearAll()
+                                await CacheCoordinator.Playlist.clearAll()
+                                await CacheCoordinator.Metadata.clearAll()
+                                cachePurged = true
                             }
                         }
-                        .onChange(of: selectedHLSEnvironment) { _, newValue in
-                            newValue.persist()
-                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(cachePurged)
                     }
-                    Button("Use Feature Flag") {
-                        PlayerControllerType.clearPersisted()
-                        skipNextPlayerTypePersist = true
-                        selectedPlayerType = .loadPersisted()
-                        HLSEnvironment.clearOverride()
-                        selectedHLSEnvironment = .loadActive()
-                    }
-                } header: {
-                    Text("Player")
-                } footer: {
-                    Text(selectedPlayerType.shortDescription + " Restart the app to apply.")
-                }
 
-                // Processor & Settings
-                Section {
-                    Picker("Processor", selection: $visualizer.displayProcessor) {
-                        ForEach(ProcessorType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
+                    // Playlist API Version
+                    DebugSection(
+                        header: "Playlist API",
+                        footer: selectedAPIVersion.shortDescription
+                    ) {
+                        LabeledContent("API Version") {
+                            Picker("API Version", selection: $selectedAPIVersion) {
+                                ForEach(PlaylistAPIVersion.allCases) { version in
+                                    Text(version.displayName).tag(version)
+                                }
+                            }
+                            .labelsHidden()
+                        }
+                        .onChange(of: selectedAPIVersion) { _, newValue in
+                            if skipNextAPIVersionPersist {
+                                skipNextAPIVersionPersist = false
+                            } else {
+                                newValue.persist()
+                            }
+                            Task {
+                                await playlistService?.switchAPIVersion(to: newValue)
+                            }
+                        }
+                        Button("Use Feature Flag") {
+                            PlaylistAPIVersion.clearOverride()
+                            skipNextAPIVersionPersist = true
+                            selectedAPIVersion = .loadActive()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    // Player Controller
+                    DebugSection(
+                        header: "Player",
+                        footer: selectedPlayerType.shortDescription + " Restart the app to apply."
+                    ) {
+                        LabeledContent("Player") {
+                            Picker("Player", selection: $selectedPlayerType) {
+                                ForEach(PlayerControllerType.allCases) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                            .labelsHidden()
+                        }
+                        .onChange(of: selectedPlayerType) { _, newValue in
+                            if skipNextPlayerTypePersist {
+                                skipNextPlayerTypePersist = false
+                            } else {
+                                newValue.persist()
+                            }
+                        }
+                        if selectedPlayerType == .hlsPlayer {
+                            LabeledContent("HLS Environment") {
+                                Picker("HLS Environment", selection: $selectedHLSEnvironment) {
+                                    ForEach(HLSEnvironment.allCases) { env in
+                                        Text(env.displayName).tag(env)
+                                    }
+                                }
+                                .labelsHidden()
+                            }
+                            .onChange(of: selectedHLSEnvironment) { _, newValue in
+                                newValue.persist()
+                            }
+                        }
+                        Button("Use Feature Flag") {
+                            PlayerControllerType.clearPersisted()
+                            skipNextPlayerTypePersist = true
+                            selectedPlayerType = .loadPersisted()
+                            HLSEnvironment.clearOverride()
+                            selectedHLSEnvironment = .loadActive()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    // Processor & Settings
+                    DebugSection(
+                        header: "Processor",
+                        footer: processorFooter
+                    ) {
+                        LabeledContent("Processor") {
+                            Picker("Processor", selection: $visualizer.displayProcessor) {
+                                ForEach(ProcessorType.allCases, id: \.self) { type in
+                                    Text(type.displayName).tag(type)
+                                }
+                            }
+                            .labelsHidden()
+                        }
+
+                        Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
+
+                        // FFT Settings (shown for FFT or Both)
+                        if visualizer.displayProcessor == .fft || visualizer.displayProcessor == .both {
+                            HStack {
+                                Text("Frequency Weighting")
+                                Spacer()
+                                Text(String(format: "%.2f", visualizer.fftFrequencyWeighting))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $visualizer.fftFrequencyWeighting, in: 0.0...1.5)
+                            HStack {
+                                Text("Bass")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("Treble")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            LabeledContent("FFT Normalization") {
+                                Picker("FFT Normalization", selection: $visualizer.fftNormalizationMode) {
+                                    ForEach(NormalizationMode.allCases, id: \.self) { mode in
+                                        Text(mode.displayName).tag(mode)
+                                    }
+                                }
+                                .labelsHidden()
+                            }
+                        }
+
+                        // RMS Settings (shown for RMS or Both)
+                        if visualizer.displayProcessor == .rms || visualizer.displayProcessor == .both {
+                            LabeledContent("RMS Normalization") {
+                                Picker("RMS Normalization", selection: $visualizer.rmsNormalizationMode) {
+                                    ForEach(NormalizationMode.allCases, id: \.self) { mode in
+                                        Text(mode.displayName).tag(mode)
+                                    }
+                                }
+                                .labelsHidden()
+                            }
                         }
                     }
-                    
-                    Toggle("Show FPS Counter", isOn: $visualizer.showFPS)
-                    
-                    // FFT Settings (shown for FFT or Both)
-                    if visualizer.displayProcessor == .fft || visualizer.displayProcessor == .both {
+
+                    // Signal Boost
+                    DebugSection(
+                        header: "Amplification",
+                        footer: "Amplify audio signal before processing. 1.0x = no boost."
+                    ) {
+                        Toggle("Enabled", isOn: $visualizer.signalBoostEnabled)
+
                         HStack {
-                            Text("Frequency Weighting")
+                            Text("Signal Boost")
                             Spacer()
-                            Text(String(format: "%.2f", visualizer.fftFrequencyWeighting))
+                            Text(String(format: "%.2fx", visualizer.signalBoost))
                                 .foregroundStyle(.secondary)
                         }
-                        Slider(value: $visualizer.fftFrequencyWeighting, in: 0.0...1.5)
-                        HStack {
-                            Text("Bass")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text("Treble")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        Slider(value: $visualizer.signalBoost, in: 0.1...10.0)
+                            .disabled(!visualizer.signalBoostEnabled)
+                        Button("Reset to 1.0x") {
+                            visualizer.resetSignalBoost()
                         }
-                        
-                        Picker("FFT Normalization", selection: $visualizer.fftNormalizationMode) {
-                            ForEach(NormalizationMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
-                        }
-                    }
-                    
-                    // RMS Settings (shown for RMS or Both)
-                    if visualizer.displayProcessor == .rms || visualizer.displayProcessor == .both {
-                        Picker("RMS Normalization", selection: $visualizer.rmsNormalizationMode) {
-                            ForEach(NormalizationMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Processor")
-                } footer: {
-                    switch visualizer.displayProcessor {
-                    case .fft:
-                        Text("FFT analyzes frequency content. Bass appears in left bars, treble in right bars.")
-                    case .rms:
-                        Text("RMS measures loudness over time slices. Does not separate frequencies.")
-                    case .both:
-                        Text("Shows both processors side-by-side for comparison.")
-                    }
-                }
-                
-                // Signal Boost
-                Section {
-                    Toggle("Enabled", isOn: $visualizer.signalBoostEnabled)
-                    
-                    HStack {
-                        Text("Signal Boost")
-                        Spacer()
-                        Text(String(format: "%.2fx", visualizer.signalBoost))
-                            .foregroundStyle(.secondary)
-                    }
-                    Slider(value: $visualizer.signalBoost, in: 0.1...10.0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!visualizer.signalBoostEnabled)
-                    Button("Reset to 1.0x") {
-                        visualizer.resetSignalBoost()
                     }
-                    .disabled(!visualizer.signalBoostEnabled)
-                } header: {
-                    Text("Amplification")
-                } footer: {
-                    Text("Amplify audio signal before processing. 1.0x = no boost.")
-                }
-                
-                // Actions
-                Section("Actions") {
-                    Button("Reset All Settings") {
-                        visualizer.reset()
+
+                    // Actions
+                    DebugSection(header: "Actions") {
+                        Button("Reset All Settings") {
+                            visualizer.reset()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundStyle(.red)
                     }
-                    .foregroundStyle(.red)
                 }
+                .padding()
             }
-            .listRowSeparator(.hidden)
             .navigationTitle("Visualizer Settings")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
