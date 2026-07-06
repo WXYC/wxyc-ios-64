@@ -40,6 +40,7 @@ struct PlaylistView: View {
 
     @State private var visualizer = VisualizerDataSource()
     @State private var showVisualizerDebug = false
+    @State private var showOnAirDebug = false
     @State private var showingPartyHorn = false
     @State private var showingSiriTip = false
     @State private var showingThemeTip = false
@@ -53,6 +54,14 @@ struct PlaylistView: View {
             Color.clear
             
             ScrollView(showsIndicators: false) {
+                // On air banner — the current DJ (or "Auto DJ"), pinned above the player.
+                OnAirBannerView(
+                    headline: onAirBannerTitle,
+                    theme: onAirBannerTheme,
+                    onDebugTapped: onAirDebugTapped
+                )
+                .padding(.vertical, 8)
+
                 PlayerHeaderView(
                     visualizer: visualizer,
                     onDebugTapped: {
@@ -82,12 +91,6 @@ struct PlaylistView: View {
                         appState.themePickerState.recordTipDismissedByUser()
                     }
                     .padding(.vertical, 8)
-                }
-
-                // On air banner — the current DJ's sign-on, promoted to the top.
-                if let onAirBannerTitle {
-                    OnAirBannerView(headline: onAirBannerTitle)
-                        .padding(.vertical, 8)
                 }
 
                 // Playlist entries
@@ -148,6 +151,10 @@ struct PlaylistView: View {
             )
             .presentationDetents([.fraction(0.75)])
         }
+        .sheet(isPresented: $showOnAirDebug) {
+            OnAirBannerDebugView()
+                .presentationDetents([.fraction(0.75)])
+        }
         #endif
         .onAppear {
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
@@ -183,17 +190,51 @@ struct PlaylistView: View {
         .accessibilityIdentifier("playlistView")
     }
 
-    /// The headline for the on-air banner: the current DJ's name, or a placeholder
-    /// when the debug "Force On Air Banner" toggle is on and no one is signed on.
-    /// Returns nil when the banner should be hidden.
-    private var onAirBannerTitle: String? {
+    /// The headline for the on-air banner.
+    ///
+    /// The current DJ's name when someone is signed on; otherwise "Auto DJ", since the
+    /// station keeps broadcasting on automation between shows. The debug "Force On Air
+    /// Banner" toggle substitutes a sample named DJ so the named layout can be previewed.
+    private var onAirBannerTitle: String {
         if let onAirSignOn {
             return onAirSignOn.onAirTitle
         }
         if OnAirDebugState.shared.forceOnAir {
-            return "Test DJ"
+            return "DJ HOUNDSTOOTH"
         }
+        return "Auto DJ"
+    }
+
+    /// Live design parameters for the on-air banner, driven by the debug controls.
+    /// In release builds these read their persisted defaults, reproducing the shipping look.
+    private var onAirBannerTheme: OnAirBannerTheme {
+        let debug = OnAirDebugState.shared
+        return OnAirBannerTheme(
+            indicatorColor: Color(HSL(
+                hue: debug.indicatorHue,
+                saturation: debug.indicatorSaturation,
+                lightness: debug.indicatorLightness
+            )),
+            indicatorBlurRadius: CGFloat(debug.indicatorBlurRadius),
+            handleVariation: SFProVariation(
+                weight: debug.handleWeight,
+                width: debug.handleWidth,
+                opticalSize: debug.handleOpticalSize,
+                grade: debug.handleGrade
+            ),
+            onAirSpacing: CGFloat(debug.onAirSpacing),
+            handleLineSpacing: CGFloat(debug.handleLineSpacing)
+        )
+    }
+
+    /// The debug-tap handler for the banner: presents the on-air controls sheet in debug
+    /// builds, and is `nil` in release so the banner stays inert.
+    private var onAirDebugTapped: (() -> Void)? {
+        #if DEBUG || DEBUG_TESTFLIGHT
+        return { showOnAirDebug = true }
+        #else
         return nil
+        #endif
     }
 
     @ViewBuilder
