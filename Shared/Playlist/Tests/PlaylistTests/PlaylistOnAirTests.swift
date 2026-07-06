@@ -72,34 +72,38 @@ struct PlaylistOnAirTests {
         #expect(ids.contains(1))
     }
 
-    @Test("timelineEntries retains older sign-off/sign-on markers and other entries")
-    func timelineEntriesRetainsHistoricalMarkers() {
+    @Test("timelineEntries drops sign-offs and the on-air sign-on, keeps other sign-ons and entries")
+    func timelineEntriesDropsSignOffsAndOnAir() {
         let onAir = ShowMarker.stub(id: 50, chronOrderID: 50, isStart: true, djName: "CURRENT")
         let previousSignOff = ShowMarker.stub(id: 40, chronOrderID: 40, isStart: false, djName: "PREVIOUS")
+        let previousSignOn = ShowMarker.stub(id: 30, chronOrderID: 30, isStart: true, djName: "PREVIOUS")
         let playlist = Playlist.stub(
             playcuts: [.stub(id: 1, chronOrderID: 1)],
             breakpoints: [.stub(id: 2, chronOrderID: 2)],
             talksets: [.stub(id: 3, chronOrderID: 3)],
-            showMarkers: [onAir, previousSignOff]
+            showMarkers: [onAir, previousSignOff, previousSignOn]
         )
 
         let ids = playlist.timelineEntries.map(\.id)
-        #expect(ids.contains(previousSignOff.id))
+        #expect(!ids.contains(onAir.id))            // current DJ lives in the banner
+        #expect(!ids.contains(previousSignOff.id))  // sign-offs are hidden entirely
+        #expect(ids.contains(previousSignOn.id))    // earlier sign-ons remain as show boundaries
         #expect(ids.contains(1))
         #expect(ids.contains(2))
         #expect(ids.contains(3))
-        #expect(!ids.contains(onAir.id))
-        #expect(playlist.timelineEntries.count == playlist.entries.count - 1)
     }
 
-    @Test("timelineEntries equals entries when there is no on-air sign-on")
-    func timelineEntriesEqualsEntriesWithoutOnAir() {
+    @Test("timelineEntries drops sign-offs even when no one is on the air")
+    func timelineEntriesDropsSignOffsWithoutOnAir() {
+        let signOff = ShowMarker.stub(id: 2, chronOrderID: 2, isStart: false, djName: "PREVIOUS")
         let playlist = Playlist.stub(
             playcuts: [.stub(id: 1, chronOrderID: 1)],
-            showMarkers: [.stub(id: 2, chronOrderID: 2, isStart: false, djName: "PREVIOUS")]
+            showMarkers: [signOff]
         )
 
-        #expect(playlist.timelineEntries.map(\.id) == playlist.entries.map(\.id))
+        let ids = playlist.timelineEntries.map(\.id)
+        #expect(!ids.contains(signOff.id))
+        #expect(ids.contains(1))
     }
 
     @Test("onAirTitle is the DJ name when present")

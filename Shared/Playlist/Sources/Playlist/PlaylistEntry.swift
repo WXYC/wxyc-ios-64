@@ -447,12 +447,16 @@ public extension Playlist {
         return latest
     }
 
-    /// `entries` with the on-air sign-on removed, since it is promoted to its own banner.
+    /// `entries` filtered down to the show markers worth showing inline.
     ///
-    /// Historical markers (a previous DJ's sign-off, earlier sign-ons) remain in place.
-    /// Equal to `entries` when no DJ is currently on the air.
+    /// Sign-offs are dropped entirely — a DJ leaving the air isn't an event listeners need
+    /// in the feed. Earlier sign-ons remain as show boundaries. The current DJ's sign-on is
+    /// also dropped, since it is promoted to its own "on air" banner above the list.
     var timelineEntries: [any PlaylistEntry] {
-        guard let onAir = onAirSignOn else { return entries }
-        return entries.filter { !($0 is ShowMarker) || $0.id != onAir.id }
+        let onAirID = onAirSignOn?.id
+        return entries.filter { entry in
+            guard let marker = entry as? ShowMarker else { return true }
+            return marker.isStart && marker.id != onAirID
+        }
     }
 }
