@@ -8,73 +8,82 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import CoreText
+import Playlist
 import SwiftUI
-import Wallpaper
-import WXUI
 
-/// A banner surfacing the DJ currently on the air at the top of the playlist.
+/// A banner surfacing the DJ currently on the air (or "Auto DJ") at the top of the playlist.
 ///
-/// Built on the shared ``TipCard`` chrome — the same cell type as the wallpaper-picker
-/// tip — with a broadcast icon, a glowing green "ON AIR" caption, and the DJ's name
-/// (e.g. "HOUNDSTOOTH"). Supplied by `ShowMarker.onAirTitle`.
+/// A white "ON AIR" eyebrow with a themed live indicator sits above the DJ's handle, rendered
+/// directly over the wallpaper with no card chrome. The indicator color/glow, the handle's SF
+/// Pro variable-font axes, and the vertical spacing all come from ``OnAirBannerTheme`` so the
+/// debug controls can tune them live; ``OnAirBannerTheme/default`` is the shipping look.
 struct OnAirBannerView: View {
-    /// The DJ's name, e.g. "HOUNDSTOOTH", or the station name when none is available.
+    /// The DJ's name, e.g. "DJ HOUNDSTOOTH", or "Auto DJ" when nobody is signed on.
     let headline: String
 
+    /// Tunable design parameters: indicator color/glow, handle font variation, and spacing.
+    var theme: OnAirBannerTheme = .default
+
+    /// When set, tapping the banner invokes this — used to present the debug controls sheet.
+    /// `nil` in release, so the banner is inert.
+    var onDebugTapped: (() -> Void)? = nil
+
     var body: some View {
-        TipCard {
-            BackgroundLayer(cornerRadius: 16)
-        } content: {
-            HStack(spacing: 12) {
-                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(.white)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        OnAirIndicator()
-
-                        Text("ON AIR")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
-
-                    Text(headline)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                }
-
-                Spacer()
-            }
+        if let onDebugTapped {
+            Button(action: onDebugTapped) { banner }
+                .buttonStyle(.plain)
+        } else {
+            banner
         }
-        .transition(.asymmetric(
-            insertion: .scale(scale: 0.9).combined(with: .opacity),
-            removal: .scale(scale: 0.9).combined(with: .opacity)
-        ))
+    }
+
+    private var banner: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                OnAirIndicator(size: 8, color: theme.indicatorColor, blurRadius: theme.indicatorBlurRadius)
+
+                Text("ON AIR")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .tracking(2.2)
+                    .foregroundStyle(.white)
+            }
+
+            Text(headline)
+                .font(handleFont)
+                .textCase(.uppercase)
+                .foregroundStyle(.white)
+                .lineSpacing(theme.handleLineSpacing)
+                .padding(.top, theme.onAirSpacing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("On air. \(headline)")
     }
-}
 
-/// A small green dot with a soft glow that gently pulses to evoke a live broadcast.
-private struct OnAirIndicator: View {
-    @State private var isPulsing = false
-
-    var body: some View {
-        Circle()
-            .fill(.green)
-            .frame(width: 9, height: 9)
-            .shadow(color: .green.opacity(0.9), radius: isPulsing ? 6 : 2)
-            .opacity(isPulsing ? 1.0 : 0.65)
-            .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: isPulsing)
-            .onAppear { isPulsing = true }
-            .accessibilityHidden(true)
+    /// The DJ handle rendered across SF Pro's four variable-font axes from the theme.
+    ///
+    /// SwiftUI exposes only discrete `Font.Weight`, so we set the raw
+    /// `kCTFontVariationAttribute` on a copy of the system font to drive weight, width,
+    /// optical size, and grade continuously, then bridge the `CTFont` into SwiftUI.
+    private var handleFont: Font {
+        let base = CTFontCreateUIFontForLanguage(.system, 24, nil)
+            ?? CTFontCreateWithName("SFPro-Regular" as CFString, 24, nil)
+        let attributes: [CFString: Any] = [kCTFontVariationAttribute: theme.handleVariation.variationDictionary]
+        let descriptor = CTFontDescriptorCreateWithAttributes(attributes as CFDictionary)
+        let varied = CTFontCreateCopyWithAttributes(base, 24, nil, descriptor)
+        return Font(varied)
     }
 }
 
 #Preview {
-    OnAirBannerView(headline: "HOUNDSTOOTH")
+    ScrollView {
+        VStack(spacing: 24) {
+            OnAirBannerView(headline: "DJ HOUNDSTOOTH")
+            OnAirBannerView(headline: "Auto DJ")
+        }
         .padding()
-        .background(.black)
+    }
+    .background(.black)
 }
