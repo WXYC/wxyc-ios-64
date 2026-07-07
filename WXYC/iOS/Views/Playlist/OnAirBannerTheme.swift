@@ -28,7 +28,7 @@ extension Color {
 /// the debug controls — render exactly as designed.
 struct OnAirBannerTheme: Equatable {
     /// Color of the "ON AIR" indicator dot and its glow.
-    var indicatorColor: Color = .red
+    var indicatorColor: Color = .green
 
     /// Blur radius of the indicator's glow, in points.
     var indicatorBlurRadius: CGFloat = 4.5
