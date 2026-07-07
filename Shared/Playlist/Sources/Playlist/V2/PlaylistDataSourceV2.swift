@@ -38,6 +38,6 @@ public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable
         let (data, response) = try await session.data(for: request)
         try (response as? HTTPURLResponse)?.validateSuccessStatus()
         let flowsheet = try JSONDecoder.shared.decode(FlowsheetResponse.self, from: data)
-        return FlowsheetConverter.convert(flowsheet.entries)
+        return FlowsheetConverter.convert(flowsheet.entries, onAir: flowsheet.onAir)
     }
 }

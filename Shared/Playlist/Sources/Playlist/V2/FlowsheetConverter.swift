@@ -15,9 +15,13 @@ enum FlowsheetConverter {
 
     /// Converts a list of flowsheet entries to a canonical Playlist.
     ///
-    /// - Parameter entries: Raw flowsheet entries from v2 API.
+    /// - Parameters:
+    ///   - entries: Raw flowsheet entries from v2 API.
+    ///   - onAir: The backend's tri-state on-air signal, carried through to the
+    ///     resulting ``Playlist``. Defaults to ``OnAir/unknown`` for callers that
+    ///     have no on-air information (e.g. entry-only test fixtures).
     /// - Returns: A Playlist with entries sorted into appropriate arrays.
-    static func convert(_ entries: [FlowsheetEntry]) -> Playlist {
+    static func convert(_ entries: [FlowsheetEntry], onAir: OnAir = .unknown) -> Playlist {
         var playcuts: [Playcut] = []
         var breakpoints: [Breakpoint] = []
         var talksets: [Talkset] = []
@@ -100,7 +104,8 @@ enum FlowsheetConverter {
             playcuts: playcuts,
             breakpoints: breakpoints,
             talksets: talksets,
-            showMarkers: showMarkers
+            showMarkers: showMarkers,
+            onAir: onAir
         )
     }
 

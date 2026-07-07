@@ -33,7 +33,7 @@ struct PlaylistView: View {
     @Binding var selectedPlaycut: PlaycutSelection?
 
     @State private var playlistEntries: [any PlaylistEntry] = []
-    @State private var onAirSignOn: ShowMarker?
+    @State private var onAir: OnAir = .unknown
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
@@ -54,13 +54,18 @@ struct PlaylistView: View {
             Color.clear
             
             ScrollView(showsIndicators: false) {
-                // On air banner — the current DJ (or "Auto DJ"), pinned above the player.
-                OnAirBannerView(
-                    headline: onAirBannerTitle,
-                    theme: onAirBannerTheme,
-                    onDebugTapped: onAirDebugTapped
-                )
-                .padding(.vertical, 8)
+                // On air banner — the current DJ (or "Auto DJ"), pinned above the
+                // player. Hidden entirely when the on-air status is unknown (v1 or
+                // a backend that doesn't report it) so we never assert a false
+                // "Auto DJ" while a human DJ is live.
+                if let onAirBannerTitle {
+                    OnAirBannerView(
+                        headline: onAirBannerTitle,
+                        theme: onAirBannerTheme,
+                        onDebugTapped: onAirDebugTapped
+                    )
+                    .padding(.vertical, 8)
+                }
 
                 PlayerHeaderView(
                     visualizer: visualizer,
@@ -164,7 +169,7 @@ struct PlaylistView: View {
             guard let playlistService else { return }
             for await playlist in playlistService.updates() {
                 withAnimation {
-                    self.onAirSignOn = playlist.onAirSignOn
+                    self.onAir = playlist.onAir
                     self.playlistEntries = playlist.timelineEntries
                 }
                 let playcuts = playlist.entries.compactMap { $0 as? Playcut }
@@ -190,19 +195,18 @@ struct PlaylistView: View {
         .accessibilityIdentifier("playlistView")
     }
 
-    /// The headline for the on-air banner.
+    /// The headline for the on-air banner, or `nil` when the banner should be hidden.
     ///
-    /// The current DJ's name when someone is signed on; otherwise "Auto DJ", since the
-    /// station keeps broadcasting on automation between shows. The debug "Force On Air
-    /// Banner" toggle substitutes a sample named DJ so the named layout can be previewed.
-    private var onAirBannerTitle: String {
-        if let onAirSignOn {
-            return onAirSignOn.onAirTitle
-        }
+    /// Driven by the backend's tri-state `on_air` signal (``OnAir``): the DJ's name
+    /// when a named DJ is live, "Auto DJ" when confirmed automation, and `nil`
+    /// (banner hidden) when the status is unknown — so we never assert a false
+    /// "Auto DJ" while a human DJ is on. The debug "Force On Air Banner" toggle
+    /// substitutes a sample named DJ so the named layout can be previewed.
+    private var onAirBannerTitle: String? {
         if OnAirDebugState.shared.forceOnAir {
             return "DJ HOUNDSTOOTH"
         }
-        return "Auto DJ"
+        return onAir.bannerTitle
     }
 
     /// Live design parameters for the on-air banner, driven by the debug controls.

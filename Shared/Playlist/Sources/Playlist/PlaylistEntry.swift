@@ -386,16 +386,28 @@ public struct Playlist: Codable, Sendable {
     let talksets: [Talkset]
     public let showMarkers: [ShowMarker]
 
+    /// Who the backend reports is on the air, as a tri-state signal.
+    ///
+    /// Distinct from ``onAirSignOn``, which is derived from the fetched
+    /// `showMarkers` and drives timeline de-duplication. `onAir` comes straight
+    /// from the backend's `on_air` field and is what the on-air banner reads, so
+    /// the banner is correct even when the current show's sign-on marker falls
+    /// outside the fetched entry window. Defaults to ``OnAir/unknown`` (v1, older
+    /// backends, cached playlists that predate the field).
+    public let onAir: OnAir
+
     public init(
         playcuts: [Playcut],
         breakpoints: [Breakpoint],
         talksets: [Talkset],
-        showMarkers: [ShowMarker] = []
+        showMarkers: [ShowMarker] = [],
+        onAir: OnAir = .unknown
     ) {
         self.playcuts = playcuts
         self.breakpoints = breakpoints
         self.talksets = talksets
         self.showMarkers = showMarkers
+        self.onAir = onAir
     }
 
     public init(from decoder: Decoder) throws {
@@ -405,10 +417,13 @@ public struct Playlist: Codable, Sendable {
         self.talksets = try container.decode([Talkset].self, forKey: .talksets)
         // showMarkers is optional for backwards compatibility with v1 API
         self.showMarkers = try container.decodeIfPresent([ShowMarker].self, forKey: .showMarkers) ?? []
+        // onAir is optional for backwards compatibility with the v1 API and with
+        // cached playlists written before the field existed.
+        self.onAir = try container.decodeIfPresent(OnAir.self, forKey: .onAir) ?? .unknown
     }
 
     private enum CodingKeys: String, CodingKey {
-        case playcuts, breakpoints, talksets, showMarkers
+        case playcuts, breakpoints, talksets, showMarkers, onAir
     }
 
     public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [], showMarkers: [])
@@ -422,6 +437,7 @@ public struct Playlist: Codable, Sendable {
             && lhs.breakpoints == rhs.breakpoints
             && lhs.talksets == rhs.talksets
             && lhs.showMarkers == rhs.showMarkers
+            && lhs.onAir == rhs.onAir
     }
 
     public static func !=(lhs: Playlist, rhs: Playlist) -> Bool {
