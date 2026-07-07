@@ -18,7 +18,7 @@ import Foundation
 /// in `setUp` and restore ``NoOpErrorReporter()`` in `tearDown`.
 ///
 /// ```swift
-/// // In WXYCApp.init():
+/// // In WatchXYC.init():
 /// ErrorReporting.shared = PostHogErrorReporter.shared
 /// ```
 public enum ErrorReporting {
