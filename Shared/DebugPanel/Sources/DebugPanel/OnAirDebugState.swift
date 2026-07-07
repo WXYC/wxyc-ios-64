@@ -88,7 +88,7 @@ public final class OnAirDebugState {
     private init() {
         let defaults = UserDefaults.standard
         self.forceOnAir = defaults.bool(forKey: "OnAirDebug.forceOnAir")
-        self.indicatorHue = defaults.object(forKey: "OnAirDebug.indicatorHue") as? Double ?? 0.0
+        self.indicatorHue = defaults.object(forKey: "OnAirDebug.indicatorHue") as? Double ?? 0.33
         self.indicatorSaturation = defaults.object(forKey: "OnAirDebug.indicatorSaturation") as? Double ?? 1.0
         self.indicatorLightness = defaults.object(forKey: "OnAirDebug.indicatorLightness") as? Double ?? 0.5
         self.indicatorBlurRadius = defaults.object(forKey: "OnAirDebug.indicatorBlurRadius") as? Double ?? 4.5
