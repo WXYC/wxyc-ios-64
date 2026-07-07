@@ -11,8 +11,39 @@
 import Foundation
 
 /// Wrapper for the v2 flowsheet API response, which nests entries under an `"entries"` key.
+///
+/// Also carries the top-level `on_air` field as a tri-state ``OnAir``. `CodingKeys`
+/// alone can't distinguish a JSON `null` from a missing key, so the on-air state is
+/// decoded by key presence: absent → ``OnAir/unknown``, explicit `null` →
+/// ``OnAir/automation``, an object with `dj_name` → ``OnAir/dj(_:)``.
 struct FlowsheetResponse: Codable, Sendable {
     let entries: [FlowsheetEntry]
+    let onAir: OnAir
+
+    private enum CodingKeys: String, CodingKey {
+        case entries
+        case onAir = "on_air"
+    }
+
+    /// Minimal decode shape for the `on_air` object (`{ "dj_name": "..." }`).
+    private struct OnAirInfo: Codable {
+        let dj_name: String
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        entries = try container.decode([FlowsheetEntry].self, forKey: .entries)
+
+        if !container.contains(.onAir) {
+            // Field absent: older backend, v1, or a non-default query branch.
+            onAir = .unknown
+        } else if try container.decodeNil(forKey: .onAir) {
+            // Explicit JSON null: confirmed automation.
+            onAir = .automation
+        } else {
+            onAir = .dj(try container.decode(OnAirInfo.self, forKey: .onAir).dj_name)
+        }
+    }
 }
 
 /// Raw response model for a single entry from the v2 flowsheet API.

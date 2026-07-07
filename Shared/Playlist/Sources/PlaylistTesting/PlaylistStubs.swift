@@ -127,13 +127,15 @@ extension Playlist {
         playcuts: [Playcut] = [],
         breakpoints: [Breakpoint] = [],
         talksets: [Talkset] = [],
-        showMarkers: [ShowMarker] = []
+        showMarkers: [ShowMarker] = [],
+        onAir: OnAir = .unknown
     ) -> Playlist {
         Playlist(
             playcuts: playcuts,
             breakpoints: breakpoints,
             talksets: talksets,
-            showMarkers: showMarkers
+            showMarkers: showMarkers,
+            onAir: onAir
         )
     }
 }
