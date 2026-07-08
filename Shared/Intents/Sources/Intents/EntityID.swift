@@ -15,15 +15,10 @@
 import AppIntents
 import Foundation
 
-public struct EntityID<Owner>: Hashable, Codable, LosslessStringConvertible, EntityIdentifierConvertible {
+public struct EntityID<Owner>: Hashable, Codable, CustomStringConvertible, EntityIdentifierConvertible {
     public let value: UInt64
 
     public init(_ value: UInt64) {
-        self.value = value
-    }
-
-    public init?(_ description: String) {
-        guard let value = UInt64(description) else { return nil }
         self.value = value
     }
 
@@ -36,7 +31,7 @@ public struct EntityID<Owner>: Hashable, Codable, LosslessStringConvertible, Ent
     }
 
     public static func entityIdentifier(for entityIdentifierString: String) -> Self? {
-        Self(entityIdentifierString)
+        UInt64(entityIdentifierString).map(Self.init)
     }
 }
 
