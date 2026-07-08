@@ -92,6 +92,7 @@ struct WXYCDeepLinkTests {
         for raw in [
             "wxyc://playcut/not-a-number",
             "wxyc://playcut/-1",
+            "wxyc://playcut/+42",
             "wxyc://playcut/",
         ] {
             let url = try #require(URL(string: raw))

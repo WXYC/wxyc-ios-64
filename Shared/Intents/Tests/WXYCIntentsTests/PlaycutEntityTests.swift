@@ -12,12 +12,14 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import CoreSpotlight
 import Foundation
 import Testing
 import Playlist
 import PlaylistTesting
 @testable import WXYCIntents
+#if !os(watchOS)
+import CoreSpotlight
+#endif
 
 @Suite("PlaycutEntity")
 struct PlaycutEntityTests {
@@ -110,6 +112,7 @@ struct PlaycutEntityTests {
         #expect(entity.subtitleText == "Cat Power")
     }
 
+    #if !os(watchOS)
     @Test("populates the CoreSpotlight attribute set with Spotlight-visible metadata")
     func attributeSetCarriesSpotlightFields() {
         let artwork = URL(string: "https://example.com/juana.jpg")
@@ -134,5 +137,14 @@ struct PlaycutEntityTests {
         #expect(set.contentCreationDate == Date(timeIntervalSince1970: 1_700_000_000))
         #expect(set.relatedUniqueIdentifier == "42")
         #expect(set.keywords == ["Sonamos", "Electronic", "Ambient"])
+        #expect(set.contentDescription == entity.subtitleText)
     }
+
+    @Test("keyword array drops empty-string labelName rather than emitting a blank entry")
+    func attributeSetDropsEmptyLabelName() {
+        let entity = PlaycutEntity(playcut: .stub(labelName: "", genres: ["Rock"]))
+
+        #expect(entity.attributeSet.keywords == ["Rock"])
+    }
+    #endif
 }

@@ -31,6 +31,12 @@ public struct EntityID<Owner>: Hashable, Sendable, CustomStringConvertible, Enti
     }
 
     public static func entityIdentifier(for entityIdentifierString: String) -> Self? {
-        UInt64(entityIdentifierString).map(Self.init)
+        // Reject leading '+' etc. so only the exact form the encoder emits
+        // (unsigned digits) round-trips; `UInt64("+42")` would otherwise
+        // succeed and let two URLs resolve to the same entity.
+        guard entityIdentifierString.first?.isNumber == true,
+              let value = UInt64(entityIdentifierString)
+        else { return nil }
+        return Self(value)
     }
 }
