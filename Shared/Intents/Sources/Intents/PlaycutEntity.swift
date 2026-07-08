@@ -15,6 +15,8 @@ import CoreSpotlight
 import Foundation
 import Playlist
 
+public typealias PlaycutID = EntityID<PlaycutEntity>
+
 public struct PlaycutEntity: AppEntity, IndexedEntity {
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(
         name: "Playcut",
