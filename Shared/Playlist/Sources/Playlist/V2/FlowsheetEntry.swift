@@ -40,8 +40,18 @@ struct FlowsheetResponse: Codable, Sendable {
         } else if try container.decodeNil(forKey: .onAir) {
             // Explicit JSON null: confirmed automation.
             onAir = .automation
+        } else if let info = try? container.decode(OnAirInfo.self, forKey: .onAir),
+                  case let djName = info.dj_name.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !djName.isEmpty {
+            onAir = .dj(djName)
         } else {
-            onAir = .dj(try container.decode(OnAirInfo.self, forKey: .onAir).dj_name)
+            // `on_air` is present but not a usable named-DJ object — a malformed
+            // shape (wrong type, missing/empty `dj_name`). Degrade to `.unknown`
+            // rather than throwing: a throw here would fail the whole
+            // FlowsheetResponse decode and freeze every now-playing update over a
+            // cosmetic auxiliary field. This mirrors the tolerant decoding of the
+            // other optional v2 fields (see `metadataStatus`).
+            onAir = .unknown
         }
     }
 }

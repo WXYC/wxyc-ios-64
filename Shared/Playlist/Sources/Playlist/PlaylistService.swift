@@ -281,7 +281,11 @@ public final actor PlaylistService: Sendable {
     /// - Returns: `true` when the playlist was cached, `false` when ignored as an empty
     ///   replacement for valid data. Callers may log additional context either way.
     private func ingest(_ playlist: Playlist) async -> Bool {
-        guard playlist != .empty || currentPlaylist == .empty else { return false }
+        // Gate on content emptiness, not `== .empty`: a successful fetch now always
+        // carries an `onAir` value, so a content-empty payload no longer equals the
+        // `.empty` sentinel and would otherwise slip past this guard and clear the
+        // visible feed. See `Playlist.isContentEmpty`.
+        guard !playlist.isContentEmpty || currentPlaylist.isContentEmpty else { return false }
 
         await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
 
