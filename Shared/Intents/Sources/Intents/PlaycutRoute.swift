@@ -2,40 +2,51 @@
 //  PlaycutRoute.swift
 //  Intents
 //
-//  Broadcasts an "open this playcut" intent via NotificationCenter so the app's
-//  URL scheme handler and any future in-app trigger share a single delivery
-//  channel. F1 lands the emitter; the consumer that maps the id to a detail
-//  view lands in F3 when the playcut cache exists.
+//  Typed `open this playcut` message that flows through NotificationCenter via
+//  the Shared/Core MainActorNotificationMessage machinery. Keeping this on a
+//  typed protocol (rather than raw userInfo dicts) means observers can't
+//  accidentally strip the phantom-typed id and the notification name is
+//  guarded by the type itself — no cross-post collisions from unrelated
+//  senders.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
-public enum PlaycutRoute {
-    /// Posted when a `wxyc://playcut/<id>` deep link is opened. Subscribe on the
-    /// default `NotificationCenter` and read the id via `playcutID(from:)`.
-    public static let openNotification = Notification.Name("org.wxyc.iphoneapp.openPlaycut")
+public struct PlaycutOpenMessage: MainActorNotificationMessage {
+    public typealias Subject = NotificationCenter
 
-    static let playcutIDUserInfoKey = "playcutID"
+    public static let name = Notification.Name("org.wxyc.iphoneapp.openPlaycut")
 
-    /// Publishes an intent to open the given playcut on `center`. Defaults to
-    /// `.default` so the URL handler can call it without threading a center.
-    public static func broadcastOpen(
-        playcutID: UInt64,
-        using center: NotificationCenter = .default
-    ) {
-        center.post(
-            name: openNotification,
-            object: nil,
-            userInfo: [playcutIDUserInfoKey: playcutID]
+    public let playcutID: PlaycutID
+
+    public init(playcutID: PlaycutID) {
+        self.playcutID = playcutID
+    }
+
+    public static func makeMessage(_ notification: sending Notification) -> Self? {
+        guard notification.name == name,
+              let raw = notification.userInfo?[Key.playcutID] as? String,
+              let id = PlaycutID.entityIdentifier(for: raw)
+        else {
+            return nil
+        }
+        return Self(playcutID: id)
+    }
+
+    @MainActor
+    public static func makeNotification(_ message: Self, object: NotificationCenter?) -> Notification {
+        Notification(
+            name: name,
+            object: object,
+            userInfo: [Key.playcutID: message.playcutID.entityIdentifierString]
         )
     }
 
-    /// Reads a `Playcut.id` from an `openNotification` userInfo dictionary.
-    /// Returns `nil` if the notification originated from a different source.
-    public static func playcutID(from notification: Notification) -> UInt64? {
-        notification.userInfo?[playcutIDUserInfoKey] as? UInt64
+    private enum Key {
+        static let playcutID = "playcutID"
     }
 }

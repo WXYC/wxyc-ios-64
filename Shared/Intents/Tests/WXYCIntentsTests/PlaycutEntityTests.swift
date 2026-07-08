@@ -2,13 +2,17 @@
 //  PlaycutEntityTests.swift
 //  WXYCIntents
 //
-//  Verifies that PlaycutEntity mirrors a source Playcut's identifier and display fields
-//  so downstream Spotlight and contextual-cue integrations have a stable bridge.
+//  Verifies that PlaycutEntity carries the fields Spotlight and Siri contextual
+//  cues need (title, artist, release, artwork, label, genres, broadcast time)
+//  so a tapped Spotlight result surfaces the same metadata the in-app detail
+//  view does, and that the CoreSpotlight attribute set links back to the
+//  entity id for OpenPlaycut routing.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import CoreSpotlight
 import Foundation
 import Testing
 import Playlist
@@ -51,6 +55,28 @@ struct PlaycutEntityTests {
         #expect(entity.releaseTitle == "Emperor Tomato Ketchup")
     }
 
+    @Test("carries the source playcut's artwork, label, and genres")
+    func carriesRichMetadata() {
+        let artwork = URL(string: "https://example.com/dj.jpg")
+        let entity = PlaycutEntity(playcut: .stub(
+            labelName: "Kranky",
+            artworkURL: artwork,
+            genres: ["Rock", "Post-punk"]
+        ))
+
+        #expect(entity.artworkURL == artwork)
+        #expect(entity.labelName == "Kranky")
+        #expect(entity.genres == ["Rock", "Post-punk"])
+    }
+
+    @Test("derives broadcast date from the source playcut's hour")
+    func derivesBroadcastDate() {
+        let hour: UInt64 = 1_700_000_000_000
+        let entity = PlaycutEntity(playcut: .stub(hour: hour))
+
+        #expect(entity.broadcastDate == Date(timeIntervalSince1970: 1_700_000_000))
+    }
+
     @Test("carries a nil releaseTitle when the source has none")
     func passesThroughNilReleaseTitle() {
         let playcut = Playcut.stub(releaseTitle: nil)
@@ -67,11 +93,34 @@ struct PlaycutEntityTests {
         )
         let entity = PlaycutEntity(playcut: playcut)
 
-        // DisplayRepresentation exposes its LocalizedStringResource via a public
-        // property; comparing the rendered string keeps the test hermetic.
         let representation = entity.displayRepresentation
         let titleString = String(localized: representation.title)
 
         #expect(titleString == "Call Your Name")
+    }
+
+    @Test("populates the CoreSpotlight attribute set with Spotlight-visible metadata")
+    func attributeSetCarriesSpotlightFields() {
+        let artwork = URL(string: "https://example.com/juana.jpg")
+        let entity = PlaycutEntity(playcut: .stub(
+            id: 42,
+            hour: 1_700_000_000_000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            artworkURL: artwork,
+            genres: ["Electronic"]
+        ))
+
+        let set = entity.attributeSet
+
+        #expect(set.title == "la paradoja")
+        #expect(set.artist == "Juana Molina")
+        #expect(set.album == "DOGA")
+        #expect(set.genre == "Electronic")
+        #expect(set.thumbnailURL == artwork)
+        #expect(set.contentCreationDate == Date(timeIntervalSince1970: 1_700_000_000))
+        #expect(set.relatedUniqueIdentifier == "42")
     }
 }
