@@ -30,12 +30,11 @@ public struct OpenPlaycut: AppIntent, OpenIntent {
         self.target = target
     }
 
+    @MainActor
     public func perform() async throws -> some IntentResult {
         if let url = PlaycutDeepLink.url(for: target.id.value) {
             #if canImport(UIKit) && !os(watchOS)
-            await MainActor.run {
-                UIApplication.shared.open(url, options: [:], completionHandler: nil)
-            }
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
             #endif
         }
         return .result()
