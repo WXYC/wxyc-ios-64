@@ -91,12 +91,17 @@ struct AppLifecycleModifier: ViewModifier {
     // MARK: - Deep links and Siri
 
     private func handleURL(_ url: URL) {
-        if let playcutID = PlaycutDeepLink.playcutID(from: url) {
-            PlaycutRoute.broadcastOpen(playcutID: playcutID)
-            return
-        }
-        if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
+        switch WXYCDeepLink(url: url) {
+        case .playcut(let id):
+            NotificationCenter.default.post(PlaycutOpenMessage(playcutID: id), subject: nil)
+        case .play:
             AudioPlayerController.shared.play(reason: .deepLink)
+        case nil:
+            // Legacy Siri user-activity URL — preserved because the shortcut
+            // item at line 82 still emits this activity type.
+            if url.absoluteString.contains("org.wxyc.iphoneapp.play") {
+                AudioPlayerController.shared.play(reason: .deepLink)
+            }
         }
     }
 

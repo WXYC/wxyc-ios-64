@@ -12,6 +12,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "Analytics", path: "../Analytics"),
+        .package(name: "Core", path: "../Core"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "Playback", path: "../Playback"),
         .package(name: "Playlist", path: "../Playlist"),
@@ -21,6 +22,7 @@ let package = Package(
             name: "WXYCIntents",
             dependencies: [
                 "Analytics",
+                "Core",
                 "Logger",
                 "Playback",
                 "Playlist",

@@ -15,7 +15,7 @@
 import AppIntents
 import Foundation
 
-public struct EntityID<Owner>: Hashable, Codable, CustomStringConvertible, EntityIdentifierConvertible {
+public struct EntityID<Owner>: Hashable, CustomStringConvertible, EntityIdentifierConvertible {
     public let value: UInt64
 
     public init(_ value: UInt64) {

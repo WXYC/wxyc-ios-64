@@ -2,9 +2,11 @@
 //  OpenPlaycut.swift
 //  Intents
 //
-//  Foregrounds the app on a specific playcut. The framework surfaces this intent
-//  as the `OpenIntent` for `PlaycutEntity`, so Spotlight results, Siri hand-offs,
-//  and shortcut invocations route through a single deep-link path.
+//  Foregrounds the app on a specific playcut. Because the intent runs in-app
+//  once `openAppWhenRun` foregrounds it, `perform()` posts the typed
+//  `PlaycutOpenMessage` directly rather than round-tripping through the
+//  `wxyc://` URL scheme — the observer that maps the id to a detail view is
+//  the same either way.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -12,9 +14,6 @@
 
 import AppIntents
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 public struct OpenPlaycut: AppIntent, OpenIntent {
     public static let title: LocalizedStringResource = "Open Playcut"
@@ -32,11 +31,10 @@ public struct OpenPlaycut: AppIntent, OpenIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult {
-        if let url = PlaycutDeepLink.url(for: target.id.value) {
-            #if canImport(UIKit) && !os(watchOS)
-            UIApplication.shared.open(url, options: [:], completionHandler: nil)
-            #endif
-        }
+        NotificationCenter.default.post(
+            PlaycutOpenMessage(playcutID: target.id),
+            subject: nil
+        )
         return .result()
     }
 }
