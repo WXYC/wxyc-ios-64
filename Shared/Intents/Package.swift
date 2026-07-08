@@ -34,6 +34,7 @@ let package = Package(
             name: "WXYCIntentsTests",
             dependencies: [
                 "WXYCIntents",
+                "Core",
                 "Playlist",
                 .product(name: "PlaylistTesting", package: "Playlist"),
             ],

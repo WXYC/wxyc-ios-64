@@ -99,6 +99,17 @@ struct PlaycutEntityTests {
         #expect(titleString == "Call Your Name")
     }
 
+    @Test("subtitle drops a trailing em-dash when the source release title is an empty string")
+    func subtitleTextGuardsEmptyReleaseTitle() {
+        let entity = PlaycutEntity(playcut: .stub(
+            songTitle: "some track",
+            artistName: "Cat Power",
+            releaseTitle: ""
+        ))
+
+        #expect(entity.subtitleText == "Cat Power")
+    }
+
     @Test("populates the CoreSpotlight attribute set with Spotlight-visible metadata")
     func attributeSetCarriesSpotlightFields() {
         let artwork = URL(string: "https://example.com/juana.jpg")
@@ -110,7 +121,7 @@ struct PlaycutEntityTests {
             artistName: "Juana Molina",
             releaseTitle: "DOGA",
             artworkURL: artwork,
-            genres: ["Electronic"]
+            genres: ["Electronic", "Ambient"]
         ))
 
         let set = entity.attributeSet
@@ -122,5 +133,6 @@ struct PlaycutEntityTests {
         #expect(set.thumbnailURL == artwork)
         #expect(set.contentCreationDate == Date(timeIntervalSince1970: 1_700_000_000))
         #expect(set.relatedUniqueIdentifier == "42")
+        #expect(set.keywords == ["Sonamos", "Electronic", "Ambient"])
     }
 }

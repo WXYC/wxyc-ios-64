@@ -15,7 +15,7 @@
 import AppIntents
 import Foundation
 
-public struct EntityID<Owner>: Hashable, CustomStringConvertible, EntityIdentifierConvertible {
+public struct EntityID<Owner>: Hashable, Sendable, CustomStringConvertible, EntityIdentifierConvertible {
     public let value: UInt64
 
     public init(_ value: UInt64) {
@@ -34,5 +34,3 @@ public struct EntityID<Owner>: Hashable, CustomStringConvertible, EntityIdentifi
         UInt64(entityIdentifierString).map(Self.init)
     }
 }
-
-extension EntityID: Sendable where Owner: Sendable { }

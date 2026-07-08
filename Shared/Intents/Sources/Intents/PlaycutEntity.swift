@@ -4,21 +4,27 @@
 //
 //  App Intents bridge from a domain-model Playcut to a Spotlight-indexable
 //  AppEntity. Carries the fields Spotlight and Siri need to present a rich
-//  result (thumbnail, label, genre, broadcast time) so tapping a search hit
-//  surfaces the same metadata the in-app detail view does.
+//  result (thumbnail, label as searchable keyword, genre, broadcast time) so
+//  tapping a search hit surfaces the same metadata the in-app detail view does.
+//
+//  The `IndexedEntity` conformance and the `CoreSpotlight`-backed `attributeSet`
+//  are gated to platforms where CoreSpotlight exists — watchOS declares
+//  `IndexedEntity` as unavailable and doesn't ship the framework.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import AppIntents
-import CoreSpotlight
 import Foundation
 import Playlist
+#if !os(watchOS)
+import CoreSpotlight
+#endif
 
 public typealias PlaycutID = EntityID<PlaycutEntity>
 
-public struct PlaycutEntity: AppEntity, IndexedEntity {
+public struct PlaycutEntity: AppEntity {
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(
         name: "Playcut",
         numericFormat: "\(placeholder: .int) playcuts"
@@ -44,20 +50,23 @@ public struct PlaycutEntity: AppEntity, IndexedEntity {
     /// album art rather than a placeholder glyph.
     public let artworkURL: URL?
 
-    /// Record label — surfaced in Spotlight via `recordLabel`.
+    /// Record label. Surfaced as a Spotlight `keywords` entry (there is no
+    /// dedicated label field on `CSSearchableItemAttributeSet`) so a search
+    /// for the label matches this playcut.
     public let labelName: String?
 
-    /// Discogs genre tags — the first one drives Spotlight's `genre` field.
+    /// Discogs genre tags — the first one drives Spotlight's `genre` field
+    /// and every tag is added to `keywords`.
     public let genres: [String]?
 
-    /// Broadcast time as milliseconds since epoch. Derived once from
-    /// `Playcut.hour` so `attributeSet` and `displayRepresentation` share the
-    /// same date without recomputing.
+    /// Broadcast time as a Swift `Date`, derived once from `Playcut.hour`
+    /// (which is milliseconds since epoch) so `attributeSet` doesn't have
+    /// to redo the conversion.
     public let broadcastDate: Date
 
     /// Composed "artist — release" (or just "artist" when there is no
-    /// release title). Computed once in `init` so the subtitle string and
-    /// Spotlight's contentDescription share it.
+    /// release title) so the subtitle string and Spotlight's
+    /// contentDescription share it without re-formatting.
     public let subtitleText: String
 
     public var displayRepresentation: DisplayRepresentation {
@@ -67,6 +76,23 @@ public struct PlaycutEntity: AppEntity, IndexedEntity {
         )
     }
 
+    public init(playcut: Playcut) {
+        self.id = PlaycutID(playcut.id)
+        self.artworkURL = playcut.artworkURL
+        self.labelName = playcut.labelName
+        self.genres = playcut.genres
+        self.broadcastDate = Date(timeIntervalSince1970: TimeInterval(playcut.hour) / 1000)
+        let nonEmptyRelease = playcut.releaseTitle.flatMap { $0.isEmpty ? nil : $0 }
+        self.subtitleText = nonEmptyRelease.map { "\(playcut.artistName) — \($0)" } ?? playcut.artistName
+        self.title = playcut.songTitle
+        self.artistName = playcut.artistName
+        self.releaseTitle = playcut.releaseTitle
+        self.releaseYear = playcut.releaseYear
+    }
+}
+
+#if !os(watchOS)
+extension PlaycutEntity: IndexedEntity {
     public var attributeSet: CSSearchableItemAttributeSet {
         let set = CSSearchableItemAttributeSet(contentType: .audio)
         set.title = title
@@ -76,22 +102,11 @@ public struct PlaycutEntity: AppEntity, IndexedEntity {
         set.thumbnailURL = artworkURL
         set.contentDescription = subtitleText
         set.contentCreationDate = broadcastDate
+        set.keywords = [labelName].compactMap { $0 } + (genres ?? [])
         // Ties the CoreSpotlight item back to the AppEntity so a Spotlight tap
         // resolves to this specific playcut via OpenPlaycut.
         set.relatedUniqueIdentifier = id.entityIdentifierString
         return set
     }
-
-    public init(playcut: Playcut) {
-        self.id = PlaycutID(playcut.id)
-        self.artworkURL = playcut.artworkURL
-        self.labelName = playcut.labelName
-        self.genres = playcut.genres
-        self.broadcastDate = Date(timeIntervalSince1970: TimeInterval(playcut.hour) / 1000)
-        self.subtitleText = playcut.releaseTitle.map { "\(playcut.artistName) — \($0)" } ?? playcut.artistName
-        self.title = playcut.songTitle
-        self.artistName = playcut.artistName
-        self.releaseTitle = playcut.releaseTitle
-        self.releaseYear = playcut.releaseYear
-    }
 }
+#endif
