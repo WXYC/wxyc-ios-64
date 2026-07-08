@@ -63,4 +63,33 @@ struct PlaylistEqualityTests {
 
         #expect(a != b)
     }
+
+    // The on-air broadcast gate (PlaylistService.ingest) depends on `onAir`
+    // participating in `==`, so an on-air-only change reaches subscribers and the
+    // banner stays live. Without this, dropping `onAir` from `==` would silently
+    // reintroduce a stale-banner bug.
+    @Test("Playlists differing only in onAir are not equal")
+    func differentOnAirIsInequal() {
+        let entries: [Playcut] = [.stub(id: 1)]
+        #expect(Playlist.stub(playcuts: entries, onAir: .dj("DJ MONSTER"))
+            != Playlist.stub(playcuts: entries, onAir: .automation))
+        #expect(Playlist.stub(playcuts: entries, onAir: .automation)
+            != Playlist.stub(playcuts: entries, onAir: .unknown))
+    }
+
+    @Test("Playlists with identical content and onAir are equal")
+    func identicalOnAirIsEqual() {
+        let entries: [Playcut] = [.stub(id: 1)]
+        #expect(Playlist.stub(playcuts: entries, onAir: .dj("DJ MONSTER"))
+            == Playlist.stub(playcuts: entries, onAir: .dj("DJ MONSTER")))
+    }
+
+    // isContentEmpty ignores onAir, so the empty-data guard still recognizes a
+    // content-empty payload that carries an on-air value.
+    @Test("isContentEmpty ignores onAir")
+    func isContentEmptyIgnoresOnAir() {
+        #expect(Playlist.stub(onAir: .dj("DJ MONSTER")).isContentEmpty)
+        #expect(Playlist.stub(onAir: .automation).isContentEmpty)
+        #expect(!Playlist.stub(playcuts: [.stub(id: 1)], onAir: .automation).isContentEmpty)
+    }
 }

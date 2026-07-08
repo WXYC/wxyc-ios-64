@@ -451,6 +451,17 @@ public extension Playlist {
         return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
     }
 
+    /// True when the playlist carries no timeline content, ignoring `onAir`.
+    ///
+    /// The empty-data guard in `PlaylistService` uses this rather than `== .empty`
+    /// so a content-empty fetch is still recognized as the degenerate/error case
+    /// even though it now always carries an `onAir` value that would make it
+    /// `!= .empty`. Otherwise a transient empty response could clear the visible
+    /// feed down to a bare banner.
+    var isContentEmpty: Bool {
+        playcuts.isEmpty && breakpoints.isEmpty && talksets.isEmpty && showMarkers.isEmpty
+    }
+
     /// The show marker for the DJ currently on the air, if any.
     ///
     /// Returns the most recent show marker — highest `chronOrderID`, which the API

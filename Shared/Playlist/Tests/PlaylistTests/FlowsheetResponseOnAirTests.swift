@@ -63,6 +63,45 @@ struct FlowsheetResponseOnAirTests {
         #expect(playlist.onAir.bannerTitle == "DJ MONSTER")
     }
 
+    // MARK: - Robustness: a malformed on_air must never fail the whole decode
+
+    // A minimal but valid v2 track entry (id / play_order / add_time are the only
+    // non-optional fields), so these fixtures also prove real entries survive.
+    private let oneEntry = #"{"id":1,"play_order":1,"add_time":"2024-01-15T14:00:00Z"}"#
+
+    @Test(
+        "a malformed on_air degrades to .unknown without dropping entries",
+        arguments: [
+            #""DJ X""#,          // string, not an object
+            "5",                  // number
+            "[]",                 // array
+            "{}",                 // object missing dj_name
+            #"{"name":"DJ X"}"#,  // object with the wrong key
+            #"{"dj_name":123}"#,  // dj_name is not a string
+            #"{"dj_name":""}"#,   // empty dj_name → blank banner otherwise
+            #"{"dj_name":"   "}"#, // whitespace-only dj_name
+        ]
+    )
+    func malformedOnAirDegradesToUnknown(_ onAirLiteral: String) throws {
+        let response = try decode(#"{"entries":[\#(oneEntry)],"on_air":\#(onAirLiteral)}"#)
+        #expect(response.onAir == .unknown)
+        #expect(response.entries.count == 1)   // the feed is never nuked by a bad on_air
+        #expect(response.entries.first?.id == 1)
+    }
+
+    @Test("a well-formed on_air still decodes alongside non-empty entries")
+    func wellFormedOnAirWithEntries() throws {
+        let response = try decode(#"{"entries":[\#(oneEntry)],"on_air":{"dj_name":"DJ MONSTER"}}"#)
+        #expect(response.onAir == .dj("DJ MONSTER"))
+        #expect(response.entries.count == 1)
+    }
+
+    @Test("a padded dj_name is trimmed for display")
+    func paddedDJNameIsTrimmed() throws {
+        let response = try decode(#"{"entries":[],"on_air":{"dj_name":"  DJ MONSTER  "}}"#)
+        #expect(response.onAir == .dj("DJ MONSTER"))
+    }
+
     // MARK: - Playlist cache back-compat
 
     @Test("Playlist decoded without onAir defaults to .unknown (v1 / legacy cache)")
