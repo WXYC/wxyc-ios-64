@@ -102,7 +102,8 @@ extension PlaycutEntity: IndexedEntity {
         set.thumbnailURL = artworkURL
         set.contentDescription = subtitleText
         set.contentCreationDate = broadcastDate
-        set.keywords = [labelName].compactMap { $0 } + (genres ?? [])
+        let labelKeyword = labelName.flatMap { $0.isEmpty ? nil : $0 }
+        set.keywords = [labelKeyword].compactMap { $0 } + (genres ?? [])
         // Ties the CoreSpotlight item back to the AppEntity so a Spotlight tap
         // resolves to this specific playcut via OpenPlaycut.
         set.relatedUniqueIdentifier = id.entityIdentifierString
