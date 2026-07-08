@@ -155,6 +155,14 @@
         "identifier" : "PartyHornTests",
         "name" : "PartyHornTests"
       }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Shared\/Intents",
+        "identifier" : "WXYCIntentsTests",
+        "name" : "WXYCIntentsTests"
+      }
     }
   ],
   "version" : 1

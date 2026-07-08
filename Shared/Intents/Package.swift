@@ -14,6 +14,7 @@ let package = Package(
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "Playback", path: "../Playback"),
+        .package(name: "Playlist", path: "../Playlist"),
     ],
     targets: [
         .target(
@@ -22,9 +23,19 @@ let package = Package(
                 "Analytics",
                 "Logger",
                 "Playback",
+                "Playlist",
                 .product(name: "PlaybackCore", package: "Playback"),
             ],
             path: "Sources/Intents"
+        ),
+        .testTarget(
+            name: "WXYCIntentsTests",
+            dependencies: [
+                "WXYCIntents",
+                "Playlist",
+                .product(name: "PlaylistTesting", package: "Playlist"),
+            ],
+            path: "Tests/WXYCIntentsTests"
         ),
     ]
 )

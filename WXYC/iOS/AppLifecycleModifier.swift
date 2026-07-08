@@ -20,6 +20,7 @@ import Logger
 import Playback
 import SwiftUI
 import Wallpaper
+import WXYCIntents
 
 /// View-level lifecycle modifier extracted from `WXYCApp.body`. Routes
 /// per-window observations through a small set of named handlers.
@@ -90,6 +91,10 @@ struct AppLifecycleModifier: ViewModifier {
     // MARK: - Deep links and Siri
 
     private func handleURL(_ url: URL) {
+        if let playcutID = PlaycutDeepLink.playcutID(from: url) {
+            PlaycutRoute.broadcastOpen(playcutID: playcutID)
+            return
+        }
         if url.scheme == "wxyc" || url.absoluteString.contains("org.wxyc.iphoneapp.play") {
             AudioPlayerController.shared.play(reason: .deepLink)
         }
