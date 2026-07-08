@@ -97,11 +97,9 @@ struct AppLifecycleModifier: ViewModifier {
         case .play:
             AudioPlayerController.shared.play(reason: .deepLink)
         case nil:
-            // Legacy Siri user-activity URL — preserved because the shortcut
-            // item at line 82 still emits this activity type.
-            if url.absoluteString.contains("org.wxyc.iphoneapp.play") {
-                AudioPlayerController.shared.play(reason: .deepLink)
-            }
+            // Unrecognised URL — the `.onContinueUserActivity` handler (line 40)
+            // owns the legacy `org.wxyc.iphoneapp.play` activity, not this path.
+            break
         }
     }
 

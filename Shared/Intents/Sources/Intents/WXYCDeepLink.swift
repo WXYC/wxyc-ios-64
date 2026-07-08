@@ -29,7 +29,7 @@ public enum WXYCDeepLink: Equatable, Sendable {
     public init?(url: URL) {
         guard url.scheme?.lowercased() == Self.scheme else { return nil }
         guard let host = url.host?.lowercased() else { return nil }
-        let segments = url.pathComponents.filter { $0 != "/" && !$0.isEmpty }
+        let segments = url.pathComponents.filter { $0 != "/" }
 
         switch host {
         case "play":

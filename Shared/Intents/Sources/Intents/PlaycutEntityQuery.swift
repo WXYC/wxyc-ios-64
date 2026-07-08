@@ -29,11 +29,15 @@ public struct PlaycutEntityQuery: EntityQuery {
 
     /// Resolves `identifiers` to entities via the injected source. The result
     /// preserves the input order and drops ids the source couldn't resolve,
-    /// matching the AppIntents `entities(for:)` contract.
+    /// matching the AppIntents `entities(for:)` contract. If the source
+    /// returns duplicate ids the first one wins — the query never traps.
     public func entities(for identifiers: [PlaycutID]) async throws -> [PlaycutEntity] {
         let rawIDs = identifiers.map(\.value)
         let playcuts = await source(rawIDs)
-        let byID = Dictionary(uniqueKeysWithValues: playcuts.map { ($0.id, PlaycutEntity(playcut: $0)) })
+        let byID = Dictionary(
+            playcuts.map { ($0.id, PlaycutEntity(playcut: $0)) },
+            uniquingKeysWith: { first, _ in first }
+        )
         return rawIDs.compactMap { byID[$0] }
     }
 

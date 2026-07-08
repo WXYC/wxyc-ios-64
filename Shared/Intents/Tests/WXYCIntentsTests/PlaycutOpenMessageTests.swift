@@ -4,7 +4,6 @@
 //
 //  Verifies the typed NotificationCenter delivery channel that carries "open
 //  this playcut" intents between the URL scheme handler and the F3 consumer.
-//  Because delivery is @MainActor, the suite itself is @MainActor.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -15,19 +14,29 @@ import Foundation
 import Testing
 @testable import WXYCIntents
 
-@MainActor
 @Suite("PlaycutOpenMessage")
 struct PlaycutOpenMessageTests {
     @Test("post + observe round-trips the typed playcut id")
+    @MainActor
     func roundTripsPlaycutID() async throws {
         let center = NotificationCenter()
-        var received: PlaycutID?
-        let token = center.addMainActorObserver(for: PlaycutOpenMessage.self) { message in
-            received = message.playcutID
+        // `queue: nil` delivers the observer synchronously on the poster's
+        // thread, which makes the round-trip race-free without needing a
+        // Task/AsyncStream dance. The typed `makeMessage` is still what
+        // decodes the payload, so this exercises the full parse path.
+        let received: PlaycutID = await withCheckedContinuation { continuation in
+            let observer = center.addObserver(
+                forName: PlaycutOpenMessage.name,
+                object: nil,
+                queue: nil
+            ) { notification in
+                if let message = PlaycutOpenMessage.makeMessage(notification) {
+                    continuation.resume(returning: message.playcutID)
+                }
+            }
+            _ = observer
+            center.post(PlaycutOpenMessage(playcutID: PlaycutID(42)), subject: nil)
         }
-        defer { center.removeObserver(token) }
-
-        center.post(PlaycutOpenMessage(playcutID: PlaycutID(42)), subject: nil)
 
         #expect(received == PlaycutID(42))
     }
