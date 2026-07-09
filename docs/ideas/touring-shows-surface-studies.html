@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Box Office — Surface Studies</title>
+<style>
+  /* -----------------------------------------------------------------------
+     Box Office ticket, reworked to compose with the app wallpaper.
+     Body = warm smoked glass (wallpaper glows through). Stub = opaque paper
+     keepsake. Perforation notches are cut THROUGH to the wallpaper (mask).
+     Barcode removed. Three surface treatments to compare on the live bg.
+     -------------------------------------------------------------------- */
+  :root {
+    --bg-1:#303c72; --bg-2:#40498e; --bg-3:#af3e79; --bg-4:#b64949; --bg-5:#b34876;
+    --page:#101120; --page-2:#171a30;
+    --ink:#ffffff; --ink-dim:rgba(255,255,255,0.72); --ink-faint:rgba(255,255,255,0.46);
+    --glass-line:rgba(255,255,255,0.15);
+    --live:#34c759;
+    --amber:#ff8940; --amber-ink:#ffc79a; --amber-line:rgba(255,137,64,0.55);
+    --stub:96px;   /* height of the tear-off stub */
+    --nr:11px;     /* notch radius */
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--page); }
+  body {
+    margin:0; color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro",system-ui,sans-serif;
+    background:
+      radial-gradient(120% 90% at 82% -10%, rgba(255,137,64,0.14), transparent 55%),
+      radial-gradient(120% 90% at 0% 10%, rgba(64,73,142,0.35), transparent 55%),
+      linear-gradient(180deg,var(--page),var(--page-2));
+    background-attachment:fixed; min-height:100vh;
+  }
+  .wrap { max-width:1120px; margin:0 auto; padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 72px; }
+  .kicker { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  h1 { font-size:clamp(30px,5.4vw,50px); line-height:1.04; letter-spacing:-0.02em; font-weight:700; margin:0 0 16px; text-wrap:balance; }
+  .lede { max-width:64ch; font-size:clamp(15px,1.7vw,17px); color:var(--ink-dim); margin:0; }
+
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:34px 0 6px; align-items:center; }
+  .switch-label { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin-right:6px; }
+  .seg { display:inline-flex; flex-wrap:wrap; background:rgba(17,15,38,0.3); border:1px solid var(--glass-line); border-radius:14px; padding:4px; gap:2px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .seg button { appearance:none; border:0; background:transparent; color:var(--ink-dim); font:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; transition:color .2s, background .2s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button[aria-pressed="true"] { background:linear-gradient(180deg,#ff9d5c,var(--amber)); color:#2a1400; box-shadow:0 4px 14px rgba(255,137,64,0.35); }
+  .seg button:focus-visible { outline:2px solid var(--amber-ink); outline-offset:2px; }
+
+  .stage { display:grid; grid-template-columns:minmax(0,348px) minmax(0,1fr); gap:clamp(22px,4vw,48px); align-items:start; margin:30px 0 8px; }
+  @media (max-width:820px){ .stage { grid-template-columns:1fr; justify-items:center; } }
+
+  .device { width:min(348px,92vw); }
+  .device figcaption { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); text-align:center; margin-top:16px; }
+  .screen { position:relative; border-radius:46px; padding:10px; background:#05060c; box-shadow:0 0 0 2px rgba(255,255,255,0.06), 0 30px 70px -20px rgba(0,0,0,0.8); }
+  .glass-in { position:relative; height:740px; max-height:82vh; border-radius:38px; overflow:hidden; background:linear-gradient(158deg,var(--bg-1) 0%,var(--bg-2) 12%,var(--bg-3) 60%,var(--bg-4) 80%,var(--bg-5) 100%); }
+  .glass-in::after { content:""; position:absolute; inset:0; background:radial-gradient(140% 80% at 50% 120%, rgba(0,0,0,0.45), transparent 60%); pointer-events:none; }
+  .island { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#05060c; border-radius:16px; z-index:20; }
+  .scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:54px 16px 26px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar { display:none; }
+  .statusbar { position:absolute; top:16px; left:0; right:0; display:flex; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:600; z-index:15; pointer-events:none; }
+  .statusbar .r { letter-spacing:0.04em; opacity:0.9; }
+
+  .nav { display:flex; align-items:center; gap:6px; font-size:15px; font-weight:600; color:var(--ink-dim); margin:2px 2px 16px; }
+  .nav svg { width:18px; height:18px; }
+  .hero { display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .hero .cover { width:180px; height:180px; border-radius:12px; box-shadow:0 20px 40px -10px rgba(0,0,0,0.6); background:linear-gradient(135deg,#1f5f6b,#3a2a6b 55%,#c04a86); }
+  .hero .d-song { font-size:22px; font-weight:700; margin:16px 0 0; }
+  .hero .d-artist { font-size:18px; margin:3px 0 0; }
+  .hero .d-release { font-size:14px; color:var(--ink-dim); margin:3px 0 0; }
+
+  /* ---------------- the ticket ---------------- */
+  .bo-wrap { position:relative; margin-top:22px; }
+  .bo-glow { position:absolute; inset:-14px -6px 30px; border-radius:26px; background:radial-gradient(70% 60% at 50% 40%, rgba(255,137,64,0.4), transparent 70%); filter:blur(14px); z-index:0; }
+
+  .bo-ticket {
+    position:relative; z-index:1; border-radius:16px; overflow:hidden;
+    box-shadow:0 18px 40px -16px rgba(0,0,0,0.7);
+    /* punch the two perforation notches clean through to the wallpaper */
+    mask:
+      radial-gradient(circle var(--nr) at 0 calc(100% - var(--stub)), rgba(0,0,0,0) 98%, #000 100%),
+      radial-gradient(circle var(--nr) at 100% calc(100% - var(--stub)), rgba(0,0,0,0) 98%, #000 100%);
+    mask-composite:intersect;
+    -webkit-mask:
+      radial-gradient(circle var(--nr) at 0 calc(100% - var(--stub)), rgba(0,0,0,0) 98%, #000 100%),
+      radial-gradient(circle var(--nr) at 100% calc(100% - var(--stub)), rgba(0,0,0,0) 98%, #000 100%);
+    -webkit-mask-composite:source-in;
+  }
+
+  /* BODY — warm smoked glass (default = "Amber Glass") */
+  .bo-body {
+    padding:18px 18px 20px; position:relative;
+    background:linear-gradient(180deg, rgba(48,32,20,0.52), rgba(26,17,11,0.58));
+    backdrop-filter:blur(16px) saturate(1.1); -webkit-backdrop-filter:blur(16px) saturate(1.1);
+    border:1px solid var(--amber-line); border-bottom:0;
+  }
+  .bo-head { display:flex; align-items:center; justify-content:space-between; }
+  .eyebrow { display:inline-flex; align-items:center; gap:7px; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber-ink); }
+  .eyebrow .tdot { width:6px; height:6px; border-radius:50%; background:var(--amber); box-shadow:0 0 7px 1px var(--amber-line); }
+  .status { font-family:ui-monospace,monospace; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:3px 9px; border-radius:999px; background:rgba(52,199,89,0.18); color:#a6f0bd; border:1px solid rgba(52,199,89,0.5); }
+  .venue { font-size:25px; font-weight:800; letter-spacing:-0.01em; margin:16px 0 2px; color:#fff; }
+  .city { font-size:13px; letter-spacing:0.02em; color:var(--amber-ink); margin:0; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0 12px; font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  .stat .k { font-size:9px; letter-spacing:0.12em; color:rgba(255,255,255,0.5); }
+  .stat .v { font-size:14px; color:#fff; margin-top:3px; }
+  .subline { font-size:13px; color:var(--ink-dim); margin:0; }
+  .subline b { color:#fff; font-weight:600; }
+
+  /* STUB — opaque paper keepsake (default) */
+  .bo-stub {
+    position:relative; height:var(--stub);
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:0 18px;
+    background:linear-gradient(180deg,#f3ead7,#eaddc2);
+    border-top:2px dashed rgba(150,96,40,0.5);
+    color:#2a1c12;
+  }
+  .bo-stub .left { font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  .bo-stub .admit { font-size:12px; font-weight:800; letter-spacing:0.14em; color:#b5601f; }
+  .bo-stub .sub2 { font-size:10px; letter-spacing:0.08em; color:#6e5334; margin-top:5px; line-height:1.5; }
+  .bo-stub .date { text-align:center; line-height:1; }
+  .bo-stub .date .dow { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; color:#b5601f; }
+  .bo-stub .date .num { font-size:34px; font-weight:800; color:#241a12; letter-spacing:-0.01em; }
+  .bo-stub .date .mon { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; color:#6e5334; }
+
+  .ticket-btn { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; margin-top:14px; padding:14px; border-radius:13px; border:0; cursor:pointer; font:inherit; font-size:16px; font-weight:700; background:linear-gradient(180deg,#ff9d5c,var(--amber)); color:#2a1400; box-shadow:0 8px 22px -8px rgba(255,137,64,0.7); text-decoration:none; transition:transform .15s; position:relative; z-index:1; }
+  .ticket-btn:hover { transform:translateY(-1px); }
+  .ticket-btn svg { width:18px; height:18px; }
+
+  /* ===== SURFACE: Warm Paper (opaque cardstock body, dark stub) ===== */
+  [data-surface="paper"] .bo-glow { background:none; }
+  [data-surface="paper"] .bo-ticket { box-shadow:0 22px 46px -18px rgba(0,0,0,0.75); }
+  [data-surface="paper"] .bo-body {
+    background:#f2e8d6;
+    background-image:radial-gradient(rgba(120,90,50,0.05) 0.6px, transparent 1px);
+    background-size:4px 4px;
+    backdrop-filter:none; -webkit-backdrop-filter:none;
+    border-color:rgba(150,96,40,0.35); color:#2c2016;
+  }
+  [data-surface="paper"] .eyebrow { color:#c2611c; }
+  [data-surface="paper"] .eyebrow .tdot { box-shadow:none; }
+  [data-surface="paper"] .status { background:rgba(46,125,79,0.14); color:#2e7d4f; border-color:rgba(46,125,79,0.5); }
+  [data-surface="paper"] .venue { color:#22160e; }
+  [data-surface="paper"] .city { color:#b0642a; }
+  [data-surface="paper"] .stat .k { color:#8a7256; }
+  [data-surface="paper"] .stat .v { color:#2c2016; }
+  [data-surface="paper"] .subline { color:#5a4a36; }
+  [data-surface="paper"] .subline b { color:#2c2016; }
+  [data-surface="paper"] .bo-stub {
+    background:linear-gradient(180deg,#241a12,#1c140d); color:#efe3cf;
+    border-top:2px dashed rgba(239,227,207,0.35);
+  }
+  [data-surface="paper"] .bo-stub .admit { color:var(--amber-ink); }
+  [data-surface="paper"] .bo-stub .sub2 { color:rgba(239,227,207,0.55); }
+  [data-surface="paper"] .bo-stub .date .dow { color:var(--amber-ink); }
+  [data-surface="paper"] .bo-stub .date .num { color:#fff; }
+  [data-surface="paper"] .bo-stub .date .mon { color:rgba(239,227,207,0.6); }
+
+  /* ===== SURFACE: Wallpaper Glass (a concentrated warm slice of the bg) ===== */
+  [data-surface="gradient"] .bo-body {
+    background:linear-gradient(200deg, rgba(64,73,142,0.44), rgba(175,62,121,0.5) 55%, rgba(182,73,73,0.52));
+    backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2);
+    border-color:rgba(255,255,255,0.22);
+  }
+  [data-surface="gradient"] .bo-stub {
+    background:linear-gradient(180deg, rgba(22,14,28,0.62), rgba(14,9,20,0.66));
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    color:#ffd9b8; border-top:2px dashed rgba(255,180,120,0.5);
+  }
+  [data-surface="gradient"] .bo-stub .admit { color:var(--amber-ink); }
+  [data-surface="gradient"] .bo-stub .sub2 { color:rgba(255,217,184,0.6); }
+  [data-surface="gradient"] .bo-stub .date .dow { color:var(--amber-ink); }
+  [data-surface="gradient"] .bo-stub .date .num { color:#fff; }
+  [data-surface="gradient"] .bo-stub .date .mon { color:rgba(255,217,184,0.6); }
+
+  /* grounding card */
+  .card { margin-top:20px; padding:16px; border-radius:16px; background:rgba(255,255,255,0.09); border:1px solid var(--glass-line); }
+  .card-head { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 12px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:14px; }
+  .kv dt { color:var(--ink-faint); font-variant:small-caps; } .kv dd { margin:0; font-weight:600; }
+
+  /* side column */
+  .side { display:flex; flex-direction:column; gap:22px; }
+  .panel { border-radius:20px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.035); padding:22px; }
+  .panel h3 { margin:0 0 4px; font-size:17px; }
+  .panel .hint { margin:0 0 16px; font-size:13.5px; color:var(--ink-dim); }
+  .anat { display:flex; flex-direction:column; gap:14px; }
+  .anat .row { display:flex; gap:13px; align-items:flex-start; }
+  .anat .swatch { width:38px; height:38px; border-radius:9px; flex:none; margin-top:2px; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.14); }
+  .anat .s-body { background:linear-gradient(180deg, rgba(48,32,20,0.6), rgba(26,17,11,0.7)); backdrop-filter:blur(6px); }
+  .anat .s-stub { background:linear-gradient(180deg,#f3ead7,#eaddc2); }
+  .anat .s-perf { background:repeating-linear-gradient(180deg,#1a1830 0 3px, transparent 3px 6px); position:relative; }
+  .anat .s-perf::before, .anat .s-perf::after { content:""; position:absolute; left:50%; width:12px; height:12px; border-radius:50%; background:var(--bg-3); transform:translateX(-50%); box-shadow:inset 0 1px 2px rgba(0,0,0,0.5); }
+  .anat .s-perf::before { top:2px; } .anat .s-perf::after { bottom:2px; }
+  .anat h4 { margin:0 0 3px; font-size:14px; }
+  .anat p { margin:0; font-size:13px; color:var(--ink-dim); }
+  .anat code { font-family:ui-monospace,monospace; font-size:12px; color:var(--amber-ink); }
+
+  .looks { font-size:14px; color:var(--ink-dim); }
+  .looks[hidden] { display:none; }
+  .looks b { color:#fff; }
+  .tag-rec { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#2a1400; background:var(--amber); padding:2px 8px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+
+  .notes { margin-top:40px; padding:22px 24px; border-radius:16px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08); }
+  .notes h2 { font-size:15px; font-family:ui-monospace,monospace; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 14px; }
+  .notes ul { margin:0; padding-left:20px; } .notes li { font-size:14px; color:var(--ink-dim); margin-bottom:9px; }
+  .notes b { color:var(--ink); font-weight:600; }
+  .notes code { font-family:ui-monospace,monospace; font-size:12.5px; background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:5px; color:var(--amber-ink); }
+
+  @media (prefers-reduced-motion: reduce) { .ticket-btn { transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">WXYC · 89.3 FM × Triangle Shows</p>
+  <h1>Box Office · surface studies</h1>
+  <p class="lede">Barcode gone. The question was the surface — a black slab fights the app's glass-over-wallpaper world. Here the ticket <b>body</b> is warm glass the wallpaper glows through, and the <b>stub</b> is the one opaque, printed keepsake. The perforation notches are cut clean through to the gradient. Three ways to render that surface, judged against the live wallpaper.</p>
+
+  <div class="controls">
+    <span class="switch-label">Surface</span>
+    <div class="seg" role="group" aria-label="Ticket surface">
+      <button data-set="glass" aria-pressed="true">Amber Glass</button>
+      <button data-set="paper" aria-pressed="false">Warm Paper</button>
+      <button data-set="gradient" aria-pressed="false">Wallpaper Glass</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage" data-surface="glass">
+
+    <!-- phone -->
+    <figure class="device">
+      <div class="screen"><div class="glass-in">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="r">WXYC ●●● ▮</span></div>
+        <div class="scroll">
+          <div class="nav">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Playlist
+          </div>
+          <div class="hero">
+            <div class="cover"></div>
+            <h2 class="d-song">Method Actor</h2>
+            <p class="d-artist">Nilüfer Yanya</p>
+            <p class="d-release">My Method Actor · 2024</p>
+          </div>
+
+          <div class="bo-wrap">
+            <div class="bo-glow"></div>
+            <div class="bo-ticket">
+              <div class="bo-body">
+                <div class="bo-head">
+                  <span class="eyebrow"><span class="tdot"></span>Playing Near You</span>
+                  <span class="status">On Sale</span>
+                </div>
+                <p class="venue">Cat's Cradle</p>
+                <p class="city">Carrboro, NC · 8 mi away</p>
+                <div class="stats">
+                  <div class="stat"><div class="k">DOORS</div><div class="v">8:00 PM</div></div>
+                  <div class="stat"><div class="k">SHOW</div><div class="v">9:00 PM</div></div>
+                  <div class="stat"><div class="k">PRICE</div><div class="v">$22–$25</div></div>
+                </div>
+                <p class="subline">with <b>Tapir!</b> · All ages</p>
+              </div>
+              <div class="bo-stub">
+                <div class="left">
+                  <div class="admit">ADMIT ONE</div>
+                  <div class="sub2">GEN ADM<br>NO. WX-3391</div>
+                </div>
+                <div class="date">
+                  <div class="dow">FRI</div>
+                  <div class="num">10</div>
+                  <div class="mon">JUL</div>
+                </div>
+              </div>
+            </div>
+            <a class="ticket-btn" href="#" onclick="return false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 002-2h12a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H6a2 2 0 00-2-2 2 2 0 000-4z"/><path d="M10 6v12" stroke-dasharray="1 2.5"/></svg>
+              Get Tickets
+            </a>
+          </div>
+
+          <div class="card">
+            <p class="card-head">Release</p>
+            <dl class="kv"><dt>Label</dt><dd>Ninja Tune</dd><dt>Year</dt><dd>2024</dd></dl>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>Track detail · box-office module</figcaption>
+    </figure>
+
+    <!-- side -->
+    <div class="side">
+      <div class="panel">
+        <h3>Anatomy</h3>
+        <p class="hint">Two materials + a window. That's the whole idea.</p>
+        <div class="anat">
+          <div class="row">
+            <div class="swatch s-body"></div>
+            <div><h4>Body · warm smoked glass</h4><p>The app's own <code>backdrop-filter</code> blur, tinted amber instead of cool. The wallpaper reads through it, so the card belongs to the same world as Release and streaming — just warmer.</p></div>
+          </div>
+          <div class="row">
+            <div class="swatch s-stub"></div>
+            <div><h4>Stub · opaque keepsake</h4><p>The one solid, printed surface. Light where the body is dark, it pulls the eye to the date and earns the word "stub." The body/stub contrast is what makes it read as a ticket.</p></div>
+          </div>
+          <div class="row">
+            <div class="swatch s-perf"></div>
+            <div><h4>Perforation · window to the wallpaper</h4><p>A dashed tear line with two notches <b>cut through</b> to the gradient (CSS mask, not paint). Those holes stitch the object back into the background it floats on.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Look &amp; feel <span class="tag-rec" data-rec-glass>Recommended</span></h3>
+        <p class="hint">Same anatomy, three surfaces — flip the switch and watch each one meet the wallpaper.</p>
+        <p class="looks" data-look="glass"><b>Amber Glass.</b> Warm translucent body over a cream stub. Sits most naturally in the app — it's visibly the same glass as every other card, only warm. The wallpaper glows through the body and punches through the notches. Safest, most native. <b>My pick.</b></p>
+        <p class="looks" data-look="paper" hidden><b>Warm Paper.</b> An opaque cardstock body with a dark stub — a real paper ticket dropped onto the feed. Highest contrast, most "object," most tactile. The boldest read; the risk is it feels like a sticker pasted over the glass rather than part of it.</p>
+        <p class="looks" data-look="gradient" hidden><b>Wallpaper Glass.</b> The body is a concentrated, saturated slice of the app's own indigo→magenta→red gradient. It composes by being <b>made of the wallpaper</b> — richest and most colorful, though the amber signal is quieter since the surface itself is doing the color.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h2>Unchanged for all three</h2>
+    <ul>
+      <li><b>One amber signal.</b> The warm surface + amber CTA say "on tour" without ever touching the green on-air dot.</li>
+      <li><b>Match on a name, guarded.</b> Triangle Shows has no artist ID — highlight only on a <b>normalized exact match</b> against <code>GET /api/events?search={artist}&amp;start={today}</code>; treat fuzzy hits as no-match for v1.</li>
+      <li><b>State-aware.</b> <code>status</code> drives the pill (<code>on_sale</code> / <code>sold_out</code> / <code>cancelled</code> / <code>free</code>); only ever show <code>date &gt;= today</code>, soonest first.</li>
+      <li><b>Notch fidelity.</b> The mask cut is real transparency, so it reveals whatever the wallpaper is doing at that scroll position — no color to keep in sync.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var stage = document.getElementById('stage');
+    var buttons = document.querySelectorAll('.seg button');
+    var looks = document.querySelectorAll('.looks');
+    var rec = document.querySelector('[data-rec-glass]');
+    function set(v) {
+      stage.setAttribute('data-surface', v);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.set === v ? 'true' : 'false'); });
+      looks.forEach(function (p) { p.hidden = (p.dataset.look !== v); });
+      rec.style.display = (v === 'glass') ? '' : 'none';
+      stage.querySelector('.scroll').scrollTop = 0;
+    }
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.dataset.set); }); });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WXYC × Triangle Shows — Ticket Stub Variations</title>
+<style>
+  /* -----------------------------------------------------------------------
+     Ticket-stub concept, five ways. All share the WXYC app palette + the
+     amber "on tour" accent; they diverge in type, texture and structure.
+     System SF stack (authentic to the iOS app) + ui-monospace for tickets.
+     -------------------------------------------------------------------- */
+  :root {
+    --bg-1: #303c72; --bg-2: #40498e; --bg-3: #af3e79; --bg-4: #b64949; --bg-5: #b34876;
+    --page: #101120; --page-2: #171a30;
+    --ink: #ffffff; --ink-dim: rgba(255,255,255,0.72); --ink-faint: rgba(255,255,255,0.46);
+    --glass: rgba(17,15,38,0.42); --glass-2: rgba(17,15,38,0.30); --glass-line: rgba(255,255,255,0.15);
+    --live: #34c759;
+    --amber: #ff8940; --amber-ink: #ffc79a; --amber-soft: rgba(255,137,64,0.16); --amber-line: rgba(255,137,64,0.55);
+    --hole: #191531;
+    --r-card: 16px; --r-row: 14px; --r-art: 6px;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--page); }
+  body {
+    margin: 0; color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif;
+    background:
+      radial-gradient(120% 90% at 82% -10%, rgba(255,137,64,0.14), transparent 55%),
+      radial-gradient(120% 90% at 0% 10%, rgba(64,73,142,0.35), transparent 55%),
+      linear-gradient(180deg, var(--page), var(--page-2));
+    background-attachment: fixed; min-height: 100vh;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: clamp(28px,5vw,64px) clamp(18px,4vw,40px) 72px; }
+
+  .kicker { font-family: ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  h1 { font-size: clamp(30px,5.4vw,52px); line-height:1.03; letter-spacing:-0.02em; font-weight:700; margin:0 0 16px; text-wrap:balance; }
+  h1 .arrow { color: var(--amber); font-weight:600; }
+  .lede { max-width:62ch; font-size: clamp(15px,1.7vw,17px); color:var(--ink-dim); margin:0; }
+
+  /* switch */
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:34px 0 6px; align-items:center; }
+  .switch-label { font-family: ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); margin-right:6px; }
+  .seg { display:inline-flex; flex-wrap:wrap; background:var(--glass-2); border:1px solid var(--glass-line); border-radius:14px; padding:4px; gap:2px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .seg button { appearance:none; border:0; background:transparent; color:var(--ink-dim); font:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:10px; cursor:pointer; transition:color .2s, background .2s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button[aria-pressed="true"] { background:linear-gradient(180deg,#ff9d5c,var(--amber)); color:#2a1400; box-shadow:0 4px 14px rgba(255,137,64,0.35); }
+  .seg button:focus-visible { outline:2px solid var(--amber-ink); outline-offset:2px; }
+
+  /* stage layout: phone + side column */
+  .stage { display:grid; grid-template-columns: minmax(0,348px) minmax(0,1fr); gap: clamp(22px,4vw,44px); align-items:start; margin:30px 0 8px; }
+  @media (max-width: 820px) { .stage { grid-template-columns: 1fr; justify-items:center; } }
+
+  .device { width:min(348px,92vw); }
+  .device figcaption, .sidecap { font-family: ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); text-align:center; margin-top:16px; }
+  .screen { position:relative; border-radius:46px; padding:10px; background:#05060c; box-shadow:0 0 0 2px rgba(255,255,255,0.06), 0 30px 70px -20px rgba(0,0,0,0.8); }
+  .glass-in { position:relative; height:760px; max-height:82vh; border-radius:38px; overflow:hidden; background:linear-gradient(158deg,var(--bg-1) 0%,var(--bg-2) 12%,var(--bg-3) 60%,var(--bg-4) 80%,var(--bg-5) 100%); }
+  .glass-in::after { content:""; position:absolute; inset:0; background:radial-gradient(140% 80% at 50% 120%, rgba(0,0,0,0.45), transparent 60%); pointer-events:none; }
+  .island { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#05060c; border-radius:16px; z-index:20; }
+  .scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:54px 16px 26px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar { display:none; }
+  .statusbar { position:absolute; top:16px; left:0; right:0; display:flex; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:600; z-index:15; pointer-events:none; }
+  .statusbar .r { letter-spacing:0.04em; opacity:0.9; }
+
+  .nav { display:flex; align-items:center; gap:6px; font-size:15px; font-weight:600; color:var(--ink-dim); margin:2px 2px 16px; }
+  .nav svg { width:18px; height:18px; }
+  .hero { display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .hero .cover { width:190px; height:190px; border-radius:12px; box-shadow:0 20px 40px -10px rgba(0,0,0,0.6); background:linear-gradient(135deg,#1f5f6b,#3a2a6b 55%,#c04a86); }
+  .hero .d-song { font-size:22px; font-weight:700; margin:16px 0 0; }
+  .hero .d-artist { font-size:18px; margin:3px 0 0; }
+  .hero .d-release { font-size:14px; color:var(--ink-dim); margin:3px 0 0; }
+
+  /* shared ticket bits */
+  .mod-eyebrow { display:inline-flex; align-items:center; gap:7px; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber-ink); }
+  .mod-eyebrow .tdot { width:6px; height:6px; border-radius:50%; background:var(--amber); box-shadow:0 0 7px 1px var(--amber-line); }
+  .status-pill { font-family:ui-monospace,monospace; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:3px 9px; border-radius:999px; background:rgba(52,199,89,0.16); color:#a6f0bd; border:1px solid rgba(52,199,89,0.5); }
+  .ticket-btn { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; margin-top:15px; padding:14px; border-radius:13px; border:0; cursor:pointer; font:inherit; font-size:16px; font-weight:700; background:linear-gradient(180deg,#ff9d5c,var(--amber)); color:#2a1400; box-shadow:0 8px 22px -8px rgba(255,137,64,0.7); text-decoration:none; transition:transform .15s; }
+  .ticket-btn:hover { transform:translateY(-1px); }
+  .ticket-btn svg { width:18px; height:18px; }
+  .notch { position:absolute; width:14px; height:14px; border-radius:50%; background:var(--hole); box-shadow:inset 0 1px 2px rgba(0,0,0,0.6); }
+
+  .tv { display:none; margin-top:20px; }
+  [data-variant="A"] .tv--A, [data-variant="B"] .tv--B, [data-variant="C"] .tv--C,
+  [data-variant="D"] .tv--D, [data-variant="E"] .tv--E { display:block; }
+
+  /* ===================== A · BOX OFFICE (thermal) ===================== */
+  .boxoffice { position:relative; border-radius:12px; padding:20px 18px; color:#f3ecde;
+    background:linear-gradient(180deg,#181521,#12101a);
+    border:1px solid rgba(255,199,154,0.35);
+    font-family: ui-monospace,"SF Mono",Menlo,monospace; }
+  .boxoffice .perf-top, .boxoffice .perf-bot { position:absolute; left:10px; right:10px; height:0; border-top:2px dashed rgba(243,236,222,0.35); }
+  .boxoffice .perf-top { top:52px; } .boxoffice .perf-bot { bottom:74px; }
+  .boxoffice .n-tl { top:46px; left:-7px; } .boxoffice .n-tr { top:46px; right:-7px; }
+  .boxoffice .head { display:flex; justify-content:space-between; align-items:center; font-size:10px; letter-spacing:0.14em; padding-bottom:16px; }
+  .boxoffice .admit { color:var(--amber-ink); border:1px solid var(--amber-line); border-radius:4px; padding:3px 7px; }
+  .boxoffice .event { font-size:10px; letter-spacing:0.16em; color:rgba(243,236,222,0.55); margin:18px 0 2px; }
+  .boxoffice .venue { font-family:-apple-system,system-ui,sans-serif; font-size:23px; font-weight:800; letter-spacing:-0.01em; color:#fff; margin:0 0 2px; }
+  .boxoffice .city { font-size:11px; letter-spacing:0.08em; color:var(--amber-ink); margin:0; }
+  .boxoffice .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px 8px; margin:16px 0; }
+  .boxoffice .grid .k { font-size:9px; letter-spacing:0.12em; color:rgba(243,236,222,0.5); }
+  .boxoffice .grid .v { font-size:14px; color:#fff; margin-top:3px; }
+  .boxoffice .barcode { height:44px; border-radius:4px; margin-top:6px;
+    background:#efe9dd;
+    background-image:repeating-linear-gradient(90deg,#15121a 0 2px,#efe9dd 2px 4px,#15121a 4px 5px,#efe9dd 5px 9px,#15121a 9px 12px,#efe9dd 12px 13px,#15121a 13px 17px,#efe9dd 17px 19px,#15121a 19px 22px,#efe9dd 22px 24px); }
+  .boxoffice .ordno { display:flex; justify-content:space-between; font-size:10px; letter-spacing:0.1em; color:rgba(243,236,222,0.6); margin-top:8px; }
+
+  /* ===================== B · TORN HALF (vertical perf) ===================== */
+  .tornhalf { position:relative; display:flex; border-radius:14px; overflow:hidden; border:1px solid var(--amber-line);
+    background:linear-gradient(180deg, rgba(255,137,64,0.20), rgba(255,137,64,0.09)); }
+  .tornhalf .main { flex:1; padding:18px; }
+  .tornhalf .stub { width:104px; flex:none; padding:18px 12px; text-align:center; display:flex; flex-direction:column; justify-content:center; gap:6px;
+    background:rgba(0,0,0,0.16);
+    border-left:2px dashed rgba(255,214,181,0.75); position:relative; }
+  .tornhalf .stub .n-top { top:-7px; left:-8px; } .tornhalf .stub .n-bot { bottom:-7px; left:-8px; }
+  .tornhalf .venue { font-size:24px; font-weight:800; letter-spacing:-0.01em; margin:12px 0 2px; }
+  .tornhalf .city { font-size:13px; color:var(--amber-ink); margin:0 0 12px; }
+  .tornhalf .rowline { font-family:ui-monospace,monospace; font-size:12px; color:var(--ink-dim); margin:5px 0; }
+  .tornhalf .rowline b { color:#fff; font-weight:700; }
+  .tornhalf .stub .adm { font-family:ui-monospace,monospace; font-size:9px; letter-spacing:0.2em; color:var(--amber-ink); }
+  .tornhalf .stub .m { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; color:#fff; text-transform:uppercase; }
+  .tornhalf .stub .d { font-size:38px; font-weight:800; line-height:0.9; color:#fff; }
+  .tornhalf .stub .ga { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; color:var(--amber-ink); }
+
+  /* ===================== C · XEROX FLYER (DIY) ===================== */
+  .xerox { position:relative; padding:24px 20px 22px; border-radius:6px; transform:rotate(-1.1deg);
+    background:#0d0c10; border:1px solid rgba(255,255,255,0.12);
+    background-image: radial-gradient(rgba(255,255,255,0.06) 0.7px, transparent 1.1px);
+    background-size:5px 5px; box-shadow:0 14px 30px -14px rgba(0,0,0,0.8); }
+  .xerox .tape { position:absolute; width:64px; height:22px; background:rgba(255,199,154,0.28); border:1px solid rgba(255,199,154,0.2); }
+  .xerox .tape.tl { top:-9px; left:16px; transform:rotate(-8deg); }
+  .xerox .tape.tr { top:-9px; right:16px; transform:rotate(7deg); }
+  .xerox .stamp { display:inline-block; font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.18em; color:var(--amber); border:1.5px solid var(--amber); padding:3px 8px; border-radius:3px; transform:rotate(-3deg); }
+  .xerox .act { font-family:-apple-system,system-ui,sans-serif; font-weight:900; font-size:30px; line-height:0.95; letter-spacing:-0.01em; text-transform:uppercase; color:#fff; margin:12px 0 2px; }
+  .xerox .support { font-weight:800; font-size:17px; text-transform:uppercase; color:var(--amber); margin:0 0 14px; letter-spacing:0.02em; }
+  .xerox .rule { height:3px; background:repeating-linear-gradient(90deg,#fff 0 8px, transparent 8px 12px); opacity:0.85; margin:12px 0; }
+  .xerox .venue { font-weight:800; font-size:20px; text-transform:uppercase; color:#fff; margin:0; letter-spacing:0.01em; }
+  .xerox .details { font-family:ui-monospace,monospace; font-size:13px; color:#e9e2d4; margin:6px 0 0; letter-spacing:0.03em; }
+  .xerox .ticket-btn { background:var(--amber); border-radius:4px; transform:rotate(-0.6deg); box-shadow:4px 4px 0 rgba(255,137,64,0.35); }
+
+  /* ===================== D · HANDBILL (letterpress) ===================== */
+  .handbill { position:relative; text-align:center; padding:24px 22px; border-radius:6px; color:#ece2d0;
+    background:linear-gradient(180deg,#1c1726,#171320);
+    border:1px solid rgba(236,226,208,0.28);
+    box-shadow:inset 0 0 0 1px rgba(236,226,208,0.08); }
+  .handbill .rule-d { height:0; border-top:1px solid rgba(236,226,208,0.5); border-bottom:1px solid rgba(236,226,208,0.5); height:3px; margin:0 auto 16px; width:70%; }
+  .handbill .rule-d.b { margin:16px auto 0; }
+  .handbill .present { font-size:11px; letter-spacing:0.24em; text-transform:uppercase; color:var(--amber-ink); }
+  .handbill .orn { color:var(--amber-ink); letter-spacing:0.4em; font-size:12px; margin:12px 0; }
+  .handbill .venue { font-family:-apple-system,system-ui,sans-serif; font-weight:800; font-size:26px; letter-spacing:0.02em; text-transform:uppercase; color:#fff; margin:0 0 4px; }
+  .handbill .date { font-size:15px; font-style:italic; color:#ece2d0; margin:0 0 12px; }
+  .handbill .meta { font-size:12.5px; letter-spacing:0.06em; color:rgba(236,226,208,0.8); }
+  .handbill .meta b { color:#fff; }
+  .handbill .support { font-style:italic; margin-top:6px; color:var(--amber-ink); font-size:13px; }
+  .handbill .reserve { display:inline-block; margin-top:16px; padding:10px 22px; border:1px solid var(--amber-line); border-radius:4px; color:var(--amber-ink); text-decoration:none; font-size:12px; letter-spacing:0.16em; text-transform:uppercase; font-weight:700; }
+
+  /* ===================== E · MARQUEE (bulbs) ===================== */
+  .marquee-t { position:relative; border-radius:14px; padding:8px; background:#14101d;
+    background-image:radial-gradient(circle, rgba(255,207,154,0.95) 1.6px, transparent 2.2px);
+    background-size:16px 16px; background-position:6px 6px;
+    box-shadow:0 0 26px -6px rgba(255,137,64,0.5); }
+  @media (prefers-reduced-motion: no-preference) { .marquee-t { animation: bulbs 1.6s steps(2) infinite; } }
+  @keyframes bulbs { 50% { background-position: 14px 6px; } }
+  .marquee-t .inner { border-radius:9px; background:linear-gradient(180deg,#1d1728,#171221); padding:20px 18px; text-align:center; }
+  .marquee-t .band { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.24em; text-transform:uppercase; color:var(--amber); }
+  .marquee-t .venue { font-family:-apple-system,system-ui,sans-serif; font-weight:800; font-size:26px; text-transform:uppercase; letter-spacing:0.01em; color:#fff; margin:12px 0 3px; }
+  .marquee-t .when { font-family:ui-monospace,monospace; font-size:13px; color:var(--amber-ink); letter-spacing:0.06em; }
+  .marquee-t .meta { font-size:13px; color:var(--ink-dim); margin-top:10px; }
+  .marquee-t .meta b { color:#fff; }
+
+  /* existing (unchanged) sections below the module */
+  .card { margin-top:20px; padding:16px; border-radius:var(--r-card); background:rgba(255,255,255,0.09); border:1px solid var(--glass-line); }
+  .card-head { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 12px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:14px; }
+  .kv dt { color:var(--ink-faint); font-variant:small-caps; } .kv dd { margin:0; font-weight:600; }
+  .tags { display:flex; flex-wrap:wrap; gap:7px; margin-top:13px; }
+  .tags span { font-size:12px; padding:4px 11px; border-radius:999px; background:rgba(255,255,255,0.12); border:1px solid var(--glass-line); }
+
+  /* ============ SIDE COLUMN: feed row preview + rationale ============ */
+  .side { display:flex; flex-direction:column; gap:22px; }
+  .panel { border-radius:20px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.035); padding:20px; }
+  .panel > h3 { margin:0 0 4px; font-size:16px; }
+  .panel .hint { margin:0 0 16px; font-size:13.5px; color:var(--ink-dim); }
+  .feed-wall { border-radius:16px; padding:14px; background:linear-gradient(158deg,var(--bg-2),var(--bg-3) 78%,var(--bg-4)); }
+
+  .frow { display:none; }
+  [data-variant="A"] .frow--A, [data-variant="B"] .frow--B, [data-variant="C"] .frow--C,
+  [data-variant="D"] .frow--D, [data-variant="E"] .frow--E { display:block; }
+
+  .row { position:relative; display:flex; align-items:center; gap:12px; padding:10px; border-radius:var(--r-row); background:var(--glass); border:1px solid var(--glass-line); }
+  .row.match { border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom-color:transparent; }
+  .art { width:64px; height:64px; flex:none; border-radius:var(--r-art); box-shadow:0 3px 8px rgba(0,0,0,0.4); background:linear-gradient(135deg,#1f5f6b,#3a2a6b 55%,#c04a86); }
+  .meta { min-width:0; flex:1; } .meta .song { font-size:15px; font-weight:700; margin:0; }
+  .meta .artist { font-size:13px; margin:1px 0 0; } .meta .time { font-size:11px; color:var(--ink-faint); margin:4px 0 0; }
+  .info { border:0; background:transparent; color:rgba(255,255,255,0.8); width:32px; height:32px; flex:none; }
+  .info svg { width:20px; height:20px; }
+
+  /* row stub — A thermal mini */
+  .rstub { position:relative; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:0 0 var(--r-row) var(--r-row); border:1px solid var(--amber-line); border-top:1px dashed rgba(255,214,181,0.7); }
+  .rstub::before, .rstub::after { content:""; position:absolute; top:-6px; width:12px; height:12px; border-radius:50%; background:var(--bg-3); }
+  .rstub::before { left:-6px; } .rstub::after { right:-6px; }
+  .rstub .k { font-family:ui-monospace,monospace; font-size:10px; font-weight:700; letter-spacing:0.08em; }
+  .rstub .v { flex:1; font-size:12px; font-weight:700; color:#fff; }
+  .rstub .cta { font-size:10px; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; padding:4px 9px; border-radius:999px; background:var(--amber); color:#2a1400; }
+  .frow--A .rstub { background:linear-gradient(180deg,#181521,#12101a); color:#f3ecde; }
+  .frow--A .rstub .minibars { width:46px; height:20px; border-radius:2px; background:#efe9dd; background-image:repeating-linear-gradient(90deg,#15121a 0 1.5px,#efe9dd 1.5px 3px,#15121a 3px 4px,#efe9dd 4px 7px); }
+
+  /* row stub — B torn tab on right edge */
+  .frow--B .row { border-radius:var(--r-row); padding-right:0; overflow:hidden; }
+  .frow--B .tab { align-self:stretch; width:70px; flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    background:linear-gradient(180deg,rgba(255,137,64,0.22),rgba(255,137,64,0.12)); border-left:2px dashed rgba(255,214,181,0.75); position:relative; }
+  .frow--B .tab .m { font-family:ui-monospace,monospace; font-size:9px; letter-spacing:0.14em; color:var(--amber-ink); text-transform:uppercase; }
+  .frow--B .tab .d { font-size:22px; font-weight:800; line-height:1; color:#fff; }
+  .frow--B .tab::before, .frow--B .tab::after { content:""; position:absolute; left:-6px; width:11px; height:11px; border-radius:50%; background:var(--bg-3); }
+  .frow--B .tab::before { top:-5px; } .frow--B .tab::after { bottom:-5px; }
+
+  /* row stub — C xerox condensed strip */
+  .frow--C .cstrip { margin-top:-1px; padding:8px 12px; border-radius:0 0 var(--r-row) var(--r-row); border:1px solid rgba(255,255,255,0.14); border-top:0;
+    background:#0d0c10; background-image:radial-gradient(rgba(255,255,255,0.06) 0.6px, transparent 1px); background-size:4px 4px;
+    display:flex; align-items:center; justify-content:space-between; }
+  .frow--C .cstrip .t { font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; color:#fff; }
+  .frow--C .cstrip .t b { color:var(--amber); }
+  .frow--C .cstrip .s { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; color:var(--amber); border:1px solid var(--amber); border-radius:3px; padding:2px 7px; }
+
+  /* row stub — D handbill elegant strip */
+  .frow--D .hstrip { margin-top:-1px; padding:9px 12px; border-radius:0 0 var(--r-row) var(--r-row); border:1px solid rgba(236,226,208,0.3); border-top:1px solid rgba(236,226,208,0.4);
+    display:flex; align-items:center; justify-content:space-between; background:linear-gradient(180deg,#1c1726,#171320); color:#ece2d0; }
+  .frow--D .hstrip .l { font-size:12px; letter-spacing:0.06em; } .frow--D .hstrip .l b { color:#fff; }
+  .frow--D .hstrip .r { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--amber-ink); }
+
+  /* row stub — E marquee mini bulbs */
+  .frow--E .estub { margin-top:-1px; padding:4px; border-radius:0 0 var(--r-row) var(--r-row); background:#14101d;
+    background-image:radial-gradient(circle, rgba(255,207,154,0.9) 1.3px, transparent 1.9px); background-size:13px 13px; background-position:5px 5px; }
+  .frow--E .estub .in { border-radius:8px; background:#1d1728; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; }
+  .frow--E .estub .t { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.1em; color:var(--amber-ink); text-transform:uppercase; }
+  .frow--E .estub .cta { font-size:10px; font-weight:800; text-transform:uppercase; padding:4px 9px; border-radius:999px; background:var(--amber); color:#2a1400; }
+
+  /* rationale cards */
+  .cards { display:flex; flex-direction:column; gap:10px; }
+  .dcard { padding:14px 16px; border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); transition:border-color .2s, background .2s; }
+  .dcard[data-active="true"] { border-color:var(--amber-line); background:rgba(255,137,64,0.08); }
+  .dcard .n { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber); }
+  .dcard h4 { margin:4px 0 4px; font-size:15px; }
+  .dcard p { margin:0; font-size:13px; color:var(--ink-dim); }
+
+  .notes { margin-top:40px; padding:22px 24px; border-radius:16px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.08); }
+  .notes h2 { font-size:15px; font-family:ui-monospace,monospace; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 14px; }
+  .notes ul { margin:0; padding-left:20px; } .notes li { font-size:14px; color:var(--ink-dim); margin-bottom:9px; }
+  .notes b { color:var(--ink); font-weight:600; }
+  .notes code { font-family:ui-monospace,monospace; font-size:12.5px; background:rgba(255,255,255,0.08); padding:1px 6px; border-radius:5px; color:var(--amber-ink); }
+
+  @media (prefers-reduced-motion: reduce) { .ticket-btn, .dcard { transition:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">WXYC · 89.3 FM × Triangle Shows</p>
+  <h1>Tear It <span class="arrow">Five</span> Ways</h1>
+  <p class="lede">You liked the ticket stub — here are five takes on it, from a literal box-office ticket to a xeroxed show flyer. Each is shown as the <b>track-detail module</b> (the phone) and its matching <b>feed-row</b> treatment (right). Same amber "on tour" signal throughout; what changes is the personality.</p>
+
+  <div class="controls">
+    <span class="switch-label">Stub style</span>
+    <div class="seg" role="group" aria-label="Ticket stub style">
+      <button data-set="A" aria-pressed="true">Box Office</button>
+      <button data-set="B" aria-pressed="false">Torn Half</button>
+      <button data-set="C" aria-pressed="false">Xerox Flyer</button>
+      <button data-set="D" aria-pressed="false">Handbill</button>
+      <button data-set="E" aria-pressed="false">Marquee</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage" data-variant="A">
+
+    <!-- ===== phone: track detail ===== -->
+    <figure class="device">
+      <div class="screen"><div class="glass-in">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="r">WXYC ●●● ▮</span></div>
+        <div class="scroll">
+          <div class="nav">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Playlist
+          </div>
+          <div class="hero">
+            <div class="cover"></div>
+            <h2 class="d-song">Method Actor</h2>
+            <p class="d-artist">Nilüfer Yanya</p>
+            <p class="d-release">My Method Actor · 2024</p>
+          </div>
+
+          <!-- A · Box Office -->
+          <div class="tv tv--A">
+            <div class="boxoffice">
+              <span class="notch n-tl"></span><span class="notch n-tr"></span>
+              <div class="perf-top"></div><div class="perf-bot"></div>
+              <div class="head"><span>WXYC · PLAYING NEAR YOU</span><span class="admit">ADMIT ONE</span></div>
+              <p class="event">EVENT</p>
+              <p class="venue">Cat's Cradle</p>
+              <p class="city">CARRBORO, NC · 8 MI</p>
+              <div class="grid">
+                <div><div class="k">DATE</div><div class="v">FRI JUL 10</div></div>
+                <div><div class="k">DOORS</div><div class="v">8:00 PM</div></div>
+                <div><div class="k">SHOW</div><div class="v">9:00 PM</div></div>
+                <div><div class="k">ADMIT</div><div class="v">GEN ADM</div></div>
+                <div><div class="k">PRICE</div><div class="v">$22–$25</div></div>
+                <div><div class="k">STATUS</div><div class="v" style="color:#a6f0bd;">ON SALE</div></div>
+              </div>
+              <div class="barcode"></div>
+              <div class="ordno"><span>ORDER #WX-3391</span><span>with TAPIR!</span></div>
+              <a class="ticket-btn" href="#" onclick="return false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 002-2h12a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H6a2 2 0 00-2-2 2 2 0 000-4z"/><path d="M10 6v12" stroke-dasharray="1 2.5"/></svg>
+                Get Tickets
+              </a>
+            </div>
+          </div>
+
+          <!-- B · Torn Half -->
+          <div class="tv tv--B">
+            <div class="tornhalf">
+              <div class="main">
+                <span class="mod-eyebrow"><span class="tdot"></span>Playing Near You</span>
+                <p class="venue">Cat's Cradle</p>
+                <p class="city">Carrboro, NC · 8 mi away</p>
+                <p class="rowline">Doors <b>8:00 PM</b> · Show <b>9:00 PM</b></p>
+                <p class="rowline">with <b>Tapir!</b> · <b>$22–$25</b> adv</p>
+                <a class="ticket-btn" href="#" onclick="return false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 002-2h12a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H6a2 2 0 00-2-2 2 2 0 000-4z"/><path d="M10 6v12" stroke-dasharray="1 2.5"/></svg>
+                  Get Tickets
+                </a>
+              </div>
+              <div class="stub">
+                <span class="notch n-top"></span><span class="notch n-bot"></span>
+                <span class="adm">ADMIT ONE</span>
+                <span class="m">Fri</span>
+                <span class="d">10</span>
+                <span class="m">Jul</span>
+                <span class="ga">GA</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- C · Xerox Flyer -->
+          <div class="tv tv--C">
+            <div class="xerox">
+              <span class="tape tl"></span><span class="tape tr"></span>
+              <span class="stamp">★ Playing Near You</span>
+              <p class="act">Nilüfer Yanya</p>
+              <p class="support">+ Tapir!</p>
+              <div class="rule"></div>
+              <p class="venue">Cat's Cradle · Carrboro</p>
+              <p class="details">FRI JUL 10 — DOORS 8 / SHOW 9 — $22 ADV — ALL AGES</p>
+              <a class="ticket-btn" href="#" onclick="return false">Get Tickets →</a>
+            </div>
+          </div>
+
+          <!-- D · Handbill -->
+          <div class="tv tv--D">
+            <div class="handbill">
+              <div class="rule-d"></div>
+              <p class="present">WXYC &amp; Cat's Cradle present</p>
+              <p class="orn">❦ ❦ ❦</p>
+              <p class="venue">Cat's Cradle</p>
+              <p class="date">Friday, the Tenth of July</p>
+              <p class="meta">Doors <b>Eight</b> · Performance <b>Nine</b> · Carrboro, N.C.</p>
+              <p class="support">with Tapir! — admission $22</p>
+              <a class="reserve" href="#" onclick="return false">Reserve Tickets</a>
+              <div class="rule-d b"></div>
+            </div>
+          </div>
+
+          <!-- E · Marquee -->
+          <div class="tv tv--E">
+            <div class="marquee-t"><div class="inner">
+              <p class="band">★ Now Playing Near You ★</p>
+              <p class="venue">Cat's Cradle</p>
+              <p class="when">FRI JUL 10 · DOORS 8 · SHOW 9</p>
+              <p class="meta">with <b>Tapir!</b> · <b>$22–$25</b> · Carrboro, NC</p>
+              <a class="ticket-btn" href="#" onclick="return false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 002-2h12a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H6a2 2 0 00-2-2 2 2 0 000-4z"/><path d="M10 6v12" stroke-dasharray="1 2.5"/></svg>
+                Get Tickets
+              </a>
+            </div></div>
+          </div>
+
+          <!-- grounding sections -->
+          <div class="card">
+            <p class="card-head">Release</p>
+            <dl class="kv"><dt>Label</dt><dd>Ninja Tune</dd><dt>Year</dt><dd>2024</dd></dl>
+            <div class="tags"><span>Indie Rock</span><span>Art Pop</span><span>Alternative</span></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption>Track detail · show module</figcaption>
+    </figure>
+
+    <!-- ===== side column ===== -->
+    <div class="side">
+      <div class="panel">
+        <h3>In the feed</h3>
+        <p class="hint">How the same style rides along the matched flowsheet row.</p>
+        <div class="feed-wall">
+
+          <!-- A -->
+          <div class="frow frow--A">
+            <article class="row match">
+              <div class="art"></div>
+              <div class="meta"><p class="song">Method Actor</p><p class="artist">Nilüfer Yanya</p><p class="time">9:12 PM</p></div>
+              <button class="info" aria-label="Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg></button>
+            </article>
+            <div class="rstub"><span class="minibars"></span><span class="v">FRI JUL 10 · Cat's Cradle</span><span class="cta">Tickets</span></div>
+          </div>
+
+          <!-- B -->
+          <div class="frow frow--B">
+            <article class="row match">
+              <div class="art"></div>
+              <div class="meta"><p class="song">Method Actor</p><p class="artist">Nilüfer Yanya</p><p class="time">9:12 PM</p></div>
+              <div class="tab"><span class="m">Jul</span><span class="d">10</span></div>
+            </article>
+          </div>
+
+          <!-- C -->
+          <div class="frow frow--C">
+            <article class="row match">
+              <div class="art"></div>
+              <div class="meta"><p class="song">Method Actor</p><p class="artist">Nilüfer Yanya</p><p class="time">9:12 PM</p></div>
+              <button class="info" aria-label="Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg></button>
+            </article>
+            <div class="cstrip"><span class="t">CAT'S CRADLE · <b>FRI JUL 10</b></span><span class="s">Tickets →</span></div>
+          </div>
+
+          <!-- D -->
+          <div class="frow frow--D">
+            <article class="row match">
+              <div class="art"></div>
+              <div class="meta"><p class="song">Method Actor</p><p class="artist">Nilüfer Yanya</p><p class="time">9:12 PM</p></div>
+              <button class="info" aria-label="Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg></button>
+            </article>
+            <div class="hstrip"><span class="l">Cat's Cradle · <b>Fri Jul 10</b></span><span class="r">Reserve →</span></div>
+          </div>
+
+          <!-- E -->
+          <div class="frow frow--E">
+            <article class="row match">
+              <div class="art"></div>
+              <div class="meta"><p class="song">Method Actor</p><p class="artist">Nilüfer Yanya</p><p class="time">9:12 PM</p></div>
+              <button class="info" aria-label="Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg></button>
+            </article>
+            <div class="estub"><div class="in"><span class="t">Fri Jul 10 · Cat's Cradle</span><span class="cta">Tickets</span></div></div>
+          </div>
+
+        </div>
+        <p class="sidecap">Matched row · Nilüfer Yanya → Cat's Cradle</p>
+      </div>
+
+      <div class="panel">
+        <h3>The five</h3>
+        <p class="hint">A spectrum from literal to expressive — pick the personality.</p>
+        <div class="cards">
+          <div class="dcard" data-card="A" data-active="true"><div class="n">A · Utilitarian</div><h4>Box Office</h4><p>A thermal will-call ticket: mono type, perforations, a real barcode + order number. Reads instantly as "an actual ticket."</p></div>
+          <div class="dcard" data-card="B"><div class="n">B · Structural</div><h4>Torn Half</h4><p>The tear is the hero — a two-part ticket with a detachable date stub. Doubles as a tidy right-edge tab in the feed.</p></div>
+          <div class="dcard" data-card="C"><div class="n">C · Raw</div><h4>Xerox Flyer</h4><p>DIY show-flyer energy: condensed caps, halftone grain, taped corners, a stamped button. Most WXYC-freeform — the bold pick.</p></div>
+          <div class="dcard" data-card="D"><div class="n">D · Refined</div><h4>Handbill</h4><p>A letterpress concert handbill: centered, hairline rules, spelled-out date. The quiet, editorial end of the range.</p></div>
+          <div class="dcard" data-card="E"><div class="n">E · Playful</div><h4>Marquee</h4><p>A theatrical lightbulb border with a "now playing" band. Warm and eye-catching without leaving the amber palette.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h2>Still true for all five</h2>
+    <ul>
+      <li><b>One amber signal.</b> Every style uses the app's accent hue (23°) so "on tour" never competes with the green on-air dot.</li>
+      <li><b>Match on a name, guarded.</b> Triangle Shows has no artist ID — highlight only on a <b>normalized exact match</b> against <code>GET /api/events?search={artist}&amp;start={today}</code>; treat fuzzy hits as no-match for v1.</li>
+      <li><b>State-aware.</b> The <code>status</code> field (<code>on_sale</code> / <code>sold_out</code> / <code>cancelled</code> / <code>free</code>) drives the pill; only ever show <code>date &gt;= today</code>, soonest first.</li>
+      <li><b>Local by nature.</b> ~21 Raleigh–Durham–Chapel Hill venues — "playing near you" is literally true for WXYC listeners; keep the copy local, not national.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var stage = document.getElementById('stage');
+    var buttons = document.querySelectorAll('.seg button');
+    var cards = document.querySelectorAll('.dcard');
+    function setVariant(v) {
+      stage.setAttribute('data-variant', v);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.set === v ? 'true' : 'false'); });
+      cards.forEach(function (c) { c.setAttribute('data-active', c.dataset.card === v ? 'true' : 'false'); });
+      stage.querySelector('.scroll').scrollTop = 0;
+    }
+    buttons.forEach(function (b) { b.addEventListener('click', function () { setVariant(b.dataset.set); }); });
+  })();
+</script>
+</body>
+</html>

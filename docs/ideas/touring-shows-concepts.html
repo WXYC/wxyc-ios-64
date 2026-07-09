@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WXYC × Triangle Shows — On-Tour Highlight Concepts</title>
+<style>
+  /* -----------------------------------------------------------------------
+     WXYC × Triangle Shows — "Now Spinning → Playing Soon" concept mockups
+     Fonts: deliberate system SF stack (-apple-system) to match the real iOS
+     app, plus ui-monospace for the app's small-caps eyebrow/label system.
+     -------------------------------------------------------------------- */
+
+  :root {
+    /* App wallpaper (recreated from BackgroundGradient.swift HSB stops) */
+    --bg-1: #303c72;
+    --bg-2: #40498e;
+    --bg-3: #af3e79;
+    --bg-4: #b64949;
+    --bg-5: #b34876;
+
+    /* Page ground — a dark, calm gallery backdrop so the phones pop */
+    --page: #101120;
+    --page-2: #171a30;
+
+    /* Ink */
+    --ink: #ffffff;
+    --ink-dim: rgba(255, 255, 255, 0.72);
+    --ink-faint: rgba(255, 255, 255, 0.46);
+
+    /* Glass (dark blur cards, per MaterialView .dark) */
+    --glass: rgba(17, 15, 38, 0.42);
+    --glass-2: rgba(17, 15, 38, 0.30);
+    --glass-line: rgba(255, 255, 255, 0.15);
+
+    /* Semantic signals */
+    --live: #34c759;            /* on-air green — untouched */
+    --amber: #ff8940;           /* app accent hue 23° = the "on tour" signal */
+    --amber-ink: #ffc79a;
+    --amber-soft: rgba(255, 137, 64, 0.16);
+    --amber-line: rgba(255, 137, 64, 0.55);
+
+    --r-art: 6px;
+    --r-card: 16px;
+    --r-row: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { background: var(--page); }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(120% 90% at 82% -10%, rgba(255, 137, 64, 0.14), transparent 55%),
+      radial-gradient(120% 90% at 0% 10%, rgba(64, 73, 142, 0.35), transparent 55%),
+      linear-gradient(180deg, var(--page), var(--page-2));
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: clamp(28px, 5vw, 64px) clamp(18px, 4vw, 40px) 72px;
+  }
+
+  /* ---------- Masthead ---------------------------------------------------- */
+  .kicker {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-size: clamp(30px, 5.4vw, 52px);
+    line-height: 1.03;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  h1 .arrow { color: var(--amber); font-weight: 600; }
+  .lede {
+    max-width: 60ch;
+    font-size: clamp(15px, 1.7vw, 17px);
+    color: var(--ink-dim);
+    margin: 0;
+  }
+
+  /* ---------- Direction switch -------------------------------------------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 34px 0 6px;
+    align-items: center;
+  }
+  .switch-label {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-right: 6px;
+  }
+  .seg {
+    display: inline-flex;
+    background: var(--glass-2);
+    border: 1px solid var(--glass-line);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink-dim);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] {
+    background: linear-gradient(180deg, #ff9d5c, var(--amber));
+    color: #2a1400;
+    box-shadow: 0 4px 14px rgba(255, 137, 64, 0.35);
+  }
+  .seg button:focus-visible { outline: 2px solid var(--amber-ink); outline-offset: 2px; }
+
+  /* ---------- Phones ------------------------------------------------------ */
+  .phones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(20px, 4vw, 44px);
+    justify-content: center;
+    margin: 30px 0 8px;
+  }
+  .device { width: min(348px, 92vw); }
+  .device figcaption {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  .screen {
+    position: relative;
+    border-radius: 46px;
+    padding: 10px;
+    background: #05060c;
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.06),
+      0 30px 70px -20px rgba(0, 0, 0, 0.8),
+      0 10px 24px -12px rgba(0, 0, 0, 0.6);
+  }
+  .glass-in {
+    position: relative;
+    height: 720px;
+    max-height: 78vh;
+    border-radius: 38px;
+    overflow: hidden;
+    background:
+      linear-gradient(158deg,
+        var(--bg-1) 0%, var(--bg-2) 12%,
+        var(--bg-3) 60%, var(--bg-4) 80%, var(--bg-5) 100%);
+  }
+  .glass-in::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(140% 80% at 50% 120%, rgba(0,0,0,0.45), transparent 60%);
+    pointer-events: none;
+  }
+  .island {
+    position: absolute;
+    top: 12px; left: 50%; transform: translateX(-50%);
+    width: 108px; height: 30px;
+    background: #05060c;
+    border-radius: 16px;
+    z-index: 20;
+  }
+  .scroll {
+    position: absolute; inset: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 54px 16px 26px;
+    scrollbar-width: none;
+  }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  .statusbar {
+    position: absolute; top: 16px; left: 0; right: 0;
+    display: flex; justify-content: space-between;
+    padding: 0 26px;
+    font-size: 13px; font-weight: 600;
+    z-index: 15;
+    pointer-events: none;
+  }
+  .statusbar .r { letter-spacing: 0.04em; opacity: 0.9; }
+
+  /* ---------- On-air banner ---------------------------------------------- */
+  .onair {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 4px 4px 0;
+    margin-bottom: 18px;
+  }
+  .onair .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--ink);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 8px 1px var(--live);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 9px 2px var(--live); }
+    50% { opacity: 0.55; box-shadow: 0 0 4px 0 var(--live); }
+  }
+  .onair .handle {
+    font-size: 25px; font-weight: 700; letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+
+  .sectionhead {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 6px 4px 10px;
+  }
+
+  /* ---------- Playlist rows ---------------------------------------------- */
+  .feed { display: flex; flex-direction: column; gap: 9px; }
+
+  .row {
+    position: relative;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px;
+    border-radius: var(--r-row);
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: blur(11px);
+    -webkit-backdrop-filter: blur(11px);
+  }
+  .art {
+    width: 74px; height: 74px; flex: none;
+    border-radius: var(--r-art);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  }
+  .meta { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+  .song {
+    font-size: 16px; font-weight: 700; margin: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .artist {
+    font-size: 14px; margin: 1px 0 0; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .time {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--ink-faint); margin: 5px 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .time svg { width: 11px; height: 11px; opacity: 0.8; }
+  .info {
+    appearance: none; border: 0; background: transparent;
+    color: rgba(255,255,255,0.8); cursor: pointer;
+    flex: none; width: 36px; height: 36px;
+    display: grid; place-items: center;
+  }
+  .info svg { width: 21px; height: 21px; }
+
+  /* --- treatment bits, hidden until a variant asks for them --- */
+  .ontour-eyebrow, .ontour-chip { display: none; }
+  .ontour-stub { display: none; }
+
+  .ontour-eyebrow {
+    align-items: center; gap: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--amber-ink);
+    margin-bottom: 3px;
+  }
+  .ontour-eyebrow .tdot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
+    box-shadow: 0 0 7px 1px var(--amber-line);
+  }
+  .ontour-chip {
+    align-self: flex-start; align-items: center; gap: 6px;
+    margin-top: 7px; padding: 4px 10px;
+    font-size: 12px; font-weight: 600;
+    color: var(--amber-ink);
+    background: var(--amber-soft);
+    border: 1px solid var(--amber-line);
+    border-radius: 999px;
+  }
+  /* Ticket-stub tab that tears off below the matched row (Direction A) */
+  .ontour-stub {
+    position: relative;
+    margin-top: -3px;
+    align-items: center; gap: 12px;
+    padding: 11px 14px;
+    background: linear-gradient(180deg, rgba(255,137,64,0.20), rgba(255,137,64,0.10));
+    border: 1px solid var(--amber-line);
+    border-top: 1px dashed rgba(255,199,154,0.7);
+    border-radius: 0 0 var(--r-row) var(--r-row);
+    color: var(--amber-ink);
+    box-shadow: 0 6px 16px -8px rgba(255,137,64,0.5);
+  }
+  .ontour-stub::before, .ontour-stub::after {
+    content: ""; position: absolute; top: -6px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--bg-2);
+  }
+  .ontour-stub::before { left: -6px; }
+  .ontour-stub::after { right: -6px; }
+  .stub-k {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    color: #ffd8b5;
+  }
+  .stub-v { flex: 1; font-size: 13px; font-weight: 700; color: #fff; }
+  .stub-cta {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 11px; border-radius: 999px;
+    background: var(--amber); color: #2a1400;
+  }
+
+  /* ---- per-variant enabling ---- */
+  [data-variant="A"] .ontour-stub { display: flex; }
+  [data-variant="A"] .row.match { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+
+  [data-variant="B"] .ontour-eyebrow { display: inline-flex; }
+  [data-variant="B"] .row.match {
+    border-left: 3px solid var(--amber);
+    background: linear-gradient(90deg, var(--amber-soft), var(--glass) 42%);
+  }
+
+  [data-variant="C"] .ontour-chip { display: inline-flex; }
+  [data-variant="C"] .row.match {
+    border-color: var(--amber-line);
+    box-shadow: 0 0 0 1px var(--amber-line), 0 8px 26px -10px rgba(255,137,64,0.55);
+  }
+
+  /* ---------- Detail view ------------------------------------------------- */
+  .nav {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink-dim);
+    margin: 2px 2px 16px;
+  }
+  .nav svg { width: 18px; height: 18px; }
+
+  .hero { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .hero .cover {
+    width: 210px; height: 210px; border-radius: 12px;
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6);
+  }
+  .hero .d-song { font-size: 22px; font-weight: 700; margin: 18px 0 0; }
+  .hero .d-artist { font-size: 18px; margin: 3px 0 0; }
+  .hero .d-release { font-size: 14px; color: var(--ink-dim); margin: 3px 0 0; }
+
+  .card {
+    margin-top: 20px; padding: 16px;
+    border-radius: var(--r-card);
+    background: rgba(255,255,255,0.09);
+    border: 1px solid var(--glass-line);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .card-head {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-faint);
+    margin: 0 0 12px;
+  }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; font-size: 14px; }
+  .kv dt { color: var(--ink-faint); font-variant: small-caps; letter-spacing: 0.04em; }
+  .kv dd { margin: 0; font-weight: 600; }
+  .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+  .tags span {
+    font-size: 12px; padding: 4px 11px; border-radius: 999px;
+    background: rgba(255,255,255,0.12); border: 1px solid var(--glass-line);
+  }
+  .stream {
+    margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .stream a {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.1); border: 1px solid var(--glass-line);
+    color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600;
+  }
+  .stream .g { width: 18px; height: 18px; border-radius: 5px; flex: none; }
+
+  /* ===== the show module: three directions, one shown at a time ===== */
+  .showmod { display: none; margin-top: 20px; }
+  [data-variant="A"] .showmod--A { display: block; }
+  [data-variant="B"] .showmod--B { display: block; }
+  [data-variant="C"] .showmod--C { display: block; }
+
+  .mod-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--amber-ink);
+  }
+  .mod-eyebrow .tdot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
+    box-shadow: 0 0 7px 1px var(--amber-line);
+  }
+  .status-pill {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(52,199,89,0.16); color: #a6f0bd; border: 1px solid rgba(52,199,89,0.5);
+  }
+  .ticket-btn {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; margin-top: 15px; padding: 14px;
+    border-radius: 13px; border: 0; cursor: pointer;
+    font: inherit; font-size: 16px; font-weight: 700;
+    background: linear-gradient(180deg, #ff9d5c, var(--amber));
+    color: #2a1400;
+    box-shadow: 0 8px 22px -8px rgba(255,137,64,0.7);
+    text-decoration: none;
+    transition: transform 0.15s;
+  }
+  .ticket-btn:hover { transform: translateY(-1px); }
+  .ticket-btn svg { width: 18px; height: 18px; }
+
+  /* Direction A — full ticket stub */
+  .showmod--A .stubcard {
+    position: relative;
+    border-radius: var(--r-card);
+    background:
+      linear-gradient(180deg, rgba(255,137,64,0.22), rgba(255,137,64,0.10));
+    border: 1px solid var(--amber-line);
+    padding: 18px 18px 20px;
+    overflow: hidden;
+  }
+  .showmod--A .perf {
+    display: flex; align-items: center; gap: 10px; margin: 15px -18px;
+    color: rgba(255,199,154,0.6);
+  }
+  .showmod--A .perf::before, .showmod--A .perf::after {
+    content: ""; height: 0; flex: 1;
+    border-top: 2px dashed rgba(255,199,154,0.55);
+  }
+  .showmod--A .perf span {
+    font-family: ui-monospace, monospace; font-size: 10px; letter-spacing: 0.2em;
+  }
+  .showmod--A .venue { font-size: 24px; font-weight: 800; margin: 12px 0 2px; letter-spacing: -0.01em; }
+  .showmod--A .city { font-size: 14px; color: var(--amber-ink); margin: 0; }
+  .showmod--A .when {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    display: flex; gap: 22px; margin-top: 12px; font-size: 13px;
+  }
+  .showmod--A .when b { display: block; font-size: 16px; color: #fff; letter-spacing: 0.02em; }
+  .showmod--A .when span { color: var(--amber-ink); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .showmod--A .row-between { display: flex; align-items: center; justify-content: space-between; }
+  .showmod--A .support { font-size: 13px; color: var(--ink-dim); margin: 12px 0 0; }
+  .showmod--A .support b { color: #fff; font-weight: 600; }
+
+  /* Direction B — marquee band */
+  .showmod--B .marquee {
+    border-top: 1px solid var(--glass-line);
+    border-bottom: 1px solid var(--glass-line);
+    padding: 20px 2px;
+  }
+  .showmod--B .venue {
+    font-size: 30px; font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.02; margin: 12px 0 4px; text-transform: uppercase;
+  }
+  .showmod--B .sub { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-dim); font-size: 14px; }
+  .showmod--B .sub b { color: var(--ink); font-weight: 600; }
+  .showmod--B .textlink {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 16px;
+    color: var(--amber-ink); font-weight: 700; font-size: 15px; text-decoration: none;
+  }
+  .showmod--B .textlink svg { width: 15px; height: 15px; }
+
+  /* Direction C — compact glow card */
+  .showmod--C .compact {
+    border-radius: var(--r-card);
+    border: 1px solid var(--amber-line);
+    background: var(--amber-soft);
+    box-shadow: 0 8px 26px -12px rgba(255,137,64,0.6);
+    padding: 16px;
+  }
+  .showmod--C .line1 { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .showmod--C .venue { font-size: 17px; font-weight: 700; margin: 0; }
+  .showmod--C .meta2 { font-size: 13px; color: var(--ink-dim); margin: 2px 0 0; }
+  .showmod--C .date-badge {
+    flex: none; text-align: center; line-height: 1;
+    padding: 8px 12px; border-radius: 10px;
+    background: rgba(255,137,64,0.2); border: 1px solid var(--amber-line);
+  }
+  .showmod--C .date-badge .m { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber-ink); }
+  .showmod--C .date-badge .d { font-size: 20px; font-weight: 800; margin-top: 3px; }
+
+  /* ---------- Rationale --------------------------------------------------- */
+  .rationale { margin-top: 56px; }
+  .rationale h2 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .rationale .sub { color: var(--ink-dim); margin: 0 0 22px; max-width: 62ch; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+  .dcard {
+    padding: 20px; border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: border-color 0.25s, background 0.25s, transform 0.25s;
+  }
+  .dcard[data-active="true"] {
+    border-color: var(--amber-line);
+    background: rgba(255,137,64,0.08);
+    transform: translateY(-2px);
+  }
+  .dcard .n {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber);
+  }
+  .dcard h3 { font-size: 18px; margin: 8px 0 8px; }
+  .dcard p { font-size: 14px; color: var(--ink-dim); margin: 0 0 10px; }
+  .dcard .use { font-size: 12.5px; color: var(--amber-ink); }
+  .dcard .use b { color: #fff; font-weight: 600; }
+
+  /* ---------- Engineering notes ------------------------------------------ */
+  .notes {
+    margin-top: 34px; padding: 22px 24px; border-radius: 16px;
+    background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .notes h2 { font-size: 15px; font-family: ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; }
+  .notes ul { margin: 0; padding-left: 20px; }
+  .notes li { font-size: 14px; color: var(--ink-dim); margin-bottom: 9px; }
+  .notes b { color: var(--ink); font-weight: 600; }
+  .notes code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px;
+    background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 5px; color: var(--amber-ink);
+  }
+
+  @media (max-width: 620px) {
+    .glass-in { height: 640px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot { animation: none; }
+    .ticket-btn, .dcard { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <p class="kicker">WXYC · 89.3 FM × Triangle Shows</p>
+  <h1>Now Spinning <span class="arrow">→</span> Playing Soon</h1>
+  <p class="lede">
+    When a track on the flowsheet is by a band with an upcoming show at a Triangle venue — Cat's Cradle, Local 506, Haw River Ballroom — we surface it right where you're already listening. Three directions for how that highlight looks in the <b>playlist</b> and the <b>track detail</b>. Flip between them.
+  </p>
+
+  <div class="controls">
+    <span class="switch-label">Direction</span>
+    <div class="seg" role="group" aria-label="Highlight direction">
+      <button data-set="A" aria-pressed="true">Ticket Stub</button>
+      <button data-set="B" aria-pressed="false">Marquee</button>
+      <button data-set="C" aria-pressed="false">Glow Chip</button>
+    </div>
+  </div>
+
+  <div class="phones" id="stage" data-variant="A">
+
+    <!-- ======================= PLAYLIST ======================= -->
+    <figure class="device">
+      <div class="screen">
+        <div class="glass-in">
+          <div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r">WXYC ●●● ▮</span></div>
+          <div class="scroll">
+            <div class="onair">
+              <span class="eyebrow"><span class="dot"></span>ON AIR</span>
+              <span class="handle">DJ Cicada</span>
+            </div>
+            <p class="sectionhead">Today · Jul 8</p>
+
+            <div class="feed">
+
+              <!-- MATCH: Nilüfer Yanya -->
+              <article class="row match">
+                <div class="art" style="background:linear-gradient(135deg,#1f5f6b,#3a2a6b 55%,#c04a86);"></div>
+                <div class="meta">
+                  <span class="ontour-eyebrow"><span class="tdot"></span>On Tour · Cat's Cradle · Fri</span>
+                  <h3 class="song">Method Actor</h3>
+                  <p class="artist">Nilüfer Yanya</p>
+                  <p class="time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+                    9:12 PM
+                  </p>
+                  <span class="ontour-chip">🎫 Fri Jul 10 · Cat's Cradle</span>
+                </div>
+                <button class="info" aria-label="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+                </button>
+              </article>
+              <div class="ontour-stub">
+                <span class="stub-k">FRI JUL 10</span>
+                <span class="stub-v">Cat's Cradle · Carrboro</span>
+                <span class="stub-cta">Tickets</span>
+              </div>
+
+              <!-- no match -->
+              <article class="row">
+                <div class="art" style="background:linear-gradient(135deg,#2f6b3a,#7c8f2a 60%,#c9a83a);"></div>
+                <div class="meta">
+                  <h3 class="song">la paradoja</h3>
+                  <p class="artist">Juana Molina</p>
+                  <p class="time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+                    9:06 PM
+                  </p>
+                </div>
+                <button class="info" aria-label="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+                </button>
+              </article>
+
+              <!-- MATCH: Stereolab -->
+              <article class="row match">
+                <div class="art" style="background:linear-gradient(135deg,#b6532a,#8a2f52 55%,#2f2f6b);"></div>
+                <div class="meta">
+                  <span class="ontour-eyebrow"><span class="tdot"></span>On Tour · Haw River · Aug 15</span>
+                  <h3 class="song">Aerial Troubles</h3>
+                  <p class="artist">Stereolab</p>
+                  <p class="time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+                    8:58 PM
+                  </p>
+                  <span class="ontour-chip">🎫 Sat Aug 15 · Haw River Ballroom</span>
+                </div>
+                <button class="info" aria-label="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+                </button>
+              </article>
+              <div class="ontour-stub">
+                <span class="stub-k">SAT AUG 15</span>
+                <span class="stub-v">Haw River Ballroom · Saxapahaw</span>
+                <span class="stub-cta">Tickets</span>
+              </div>
+
+              <!-- no match -->
+              <article class="row">
+                <div class="art" style="background:linear-gradient(135deg,#243a7a,#5a3a86 60%,#a04a86);"></div>
+                <div class="meta">
+                  <h3 class="song">Manhattan</h3>
+                  <p class="artist">Cat Power</p>
+                  <p class="time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+                    8:51 PM
+                  </p>
+                </div>
+                <button class="info" aria-label="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+                </button>
+              </article>
+
+              <!-- no match -->
+              <article class="row">
+                <div class="art" style="background:linear-gradient(135deg,#6b2a4a,#3a2a6b 60%,#2a5a6b);"></div>
+                <div class="meta">
+                  <h3 class="song">Back, Baby</h3>
+                  <p class="artist">Jessica Pratt</p>
+                  <p class="time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+                    8:44 PM
+                  </p>
+                </div>
+                <button class="info" aria-label="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+                </button>
+              </article>
+
+              <!-- no match (classic, never touring) -->
+              <article class="row">
+                <div class="art" style="background:linear-gradient(135deg,#7a5a2a,#6b3a2a 60%,#3a2a4a);"></div>
+                <div class="meta">
+                  <h3 class="song">In a Sentimental Mood</h3>
+                  <p class="artist">Duke Ellington &amp; John Coltrane</p>
+                  <p class="time">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+                    8:37 PM
+                  </p>
+                </div>
+                <button class="info" aria-label="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>
+                </button>
+              </article>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Playlist · flowsheet feed</figcaption>
+    </figure>
+
+    <!-- ======================= DETAIL ======================= -->
+    <figure class="device">
+      <div class="screen">
+        <div class="glass-in">
+          <div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r">WXYC ●●● ▮</span></div>
+          <div class="scroll">
+            <div class="nav">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Playlist
+            </div>
+
+            <div class="hero">
+              <div class="cover" style="background:linear-gradient(135deg,#1f5f6b,#3a2a6b 55%,#c04a86);"></div>
+              <h2 class="d-song">Method Actor</h2>
+              <p class="d-artist">Nilüfer Yanya</p>
+              <p class="d-release">My Method Actor · 2024</p>
+            </div>
+
+            <!-- ===== SHOW MODULE — Direction A: Ticket Stub ===== -->
+            <div class="showmod showmod--A">
+              <div class="stubcard">
+                <div class="row-between">
+                  <span class="mod-eyebrow"><span class="tdot"></span>Playing Near You</span>
+                  <span class="status-pill">On Sale</span>
+                </div>
+                <p class="venue">Cat's Cradle</p>
+                <p class="city">Carrboro, NC · 8 mi away</p>
+                <div class="perf"><span>ADMIT ONE</span></div>
+                <div class="when">
+                  <div><span>Date</span><b>Fri Jul 10</b></div>
+                  <div><span>Doors</span><b>8:00 PM</b></div>
+                  <div><span>Show</span><b>9:00 PM</b></div>
+                </div>
+                <p class="support">with <b>Tapir!</b> · $22–$25 advance · All ages</p>
+                <a class="ticket-btn" href="#" onclick="return false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 002-2h12a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H6a2 2 0 00-2-2 2 2 0 000-4z"/><path d="M10 6v12" stroke-dasharray="1 2.5"/></svg>
+                  Get Tickets
+                </a>
+              </div>
+            </div>
+
+            <!-- ===== SHOW MODULE — Direction B: Marquee ===== -->
+            <div class="showmod showmod--B">
+              <div class="marquee">
+                <span class="mod-eyebrow"><span class="tdot"></span>Playing Near You · Fri Jul 10</span>
+                <p class="venue">Cat's Cradle</p>
+                <div class="sub">
+                  <span>Carrboro, NC</span>
+                  <span>Doors <b>8:00</b> · Show <b>9:00</b></span>
+                  <span>with <b>Tapir!</b></span>
+                  <span><b>$22–$25</b></span>
+                </div>
+                <a class="textlink" href="#" onclick="return false">
+                  Get tickets
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+              </div>
+            </div>
+
+            <!-- ===== SHOW MODULE — Direction C: Glow Chip ===== -->
+            <div class="showmod showmod--C">
+              <div class="compact">
+                <span class="mod-eyebrow"><span class="tdot"></span>Playing Near You</span>
+                <div class="line1">
+                  <div>
+                    <p class="venue">Cat's Cradle</p>
+                    <p class="meta2">Carrboro · Doors 8 · with Tapir! · $22–$25</p>
+                  </div>
+                  <div class="date-badge"><div class="m">Jul</div><div class="d">10</div></div>
+                </div>
+                <a class="ticket-btn" href="#" onclick="return false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 002-2h12a2 2 0 002 2 2 2 0 000 4 2 2 0 00-2 2H6a2 2 0 00-2-2 2 2 0 000-4z"/><path d="M10 6v12" stroke-dasharray="1 2.5"/></svg>
+                  Get Tickets
+                </a>
+              </div>
+            </div>
+
+            <!-- existing detail sections, unchanged -->
+            <div class="card">
+              <p class="card-head">Release</p>
+              <dl class="kv">
+                <dt>Label</dt><dd>Ninja Tune</dd>
+                <dt>Year</dt><dd>2024</dd>
+              </dl>
+              <div class="tags"><span>Indie Rock</span><span>Art Pop</span><span>Alternative</span></div>
+            </div>
+
+            <p class="card-head" style="margin:24px 4px 0;">Add it to your library</p>
+            <div class="stream">
+              <a href="#" onclick="return false"><span class="g" style="background:#1db954;"></span>Spotify</a>
+              <a href="#" onclick="return false"><span class="g" style="background:#fc3c44;"></span>Apple Music</a>
+              <a href="#" onclick="return false"><span class="g" style="background:#408294;"></span>Bandcamp</a>
+              <a href="#" onclick="return false"><span class="g" style="background:#ff5500;"></span>SoundCloud</a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <figcaption>Track detail · show module</figcaption>
+    </figure>
+
+  </div>
+
+  <!-- ======================= RATIONALE ======================= -->
+  <section class="rationale">
+    <h2>Three directions, one signal</h2>
+    <p class="sub">All three reuse the app's accent hue (23° amber) so the "on tour" signal reads as native — and stays clearly distinct from the green on-air dot. They differ in footprint: how much they ask of a dense, fast-scrolling feed.</p>
+    <div class="cards">
+      <div class="dcard" data-card="A" data-active="true">
+        <div class="n">A · Tactile</div>
+        <h3>Ticket Stub</h3>
+        <p>A torn-off stub with punched notches and a dashed perforation. The show reads as a physical object clipped to the track — the most gig-poster, the most memorable.</p>
+        <p class="use"><b>Best when</b> the feature is a headline moment we want people to notice and screenshot.</p>
+      </div>
+      <div class="dcard" data-card="B">
+        <div class="n">B · Typographic</div>
+        <h3>Marquee</h3>
+        <p>Leans entirely on the app's existing small-caps monospaced label system: an eyebrow, a thin amber rule, a venue set in wide caps, a text link. Sits quietest inside the current glass UI.</p>
+        <p class="use"><b>Best when</b> we want it to feel like it was always part of the app.</p>
+      </div>
+      <div class="dcard" data-card="C">
+        <div class="n">C · Minimal</div>
+        <h3>Glow Chip</h3>
+        <p>A single amber pill in the feed and one compact card in detail. Lowest visual footprint, least clutter risk in a busy flowsheet, fastest to ship and tune.</p>
+        <p class="use"><b>Best when</b> matches are frequent and we can't afford to crowd the list.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= ENG NOTES ======================= -->
+  <div class="notes">
+    <h2>Notes for the integration</h2>
+    <ul>
+      <li><b>Match key is a name, not an ID.</b> Triangle Shows stores no MusicBrainz/Discogs ID — lookups are <code>ILIKE</code> on <code>artist</code>/<code>name</code> against a normalized string. To avoid a false "Nilüfer Yanya is playing" on a wrong match, highlight only on a <b>normalized exact match</b> (lowercased, punctuation-stripped) and treat fuzzy hits as no-match for v1.</li>
+      <li><b>The feed shape barely changes.</b> Enrich each flowsheet <code>Playcut</code> with an optional <code>upcomingShow</code> object (venue, city, date, doors/show, price range, status, ticket URL) resolved server-side against <code>GET /api/events?search={artist}&amp;start={today}</code>. The iOS row/detail code just checks for its presence.</li>
+      <li><b>It's a <em>local</em> signal.</b> Triangle Shows only covers ~21 Raleigh–Durham–Chapel Hill venues, which is the whole charm — "playing near you" is literally true for WXYC's audience. Don't generalize copy to imply national tour dates.</li>
+      <li><b>Freshness &amp; state.</b> Data refreshes every 6h and <code>status</code> is mutable (<code>on_sale</code> / <code>sold_out</code> / <code>cancelled</code> / <code>free</code>) — reflect sold-out/cancelled in the pill, and only ever show <code>date &gt;= today</code>.</li>
+      <li><b>Multiple upcoming shows.</b> If an artist has more than one date, surface the soonest in the row and list the rest in detail.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var stage = document.getElementById('stage');
+    var buttons = document.querySelectorAll('.seg button');
+    var cards = document.querySelectorAll('.dcard');
+    function setVariant(v) {
+      stage.setAttribute('data-variant', v);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.set === v ? 'true' : 'false'); });
+      cards.forEach(function (c) { c.setAttribute('data-active', c.dataset.card === v ? 'true' : 'false'); });
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () { setVariant(b.dataset.set); });
+    });
+  })();
+</script>
+</body>
+</html>
