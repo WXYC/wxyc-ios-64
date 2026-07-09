@@ -78,7 +78,12 @@ struct BoxOfficeTicketView: View {
         }
         .padding(EdgeInsets(top: 18, leading: 18, bottom: 20, trailing: 18))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { glassSurface(Rectangle()) }
+        .background {
+            ZStack {
+                MaterialView()
+                glassSurface(Rectangle())
+            }
+        }
     }
 
     /// A neutral frosted-glass surface for the ticket: real Liquid Glass on OS 26,
