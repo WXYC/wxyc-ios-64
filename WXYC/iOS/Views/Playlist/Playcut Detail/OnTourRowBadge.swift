@@ -2,12 +2,14 @@
 //  OnTourRowBadge.swift
 //  WXYC
 //
-//  The feed-row "stub": a torn ticket strip that hangs beneath a playlist row
-//  when the played artist has an upcoming Triangle-area show. The compact
-//  counterpart to the full Box Office ticket in the detail view — a perforated
-//  top edge with corner punch-outs, then date · venue · status tag across one
-//  line. State-colored tag (amber on sale, teal free, dimmed sold-out, red
-//  cancelled). Matches the prototype's `.rstub` (docs/ideas/touring-shows-box-office.html).
+//  The feed-row "stub": the lower panel of a playlist row's ticket, shown when
+//  the played artist has an upcoming Triangle-area show. Draws only the strip's
+//  contents — date · venue · status tag on one line, plus a dashed tear line
+//  along the top seam. The surrounding ``PlaycutRowView`` supplies the shared
+//  wallpaper background and the perforated ticket outline (the semicircle
+//  punch-outs at the seam), so this view never draws its own surface. State-
+//  colored tag: amber on sale, teal free, dimmed sold-out, red cancelled.
+//  Mirrors the prototype's `.rstub` (docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -19,14 +21,11 @@ import SwiftUI
 struct OnTourRowBadge: View {
     let show: UpcomingShow
 
+    /// The stub panel's height. ``PlaycutRowView`` frames the stub to this value
+    /// and places the ticket's perforation notches at the seam it defines.
+    static let preferredHeight: CGFloat = 34
+
     private var presenter: BoxOfficeTicketPresenter { BoxOfficeTicketPresenter(show) }
-
-    private let cornerRadius: CGFloat = 12
-    private let notchRadius: CGFloat = 5
-
-    private var stubShape: RowStubShape {
-        RowStubShape(cornerRadius: cornerRadius, notchRadius: notchRadius)
-    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -47,22 +46,16 @@ struct OnTourRowBadge: View {
 
             tag
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background {
-            glassSurface(stubShape)
-            Color.white.opacity(0.05)
-        }
-        .clipShape(stubShape)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, minHeight: Self.preferredHeight)
         .overlay(alignment: .top) {
-            // The tear line, inset past the corner punch-outs.
+            // The tear line, inset horizontally so it clears the corner punch-outs.
             DashedLine()
                 .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 .frame(height: 1.5)
-                .padding(.horizontal, notchRadius)
+                .padding(.horizontal, 10)
         }
-        // Cancelled reads as "dead" by desaturating the whole stub, matching the ticket.
+        // Cancelled reads as "dead" by desaturating the strip, matching the ticket.
         .saturation(presenter.feedTagStyle == .negative ? 0.4 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
@@ -105,50 +98,9 @@ struct OnTourRowBadge: View {
             .compactMap { $0 }
             .joined(separator: ", ")
     }
-
-    /// A neutral frosted-glass surface: real Liquid Glass on OS 26,
-    /// `.ultraThinMaterial` as a fallback. Matches the detail ticket's stub.
-    @ViewBuilder
-    private func glassSurface<S: Shape>(_ shape: S) -> some View {
-        if #available(iOS 26, macOS 26, tvOS 26, watchOS 26, *) {
-            shape.fill(.clear).glassEffect(.clear, in: shape)
-        } else {
-            shape.fill(.ultraThinMaterial)
-        }
-    }
 }
 
 // MARK: - Shapes
-
-/// A ticket-stub outline: square top corners, rounded bottom, and a circular
-/// punch-out cut into each top corner so the strip reads as torn from the row
-/// above (the wallpaper shows through the cuts). Mirrors the prototype's
-/// `.rstub` radius + `::before/::after` notches.
-private struct RowStubShape: Shape {
-    let cornerRadius: CGFloat
-    let notchRadius: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        var path = UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: cornerRadius,
-            bottomTrailingRadius: cornerRadius,
-            topTrailingRadius: 0
-        ).path(in: rect)
-
-        let diameter = notchRadius * 2
-        let left = Path(ellipseIn: CGRect(
-            x: rect.minX - notchRadius, y: rect.minY - notchRadius,
-            width: diameter, height: diameter
-        ))
-        let right = Path(ellipseIn: CGRect(
-            x: rect.maxX - notchRadius, y: rect.minY - notchRadius,
-            width: diameter, height: diameter
-        ))
-        path = path.subtracting(left).subtracting(right)
-        return path
-    }
-}
 
 /// A single horizontal line across the middle of its rect (the dashed tear line).
 private struct DashedLine: Shape {
@@ -171,7 +123,7 @@ private enum Palette {
     static let freeText = Color(hex: 0x04302B)
     static let cancel = Color(hex: 0xFF6B6B)
     static let cancelInk = Color(hex: 0xFFB3B3)
-    static let perforation = Color.white.opacity(0.25)
+    static let perforation = Color.white.opacity(0.28)
     static let onDark = Color(hex: 0x2A1400)
 }
 
@@ -206,8 +158,8 @@ private extension Color {
     OnTourRowStubPreview(status: .cancelled, venue: "Local 506")
 }
 
-/// Stacks a mock row over the stub on a WXYC-like gradient so the tear line and
-/// corner punch-outs read against a busy background.
+/// Sits the stub over a translucent dark panel that stands in for the ticket's
+/// shared material, on a WXYC-like gradient, so the tag colors and tear line read.
 private struct OnTourRowStubPreview: View {
     let status: ShowStatus
     let venue: String
@@ -215,31 +167,18 @@ private struct OnTourRowStubPreview: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(hex: 0x40498E), Color(hex: 0xAF3E79), Color(hex: 0xB64949)],
+                colors: [Color(red: 0.25, green: 0.28, blue: 0.56), Color(red: 0.69, green: 0.24, blue: 0.47)],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.white.opacity(0.15))
-                        .frame(width: 64, height: 64)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Method Actor").fontWeight(.bold)
-                        Text("Nilüfer Yanya")
-                        Text("9:12 PM").font(.caption).foregroundStyle(.white.opacity(0.7))
-                    }
-                    .foregroundStyle(.white)
-                    Spacer()
-                }
-                .padding(12)
-
-                OnTourRowBadge(show: .init(
-                    id: 4821, eventName: "Nilüfer Yanya", artist: "Nilüfer Yanya",
-                    venueName: venue, date: .now, status: status
-                ))
-            }
+            OnTourRowBadge(show: .init(
+                id: 4821, eventName: "Nilüfer Yanya", artist: "Nilüfer Yanya",
+                venueName: venue, date: .now, status: status
+            ))
+            .frame(height: OnTourRowBadge.preferredHeight)
+            .background(.black.opacity(0.28))
+            .clipShape(.rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
             .padding()
         }
     }

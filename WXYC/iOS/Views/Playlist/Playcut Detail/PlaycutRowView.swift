@@ -112,13 +112,19 @@ struct PlaycutRowView: View {
         if case .loaded(let image) = artworkState { image } else { nil }
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            rowContent
+    // Ticket geometry, used only when the row carries an upcoming show. The
+    // notch centers sit on the seam between the song row and the stub, so the
+    // punch-outs read as one torn perforation shared by both panels.
+    private let ticketCornerRadius: CGFloat = 12
+    private let notchRadius: CGFloat = 6
 
+    var body: some View {
+        Group {
             if let upcomingShow {
-                OnTourRowBadge(show: upcomingShow)
+                ticketRow(show: upcomingShow)
                     .transition(.opacity.combined(with: .move(edge: .top)))
+            } else {
+                songRowPanel
             }
         }
         .listRowBackground(Color.clear)
@@ -131,71 +137,161 @@ struct PlaycutRowView: View {
         }
     }
 
-    private var rowContent: some View {
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    BackgroundLayer()
+    /// The plain playlist row: a wallpaper-blurred panel with artwork, song info,
+    /// and the info button. Used when there's no upcoming show to attach.
+    private var songRowPanel: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                BackgroundLayer()
+                songRow(proxy: proxy)
+            }
+            .onTapGesture {
+                onSelect(loadedArtwork)
+            }
+        }
+        .aspectRatio(2.5, contentMode: .fill)
+        .frame(maxWidth: .infinity)
+        .modifier(ScrollShadowModifier(
+            shadowYOffset: $shadowYOffset,
+            top: shadowOffsetAtTop,
+            bottom: shadowOffsetAtBottom
+        ))
+    }
 
-                    // Content that can punch through the background
-                    HStack(alignment: .center, spacing: 0) {
-                        // Artwork
-                        Group {
-                            switch artworkState {
-                            case .loaded(let image):
-                                LoadedArtworkView(
-                                    artwork: image,
-                                    shadowYOffset: shadowYOffset
-                                )
-                            case .unloaded, .loading:
-                                LoadingArtworkView(shadowYOffset: shadowYOffset)
-                            case .failed:
-                                PlaceholderArtworkView(
-                                    cornerRadius: ArtworkStyle.cornerRadius,
-                                    shadowYOffset: shadowYOffset,
-                                    meshGradient: meshGradient
-                                )
-                                .frame(
-                                    maxWidth: .infinity,
-                                    maxHeight: proxy.size.height * 0.75
-                                )
-                            }
-                        }
-                        .padding(12.0)
-                        .clipRounded()
-                        .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
-
-                        // Song info
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(playcut.songTitle)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.white)
-                            Text(playcut.artistName)
-                                .foregroundStyle(.white)
-                            ClockView(timeCreated: playcut.timeCreated)
-                                .foregroundStyle(.white.opacity(0.7))
-                        }
-                        .padding(0)
-
-                        Spacer()
-
-                        // Info button
-                        Button {
-                            onSelect(loadedArtwork)
-                        } label: {
-                            Image(systemName: "info.circle")
-                                .font(.title3)
-                                .foregroundStyle(.white.opacity(0.8))
-                                .frame(width: 44, height: 44)
-                        }
-                        .padding(.trailing, 4)
-                    }
+    /// The row rendered as a single ticket: the song row and the on-tour stub
+    /// share one wallpaper background and one perforated outline, so the
+    /// semicircle notches at their seam punch cleanly through to the wallpaper —
+    /// rather than each panel drawing half a notch against its own surface.
+    private func ticketRow(show: UpcomingShow) -> some View {
+        let shape = TicketRowShape(
+            cornerRadius: ticketCornerRadius,
+            stubHeight: OnTourRowBadge.preferredHeight,
+            notchRadius: notchRadius
+        )
+        return ZStack {
+            BackgroundLayer(cornerRadius: ticketCornerRadius)
+            VStack(spacing: 0) {
+                GeometryReader { proxy in
+                    songRow(proxy: proxy)
                 }
-                .onTapGesture {
-                    onSelect(loadedArtwork)
+                .aspectRatio(2.5, contentMode: .fill)
+
+                OnTourRowBadge(show: show)
+                    .frame(height: OnTourRowBadge.preferredHeight)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect(loadedArtwork)
+        }
+        .clipShape(shape)
+        .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
+        .frame(maxWidth: .infinity)
+        .modifier(ScrollShadowModifier(
+            shadowYOffset: $shadowYOffset,
+            top: shadowOffsetAtTop,
+            bottom: shadowOffsetAtBottom
+        ))
+    }
+
+    /// The song-row content — artwork, title/artist/time, info button — shared by
+    /// the plain row and the ticket. Needs the enclosing `GeometryReader`'s proxy
+    /// for the placeholder artwork's height.
+    @ViewBuilder
+    private func songRow(proxy: GeometryProxy) -> some View {
+        // Content that can punch through the background
+        HStack(alignment: .center, spacing: 0) {
+            // Artwork
+            Group {
+                switch artworkState {
+                case .loaded(let image):
+                    LoadedArtworkView(
+                        artwork: image,
+                        shadowYOffset: shadowYOffset
+                    )
+                case .unloaded, .loading:
+                    LoadingArtworkView(shadowYOffset: shadowYOffset)
+                case .failed:
+                    PlaceholderArtworkView(
+                        cornerRadius: ArtworkStyle.cornerRadius,
+                        shadowYOffset: shadowYOffset,
+                        meshGradient: meshGradient
+                    )
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: proxy.size.height * 0.75
+                    )
                 }
             }
-            .aspectRatio(2.5, contentMode: .fill)
-            .frame(maxWidth: .infinity)
+            .padding(12.0)
+            .clipRounded()
+            .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
+
+            // Song info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(playcut.songTitle)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                Text(playcut.artistName)
+                    .foregroundStyle(.white)
+                ClockView(timeCreated: playcut.timeCreated)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(0)
+
+            Spacer()
+
+            // Info button
+            Button {
+                onSelect(loadedArtwork)
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(width: 44, height: 44)
+            }
+            .padding(.trailing, 4)
+        }
+    }
+}
+
+// MARK: - Ticket shape + scroll-shadow tracking
+
+/// The playlist row's ticket outline: a rounded rectangle with a circular notch
+/// cut into each side edge at the seam (`stubHeight` up from the bottom), so the
+/// punch-outs read through to the wallpaper. Mirrors `BoxOfficeTicketView`'s
+/// `TicketShape` at feed scale.
+private struct TicketRowShape: Shape {
+    let cornerRadius: CGFloat
+    let stubHeight: CGFloat
+    let notchRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var shape = Path(roundedRect: rect, cornerRadius: cornerRadius)
+        let seamY = rect.maxY - stubHeight
+        let diameter = notchRadius * 2
+        let left = Path(ellipseIn: CGRect(
+            x: rect.minX - notchRadius, y: seamY - notchRadius,
+            width: diameter, height: diameter
+        ))
+        let right = Path(ellipseIn: CGRect(
+            x: rect.maxX - notchRadius, y: seamY - notchRadius,
+            width: diameter, height: diameter
+        ))
+        return shape.subtracting(left).subtracting(right)
+    }
+}
+
+/// Tracks the row's position in the scroll view and drives the artwork's shadow
+/// offset from it, so the shadow leans with the row as it scrolls. Shared by the
+/// plain row and the ticket.
+private struct ScrollShadowModifier: ViewModifier {
+    @Binding var shadowYOffset: CGFloat
+    let top: CGFloat
+    let bottom: CGFloat
+
+    func body(content: Content) -> some View {
+        content
             .overlay(
                 GeometryReader { scrollProxy in
                     let scrollFrame = scrollProxy.frame(in: .named("scroll"))
@@ -208,22 +304,11 @@ struct PlaycutRowView: View {
                 }
             )
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
-                // Calculate shadow offset based on scroll position
-                // scrollPosition is the midY of the row in the scroll view's coordinate space
-
-                // Get screen bounds to understand visible area
+                // Normalize the row's midY within the screen (0 at top, 1 at
+                // bottom), then interpolate the shadow offset across that range.
                 let screenHeight = UIScreen.main.bounds.height
-
-                // The scrollPosition tells us where the row's midY is relative to the scroll content
-                // When the row is at the top of the visible screen, scrollPosition ≈ 0
-                // When the row is at the bottom of the visible screen, scrollPosition ≈ screenHeight
-
-                // Normalize position: 0 at top of screen, 1 at bottom of screen
                 let normalizedPosition = min(max(scrollPosition / screenHeight, 0), 1)
-
-                // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
-                let range = shadowOffsetAtBottom - shadowOffsetAtTop
-                shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
+                shadowYOffset = top + (normalizedPosition * (bottom - top))
             }
     }
 }
