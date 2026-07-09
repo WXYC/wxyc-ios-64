@@ -113,6 +113,25 @@ struct PlaycutRowView: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            rowContent
+
+            if let upcomingShow {
+                OnTourRowBadge(show: upcomingShow)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .task(id: playcut.id) {
+            let show = await upcomingShowProvider.upcomingShow(for: playcut)
+            withAnimation(.easeInOut(duration: 0.25)) {
+                upcomingShow = show
+            }
+        }
+    }
+
+    private var rowContent: some View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     BackgroundLayer()
@@ -154,11 +173,6 @@ struct PlaycutRowView: View {
                                 .foregroundStyle(.white)
                             ClockView(timeCreated: playcut.timeCreated)
                                 .foregroundStyle(.white.opacity(0.7))
-                            if let upcomingShow {
-                                OnTourRowBadge(show: upcomingShow)
-                                    .padding(.top, 2)
-                                    .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .leading)))
-                            }
                         }
                         .padding(0)
 
@@ -182,8 +196,6 @@ struct PlaycutRowView: View {
             }
             .aspectRatio(2.5, contentMode: .fill)
             .frame(maxWidth: .infinity)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
             .overlay(
                 GeometryReader { scrollProxy in
                     let scrollFrame = scrollProxy.frame(in: .named("scroll"))
@@ -212,12 +224,6 @@ struct PlaycutRowView: View {
                 // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
                 let range = shadowOffsetAtBottom - shadowOffsetAtTop
                 shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
-            }
-            .task(id: playcut.id) {
-                let show = await upcomingShowProvider.upcomingShow(for: playcut)
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    upcomingShow = show
-                }
             }
     }
 }

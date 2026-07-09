@@ -14,6 +14,22 @@
 
 import Foundation
 
+/// The visual treatment for the compact feed-row tag, one per ``ShowStatus``.
+/// Mirrors the prototype's four `.rtag` variants (`docs/ideas/touring-shows-box-office.html`)
+/// so the view maps a semantic style to colors rather than switching on status itself.
+public enum FeedTagStyle: Sendable, Equatable {
+    /// On sale — the amber accent, drawing the eye toward an attendable show.
+    case prominent
+    /// Free — the teal accent.
+    case free
+    /// Sold out — dimmed; still linked, but no longer enticing.
+    case muted
+    /// Cancelled — a red, "dead" treatment.
+    case negative
+    /// Unknown — a plain, neutral chip.
+    case neutral
+}
+
 /// View-model for the Box Office ticket. Every property is a pure function of
 /// the wrapped ``UpcomingShow``.
 ///
@@ -158,6 +174,18 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         case .cancelled: return "Cancelled"
         case .free: return "Free · RSVP"
         case .unknown: return "Details"
+        }
+    }
+
+    /// The visual treatment for the feed-row tag, keyed off the same status that
+    /// drives ``feedTagText``.
+    public var feedTagStyle: FeedTagStyle {
+        switch show.status {
+        case .onSale: return .prominent
+        case .free: return .free
+        case .soldOut: return .muted
+        case .cancelled: return .negative
+        case .unknown: return .neutral
         }
     }
 

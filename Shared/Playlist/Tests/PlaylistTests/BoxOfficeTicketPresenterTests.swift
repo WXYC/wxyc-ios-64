@@ -207,4 +207,15 @@ struct BoxOfficeTicketPresenterTests {
         let presenter = BoxOfficeTicketPresenter(.stub(sourceURL: url))
         #expect(presenter.ctaURL == url)
     }
+
+    @Test("Maps status to the feed-row tag style", arguments: [
+        (ShowStatus.onSale, FeedTagStyle.prominent),
+        (.free, .free),
+        (.soldOut, .muted),
+        (.cancelled, .negative),
+        (.unknown, .neutral),
+    ])
+    func feedTagStyle(status: ShowStatus, expected: FeedTagStyle) {
+        #expect(BoxOfficeTicketPresenter(.stub(status: status)).feedTagStyle == expected)
+    }
 }
