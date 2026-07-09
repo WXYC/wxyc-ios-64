@@ -33,11 +33,13 @@ struct PlaycutDetailView: View {
     @State private var isLightboxActive = false
     @State private var showLightboxContainer = false
     @State private var hideHeaderArtwork = false
+    @State private var upcomingShow: UpcomingShow?
     @Namespace private var artworkNamespace
 
     @Environment(\.artworkService) private var artworkService
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.reviewRequestService) var reviewRequestService
+    @Environment(\.upcomingShowProvider) private var upcomingShowProvider
 
     private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.authService)
     
@@ -62,7 +64,14 @@ struct PlaycutDetailView: View {
                     onArtworkTap: presentArtworkLightbox
                 )
                 .padding(.top, 30)
-                
+
+                // Box Office ticket — shown when the played artist has an
+                // upcoming Triangle-area show.
+                if let upcomingShow {
+                    BoxOfficeTicketView(show: upcomingShow)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
                 // Metadata section
                 if isLoadingMetadata {
                     PlaycutLoadingSection()
@@ -121,6 +130,9 @@ struct PlaycutDetailView: View {
         .task {
             await loadMetadata()
         }
+        .task(id: playcut.id) {
+            await loadUpcomingShow()
+        }
         .overlay {
             if showLightboxContainer, let artwork {
                 ArtworkLightboxView(
@@ -173,6 +185,15 @@ struct PlaycutDetailView: View {
         // If we still have no artwork and metadata provided an artwork URL, fetch it
         if artwork == nil, let artworkURL = fetchedMetadata.album.artworkURL {
             await loadArtwork(from: artworkURL)
+        }
+    }
+
+    private func loadUpcomingShow() async {
+        let show = await upcomingShowProvider.upcomingShow(for: playcut)
+        await MainActor.run {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.upcomingShow = show
+            }
         }
     }
 

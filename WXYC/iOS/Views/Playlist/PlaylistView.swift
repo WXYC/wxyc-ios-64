@@ -172,6 +172,10 @@ struct PlaylistView: View {
                     self.onAir = playlist.onAir
                     self.playlistEntries = playlist.timelineEntries
                 }
+                // Publish the now-playing (first) playcut id for the debug
+                // touring-shows mock to target. Harmless in release (unread).
+                TouringShowsDebugState.shared.firstPlaycutID =
+                    playlist.timelineEntries.lazy.compactMap { ($0 as? Playcut)?.id }.first
                 let playcuts = playlist.entries.compactMap { $0 as? Playcut }
                 appState.artworkLoader.prune(keepingKeys: Set(playcuts.map(\.artworkCacheKey)))
                 for playcut in playcuts {

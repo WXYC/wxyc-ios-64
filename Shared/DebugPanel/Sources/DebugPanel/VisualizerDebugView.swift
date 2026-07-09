@@ -79,6 +79,17 @@ public struct VisualizerDebugView: View {
                         ))
                     }
 
+                    // Touring Shows (Box Office ticket)
+                    DebugSection(
+                        header: "Touring Shows",
+                        footer: "Shows a mock Box Office concert ticket on the now-playing (first) item. Tap that item to see it in the detail view."
+                    ) {
+                        Toggle("Mock ticket on first item", isOn: Binding(
+                            get: { TouringShowsDebugState.shared.mockFirstItemEnabled },
+                            set: { TouringShowsDebugState.shared.mockFirstItemEnabled = $0 }
+                        ))
+                    }
+
                     // Tip Views & Picker Usage
                     DebugSection(
                         header: "Tips & Discoverability",
