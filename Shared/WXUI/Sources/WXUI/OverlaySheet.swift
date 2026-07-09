@@ -92,7 +92,11 @@ public struct OverlaySheet<Content: View>: View {
                     .environment(\.lightboxActiveBinding, $lightboxActive)
                     .frame(maxWidth: .infinity)
                     .frame(height: geometry.size.height * 0.9)
-                    .background(.ultraThinMaterial)
+                    .background {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .brightness(-0.24)
+                    }
                     .clipShape(.rect(cornerRadius: 20, style: .continuous))
                     .shadow(color: .black.opacity(0.2), radius: 20, y: -5)
                     .offset(y: appeared ? max(offsetY, 0) : geometry.size.height)
