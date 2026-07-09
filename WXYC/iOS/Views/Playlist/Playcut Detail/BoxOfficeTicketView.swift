@@ -2,10 +2,11 @@
 //  BoxOfficeTicketView.swift
 //  WXYC
 //
-//  The "Box Office" ticket: an amber-glass keepsake surfaced on a playcut when
-//  the played artist has an upcoming Triangle-area show. A warm smoked-glass body
-//  (the wallpaper glows through) meets an opaque cream stub; two notches are cut
-//  clean through to the wallpaper at the perforation. Design is the approved
+//  The "Box Office" ticket: a keepsake surfaced on a playcut when the played
+//  artist has an upcoming Triangle-area show. The body and stub share one
+//  continuous glass panel (the wallpaper glows through) so the perforation reads
+//  as a single dashed line rather than two stacked glass rims; two notches are
+//  cut clean through to the wallpaper at the seam. Design is the approved
 //  prototype in docs/ideas/touring-shows-box-office.html.
 //
 //  Created by Jake Bromberg on 07/08/26.
@@ -39,6 +40,16 @@ struct BoxOfficeTicketView: View {
         VStack(spacing: 0) {
             ticketBody
             ticketStub
+        }
+        // One continuous panel behind the whole ticket. Body and stub used to
+        // carry separate `.glassEffect` backgrounds, and their two specular rims
+        // stacked into a bright solid line at the perforation. A single panel has
+        // no internal edge, so the only mark at the seam is the dashed line.
+        .background {
+            ZStack {
+                MaterialView()
+                glassSurface(Rectangle())
+            }
         }
         .clipShape(ticketShape)
         .overlay { ticketShape.stroke(Palette.hairline, lineWidth: 1) }
@@ -78,12 +89,6 @@ struct BoxOfficeTicketView: View {
         }
         .padding(EdgeInsets(top: 18, leading: 18, bottom: 20, trailing: 18))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ZStack {
-                MaterialView()
-                glassSurface(Rectangle())
-            }
-        }
     }
 
     /// A neutral frosted-glass surface for the ticket: real Liquid Glass on OS 26,
@@ -242,7 +247,7 @@ struct BoxOfficeTicketView: View {
         )
     }
 
-    // MARK: - Stub (cream keepsake)
+    // MARK: - Stub (content only; shares the ticket's panel)
 
     private var ticketStub: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -274,15 +279,8 @@ struct BoxOfficeTicketView: View {
         .padding(.horizontal, 18)
         .frame(height: stubHeight)
         .frame(maxWidth: .infinity)
-        .background {
-            ZStack {
-                MaterialView()
-                glassSurface(Rectangle())
-                // A whisper of separation so the stub reads as a distinct panel
-                // from the body without reintroducing a colored fill.
-                Color.white.opacity(0.05)
-            }
-        }
+        // No background of its own — the stub sits on the ticket's shared panel
+        // (see `body`). The dashed line is the only mark at the seam.
         .overlay(alignment: .top) {
             DashedLine()
                 .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
