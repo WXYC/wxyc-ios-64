@@ -83,6 +83,7 @@ struct PlaycutRowView: View {
     let onSelect: (UIImage?) -> Void
 
     @State private var shadowYOffset: CGFloat = 0
+    @State private var upcomingShow: UpcomingShow?
 
     /// Stable time offset for animated mesh gradient (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
@@ -93,6 +94,7 @@ struct PlaycutRowView: View {
 
     @Environment(Singletonia.self) private var appState
     @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
+    @Environment(\.upcomingShowProvider) private var upcomingShowProvider
 
     /// Animated mesh gradient using wallpaper-derived palette when available.
     private var meshGradient: AnimatedMeshGradient {
@@ -152,6 +154,11 @@ struct PlaycutRowView: View {
                                 .foregroundStyle(.white)
                             ClockView(timeCreated: playcut.timeCreated)
                                 .foregroundStyle(.white.opacity(0.7))
+                            if let upcomingShow {
+                                OnTourRowBadge(show: upcomingShow)
+                                    .padding(.top, 2)
+                                    .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .leading)))
+                            }
                         }
                         .padding(0)
 
@@ -205,6 +212,12 @@ struct PlaycutRowView: View {
                 // Interpolate from shadowOffsetAtTop (top) to shadowOffsetAtBottom (bottom)
                 let range = shadowOffsetAtBottom - shadowOffsetAtTop
                 shadowYOffset = shadowOffsetAtTop + (normalizedPosition * range)
+            }
+            .task(id: playcut.id) {
+                let show = await upcomingShowProvider.upcomingShow(for: playcut)
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    upcomingShow = show
+                }
             }
     }
 }
