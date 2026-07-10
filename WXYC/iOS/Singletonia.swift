@@ -32,12 +32,17 @@ final class Singletonia {
     let artworkLoader: ArtworkLoader
     let widgetStateService: WidgetStateService
     let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
+    let spotlightDonationService = SpotlightDonationService(
+        storage: UserDefaults.wxyc,
+        indexer: CoreSpotlightIndexer()
+    )
 
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
 
     private var nowPlayingObservationTask: Task<Void, Never>?
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
+    private var spotlightDonationTask: Task<Void, Never>?
 
     private init() {
         self.widgetStateService = WidgetStateService(
@@ -62,6 +67,7 @@ final class Singletonia {
         )
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
         startNowPlayingPlaybackStateObservation()
+        startSpotlightDonation(nowPlayingService: nowPlayingService)
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
@@ -73,6 +79,26 @@ final class Singletonia {
                 }
             } catch {
                 Log(.error, "NowPlaying observation error: \(error)")
+            }
+        }
+    }
+
+    /// Feeds the Spotlight content index on every NowPlayingService tick.
+    ///
+    /// The subscription owns its own iterator (NowPlayingService supports
+    /// multi-observation via the underlying PlaylistService updates stream)
+    /// so this loop doesn't compete with `startNowPlayingObservation`'s feed
+    /// into the info center. The tick is a natural throttle — one donation
+    /// per playcut change — so we don't need extra debouncing.
+    private func startSpotlightDonation(nowPlayingService: NowPlayingService) {
+        spotlightDonationTask = Task { [spotlightDonationService] in
+            do {
+                for try await item in nowPlayingService {
+                    guard !Task.isCancelled else { break }
+                    await spotlightDonationService.donateCurrentPlaycut(item.playcut)
+                }
+            } catch {
+                Log(.error, "Spotlight donation observation error: \(error)")
             }
         }
     }

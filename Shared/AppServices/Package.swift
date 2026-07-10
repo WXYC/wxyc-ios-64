@@ -13,6 +13,7 @@ let package = Package(
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
+        .package(name: "WXYCIntents", path: "../Intents"),
     ],
     targets: [
         .target(
@@ -25,6 +26,10 @@ let package = Package(
                 "Caching",
                 "Analytics",
                 "Logger",
+                // WXYCIntents pulls in Playback (iOS/macOS/tvOS). Watch has no
+                // CoreSpotlight and no SpotlightDonationService — dropping the
+                // dep on watchOS keeps Playback out of the watch build graph.
+                .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macOS, .tvOS])),
             ]
         ),
         .testTarget(
@@ -36,6 +41,7 @@ let package = Package(
                 .product(name: "PlaylistTesting", package: "Playlist"),
                 "Artwork",
                 .product(name: "PlaybackCore", package: "Playback"),
+                .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macOS, .tvOS])),
             ]
         )
     ]
