@@ -36,6 +36,7 @@ final class Singletonia {
         storage: UserDefaults.wxyc,
         indexer: CoreSpotlightIndexer()
     )
+    let playcutHistoryStore = PlaycutHistoryStore()
 
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
@@ -68,6 +69,7 @@ final class Singletonia {
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
         startNowPlayingPlaybackStateObservation()
         startSpotlightDonation()
+        startPlaycutHistory()
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
@@ -113,6 +115,20 @@ final class Singletonia {
                 }
                 await spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
             }
+        }
+    }
+
+    /// Feeds the persistent playcut history on every playlist tick.
+    ///
+    /// The store owns its subscription loop (the `WidgetStateService.start()`
+    /// precedent), so unlike the sibling observation tasks there is nothing
+    /// long-lived to store or cancel here: this fire-and-forget task exists
+    /// only because `start(observing:)` is actor-isolated and `init` cannot
+    /// await it. The captures are intentionally strong — both services live
+    /// as long as `Singletonia.shared`.
+    private func startPlaycutHistory() {
+        Task { [playcutHistoryStore, playlistService] in
+            await playcutHistoryStore.start(observing: playlistService)
         }
     }
 
