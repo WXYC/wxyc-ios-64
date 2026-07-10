@@ -195,12 +195,9 @@ struct WXYCApp: App {
             let isExpired = await appState.playlistService.isCacheExpired()
             if isExpired {
                 Log(.info, category: .general, "Cache expired while backgrounded - triggering foreground refresh")
-                let playlist = await appState.playlistService.fetchAndCachePlaylist()
-                // Users with BGAppRefresh disabled (Low Power Mode, per-app toggle) never hit
-                // the background donation path; without this call, the Spotlight catalogue
-                // would only accrete one row per playcut change and never rebuild the recent
-                // 50-row window that anchors search coverage.
-                await appState.spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
+                _ = await appState.playlistService.fetchAndCachePlaylist()
+                // The Spotlight batch backfill piggybacks on the same PlaylistService
+                // broadcast that this fetch triggers — see Singletonia.startSpotlightDonation.
             }
         }
     }

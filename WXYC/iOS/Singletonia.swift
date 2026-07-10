@@ -92,19 +92,26 @@ final class Singletonia {
     /// the decoded image). Feeding from the playlist stream directly avoids
     /// a duplicate artwork-fetch pipeline on every tick.
     ///
-    /// PlaylistService's own broadcast fires on every metadata-enrichment
-    /// landing (equality includes artworkURL, spotifyURL, etc.), so this
-    /// path re-donates the current playcut whenever enrichment updates
-    /// arrive — intentional, since the CoreSpotlight attribute set embeds
-    /// those fields. Spotlight upsert is idempotent.
+    /// Per tick this observer runs BOTH donation paths: `donateCurrentPlaycut`
+    /// for elevated-priority surfacing of the on-air track (deduped against
+    /// the last donated playcut inside the actor so metadata re-broadcasts
+    /// don't burn XPC), and `donateRecentPlaycuts` so a long-running
+    /// foreground session — the case where the user never lets iOS run
+    /// `BGAppRefresh` — still rebuilds the recent-50-row window. The batch
+    /// path is watermark-idempotent so post-first-fetch ticks short-circuit
+    /// at the `chronOrderID > watermark` filter.
+    ///
+    /// The service references are captured strongly here on purpose: the
+    /// task's lifetime is bound to `Singletonia.shared` (a static let), so
+    /// there is no cycle to break and `[weak self]` would be misleading.
     private func startSpotlightDonation() {
-        spotlightDonationTask = Task { [weak self, spotlightDonationService, playlistService] in
+        spotlightDonationTask = Task { [spotlightDonationService, playlistService] in
             for await playlist in playlistService.updates() {
                 guard !Task.isCancelled else { break }
                 if let currentPlaycut = playlist.playcuts.first {
                     await spotlightDonationService.donateCurrentPlaycut(currentPlaycut)
                 }
-                _ = self
+                await spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
             }
         }
     }
