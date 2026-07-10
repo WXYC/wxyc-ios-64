@@ -48,6 +48,11 @@ enum BackgroundRefreshController {
 
         Log(.info, category: .general, "Background refresh completed successfully with \(playlist.entries.count) entries")
 
+        // Spotlight batch donation runs on the same wall-clock as the fetch:
+        // the BGAppRefresh budget is tight (~30s) so the donation must be
+        // synchronous with the completion signal, not deferred to a later tick.
+        await appState.spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
+
         StructuredPostHogAnalytics.shared.capture(BackgroundRefreshCompleted(
             entryCount: playlist.entries.count
         ))
