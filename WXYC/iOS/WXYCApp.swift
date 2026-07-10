@@ -196,8 +196,12 @@ struct WXYCApp: App {
             if isExpired {
                 Log(.info, category: .general, "Cache expired while backgrounded - triggering foreground refresh")
                 _ = await appState.playlistService.fetchAndCachePlaylist()
-                // The Spotlight batch backfill piggybacks on the same PlaylistService
-                // broadcast that this fetch triggers — see Singletonia.startSpotlightDonation.
+                // The Spotlight batch backfill normally piggybacks on the PlaylistService
+                // broadcast this fetch triggers (see Singletonia.startSpotlightDonation).
+                // A rapid .active → .background → .active cycle can cancel this Task
+                // mid-fetch; PlaylistService.ingest's cancellation guard would skip the
+                // broadcast for that cycle, and the next 30s periodic fetch picks it up.
+
             }
         }
     }

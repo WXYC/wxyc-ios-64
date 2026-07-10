@@ -11,10 +11,11 @@
 //    actor dedups consecutive identical playcuts internally so metadata
 //    re-broadcasts don't burn XPC round-trips.
 //  * `donateRecentPlaycuts(_:)` fires from the same subscription (and from
-//    `BackgroundRefreshController` as a belt-and-suspenders belt for the
-//    BGAppRefresh completion window) with the whole recent playlist — up
-//    to 50 unseen playcuts at normal priority, so a cold catalogue
-//    rebuilds without exhausting BGAppRefresh budget in a single tick.
+//    `BackgroundRefreshController` as a belt-and-suspenders guarantee that
+//    the batch completes inside the BGAppRefresh wall-clock window) with
+//    the whole recent playlist — up to 50 unseen playcuts at normal
+//    priority, so a cold catalogue rebuilds without exhausting BGAppRefresh
+//    budget in a single tick.
 //
 //  The watermark ("last successfully-donated chronOrderID" from the batch
 //  path) lives in `DefaultsStorage` so the catalogue keeps advancing across
