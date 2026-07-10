@@ -44,57 +44,95 @@ struct MigratingDiskCache: Cache, @unchecked Sendable {
     // MARK: - Properties
 
     /// The primary cache in the shared App Group container.
-    private let primary: DiskCache
+    private let primary: any Cache
 
     /// The legacy cache in the app's private caches directory.
-    private let legacy: DiskCache
+    private let legacy: any Cache
 
     // MARK: - Initialization
 
     /// Creates a migrating cache with primary (shared) and legacy (private) storage.
     init() {
-        self.primary = DiskCache(useSharedContainer: true)
-        self.legacy = DiskCache(useSharedContainer: false)
+        self.init(
+            primary: DiskCache(useSharedContainer: true),
+            legacy: DiskCache(useSharedContainer: false)
+        )
+    }
+
+    /// Injection seam for tests that need to script primary/legacy failure states.
+    init(primary: any Cache, legacy: any Cache) {
+        self.primary = primary
+        self.legacy = legacy
     }
 
     // MARK: - Cache Protocol Implementation
 
     /// Retrieves metadata, checking primary then legacy.
     ///
+    /// Derives from ``metadataResult(for:)`` so both accessors apply the same
+    /// no-legacy-fallback-on-unreadable policy.
+    ///
     /// - Note: Does not trigger migration; use ``data(for:)`` for that.
     func metadata(for key: String) -> CacheMetadata? {
-        // Check primary (shared container) first
-        if let metadata = primary.metadata(for: key) {
-            return metadata
+        guard case .present(let metadata) = metadataResult(for: key) else {
+            return nil
         }
-        // Fall back to legacy (private caches)
-        return legacy.metadata(for: key)
+        return metadata
+    }
+
+    /// Classified metadata read, checking primary then legacy.
+    ///
+    /// A primary read failure is surfaced as ``MetadataReadResult/unreadable``
+    /// rather than falling through to legacy — serving a stale legacy copy over
+    /// a transiently unreadable primary would resurrect superseded data. The
+    /// trade-off: a transient primary failure temporarily hides any lingering
+    /// legacy copy too; that self-heals on the next successful read, which is
+    /// the safe direction.
+    func metadataResult(for key: String) -> MetadataReadResult {
+        switch primary.metadataResult(for: key) {
+        case .present(let metadata):
+            .present(metadata)
+        case .unreadable:
+            .unreadable
+        case .absent:
+            legacy.metadataResult(for: key)
+        }
     }
 
     /// Retrieves data, checking primary then legacy with automatic migration.
     ///
-    /// If data is found in the legacy cache, it's automatically migrated to
-    /// the primary cache and deleted from legacy.
+    /// Falls through to legacy — and destructively migrates — ONLY when the
+    /// primary is definitively absent. A primary whose metadata is present (or
+    /// unreadable) but whose data read fails surfaces as nil with no migration:
+    /// resurrecting a stale legacy copy would overwrite the intact newer primary
+    /// entry and delete the legacy original, destroying data over a transient
+    /// failure. `CacheCoordinator` classifies that nil as `readFailed`.
     func data(for key: String) -> Data? {
-        // Check primary (shared container) first
-        if let data = primary.data(for: key) {
-            return data
-        }
+        switch primary.metadataResult(for: key) {
+        case .present:
+            // The primary owns this entry; a nil read here is a transient
+            // failure, never a reason to consult legacy.
+            return primary.data(for: key)
 
-        // Fall back to legacy - migrate if found
-        guard let legacyMetadata = legacy.metadata(for: key),
-              let legacyData = legacy.data(for: key) else {
+        case .unreadable:
             return nil
+
+        case .absent:
+            // Fall back to legacy - migrate if found
+            guard let legacyMetadata = legacy.metadata(for: key),
+                  let legacyData = legacy.data(for: key) else {
+                return nil
+            }
+
+            // Migrate entry from legacy to primary
+            primary.set(legacyData, metadata: legacyMetadata, for: key)
+
+            // Clean up legacy entry
+            legacy.remove(for: key)
+            Log(.info, category: .caching, "Migrated cache entry '\(key)' from legacy to shared container")
+
+            return legacyData
         }
-
-        // Migrate entry from legacy to primary
-        primary.set(legacyData, metadata: legacyMetadata, for: key)
-
-        // Clean up legacy entry
-        legacy.remove(for: key)
-        Log(.info, category: .caching, "Migrated cache entry '\(key)' from legacy to shared container")
-
-        return legacyData
     }
 
     /// Stores data in the primary (shared) cache only.
@@ -136,5 +174,11 @@ struct MigratingDiskCache: Cache, @unchecked Sendable {
     /// Returns the combined storage size of both caches.
     func totalSize() -> Int64 {
         primary.totalSize() + legacy.totalSize()
+    }
+
+    /// Forwards maintenance to both underlying caches.
+    func performMaintenance() {
+        primary.performMaintenance()
+        legacy.performMaintenance()
     }
 }

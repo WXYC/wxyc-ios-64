@@ -39,7 +39,7 @@ extension CacheCoordinator: ArtworkService {
         let scaledArtwork = scaleCGImage(trimmedArtwork, toWidth: ArtworkCacheConfiguration.targetWidth)
         let artworkData = encodeCGImageAsHEIF(scaledArtwork, compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality)
             ?? encodeCGImageAsPNG(scaledArtwork)
-        self.setData(artworkData, for: id, lifespan: lifespan)
+        await self.setData(artworkData, for: id, lifespan: lifespan)
     }
 }
 
