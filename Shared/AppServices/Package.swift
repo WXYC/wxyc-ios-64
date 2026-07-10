@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "AppServices",
-    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15)],
+    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15), .tvOS("18.4")],
     products: [.library(name: "AppServices", targets: ["AppServices"])],
     dependencies: [
         .package(name: "Core", path: "../Core"),
