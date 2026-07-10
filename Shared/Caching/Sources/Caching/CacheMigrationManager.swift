@@ -45,12 +45,12 @@ import Logger
 /// - The app's private caches directory (`~/Library/Caches`)
 /// - The shared App Group container caches (`group.wxyc.iphone/Library/Caches`)
 ///
-/// **Application Support stores are deliberately exempt.** Data lives there
-/// precisely because it is irreplaceable — a purge on every marketing-version
-/// bump would routinely destroy locally-accreted data that cannot be
-/// re-fetched. Schema drift in such data must instead be absorbed by tolerant
-/// decoders on the stored types and by `CacheCoordinator`'s corrupt-entry
-/// eviction.
+/// **Application Support stores are deliberately exempt.** The playcut history
+/// lives there precisely because it is irreplaceable — a purge on every
+/// marketing-version bump would routinely destroy months of locally-accreted
+/// history that cannot be re-fetched. Schema drift in that data is instead
+/// absorbed by `Playcut`'s tolerant decoder (see the frozen-fixture test in
+/// PlaylistTests) and by `CacheCoordinator`'s corrupt-entry eviction.
 public enum CacheMigrationManager {
     // MARK: - Private Constants
 
@@ -64,9 +64,9 @@ public enum CacheMigrationManager {
     /// This triggers a cache purge independently of the app's marketing version, catching
     /// within-version schema drift (e.g., a build increment that changes a cached struct).
     ///
-    /// Note: this does NOT protect Application Support data — those stores are
-    /// exempt from purges, and their defense against schema drift is a tolerant
-    /// decoder on the stored type plus `CacheCoordinator`'s corrupt-entry eviction.
+    /// Note: this does NOT protect Application Support data (the playcut history) —
+    /// that store is exempt from purges, and its defense against schema drift is
+    /// `Playcut`'s tolerant decoder plus `CacheCoordinator`'s corrupt-entry eviction.
     static let cacheSchemaVersion: Int = 1
 
     /// The App Group identifier for the shared container.

@@ -82,7 +82,7 @@ public struct PlaycutEntity: AppEntity {
         self.artworkURL = playcut.artworkURL
         self.labelName = playcut.labelName
         self.genres = playcut.genres
-        self.broadcastDate = Date(timeIntervalSince1970: TimeInterval(playcut.hour) / 1000)
+        self.broadcastDate = playcut.broadcastDate
         let nonEmptyRelease = playcut.releaseTitle.flatMap { $0.isEmpty ? nil : $0 }
         self.subtitleText = nonEmptyRelease.map { "\(playcut.artistName) — \($0)" } ?? playcut.artistName
         self.title = playcut.songTitle
