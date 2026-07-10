@@ -70,6 +70,55 @@ struct SpotlightDonationServiceTests {
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "2000")
     }
 
+    @Test("donateCurrentPlaycut dedups byte-identical consecutive calls")
+    func currentPlaycutDedupsIdenticalCalls() async {
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+        let playcut = Playcut.stub(id: 1, chronOrderID: 100)
+
+        await service.donateCurrentPlaycut(playcut)
+        await service.donateCurrentPlaycut(playcut)
+        await service.donateCurrentPlaycut(playcut)
+
+        // Spotlight upserts are idempotent, but each call is an XPC round-trip
+        // to `searchd` — PlaylistService re-broadcasts a downstream metadata
+        // enrichment that doesn't touch playcuts.first would burn one round-trip
+        // per re-broadcast without this dedup.
+        #expect(await indexer.calls.count == 1)
+    }
+
+    @Test("donateCurrentPlaycut re-donates when the playcut's metadata changes")
+    func currentPlaycutReindexesOnMetadataChange() async {
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        // Same chronOrderID, different artwork — the enrichment path we want to
+        // preserve: a metadata landing on the on-air playcut should refresh the
+        // Spotlight attribute set.
+        let v1 = Playcut.stub(id: 1, chronOrderID: 100, artworkURL: nil)
+        let v2 = Playcut.stub(id: 1, chronOrderID: 100, artworkURL: URL(string: "https://example.com/art.jpg"))
+
+        await service.donateCurrentPlaycut(v1)
+        await service.donateCurrentPlaycut(v2)
+
+        #expect(await indexer.calls.count == 2)
+    }
+
+    @Test("donateCurrentPlaycut dedup ignores failed calls so a retry re-attempts the same playcut")
+    func currentPlaycutFailureBypassesDedup() async {
+        let indexer = MockSpotlightIndexer(shouldThrow: true)
+        let service = SpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+        let playcut = Playcut.stub(id: 1, chronOrderID: 100)
+
+        await service.donateCurrentPlaycut(playcut)
+        await service.donateCurrentPlaycut(playcut)
+
+        // The dedup state advances only on a successful indexer return, so a
+        // transient failure doesn't strand the playcut in a "already donated"
+        // state that the next tick would silently skip.
+        #expect(await indexer.calls.count == 2)
+    }
+
     @Test("donateCurrentPlaycut swallows indexer failures and leaves the watermark untouched")
     func currentPlaycutFailureIsolation() async {
         // Defends the 866d87ab regression window: the earlier design advanced

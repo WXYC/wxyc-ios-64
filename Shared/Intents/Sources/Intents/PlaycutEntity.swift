@@ -8,8 +8,9 @@
 //  tapping a search hit surfaces the same metadata the in-app detail view does.
 //
 //  The `IndexedEntity` conformance and the `CoreSpotlight`-backed `attributeSet`
-//  are gated to platforms where CoreSpotlight exists — watchOS declares
-//  `IndexedEntity` as unavailable and doesn't ship the framework.
+//  are gated to platforms where CoreSpotlight exists. `IndexedEntity` and
+//  `CSSearchableItemAttributeSet` are both `@available(tvOS, unavailable)`,
+//  and watchOS doesn't ship CoreSpotlight at all.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -18,7 +19,7 @@
 import AppIntents
 import Foundation
 import Playlist
-#if !os(watchOS)
+#if !os(watchOS) && !os(tvOS)
 import CoreSpotlight
 #endif
 
@@ -91,7 +92,7 @@ public struct PlaycutEntity: AppEntity {
     }
 }
 
-#if !os(watchOS)
+#if !os(watchOS) && !os(tvOS)
 extension PlaycutEntity: IndexedEntity {
     public var attributeSet: CSSearchableItemAttributeSet {
         let set = CSSearchableItemAttributeSet(contentType: .audio)

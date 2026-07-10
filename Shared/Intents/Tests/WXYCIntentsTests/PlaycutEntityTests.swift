@@ -17,7 +17,7 @@ import Testing
 import Playlist
 import PlaylistTesting
 @testable import WXYCIntents
-#if !os(watchOS)
+#if !os(watchOS) && !os(tvOS)
 import CoreSpotlight
 #endif
 
@@ -112,7 +112,7 @@ struct PlaycutEntityTests {
         #expect(entity.subtitleText == "Cat Power")
     }
 
-    #if !os(watchOS)
+    #if !os(watchOS) && !os(tvOS)
     @Test("populates the CoreSpotlight attribute set with Spotlight-visible metadata")
     func attributeSetCarriesSpotlightFields() {
         let artwork = URL(string: "https://example.com/juana.jpg")

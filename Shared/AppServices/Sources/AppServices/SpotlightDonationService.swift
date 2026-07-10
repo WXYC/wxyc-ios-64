@@ -5,13 +5,16 @@
 //  Feeds the `wxyc.playcuts` Spotlight content index. Two donation paths
 //  share one watermark:
 //
-//  * `donateCurrentPlaycut(_:)` fires from a `NowPlayingService` subscription
-//    on every tick — a single entity at elevated priority so Spotlight and
-//    Siri surface the currently-airing track sooner.
-//  * `donateRecentPlaycuts(_:)` fires from the background-refresh handler
-//    with the whole recent playlist — up to 50 unseen playcuts at normal
-//    priority, so a cold catalogue rebuilds without exhausting BGAppRefresh
-//    budget in a single tick.
+//  * `donateCurrentPlaycut(_:)` fires from a `PlaylistService.updates()`
+//    subscription on every tick — a single entity at elevated priority so
+//    Spotlight and Siri surface the currently-airing track sooner. The
+//    actor dedups consecutive identical playcuts internally so metadata
+//    re-broadcasts don't burn XPC round-trips.
+//  * `donateRecentPlaycuts(_:)` fires from the same subscription (and from
+//    `BackgroundRefreshController` as a belt-and-suspenders belt for the
+//    BGAppRefresh completion window) with the whole recent playlist — up
+//    to 50 unseen playcuts at normal priority, so a cold catalogue
+//    rebuilds without exhausting BGAppRefresh budget in a single tick.
 //
 //  The watermark ("last successfully-donated chronOrderID" from the batch
 //  path) lives in `DefaultsStorage` so the catalogue keeps advancing across
@@ -67,6 +70,16 @@ public actor SpotlightDonationService: Sendable {
     private let storage: DefaultsStorage
     private let indexer: SpotlightIndexer
 
+    // MARK: - State
+
+    /// The last playcut successfully donated by `donateCurrentPlaycut`, used
+    /// to skip redundant XPC round-trips when `PlaylistService` re-broadcasts
+    /// an unchanged top playcut. Playcut equality is field-wise (see
+    /// `PlaylistEntry`), so a metadata-enrichment landing that actually
+    /// changes `artworkURL` / `spotifyURL` / genres still passes the guard
+    /// and refreshes the Spotlight attribute set.
+    private var lastDonatedCurrentPlaycut: Playcut?
+
     // MARK: - Init
 
     public init(storage: DefaultsStorage, indexer: SpotlightIndexer) {
@@ -78,18 +91,26 @@ public actor SpotlightDonationService: Sendable {
 
     /// Upsert the current playcut into `wxyc.playcuts` at elevated priority.
     ///
-    /// Called from a `NowPlayingService` subscription on every tick. This
-    /// path deliberately does NOT advance the batch watermark: on a cold
-    /// launch the tick fires with the newest playcut (`playlist.playcuts.first`)
-    /// before the background-refresh path has a chance to run, and advancing
-    /// the watermark here would filter every unseen historical entry — the
-    /// entire initial 50-row window on a fresh install — out of the next
-    /// batch donation. Spotlight upserts are idempotent, so a later batch
-    /// re-donating the current playcut is a no-op.
+    /// Called from a `PlaylistService.updates()` subscription on every tick.
+    /// This path deliberately does NOT advance the batch watermark: on a
+    /// cold launch the tick fires with the newest playcut
+    /// (`playlist.playcuts.first`) before the background-refresh path has a
+    /// chance to run, and advancing the watermark here would filter every
+    /// unseen historical entry — the entire initial 50-row window on a
+    /// fresh install — out of the next batch donation. Spotlight upserts
+    /// are idempotent, so a later batch re-donating the current playcut is
+    /// a no-op.
+    ///
+    /// A short-circuit dedup skips the XPC round-trip when the incoming
+    /// playcut is byte-identical to the last successfully indexed one — the
+    /// common case when `PlaylistService` re-broadcasts a downstream
+    /// enrichment that didn't touch `playcuts.first`.
     public func donateCurrentPlaycut(_ playcut: Playcut) async {
+        guard playcut != lastDonatedCurrentPlaycut else { return }
         let entity = PlaycutEntity(playcut: playcut)
         do {
             try await indexer.indexPlaycuts([entity], priority: Self.currentPlaycutPriority)
+            lastDonatedCurrentPlaycut = playcut
         } catch {
             Log(.warning, category: .general, "Spotlight donation failed for playcut \(playcut.id): \(error)")
         }
