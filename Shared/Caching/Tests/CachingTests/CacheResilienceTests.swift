@@ -32,7 +32,10 @@ struct DiskCacheRemoveResilienceTests {
 
         cache.remove(for: key)
 
+        // Filter to this test's key: the destination is process-global, so
+        // parallel suites exercising failure paths may log unrelated errors.
         let cachingErrors = capture.messages(level: .error, category: .caching)
+            .filter { $0.contains(key) }
         #expect(cachingErrors.isEmpty,
                 "remove(for:) should be a silent no-op for missing entries; got: \(cachingErrors)")
     }
@@ -54,7 +57,10 @@ struct DiskCacheRemoveResilienceTests {
 
         cache.remove(for: key)
 
+        // Filter to this test's key: the destination is process-global, so
+        // parallel suites exercising failure paths may log unrelated errors.
         let cachingErrors = capture.messages(level: .error, category: .caching)
+            .filter { $0.contains(key) }
         #expect(cachingErrors.isEmpty,
                 "remove(for:) should not log when the file was already gone; got: \(cachingErrors)")
     }
@@ -98,32 +104,64 @@ struct DiskCacheSubdirectoryHealingTests {
 @Suite("CacheMigrationManager.purgeFiles")
 struct CacheMigrationManagerPurgeTests {
 
-    @Test("purgeFiles removes regular files but preserves subdirectories")
-    func purgeFilesPreservesSubdirectories() throws {
-        // Given: a temp directory containing one file and one subdirectory.
+    @Test("purgeFiles clears the root's top level, scopes recursion by xattr, and spares temps")
+    func purgeFilesContract() throws {
+        // Given: a purge root mixing DiskCache entries, pre-xattr-era legacy files,
+        // an in-flight temp, and foreign subdirectories — the Library/Caches roots
+        // are shared with Sentry's envelope queue and NSURLCache among others.
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("purge-test-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
 
-        let file = root.appendingPathComponent("loose-file")
-        try Data("X".utf8).write(to: file)
+        let metadata = CacheMetadata(lifespan: 3600)
 
-        let subdir = root.appendingPathComponent("artwork-errors", isDirectory: true)
-        try FileManager.default.createDirectory(at: subdir, withIntermediateDirectories: true)
-        let nested = subdir.appendingPathComponent("inner-entry")
-        try Data("Y".utf8).write(to: nested)
+        let taggedFile = root.appendingPathComponent("tagged-entry")
+        try Data("X".utf8).write(to: taggedFile)
+        DiskCache.writeMetadataAttribute(metadata, to: taggedFile)
+
+        // Pre-xattr-era WXYC cache file: no metadata attribute, but it's ours —
+        // the top level of a purge root has been WXYC-owned for years.
+        let legacyFile = root.appendingPathComponent("legacy-pre-xattr-entry")
+        try Data("old format".utf8).write(to: legacyFile)
+
+        // Another process's mid-write temp: tagged (the xattr lands before
+        // rename), but deleting it would make that rename fail and lose the write.
+        let inflightTemp = root.appendingPathComponent(".tmp-in-flight")
+        try Data("in flight".utf8).write(to: inflightTemp)
+        DiskCache.writeMetadataAttribute(metadata, to: inflightTemp)
+
+        let cacheSubdir = root.appendingPathComponent("artwork-errors", isDirectory: true)
+        try FileManager.default.createDirectory(at: cacheSubdir, withIntermediateDirectories: true)
+        let nestedTagged = cacheSubdir.appendingPathComponent("inner-entry")
+        try Data("Y".utf8).write(to: nestedTagged)
+        DiskCache.writeMetadataAttribute(metadata, to: nestedTagged)
+
+        let foreignSubdir = root.appendingPathComponent("io.sentry", isDirectory: true)
+        try FileManager.default.createDirectory(at: foreignSubdir, withIntermediateDirectories: true)
+        let envelope = foreignSubdir.appendingPathComponent("envelope-1")
+        try Data("crash report".utf8).write(to: envelope)
 
         // When
         CacheMigrationManager.purgeFiles(in: root)
 
-        // Then: the loose file is gone, the subdirectory and its contents survive.
-        #expect(!FileManager.default.fileExists(atPath: file.path),
-                "Loose file should be deleted")
-        #expect(FileManager.default.fileExists(atPath: subdir.path),
-                "Subdirectory should be preserved so DiskCache(subdirectory:) keeps working")
-        #expect(FileManager.default.fileExists(atPath: nested.path),
-                "Files inside a subdirectory should be preserved too")
+        // Then: the root's top level is cleared regardless of tagging (foreign
+        // subsystems park in subdirectories, and pre-xattr WXYC files must not
+        // become permanent cruft), recursion into subdirectories deletes only
+        // xattr-tagged files, temps are never touched, and directory nodes survive.
+        #expect(!FileManager.default.fileExists(atPath: taggedFile.path),
+                "Tagged top-level entry should be deleted")
+        #expect(!FileManager.default.fileExists(atPath: legacyFile.path),
+                "Pre-xattr-era top-level file should be deleted, not stranded forever")
+        #expect(FileManager.default.fileExists(atPath: inflightTemp.path),
+                "An in-flight temp must be spared — the init sweep owns stale-temp cleanup")
+        #expect(!FileManager.default.fileExists(atPath: nestedTagged.path),
+                "Tagged entry inside a cache subdirectory should be deleted")
+        #expect(FileManager.default.fileExists(atPath: envelope.path),
+                "Foreign subdirectory contents (e.g. Sentry envelopes) must survive")
+        #expect(FileManager.default.fileExists(atPath: cacheSubdir.path),
+                "Directory nodes should be preserved so DiskCache(subdirectory:) keeps working")
+        #expect(FileManager.default.fileExists(atPath: foreignSubdir.path))
     }
 }
 
