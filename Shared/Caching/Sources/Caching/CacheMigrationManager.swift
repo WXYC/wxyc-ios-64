@@ -16,8 +16,8 @@ import Logger
 /// Manages cache invalidation when the app version changes.
 ///
 /// `CacheMigrationManager` detects when the app's marketing version has changed
-/// and automatically purges all caches to prevent stale or incompatible data
-/// from causing issues after updates.
+/// and automatically purges DiskCache-owned entries under the caches roots to
+/// prevent stale or incompatible data from causing issues after updates.
 ///
 /// ## Why Version-Based Cache Invalidation?
 ///
@@ -41,9 +41,16 @@ import Logger
 ///
 /// ## Storage Locations
 ///
-/// This manager clears both:
+/// This manager purges DiskCache entries (identified by their metadata xattr) in:
 /// - The app's private caches directory (`~/Library/Caches`)
 /// - The shared App Group container caches (`group.wxyc.iphone/Library/Caches`)
+///
+/// **Application Support stores are deliberately exempt.** Data lives there
+/// precisely because it is irreplaceable — a purge on every marketing-version
+/// bump would routinely destroy locally-accreted data that cannot be
+/// re-fetched. Schema drift in such data must instead be absorbed by tolerant
+/// decoders on the stored types and by `CacheCoordinator`'s corrupt-entry
+/// eviction.
 public enum CacheMigrationManager {
     // MARK: - Private Constants
 
@@ -56,6 +63,10 @@ public enum CacheMigrationManager {
     /// Increment this when any cached Codable type changes shape (added/removed/renamed fields).
     /// This triggers a cache purge independently of the app's marketing version, catching
     /// within-version schema drift (e.g., a build increment that changes a cached struct).
+    ///
+    /// Note: this does NOT protect Application Support data — those stores are
+    /// exempt from purges, and their defense against schema drift is a tolerant
+    /// decoder on the stored type plus `CacheCoordinator`'s corrupt-entry eviction.
     static let cacheSchemaVersion: Int = 1
 
     /// The App Group identifier for the shared container.
@@ -103,15 +114,33 @@ public enum CacheMigrationManager {
         }
     }
 
-    /// Removes regular files from `directory`, preserving any subdirectories.
+    /// Removes cache files from `directory`, preserving directory nodes, foreign
+    /// subdirectory contents, and in-flight temp files.
     ///
-    /// `DiskCache(subdirectory:)` parks its files inside a named subdirectory of
-    /// `Library/Caches`. A version-bump purge that recursed into those subdirectories
-    /// would delete the subdirectory itself, leaving the in-memory `DiskCache`
-    /// holding a stale URL pointing at a path that no longer exists — every
-    /// subsequent `createFile`/`setxattr` then fails with ENOENT. Preserving
-    /// directories here keeps the `DiskCache` instance's invariants intact.
+    /// Three scoping rules, all load-bearing:
+    /// - **The root's top level is cleared outright** (tagged or not): it has
+    ///   been WXYC-owned for years, and pre-xattr-era cache files there would
+    ///   otherwise become permanent cruft — never purged, skipped by
+    ///   `totalSize()`/`clearAll()`, their keys never re-read.
+    /// - **Recursion into subdirectories deletes only files bearing the DiskCache
+    ///   metadata xattr.** Subdirectories are where foreign subsystems park —
+    ///   Sentry's `io.sentry` envelope queue (holding crash reports from the
+    ///   just-replaced version, not yet uploaded at this point in launch) and
+    ///   NSURLCache's `Cache.db` among them. Ownership is proven per-file by the
+    ///   xattr, the same discipline `DiskCache.clearAll()` uses.
+    /// - **In-flight temp files are never touched.** Temps carry the ownership
+    ///   xattr before their rename; deleting one makes another process's rename
+    ///   fail and loses that write. The coordinator's maintenance sweep owns
+    ///   stale-temp cleanup.
+    ///
+    /// Directory nodes are preserved throughout: `DiskCache(subdirectory:)`
+    /// instances hold the URL of their subdirectory, and deleting the node would
+    /// leave them pointing at a path that no longer exists.
     static func purgeFiles(in directory: URL) {
+        purgeFiles(in: directory, isPurgeRoot: true)
+    }
+
+    private static func purgeFiles(in directory: URL, isPurgeRoot: Bool) {
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: [.isDirectoryKey]
@@ -122,8 +151,13 @@ public enum CacheMigrationManager {
         for url in contents {
             let isDirectory = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?
                 .isDirectory ?? false
-            if isDirectory { continue }
-            try? FileManager.default.removeItem(at: url)
+            if isDirectory {
+                purgeFiles(in: url, isPurgeRoot: false)
+            } else if DiskCache.isTempFile(url) {
+                continue
+            } else if isPurgeRoot || DiskCache.hasCacheMetadata(at: url) {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
     }
 }

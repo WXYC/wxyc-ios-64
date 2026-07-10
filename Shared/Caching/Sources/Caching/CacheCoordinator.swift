@@ -26,7 +26,13 @@ import Logger
 ///
 /// ## Usage
 ///
-/// The module provides three pre-configured cache coordinators for different data types:
+/// The module provides four pre-configured cache coordinators for different data
+/// types: ``AlbumArt``, ``ArtworkErrors``, ``Playlist``, and ``Metadata``. All
+/// hold re-fetchable data under the caches roots. Coordinators over an
+/// Application Support store (`DiskCache.StorageLocation.applicationSupport`)
+/// hold irreplaceable data instead — never system-purged, exempt from
+/// version-bump purges, and included in backups — so treat their entries with
+/// the data-safety rules of a database, not a cache.
 ///
 /// ```swift
 /// // Store album artwork (binary data)
@@ -86,6 +92,13 @@ public final actor CacheCoordinator {
     public enum Error: String, LocalizedError, Codable {
         /// No cached entry exists for the requested key, or the entry has expired.
         case noCachedResult
+
+        /// An entry exists for the requested key but its data could not be read.
+        ///
+        /// Distinct from ``noCachedResult`` so callers doing read-merge-write
+        /// can skip the write instead of truncating an intact entry after a
+        /// transient read failure.
+        case readFailed
     }
 
     // MARK: - Initialization
@@ -103,16 +116,38 @@ public final actor CacheCoordinator {
         self.clock = clock
 
         // Spawn a background task to purge expired entries at initialization.
-        // This ensures stale data is cleaned up when the app launches.
+        // This ensures stale data is cleaned up when the app launches. All write
+        // methods await this task, so a write can never be swept by the purge;
+        // the re-check below additionally defends against another coordinator
+        // (e.g. a widget process) recycling a key mid-purge.
         self.purgeTask = Task { [cache, clock] in
             let currentTime = clock.now
             for (key, metadata) in cache.allMetadata() {
-                // Remove expired entries and legacy entries with infinite lifespan
-                if metadata.isExpired(at: currentTime) || metadata.lifespan == .infinity {
-                    cache.remove(for: key)
+                guard Self.shouldPurge(metadata, at: currentTime) else { continue }
+                // Re-check the live metadata immediately before removal, and only
+                // remove on a DEFINITIVE read: a fresh write may have recycled the
+                // key since the snapshot, and a transiently unreadable entry (e.g.
+                // MigratingDiskCache's primary behind an I/O failure, with the
+                // snapshot showing an expired lingering legacy copy) must be
+                // spared rather than removed from every store.
+                guard case .present(let current) = cache.metadataResult(for: key),
+                      Self.shouldPurge(current, at: clock.now) else {
+                    continue
                 }
+                cache.remove(for: key)
             }
+
+            // Storage maintenance (e.g. stale temp-file sweeping) runs here, off
+            // the caller's actor — DiskCache.init can execute on the main actor.
+            cache.performMaintenance()
         }
+    }
+
+    /// Whether the init purge should remove an entry: it has expired, or it is a
+    /// legacy entry with infinite lifespan (older cache formats used infinity;
+    /// current writers always use finite lifespans).
+    private static func shouldPurge(_ metadata: CacheMetadata, at time: TimeInterval) -> Bool {
+        metadata.isExpired(at: time) || metadata.lifespan == .infinity
     }
 
     // MARK: - Private Properties
@@ -147,24 +182,51 @@ public final actor CacheCoordinator {
         assert(!key.isEmpty, "Cache key cannot be empty")
         #endif
 
-        // Check if metadata exists for this key
-        guard let metadata = cache.metadata(for: key) else {
-            throw Error.noCachedResult
-        }
-
-        // Check if the entry has expired
-        guard !metadata.isExpired(at: clock.now) else {
-            // Clean up expired entry and report as missing
-            cache.remove(for: key)
-            throw Error.noCachedResult
-        }
+        // Classify the metadata read and check expiration
+        let _ = try validMetadata(for: key)
 
         // Retrieve the actual data
         guard let data = cache.data(for: key) else {
-            throw Error.noCachedResult
+            throw readError(for: key)
         }
 
         return data
+    }
+
+    /// Reads and classifies an entry's metadata, enforcing expiration.
+    ///
+    /// - Throws: ``Error/noCachedResult`` for absent or expired entries (expired
+    ///   entries are removed), ``Error/readFailed`` when the metadata exists but
+    ///   could not be read — the entry is left untouched.
+    private func validMetadata(for key: String) throws -> CacheMetadata {
+        switch cache.metadataResult(for: key) {
+        case .absent:
+            throw Error.noCachedResult
+        case .unreadable:
+            throw Error.readFailed
+        case .present(let metadata):
+            // Check if the entry has expired
+            guard !metadata.isExpired(at: clock.now) else {
+                // Clean up expired entry and report as missing
+                cache.remove(for: key)
+                throw Error.noCachedResult
+            }
+            return metadata
+        }
+    }
+
+    /// Classifies a nil data read for a key whose metadata was just seen.
+    ///
+    /// If metadata is still present (or unreadable) the entry is intact but
+    /// unreadable — ``Error/readFailed``. If the metadata has vanished the entry
+    /// was removed out from under us (legacy purge, concurrent delete), which
+    /// reads as true absence.
+    private func readError(for key: String) -> Error {
+        if case .absent = cache.metadataResult(for: key) {
+            .noCachedResult
+        } else {
+            .readFailed
+        }
     }
 
     /// Stores raw binary data in the cache with a specified lifespan.
@@ -172,11 +234,19 @@ public final actor CacheCoordinator {
     /// Use this method for non-Codable data like images. Pass `nil` for `data`
     /// to remove an existing entry.
     ///
+    /// - Note: The first write after initialization awaits the one-shot init
+    ///   purge (metadata-only, milliseconds) — deliberate, so the purge's stale
+    ///   snapshot can never sweep a freshly written key.
+    ///
     /// - Parameters:
     ///   - data: The binary data to cache, or `nil` to remove the entry.
     ///   - key: The unique identifier for the cached entry.
     ///   - lifespan: How long the entry should remain valid, in seconds.
-    public func setData(_ data: Data?, for key: String, lifespan: TimeInterval) {
+    public func setData(_ data: Data?, for key: String, lifespan: TimeInterval) async {
+        // Writes strictly follow the init purge so its metadata snapshot can
+        // never sweep a key this write just recycled.
+        await purgeTask.value
+
         // Passing nil removes the entry
         guard let data else {
             cache.remove(for: key)
@@ -204,21 +274,12 @@ public final actor CacheCoordinator {
         assert(!key.isEmpty, "Cache key cannot be empty")
         #endif
 
-        // Check if metadata exists for this key
-        guard let metadata = cache.metadata(for: key) else {
-            throw Error.noCachedResult
-        }
-
-        // Check if the entry has expired
-        guard !metadata.isExpired(at: clock.now) else {
-            // Clean up expired entry and report as missing
-            cache.remove(for: key)
-            throw Error.noCachedResult
-        }
+        // Classify the metadata read and check expiration
+        let _ = try validMetadata(for: key)
 
         // Retrieve the raw data
         guard let data = cache.data(for: key) else {
-            throw Error.noCachedResult
+            throw readError(for: key)
         }
 
         // Decode the JSON data into the requested type.
@@ -257,11 +318,19 @@ public final actor CacheCoordinator {
     /// The value is automatically encoded to JSON before storage. Pass `nil`
     /// for `value` to remove an existing entry.
     ///
+    /// - Note: The first write after initialization awaits the one-shot init
+    ///   purge (metadata-only, milliseconds) — deliberate, so the purge's stale
+    ///   snapshot can never sweep a freshly written key.
+    ///
     /// - Parameters:
     ///   - value: The value to cache, or `nil` to remove the entry.
     ///   - key: The unique identifier for the cached entry.
     ///   - lifespan: How long the entry should remain valid, in seconds.
-    public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) {
+    public func set<Value: Codable>(value: Value?, for key: String, lifespan: TimeInterval) async {
+        // Writes strictly follow the init purge so its metadata snapshot can
+        // never sweep a key this write just recycled.
+        await purgeTask.value
+
         // Passing nil removes the entry
         guard let value else {
             cache.remove(for: key)
@@ -300,17 +369,25 @@ public final actor CacheCoordinator {
         await purgeTask.value
     }
 
-    // MARK: - Low-Level Access (for Migrations)
+    // MARK: - Key Enumeration
 
     /// Returns all cache entries with their metadata.
     ///
-    /// This method provides direct access to cache contents for migration
-    /// operations that need to iterate over and transform entries.
+    /// Keys round-trip verbatim: every key returned here can be passed back to
+    /// ``value(for:)`` or ``data(for:)``, which makes structured key schemes
+    /// enumerable — a consumer can prefix its keys and filter this list by
+    /// prefix. Also used by migration operations that need to iterate over and
+    /// transform entries.
+    ///
+    /// Entries are returned regardless of expiration; expired entries are
+    /// removed lazily when read through ``value(for:)`` / ``data(for:)``.
     ///
     /// - Returns: An array of tuples containing the key and metadata for each entry.
     public func allEntries() -> [(key: String, metadata: CacheMetadata)] {
         cache.allMetadata()
     }
+
+    // MARK: - Low-Level Access (for Migrations)
 
     /// Retrieves raw data for a key without checking expiration.
     ///
@@ -334,7 +411,10 @@ public final actor CacheCoordinator {
     ///   - data: The data to store.
     ///   - metadata: The metadata to associate with the entry.
     ///   - key: The unique identifier for the cached entry.
-    public func setDataPreservingMetadata(_ data: Data, metadata: CacheMetadata, for key: String) {
+    public func setDataPreservingMetadata(_ data: Data, metadata: CacheMetadata, for key: String) async {
+        // Writes strictly follow the init purge so its metadata snapshot can
+        // never sweep a key this write just recycled.
+        await purgeTask.value
         cache.set(data, metadata: metadata, for: key)
     }
 
