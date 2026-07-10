@@ -27,7 +27,7 @@ import Logger
 /// - **Shared**: The App Group container (`group.wxyc.iphone/Library/Caches`)
 /// - **Application Support**: A named subdirectory of the app's Application
 ///   Support directory — never purged by the system and included in backups,
-///   the home of irreplaceable, locally-accreted data
+///   the home of irreplaceable data like the playcut history
 ///
 /// Use the shared container when data needs to be accessible from widgets
 /// or extensions.
@@ -61,7 +61,8 @@ struct DiskCache: Cache, @unchecked Sendable {
 
         /// A named subdirectory of the app's Application Support directory. Never
         /// purged by the system and included in backups — use it for irreplaceable,
-        /// locally-accreted data that cannot be re-created after a device restore.
+        /// locally-accreted data such as the playcut history, which cannot be
+        /// re-created after a device restore.
         ///
         /// The subdirectory is required (and must be non-empty) so a cache can
         /// never root itself — nor point the legacy purge — at the Application

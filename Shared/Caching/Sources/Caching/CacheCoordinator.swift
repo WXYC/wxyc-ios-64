@@ -26,13 +26,13 @@ import Logger
 ///
 /// ## Usage
 ///
-/// The module provides four pre-configured cache coordinators for different data
-/// types: ``AlbumArt``, ``ArtworkErrors``, ``Playlist``, and ``Metadata``. All
-/// hold re-fetchable data under the caches roots. Coordinators over an
-/// Application Support store (`DiskCache.StorageLocation.applicationSupport`)
-/// hold irreplaceable data instead — never system-purged, exempt from
-/// version-bump purges, and included in backups — so treat their entries with
-/// the data-safety rules of a database, not a cache.
+/// The module provides five pre-configured cache coordinators for different data
+/// types: ``AlbumArt``, ``ArtworkErrors``, ``Playlist``, ``Metadata``, and
+/// ``PlaycutHistory``. All but the last hold re-fetchable data under the caches
+/// roots; ``PlaycutHistory`` holds irreplaceable, locally-accreted data in a
+/// never-purged Application Support store (exempt from version-bump purges and
+/// included in backups), so treat its entries with the data-safety rules of a
+/// database, not a cache.
 ///
 /// ```swift
 /// // Store album artwork (binary data)
@@ -86,6 +86,18 @@ public final actor CacheCoordinator {
     /// and streaming service links.
     public static let Metadata = CacheCoordinator(cache: DiskCache())
 
+    /// Cache coordinator for the rolling playcut history.
+    ///
+    /// Stored in a dedicated subdirectory (like ``ArtworkErrors``) so the
+    /// day-bucketed history and rotation set written by `PlaycutHistoryStore`
+    /// age out via TTL without interference from other cache traffic. Rooted
+    /// in Application Support rather than Caches: the history is accreted
+    /// locally over months and cannot be re-fetched, so it must not be exposed
+    /// to system cache purges.
+    public static let PlaycutHistory = CacheCoordinator(
+        cache: DiskCache(location: .applicationSupport(subdirectory: "playcut-history"))
+    )
+
     // MARK: - Error Types
 
     /// Errors that can occur during cache operations.
@@ -96,8 +108,8 @@ public final actor CacheCoordinator {
         /// An entry exists for the requested key but its data could not be read.
         ///
         /// Distinct from ``noCachedResult`` so callers doing read-merge-write
-        /// can skip the write instead of truncating an intact entry after a
-        /// transient read failure.
+        /// (e.g. `PlaycutHistoryStore`) can skip the write instead of truncating
+        /// an intact entry after a transient read failure.
         case readFailed
     }
 
@@ -375,9 +387,9 @@ public final actor CacheCoordinator {
     ///
     /// Keys round-trip verbatim: every key returned here can be passed back to
     /// ``value(for:)`` or ``data(for:)``, which makes structured key schemes
-    /// enumerable — a consumer can prefix its keys and filter this list by
-    /// prefix. Also used by migration operations that need to iterate over and
-    /// transform entries.
+    /// enumerable — e.g. `PlaycutHistoryStore` prefixes its day buckets and
+    /// filters this list by prefix. Also used by migration operations that need
+    /// to iterate over and transform entries.
     ///
     /// Entries are returned regardless of expiration; expired entries are
     /// removed lazily when read through ``value(for:)`` / ``data(for:)``.

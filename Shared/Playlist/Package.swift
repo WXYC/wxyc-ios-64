@@ -30,6 +30,7 @@ let package = Package(
                 "Playlist",
                 "PlaylistTesting",
                 "Caching",
+                .product(name: "CachingTesting", package: "Caching"),
                 .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "LoggerTesting", package: "Logger"),
             ],

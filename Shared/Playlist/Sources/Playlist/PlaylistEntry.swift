@@ -37,6 +37,11 @@ public extension PlaylistEntry {
     static func <(lhs: Self, rhs: Self) -> Bool {
         lhs.chronOrderID < rhs.chronOrderID
     }
+
+    /// The moment of broadcast: `hour` (milliseconds since the Unix epoch) as a `Date`.
+    var broadcastDate: Date {
+        Date(timeIntervalSince1970: Double(hour) / 1000)
+    }
 }
 
 public struct Breakpoint: PlaylistEntry {
@@ -87,7 +92,7 @@ public struct Breakpoint: PlaylistEntry {
         localTimeZone: TimeZone = .current,
         stationTimeZone: TimeZone = .wxycStation
     ) -> String {
-        let date = Date(timeIntervalSince1970: Double(hour) / 1000)
+        let date = broadcastDate
         let station = Self.hourComponent(for: date, in: stationTimeZone)
         // Same UTC offset means the listener already reads station time; collapse
         // to a single label rather than printing the same hour twice.
