@@ -13,11 +13,11 @@
 //    priority, so a cold catalogue rebuilds without exhausting BGAppRefresh
 //    budget in a single tick.
 //
-//  The watermark ("last successfully-donated chronOrderID") lives in
-//  `DefaultsStorage` so the batch keeps advancing across launches, and it
-//  only ever moves forward — a per-tick current-playcut donation for an
-//  older chronOrderID (e.g. an archive-scroll interaction the caller might
-//  wire later) can't drag the batch waterline back.
+//  The watermark ("last successfully-donated chronOrderID" from the batch
+//  path) lives in `DefaultsStorage` so the catalogue keeps advancing across
+//  launches. Only `donateRecentPlaycuts` moves the watermark — the per-tick
+//  path is idempotent-upsert-only so it can't skip playcuts the batch has
+//  not yet seen.
 //
 //  This file is compiled out on watchOS: `CoreSpotlight` is unavailable,
 //  `WXYCIntents` isn't linked into the watch build graph (see
@@ -77,16 +77,18 @@ public actor SpotlightDonationService: Sendable {
 
     /// Upsert the current playcut into `wxyc.playcuts` at elevated priority.
     ///
-    /// Called from a `NowPlayingService` subscription on every tick. Advances
-    /// the watermark only on a successful indexer return and only if the
-    /// playcut's `chronOrderID` is higher than the current watermark, so a
-    /// re-emit of an older entry (or a user-triggered "play this older
-    /// playcut" flow layered on later) can't regress the batch waterline.
+    /// Called from a `NowPlayingService` subscription on every tick. This
+    /// path deliberately does NOT advance the batch watermark: on a cold
+    /// launch the tick fires with the newest playcut (`playlist.playcuts.first`)
+    /// before the background-refresh path has a chance to run, and advancing
+    /// the watermark here would filter every unseen historical entry — the
+    /// entire initial 50-row window on a fresh install — out of the next
+    /// batch donation. Spotlight upserts are idempotent, so a later batch
+    /// re-donating the current playcut is a no-op.
     public func donateCurrentPlaycut(_ playcut: Playcut) async {
         let entity = PlaycutEntity(playcut: playcut)
         do {
             try await indexer.indexPlaycuts([entity], priority: Self.currentPlaycutPriority)
-            advanceWatermarkIfNewer(playcut.chronOrderID)
         } catch {
             Log(.warning, category: .general, "Spotlight donation failed for playcut \(playcut.id): \(error)")
         }

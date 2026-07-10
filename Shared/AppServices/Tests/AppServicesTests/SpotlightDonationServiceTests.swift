@@ -39,39 +39,34 @@ struct SpotlightDonationServiceTests {
         #expect(calls.first?.priority == SpotlightDonationService.currentPlaycutPriority)
     }
 
-    @Test("donateCurrentPlaycut advances the watermark to the playcut's chronOrderID on success")
-    func advancesWatermarkOnSuccess() async {
+    @Test("donateCurrentPlaycut leaves the batch watermark alone")
+    func currentPlaycutDoesNotTouchWatermark() async {
+        // Regression: an earlier design advanced the watermark from the
+        // per-tick path, which caused the first foreground tick after a
+        // cold install to jump the waterline past the entire initial
+        // 50-row window before the batch path could see it. The per-tick
+        // path must be upsert-only.
         let defaults = InMemoryDefaults()
         let service = SpotlightDonationService(storage: defaults, indexer: MockSpotlightIndexer())
 
         await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 999))
 
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "999")
-    }
-
-    @Test("donateCurrentPlaycut does not advance the watermark when indexing fails")
-    func doesNotAdvanceWatermarkOnFailure() async {
-        let defaults = InMemoryDefaults()
-        let service = SpotlightDonationService(
-            storage: defaults,
-            indexer: MockSpotlightIndexer(shouldThrow: true)
-        )
-
-        await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 500))
-
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == nil)
     }
 
-    @Test("donateCurrentPlaycut never moves the watermark backwards")
-    func watermarkNeverGoesBackwards() async {
+    @Test("donateCurrentPlaycut still upserts when the playcut is older than the watermark")
+    func currentPlaycutRunsBelowWatermark() async {
         let defaults = InMemoryDefaults()
         defaults.set("2000", forKey: SpotlightDonationService.watermarkKey)
-        let service = SpotlightDonationService(storage: defaults, indexer: MockSpotlightIndexer())
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
         await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 500))
 
-        // Watermark held at 2000 — the older playcut was still indexed for
-        // Siri/Spotlight surfacing but the batch waterline can't regress.
+        // Per-tick priority surfacing is independent of the batch waterline,
+        // so an older playcut (e.g. a re-emit of the same playlist tick, or a
+        // future "play this archived playcut" interaction) still gets indexed.
+        #expect(await indexer.calls.count == 1)
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "2000")
     }
 
@@ -203,7 +198,10 @@ struct SpotlightDonationServiceTests {
         let defaults = InMemoryDefaults()
         let first = SpotlightDonationService(storage: defaults, indexer: MockSpotlightIndexer())
 
-        await first.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 777))
+        // Only the batch path advances the watermark; a cross-instance test
+        // has to drive it there so the second instance sees the persisted
+        // state.
+        await first.donateRecentPlaycuts([.stub(id: 1, chronOrderID: 777)])
 
         let secondIndexer = MockSpotlightIndexer()
         let second = SpotlightDonationService(storage: defaults, indexer: secondIndexer)
