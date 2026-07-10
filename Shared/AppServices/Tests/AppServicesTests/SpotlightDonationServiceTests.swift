@@ -12,7 +12,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-#if !os(watchOS)
+#if !os(watchOS) && !os(tvOS)
 import Caching
 import Foundation
 import Playlist
@@ -68,6 +68,25 @@ struct SpotlightDonationServiceTests {
         // future "play this archived playcut" interaction) still gets indexed.
         #expect(await indexer.calls.count == 1)
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "2000")
+    }
+
+    @Test("donateCurrentPlaycut swallows indexer failures and leaves the watermark untouched")
+    func currentPlaycutFailureIsolation() async {
+        // Defends the 866d87ab regression window: the earlier design advanced
+        // the watermark from the per-tick success path. This test explicitly
+        // covers a throwing indexer to guarantee that a future refactor
+        // reintroducing watermark writes here fails a test, and to lock in
+        // the swallow-and-log contract (the actor method is `async` but not
+        // throwing — the throw must not propagate to the caller).
+        let defaults = InMemoryDefaults()
+        defaults.set("500", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer(shouldThrow: true)
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 999))
+
+        #expect(await indexer.calls.count == 1)
+        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "500")
     }
 
     // MARK: - Recent playcut batch

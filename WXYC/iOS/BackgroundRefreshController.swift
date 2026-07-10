@@ -48,13 +48,15 @@ enum BackgroundRefreshController {
 
         Log(.info, category: .general, "Background refresh completed successfully with \(playlist.entries.count) entries")
 
-        // Spotlight batch donation runs on the same wall-clock as the fetch:
-        // the BGAppRefresh budget is tight (~30s) so the donation must be
-        // synchronous with the completion signal, not deferred to a later tick.
-        await appState.spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
-
+        // Fire the completion event BEFORE the Spotlight batch. `CSSearchableIndex.indexAppEntities`
+        // for a cold-install 50-row window can take multi-second wall-clock, and BGAppRefresh's
+        // ~30s budget is shared with the fetch above — if we donated first and hit the budget,
+        // this analytics event would silently vanish precisely for the users we most want to
+        // observe. Ordering the capture first guarantees the completion signal lands.
         StructuredPostHogAnalytics.shared.capture(BackgroundRefreshCompleted(
             entryCount: playlist.entries.count
         ))
+
+        await appState.spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
     }
 }

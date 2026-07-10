@@ -7,15 +7,16 @@
 //  named `wxyc.playcuts` index; the SP-F1 identifier scheme (`PlaycutID`)
 //  determines what a Spotlight tap resolves to via `OpenPlaycut`.
 //
-//  Compiled out on watchOS: `CoreSpotlight` is unavailable and
-//  `WXYCIntents` (which vends `PlaycutEntity`) is not linked into the
-//  watch build graph.
+//  Compiled out on watchOS and tvOS: `CoreSpotlight`, `IndexedEntity`,
+//  and `CSSearchableItemAttributeSet` are all unavailable on those
+//  platforms, and `WXYCIntents` (which vends `PlaycutEntity`) isn't
+//  linked into either build graph — see AppServices/Package.swift.
 //
 //  Created by Jake Bromberg on 07/09/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-#if !os(watchOS)
+#if !os(watchOS) && !os(tvOS)
 
 @preconcurrency import CoreSpotlight
 import Foundation
