@@ -11,6 +11,7 @@
 
 import Testing
 import Foundation
+import CachingTesting
 @testable import Caching
 
 // MARK: - CachedFetch Tests

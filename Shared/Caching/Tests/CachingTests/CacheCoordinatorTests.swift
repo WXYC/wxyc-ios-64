@@ -33,38 +33,8 @@
 
 import Testing
 import Foundation
+import CachingTesting
 @testable import Caching
-
-// MARK: - Mock Clock
-
-/// A controllable clock for testing time-dependent behavior without sleeps.
-final class MockClock: Clock, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _now: TimeInterval
-
-    init(now: TimeInterval = 1_000_000) {
-        self._now = now
-    }
-
-    var now: TimeInterval {
-        lock.lock()
-        defer { lock.unlock() }
-        return _now
-    }
-
-    func advance(by interval: TimeInterval) {
-        lock.lock()
-        defer { lock.unlock() }
-        _now += interval
-    }
-
-    func set(_ time: TimeInterval) {
-        lock.lock()
-        defer { lock.unlock() }
-        _now = time
-    }
-}
-
 
 // MARK: - Test Data Types
 
@@ -429,8 +399,10 @@ struct CacheCoordinatorTests {
 
     @Test("Integration with DiskCache")
     func integrationWithDiskCache() async throws {
-        // Given
-        let realCache = DiskCache()
+        // Given — scoped to a private subdirectory: a coordinator over the shared
+        // caches ROOT would init-purge expired entries other parallel tests have
+        // deliberately seeded there (e.g. MigratingDiskCache's legacy fixtures).
+        let realCache = DiskCache(subdirectory: "coordinator-integration-\(UUID().uuidString)")
         let coordinator = CacheCoordinator(cache: realCache)
         let key = "integration-disk-\(UUID().uuidString)"
         let value = ["users": ["alice", "bob", "charlie"]]
