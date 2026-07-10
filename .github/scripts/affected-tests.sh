@@ -149,9 +149,9 @@ DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
 DEPS[Metadata]="Artwork Core Caching Playlist Logger"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger"
+DEPS[Intents]="Analytics Core Logger Playback Playlist"
 # Packages without test targets (included as dependency intermediaries)
 DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView"
-DEPS[Intents]="Analytics Logger Playback"
 DEPS[PartyHorn]=""
 
 # ---------------------------------------------------------------------------
@@ -213,6 +213,7 @@ TEST_TARGETS[Metadata]="MetadataTests"
 TEST_TARGETS[MusicShareKit]="MusicShareKitTests"
 TEST_TARGETS[PlayerHeaderView]="PlayerHeaderViewTests"
 TEST_TARGETS[AppServices]="AppServicesTests"
+TEST_TARGETS[Intents]="WXYCIntentsTests"
 TEST_TARGETS[PartyHorn]="PartyHornTests"
 
 # ---------------------------------------------------------------------------
@@ -290,7 +291,7 @@ echo "Affected test targets: ${(k)affected_targets}"
 
 # ---------------------------------------------------------------------------
 # 9. Determine which test plan targets to skip in the xcodebuild step.
-#    These are the 17 targets in WXYC.xctestplan. WXYCUITests is always
+#    These are the 18 targets in WXYC.xctestplan. WXYCUITests is always
 #    skipped. CoreTests runs via `swift test --package-path Shared/Core`
 #    (host) instead of xcodebuild, bypassing Swift Testing's parallel-scheduler
 #    hang under load — so it's always in skip_flags here, and the workflow's
@@ -315,6 +316,7 @@ local all_test_plan_targets=(
     ColorPaletteTests
     AnalyticsTests
     PartyHornTests
+    WXYCIntentsTests
 )
 
 local skip_flags="-skip-testing:WXYCUITests -skip-testing:CoreTests"

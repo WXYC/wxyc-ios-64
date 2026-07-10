@@ -57,6 +57,13 @@ enum BackgroundRefreshController {
             entryCount: playlist.entries.count
         ))
 
+        // Ingest into the playcut history directly rather than relying on the
+        // playlist broadcast: the store's subscription races process suspension,
+        // while this explicit call is guaranteed to land inside the budget. The
+        // cheap local append runs before the potentially multi-second Spotlight
+        // batch for the same reason the analytics capture does.
+        await appState.playcutHistoryStore.ingest(playlist.playcuts)
+
         await appState.spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
     }
 }

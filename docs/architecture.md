@@ -26,9 +26,9 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 ## App Entry Point
 
 `WXYC/iOS/WXYCApp.swift` contains:
-- `Singletonia` - Observable singleton holding shared state (PlaylistService, ArtworkService, WallpaperConfiguration)
+- `Singletonia` - Observable singleton holding shared state (PlaylistService, ArtworkService, WallpaperConfiguration, SpotlightDonationService, PlaycutHistoryStore — the Playlist package's persistent ~90-day playcut history + rotation set, built to enable the future Spotlight reindex handler)
 - Environment injection pattern for dependency injection
-- Background refresh scheduling (15-minute intervals via BGTaskScheduler)
+- Background refresh scheduling (15-minute intervals via BGTaskScheduler); each refresh ingests the fetched playcuts into `PlaycutHistoryStore` directly before the Spotlight donation batch
 - Widget refresh budget management
 
 ## Key Patterns
