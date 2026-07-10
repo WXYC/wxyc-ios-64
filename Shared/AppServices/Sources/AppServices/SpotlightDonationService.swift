@@ -19,17 +19,18 @@
 //  path is idempotent-upsert-only so it can't skip playcuts the batch has
 //  not yet seen.
 //
-//  This file is compiled out on watchOS: `CoreSpotlight` is unavailable,
-//  `WXYCIntents` isn't linked into the watch build graph (see
-//  AppServices/Package.swift for the platform-gated dependency), and the
-//  watch app has no NowPlayingService subscription to feed. Callers on
-//  iOS/macOS/tvOS instantiate the service directly.
+//  This file is compiled out on watchOS and tvOS: `CoreSpotlight`,
+//  `IndexedEntity`, and `CSSearchableItemAttributeSet` are all
+//  unavailable on those platforms, and `WXYCIntents` isn't linked into
+//  either build graph (see AppServices/Package.swift for the
+//  platform-gated dependency). Callers on iOS/macOS instantiate the
+//  service directly.
 //
 //  Created by Jake Bromberg on 07/09/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-#if !os(watchOS)
+#if !os(watchOS) && !os(tvOS)
 
 import Caching
 import Foundation

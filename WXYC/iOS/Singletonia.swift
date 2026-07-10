@@ -67,7 +67,7 @@ final class Singletonia {
         )
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
         startNowPlayingPlaybackStateObservation()
-        startSpotlightDonation(nowPlayingService: nowPlayingService)
+        startSpotlightDonation()
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
@@ -83,22 +83,28 @@ final class Singletonia {
         }
     }
 
-    /// Feeds the Spotlight content index on every NowPlayingService tick.
+    /// Feeds the Spotlight content index on every playlist tick.
     ///
-    /// The subscription owns its own iterator (NowPlayingService supports
-    /// multi-observation via the underlying PlaylistService updates stream)
-    /// so this loop doesn't compete with `startNowPlayingObservation`'s feed
-    /// into the info center. The tick is a natural throttle — one donation
-    /// per playcut change — so we don't need extra debouncing.
-    private func startSpotlightDonation(nowPlayingService: NowPlayingService) {
-        spotlightDonationTask = Task { [spotlightDonationService] in
-            do {
-                for try await item in nowPlayingService {
-                    guard !Task.isCancelled else { break }
-                    await spotlightDonationService.donateCurrentPlaycut(item.playcut)
+    /// Subscribes to `PlaylistService.updates()` (a multi-observer broadcast)
+    /// rather than `NowPlayingService`. NowPlayingService would work too, but
+    /// its iterator awaits `artworkService.fetchArtwork` for every yield —
+    /// artwork the donation path never uses (Spotlight surfaces the URL, not
+    /// the decoded image). Feeding from the playlist stream directly avoids
+    /// a duplicate artwork-fetch pipeline on every tick.
+    ///
+    /// PlaylistService's own broadcast fires on every metadata-enrichment
+    /// landing (equality includes artworkURL, spotifyURL, etc.), so this
+    /// path re-donates the current playcut whenever enrichment updates
+    /// arrive — intentional, since the CoreSpotlight attribute set embeds
+    /// those fields. Spotlight upsert is idempotent.
+    private func startSpotlightDonation() {
+        spotlightDonationTask = Task { [weak self, spotlightDonationService, playlistService] in
+            for await playlist in playlistService.updates() {
+                guard !Task.isCancelled else { break }
+                if let currentPlaycut = playlist.playcuts.first {
+                    await spotlightDonationService.donateCurrentPlaycut(currentPlaycut)
                 }
-            } catch {
-                Log(.error, "Spotlight donation observation error: \(error)")
+                _ = self
             }
         }
     }
