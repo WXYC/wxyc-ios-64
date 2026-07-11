@@ -424,8 +424,16 @@ private enum Palette {
     BoxOfficeTicketPreviewStage(show: .previewCancelled)
 }
 
+#Preview("Rescheduled") {
+    BoxOfficeTicketPreviewStage(show: .previewRescheduled)
+}
+
 #Preview("Free") {
     BoxOfficeTicketPreviewStage(show: .previewFree)
+}
+
+#Preview("Unknown status") {
+    BoxOfficeTicketPreviewStage(show: .previewUnknown)
 }
 
 #Preview("Sparse data") {
@@ -586,7 +594,9 @@ private extension Concert {
     static let previewOnSale = preview(status: .onSale)
     static let previewSoldOut = preview(status: .soldOut)
     static let previewCancelled = preview(status: .cancelled)
+    static let previewRescheduled = preview(status: .rescheduled)
     static let previewFree = preview(status: .free, priceMin: nil, priceMax: nil)
+    static let previewUnknown = preview(status: .unknown)
     static let previewSparse = preview(
         status: .unknown,
         priceMin: nil, priceMax: nil,

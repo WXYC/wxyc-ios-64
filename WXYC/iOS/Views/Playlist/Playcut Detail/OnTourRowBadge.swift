@@ -136,6 +136,14 @@ private enum Palette {
     OnTourRowStubPreview(status: .cancelled, venue: "Local 506")
 }
 
+#Preview("Rescheduled") {
+    OnTourRowStubPreview(status: .rescheduled, venue: "The Pinhook")
+}
+
+#Preview("Unknown") {
+    OnTourRowStubPreview(status: .unknown, venue: "Kings")
+}
+
 /// Sits the stub over a translucent dark panel that stands in for the ticket's
 /// shared material, on a WXYC-like gradient, so the tag colors and tear line read.
 private struct OnTourRowStubPreview: View {
