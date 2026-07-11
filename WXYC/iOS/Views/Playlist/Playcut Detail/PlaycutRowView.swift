@@ -84,7 +84,6 @@ struct PlaycutRowView: View {
     let onSelect: (UIImage?) -> Void
 
     @State private var shadowYOffset: CGFloat = 0
-    @State private var upcomingShow: Concert?
 
     /// Stable time offset for animated mesh gradient (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
@@ -95,7 +94,14 @@ struct PlaycutRowView: View {
 
     @Environment(Singletonia.self) private var appState
     @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
-    @Environment(\.upcomingShowProvider) private var upcomingShowProvider
+    @Environment(\.upcomingShowResolver) private var upcomingShowResolver
+
+    /// The upcoming show to render on this row, resolved synchronously from the
+    /// playcut's embedded feed value (no network call). A DEBUG override may
+    /// synthesize a mock; release reads the embed directly.
+    private var upcomingShow: Concert? {
+        upcomingShowResolver.upcomingShow(for: playcut)
+    }
 
     /// Animated mesh gradient using wallpaper-derived palette when available.
     private var meshGradient: AnimatedMeshGradient {
@@ -130,12 +136,7 @@ struct PlaycutRowView: View {
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .task(id: playcut.id) {
-            let show = await upcomingShowProvider.upcomingShow(for: playcut)
-            withAnimation(.easeInOut(duration: 0.25)) {
-                upcomingShow = show
-            }
-        }
+        .animation(.easeInOut(duration: 0.25), value: upcomingShow)
     }
 
     /// The plain playlist row: a wallpaper-blurred panel with artwork, song info,
