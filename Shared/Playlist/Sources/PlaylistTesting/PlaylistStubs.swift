@@ -63,36 +63,6 @@ extension Playcut {
             upcomingShow: upcomingShow
         )
     }
-
-    /// Returns a copy of this playcut with the given embedded upcoming show,
-    /// preserving every other field. Handy for attaching a `Concert.stub()` to an
-    /// existing playcut fixture without re-listing its arguments.
-    public func withUpcomingShow(_ show: Concert?) -> Playcut {
-        Playcut(
-            id: id,
-            hour: hour,
-            chronOrderID: chronOrderID,
-            timeCreated: timeCreated,
-            songTitle: songTitle,
-            labelName: labelName,
-            artistName: artistName,
-            releaseTitle: releaseTitle,
-            rotation: rotation,
-            artworkURL: artworkURL,
-            discogsURL: discogsURL,
-            releaseYear: releaseYear,
-            spotifyURL: spotifyURL,
-            appleMusicURL: appleMusicURL,
-            youtubeMusicURL: youtubeMusicURL,
-            bandcampURL: bandcampURL,
-            soundcloudURL: soundcloudURL,
-            artistBio: artistBio,
-            artistWikipediaURL: artistWikipediaURL,
-            genres: genres,
-            styles: styles,
-            upcomingShow: show
-        )
-    }
 }
 
 extension Breakpoint {
