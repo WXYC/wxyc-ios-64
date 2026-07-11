@@ -6,7 +6,7 @@
 //  the display strings the SwiftUI view renders — date/time labels, price
 //  string, and the per-status pill / CTA / caption copy — so all of that is unit
 //  testable without a view. Copy mirrors the approved prototype
-//  (Shared/Playlist/docs/ideas/touring-shows-box-office.html).
+//  (docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -113,8 +113,16 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
 
     /// The price string: `"Free"` for a free show, `"$22"` for a single price,
     /// `"$22–$25"` for a range (en dash), or `nil` when unpriced and not free.
+    ///
+    /// Free detection has two signals: the modeled-but-unemitted ``ShowStatus/free``
+    /// case, and — the one the live backend actually uses — `price_min == 0`. The
+    /// `Concert` schema documents "Free events carry price_min = 0", and its status
+    /// enum has no `free` value, so a genuinely-free show arrives as e.g.
+    /// `{status: "on_sale", price_min: 0}`. Without the `priceMin == 0` check it
+    /// would fall through to the numeric branch and render `"$0"`.
     public var priceLabel: String? {
         if show.status == .free { return "Free" }
+        if show.priceMin == 0 { return "Free" }
         let low = show.priceMin ?? show.priceMax
         let high = show.priceMax ?? show.priceMin
         guard let low, let high else { return nil }

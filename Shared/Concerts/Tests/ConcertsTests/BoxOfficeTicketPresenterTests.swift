@@ -5,7 +5,7 @@
 //  Tests for the pure presentation logic behind the Box Office ticket: date/time
 //  labels, price formatting, and the per-status pill / CTA / caption copy. The
 //  copy mirrors the approved prototype
-//  (Shared/Playlist/docs/ideas/touring-shows-box-office.html).
+//  (docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -123,6 +123,15 @@ struct BoxOfficeTicketPresenterTests {
     @Test("Renders \"Free\" for a free show regardless of price fields")
     func freePrice() {
         let presenter = BoxOfficeTicketPresenter(.stub(priceMin: nil, priceMax: nil, status: .free))
+        #expect(presenter.priceLabel == "Free")
+    }
+
+    @Test("Renders \"Free\" for the wire's free signal (price_min == 0, non-free status)")
+    func freePriceFromZeroMinimum() {
+        // The backend Concert status enum has no `free` value; a genuinely-free
+        // show arrives as e.g. {status: "on_sale", price_min: 0}. Must read "Free",
+        // not "$0".
+        let presenter = BoxOfficeTicketPresenter(.stub(priceMin: 0, priceMax: 0, status: .onSale))
         #expect(presenter.priceLabel == "Free")
     }
 
