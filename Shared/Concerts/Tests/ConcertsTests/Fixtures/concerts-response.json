@@ -1,0 +1,58 @@
+{
+  "concerts": [
+    {
+      "id": 4821,
+      "venue": {
+        "id": 3,
+        "slug": "cats-cradle",
+        "name": "Cat's Cradle",
+        "city": "Carrboro",
+        "state": "NC",
+        "address": "300 E Main St"
+      },
+      "starts_on": "2026-08-01",
+      "starts_at": "2026-08-02T00:00:00.000Z",
+      "doors_at": "2026-08-01T23:00:00.000Z",
+      "headlining_artist_raw": "Jessica Pratt",
+      "headlining_artist_id": 512,
+      "title": null,
+      "supporting_artists_raw": ["Julie Byrne"],
+      "ticket_url": "https://www.etix.com/ticket/p/jessica-pratt",
+      "image_url": "https://img.example/jessica-pratt.jpg",
+      "price_min": 22.0,
+      "price_max": 25.0,
+      "age_restriction": "All Ages",
+      "status": "on_sale"
+    },
+    {
+      "id": 4822,
+      "venue": {
+        "id": 1,
+        "slug": "local-506",
+        "name": "Local 506",
+        "city": "Chapel Hill",
+        "state": "NC",
+        "address": null
+      },
+      "starts_on": "2026-08-15",
+      "starts_at": null,
+      "doors_at": null,
+      "headlining_artist_raw": "Chuquimamani-Condori",
+      "headlining_artist_id": null,
+      "title": "Edits Release Night",
+      "supporting_artists_raw": [],
+      "ticket_url": null,
+      "image_url": null,
+      "price_min": null,
+      "price_max": null,
+      "age_restriction": null,
+      "status": "sold_out"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 2,
+    "hasMore": false
+  }
+}
