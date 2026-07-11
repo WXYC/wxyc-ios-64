@@ -13,14 +13,15 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Concerts
 import Playlist
 import SwiftUI
 import Wallpaper
 
-/// Renders an ``UpcomingShow`` as the Box Office ticket. All display strings come
+/// Renders a ``Concert`` as the Box Office ticket. All display strings come
 /// from ``BoxOfficeTicketPresenter`` (unit-tested); this view is pure layout.
 struct BoxOfficeTicketView: View {
-    let show: UpcomingShow
+    let show: Concert
 
     @Environment(\.openURL) private var openURL
 
@@ -67,16 +68,14 @@ struct BoxOfficeTicketView: View {
     private var ticketBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Text(show.venueName ?? "Live Show")
+            Text(show.venue.name)
                 .font(.title2).fontWeight(.heavy)
                 .foregroundStyle(.white)
                 .padding(.top, 16)
-            if let city = show.venueCity {
-                Text(city)
-                    .font(.footnote)
-                    .foregroundStyle(Palette.amberInk)
-                    .padding(.top, 2)
-            }
+            Text(show.venue.city)
+                .font(.footnote)
+                .foregroundStyle(Palette.amberInk)
+                .padding(.top, 2)
             statsRow
             if let subline {
                 subline
@@ -178,7 +177,9 @@ struct BoxOfficeTicketView: View {
     /// neither is present.
     private var subline: Text? {
         var pieces: [String] = []
-        if let support = show.supportArtists, !support.isEmpty { pieces.append("with \(support)") }
+        if !show.supportingArtistsRaw.isEmpty {
+            pieces.append("with \(show.supportingArtistsRaw.joined(separator: ", "))")
+        }
         if let age = show.ageRestriction, !age.isEmpty { pieces.append(age) }
         guard !pieces.isEmpty else { return nil }
         return Text(pieces.joined(separator: " · "))
@@ -296,6 +297,8 @@ struct BoxOfficeTicketView: View {
             return (Palette.soldout.opacity(0.18), Palette.soldout.opacity(0.5), Palette.soldoutInk)
         case .cancelled:
             return (Palette.cancel.opacity(0.20), Palette.cancel.opacity(0.55), Palette.cancelInk)
+        case .rescheduled:
+            return (Palette.amber.opacity(0.18), Palette.amber.opacity(0.5), Palette.amberInk)
         case .free:
             return (Palette.free.opacity(0.18), Palette.free.opacity(0.5), Palette.freeInk)
         case .unknown:
@@ -435,7 +438,7 @@ private enum Palette {
 
 /// Puts the ticket on a WXYC-like gradient so the glass/notch cut-throughs read.
 private struct BoxOfficeTicketPreviewStage: View {
-    let show: UpcomingShow
+    let show: Concert
 
     var body: some View {
         ZStack {
@@ -468,7 +471,7 @@ private struct BoxOfficeTicketDetailContextPreview: View {
         artistName: "Nilüfer Yanya",
         releaseTitle: "My Method Actor"
     )
-    private let show = UpcomingShow.previewInContext
+    private let show = Concert.previewInContext
 
     var body: some View {
         ZStack {
@@ -545,40 +548,38 @@ private struct BoxOfficeTicketDetailContextPreview: View {
     }
 }
 
-private extension UpcomingShow {
+private extension Concert {
     static func preview(
-        eventName: String = "Jessica Pratt",
-        artist: String? = "Jessica Pratt",
+        headliningArtistRaw: String = "Jessica Pratt",
         status: ShowStatus,
         priceMin: Double? = 22,
         priceMax: Double? = 25,
-        doorsTime: String? = "19:00:00",
-        showTime: String? = "20:00:00",
-        supportArtists: String? = "Julie Byrne",
+        doorsHour: Int? = 19,
+        showHour: Int? = 20,
+        supportingArtistsRaw: [String] = ["Julie Byrne"],
         ageRestriction: String? = "All Ages",
-        venueName: String? = "Cat's Cradle",
-        venueCity: String? = "Carrboro"
-    ) -> UpcomingShow {
+        venueName: String = "Cat's Cradle",
+        venueCity: String = "Carrboro"
+    ) -> Concert {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-        let date = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))
+        let startsOn = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))
             ?? Date(timeIntervalSince1970: 1_785_898_800)
-        return UpcomingShow(
+        let doorsAt = doorsHour.flatMap { calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: $0)) }
+        let startsAt = showHour.flatMap { calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: $0)) }
+        return Concert(
             id: 4821,
-            eventName: eventName,
-            artist: artist,
-            supportArtists: supportArtists,
-            venueName: venueName,
-            venueCity: venueCity,
-            date: date,
-            doorsTime: doorsTime,
-            showTime: showTime,
-            status: status,
+            venue: Venue(id: 3, slug: "cats-cradle", name: venueName, city: venueCity, state: "NC", address: nil),
+            startsOn: startsOn,
+            startsAt: startsAt,
+            doorsAt: doorsAt,
+            headliningArtistRaw: headliningArtistRaw,
+            supportingArtistsRaw: supportingArtistsRaw,
+            ticketURL: URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
             priceMin: priceMin,
             priceMax: priceMax,
-            ticketURL: URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
-            sourceURL: URL(string: "https://catscradle.com/event/jessica-pratt"),
-            ageRestriction: ageRestriction
+            ageRestriction: ageRestriction,
+            status: status
         )
     }
 
@@ -589,17 +590,15 @@ private extension UpcomingShow {
     static let previewSparse = preview(
         status: .unknown,
         priceMin: nil, priceMax: nil,
-        doorsTime: nil, showTime: nil,
-        supportArtists: nil, ageRestriction: nil,
-        venueCity: nil
+        doorsHour: nil, showHour: nil,
+        supportingArtistsRaw: [], ageRestriction: nil
     )
 
     /// The show for the in-detail-view mockup — the same artist as the mock
     /// playcut (Nilüfer Yanya), playing Cat's Cradle.
     static let previewInContext = preview(
-        eventName: "Nilüfer Yanya",
-        artist: "Nilüfer Yanya",
+        headliningArtistRaw: "Nilüfer Yanya",
         status: .onSale,
-        supportArtists: "Tapir!"
+        supportingArtistsRaw: ["Tapir!"]
     )
 }

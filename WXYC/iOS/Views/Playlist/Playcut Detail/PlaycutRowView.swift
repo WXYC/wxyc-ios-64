@@ -9,6 +9,7 @@
 import SwiftUI
 import UIKit
 import WXUI
+import Concerts
 import Playlist
 import Artwork
 import Wallpaper
@@ -83,7 +84,7 @@ struct PlaycutRowView: View {
     let onSelect: (UIImage?) -> Void
 
     @State private var shadowYOffset: CGFloat = 0
-    @State private var upcomingShow: UpcomingShow?
+    @State private var upcomingShow: Concert?
 
     /// Stable time offset for animated mesh gradient (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
@@ -162,7 +163,7 @@ struct PlaycutRowView: View {
     /// share one wallpaper background and one perforated outline, so the
     /// semicircle notches at their seam punch cleanly through to the wallpaper —
     /// rather than each panel drawing half a notch against its own surface.
-    private func ticketRow(show: UpcomingShow) -> some View {
+    private func ticketRow(show: Concert) -> some View {
         let shape = TicketRowShape(
             cornerRadius: ticketCornerRadius,
             stubHeight: OnTourRowBadge.preferredHeight,

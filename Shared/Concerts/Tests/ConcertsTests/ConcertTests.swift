@@ -1,0 +1,201 @@
+//
+//  ConcertTests.swift
+//  Concerts
+//
+//  Decode + intrinsic-accessor tests for the concert model. The wire shape is
+//  Backend-Service's `Concert`/`Venue` schema (`wxyc-shared/api.yaml` v1.15.0).
+//
+//  Created by Jake Bromberg on 07/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Foundation
+import Testing
+@testable import Concerts
+import ConcertsTesting
+
+@Suite("Concert")
+struct ConcertTests {
+
+    /// A realistic full-detail concert payload (Jessica Pratt at Cat's Cradle),
+    /// using a WXYC-canonical touring artist and the backend `Concert` shape.
+    private static let fullJSON = """
+    {
+        "id": 4821,
+        "venue": {
+            "id": 3,
+            "slug": "cats-cradle",
+            "name": "Cat's Cradle",
+            "city": "Carrboro",
+            "state": "NC",
+            "address": "300 E Main St"
+        },
+        "starts_on": "2026-08-01",
+        "starts_at": "2026-08-02T00:00:00.000Z",
+        "doors_at": "2026-08-01T23:00:00.000Z",
+        "headlining_artist_raw": "Jessica Pratt",
+        "headlining_artist_id": 512,
+        "title": null,
+        "supporting_artists_raw": ["Julie Byrne"],
+        "ticket_url": "https://www.etix.com/ticket/p/jessica-pratt",
+        "image_url": "https://img.example/jessica-pratt.jpg",
+        "price_min": 22.0,
+        "price_max": 25.0,
+        "age_restriction": "All Ages",
+        "status": "on_sale"
+    }
+    """
+
+    // MARK: - Full decode
+
+    @Test("Decodes a full concert payload")
+    func decodesFullPayload() throws {
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
+
+        #expect(concert.id == 4821)
+        #expect(concert.venue.id == 3)
+        #expect(concert.venue.slug == "cats-cradle")
+        #expect(concert.venue.name == "Cat's Cradle")
+        #expect(concert.venue.city == "Carrboro")
+        #expect(concert.venue.state == "NC")
+        #expect(concert.venue.address == "300 E Main St")
+        #expect(concert.headliningArtistRaw == "Jessica Pratt")
+        #expect(concert.headliningArtistId == 512)
+        #expect(concert.title == nil)
+        #expect(concert.supportingArtistsRaw == ["Julie Byrne"])
+        #expect(concert.status == .onSale)
+        #expect(concert.priceMin == 22.0)
+        #expect(concert.priceMax == 25.0)
+        #expect(concert.ticketURL == URL(string: "https://www.etix.com/ticket/p/jessica-pratt"))
+        #expect(concert.imageURL == URL(string: "https://img.example/jessica-pratt.jpg"))
+        #expect(concert.ageRestriction == "All Ages")
+    }
+
+    @Test("Parses starts_on as a calendar day in the station's time zone")
+    func parsesDateInStationZone() throws {
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        let components = calendar.dateComponents([.year, .month, .day], from: concert.startsOn)
+        #expect(components.year == 2026)
+        #expect(components.month == 8)
+        #expect(components.day == 1)
+    }
+
+    @Test("Parses the starts_at / doors_at instants as venue wall-clock times")
+    func parsesInstants() throws {
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+
+        // 2026-08-02T00:00:00Z is 8 PM Eastern on 2026-08-01 (EDT, UTC-4).
+        let showHour = calendar.component(.hour, from: try #require(concert.startsAt))
+        #expect(showHour == 20)
+        // 2026-08-01T23:00:00Z is 7 PM Eastern.
+        let doorsHour = calendar.component(.hour, from: try #require(concert.doorsAt))
+        #expect(doorsHour == 19)
+    }
+
+    // MARK: - Minimal / degraded decode
+
+    @Test("Decodes a minimal date-only payload, leaving optionals nil")
+    func decodesMinimalPayload() throws {
+        let json = """
+        {
+            "id": 12,
+            "venue": {
+                "id": 1,
+                "slug": "local-506",
+                "name": "Local 506",
+                "city": "Chapel Hill",
+                "state": "NC",
+                "address": null
+            },
+            "starts_on": "2026-09-15",
+            "starts_at": null,
+            "doors_at": null,
+            "headlining_artist_raw": "Chuquimamani-Condori",
+            "headlining_artist_id": null,
+            "title": null,
+            "supporting_artists_raw": [],
+            "ticket_url": null,
+            "image_url": null,
+            "price_min": null,
+            "price_max": null,
+            "age_restriction": null,
+            "status": "sold_out"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+
+        #expect(concert.id == 12)
+        #expect(concert.venue.name == "Local 506")
+        #expect(concert.venue.address == nil)
+        #expect(concert.headliningArtistRaw == "Chuquimamani-Condori")
+        #expect(concert.status == .soldOut)
+        #expect(concert.headliningArtistId == nil)
+        #expect(concert.title == nil)
+        #expect(concert.supportingArtistsRaw == [])
+        #expect(concert.startsAt == nil)
+        #expect(concert.doorsAt == nil)
+        #expect(concert.priceMin == nil)
+        #expect(concert.priceMax == nil)
+        #expect(concert.ticketURL == nil)
+        #expect(concert.imageURL == nil)
+        #expect(concert.ageRestriction == nil)
+    }
+
+    @Test("Coalesces an absent supporting_artists_raw to an empty array")
+    func coalescesAbsentSupportingArtists() throws {
+        let json = """
+        {
+            "id": 7,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.supportingArtistsRaw == [])
+    }
+
+    @Test("Decodes an unrecognized status as .unknown without throwing")
+    func decodesUnknownStatus() throws {
+        let json = """
+        {
+            "id": 1,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "postponed"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.status == .unknown)
+    }
+
+    // MARK: - ctaURL / headlineName (intrinsic data selection)
+
+    @Test("ctaURL is the ticket_url")
+    func ctaURLIsTicketURL() {
+        let concert = Concert.stub(ticketURL: URL(string: "https://etix.com/x"))
+        #expect(concert.ctaURL == URL(string: "https://etix.com/x"))
+    }
+
+    @Test("ctaURL is nil when the ticket link is absent")
+    func ctaURLNilWhenNoTicket() {
+        let concert = Concert.stub(ticketURL: nil)
+        #expect(concert.ctaURL == nil)
+    }
+
+    @Test("headlineName prefers the event title over the billed headliner")
+    func headlineNamePrefersTitle() {
+        let titled = Concert.stub(headliningArtistRaw: "Jessica Pratt", title: "An Evening With Jessica Pratt")
+        #expect(titled.headlineName == "An Evening With Jessica Pratt")
+        let untitled = Concert.stub(headliningArtistRaw: "Jessica Pratt", title: nil)
+        #expect(untitled.headlineName == "Jessica Pratt")
+    }
+}

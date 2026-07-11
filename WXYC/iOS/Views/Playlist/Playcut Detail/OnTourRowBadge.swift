@@ -15,11 +15,12 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Concerts
 import Playlist
 import SwiftUI
 
 struct OnTourRowBadge: View {
-    let show: UpcomingShow
+    let show: Concert
 
     /// The stub panel's height. ``PlaycutRowView`` frames the stub to this value
     /// and places the ticket's perforation notches at the seam it defines.
@@ -38,7 +39,7 @@ struct OnTourRowBadge: View {
                 .fixedSize()
 
             // Venue — takes the middle, truncating before it crowds the tag.
-            Text(show.venueName ?? "Live Show")
+            Text(show.venue.name)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white)
                 .lineLimit(1)
@@ -94,8 +95,7 @@ struct OnTourRowBadge: View {
     }
 
     private var accessibilityText: String {
-        [show.venueName, presenter.compactDateLabel, presenter.feedTagText]
-            .compactMap { $0 }
+        [show.venue.name, presenter.compactDateLabel, presenter.feedTagText]
             .joined(separator: ", ")
     }
 }
@@ -151,8 +151,11 @@ private struct OnTourRowStubPreview: View {
             .ignoresSafeArea()
 
             OnTourRowBadge(show: .init(
-                id: 4821, eventName: "Nilüfer Yanya", artist: "Nilüfer Yanya",
-                venueName: venue, date: .now, status: status
+                id: 4821,
+                venue: Venue(id: 1, slug: "venue", name: venue, city: "Carrboro", state: "NC", address: nil),
+                startsOn: .now,
+                headliningArtistRaw: "Nilüfer Yanya",
+                status: status
             ))
             .frame(height: OnTourRowBadge.preferredHeight)
             .background(.black.opacity(0.28))
