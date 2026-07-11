@@ -13,6 +13,7 @@
 
 import Testing
 import Foundation
+import Concerts
 @testable import Playlist
 
 @Suite("Flowsheet on_air Decoding Tests")
@@ -100,6 +101,51 @@ struct FlowsheetResponseOnAirTests {
     func paddedDJNameIsTrimmed() throws {
         let response = try decode(#"{"entries":[],"on_air":{"dj_name":"  DJ MONSTER  "}}"#)
         #expect(response.onAir == .dj("DJ MONSTER"))
+    }
+
+    // MARK: - Robustness: a malformed embedded upcoming_show must not nuke the feed
+
+    // A minimal v2 track entry carrying an embedded `upcoming_show`. The embed is
+    // present but malformed, so it must degrade to nil rather than throwing and
+    // failing the whole atomic `[FlowsheetEntry]` decode (which would freeze every
+    // now-playing update over a cosmetic CTA).
+    private func entryWithUpcomingShow(_ upcomingShowLiteral: String) -> String {
+        #"{"id":7,"play_order":1,"add_time":"2024-01-15T14:00:00Z","artist_name":"Chuquimamani-Condori","upcoming_show":\#(upcomingShowLiteral)}"#
+    }
+
+    @Test(
+        "a present-but-malformed upcoming_show degrades to nil without dropping the entry",
+        arguments: [
+            // missing the required `venue` sub-field (a backend join regression)
+            #"{"id":99,"starts_on":"2026-08-01","headlining_artist_raw":"X","supporting_artists_raw":[],"status":"on_sale"}"#,
+            // `starts_on` is not a well-formed yyyy-MM-dd
+            #"{"id":99,"venue":{"id":1,"slug":"v","name":"N","city":"C","state":"NC"},"starts_on":"not-a-date","headlining_artist_raw":"X","supporting_artists_raw":[],"status":"on_sale"}"#,
+            // missing the required `headlining_artist_raw`
+            #"{"id":99,"venue":{"id":1,"slug":"v","name":"N","city":"C","state":"NC"},"starts_on":"2026-08-01","supporting_artists_raw":[],"status":"on_sale"}"#,
+            // missing the required `id`
+            #"{"venue":{"id":1,"slug":"v","name":"N","city":"C","state":"NC"},"starts_on":"2026-08-01","headlining_artist_raw":"X","supporting_artists_raw":[],"status":"on_sale"}"#,
+        ]
+    )
+    func malformedUpcomingShowDegradesToNil(_ upcomingShowLiteral: String) throws {
+        let response = try decode(#"{"entries":[\#(entryWithUpcomingShow(upcomingShowLiteral))]}"#)
+        #expect(response.entries.count == 1)   // the feed is never nuked by a bad embed
+        #expect(response.entries.first?.id == 7)
+        #expect(response.entries.first?.upcoming_show?.concert == nil)
+
+        // …and it stays nil through the converter onto the Playcut.
+        let playlist = FlowsheetConverter.convert(response.entries, onAir: response.onAir)
+        #expect(playlist.playcuts.first?.upcomingShow == nil)
+    }
+
+    @Test("a well-formed upcoming_show survives the atomic feed decode and reaches the playcut")
+    func wellFormedUpcomingShowReachesPlaycut() throws {
+        let wellFormed = #"{"id":99,"venue":{"id":1,"slug":"cats-cradle","name":"Cat's Cradle","city":"Carrboro","state":"NC"},"starts_on":"2026-08-01","headlining_artist_raw":"Chuquimamani-Condori","supporting_artists_raw":[],"status":"sold_out"}"#
+        let response = try decode(#"{"entries":[\#(entryWithUpcomingShow(wellFormed))]}"#)
+        #expect(response.entries.first?.upcoming_show?.concert?.id == 99)
+
+        let playlist = FlowsheetConverter.convert(response.entries, onAir: response.onAir)
+        #expect(playlist.playcuts.first?.upcomingShow?.id == 99)
+        #expect(playlist.playcuts.first?.upcomingShow?.status == .soldOut)
     }
 
     // MARK: - Playlist cache back-compat
