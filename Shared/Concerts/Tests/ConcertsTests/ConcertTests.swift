@@ -3,7 +3,7 @@
 //  Concerts
 //
 //  Decode + intrinsic-accessor tests for the concert model. The wire shape is
-//  Backend-Service's `Concert`/`Venue` schema (`wxyc-shared/api.yaml` v1.15.0).
+//  Backend-Service's `Concert`/`Venue` schema (`wxyc-shared/api.yaml`).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -160,6 +160,41 @@ struct ConcertTests {
         """
         let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
         #expect(concert.supportingArtistsRaw == [])
+    }
+
+    @Test("Decodes an empty-string ticket_url to a nil ticketURL without throwing")
+    func decodesEmptyTicketURLAsNil() throws {
+        // The backend stores an unknown link as "" verbatim; a strict
+        // URL(from:) decode would throw DecodingError.dataCorrupted here.
+        let json = """
+        {
+            "id": 3,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "ticket_url": "",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.ticketURL == nil)
+        #expect(concert.ctaURL == nil)
+    }
+
+    @Test("Decodes a malformed image_url to a nil imageURL without throwing")
+    func decodesMalformedImageURLAsNil() throws {
+        let json = """
+        {
+            "id": 4,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "image_url": "http://  ",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.imageURL == nil)
     }
 
     @Test("Decodes an unrecognized status as .unknown without throwing")

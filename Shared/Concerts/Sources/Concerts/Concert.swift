@@ -4,8 +4,8 @@
 //
 //  A touring-band show in the Triangle area, as served by Backend-Service's
 //  `GET /concerts` read API and embedded on the flowsheet feed. Decodes the
-//  backend `Concert`/`Venue` schema (`wxyc-shared/api.yaml` v1.15.0,
-//  WXYC/Backend-Service#1603 / #1606).
+//  backend `Concert`/`Venue` schema in `wxyc-shared/api.yaml`
+//  (WXYC/Backend-Service#1603 / #1606).
 //
 //  Renamed from `UpcomingShow` (which mirrored triangle-shows' `EventResponse`)
 //  when the type graduated out of `Shared/Playlist` into this package: the iOS
@@ -72,9 +72,12 @@ public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
 /// Decoding is deliberately tolerant: only the fields the backend always sends
 /// (`id`, `venue`, `starts_on`, `headlining_artist_raw`, `status`) are required;
 /// every nullable wire field decodes to `nil` when absent, and an unrecognized
-/// `status` degrades to ``ShowStatus/unknown`` rather than throwing. A
-/// partially-populated concert (a common case — many scraped listings are
-/// date-only with no price or times) still decodes and renders.
+/// `status` degrades to ``ShowStatus/unknown`` rather than throwing. The URL
+/// fields (`ticket_url`, `image_url`) go through `URL(string:)` rather than a
+/// throwing `URL(from:)`, so a present-but-empty `""` or malformed string
+/// decodes to `nil` instead of failing the whole page. A partially-populated
+/// concert (a common case — many scraped listings are date-only with no price
+/// or times) still decodes and renders.
 ///
 /// `supporting_artists_raw` is a required non-null array on the wire but decodes
 /// to `[]` when absent, so a stray-null row can't fail the decode.
@@ -249,6 +252,17 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
             ?? makeInstantParser(fractionalSeconds: false).date(from: raw)
     }
 
+    /// Parses a URL string tolerantly, returning `nil` for an absent, empty, or
+    /// malformed value instead of throwing. The backend stores an unknown link
+    /// as `""` verbatim (the scrapers don't coerce empty → null), so decoding a
+    /// URL field as `URL(from:)` would throw `DecodingError.dataCorrupted` and
+    /// fail the whole page decode; going through `URL(string:)` degrades a bad
+    /// value to `nil` per the tolerant-decode contract above.
+    static func parseURL(_ raw: String?) -> URL? {
+        guard let raw, !raw.isEmpty else { return nil }
+        return URL(string: raw)
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(Int.self, forKey: .id)
@@ -273,8 +287,14 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // Required non-null array on the wire, but coalesce a NULL/absent value
         // to [] so a stray null can't break the decode.
         supportingArtistsRaw = try container.decodeIfPresent([String].self, forKey: .supportingArtistsRaw) ?? []
-        ticketURL = try container.decodeIfPresent(URL.self, forKey: .ticketURL)
-        imageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+        // URL fields decode via String? → URL(string:) rather than
+        // decodeIfPresent(URL.self): Foundation's URL(from:) THROWS
+        // DecodingError.dataCorrupted on a present-but-empty "" (or otherwise
+        // malformed) string, and since a page is a strict [Concert] array one
+        // bad row would fail the whole page decode. URL(string:) returns nil for
+        // "" and malformed strings, keeping the decode tolerant.
+        ticketURL = Concert.parseURL(try container.decodeIfPresent(String.self, forKey: .ticketURL))
+        imageURL = Concert.parseURL(try container.decodeIfPresent(String.self, forKey: .imageURL))
         priceMin = try container.decodeIfPresent(Double.self, forKey: .priceMin)
         priceMax = try container.decodeIfPresent(Double.self, forKey: .priceMax)
         ageRestriction = try container.decodeIfPresent(String.self, forKey: .ageRestriction)

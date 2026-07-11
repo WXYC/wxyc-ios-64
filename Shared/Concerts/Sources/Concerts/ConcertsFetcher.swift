@@ -3,7 +3,7 @@
 //  Concerts
 //
 //  Fetch layer for Backend-Service's `GET /concerts` Touring Soon read API
-//  (WXYC/Backend-Service#1603 / #1606, `wxyc-shared/api.yaml` v1.15.0). Mirrors
+//  (WXYC/Backend-Service#1603 / #1606, `wxyc-shared/api.yaml`). Mirrors
 //  the request-building + anonymous-session-auth convention used by
 //  `Metadata.PlaycutMetadataService`: an optional `SessionTokenProvider` supplies
 //  the `Authorization: Bearer <token>` header for the anonymous session the
@@ -104,16 +104,11 @@ public final class ConcertsFetcher: Sendable {
 
     /// Formats a `Date` as the `yyyy-MM-dd` `starts_on` value the endpoint
     /// windows on, in the station (venue) zone so "today" matches the server's
-    /// America/New_York boundary rather than the device's zone.
+    /// America/New_York boundary rather than the device's zone. Reuses
+    /// ``Concert/dateParser`` — the same fixed-locale, station-zone `yyyy-MM-dd`
+    /// formatter the model decodes `starts_on` with — so the request window and
+    /// the decoded day can never drift apart.
     private static func dateParam(_ date: Date) -> String {
-        Self.dateFormatter.string(from: date)
+        Concert.dateParser.string(from: date)
     }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .wxycStation
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
 }

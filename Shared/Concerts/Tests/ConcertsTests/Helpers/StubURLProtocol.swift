@@ -3,7 +3,8 @@
 //  ConcertsTests
 //
 //  A URLProtocol that captures the outgoing request (so tests can assert on its
-//  URL query items and headers) and replies with a fixed 200 body. Unlike the
+//  URL query items and headers) and replies with a configurable body + status
+//  code (200 by default; `setResponse(_:statusCode:)` overrides). Unlike the
 //  Playlist `CapturingURLProtocol`, this matches any request (the fetcher builds
 //  its own query string, so tests can't know the exact URL in advance) and
 //  stores the single most-recent captured request.
@@ -18,16 +19,31 @@ import os
 final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     private struct State {
         var body: Data = Data()
+        var statusCode: Int = 200
         var captured: URLRequest?
     }
 
     private static let stateLock = OSAllocatedUnfairLock(initialState: State())
 
     /// Sets the response body returned to every request and clears the last
-    /// captured request.
+    /// captured request. Resets the status code to 200.
     static func setBody(_ body: Data) {
         stateLock.withLock {
             $0.body = body
+            $0.statusCode = 200
+            $0.captured = nil
+        }
+    }
+
+    /// Sets the response body and the HTTP status code returned to every
+    /// request, and clears the last captured request. Use a non-2xx status to
+    /// exercise the fetcher's ``HTTPURLResponse/validateSuccessStatus()`` error
+    /// path (mirrors the Metadata package's `MockURLProtocol.responseHandler`
+    /// per-status convention).
+    static func setResponse(_ body: Data, statusCode: Int) {
+        stateLock.withLock {
+            $0.body = body
+            $0.statusCode = statusCode
             $0.captured = nil
         }
     }
@@ -42,13 +58,13 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
 
     override func startLoading() {
         let snapshot = request
-        let body = Self.stateLock.withLock { state -> Data in
+        let (body, statusCode) = Self.stateLock.withLock { state -> (Data, Int) in
             state.captured = snapshot
-            return state.body
+            return (state.body, state.statusCode)
         }
         let response = HTTPURLResponse(
             url: snapshot.url ?? URL(string: "https://example.invalid")!,
-            statusCode: 200,
+            statusCode: statusCode,
             httpVersion: "HTTP/1.1",
             headerFields: ["Content-Type": "application/json"]
         )!
