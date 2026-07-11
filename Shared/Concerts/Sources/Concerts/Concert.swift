@@ -176,6 +176,10 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// fell back to the ticket link, but the backend `Concert` schema carries no
     /// `source_url`, so the CTA target is ``ticketURL`` alone. `nil` when the
     /// concert carries no link (the CTA then hides).
+    ///
+    /// WXYC/Backend-Service#1609 will restore a venue `event_url` on the schema;
+    /// once it ships, this reverts to `eventURL ?? ticketURL` and the CTA copy's
+    /// "venue page" wording becomes correct again.
     public var ctaURL: URL? {
         ticketURL
     }
