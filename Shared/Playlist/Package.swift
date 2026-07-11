@@ -13,16 +13,17 @@ let package = Package(
         .package(name: "Core", path: "../Core"),
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Logger", path: "../Logger"),
+        .package(name: "Concerts", path: "../Concerts"),
     ],
     targets: [
         .target(
             name: "Playlist",
-            dependencies: ["Analytics", "Core", "Caching", "Logger"],
+            dependencies: ["Analytics", "Core", "Caching", "Logger", "Concerts"],
             resources: [.process("Playlist Detail Assets.xcassets")]
         ),
         .target(
             name: "PlaylistTesting",
-            dependencies: ["Playlist"]
+            dependencies: ["Playlist", "Concerts"]
         ),
         .testTarget(
             name: "PlaylistTests",
@@ -30,6 +31,7 @@ let package = Package(
                 "Playlist",
                 "PlaylistTesting",
                 "Caching",
+                "Concerts",
                 .product(name: "CachingTesting", package: "Caching"),
                 .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "LoggerTesting", package: "Logger"),

@@ -1,0 +1,304 @@
+//
+//  Concert.swift
+//  Concerts
+//
+//  A touring-band show in the Triangle area, as served by Backend-Service's
+//  `GET /concerts` read API and embedded on the flowsheet feed. Decodes the
+//  backend `Concert`/`Venue` schema (`wxyc-shared/api.yaml` v1.15.0,
+//  WXYC/Backend-Service#1603 / #1606).
+//
+//  Renamed from `UpcomingShow` (which mirrored triangle-shows' `EventResponse`)
+//  when the type graduated out of `Shared/Playlist` into this package: the iOS
+//  client talks to Backend-Service, not triangle-shows, so the wire shape is the
+//  backend `Concert`. The old flat `venue_name`/`venue_city`/`venue_color` fields
+//  are now the embedded ``Venue`` (which carries no accent color — see below).
+//
+//  Created by Jake Bromberg on 07/08/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Foundation
+
+/// A live-music venue whose calendar WXYC ingests. Embedded whole in ``Concert``.
+///
+/// Mirrors the backend `Venue` schema (`wxyc-shared/api.yaml`). Only `address`
+/// is nullable; everything else is always present.
+///
+/// - Note: The backend `Venue` has **no accent-color field**. The old
+///   `UpcomingShow.venueColorHex` (used to tint the Box Office ticket glow) has
+///   no source here and was dropped. If a per-venue tint is wanted later, it
+///   should be derived client-side (e.g. hashed from ``slug``) rather than
+///   carried on the wire.
+public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
+
+    /// Backend `venues.id`. Stable per venue.
+    public let id: Int
+
+    /// URL-safe venue key (e.g. `"cats-cradle"`). Stable; usable as a tint seed.
+    public let slug: String
+
+    /// Display name (e.g. `"Cat's Cradle"`).
+    public let name: String
+
+    /// City the venue is in (e.g. `"Carrboro"`).
+    public let city: String
+
+    /// Two-letter state code (e.g. `"NC"`).
+    public let state: String
+
+    /// Street address, or `nil` when the source didn't carry one.
+    public let address: String?
+
+    public init(
+        id: Int,
+        slug: String,
+        name: String,
+        city: String,
+        state: String,
+        address: String? = nil
+    ) {
+        self.id = id
+        self.slug = slug
+        self.name = name
+        self.city = city
+        self.state = state
+        self.address = address
+    }
+}
+
+/// An upcoming (or recent) Triangle-area concert, as rendered by the Box Office
+/// ticket and browsed in the Touring Soon tab.
+///
+/// Decoding is deliberately tolerant: only the fields the backend always sends
+/// (`id`, `venue`, `starts_on`, `headlining_artist_raw`, `status`) are required;
+/// every nullable wire field decodes to `nil` when absent, and an unrecognized
+/// `status` degrades to ``ShowStatus/unknown`` rather than throwing. A
+/// partially-populated concert (a common case — many scraped listings are
+/// date-only with no price or times) still decodes and renders.
+///
+/// `supporting_artists_raw` is a required non-null array on the wire but decodes
+/// to `[]` when absent, so a stray-null row can't fail the decode.
+public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
+
+    /// Backend `concerts.id`. Stable per concert.
+    public let id: Int
+
+    /// The venue, embedded whole. Always present.
+    public let venue: Venue
+
+    /// The venue-local calendar day of the show (US Eastern), parsed from the
+    /// backend's date-only `yyyy-MM-dd` `starts_on`. Always present. Windowing
+    /// and ordering in the backend are all on this field, never ``startsAt``.
+    public let startsOn: Date
+
+    /// The exact start instant, or `nil` for date-only events. An ISO-8601
+    /// date-time on the wire (`starts_at`).
+    public let startsAt: Date?
+
+    /// The doors instant, or `nil`. An ISO-8601 date-time on the wire
+    /// (`doors_at`).
+    public let doorsAt: Date?
+
+    /// The headlining artist as billed (`headlining_artist_raw`). Always present;
+    /// this is the field matched against a playcut's artist.
+    public let headliningArtistRaw: String
+
+    /// The resolved WXYC catalog artist id when the headliner matched the
+    /// library, else `nil`. `curated=true` queries return only rows where this
+    /// is non-null.
+    public let headliningArtistId: Int?
+
+    /// The event's own title when it differs from the headliner (e.g. a festival
+    /// or a billed night), or `nil`.
+    public let title: String?
+
+    /// Supporting acts as billed. Empty when none.
+    public let supportingArtistsRaw: [String]
+
+    /// Direct ticketing link (`ticket_url`), often a third-party seller, or
+    /// `nil`. This is the CTA target (see ``ctaURL``).
+    public let ticketURL: URL?
+
+    /// Event/promo image (`image_url`), or `nil`.
+    public let imageURL: URL?
+
+    /// Lowest advertised price in dollars, or `nil` when unpriced/unknown.
+    public let priceMin: Double?
+
+    /// Highest advertised price in dollars, or `nil`.
+    public let priceMax: Double?
+
+    /// Age policy string as advertised (e.g. `"All Ages"`, `"18+"`), or `nil`.
+    public let ageRestriction: String?
+
+    /// Ticket-availability state. Drives the pill and CTA wording.
+    public let status: ShowStatus
+
+    public init(
+        id: Int,
+        venue: Venue,
+        startsOn: Date,
+        startsAt: Date? = nil,
+        doorsAt: Date? = nil,
+        headliningArtistRaw: String,
+        headliningArtistId: Int? = nil,
+        title: String? = nil,
+        supportingArtistsRaw: [String] = [],
+        ticketURL: URL? = nil,
+        imageURL: URL? = nil,
+        priceMin: Double? = nil,
+        priceMax: Double? = nil,
+        ageRestriction: String? = nil,
+        status: ShowStatus
+    ) {
+        self.id = id
+        self.venue = venue
+        self.startsOn = startsOn
+        self.startsAt = startsAt
+        self.doorsAt = doorsAt
+        self.headliningArtistRaw = headliningArtistRaw
+        self.headliningArtistId = headliningArtistId
+        self.title = title
+        self.supportingArtistsRaw = supportingArtistsRaw
+        self.ticketURL = ticketURL
+        self.imageURL = imageURL
+        self.priceMin = priceMin
+        self.priceMax = priceMax
+        self.ageRestriction = ageRestriction
+        self.status = status
+    }
+
+    // MARK: - Intrinsic accessors
+
+    /// The call-to-action target — the direct ticket link (``ticketURL``).
+    ///
+    /// The old `UpcomingShow` preferred a venue event page (`source_url`) and
+    /// fell back to the ticket link, but the backend `Concert` schema carries no
+    /// `source_url`, so the CTA target is ``ticketURL`` alone. `nil` when the
+    /// concert carries no link (the CTA then hides).
+    public var ctaURL: URL? {
+        ticketURL
+    }
+
+    /// The artist to match/display: the ``title`` when the source gave the event
+    /// its own name, else the billed headliner ``headliningArtistRaw``.
+    public var headlineName: String {
+        title ?? headliningArtistRaw
+    }
+
+    // MARK: - Codable
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case venue
+        case startsOn = "starts_on"
+        case startsAt = "starts_at"
+        case doorsAt = "doors_at"
+        case headliningArtistRaw = "headlining_artist_raw"
+        case headliningArtistId = "headlining_artist_id"
+        case title
+        case supportingArtistsRaw = "supporting_artists_raw"
+        case ticketURL = "ticket_url"
+        case imageURL = "image_url"
+        case priceMin = "price_min"
+        case priceMax = "price_max"
+        case ageRestriction = "age_restriction"
+        case status
+    }
+
+    /// Date-only parser pinned to the station zone and a fixed POSIX locale, so a
+    /// `yyyy-MM-dd` `starts_on` resolves to the same calendar day regardless of
+    /// the device's zone or locale. Mirrors the fixed-locale approach in
+    /// `Breakpoint.hourComponent`.
+    static let dateParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .wxycStation
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    /// Builds an ISO-8601 instant parser. Created per call rather than held as a
+    /// `static let` because `ISO8601DateFormatter` is not `Sendable` and cannot
+    /// back a concurrency-safe global. `withFractionalSeconds` covers the backend
+    /// serialization (`Date.toISOString()` → `...T20:00:00.000Z`); the fallback
+    /// without it covers a `...T20:00:00Z`-shaped instant.
+    private static func makeInstantParser(fractionalSeconds: Bool) -> ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = fractionalSeconds
+            ? [.withInternetDateTime, .withFractionalSeconds]
+            : [.withInternetDateTime]
+        return formatter
+    }
+
+    /// Formats a `Date` as an ISO-8601 instant with fractional seconds, matching
+    /// the backend wire shape, for the encode path.
+    static func formatInstant(_ date: Date) -> String {
+        makeInstantParser(fractionalSeconds: true).string(from: date)
+    }
+
+    /// Parses an ISO-8601 instant string tolerantly (with or without fractional
+    /// seconds), returning `nil` for an unparseable or absent value.
+    static func parseInstant(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+        return makeInstantParser(fractionalSeconds: true).date(from: raw)
+            ?? makeInstantParser(fractionalSeconds: false).date(from: raw)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        venue = try container.decode(Venue.self, forKey: .venue)
+
+        let startsOnString = try container.decode(String.self, forKey: .startsOn)
+        guard let parsedDate = Concert.dateParser.date(from: startsOnString) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .startsOn,
+                in: container,
+                debugDescription: "Expected a yyyy-MM-dd starts_on, got \"\(startsOnString)\""
+            )
+        }
+        startsOn = parsedDate
+
+        startsAt = Concert.parseInstant(try container.decodeIfPresent(String.self, forKey: .startsAt))
+        doorsAt = Concert.parseInstant(try container.decodeIfPresent(String.self, forKey: .doorsAt))
+
+        headliningArtistRaw = try container.decode(String.self, forKey: .headliningArtistRaw)
+        headliningArtistId = try container.decodeIfPresent(Int.self, forKey: .headliningArtistId)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        // Required non-null array on the wire, but coalesce a NULL/absent value
+        // to [] so a stray null can't break the decode.
+        supportingArtistsRaw = try container.decodeIfPresent([String].self, forKey: .supportingArtistsRaw) ?? []
+        ticketURL = try container.decodeIfPresent(URL.self, forKey: .ticketURL)
+        imageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+        priceMin = try container.decodeIfPresent(Double.self, forKey: .priceMin)
+        priceMax = try container.decodeIfPresent(Double.self, forKey: .priceMax)
+        ageRestriction = try container.decodeIfPresent(String.self, forKey: .ageRestriction)
+        // Absent status → `.unknown`; unrecognized value is absorbed by
+        // ShowStatus's own tolerant decode.
+        status = try container.decodeIfPresent(ShowStatus.self, forKey: .status) ?? .unknown
+    }
+
+    /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
+    /// string and the instants as ISO-8601 so a cached concert round-trips (the
+    /// synthesized encoder would emit numeric `Date`s, silently breaking any
+    /// re-decode).
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(venue, forKey: .venue)
+        try container.encode(Concert.dateParser.string(from: startsOn), forKey: .startsOn)
+        try container.encodeIfPresent(startsAt.map(Concert.formatInstant), forKey: .startsAt)
+        try container.encodeIfPresent(doorsAt.map(Concert.formatInstant), forKey: .doorsAt)
+        try container.encode(headliningArtistRaw, forKey: .headliningArtistRaw)
+        try container.encodeIfPresent(headliningArtistId, forKey: .headliningArtistId)
+        try container.encodeIfPresent(title, forKey: .title)
+        try container.encode(supportingArtistsRaw, forKey: .supportingArtistsRaw)
+        try container.encodeIfPresent(ticketURL, forKey: .ticketURL)
+        try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(priceMin, forKey: .priceMin)
+        try container.encodeIfPresent(priceMax, forKey: .priceMax)
+        try container.encodeIfPresent(ageRestriction, forKey: .ageRestriction)
+        try container.encode(status, forKey: .status)
+    }
+}

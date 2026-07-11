@@ -1,16 +1,18 @@
 //
 //  ShowStatus.swift
-//  Playlist
+//  Concerts
 //
-//  Ticket-availability state for a touring-band show surfaced on a playcut.
-//  Raw values mirror triangle-shows' `EventStatus` Postgres enum exactly
-//  (on_sale/sold_out/cancelled/free); see WXYC/triangle-shows backend/app/models.py.
+//  Ticket-availability state for a concert. Raw values mirror Backend-Service's
+//  `Concert.status` enum (`on_sale`/`sold_out`/`cancelled`/`rescheduled`) in
+//  `wxyc-shared/api.yaml` v1.15.0.
 //
-//  Lives in the `Playlist` package alongside `Playcut` because an upcoming show
-//  is an enrichment carried on a played track — the same role `artistBio` and
-//  the streaming links already play — not a standalone browse domain. If the
-//  separate "Touring Soon" tab (triangle-shows-integration-proposal.md) is built,
-//  this can be promoted to a shared `Concerts` package.
+//  Note on `free`: the backend `Concert` status enum does **not** include a
+//  `free` value — that was a triangle-shows `EventStatus` case the old
+//  `UpcomingShow` mirrored. It is retained here as a modeled status (the
+//  presenter still renders a distinct "Free/RSVP" treatment for it) so no
+//  presentation coverage is lost, and tolerant decode means a `free` wire value
+//  would still map correctly if a future backend emits one. `rescheduled` is the
+//  new wire value added to match the backend enum.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -18,12 +20,12 @@
 
 import Foundation
 
-/// Ticket-availability state for an upcoming show.
+/// Ticket-availability state for a concert.
 ///
 /// Decoding is tolerant: an unrecognized wire value degrades to ``unknown``
 /// rather than throwing, so a future backend status never fails the enclosing
-/// ``UpcomingShow`` decode. This mirrors the forward-compat idiom used across
-/// the package (`OnAir`, `metadataStatus`).
+/// ``Concert`` decode. This mirrors the forward-compat idiom used across the
+/// packages (`OnAir`, `metadataStatus`).
 public enum ShowStatus: String, Codable, Sendable, Equatable, Hashable, CaseIterable {
     /// Tickets are available for purchase.
     case onSale = "on_sale"
@@ -35,7 +37,13 @@ public enum ShowStatus: String, Codable, Sendable, Equatable, Hashable, CaseIter
     /// The show was cancelled. No CTA emphasis; the ticket desaturates.
     case cancelled
 
+    /// The show was rescheduled. Still actionable — the ticket link points at
+    /// the (new) date's box office.
+    case rescheduled
+
     /// A free show. The CTA becomes an RSVP/details link rather than a purchase.
+    /// Not currently emitted by the backend `Concert` status enum (see the file
+    /// header); retained as a modeled status.
     case free
 
     /// An unrecognized or absent status. Rendered neutrally (like ``onSale``
@@ -49,8 +57,8 @@ public enum ShowStatus: String, Codable, Sendable, Equatable, Hashable, CaseIter
     }
 
     /// Tolerant decode: an unknown raw string becomes ``unknown`` instead of
-    /// throwing. Raw synthesis would reject it and fail the whole
-    /// ``UpcomingShow`` decode over one cosmetic field.
+    /// throwing. Raw synthesis would reject it and fail the whole ``Concert``
+    /// decode over one cosmetic field.
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
         self = ShowStatus(rawValue: raw) ?? .unknown

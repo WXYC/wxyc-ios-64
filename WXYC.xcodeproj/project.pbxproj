@@ -126,6 +126,7 @@
 /* Begin PBXFileReference section */
 		05E8AA4420F87C191FBB0E08 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = Shared/Core; sourceTree = SOURCE_ROOT; };
 		0768EDED2F37ADBE14D485A2 /* Playlist */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Playlist; path = Shared/Playlist; sourceTree = SOURCE_ROOT; };
+		CONCERTS0FILEREF000001 /* Concerts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Concerts; path = Shared/Concerts; sourceTree = SOURCE_ROOT; };
 		09FC6D530E7D389518140201 /* WXYCTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WXYCTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Request Share Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MusicShareKit; path = Shared/MusicShareKit; sourceTree = SOURCE_ROOT; };
@@ -405,6 +406,7 @@
 				23FD1F9E3836A69490D508B9 /* Artwork */,
 				8ED0B718BCDD0CEC55372A30 /* Caching */,
 				COLORPAL0FILEREF0000001 /* ColorPalette */,
+				CONCERTS0FILEREF000001 /* Concerts */,
 				05E8AA4420F87C191FBB0E08 /* Core */,
 				DEBUGPNL0FILEREF0000001 /* DebugPanel */,
 				INTENTSPKGFILEREF000001 /* Intents */,
@@ -667,6 +669,7 @@
 				1A4C4581DF37FFB7A421BDE7 /* XCLocalSwiftPackageReference "Shared/AppServices" */,
 				07287EE5CF49EAC7250A8938 /* XCLocalSwiftPackageReference "Shared/Artwork" */,
 				D69C03CC025D00453589D28C /* XCLocalSwiftPackageReference "Shared/Caching" */,
+				CONCERTS0PKGREF00000001 /* XCLocalSwiftPackageReference "Shared/Concerts" */,
 				FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */,
 				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
@@ -2416,6 +2419,10 @@
 		D69C03CC025D00453589D28C /* XCLocalSwiftPackageReference "Shared/Caching" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Caching;
+		};
+		CONCERTS0PKGREF00000001 /* XCLocalSwiftPackageReference "Shared/Concerts" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/Concerts;
 		};
 		F312D55190C505B9EE16903A /* XCLocalSwiftPackageReference "Shared/Playback" */ = {
 			isa = XCLocalSwiftPackageReference;

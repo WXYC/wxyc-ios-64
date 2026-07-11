@@ -121,63 +121,9 @@ extension ShowMarker {
     }
 }
 
-extension UpcomingShow {
-    /// A fixed, deterministic default date (2026-08-01, station zone) for stubs.
-    ///
-    /// Built inline rather than via the model's internal `dateParser`, which is
-    /// not visible from this separate `PlaylistTesting` module. Falls back to a
-    /// fixed epoch offset so the helper stays force-unwrap-free.
-    private static let defaultDate: Date = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-        let components = DateComponents(year: 2026, month: 8, day: 1)
-        return calendar.date(from: components) ?? Date(timeIntervalSince1970: 1_785_898_800)
-    }()
-
-    /// Creates an `UpcomingShow` with sensible defaults for testing.
-    ///
-    /// Defaults use a WXYC-canonical touring artist (Jessica Pratt at Cat's
-    /// Cradle) rather than placeholder strings. See `docs/test-fixtures.md`.
-    public static func stub(
-        id: Int = 4821,
-        eventName: String = "Jessica Pratt",
-        artist: String? = "Jessica Pratt",
-        supportArtists: String? = "Julie Byrne",
-        venueName: String? = "Cat's Cradle",
-        venueCity: String? = "Carrboro",
-        venueColorHex: String? = "#B34876",
-        date: Date? = nil,
-        doorsTime: String? = "19:00:00",
-        showTime: String? = "20:00:00",
-        status: ShowStatus = .onSale,
-        priceMin: Double? = 22.0,
-        priceMax: Double? = 25.0,
-        ticketURL: URL? = URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
-        sourceURL: URL? = URL(string: "https://catscradle.com/event/jessica-pratt"),
-        imageURL: URL? = nil,
-        ageRestriction: String? = "All Ages"
-    ) -> UpcomingShow {
-        UpcomingShow(
-            id: id,
-            eventName: eventName,
-            artist: artist,
-            supportArtists: supportArtists,
-            venueName: venueName,
-            venueCity: venueCity,
-            venueColorHex: venueColorHex,
-            date: date ?? defaultDate,
-            doorsTime: doorsTime,
-            showTime: showTime,
-            status: status,
-            priceMin: priceMin,
-            priceMax: priceMax,
-            ticketURL: ticketURL,
-            sourceURL: sourceURL,
-            imageURL: imageURL,
-            ageRestriction: ageRestriction
-        )
-    }
-}
+// Note: the `UpcomingShow`/`Concert` stub graduated to `ConcertsTesting`
+// (`Concert.stub()`) when the touring-show domain types moved to the
+// `Shared/Concerts` package. See WXYC/wxyc-ios-64#472.
 
 extension Playlist {
     /// Creates a Playlist stub for testing.

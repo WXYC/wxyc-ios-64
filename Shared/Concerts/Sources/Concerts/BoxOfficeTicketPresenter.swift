@@ -1,12 +1,12 @@
 //
 //  BoxOfficeTicketPresenter.swift
-//  Playlist
+//  Concerts
 //
-//  Pure presentation logic for the Box Office ticket. Turns an ``UpcomingShow``
-//  into the display strings the SwiftUI view renders — date/time labels, price
+//  Pure presentation logic for the Box Office ticket. Turns a ``Concert`` into
+//  the display strings the SwiftUI view renders — date/time labels, price
 //  string, and the per-status pill / CTA / caption copy — so all of that is unit
 //  testable without a view. Copy mirrors the approved prototype
-//  (docs/ideas/touring-shows-box-office.html).
+//  (Shared/Playlist/docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -15,8 +15,8 @@
 import Foundation
 
 /// The visual treatment for the compact feed-row tag, one per ``ShowStatus``.
-/// Mirrors the prototype's four `.rtag` variants (`docs/ideas/touring-shows-box-office.html`)
-/// so the view maps a semantic style to colors rather than switching on status itself.
+/// Mirrors the prototype's four `.rtag` variants so the view maps a semantic
+/// style to colors rather than switching on status itself.
 public enum FeedTagStyle: Sendable, Equatable {
     /// On sale — the amber accent, drawing the eye toward an attendable show.
     case prominent
@@ -26,20 +26,20 @@ public enum FeedTagStyle: Sendable, Equatable {
     case muted
     /// Cancelled — a red, "dead" treatment.
     case negative
-    /// Unknown — a plain, neutral chip.
+    /// Unknown / rescheduled — a plain, neutral chip.
     case neutral
 }
 
 /// View-model for the Box Office ticket. Every property is a pure function of
-/// the wrapped ``UpcomingShow``.
+/// the wrapped ``Concert``.
 ///
-/// Date labels use the station time zone and a fixed `en_US_POSIX` locale, the
-/// same determinism choice made for `Breakpoint.hourLabel`, so the rendered day
-/// never shifts with the device's zone or locale.
+/// Date and time labels use the station time zone and a fixed `en_US_POSIX`
+/// locale, the same determinism choice made for `Breakpoint.hourLabel`, so the
+/// rendered day/time never shifts with the device's zone or locale.
 public struct BoxOfficeTicketPresenter: Sendable, Equatable {
-    public let show: UpcomingShow
+    public let show: Concert
 
-    public init(_ show: UpcomingShow) {
+    public init(_ show: Concert) {
         self.show = show
     }
 
@@ -47,32 +47,32 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
 
     /// Full date label, e.g. `"Sat, Aug 1"`.
     public var dateLabel: String {
-        Self.dateFormatter.string(from: show.date)
+        Self.dateFormatter.string(from: show.startsOn)
     }
 
     /// Compact, upper-cased date for the feed-row stub, e.g. `"SAT AUG 1"`.
     public var compactDateLabel: String {
-        Self.compactDateFormatter.string(from: show.date).uppercased()
+        Self.compactDateFormatter.string(from: show.startsOn).uppercased()
     }
 
     /// Upper-cased weekday for the ticket stub's date block, e.g. `"SAT"`.
     public var stubWeekday: String {
-        Self.weekdayFormatter.string(from: show.date).uppercased()
+        Self.weekdayFormatter.string(from: show.startsOn).uppercased()
     }
 
     /// Day-of-month for the ticket stub's date block, e.g. `"1"`.
     public var stubDayNumber: String {
-        Self.dayNumberFormatter.string(from: show.date)
+        Self.dayNumberFormatter.string(from: show.startsOn)
     }
 
     /// Upper-cased month for the ticket stub's date block, e.g. `"AUG"`.
     public var stubMonth: String {
-        Self.monthFormatter.string(from: show.date).uppercased()
+        Self.monthFormatter.string(from: show.startsOn).uppercased()
     }
 
-    /// A stable, faux "admit one" serial derived from the event id (`"WX-4821"`).
-    /// Cosmetic keepsake detail; deterministic so the same show always prints the
-    /// same number.
+    /// A stable, faux "admit one" serial derived from the concert id (`"WX-4821"`).
+    /// Cosmetic keepsake detail; deterministic so the same concert always prints
+    /// the same number.
     public var ticketSerial: String {
         "WX-\(show.id)"
     }
@@ -83,11 +83,12 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     /// `"Doors 7 PM · Show 8 PM"`, `"Show 8 PM"`, `"Doors 7 PM"`, or `nil` when
     /// neither is known.
     ///
-    /// Times are venue wall-clock values (`HH:mm:ss`) formatted as-is — no zone
-    /// conversion, since the printed time is inherently the venue's local time.
+    /// Derived from the ``Concert/doorsAt``/``Concert/startsAt`` instants,
+    /// formatted in the station (venue) zone — the printed time is the venue's
+    /// local wall-clock.
     public var timeLabel: String? {
-        let doors = show.doorsTime.flatMap(Self.wallClock)
-        let showTime = show.showTime.flatMap(Self.wallClock)
+        let doors = doorsLabel
+        let showTime = showLabel
         switch (doors, showTime) {
         case let (doors?, show?): return "Doors \(doors) · Show \(show)"
         case let (nil, show?): return "Show \(show)"
@@ -97,15 +98,15 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     }
 
     /// The doors time on its own (`"7 PM"`), for a dedicated stat cell. `nil`
-    /// when absent.
+    /// when ``Concert/doorsAt`` is absent.
     public var doorsLabel: String? {
-        show.doorsTime.flatMap(Self.wallClock)
+        show.doorsAt.map(Self.wallClock)
     }
 
     /// The set/show time on its own (`"8 PM"`), for a dedicated stat cell. `nil`
-    /// when absent.
+    /// when ``Concert/startsAt`` is absent.
     public var showLabel: String? {
-        show.showTime.flatMap(Self.wallClock)
+        show.startsAt.map(Self.wallClock)
     }
 
     // MARK: - Price
@@ -131,6 +132,7 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         case .onSale: return "On Sale"
         case .soldOut: return "Sold Out"
         case .cancelled: return "Cancelled"
+        case .rescheduled: return "Rescheduled"
         case .free: return "Free"
         case .unknown: return nil
         }
@@ -149,6 +151,7 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         case .onSale: return "Get Tickets"
         case .free: return "RSVP"
         case .soldOut: return "See Venue Page"
+        case .rescheduled: return "Get Tickets"
         case .cancelled: return "See the venue's page"
         case .unknown: return "See Venue Page"
         }
@@ -157,9 +160,10 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     /// The caption under the CTA, naming the venue where it helps. WXYC hands
     /// listeners off to the box office, so the copy makes clear where the tap goes.
     public var ctaCaption: String {
-        let venue = show.venueName ?? "the venue"
+        let venue = show.venue.name
         switch show.status {
         case .onSale, .unknown: return "Opens \(venue)'s event page"
+        case .rescheduled: return "Rescheduled — opens \(venue)'s event page"
         case .free: return "Free — opens the venue's event page"
         case .soldOut: return "Sold out here — \(venue) sometimes releases more."
         case .cancelled: return "This show has been cancelled."
@@ -172,6 +176,7 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         case .onSale: return "Tickets"
         case .soldOut: return "Sold Out"
         case .cancelled: return "Cancelled"
+        case .rescheduled: return "Rescheduled"
         case .free: return "Free · RSVP"
         case .unknown: return "Details"
         }
@@ -185,39 +190,32 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         case .free: return .free
         case .soldOut: return .muted
         case .cancelled: return .negative
+        case .rescheduled: return .neutral
         case .unknown: return .neutral
         }
     }
 
-    /// The outbound CTA target — the venue's event page, falling back to the
-    /// direct ticket link. `nil` when the show carries no link.
+    /// The outbound CTA target — the direct ticket link. `nil` when the concert
+    /// carries no link.
     public var ctaURL: URL? {
         show.ctaURL
     }
 
     // MARK: - Formatting helpers
 
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .wxycStation
-        formatter.dateFormat = "EEE, MMM d"
-        return formatter
-    }()
-
-    private static let compactDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .wxycStation
-        formatter.dateFormat = "EEE MMM d"
-        return formatter
-    }()
-
+    private static let dateFormatter = Self.stationFormatter("EEE, MMM d")
+    private static let compactDateFormatter = Self.stationFormatter("EEE MMM d")
     private static let weekdayFormatter = Self.stationFormatter("EEE")
     private static let dayNumberFormatter = Self.stationFormatter("d")
     private static let monthFormatter = Self.stationFormatter("MMM")
 
-    /// Builds a station-zone, fixed-locale `DateFormatter` for a single field.
+    /// Station-zone, fixed-locale time formatter producing `"7 PM"` on the hour
+    /// and `"8:30 PM"` otherwise. Built from two formats selected at call time so
+    /// on-the-hour times drop the `:00`.
+    private static let hourOnlyTimeFormatter = Self.stationFormatter("h a")
+    private static let hourMinuteTimeFormatter = Self.stationFormatter("h:mm a")
+
+    /// Builds a station-zone, fixed-locale `DateFormatter` for a single format.
     private static func stationFormatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -226,17 +224,14 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         return formatter
     }
 
-    /// Formats a `HH:mm:ss` (or `HH:mm`) wall-clock string as `"7 PM"` /
-    /// `"8:30 PM"`. Returns `nil` for an unparseable value.
-    private static func wallClock(_ raw: String) -> String? {
-        let parts = raw.split(separator: ":")
-        guard let first = parts.first, let hour24 = Int(first), (0...23).contains(hour24) else {
-            return nil
-        }
-        let minute = parts.count > 1 ? (Int(parts[1]) ?? 0) : 0
-        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
-        let period = hour24 < 12 ? "AM" : "PM"
-        return minute == 0 ? "\(hour12) \(period)" : String(format: "%d:%02d %@", hour12, minute, period)
+    /// Formats an instant as the venue's wall-clock time (`"7 PM"` /
+    /// `"8:30 PM"`), dropping the minutes when the time falls on the hour.
+    private static func wallClock(_ date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .wxycStation
+        let minute = calendar.component(.minute, from: date)
+        let formatter = minute == 0 ? hourOnlyTimeFormatter : hourMinuteTimeFormatter
+        return formatter.string(from: date)
     }
 
     /// Formats a dollar amount: whole dollars drop the decimal (`22`), otherwise

@@ -13,6 +13,7 @@ import Artwork
 import Core
 import Metadata
 import MusicShareKit
+import Concerts
 import Playlist
 import SwiftUI
 import UIKit
@@ -33,7 +34,7 @@ struct PlaycutDetailView: View {
     @State private var isLightboxActive = false
     @State private var showLightboxContainer = false
     @State private var hideHeaderArtwork = false
-    @State private var upcomingShow: UpcomingShow?
+    @State private var upcomingShow: Concert?
     @Namespace private var artworkNamespace
 
     @Environment(\.artworkService) private var artworkService

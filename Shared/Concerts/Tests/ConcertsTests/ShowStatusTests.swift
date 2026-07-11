@@ -1,9 +1,11 @@
 //
 //  ShowStatusTests.swift
-//  Playlist
+//  Concerts
 //
-//  Tests for the touring-show ticket-availability enum. Raw values mirror
-//  triangle-shows' `EventStatus` Postgres enum (on_sale/sold_out/cancelled/free).
+//  Tests for the concert ticket-availability enum. Raw values mirror
+//  Backend-Service's `Concert.status` enum
+//  (on_sale/sold_out/cancelled/rescheduled); `free` is a retained modeled status
+//  not currently on the wire (see ShowStatus.swift).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -11,7 +13,7 @@
 
 import Foundation
 import Testing
-@testable import Playlist
+@testable import Concerts
 
 @Suite("ShowStatus")
 struct ShowStatusTests {
@@ -22,6 +24,7 @@ struct ShowStatusTests {
         ("on_sale", ShowStatus.onSale),
         ("sold_out", ShowStatus.soldOut),
         ("cancelled", ShowStatus.cancelled),
+        ("rescheduled", ShowStatus.rescheduled),
         ("free", ShowStatus.free),
     ])
     func mapsKnownWireValues(raw: String, expected: ShowStatus) {
@@ -51,6 +54,7 @@ struct ShowStatusTests {
         ("on_sale", ShowStatus.onSale),
         ("sold_out", ShowStatus.soldOut),
         ("cancelled", ShowStatus.cancelled),
+        ("rescheduled", ShowStatus.rescheduled),
         ("free", ShowStatus.free),
     ])
     func decodesFromJSONString(raw: String, expected: ShowStatus) throws {
