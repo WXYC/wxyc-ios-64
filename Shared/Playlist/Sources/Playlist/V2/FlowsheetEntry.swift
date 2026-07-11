@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Concerts
 import Foundation
 
 /// Wrapper for the v2 flowsheet API response, which nests entries under an `"entries"` key.
@@ -117,6 +118,13 @@ struct FlowsheetEntry: Codable, Sendable {
     /// build that sees a future state can surface it diagnostically without
     /// failing the row decode.
     var metadata_status: String? = nil
+
+    /// An upcoming Triangle-area show for this track's artist, embedded by
+    /// Backend-Service when the resolved artist matches a curated upcoming
+    /// concert. Present only on the enriched v2 feed; decodes to `nil` on older
+    /// feeds. Carried straight through to ``Playcut/upcomingShow`` by
+    /// `FlowsheetConverter`. Decodes the same backend `Concert` schema everywhere.
+    var upcoming_show: Concert? = nil
 }
 
 extension FlowsheetEntry {

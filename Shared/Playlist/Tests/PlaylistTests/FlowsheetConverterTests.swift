@@ -8,12 +8,64 @@
 
 import Testing
 import Foundation
+import Concerts
+import ConcertsTesting
 @testable import Playlist
 
 // MARK: - FlowsheetConverter Tests
 
 @Suite("FlowsheetConverter Tests")
 struct FlowsheetConverterTests {
+
+    // MARK: - Embedded upcoming_show (#473)
+
+    @Test("Carries the embedded upcoming_show through to the playcut")
+    func carriesUpcomingShow() {
+        let entry = FlowsheetEntry(
+            id: 123,
+            show_id: 456,
+            album_id: nil,
+            artist_name: "Jessica Pratt",
+            album_title: "On Your Own Love Again",
+            track_title: "Back, Baby",
+            record_label: "Drag City",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 1,
+            add_time: "2026-04-17T22:53:48.500Z",
+            upcoming_show: .stub(status: .soldOut)
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.playcuts.count == 1)
+        #expect(playlist.playcuts.first?.upcomingShow?.status == .soldOut)
+        #expect(playlist.playcuts.first?.upcomingShow?.venue.name == "Cat's Cradle")
+    }
+
+    @Test("Playcut has no upcomingShow when the entry omits it")
+    func noUpcomingShowWhenAbsent() {
+        let entry = FlowsheetEntry(
+            id: 124,
+            show_id: 456,
+            album_id: nil,
+            artist_name: "Juana Molina",
+            album_title: "DOGA",
+            track_title: "la paradoja",
+            record_label: "Sonamos",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 2,
+            add_time: "2026-04-17T22:53:48.500Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        #expect(playlist.playcuts.first?.upcomingShow == nil)
+    }
 
     @Test("Converts playcut entry correctly when message is nil")
     func convertsPlaycutEntry() {
