@@ -123,8 +123,40 @@ struct FlowsheetEntry: Codable, Sendable {
     /// Backend-Service when the resolved artist matches a curated upcoming
     /// concert. Present only on the enriched v2 feed; decodes to `nil` on older
     /// feeds. Carried straight through to ``Playcut/upcomingShow`` by
-    /// `FlowsheetConverter`. Decodes the same backend `Concert` schema everywhere.
-    var upcoming_show: Concert? = nil
+    /// `FlowsheetConverter` (which reads `upcoming_show?.concert`). Wrapped in
+    /// ``TolerantConcert`` so a present-but-malformed embed degrades to `nil`
+    /// instead of throwing — see that type's doc comment.
+    var upcoming_show: TolerantConcert? = nil
+}
+
+/// Decodes an embedded `Concert` tolerantly: a present-but-malformed embed
+/// (a missing required sub-field from a backend join regression) becomes `nil`
+/// instead of throwing and failing the whole atomic `[FlowsheetEntry]` decode —
+/// the same degrade-don't-throw discipline as `FlowsheetResponse.onAir`.
+///
+/// The field rides `FlowsheetEntry`'s synthesized `Codable`, whose
+/// `decodeIfPresent` already maps an absent/null `upcoming_show` to `nil`. This
+/// wrapper adds the third case: a present object routes through
+/// ``init(from:)``'s `try?`, so a malformed object also becomes `nil` rather
+/// than propagating the throw up through the synthesized entry decode. Using a
+/// wrapper keeps `FlowsheetEntry`'s memberwise init (which the tests rely on)
+/// and avoids a hand-written `init(from:)` that would be a drift trap across the
+/// entry's ~28 fields.
+struct TolerantConcert: Codable, Sendable, Equatable {
+    let concert: Concert?
+
+    init(concert: Concert?) { self.concert = concert }
+
+    init(from decoder: Decoder) throws { concert = try? Concert(from: decoder) }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let concert {
+            try container.encode(concert)
+        } else {
+            try container.encodeNil()
+        }
+    }
 }
 
 extension FlowsheetEntry {

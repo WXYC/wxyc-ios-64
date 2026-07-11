@@ -231,14 +231,72 @@ struct PlaycutTests {
         #expect(playcut.upcomingShow?.status == .unknown)
     }
 
+    @Test("A present-but-malformed upcoming_show (missing venue) degrades to nil, not a throw")
+    func upcomingShowMalformedMissingVenueDegrades() throws {
+        // The embed is present but drops the required `venue` sub-field — a
+        // backend join regression. It must not fail the surrounding playcut decode.
+        let json = """
+        {
+            "id": 477,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "Call Your Name",
+            "artistName": "Chuquimamani-Condori",
+            "releaseTitle": "Edits",
+            "rotation": false,
+            "upcoming_show": {
+                "id": 99,
+                "starts_on": "2026-08-01",
+                "headlining_artist_raw": "Chuquimamani-Condori",
+                "supporting_artists_raw": [],
+                "status": "on_sale"
+            }
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.upcomingShow == nil)
+        #expect(playcut.artistName == "Chuquimamani-Condori")
+    }
+
+    @Test("A present-but-malformed upcoming_show (bad starts_on) degrades to nil, not a throw")
+    func upcomingShowMalformedBadDateDegrades() throws {
+        // `starts_on` is not a well-formed yyyy-MM-dd string, which throws inside
+        // `Concert.init(from:)`. The playcut around it must still decode.
+        let json = """
+        {
+            "id": 478,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "Call Your Name",
+            "artistName": "Chuquimamani-Condori",
+            "releaseTitle": "Edits",
+            "rotation": false,
+            "upcoming_show": {
+                "id": 99,
+                "venue": {"id": 1, "slug": "v", "name": "Nightlight", "city": "Chapel Hill", "state": "NC"},
+                "starts_on": "not-a-date",
+                "headlining_artist_raw": "Chuquimamani-Condori",
+                "supporting_artists_raw": [],
+                "status": "on_sale"
+            }
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.upcomingShow == nil)
+        #expect(playcut.artistName == "Chuquimamani-Condori")
+    }
+
     @Test("upcomingShow survives an encode/decode round-trip")
     func upcomingShowRoundTrip() throws {
         let original = Playcut.stub(
             id: 476,
             songTitle: "Back, Baby",
             artistName: "Jessica Pratt",
-            releaseTitle: "On Your Own Love Again"
-        ).withUpcomingShow(.stub(status: .soldOut))
+            releaseTitle: "On Your Own Love Again",
+            upcomingShow: .stub(status: .soldOut)
+        )
 
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Playcut.self, from: data)

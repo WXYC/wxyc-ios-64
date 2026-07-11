@@ -387,9 +387,14 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.genres = try container.decodeIfPresent([String].self, forKey: .genres)
             self.styles = try container.decodeIfPresent([String].self, forKey: .styles)
             // Optional, additive, and tolerant: an absent/null embed decodes to
-            // `nil`, and `Concert`'s own tolerant decode absorbs an unknown status
-            // rather than failing the whole playcut over a cosmetic enrichment.
-            self.upcomingShow = try container.decodeIfPresent(Concert.self, forKey: .upcomingShow)
+            // `nil`, `Concert`'s own tolerant decode absorbs an unknown status, and
+            // a present-but-malformed embed (a missing required sub-field from a
+            // backend join regression) also degrades to `nil` rather than failing
+            // the whole playcut over a cosmetic enrichment. `decodeIfPresent` only
+            // swallows absent/null — not malformed-present — so the outer `try?`
+            // catches the throw, mirroring the `onAir` degrade-don't-throw
+            // discipline in `FlowsheetResponse.init(from:)`.
+            self.upcomingShow = (try? container.decodeIfPresent(Concert.self, forKey: .upcomingShow)) ?? nil
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error
