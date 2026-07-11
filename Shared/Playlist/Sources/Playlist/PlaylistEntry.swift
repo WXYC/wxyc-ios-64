@@ -9,6 +9,7 @@
 //  Copyright © 2020 WXYC. All rights reserved.
 //
 
+import Concerts
 import Foundation
 import Logger
 
@@ -257,6 +258,18 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Discogs style classifications (more specific than genres).
     public let styles: [String]?
 
+    /// An upcoming Triangle-area show for this track's artist, embedded on the
+    /// flowsheet feed by Backend-Service when the played track's resolved artist
+    /// matches a curated upcoming concert (the soonest one). `nil` when the artist
+    /// has no matching upcoming show, or when decoding a feed that predates the
+    /// field. This is what drives the Box Office ticket CTA — it rides the
+    /// already-fetched feed, so rendering the CTA makes no additional network call.
+    ///
+    /// Decodes the same backend `Concert` schema the `Concerts` package defines,
+    /// so iOS decodes one type everywhere. Additive and nullable, exactly like the
+    /// ``artistBio`` metadata precedent above.
+    public let upcomingShow: Concert?
+
     /// Whether this playcut carries inline metadata from the v2 flowsheet API.
     public var hasV2Metadata: Bool {
         artworkURL != nil || discogsURL != nil || spotifyURL != nil
@@ -284,6 +297,10 @@ public struct Playcut: PlaylistEntry, Hashable {
         case artistWikipediaURL
         case genres
         case styles
+        // The wire field is snake_case (the backend `Concert` embed), unlike the
+        // camelCase legacy playcut keys around it. Named to match the contract so
+        // the value round-trips through `Concert`'s own snake_case Codable.
+        case upcomingShow = "upcoming_show"
     }
 
     public init(
@@ -307,7 +324,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         artistBio: String? = nil,
         artistWikipediaURL: URL? = nil,
         genres: [String]? = nil,
-        styles: [String]? = nil
+        styles: [String]? = nil,
+        upcomingShow: Concert? = nil
     ) {
         self.id = id
         self.hour = hour
@@ -330,6 +348,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.artistWikipediaURL = artistWikipediaURL
         self.genres = genres
         self.styles = styles
+        self.upcomingShow = upcomingShow
     }
 
     public init(from decoder: Decoder) throws {
@@ -367,6 +386,10 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.artistWikipediaURL = try container.decodeIfPresent(URL.self, forKey: .artistWikipediaURL)
             self.genres = try container.decodeIfPresent([String].self, forKey: .genres)
             self.styles = try container.decodeIfPresent([String].self, forKey: .styles)
+            // Optional, additive, and tolerant: an absent/null embed decodes to
+            // `nil`, and `Concert`'s own tolerant decode absorbs an unknown status
+            // rather than failing the whole playcut over a cosmetic enrichment.
+            self.upcomingShow = try container.decodeIfPresent(Concert.self, forKey: .upcomingShow)
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error

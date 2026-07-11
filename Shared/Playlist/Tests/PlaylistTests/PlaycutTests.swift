@@ -10,6 +10,8 @@
 
 import Testing
 import Foundation
+import Concerts
+import ConcertsTesting
 @testable import Playlist
 
 @Suite("Playcut Tests")
@@ -134,6 +136,115 @@ struct PlaycutTests {
 
         #expect(decoded.genres == ["Rock"])
         #expect(decoded.styles == ["Folk, World, & Country"])
+        #expect(decoded == original)
+    }
+
+    // MARK: - Embedded upcoming_show Tests (#473)
+
+    @Test("Decoder reads the embedded upcoming_show concert off the feed")
+    func decoderReadsUpcomingShow() throws {
+        let json = """
+        {
+            "id": 473,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "Back, Baby",
+            "artistName": "Jessica Pratt",
+            "releaseTitle": "On Your Own Love Again",
+            "rotation": false,
+            "upcoming_show": {
+                "id": 4821,
+                "venue": {
+                    "id": 3,
+                    "slug": "cats-cradle",
+                    "name": "Cat's Cradle",
+                    "city": "Carrboro",
+                    "state": "NC",
+                    "address": "300 E Main St"
+                },
+                "starts_on": "2026-08-01",
+                "starts_at": "2026-08-02T00:00:00.000Z",
+                "doors_at": "2026-08-01T23:00:00.000Z",
+                "headlining_artist_raw": "Jessica Pratt",
+                "headlining_artist_id": 512,
+                "supporting_artists_raw": ["Julie Byrne"],
+                "ticket_url": "https://www.etix.com/ticket/p/jessica-pratt",
+                "price_min": 22,
+                "price_max": 25,
+                "age_restriction": "All Ages",
+                "status": "on_sale"
+            }
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+
+        let show = try #require(playcut.upcomingShow)
+        #expect(show.id == 4821)
+        #expect(show.venue.name == "Cat's Cradle")
+        #expect(show.headliningArtistRaw == "Jessica Pratt")
+        #expect(show.status == .onSale)
+        #expect(show.ctaURL == URL(string: "https://www.etix.com/ticket/p/jessica-pratt"))
+    }
+
+    @Test("upcomingShow is nil when absent from the wire")
+    func upcomingShowNilWhenAbsent() throws {
+        let json = """
+        {
+            "id": 474,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "la paradoja",
+            "artistName": "Juana Molina",
+            "releaseTitle": "DOGA",
+            "rotation": false
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.upcomingShow == nil)
+    }
+
+    @Test("An unknown upcoming_show status still decodes (tolerant)")
+    func upcomingShowTolerantStatus() throws {
+        let json = """
+        {
+            "id": 475,
+            "hour": 1000,
+            "chronOrderID": 1,
+            "timeCreated": 1000,
+            "songTitle": "Call Your Name",
+            "artistName": "Chuquimamani-Condori",
+            "releaseTitle": "Edits",
+            "rotation": false,
+            "upcoming_show": {
+                "id": 99,
+                "venue": {"id": 1, "slug": "v", "name": "Nightlight", "city": "Chapel Hill", "state": "NC"},
+                "starts_on": "2026-08-01",
+                "headlining_artist_raw": "Chuquimamani-Condori",
+                "supporting_artists_raw": [],
+                "status": "postponed_indefinitely"
+            }
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.upcomingShow?.status == .unknown)
+    }
+
+    @Test("upcomingShow survives an encode/decode round-trip")
+    func upcomingShowRoundTrip() throws {
+        let original = Playcut.stub(
+            id: 476,
+            songTitle: "Back, Baby",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
+        ).withUpcomingShow(.stub(status: .soldOut))
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Playcut.self, from: data)
+
+        #expect(decoded.upcomingShow?.id == original.upcomingShow?.id)
+        #expect(decoded.upcomingShow?.status == .soldOut)
         #expect(decoded == original)
     }
 

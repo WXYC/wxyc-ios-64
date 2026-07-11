@@ -32,6 +32,7 @@ let package = Package(
                 "PlaylistTesting",
                 "Caching",
                 "Concerts",
+                .product(name: "ConcertsTesting", package: "Concerts"),
                 .product(name: "CachingTesting", package: "Caching"),
                 .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "LoggerTesting", package: "Logger"),
