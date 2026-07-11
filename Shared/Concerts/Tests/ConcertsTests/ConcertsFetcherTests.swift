@@ -135,4 +135,61 @@ struct ConcertsFetcherTests {
         #expect(response.concerts.first?.headliningArtistRaw == "Jessica Pratt")
         #expect(response.pagination.total == 1)
     }
+
+    // MARK: - Error path
+
+    @Test("Throws URLError(.badServerResponse) on a non-2xx response")
+    func throwsOnServerError() async throws {
+        StubURLProtocol.setResponse(Data("""
+        {"error": "Internal Server Error"}
+        """.utf8), statusCode: 500)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+
+        await #expect(throws: URLError(.badServerResponse)) {
+            _ = try await fetcher.fetchConcerts()
+        }
+    }
+
+    // MARK: - Page-level decode tolerance
+
+    /// A page where one concert carries an empty-string `ticket_url` (the
+    /// backend stores `""` verbatim). Regression guard for the "0 concerts
+    /// instead of N" bug: a strict `URL(from:)` decode would throw on the empty
+    /// string and fail the entire page. Both concerts must still decode.
+    private static let pageWithEmptyTicketURL = Data("""
+    {
+        "concerts": [
+            {
+                "id": 1,
+                "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+                "starts_on": "2026-08-01",
+                "headlining_artist_raw": "Jessica Pratt",
+                "ticket_url": "",
+                "status": "on_sale"
+            },
+            {
+                "id": 2,
+                "venue": { "id": 2, "slug": "local-506", "name": "Local 506", "city": "Chapel Hill", "state": "NC", "address": null },
+                "starts_on": "2026-08-05",
+                "headlining_artist_raw": "Juana Molina",
+                "ticket_url": "https://www.etix.com/ticket/p/juana-molina",
+                "status": "on_sale"
+            }
+        ],
+        "pagination": { "page": 1, "limit": 50, "total": 2, "hasMore": false }
+    }
+    """.utf8)
+
+    @Test("Decodes the whole page when one concert has an empty ticket_url")
+    func decodesPageWithEmptyTicketURL() async throws {
+        StubURLProtocol.setBody(Self.pageWithEmptyTicketURL)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+
+        let response = try await fetcher.fetchConcerts()
+
+        #expect(response.concerts.count == 2)
+        // The bad row decodes with a nil ticketURL rather than failing the page.
+        #expect(response.concerts.first?.ticketURL == nil)
+        #expect(response.concerts.last?.ticketURL == URL(string: "https://www.etix.com/ticket/p/juana-molina"))
+    }
 }
