@@ -8,9 +8,13 @@ let package = Package(
         .library(name: "Concerts", targets: ["Concerts"]),
         .library(name: "ConcertsTesting", targets: ["ConcertsTesting"]),
     ],
+    dependencies: [
+        .package(name: "Core", path: "../Core"),
+    ],
     targets: [
         .target(
-            name: "Concerts"
+            name: "Concerts",
+            dependencies: ["Core"]
         ),
         .target(
             name: "ConcertsTesting",
@@ -21,7 +25,8 @@ let package = Package(
             dependencies: [
                 "Concerts",
                 "ConcertsTesting",
-            ]
+            ],
+            resources: [.copy("Fixtures")]
         )
     ]
 )
