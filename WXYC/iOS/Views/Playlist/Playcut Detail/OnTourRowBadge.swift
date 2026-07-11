@@ -114,30 +114,20 @@ private struct DashedLine: Shape {
 
 // MARK: - Palette
 
-/// The stub's palette, translated from the prototype's CSS tokens. File-private
-/// so it doesn't leak into the app-wide color system.
+/// The stub's palette, translated from the prototype's CSS tokens into HSL so the
+/// hue relationships read at a glance: `amber` and `amberInk` are one hue at two
+/// lightnesses, `onDark` is that same amber pushed nearly black, and both cancel
+/// tones sit at pure red (hue 0). Trailing hex is the original prototype value.
+/// File-private so it doesn't leak into the app-wide color system.
 private enum Palette {
-    static let amber = Color(hex: 0xFF8940)
-    static let amberInk = Color(hex: 0xFFC79A)
-    static let free = Color(hex: 0x4FD6C8)
-    static let freeText = Color(hex: 0x04302B)
-    static let cancel = Color(hex: 0xFF6B6B)
-    static let cancelInk = Color(hex: 0xFFB3B3)
+    static let amber = Color(HSL(hue: 0.0637, saturation: 1, lightness: 0.6255)) // #FF8940
+    static let amberInk = Color(HSL(hue: 0.0743, saturation: 1, lightness: 0.802)) // #FFC79A
+    static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
+    static let freeText = Color(HSL(hue: 0.4811, saturation: 0.8462, lightness: 0.102)) // #04302B
+    static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
+    static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
     static let perforation = Color.white.opacity(0.28)
-    static let onDark = Color(hex: 0x2A1400)
-}
-
-private extension Color {
-    /// Builds an sRGB color from a `0xRRGGBB` literal.
-    init(hex: UInt32, opacity: Double = 1) {
-        self.init(
-            .sRGB,
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255,
-            opacity: opacity
-        )
-    }
+    static let onDark = Color(HSL(hue: 0.0794, saturation: 1, lightness: 0.0824)) // #2A1400
 }
 
 // MARK: - Previews

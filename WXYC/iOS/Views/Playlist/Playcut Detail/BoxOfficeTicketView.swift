@@ -383,22 +383,26 @@ private struct DashedLine: Shape {
 
 // MARK: - Palette
 
-/// The ticket's warm palette, translated from the prototype's CSS tokens. Kept
+/// The ticket's warm palette, translated from the prototype's CSS tokens into HSL
+/// so the hue relationships read at a glance: the whole amber family shares a hue
+/// and steps only in lightness (`amberLine` is just `amber` at 55% alpha, and
+/// `buttonText` is that amber pushed nearly black), and both cancel tones sit at
+/// pure red (hue 0). Trailing hex is the original prototype value. Kept
 /// file-private so it doesn't leak into the app-wide color system.
 private enum Palette {
-    static let amber = Color(hex: 0xFF8940)
-    static let amberLight = Color(hex: 0xFF9D5C)
-    static let amberInk = Color(hex: 0xFFC79A)
-    static let amberLine = Color(hex: 0xFF8940, opacity: 0.55)
+    static let amber = Color(HSL(hue: 0.0637, saturation: 1, lightness: 0.6255)) // #FF8940
+    static let amberLight = Color(HSL(hue: 0.0665, saturation: 1, lightness: 0.6804)) // #FF9D5C
+    static let amberInk = Color(HSL(hue: 0.0743, saturation: 1, lightness: 0.802)) // #FFC79A
+    static let amberLine = amber.opacity(0.55)
 
-    static let ok = Color(hex: 0x34C759)
-    static let okInk = Color(hex: 0xA6F0BD)
-    static let soldout = Color(hex: 0xFF8F6B)
-    static let soldoutInk = Color(hex: 0xFFC7B4)
-    static let cancel = Color(hex: 0xFF6B6B)
-    static let cancelInk = Color(hex: 0xFFB3B3)
-    static let free = Color(hex: 0x4FD6C8)
-    static let freeInk = Color(hex: 0xB8F0E8)
+    static let ok = Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)) // #34C759
+    static let okInk = Color(HSL(hue: 0.3851, saturation: 0.7115, lightness: 0.7961)) // #A6F0BD
+    static let soldout = Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)) // #FF8F6B
+    static let soldoutInk = Color(HSL(hue: 0.0422, saturation: 1, lightness: 0.8529)) // #FFC7B4
+    static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
+    static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
+    static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
+    static let freeInk = Color(HSL(hue: 0.4762, saturation: 0.6512, lightness: 0.8314)) // #B8F0E8
 
     static let inkDim = Color.white.opacity(0.72)
 
@@ -411,20 +415,7 @@ private enum Palette {
 
     static let hairline = Color.white.opacity(0.18)
 
-    static let buttonText = Color(hex: 0x2A1400)
-}
-
-private extension Color {
-    /// Builds an sRGB color from a `0xRRGGBB` literal.
-    init(hex: UInt32, opacity: Double = 1) {
-        self.init(
-            .sRGB,
-            red: Double((hex >> 16) & 0xFF) / 255,
-            green: Double((hex >> 8) & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255,
-            opacity: opacity
-        )
-    }
+    static let buttonText = Color(HSL(hue: 0.0794, saturation: 1, lightness: 0.0824)) // #2A1400
 }
 
 // MARK: - Previews
@@ -460,7 +451,11 @@ private struct BoxOfficeTicketPreviewStage: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(hex: 0x40498E), Color(hex: 0xAF3E79), Color(hex: 0xB64949)],
+                colors: [
+                    Color(HSL(hue: 0.6474, saturation: 0.3786, lightness: 0.4039)), // #40498E
+                    Color(HSL(hue: 0.913, saturation: 0.4768, lightness: 0.4647)), // #AF3E79
+                    Color(HSL(hue: 0, saturation: 0.4275, lightness: 0.5)), // #B64949
+                ],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
@@ -490,8 +485,10 @@ private struct BoxOfficeTicketDetailContextPreview: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(hex: 0x40498E), Color(hex: 0xAF3E79),
-                    Color(hex: 0xB64949), Color(hex: 0xB34876),
+                    Color(HSL(hue: 0.6474, saturation: 0.3786, lightness: 0.4039)), // #40498E
+                    Color(HSL(hue: 0.913, saturation: 0.4768, lightness: 0.4647)), // #AF3E79
+                    Color(HSL(hue: 0, saturation: 0.4275, lightness: 0.5)), // #B64949
+                    Color(HSL(hue: 0.9283, saturation: 0.4263, lightness: 0.4922)), // #B34876
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
