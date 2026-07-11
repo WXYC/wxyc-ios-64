@@ -122,7 +122,9 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     /// would fall through to the numeric branch and render `"$0"`.
     public var priceLabel: String? {
         if show.status == .free { return "Free" }
-        if show.priceMin == 0 { return "Free" }
+        // Free signal is price_min == 0, but only when there is no nonzero upper
+        // bound — otherwise a genuine "$0–$25" range would collapse to "Free".
+        if show.priceMin == 0, (show.priceMax ?? 0) == 0 { return "Free" }
         let low = show.priceMin ?? show.priceMax
         let high = show.priceMax ?? show.priceMin
         guard let low, let high else { return nil }

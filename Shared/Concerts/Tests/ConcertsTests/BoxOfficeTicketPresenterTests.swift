@@ -135,6 +135,12 @@ struct BoxOfficeTicketPresenterTests {
         #expect(presenter.priceLabel == "Free")
     }
 
+    @Test("A zero-floor priced range is not collapsed to \"Free\"")
+    func zeroFloorRangeKeepsUpperBound() {
+        let presenter = BoxOfficeTicketPresenter(.stub(priceMin: 0, priceMax: 25, status: .onSale))
+        #expect(presenter.priceLabel == "$0–$25")
+    }
+
     @Test("Price label is nil when unpriced and not free")
     func noPrice() {
         let presenter = BoxOfficeTicketPresenter(.stub(priceMin: nil, priceMax: nil, status: .onSale))
