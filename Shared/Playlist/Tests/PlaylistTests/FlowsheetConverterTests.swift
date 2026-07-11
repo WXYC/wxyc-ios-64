@@ -35,7 +35,7 @@ struct FlowsheetConverterTests {
             message: nil,
             play_order: 1,
             add_time: "2026-04-17T22:53:48.500Z",
-            upcoming_show: .stub(status: .soldOut)
+            upcoming_show: TolerantConcert(concert: .stub(status: .soldOut))
         )
 
         let playlist = FlowsheetConverter.convert([entry])
