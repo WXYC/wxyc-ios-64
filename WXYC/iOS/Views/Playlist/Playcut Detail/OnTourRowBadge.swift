@@ -51,7 +51,7 @@ struct OnTourRowBadge: View {
         .overlay(alignment: .top) {
             // The tear line, inset horizontally so it clears the corner punch-outs.
             DashedLine()
-                .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 1.5))
                 .frame(height: 1.5)
                 .padding(.horizontal, 10)
         }
@@ -97,18 +97,6 @@ struct OnTourRowBadge: View {
         [show.venueName, presenter.compactDateLabel, presenter.feedTagText]
             .compactMap { $0 }
             .joined(separator: ", ")
-    }
-}
-
-// MARK: - Shapes
-
-/// A single horizontal line across the middle of its rect (the dashed tear line).
-private struct DashedLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-        return path
     }
 }
 

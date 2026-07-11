@@ -282,8 +282,8 @@ struct BoxOfficeTicketView: View {
         // No background of its own — the stub sits on the ticket's shared panel
         // (see `body`). The dashed line is the only mark at the seam.
         .overlay(alignment: .top) {
-            DashedLine()
-                .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+            DashedLine(approximateSegment: 5)
+                .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 2))
                 .frame(height: 2)
         }
     }
@@ -367,17 +367,6 @@ private struct TicketShape: Shape {
         shape = shape.subtracting(leftNotch)
         shape = shape.subtracting(rightNotch)
         return shape
-    }
-}
-
-/// A single horizontal line across the middle of its rect (for the dashed
-/// perforation drawn along the top of the stub).
-private struct DashedLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-        return path
     }
 }
 
