@@ -2,11 +2,16 @@
 //  UpcomingShowProvider.swift
 //  WXYC
 //
-//  Supplies the `UpcomingShow` (if any) for a playcut's artist, injected through
-//  the environment so `PlaycutDetailView` stays decoupled from the data source.
-//  Today the default is a DEBUG-only mock driven by a debug-sheet toggle; when
-//  Backend-Service's concerts read API lands, a network-backed provider replaces
-//  it with no view changes (see triangle-shows-integration-proposal.md).
+//  Resolves the upcoming Triangle-area show to render on a playcut. The show
+//  arrives EMBEDDED on the flowsheet feed (`Playcut.upcomingShow`), joined
+//  server-side by Backend-Service when the played track's artist matches a
+//  curated upcoming concert — so resolving it is a pure, synchronous read of the
+//  already-fetched playcut. There is no fetcher here and no network call on this
+//  path: if the feed carried no show, the CTA renders nothing.
+//
+//  In DEBUG a toggle-driven mock can override the embedded value on the
+//  now-playing row so the Box Office ticket is exercisable in the running app
+//  without waiting for a real matching show.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -19,31 +24,38 @@ import SwiftUI
 import DebugPanel
 #endif
 
-/// Resolves the upcoming Triangle-area show for a played track, matched by
-/// artist. Async so a real implementation can hit the network / a cache.
-protocol UpcomingShowProviding: Sendable {
-    func upcomingShow(for playcut: Playcut) async -> Concert?
+/// Resolves the upcoming show for a played track. Synchronous and network-free:
+/// the show is read straight off the playcut, where the backend embedded it on
+/// the feed. Injected through the environment so the views stay decoupled from
+/// the (debug-only) override policy.
+protocol UpcomingShowResolving: Sendable {
+    /// The upcoming show to render for `playcut`, or `nil` for none. Pure — makes
+    /// no network request.
+    @MainActor func upcomingShow(for playcut: Playcut) -> Concert?
 }
 
-/// The production default until the real provider exists: never surfaces a show.
-struct NoUpcomingShowProvider: UpcomingShowProviding {
-    func upcomingShow(for playcut: Playcut) async -> Concert? { nil }
+/// The production resolver: returns exactly what the feed embedded on the
+/// playcut. No fallback fetch — an absent embed renders no CTA.
+struct EmbeddedUpcomingShowResolver: UpcomingShowResolving {
+    func upcomingShow(for playcut: Playcut) -> Concert? {
+        playcut.upcomingShow
+    }
 }
 
 #if DEBUG
-/// Development provider: returns a mock show for the now-playing (first) playcut
-/// only while the "Mock ticket on first item" debug toggle is on. Lets the Box
-/// Office ticket be exercised end-to-end in the running app without a real
-/// upcoming show. Every other playcut resolves to `nil`.
-struct DebugMockUpcomingShowProvider: UpcomingShowProviding {
-    func upcomingShow(for playcut: Playcut) async -> Concert? {
-        await MainActor.run {
-            let debug = TouringShowsDebugState.shared
-            guard debug.mockFirstItemEnabled, debug.firstPlaycutID == playcut.id else {
-                return nil
-            }
-            return Concert.mock(for: playcut)
+/// Development resolver: prefers a real embedded show, and otherwise synthesizes
+/// a mock for the now-playing (first) playcut while the "Mock ticket on first
+/// item" debug toggle is on. Lets the Box Office ticket be exercised end-to-end
+/// in the running app before real curated matches flow through the feed. Still
+/// network-free — the mock is fabricated locally.
+struct DebugUpcomingShowResolver: UpcomingShowResolving {
+    func upcomingShow(for playcut: Playcut) -> Concert? {
+        if let embedded = playcut.upcomingShow { return embedded }
+        let debug = TouringShowsDebugState.shared
+        guard debug.mockFirstItemEnabled, debug.firstPlaycutID == playcut.id else {
+            return nil
         }
+        return Concert.mock(for: playcut)
     }
 }
 
@@ -77,23 +89,24 @@ private extension Concert {
 
 // MARK: - Environment
 
-private struct UpcomingShowProviderKey: EnvironmentKey {
-    // A toggle-driven mock in DEBUG so the feature is exercisable now; inert in
-    // release until a real, backend-backed provider is injected at the app root.
-    static let defaultValue: any UpcomingShowProviding = {
+private struct UpcomingShowResolverKey: EnvironmentKey {
+    // Reads the embedded feed value in release; a DEBUG toggle can synthesize a
+    // mock for the now-playing row so the feature is exercisable pre-data.
+    static let defaultValue: any UpcomingShowResolving = {
         #if DEBUG
-        DebugMockUpcomingShowProvider()
+        DebugUpcomingShowResolver()
         #else
-        NoUpcomingShowProvider()
+        EmbeddedUpcomingShowResolver()
         #endif
     }()
 }
 
 extension EnvironmentValues {
-    /// The source of upcoming-show data for playcut detail. Defaults to a DEBUG
-    /// mock (toggle-driven) / release no-op.
-    var upcomingShowProvider: any UpcomingShowProviding {
-        get { self[UpcomingShowProviderKey.self] }
-        set { self[UpcomingShowProviderKey.self] = newValue }
+    /// The resolver that turns a playcut into its upcoming show. Defaults to the
+    /// embedded-feed read (release) / a toggle-driven mock (DEBUG). Both are
+    /// synchronous and make no network call.
+    var upcomingShowResolver: any UpcomingShowResolving {
+        get { self[UpcomingShowResolverKey.self] }
+        set { self[UpcomingShowResolverKey.self] = newValue }
     }
 }
