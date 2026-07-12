@@ -346,33 +346,6 @@ private struct CTAButtonStyle: ViewModifier {
     }
 }
 
-// MARK: - Shapes
-
-/// A rounded-rectangle ticket outline with two circular notches cut into the
-/// side edges at the perforation line (`stubHeight` up from the bottom). Used as
-/// the clip shape so the notches punch through to the wallpaper behind the card.
-private struct TicketShape: Shape {
-    let cornerRadius: CGFloat
-    let stubHeight: CGFloat
-    let notchRadius: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        var shape = Path(roundedRect: rect, cornerRadius: cornerRadius)
-        let notchCenterY = rect.maxY - stubHeight
-        let leftNotch = Path(ellipseIn: CGRect(
-            x: rect.minX - notchRadius, y: notchCenterY - notchRadius,
-            width: notchRadius * 2, height: notchRadius * 2
-        ))
-        let rightNotch = Path(ellipseIn: CGRect(
-            x: rect.maxX - notchRadius, y: notchCenterY - notchRadius,
-            width: notchRadius * 2, height: notchRadius * 2
-        ))
-        shape = shape.subtracting(leftNotch)
-        shape = shape.subtracting(rightNotch)
-        return shape
-    }
-}
-
 // MARK: - Palette
 
 /// The ticket's warm palette, translated from the prototype's CSS tokens into HSL

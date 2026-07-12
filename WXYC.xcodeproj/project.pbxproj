@@ -182,6 +182,7 @@
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
 				iOS/Tests/WXYCTests/SentryLogsDestinationTests.swift,
+				iOS/Tests/WXYCTests/TicketShapeTests.swift,
 				iOS/Tests/WXYCTests/UpcomingShowResolverTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 			);
@@ -236,6 +237,7 @@
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
 				iOS/Tests/WXYCTests/PlayWXYCIntentTests.swift,
 				iOS/Tests/WXYCTests/SentryLogsDestinationTests.swift,
+				iOS/Tests/WXYCTests/TicketShapeTests.swift,
 				iOS/Tests/WXYCTests/UpcomingShowResolverTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
 				iOS/Tests/WXYCUITests/MarketingRecordingUITests.swift,
