@@ -34,6 +34,18 @@ public final class MockHTTPStreamClient: @preconcurrency HTTPStreamClientProtoco
     /// Track whether connect was called
     public private(set) var connectCallCount = 0
 
+    /// Number of connect() calls that ran to completion (emitted `.connected` and
+    /// finished feeding data). A connect that is cancelled mid-flight via
+    /// `nextConnectDelay` does NOT count — useful for asserting that a superseded
+    /// reconnect was actually abandoned rather than left to complete in the background.
+    public private(set) var connectCompletedCount = 0
+
+    /// If set, the NEXT connect() call awaits this delay before emitting `.connected`,
+    /// simulating a slow/in-flight connection. Consumed once (reset to nil on use). If
+    /// the task is cancelled during the wait, connect() returns quietly without
+    /// emitting `.connected` — matching a real invalidated URLSession.
+    public var nextConnectDelay: Duration?
+
     /// Track whether disconnect was called
     public private(set) var disconnectCallCount = 0
 
@@ -50,6 +62,19 @@ public final class MockHTTPStreamClient: @preconcurrency HTTPStreamClientProtoco
             throw errorToThrow
         }
 
+        // Simulate a slow/in-flight connection for one call, if requested. If the
+        // owning task is cancelled during the wait (e.g. a fresh reconnect
+        // superseded this one), abandon quietly — no `.connected`, no completion —
+        // matching a real invalidated URLSession rather than surfacing an error.
+        if let delay = nextConnectDelay {
+            nextConnectDelay = nil
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+        }
+
         // Emit connected event
         continuation.yield(.connected)
 
@@ -63,6 +88,8 @@ public final class MockHTTPStreamClient: @preconcurrency HTTPStreamClientProtoco
                 offset = end
             }
         }
+
+        connectCompletedCount += 1
     }
 
     public func disconnect() {

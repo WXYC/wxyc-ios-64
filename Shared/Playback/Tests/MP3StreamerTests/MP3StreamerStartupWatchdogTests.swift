@@ -144,6 +144,53 @@ struct MP3StreamerStartupWatchdogTests {
         #expect(mockHTTP.connectCallCount == 1,
                 "A stopped streamer must not be reconnected by a stale startup watchdog")
     }
+
+    /// Regression: if a mid-startup HTTP disconnect already scheduled a reconnect,
+    /// the watchdog escalation must cancel that in-flight reconnect before starting
+    /// its own. Otherwise it overwrites and leaks the pending `reconnectTask`, letting
+    /// two connections race to completion and double-driving the reconnect machinery.
+    @Test("Escalation cancels an in-flight reconnect instead of leaking it")
+    func escalationCancelsInFlightReconnect() async throws {
+        // Tiny, clamped backoff waits so the escalation's own reconnect is effectively
+        // immediate (the random addition is clamped to maximumWaitTime).
+        let backoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 10)
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL, startupTimeout: 0.2)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer,
+            backoffTimer: backoff
+        )
+
+        streamer.play()
+
+        // Reach buffering — the initial connect completes immediately.
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if case .buffering = streamer.streamingState { break }
+        }
+        #expect(mockHTTP.connectCompletedCount == 1, "Precondition: the initial connect completed")
+
+        // A mid-startup disconnect schedules a reconnect whose connect() then hangs,
+        // so it is still in flight when the watchdog fires ~0.2s in.
+        mockHTTP.nextConnectDelay = .milliseconds(400)
+        mockHTTP.yield(.disconnected)
+
+        // Let the watchdog fire and escalate while that reconnect is pending, then wait
+        // past the 0.4s hang so a *leaked* reconnect would have completed as a 3rd.
+        try await Task.sleep(for: .milliseconds(700))
+
+        // Only the initial connect and the escalation's fresh reconnect should complete.
+        // The superseded, hung reconnect must have been cancelled, not leaked.
+        #expect(mockHTTP.connectCompletedCount == 2,
+                "Watchdog escalation must cancel the in-flight reconnect, not leak it to completion")
+    }
 }
 
 extension Tag {

@@ -450,6 +450,12 @@ public final class MP3Streamer {
             // Surface the failure through the internal event stream so the
             // controller captures a StreamErrorEvent (classified as startupTimeout).
             eventContinuationInternal.yield(.error(error))
+            // Cancel any reconnect already in flight (e.g. one scheduled by a
+            // mid-startup HTTP disconnect) before starting a fresh one. Otherwise
+            // attemptReconnect() would overwrite the single reconnectTask handle,
+            // leaking the pending task to run to completion alongside the new one.
+            reconnectTask?.cancel()
+            reconnectTask = nil
             attemptReconnect()
         default:
             // Already playing, stopped, or errored via another path — nothing to do.
