@@ -72,7 +72,11 @@ struct TicketFeatureCTAView: View {
         }
         .clipShape(ticketShape)
         .overlay { ticketShape.stroke(Palette.amberLine, lineWidth: 1) }
-        .shadow(color: Palette.glow, radius: 16, x: 0, y: 8)
+        // A tight, dark depth shadow like the real ticket — deliberately NOT a wide
+        // amber glow. A large blurred shadow is cast by the ticket silhouette and
+        // bleeds into the concave perforation notches, tinting those cutouts instead
+        // of letting the wallpaper show clean through them.
+        .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
         .transition(.asymmetric(
@@ -245,7 +249,6 @@ private enum Palette {
     static let amber = Color(red: 1, green: 137 / 255, blue: 64 / 255) // #FF8940
     static let amberInk = Color(red: 1, green: 199 / 255, blue: 154 / 255) // #FFC79A
     static let amberLine = Color(red: 1, green: 137 / 255, blue: 64 / 255).opacity(0.55) // amber @55%
-    static let glow = Color(red: 1, green: 137 / 255, blue: 64 / 255).opacity(0.35)
 
     static let inkDim = Color.white.opacity(0.72)
 
