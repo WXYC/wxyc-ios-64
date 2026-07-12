@@ -209,6 +209,7 @@ struct PlaybackAnalyticsTests {
 
     @Test("StreamErrorType raw values", arguments: [
         (StreamErrorType.backoffExhausted, "backoff_exhausted"),
+        (StreamErrorType.startupTimeout, "startup_timeout"),
         (StreamErrorType.networkError, "network_error"),
         (StreamErrorType.decodingError, "decoding_error"),
         (StreamErrorType.playerError, "player_error"),

@@ -123,10 +123,21 @@ struct MP3StreamerStartupWatchdogTests {
         )
 
         streamer.play()
-        try await Task.sleep(for: .milliseconds(20))
+
+        // Wait until the watchdog is provably armed before stopping. Arming happens
+        // inside play()'s deferred Task immediately before connect(), so a completed
+        // connect (connectCallCount == 1) guarantees the watchdog is live. Stopping on
+        // a fixed short sleep could race ahead of the deferred Task and cancel nothing,
+        // letting this test pass vacuously.
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if mockHTTP.connectCallCount >= 1 { break }
+        }
+        #expect(mockHTTP.connectCallCount == 1, "Precondition: the watchdog must be armed before stop()")
+
         streamer.stop()
 
-        // Wait well past the startupTimeout — the watchdog must not fire.
+        // Wait well past the startupTimeout — the watchdog must not fire a reconnect.
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(streamer.streamingState == .idle)
