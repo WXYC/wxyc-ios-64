@@ -40,6 +40,7 @@ struct PlaycutDetailView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.reviewRequestService) var reviewRequestService
     @Environment(\.upcomingShowResolver) private var upcomingShowResolver
+    @Environment(Singletonia.self) private var appState
 
     /// The upcoming show for this playcut's artist, resolved synchronously from
     /// the embedded feed value (no network call). A DEBUG override may synthesize
@@ -77,6 +78,14 @@ struct PlaycutDetailView: View {
                 if let upcomingShow {
                     BoxOfficeTicketView(show: upcomingShow)
                         .transition(.opacity.combined(with: .move(edge: .top)))
+                        .onAppear {
+                            // Opening a real ticket retires the discovery CTA — the
+                            // lesson has landed. Gate on the embedded feed value, not
+                            // `upcomingShow`, so the DEBUG mock never retires it.
+                            if playcut.upcomingShow != nil {
+                                appState.ticketFeatureCTAPersistence.recordRealTicketSeen()
+                            }
+                        }
                 }
 
                 // Metadata section
@@ -273,4 +282,5 @@ struct PlaycutDetailView: View {
         ),
         artwork: nil
     )
+    .environment(Singletonia.shared)
 }

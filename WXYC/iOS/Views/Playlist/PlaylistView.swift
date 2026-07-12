@@ -42,6 +42,7 @@ struct PlaylistView: View {
     @State private var showVisualizerDebug = false
     @State private var showOnAirDebug = false
     @State private var showingPartyHorn = false
+    @State private var showingTicketCTA = false
     @State private var showingSiriTip = false
     @State private var showingThemeTip = false
 
@@ -81,6 +82,15 @@ struct PlaylistView: View {
                     max: appearance.lcdMaxOffset
                 )
                 .lcdActiveBrightness(appearance.lcdActiveBrightness)
+
+                // Ticket feature CTA — teaches the new Box Office ticket. The
+                // newest feature leads, so it sits above the other tips.
+                if showingTicketCTA {
+                    TicketFeatureCTAView(isVisible: $showingTicketCTA) {
+                        appState.ticketFeatureCTAPersistence.recordDismissed()
+                    }
+                    .padding(.vertical, 8)
+                }
 
                 // Siri tip
                 if showingSiriTip {
@@ -152,6 +162,9 @@ struct PlaylistView: View {
                 },
                 onResetSiriTip: {
                     SiriTipView.resetState()
+                },
+                onResetTicketCTA: {
+                    appState.ticketFeatureCTAPersistence.resetState()
                 }
             )
             .presentationDetents([.fraction(0.75)])
@@ -162,8 +175,12 @@ struct PlaylistView: View {
         }
         #endif
         .onAppear {
+            // The ticket CTA leads (newest feature); the theme tip yields to it so
+            // the two don't stack on a fresh install, where both would show.
+            let showTicketCTA = appState.ticketFeatureCTAPersistence.shouldShow
+            showingTicketCTA = showTicketCTA
             showingSiriTip = SiriTipView.recordLaunchAndShouldShow()
-            showingThemeTip = appState.themePickerState.persistence.shouldShowTip
+            showingThemeTip = !showTicketCTA && appState.themePickerState.persistence.shouldShowTip
         }
         .task {
             guard let playlistService else { return }

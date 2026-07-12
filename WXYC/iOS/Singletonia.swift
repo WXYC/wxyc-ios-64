@@ -41,6 +41,12 @@ final class Singletonia {
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
 
+    /// Show/retire state for the Box Office ticket discovery CTA. Held here — not
+    /// per scene — because two sibling scenes share it: `PlaylistView` reads
+    /// `shouldShow` and records the dismiss, while `PlaycutDetailView` records the
+    /// real-ticket view that retires it. One instance keeps both on the same keys.
+    let ticketFeatureCTAPersistence = TicketFeatureCTAPersistence()
+
     private var nowPlayingObservationTask: Task<Void, Never>?
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?

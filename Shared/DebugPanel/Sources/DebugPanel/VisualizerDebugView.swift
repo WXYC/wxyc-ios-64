@@ -31,15 +31,18 @@ public struct VisualizerDebugView: View {
     private var themeDebugState = ThemeDebugState.shared
     private var onResetThemePickerState: (() -> Void)?
     private var onResetSiriTip: (() -> Void)?
+    private var onResetTicketCTA: (() -> Void)?
 
     public init(
         visualizer: VisualizerDataSource,
         onResetThemePickerState: (() -> Void)? = nil,
-        onResetSiriTip: (() -> Void)? = nil
+        onResetSiriTip: (() -> Void)? = nil,
+        onResetTicketCTA: (() -> Void)? = nil
     ) {
         self.visualizer = visualizer
         self.onResetThemePickerState = onResetThemePickerState
         self.onResetSiriTip = onResetSiriTip
+        self.onResetTicketCTA = onResetTicketCTA
     }
 
     private var processorFooter: String {
@@ -105,6 +108,11 @@ public struct VisualizerDebugView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(onResetThemePickerState == nil)
+                        Button("Reset Ticket Feature CTA") {
+                            onResetTicketCTA?()
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(onResetTicketCTA == nil)
                     }
 
                     // Cache
