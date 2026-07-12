@@ -251,3 +251,39 @@ struct StreamErrorAnalyticsTests {
     }
     #endif
 }
+
+// MARK: - Startup Timeout Classification
+
+/// Deterministic classification test for the startup watchdog escalation
+/// (Sentry IOS-31). Kept in its own suite — not gated behind the #371 flake skip
+/// that disables `StreamErrorAnalyticsTests` — because the `simulateError` path is
+/// synchronous and reliable, so it should run in CI to guard the mapping.
+#if os(iOS) || os(tvOS)
+@Suite("Startup Timeout Classification")
+@MainActor
+struct StartupTimeoutClassificationTests {
+
+    @Test("Startup-timeout error classified as startupTimeout")
+    func startupTimeoutErrorClassified() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        // Simulate the startup watchdog escalation surfacing through the player's
+        // event stream (see MP3Streamer.handleStartupTimeout).
+        harness.simulateError(StreamStartupError.timedOut(seconds: 12))
+        await harness.waitForAsync()
+
+        // The failure — previously silent — is now visible in analytics with a
+        // distinct label.
+        let streamErrors = harness.streamErrorEvents
+        #expect(streamErrors.count >= 1, "Startup timeout should capture a stream error event")
+        if let error = streamErrors.first {
+            #expect(error.errorType == .startupTimeout,
+                    "StreamStartupError should be classified as startupTimeout")
+        }
+    }
+}
+#endif
