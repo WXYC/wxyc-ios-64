@@ -89,6 +89,8 @@ public final class MP3Streamer {
     @ObservationIgnored
     private var reconnectTask: Task<Void, Never>?
     @ObservationIgnored
+    private var startupWatchdogTask: Task<Void, Never>?
+    @ObservationIgnored
     private var httpEventTask: Task<Void, Never>?
     @ObservationIgnored
     private var playerEventTask: Task<Void, Never>?
@@ -244,6 +246,11 @@ public final class MP3Streamer {
                 streamingState = .connecting
                 backoffTimer.reset()
             }
+            // Arm the startup watchdog once the (possibly torn-down) state has
+            // settled back to .connecting, immediately before connecting. Placing
+            // it after any teardown stop() guarantees stop()'s cancel can't disarm
+            // this fresh watchdog. See Sentry IOS-31.
+            armStartupWatchdog()
             do {
                 try await httpClient.connect()
                 // State will transition to buffering as data arrives
@@ -258,6 +265,7 @@ public final class MP3Streamer {
     /// Stop playback and disconnect from stream
     public func stop() {
         Log(.info, category: .playback, "MP3Streamer stop() called")
+        cancelStartupWatchdog()
         reconnectTask?.cancel()
         reconnectTask = nil
 
@@ -364,6 +372,8 @@ public final class MP3Streamer {
                     // analytics?.capture("Time to first Audio", properties: [
                     //    "timeToAudio": timeToAudio
                     // ])
+                    // Playback started — disarm the startup watchdog.
+                    cancelStartupWatchdog()
                     streamingState = .playing
                     scheduleBuffers()
                 } catch {
@@ -404,7 +414,52 @@ public final class MP3Streamer {
         }
     }
 
+    // MARK: - Startup Watchdog
+
+    /// Arms a one-shot deadline spanning a fresh connect attempt through reaching
+    /// `.playing`. If the deadline elapses while still `.connecting`/`.buffering`
+    /// — i.e. the stream connected but starved before playback began — the
+    /// streamer escalates instead of hanging in a perpetual loading state.
+    /// See Sentry IOS-31 ("Playback not starting").
+    private func armStartupWatchdog() {
+        startupWatchdogTask?.cancel()
+        let timeout = configuration.startupTimeout
+        startupWatchdogTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(timeout))
+            guard let self, !Task.isCancelled else { return }
+            self.handleStartupTimeout()
+        }
+    }
+
+    private func cancelStartupWatchdog() {
+        startupWatchdogTask?.cancel()
+        startupWatchdogTask = nil
+    }
+
+    /// Fired when playback failed to begin within `startupTimeout`. Escalates only
+    /// from a pre-playing state; emits a `startup_timeout` stream error (so the
+    /// failure is visible in analytics/Sentry, where it was previously silent) and
+    /// attempts a fresh reconnect.
+    private func handleStartupTimeout() {
+        startupWatchdogTask = nil
+        switch streamingState {
+        case .connecting, .buffering:
+            let error = StreamStartupError.timedOut(seconds: configuration.startupTimeout)
+            Log(.error, category: .playback, "Startup watchdog fired: playback did not begin within \(configuration.startupTimeout)s (state: \(streamingState)); escalating to reconnect")
+            streamingState = .error(error)
+            // Surface the failure through the internal event stream so the
+            // controller captures a StreamErrorEvent (classified as startupTimeout).
+            eventContinuationInternal.yield(.error(error))
+            attemptReconnect()
+        default:
+            // Already playing, stopped, or errored via another path — nothing to do.
+            break
+        }
+    }
+
     private func attemptReconnect() {
+        // Watchdog is intentionally NOT re-armed here; reconnect-loop starvation
+        // (a reconnect that connects then starves again) is a tracked follow-up.
         guard let waitTime = backoffTimer.nextWaitTime() else {
             // Backoff exhausted - give up and transition to error state
             Log(.error, category: .playback, "Reconnect backoff exhausted after \(backoffTimer.numberOfAttempts) attempts")

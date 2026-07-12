@@ -868,6 +868,12 @@ extension AudioPlayerController {
     }
 
     private func classifyError(_ error: Error) -> StreamErrorType {
+        // Check custom Swift error types first: `error as NSError` below always
+        // succeeds via bridging, so the domain checks would otherwise get first crack.
+        if error is StreamStartupError {
+            return .startupTimeout
+        }
+
         let nsError = error as NSError
 
         // Check for URL/network errors

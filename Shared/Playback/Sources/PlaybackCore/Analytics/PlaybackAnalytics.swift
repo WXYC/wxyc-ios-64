@@ -120,6 +120,8 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
 public enum StreamErrorType: String, Sendable, Equatable {
     /// All reconnection attempts with exponential backoff exhausted
     case backoffExhausted = "backoff_exhausted"
+    /// Connected, but playback never began within the startup deadline (starved mid-buffering)
+    case startupTimeout = "startup_timeout"
     /// Network connectivity error
     case networkError = "network_error"
     /// Audio decoding failed
