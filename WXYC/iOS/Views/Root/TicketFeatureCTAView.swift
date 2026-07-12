@@ -17,6 +17,7 @@
 
 import SwiftUI
 import Wallpaper
+import WXUI
 
 /// A ticket-shaped announcement card teaching the Box Office ticket feature.
 ///
@@ -50,9 +51,13 @@ struct TicketFeatureCTAView: View {
             ticketBody
             ticketStub
         }
-        // Warm smoked glass over the blurred wallpaper — the same MaterialView the
-        // real ticket uses, tinted amber-brown so the announcement reads as its
-        // own warmer object rather than a neutral section.
+        // Warm smoked glass over the blurred wallpaper: the same MaterialView the
+        // real ticket uses, an amber-brown cast so the announcement reads as its
+        // own warmer object rather than a neutral section, then real Liquid Glass
+        // on top (iOS 26+, `.ultraThinMaterial` fallback) so it carries the same
+        // material language as ``BoxOfficeTicketView`` and every other glass
+        // surface. The warm cast sits behind the clear glass, so the glass
+        // refracts it rather than washing it out.
         .background {
             ZStack {
                 MaterialView()
@@ -60,6 +65,9 @@ struct TicketFeatureCTAView: View {
                     colors: [Palette.bodyTop, Palette.bodyBottom],
                     startPoint: .top, endPoint: .bottom
                 )
+                Rectangle()
+                    .fill(.clear)
+                    .glassEffectClearIfAvailable(in: Rectangle())
             }
         }
         .clipShape(ticketShape)
