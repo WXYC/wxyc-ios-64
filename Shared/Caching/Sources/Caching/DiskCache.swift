@@ -319,13 +319,56 @@ struct DiskCache: Cache, @unchecked Sendable {
         }
     }
 
+    // MARK: - Key ↔ Filename Mapping
+
+    /// Characters a cache key may not contribute verbatim to a filename.
+    ///
+    /// `/` is a path separator — a key like `"AC/DC-Back in Black"` (artwork keys
+    /// are built from artist and release text) would otherwise make
+    /// `appendingPathComponent` split the key across an implied subdirectory that
+    /// `set` never creates, so the atomic temp write fails with ENOENT. `\0`
+    /// terminates a C string. `%` is reserved as the escape byte so the mapping
+    /// stays unambiguously reversible.
+    private static let filenameReservedCharacters = CharacterSet(charactersIn: "/%\0")
+
+    /// Every character a cache key *may* contribute to a filename verbatim — the
+    /// complement of ``filenameReservedCharacters``. Passed to
+    /// `addingPercentEncoding`, so only the three reserved characters are escaped
+    /// and every other byte (spaces, Unicode, `-`) survives untouched: a key with
+    /// none of the reserved characters maps to the identical filename it always
+    /// did, leaving existing on-disk entries addressable.
+    private static let filenameAllowedCharacters = filenameReservedCharacters.inverted
+
+    /// Encodes a cache key into a single filesystem-safe path component.
+    ///
+    /// Percent-encodes only ``filenameReservedCharacters``; the transform is a
+    /// no-op for keys that contain none of them. Reversed by
+    /// ``decodedKey(fromFilename:)``.
+    static func encodedFilename(for key: String) -> String {
+        key.addingPercentEncoding(withAllowedCharacters: filenameAllowedCharacters) ?? key
+    }
+
+    /// Recovers the original cache key from an on-disk filename.
+    ///
+    /// The inverse of ``encodedFilename(for:)``. Files this cache writes always
+    /// carry valid percent-encoding (every `%` is escaped to `%25`), so decoding
+    /// is lossless; the raw component is returned only as a defensive fallback.
+    static func decodedKey(fromFilename filename: String) -> String {
+        filename.removingPercentEncoding ?? filename
+    }
+
     /// Constructs the file URL for a cache key.
+    ///
+    /// The key is first mapped to a single filesystem-safe path component via
+    /// ``encodedFilename(for:)`` so keys containing `/` (or other reserved
+    /// characters) resolve to one file in the cache directory rather than an
+    /// uncreated subdirectory.
     ///
     /// - Parameter key: The cache key.
     /// - Returns: The URL where the cached data would be stored, or `nil` if
     ///   the cache directory is unavailable.
     private func fileURL(for key: String) -> URL? {
-        cacheDirectory?.appendingPathComponent(key)
+        cacheDirectory?.appendingPathComponent(Self.encodedFilename(for: key))
     }
 
     // MARK: - Cache Protocol Implementation
@@ -594,7 +637,10 @@ struct DiskCache: Cache, @unchecked Sendable {
         return contents.compactMap { fileURL -> (key: String, metadata: CacheMetadata)? in
             guard !Self.isTempFile(fileURL),
                   case .present(let metadata) = Self.readMetadataAttribute(at: fileURL) else { return nil }
-            return (fileURL.lastPathComponent, metadata)
+            // Decode the filename back to the original key so callers can re-address
+            // the entry through `fileURL(for:)` (the coordinator's purge removes by
+            // key, and the HEIF re-compressor rewrites by key).
+            return (Self.decodedKey(fromFilename: fileURL.lastPathComponent), metadata)
         }
     }
 

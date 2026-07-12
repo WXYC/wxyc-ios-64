@@ -77,6 +77,45 @@ struct DiskCacheDurabilityTests {
         #expect(cache.allMetadata().map(\.key) == ["entry"])
     }
 
+    // MARK: - Filesystem-unsafe keys
+
+    // Cache keys are opaque strings, but the artwork/palette keyers build them
+    // from artist and release text — e.g. "AC/DC-Back in Black". A '/' in the key
+    // is a path separator to `appendingPathComponent`, so the naive mapping points
+    // the atomic temp write at an implied subdirectory that `set` never creates,
+    // and the write fails with ENOENT ("temp file … doesn't exist"). The mapping
+    // must fold such characters into a single safe path component.
+    @Test("A key containing a path separator round-trips through disk storage",
+          arguments: ["AC/DC-Back in Black", "him/her-split single", "a/b/c-nested"])
+    func slashContainingKeyRoundTrips(key: String) throws {
+        let subdirectory = "slash-test-\(UUID().uuidString)"
+        let cache = DiskCache(subdirectory: subdirectory)
+        defer { removeCachesSubdirectory(subdirectory) }
+
+        cache.set(Data("artwork".utf8), metadata: CacheMetadata(lifespan: 3600), for: key)
+
+        #expect(cache.data(for: key) == Data("artwork".utf8),
+                "a slash-bearing key must persist to and read back from disk")
+        #expect(cache.metadata(for: key)?.lifespan == 3600)
+        #expect(cache.allMetadata().map(\.key) == [key],
+                "the entry must enumerate under its original key, not a phantom subdirectory")
+    }
+
+    @Test("Distinct slash-bearing keys do not collide on disk")
+    func slashContainingKeysDoNotCollide() throws {
+        let subdirectory = "slash-collision-\(UUID().uuidString)"
+        let cache = DiskCache(subdirectory: subdirectory)
+        defer { removeCachesSubdirectory(subdirectory) }
+
+        // "AC/DC" and "AC-DC" must not fold onto the same filename — a lossy
+        // sanitizer (slash -> dash) would serve one artist's artwork for the other.
+        cache.set(Data("slash".utf8), metadata: CacheMetadata(lifespan: 3600), for: "AC/DC")
+        cache.set(Data("dash".utf8), metadata: CacheMetadata(lifespan: 3600), for: "AC-DC")
+
+        #expect(cache.data(for: "AC/DC") == Data("slash".utf8))
+        #expect(cache.data(for: "AC-DC") == Data("dash".utf8))
+    }
+
     // MARK: - Temp-file hygiene
 
     @Test("Coordinator init purge sweeps stale temps in a subdirectory-scoped cache")
