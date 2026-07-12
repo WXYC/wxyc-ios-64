@@ -321,31 +321,45 @@ struct DiskCache: Cache, @unchecked Sendable {
 
     // MARK: - Key ↔ Filename Mapping
 
-    /// Characters a cache key may not contribute verbatim to a filename.
+    /// Percent-escapes, in escape-byte-first order, of the only three characters a
+    /// cache key may not contribute to a filename verbatim.
     ///
     /// `/` is a path separator — a key like `"AC/DC-Back in Black"` (artwork keys
     /// are built from artist and release text) would otherwise make
     /// `appendingPathComponent` split the key across an implied subdirectory that
     /// `set` never creates, so the atomic temp write fails with ENOENT. `\0`
-    /// terminates a C string. `%` is reserved as the escape byte so the mapping
-    /// stays unambiguously reversible.
-    private static let filenameReservedCharacters = CharacterSet(charactersIn: "/%\0")
-
-    /// Every character a cache key *may* contribute to a filename verbatim — the
-    /// complement of ``filenameReservedCharacters``. Passed to
-    /// `addingPercentEncoding`, so only the three reserved characters are escaped
-    /// and every other byte (spaces, Unicode, `-`) survives untouched: a key with
-    /// none of the reserved characters maps to the identical filename it always
-    /// did, leaving existing on-disk entries addressable.
-    private static let filenameAllowedCharacters = filenameReservedCharacters.inverted
+    /// terminates a C string. `%` is escaped first, and reserved as the escape
+    /// byte, so the mapping stays unambiguously reversible (`"AC/DC"` and
+    /// `"AC%2FDC"` can't collide).
+    private static let filenameEscapes: [(character: Character, escape: String)] = [
+        ("%", "%25"),
+        ("/", "%2F"),
+        ("\0", "%00"),
+    ]
 
     /// Encodes a cache key into a single filesystem-safe path component.
     ///
-    /// Percent-encodes only ``filenameReservedCharacters``; the transform is a
-    /// no-op for keys that contain none of them. Reversed by
-    /// ``decodedKey(fromFilename:)``.
+    /// Escapes only ``filenameEscapes`` — `Foundation`'s `addingPercentEncoding`
+    /// can't be used because it *always* percent-escapes non-ASCII bytes
+    /// regardless of the allowed set, which would remap every diacritic-bearing
+    /// key (Nilüfer Yanya, Hermanos Gutiérrez) and silently invalidate the entry a
+    /// prior build wrote under the raw key. This hand-rolled escape leaves every
+    /// byte but the three reserved ones untouched, so a key free of them maps to
+    /// the identical filename it always did and existing on-disk entries stay
+    /// addressable. Reversed by ``decodedKey(fromFilename:)``.
     static func encodedFilename(for key: String) -> String {
-        key.addingPercentEncoding(withAllowedCharacters: filenameAllowedCharacters) ?? key
+        guard key.contains(where: { character in
+            filenameEscapes.contains { $0.character == character }
+        }) else {
+            return key
+        }
+        return key.reduce(into: "") { filename, character in
+            if let match = filenameEscapes.first(where: { $0.character == character }) {
+                filename += match.escape
+            } else {
+                filename.append(character)
+            }
+        }
     }
 
     /// Recovers the original cache key from an on-disk filename.

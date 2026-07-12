@@ -116,6 +116,21 @@ struct DiskCacheDurabilityTests {
         #expect(cache.data(for: "AC-DC") == Data("dash".utf8))
     }
 
+    // A key with no reserved character must map to a byte-identical filename, or
+    // the encoding silently invalidates every entry a prior build wrote under the
+    // raw key. WXYC's freeform catalog is full of diacritics (Nilüfer Yanya,
+    // Hermanos Gutiérrez), which a naive `addingPercentEncoding` escapes because it
+    // always percent-escapes non-ASCII regardless of the allowed set — the mapping
+    // must escape only the three reserved characters and leave Unicode untouched.
+    @Test("A key without reserved characters keeps a byte-identical filename",
+          arguments: ["Nilüfer Yanya-PAINLESS", "Hermanos Gutiérrez-El Bueno y el Malo",
+                      "Sigur Rós-Ágætis byrjun", "Björk-Homogenic", "plain-ascii-key"])
+    func nonReservedKeyMapsToIdenticalFilename(key: String) throws {
+        #expect(DiskCache.encodedFilename(for: key) == key,
+                "a key free of '/', '%', and NUL must not be percent-encoded, or existing on-disk entries stop resolving")
+        #expect(DiskCache.decodedKey(fromFilename: DiskCache.encodedFilename(for: key)) == key)
+    }
+
     // MARK: - Temp-file hygiene
 
     @Test("Coordinator init purge sweeps stale temps in a subdirectory-scoped cache")
