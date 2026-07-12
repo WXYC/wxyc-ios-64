@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ticket Feature CTA · Discovery</title>
+    <style>
+    /* -----------------------------------------------------------------------
+         Ticket Feature CTA — a discovery card that teaches the new Box Office
+         ticket feature. It IS a ticket, so it announces itself in its own form:
+         a "NEW" stamp on the stub, copy about catching artists live. Borrows the
+         Box Office chrome (notches, perforation, cream stub). No tap gesture, no
+         action row: it ends at the stub, with a dismiss X like SiriTipView.
+         -------------------------------------------------------------------- */
+    :root {
+        --bg-1: #303c72;
+        --bg-2: #40498e;
+        --bg-3: #af3e79;
+        --bg-4: #b64949;
+        --bg-5: #b34876;
+        --page: #101120;
+        --page-2: #171a30;
+        --ink: #ffffff;
+        --ink-dim: rgba(255, 255, 255, 0.72);
+        --ink-faint: rgba(255, 255, 255, 0.46);
+        --glass-line: rgba(255, 255, 255, 0.15);
+        --amber: #ff8940;
+        --amber-light: #ff9d5c;
+        --amber-ink: #ffc79a;
+        --amber-line: rgba(255, 137, 64, 0.55);
+        --stub: 96px;
+        --nr: 11px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html {
+        background: var(--page);
+    }
+
+    body {
+        margin: 0;
+        color: var(--ink);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif;
+        background:
+        radial-gradient(120% 90% at 82% -10%, rgba(255, 137, 64, 0.14), transparent 55%), radial-gradient(120% 90% at 0% 10%, rgba(64, 73, 142, 0.35), transparent 55%), linear-gradient(180deg, var(--page), var(--page-2));
+        background-attachment: fixed;
+        min-height: 100vh;
+    }
+
+    .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: clamp(28px, 5vw, 64px) clamp(18px, 4vw, 40px) 72px;
+    }
+
+    .kicker {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin: 0 0 14px;
+    }
+
+    h1 {
+        font-size: clamp(30px, 5.4vw, 50px);
+        line-height: 1.04;
+        letter-spacing: -0.02em;
+        font-weight: 700;
+        margin: 0 0 16px;
+        text-wrap: balance;
+    }
+
+    .lede {
+        max-width: 64ch;
+        font-size: clamp(15px, 1.7vw, 17px);
+        color: var(--ink-dim);
+        margin: 0;
+    }
+
+    .lede b {
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .stage {
+        display: grid;
+        grid-template-columns: minmax(0, 348px) minmax(0, 1fr);
+        gap: clamp(22px, 4vw, 48px);
+        align-items: start;
+        margin: 38px 0 8px;
+    }
+
+    @media (max-width: 820px) {
+        .stage {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+    }/* ===================== PHONE ===================== */
+
+    .device {
+        width: min(348px, 92vw);
+    }
+
+    .device figcaption {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        text-align: center;
+        margin-top: 16px;
+    }
+
+    .screen {
+        position: relative;
+        border-radius: 46px;
+        padding: 10px;
+        background: #05060c;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06), 0 30px 70px -20px rgba(0, 0, 0, 0.8);
+    }
+
+    .glass-in {
+        position: relative;
+        height: 748px;
+        max-height: 82vh;
+        border-radius: 38px;
+        overflow: hidden;
+        background: linear-gradient(158deg, var(--bg-1) 0%, var(--bg-2) 12%, var(--bg-3) 60%, var(--bg-4) 80%, var(--bg-5) 100%);
+    }
+
+    .glass-in::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(140% 80% at 50% 120%, rgba(0, 0, 0, 0.45), transparent 60%);
+        pointer-events: none;
+    }
+
+    .island {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 108px;
+        height: 30px;
+        background: #05060c;
+        border-radius: 16px;
+        z-index: 20;
+    }
+
+    .scroll {
+        position: absolute;
+        inset: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 54px 16px 26px;
+        scrollbar-width: none;
+    }
+
+    .scroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    .statusbar {
+        position: absolute;
+        top: 16px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 26px;
+        font-size: 13px;
+        font-weight: 600;
+        z-index: 15;
+        pointer-events: none;
+    }
+
+    .statusbar .r {
+        letter-spacing: 0.04em;
+        opacity: 0.9;
+    }
+
+    .nav {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink-dim);
+        margin: 2px 2px 16px;
+    }
+
+    .nav svg {
+        width: 18px;
+        height: 18px;
+    }/* player header — the CTA sits directly below this, as SiriTipView does */
+
+    .player {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .player .cover {
+        width: 150px;
+        height: 150px;
+        border-radius: 12px;
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+        background: linear-gradient(135deg, #1f5f6b, #3a2a6b 55%, #c04a86);
+    }
+
+    .player .d-song {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 14px 0 0;
+    }
+
+    .player .d-artist {
+        font-size: 16px;
+        color: var(--ink-dim);
+        margin: 3px 0 0;
+    }
+
+    .eq {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 16px;
+        margin-top: 12px;
+    }
+
+    .eq i {
+        width: 3px;
+        background: var(--amber-ink);
+        border-radius: 2px;
+        animation: eq 1s ease-in-out infinite;
+    }
+
+    .eq i:nth-child(1) {
+        height: 40%;
+        animation-delay:-.2s
+    }
+
+    .eq i:nth-child(2) {
+        height: 80%;
+        animation-delay: -.5s
+    }
+
+    .eq i:nth-child(3) {
+        height: 55%;
+        animation-delay:-.1s
+    }
+
+    .eq i:nth-child(4) {
+        height: 95%;
+        animation-delay: -.7s
+    }
+
+    .eq i:nth-child(5) {
+        height: 65%;
+        animation-delay: -.3s
+    }
+
+    @keyframes eq {
+        0%, 100% {
+            transform:scaleY(.35)
+        }
+
+        50% {
+            transform: scaleY(1)
+        }
+    }/* ===================== THE FEATURE-CTA TICKET ===================== */
+
+    .wt-wrap {
+        position: relative;
+        margin-top: 22px;
+    }
+
+    .wt-glow {
+        position: absolute;
+        inset: -14px -6px 24px;
+        border-radius: 26px;
+        background: radial-gradient(70% 60% at 50% 40%, rgba(255, 137, 64, 0.4), transparent 70%);
+        filter: blur(14px);
+        z-index: 0;
+    }
+
+    .wt-ticket {
+        position: relative;
+        z-index: 1;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7);
+        -webkit-mask:
+        radial-gradient(circle var(--nr) at 0 calc(100% - var(--stub)), rgba(0, 0, 0, 0) 98%, #000 100%), radial-gradient(circle var(--nr) at 100% calc(100% - var(--stub)), rgba(0, 0, 0, 0) 98%, #000 100%);
+        -webkit-mask-composite: source-in;
+        mask:
+        radial-gradient(circle var(--nr) at 0 calc(100% - var(--stub)), rgba(0, 0, 0, 0) 98%, #000 100%), radial-gradient(circle var(--nr) at 100% calc(100% - var(--stub)), rgba(0, 0, 0, 0) 98%, #000 100%);
+        mask-composite: intersect;
+    }
+
+    .wt-body {
+        padding: 16px 16px 20px;
+        position: relative;
+        background: linear-gradient(180deg, rgba(48, 32, 20, 0.52), rgba(26, 17, 11, 0.58));
+        backdrop-filter: blur(16px) saturate(1.1);
+        -webkit-backdrop-filter: blur(16px) saturate(1.1);
+        border: 1px solid var(--amber-line);
+        border-bottom: 0;
+    }
+
+    .wt-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--amber-ink);
+    }
+
+    .eyebrow .spark {
+        width: 12px;
+        height: 12px;
+        color: var(--amber);
+    }
+
+    .dismiss {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 2px;
+        margin: -2px -2px 0 0;
+        cursor: pointer;
+        color: rgba(255, 255, 255, 0.65);
+        line-height: 0;
+    }
+
+    .dismiss:hover {
+        color: #fff;
+    }
+
+    .dismiss svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .dismiss:focus-visible {
+        outline: 2px solid var(--amber-ink);
+        outline-offset: 3px;
+        border-radius: 50%;
+    }
+
+    .wt-headline {
+        font-size: 25px;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+        margin: 14px 0 6px;
+        color: #fff;
+        text-wrap: balance;
+    }
+
+    .wt-sub {
+        font-size: 14px;
+        color: var(--ink-dim);
+        margin: 0;
+        max-width: 34ch;
+    }
+
+    .wt-sub b {
+        color: #fff;
+        font-weight: 600;
+    }/* the "how" line — small, monospace, teaches the gesture */
+
+    .wt-how {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 13px 0 0;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--amber-ink);
+    }
+
+    .wt-how svg {
+        width: 14px;
+        height: 14px;
+        flex: none;
+    }/* stub — cream keepsake, identical construction to the Box Office stub */
+
+    .wt-stub {
+        position: relative;
+        height: var(--stub);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 18px;
+        background: linear-gradient(180deg, #f3ead7, #eaddc2);
+        border-top: 2px dashed rgba(150, 96, 40, 0.5);
+        color: #2a1c12;
+    }
+
+    .wt-stub .left {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    .wt-stub .admit {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        color: #b5601f;
+    }
+
+    .wt-stub .sub2 {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        color: #6e5334;
+        margin-top: 5px;
+        line-height: 1.5;
+    }/* right block — a rubber-stamp "NEW", announcing the feature */
+
+    .stamp {
+        width: 66px;
+        height: 66px;
+        border-radius: 50%;
+        flex: none;
+        transform: rotate(-9deg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #b5601f;
+        border: 2px solid rgba(181, 96, 31, 0.55);
+        box-shadow: inset 0 0 0 3px rgba(243, 234, 215, 1), inset 0 0 0 5px rgba(181, 96, 31, 0.28);
+    }
+
+    .stamp .big {
+        font-size: 19px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        line-height: 1;
+    }
+
+    .stamp .small {
+        font-size: 6.5px;
+        font-family: ui-monospace, monospace;
+        letter-spacing: 0.22em;
+        margin-top: 3px;
+        color: #8a6636;
+    }/* a playlist row beneath, to show the CTA sitting in the real feed */
+
+    .feed-after {
+        margin-top: 18px;
+    }
+
+    .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(17, 15, 38, 0.42);
+        border: 1px solid var(--glass-line);
+    }
+
+    .row + .row {
+        margin-top: 8px;
+    }/* a track that has a show: the row squares off and a torn stub rides beneath */
+
+    .tourgroup {
+        margin-top: 8px;
+    }
+
+    .tourgroup .row {
+        border-radius: 14px 14px 0 0;
+        border-bottom-color: transparent;
+        margin-top: 0;
+    }
+
+    .rstub {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 0 0 14px 14px;
+        background: linear-gradient(180deg, #f3ead7, #eaddc2);
+        border: 1px solid var(--amber-line);
+        border-top: 1px dashed rgba(150, 96, 40, 0.5);
+        color: #2a1c12;
+    }
+
+    .rstub::before, .rstub::after {
+        content: "";
+        position: absolute;
+        top: -6px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--bg-3);
+    }
+
+    .rstub::before {
+        left: -6px;
+    }
+
+    .rstub::after {
+        right: -6px;
+    }
+
+    .rstub .rk {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: #b5601f;
+    }
+
+    .rstub .rv {
+        flex: 1;
+        min-width: 0;
+        font-size: 12px;
+        font-weight: 700;
+        color: #241a12;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rtag {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: var(--amber);
+        color: #2a1400;
+        flex: none;
+    }
+
+    .art {
+        width: 52px;
+        height: 52px;
+        flex: none;
+        border-radius: 6px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .art.a1 {
+        background: linear-gradient(135deg, #6b4a1f, #3a2a6b 55%, #864a86);
+    }
+
+    .art.a2 {
+        background: linear-gradient(135deg, #1f6b5f, #2a3a6b 55%, #4a6a86);
+    }
+
+    .rmeta {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .rmeta .song {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .rmeta .artist {
+        font-size: 12px;
+        color: var(--ink-dim);
+        margin: 1px 0 0;
+    }
+
+    .rmeta .time {
+        font-size: 11px;
+        color: var(--ink-faint);
+        margin: 4px 0 0;
+    }/* ===================== SIDE ===================== */
+
+    .side {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .panel {
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.035);
+        padding: 22px;
+    }
+
+    .panel h3 {
+        margin: 0 0 4px;
+        font-size: 17px;
+    }
+
+    .panel .hint {
+        margin: 0 0 16px;
+        font-size: 13.5px;
+        color: var(--ink-dim);
+    }
+
+    .spec {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .spec li {
+        display: grid;
+        grid-template-columns: 104px 1fr;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        font-size: 13.5px;
+        align-items: baseline;
+    }
+
+    .spec li:last-child {
+        border-bottom: 0;
+    }
+
+    .spec .st {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--amber-ink);
+    }
+
+    .spec .beh {
+        color: var(--ink-dim);
+    }
+
+    .spec .beh b {
+        color: #fff;
+        font-weight: 600;
+    }/* ===================== COPY VARIANTS ===================== */
+
+    .gallery {
+        margin-top: 52px;
+    }
+
+    .gallery h2 {
+        font-size: 22px;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+    }
+
+    .gallery .sub {
+        color: var(--ink-dim);
+        margin: 0 0 24px;
+        max-width: 64ch;
+    }
+
+    .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .tile {
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 18px;
+    }
+
+    .tile .cap {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin: 0 0 4px;
+    }
+
+    .tile h4 {
+        margin: 0 0 4px;
+        font-size: 16px;
+    }
+
+    .tile p.note {
+        margin: 0 0 16px;
+        font-size: 13px;
+        color: var(--ink-dim);
+    }
+
+    .tile-wall {
+        border-radius: 16px;
+        padding: 16px;
+        background: linear-gradient(158deg, var(--bg-2), var(--bg-3) 70%, var(--bg-4));
+    }
+
+    .tile .wt-wrap {
+        margin-top: 4px;
+    }
+
+    .notes {
+        margin-top: 44px;
+        padding: 22px 24px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .notes h2 {
+        font-size: 15px;
+        font-family: ui-monospace, monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin: 0 0 14px;
+    }
+
+    .notes ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .notes li {
+        font-size: 14px;
+        color: var(--ink-dim);
+        margin-bottom: 9px;
+    }
+
+    .notes b {
+        color: var(--ink);
+        font-weight: 600;
+    }
+
+    .notes code {
+        font-family: ui-monospace, monospace;
+        font-size: 12.5px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 1px 6px;
+        border-radius: 5px;
+        color: var(--amber-ink);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .eq i {
+            animation: none;
+        }
+    }
+    </style>
+</head>
+<body>
+<div class="wrap">
+        <p class="kicker">WXYC · 89.3 FM × Feature Discovery</p>
+        <h1>The ticket feature, announcing itself</h1>
+        <p class="lede">
+            A discovery CTA that teaches the 
+            <b>new Box Office ticket</b>
+             — so it's built 
+            <i>as</i>
+             a ticket, stamped 
+            <b>NEW</b>
+            . Same job as the Siri and theme tips: sit below the player, tell users what just landed, get dismissed. The message is the feature itself — 
+            <b>when an artist you hear plays a show nearby, a ticket stub appears under their track.</b>
+             The feed does the surfacing; the CTA just teaches users what that stub means. No tap on the card.
+        </p>
+
+        <div class="stage">
+
+            <!-- phone -->
+            <figure class="device">
+                <div class="screen">
+                    <div class="glass-in">
+                        <div class="island"></div>
+                        <div class="statusbar">
+                            <span>9:41</span>
+                            <span class="r">WXYC ●●● ▮</span>
+                        </div>
+                        <div class="scroll">
+                            <div class="nav">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+
+                                            Playlist
+                                          
+                            </div>
+
+                            <div class="player">
+                                <div class="cover"></div>
+                                <p class="d-song">la paradoja</p>
+                                <p class="d-artist">Juana Molina</p>
+                                <div class="eq">
+                                    <i></i>
+                                    <i></i>
+                                    <i></i>
+                                    <i></i>
+                                    <i></i>
+                                </div>
+                            </div>
+
+                            <div class="wt-wrap">
+                                <div class="wt-glow"></div>
+                                <div class="wt-ticket">
+                                    <div class="wt-body">
+                                        <div class="wt-head">
+                                            <span class="eyebrow">
+                                                <svg class="spark" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/>
+                                                </svg>
+
+                                                                    New
+                                                                  
+                                            </span>
+                                            <button class="dismiss" aria-label="Dismiss">
+                                                <svg viewBox="0 0 24 24" fill="none">
+                                                    <circle cx="12" cy="12" r="11" fill="rgba(255,255,255,0.14)"/>
+                                                    <path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <p class="wt-headline">Catch them live.</p>
+                                        <p class="wt-sub">When an artist you hear is playing around the Triangle, a stub appears under their track — tap it for the full ticket.</p>
+                                        <p class="wt-how">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M4 9.5A1.5 1.5 0 015.5 8h13A1.5 1.5 0 0120 9.5v1.2a1.3 1.3 0 000 2.6v1.2A1.5 1.5 0 0118.5 16h-13A1.5 1.5 0 014 14.5v-1.2a1.3 1.3 0 000-2.6z" stroke-linecap="round" stroke-linejoin="round"/>
+                                                <path d="M12 8v8" stroke-dasharray="2 2" stroke-linecap="round"/>
+                                            </svg>
+
+                                                              Watch for the stub in your feed
+                                                            
+                                        </p>
+                                    </div>
+                                    <div class="wt-stub">
+                                        <div class="left">
+                                            <div class="admit">ADMIT ONE</div>
+                                            <div class="sub2">
+                                                SHOWS NEAR YOU
+                                                <br>
+                                                NOW IN THE APP
+                                            </div>
+                                        </div>
+                                        <div class="stamp">
+                                            <span class="big">NEW</span>
+                                            <span class="small">FEATURE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="feed-after">
+                                <div class="tourgroup">
+                                    <article class="row">
+                                        <div class="art a1"></div>
+                                        <div class="rmeta">
+                                            <p class="song">Back, Baby</p>
+                                            <p class="artist">Jessica Pratt</p>
+                                            <p class="time">9:38 PM</p>
+                                        </div>
+                                    </article>
+                                    <div class="rstub">
+                                        <span class="rk">FRI JUL 18</span>
+                                        <span class="rv">Cat's Cradle</span>
+                                        <span class="rtag">Tickets</span>
+                                    </div>
+                                </div>
+                                <article class="row">
+                                    <div class="art a2"></div>
+                                    <div class="rmeta">
+                                        <p class="song">Call Your Name</p>
+                                        <p class="artist">Chuquimamani-Condori</p>
+                                        <p class="time">9:34 PM</p>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <figcaption>Playlist tab · feature just landed</figcaption>
+            </figure>
+
+            <!-- side -->
+            <div class="side">
+                <div class="panel">
+                    <h3>How it behaves</h3>
+                    <p class="hint">
+                        Same mechanism as 
+                        <code>SiriTipView</code>
+                         — an 
+                        <code>isVisible</code>
+                         binding, an 
+                        <code>onDismiss</code>
+                        , gated by 
+                        <code>DefaultsStorage</code>
+                        . Only the chrome and the trigger differ.
+                    </p>
+                    <ul class="spec">
+                        <li>
+                            <span class="st">shows</span>
+                            <span class="beh">Once, to teach the feature — new installs and existing users on the update that ships tickets.</span>
+                        </li>
+                        <li>
+                            <span class="st">retires</span>
+                            <span class="beh">
+                                The moment the user opens a 
+                                <b>real</b>
+                                 ticket in a track's details — the lesson's landed. (Mirrors the theme tip retiring once the picker's used.)
+                            </span>
+                        </li>
+                        <li>
+                            <span class="st">dismiss</span>
+                            <span class="beh">
+                                The 
+                                <b>X</b>
+                                 collapses it and sets 
+                                <code>ticketCTA.wasDismissed</code>
+                                 — gone for good.
+                            </span>
+                        </li>
+                        <li>
+                            <span class="st">tap</span>
+                            <span class="beh">
+                                None on the card. It points 
+                                <i>down</i>
+                                 at the feed, where marked rows carry their own stub.
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="panel">
+                    <h3>What it reuses</h3>
+                    <p class="hint">
+                        The ticket chrome, promoted out of 
+                        <code>BoxOfficeTicketView</code>
+                         into a shared component.
+                    </p>
+                    <ul class="spec">
+                        <li>
+                            <span class="st">shape</span>
+                            <span class="beh">
+                                <code>TicketShape</code>
+                                 — 16pt corners, two 11pt notches at the seam.
+                            </span>
+                        </li>
+                        <li>
+                            <span class="st">stub</span>
+                            <span class="beh">Cream keepsake + dashed perforation, unchanged.</span>
+                        </li>
+                        <li>
+                            <span class="st">right block</span>
+                            <span class="beh">
+                                The concert 
+                                <b>date</b>
+                                 becomes a rubber-stamp 
+                                <b>NEW</b>
+                                 — the card flags itself.
+                            </span>
+                        </li>
+                        <li>
+                            <span class="st">glass</span>
+                            <span class="beh">
+                                Liquid Glass on iOS 26+, 
+                                <code>.ultraThinMaterial</code>
+                                 fallback — same as the ticket.
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== COPY VARIANTS ===================== -->
+        <section class="gallery">
+            <h2>Three ways to say it</h2>
+            <p class="sub">Same ticket, same NEW stamp — the body copy changes what the CTA leads with: the payoff (seeing them live), the mechanism (tap a track), or the locality (your artists are in town).</p>
+            <div class="tiles">
+
+                <div class="tile">
+                    <p class="cap">Lead with the payoff</p>
+                    <h4>Catch them live</h4>
+                    <p class="note">Names the reward first. The "how" line underneath quietly teaches the gesture without turning the headline into an instruction.</p>
+                    <div class="tile-wall">
+                        <div class="wt-wrap">
+                            <div class="wt-ticket">
+                                <div class="wt-body">
+                                    <div class="wt-head">
+                                        <span class="eyebrow">
+                                            <svg class="spark" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/>
+                                            </svg>
+                                            New
+                                        </span>
+                                    </div>
+                                    <p class="wt-headline">Catch them live.</p>
+                                    <p class="wt-sub">Artists you hear here, playing around the Triangle.</p>
+                                </div>
+                                <div class="wt-stub">
+                                    <div class="left">
+                                        <div class="admit">ADMIT ONE</div>
+                                        <div class="sub2">
+                                            SHOWS NEAR YOU
+                                            <br>
+                                            NOW IN THE APP
+                                        </div>
+                                    </div>
+                                    <div class="stamp">
+                                        <span class="big">NEW</span>
+                                        <span class="small">FEATURE</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tile">
+                    <p class="cap">Lead with the marker</p>
+                    <h4>A stub means they're in town</h4>
+                    <p class="note">Teaches the visual cue the feed already shows — the torn stub under a track. Best if the risk is users not knowing what that marking means.</p>
+                    <div class="tile-wall">
+                        <div class="wt-wrap">
+                            <div class="wt-ticket">
+                                <div class="wt-body">
+                                    <div class="wt-head">
+                                        <span class="eyebrow">
+                                            <svg class="spark" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/>
+                                            </svg>
+                                            New
+                                        </span>
+                                    </div>
+                                    <p class="wt-headline">A stub means they're in town.</p>
+                                    <p class="wt-sub">Tracks marked with a ticket stub have a show near you.</p>
+                                </div>
+                                <div class="wt-stub">
+                                    <div class="left">
+                                        <div class="admit">ADMIT ONE</div>
+                                        <div class="sub2">
+                                            SHOWS NEAR YOU
+                                            <br>
+                                            NOW IN THE APP
+                                        </div>
+                                    </div>
+                                    <div class="stamp">
+                                        <span class="big">NEW</span>
+                                        <span class="small">FEATURE</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tile">
+                    <p class="cap">Lead with the locality</p>
+                    <h4>They're playing the Triangle</h4>
+                    <p class="note">Most specific to WXYC's world — Cat's Cradle, The Pinhook, Haw River. Strongest sense of place; slightly narrower if an artist's only date is elsewhere.</p>
+                    <div class="tile-wall">
+                        <div class="wt-wrap">
+                            <div class="wt-ticket">
+                                <div class="wt-body">
+                                    <div class="wt-head">
+                                        <span class="eyebrow">
+                                            <svg class="spark" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/>
+                                            </svg>
+                                            New
+                                        </span>
+                                    </div>
+                                    <p class="wt-headline">They're playing the Triangle.</p>
+                                    <p class="wt-sub">When someone you hear has a show near you, you'll find it in the track.</p>
+                                </div>
+                                <div class="wt-stub">
+                                    <div class="left">
+                                        <div class="admit">ADMIT ONE</div>
+                                        <div class="sub2">
+                                            SHOWS NEAR YOU
+                                            <br>
+                                            NOW IN THE APP
+                                        </div>
+                                    </div>
+                                    <div class="stamp">
+                                        <span class="big">NEW</span>
+                                        <span class="small">FEATURE</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <div class="notes">
+            <h2>Notes for the spec</h2>
+            <ul>
+                <li>
+                    <b>
+                        Not a 
+                        <code>TipView</code>
+                        .
+                    </b>
+                    <code>TipCard</code>
+                     is a plain rounded rect; this needs the notched 
+                    <code>TicketShape</code>
+                    . It's a sibling view mirroring 
+                    <code>SiriTipView</code>
+                    's 
+                    <code>isVisible</code>
+                     + 
+                    <code>onDismiss</code>
+                     surface but rendering ticket chrome.
+                </li>
+                <li>
+                    <b>Extract the chrome first.</b>
+                    <code>TicketShape</code>
+                    , 
+                    <code>DashedLine</code>
+                    , and the stub styling are 
+                    <code>private</code>
+                     inside 
+                    <code>BoxOfficeTicketView</code>
+                    . Promote them to a shared ticket component (Playlist package) so the CTA, the detail ticket, and the row badge share one geometry.
+                </li>
+                <li>
+                    <b>Retire on real use, not just dismiss.</b>
+                     Track "has the user ever opened a real Box Office ticket." Once they have, the teaching card is redundant — suppress it even if never dismissed. This is the theme-tip pattern (
+                    <code>hasEverUsedPicker</code>
+                    ), not the Siri one.
+                </li>
+                <li>
+                    <b>Don't stack on first launch.</b>
+                    <code>ThemeTipView.shouldShowTip</code>
+                     is also 
+                    <code>true</code>
+                     on a fresh install. Order these — the ticket CTA is the newest feature, so it likely leads; the theme tip waits its turn.
+                </li>
+                <li>
+                    <b>The stub is pure chrome.</b>
+                     No date to format, so no presenter — the "NEW" stamp and the sub-labels are static. Simpler than the Box Office stub.
+                </li>
+                <li>
+                    <b>Don't tell users to hunt.</b>
+                     The feed already badges touring artists with an inline stub (
+                    <code>OnTourRowBadge</code>
+                    ), so copy like "tap any track to check" is misleading. The CTA's job is to explain the stub they'll passively encounter — not prescribe a manual search.
+                </li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
