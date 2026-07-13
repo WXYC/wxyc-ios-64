@@ -69,6 +69,9 @@ extension PlaybackReason {
     public static let playIntent = PlaybackReason(rawValue: "PlayWXYC intent")
     public static let pauseIntent = PlaybackReason(rawValue: "PauseWXYC intent")
     public static let toggleIntent = PlaybackReason(rawValue: "ToggleWXYC intent")
+    /// The iOS 27 audio-schema intent (`PlayWXYCAudio`). Distinct from `.playIntent`
+    /// so PostHog can tell media-domain-routed plays from legacy `PlayWXYC` plays.
+    public static let playAudioSchemaIntent = PlaybackReason(rawValue: "PlayWXYCAudio intent")
 
     // Testing
     public static let test = PlaybackReason(rawValue: "test")
