@@ -46,25 +46,10 @@ public struct ToggleWXYC: SetValueIntent, AudioPlaybackIntent {
         // If we toggled to play, wait for playback to start before returning
         // so iOS doesn't suspend the app before the stream connects
         if !wasPlaying {
-            await waitForPlayback(timeout: .seconds(10))
+            await IntentPlayback.awaitPlaybackStart(timeout: .seconds(10), context: "ToggleWXYC intent")
         }
 
         return .result()
-    }
-
-    /// Waits for playback to start, polling isPlaying with a timeout.
-    @MainActor
-    private func waitForPlayback(timeout: Duration) async {
-        let deadline = ContinuousClock.now.advanced(by: timeout)
-
-        while !AudioPlayerController.shared.isPlaying {
-            if ContinuousClock.now >= deadline {
-                Log(.warning, "ToggleWXYC intent: timeout waiting for playback to start")
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(100))
-        }
-        Log(.info, "ToggleWXYC intent: playback started")
     }
 
     @available(iOS 26.0, macOS 26.0, *)
