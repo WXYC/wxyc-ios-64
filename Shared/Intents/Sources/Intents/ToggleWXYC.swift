@@ -18,7 +18,7 @@ public struct ToggleWXYC: SetValueIntent, AudioPlaybackIntent {
     public static let description = "Toggles WXYC Playback"
     public static let isDiscoverable = false
     public static let openAppWhenRun = false
-    public static let title: LocalizedStringResource = "Play WXYC"
+    public static let title: LocalizedStringResource = "Toggle WXYC"
 
     @Parameter(title: "Playing")
     public var value: Bool
