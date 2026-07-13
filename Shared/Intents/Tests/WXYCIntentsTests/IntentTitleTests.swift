@@ -30,4 +30,22 @@ struct IntentTitleTests {
         #expect(PauseWXYC.title == "Pause WXYC")
         #expect(ToggleWXYC.title == "Toggle WXYC")
     }
+
+    #if compiler(>=6.4)
+    /// With the iOS 27 audio-schema intent added, all three playback intents must
+    /// still carry pairwise-distinct titles: a shared title makes the `AudioStarting`
+    /// actions indistinguishable in the metadata Siri's media-domain routing consumes.
+    @Test("All three playback intents have pairwise-distinct titles")
+    func allPlaybackTitlesArePairwiseDistinct() {
+        guard #available(iOS 27.0, *) else { return }
+
+        let titles: [LocalizedStringResource] = [PlayWXYC.title, ToggleWXYC.title, PlayWXYCAudio.title]
+
+        for i in titles.indices {
+            for j in titles.indices where j > i {
+                #expect(titles[i] != titles[j], "Playback intent titles must be pairwise distinct")
+            }
+        }
+    }
+    #endif
 }
