@@ -10,6 +10,8 @@
 
 import SwiftUI
 import WidgetKit
+import AppServices
+import Playlist
 
 struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
     let entry: NowPlayingTimelineEntry

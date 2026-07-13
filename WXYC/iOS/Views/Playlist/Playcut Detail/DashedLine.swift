@@ -25,7 +25,7 @@ struct DashedLine: Shape {
     /// target the result rounds toward rather than an exact size.
     var approximateSegment: CGFloat = 4
 
-    func path(in rect: CGRect) -> Path {
+    nonisolated func path(in rect: CGRect) -> Path {
         var path = Path()
         guard rect.width > 0, approximateSegment > 0 else { return path }
 

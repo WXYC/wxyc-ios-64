@@ -268,7 +268,7 @@ private struct TicketRowShape: Shape {
     let stubHeight: CGFloat
     let notchRadius: CGFloat
 
-    func path(in rect: CGRect) -> Path {
+    nonisolated func path(in rect: CGRect) -> Path {
         var shape = Path(roundedRect: rect, cornerRadius: cornerRadius)
         let seamY = rect.maxY - stubHeight
         let diameter = notchRadius * 2
@@ -353,3 +353,4 @@ extension View {
     .environment(Singletonia.shared)
     .background(WXYCBackground())
 }
+

@@ -23,7 +23,7 @@ struct TicketShape: Shape {
     let stubHeight: CGFloat
     let notchRadius: CGFloat
 
-    func path(in rect: CGRect) -> Path {
+    nonisolated func path(in rect: CGRect) -> Path {
         var shape = Path(roundedRect: rect, cornerRadius: cornerRadius)
         let notchCenterY = rect.maxY - stubHeight
         let leftNotch = Path(ellipseIn: CGRect(

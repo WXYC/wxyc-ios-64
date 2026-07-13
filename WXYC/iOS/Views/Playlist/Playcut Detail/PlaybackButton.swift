@@ -16,23 +16,23 @@ import WXUI
 import PlayerHeaderView
 import Playback
 
-struct PlaybackShape: InsettableShape {
+struct PlaybackShape: InsettableShape, Sendable {
     var playbackValue: CGFloat   // 0.0 = playing (pause), 1.0 = paused (play)
     var insetAmount: CGFloat = 0
     var cornerRadius: CGFloat = 3
     
-    var animatableData: CGFloat {
+    nonisolated var animatableData: CGFloat {
         get { playbackValue }
         set { playbackValue = newValue }
     }
     
-    func inset(by amount: CGFloat) -> some InsettableShape {
+    nonisolated func inset(by amount: CGFloat) -> some InsettableShape {
         var copy = self
         copy.insetAmount += amount
         return copy
     }
     
-    func path(in rect: CGRect) -> Path {
+    nonisolated func path(in rect: CGRect) -> Path {
         let r = rect.insetBy(dx: insetAmount, dy: insetAmount)
         
         return Path { path in
@@ -192,3 +192,4 @@ struct NoHighlightButtonStyle: SwiftUI.ButtonStyle {
         configuration.label   // exactly the same, pressed or not
     }
 }
+
