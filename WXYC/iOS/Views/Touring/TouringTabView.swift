@@ -143,17 +143,22 @@ struct TouringTabView: View {
                 title: "No shows on the calendar",
                 message: "We list curated Triangle-area shows here. Check back soon."
             )
-        } else if model.filtered.isEmpty {
-            filteredToZeroState
         } else {
-            concertList
+            // One filter pass feeds both the emptiness check and the list, rather
+            // than re-deriving `model.filtered` for each.
+            let filtered = model.filtered
+            if filtered.isEmpty {
+                filteredToZeroState
+            } else {
+                concertList(filtered)
+            }
         }
     }
 
-    private var concertList: some View {
+    private func concertList(_ concerts: [Concert]) -> some View {
         ScrollView {
             LazyVStack(spacing: 10) {
-                ForEach(model.filtered) { concert in
+                ForEach(concerts) { concert in
                     ConcertRow(concert: concert) { selectedConcert = concert }
                 }
             }
