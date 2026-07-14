@@ -13,9 +13,36 @@ import Playlist
 import WXUI
 
 struct RootTabView: View {
-    private enum Page {
+    enum Page: CaseIterable {
         case playlist
         case infoDetail
+
+        /// Tab label. Also the accessibility label the tab bar exposes.
+        var title: String {
+            switch self {
+            case .playlist: "Now Playing"
+            case .infoDetail: "Info"
+            }
+        }
+
+        /// SF Symbol for the tab glyph. `radio` matches the widget and Siri
+        /// intent; `info.circle` matches the playcut-detail row — iconography
+        /// the app already speaks on adjacent surfaces.
+        var systemImage: String {
+            switch self {
+            case .playlist: "radio"
+            case .infoDetail: "info.circle"
+            }
+        }
+
+        /// Stable identifier for UI tests to select the tab item, independent of
+        /// the localized title or the tab bar's element type.
+        var accessibilityIdentifier: String {
+            switch self {
+            case .playlist: "tab.nowPlaying"
+            case .infoDetail: "tab.info"
+            }
+        }
     }
 
     @State private var selectedPage = Page.playlist
@@ -23,16 +50,18 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedPage) {
-            PlaylistView(selectedPlaycut: $selectedPlaycut)
-                .tag(Page.playlist)
+            Tab(Page.playlist.title, systemImage: Page.playlist.systemImage, value: Page.playlist) {
+                PlaylistView(selectedPlaycut: $selectedPlaycut)
+                    .clearTabBarBackground()
+            }
+            .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
 
-            InfoDetailView()
-                .tag(Page.infoDetail)
+            Tab(Page.infoDetail.title, systemImage: Page.infoDetail.systemImage, value: Page.infoDetail) {
+                InfoDetailView()
+                    .clearTabBarBackground()
+            }
+            .accessibilityIdentifier(Page.infoDetail.accessibilityIdentifier)
         }
-        .tabViewStyle(.page(indexDisplayMode: .always))
-        .indexViewStyle(.page(backgroundDisplayMode: .always))
-        .ignoresSafeArea(edges: .vertical)
-        .safeAreaPadding([.top])
         .overlaySheet(isPresented: Binding(
             get: { selectedPlaycut != nil },
             set: { if !$0 { selectedPlaycut = nil } }
