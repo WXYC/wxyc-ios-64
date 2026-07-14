@@ -26,7 +26,7 @@ struct TouringFilterPills: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     if filter.dateWindow != .all {
-                        pill(TouringFilterSheet.dateWindowTitle(filter.dateWindow), facet: "date") {
+                        pill(filter.dateWindow.title, facet: "date") {
                             filter.dateWindow = .all
                         }
                     }

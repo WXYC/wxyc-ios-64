@@ -50,9 +50,9 @@ struct TouringFilterSheet: View {
 
     private var dateSection: some View {
         Section("When") {
-            Picker("Date window", selection: dateWindowBinding) {
+            Picker("Date window", selection: facetBinding(\.filter.dateWindow, facet: "date")) {
                 ForEach(ConcertFilterState.DateWindow.allCases, id: \.self) { window in
-                    Text(Self.dateWindowTitle(window)).tag(window)
+                    Text(window.title).tag(window)
                 }
             }
             .pickerStyle(.segmented)
@@ -97,8 +97,8 @@ struct TouringFilterSheet: View {
 
     private var togglesSection: some View {
         Section {
-            Toggle("Free shows only", isOn: freeOnlyBinding)
-            Toggle("All-ages shows only", isOn: allAgesOnlyBinding)
+            Toggle("Free shows only", isOn: facetBinding(\.filter.freeOnly, facet: "free"))
+            Toggle("All-ages shows only", isOn: facetBinding(\.filter.allAgesOnly, facet: "all_ages"))
         } footer: {
             Text("All-ages hides only shows we can confirm are age-restricted.")
         }
@@ -126,40 +126,22 @@ struct TouringFilterSheet: View {
 
     // MARK: - Facet bindings
 
-    // Facets write through custom bindings (rather than `$model.filter.*` +
+    // Facets write through a custom binding (rather than `$model.filter.*` +
     // `.onChange`) so `TouringFilterApplied` fires exactly once per user action
     // and never on a programmatic change — a Reset clears every facet in one
-    // assignment without tripping four per-facet events.
+    // assignment without tripping four per-facet events. The no-op guard also
+    // keeps a set-to-the-same-value (e.g. re-tapping the current segment) silent.
 
-    private var dateWindowBinding: Binding<ConcertFilterState.DateWindow> {
+    private func facetBinding<Value: Equatable>(
+        _ keyPath: ReferenceWritableKeyPath<TouringSoonModel, Value>,
+        facet: String
+    ) -> Binding<Value> {
         Binding(
-            get: { model.filter.dateWindow },
+            get: { model[keyPath: keyPath] },
             set: { newValue in
-                guard newValue != model.filter.dateWindow else { return }
-                model.filter.dateWindow = newValue
-                fireApplied("date")
-            }
-        )
-    }
-
-    private var freeOnlyBinding: Binding<Bool> {
-        Binding(
-            get: { model.filter.freeOnly },
-            set: { newValue in
-                guard newValue != model.filter.freeOnly else { return }
-                model.filter.freeOnly = newValue
-                fireApplied("free")
-            }
-        )
-    }
-
-    private var allAgesOnlyBinding: Binding<Bool> {
-        Binding(
-            get: { model.filter.allAgesOnly },
-            set: { newValue in
-                guard newValue != model.filter.allAgesOnly else { return }
-                model.filter.allAgesOnly = newValue
-                fireApplied("all_ages")
+                guard newValue != model[keyPath: keyPath] else { return }
+                model[keyPath: keyPath] = newValue
+                fireApplied(facet)
             }
         )
     }
@@ -185,19 +167,6 @@ struct TouringFilterSheet: View {
         )
         if model.filter.isActive, !model.allConcerts.isEmpty, model.filtered.isEmpty {
             StructuredPostHogAnalytics.shared.capture(TouringFilteredToZero())
-        }
-    }
-
-    // MARK: - Titles
-
-    /// The short label for a date window, shared by the segmented control and the
-    /// applied-filter pills.
-    static func dateWindowTitle(_ window: ConcertFilterState.DateWindow) -> String {
-        switch window {
-        case .all: "All"
-        case .tonight: "Tonight"
-        case .thisWeekend: "Weekend"
-        case .next7Days: "7 Days"
         }
     }
 }
