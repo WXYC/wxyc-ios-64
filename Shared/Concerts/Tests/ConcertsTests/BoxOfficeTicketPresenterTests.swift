@@ -252,6 +252,22 @@ struct BoxOfficeTicketPresenterTests {
         #expect(BoxOfficeTicketPresenter(.stub(status: status)).feedTagStyle == expected)
     }
 
+    // MARK: - Status pill style (poster hero)
+
+    @Test("Maps status to the poster pill style", arguments: [
+        // Distinct from the feed tag: `rescheduled` gets its own amber `caution`
+        // treatment on the poster rather than folding into `neutral`.
+        (ShowStatus.onSale, StatusPillStyle.prominent),
+        (.free, .free),
+        (.soldOut, .muted),
+        (.cancelled, .negative),
+        (.rescheduled, .caution),
+        (.unknown, .neutral),
+    ])
+    func statusPillStyle(status: ShowStatus, expected: StatusPillStyle) {
+        #expect(BoxOfficeTicketPresenter(.stub(status: status)).statusPillStyle == expected)
+    }
+
     // MARK: - Subline (support + age)
 
     @Test("Composes support and age into one subline")

@@ -30,6 +30,27 @@ public enum FeedTagStyle: Sendable, Equatable {
     case neutral
 }
 
+/// The visual treatment for the poster-hero status pill, one per ``ShowStatus``.
+/// Parallels ``FeedTagStyle`` — the view maps a semantic style to colors rather
+/// than switching on status itself — but the poster palette differs (a solid
+/// green "on sale", a coral "sold out") and splits `rescheduled` into its own
+/// amber ``caution`` treatment instead of folding it into ``neutral``.
+public enum StatusPillStyle: Sendable, Equatable {
+    /// On sale — a solid green "go" accent.
+    case prominent
+    /// Free — the teal accent.
+    case free
+    /// Sold out — a coral accent; still linked, but no longer attendable.
+    case muted
+    /// Cancelled — a red, "dead" treatment.
+    case negative
+    /// Rescheduled — an amber "check the details" accent.
+    case caution
+    /// Unknown — a plain, neutral chip (rendered without a pill in practice,
+    /// since ``BoxOfficeTicketPresenter/statusPillText`` is `nil` for it).
+    case neutral
+}
+
 /// View-model for the Box Office ticket. Every property is a pure function of
 /// the wrapped ``Concert``.
 ///
@@ -239,6 +260,20 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         case .soldOut: return .muted
         case .cancelled: return .negative
         case .rescheduled: return .neutral
+        case .unknown: return .neutral
+        }
+    }
+
+    /// The visual treatment for the poster-hero status pill, keyed off the same
+    /// status that drives ``statusPillText`` — the poster counterpart to
+    /// ``feedTagStyle``.
+    public var statusPillStyle: StatusPillStyle {
+        switch show.status {
+        case .onSale: return .prominent
+        case .free: return .free
+        case .soldOut: return .muted
+        case .cancelled: return .negative
+        case .rescheduled: return .caution
         case .unknown: return .neutral
         }
     }
