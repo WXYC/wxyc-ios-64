@@ -15,22 +15,26 @@ import WXUI
 struct RootTabView: View {
     enum Page: CaseIterable {
         case playlist
+        case touring
         case infoDetail
 
         /// Tab label. Also the accessibility label the tab bar exposes.
         var title: String {
             switch self {
             case .playlist: "Now Playing"
+            case .touring: "Touring"
             case .infoDetail: "Info"
             }
         }
 
         /// SF Symbol for the tab glyph. `radio` matches the widget and Siri
         /// intent; `info.circle` matches the playcut-detail row — iconography
-        /// the app already speaks on adjacent surfaces.
+        /// the app already speaks on adjacent surfaces. `ticket` matches the Box
+        /// Office ticket language the Touring surface reuses.
         var systemImage: String {
             switch self {
             case .playlist: "radio"
+            case .touring: "ticket"
             case .infoDetail: "info.circle"
             }
         }
@@ -40,6 +44,7 @@ struct RootTabView: View {
         var accessibilityIdentifier: String {
             switch self {
             case .playlist: "tab.nowPlaying"
+            case .touring: "tab.touring"
             case .infoDetail: "tab.info"
             }
         }
@@ -55,6 +60,12 @@ struct RootTabView: View {
                     .clearTabBarBackground()
             }
             .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
+
+            Tab(Page.touring.title, systemImage: Page.touring.systemImage, value: Page.touring) {
+                TouringTabView()
+                    .clearTabBarBackground()
+            }
+            .accessibilityIdentifier(Page.touring.accessibilityIdentifier)
 
             Tab(Page.infoDetail.title, systemImage: Page.infoDetail.systemImage, value: Page.infoDetail) {
                 InfoDetailView()
