@@ -56,8 +56,7 @@ struct LiveRadioStationEntity {
         }
 
         func entities(matching string: String) async throws -> [LiveRadioStationEntity] {
-            let term = string.lowercased()
-            let namesWXYC = term.contains("wxyc") || term.contains("89.3")
+            let namesWXYC = string.localizedStandardContains("WXYC") || string.localizedStandardContains("89.3")
             return namesWXYC ? [LiveRadioStationEntity()] : []
         }
 
