@@ -153,6 +153,44 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         show.status == .cancelled
     }
 
+    // MARK: - Poster detail
+
+    /// The compact credit line printed over the poster hero: compact date and
+    /// city only (e.g. `"SAT AUG 1 · Carrboro"`). State and address are
+    /// deliberately excluded — the tucked ticket carries the full "where".
+    public var heroCreditLine: String {
+        "\(compactDateLabel) · \(show.venue.city)"
+    }
+
+    /// `"with <support> · <age>"`, omitting whichever pieces are absent; `nil`
+    /// when neither is present. The Box Office ticket and the poster hero share
+    /// this one tested string (an empty age string reads as absent).
+    public var subline: String? {
+        var pieces: [String] = []
+        if !show.supportingArtistsRaw.isEmpty {
+            pieces.append("with \(show.supportingArtistsRaw.joined(separator: ", "))")
+        }
+        if let age = show.ageRestriction, !age.isEmpty { pieces.append(age) }
+        guard !pieces.isEmpty else { return nil }
+        return pieces.joined(separator: " · ")
+    }
+
+    /// An Apple Maps search URL for the venue, backing the detail's "Directions"
+    /// action. The query leads with the venue name, then the street address when
+    /// present, then city/state; empty components are skipped so the query is
+    /// never blank. Built via `URLComponents` so it is correctly percent-encoded.
+    public var directionsURL: URL? {
+        var parts = [show.venue.name]
+        if let address = show.venue.address, !address.isEmpty { parts.append(address) }
+        if !show.venue.city.isEmpty { parts.append(show.venue.city) }
+        if !show.venue.state.isEmpty { parts.append(show.venue.state) }
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "maps.apple.com"
+        components.queryItems = [URLQueryItem(name: "q", value: parts.joined(separator: ", "))]
+        return components.url
+    }
+
     // MARK: - Call to action
 
     /// The label for the outbound CTA button/link.
