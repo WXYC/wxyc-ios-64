@@ -10,11 +10,12 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "Core", path: "../Core"),
+        .package(name: "Logger", path: "../Logger"),
     ],
     targets: [
         .target(
             name: "Concerts",
-            dependencies: ["Core"]
+            dependencies: ["Core", "Logger"]
         ),
         .target(
             name: "ConcertsTesting",
