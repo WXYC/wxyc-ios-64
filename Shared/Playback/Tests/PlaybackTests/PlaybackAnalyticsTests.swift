@@ -213,6 +213,7 @@ struct PlaybackAnalyticsTests {
         (StreamErrorType.networkError, "network_error"),
         (StreamErrorType.decodingError, "decoding_error"),
         (StreamErrorType.playerError, "player_error"),
+        (StreamErrorType.sessionActivationConflict, "session_activation_conflict"),
         (StreamErrorType.unknown, "unknown")
     ])
     func streamErrorTypeRawValues(errorType: StreamErrorType, expectedRawValue: String) {

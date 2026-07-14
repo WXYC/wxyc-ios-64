@@ -135,7 +135,25 @@ public final class AudioPlayerController {
     // Exponential backoff for reconnection
     @ObservationIgnored internal var backoffTimer: ExponentialBackoff
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
-    
+
+    #if os(iOS) || os(tvOS)
+    // Bounded deferral for audio-session activation that fails with
+    // `CannotInterruptOthers` ('!int'). Rather than fight a legitimate
+    // interruption (e.g. an active phone call) with a busy-loop, we retry a
+    // small number of times with a short delay, and also reactivate promptly
+    // when the system posts an interruption-ended notification. See #514.
+    @ObservationIgnored private var sessionActivationRetryTask: Task<Void, Never>?
+    /// Whether a session activation is deferred pending the transient
+    /// "can't interrupt other audio" state clearing.
+    private var sessionActivationPending = false
+    /// The play reason to resume with once a deferred activation succeeds.
+    private var pendingPlaybackReason: PlaybackReason?
+    /// Maximum number of deferred activation retries before giving up.
+    private let maxSessionActivationRetries = 4
+    /// Delay between deferred activation retries.
+    private let sessionActivationRetryDelay: Duration = .milliseconds(250)
+    #endif
+
     // CPU Session Aggregation
     @ObservationIgnored private var cpuAggregator: CPUSessionAggregator?
     private var isForegrounded = true
@@ -205,6 +223,9 @@ public final class AudioPlayerController {
         stateObservationTask?.cancel()
         eventTask?.cancel()
         reconnectTask?.cancel()
+        #if os(iOS) || os(tvOS)
+        sessionActivationRetryTask?.cancel()
+        #endif
         if let interruptionObservation { notificationCenter.removeObserver(interruptionObservation) }
         if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
         #if os(iOS) || os(tvOS)
@@ -245,14 +266,31 @@ public final class AudioPlayerController {
         playbackStartTime = playbackStartTime ?? Date()
         #if os(iOS) || os(tvOS)
         guard activateAudioSession() else {
-            Log(.error, category: .playback, "Aborting play: audio session activation failed")
-            playbackIntended = false
-            playbackStartTime = nil
-            cpuAggregator?.endSession(reason: .error)
+            // A `CannotInterruptOthers` failure schedules a deferred retry and
+            // keeps `playbackIntended` set so playback resumes once the
+            // transient state clears (or the interruption ends). Any other
+            // failure is fatal for this attempt and tears the intent down.
+            if sessionActivationPending {
+                Log(.info, category: .playback, "Deferring play: audio session activation retry pending")
+                pendingPlaybackReason = reason
+            } else {
+                Log(.error, category: .playback, "Aborting play: audio session activation failed")
+                playbackIntended = false
+                playbackStartTime = nil
+                cpuAggregator?.endSession(reason: .error)
+            }
             return
         }
         #endif
 
+        startPlayerAfterActivation(reason: reason)
+    }
+
+    /// Starts the underlying player and records the play once the audio session
+    /// is (or was) active. Split out from `play()` so the deferred
+    /// session-activation retry can resume playback without duplicating this
+    /// tail. See #514.
+    private func startPlayerAfterActivation(reason: PlaybackReason) {
         // Always play fresh for live streaming (don't resume paused state)
         player.play()
         // Sync stored state immediately so isPlaying reflects the intent without
@@ -288,6 +326,9 @@ public final class AudioPlayerController {
         playerState = player.state
         playbackStartTime = nil
         #if os(iOS) || os(tvOS)
+        // Cancel any deferred session-activation retry — the user (or system)
+        // no longer wants playback, so we must not keep trying to interrupt.
+        clearPendingSessionActivation()
         deactivateAudioSession()
         #endif
     }
@@ -377,6 +418,11 @@ public final class AudioPlayerController {
 
     /// Activates the audio session, returning whether activation succeeded.
     /// - Returns: `true` if the session was activated (or no session exists), `false` on failure.
+    ///
+    /// A `CannotInterruptOthers` ('!int') failure — the app can't interrupt
+    /// other audio, seen in the field around foreground/background transitions
+    /// and rapid play/pause (#514) — schedules a bounded deferred retry rather
+    /// than giving up, so a transient state doesn't strand playback.
     @discardableResult
     private func activateAudioSession() -> Bool {
         guard let session = audioSession else { return true }
@@ -385,12 +431,114 @@ public final class AudioPlayerController {
         do {
             try session.setActive(true, options: [])
             audioSessionActivated = true
+            clearPendingSessionActivation()
             Log(.info, category: .playback, "Audio session activated")
             return true
         } catch {
             Log(.error, category: .playback, "Failed to activate audio session: \(error)")
+            if isCannotInterruptOthers(error) {
+                scheduleSessionActivationRetry()
+            }
             return false
         }
+    }
+
+    /// Whether the error is a `com.apple.coreaudio.avfaudio`
+    /// `CannotInterruptOthers` ('!int') failure — the transient "can't interrupt
+    /// other audio" state that the deferred retry is designed to ride out.
+    private func isCannotInterruptOthers(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == avfaudioErrorDomain
+            && nsError.code == cannotInterruptOthersErrorCode
+    }
+
+    /// Schedules a bounded, delayed sequence of activation retries after a
+    /// `CannotInterruptOthers` failure. Deliberately does NOT busy-loop: it
+    /// spaces attempts out and stops after `maxSessionActivationRetries`, and an
+    /// interruption-ended notification can short-circuit the wait via
+    /// `reactivateAfterInterruptionIfPending()`.
+    private func scheduleSessionActivationRetry() {
+        // Never activate while backgrounded — foregrounding drives its own
+        // reactivation path — and only when playback is still intended.
+        guard playbackIntended, isForegrounded else { return }
+        // A retry is already in flight; let it run to completion.
+        guard !sessionActivationPending else { return }
+
+        sessionActivationPending = true
+        Log(.info, category: .playback, "Audio session activation deferred (CannotInterruptOthers); scheduling bounded retry")
+
+        sessionActivationRetryTask?.cancel()
+        sessionActivationRetryTask = Task { [weak self] in
+            guard let self else { return }
+            var attempt = 0
+            while attempt < self.maxSessionActivationRetries {
+                attempt += 1
+                do {
+                    try await Task.sleep(for: self.sessionActivationRetryDelay)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                // Bail if playback intent was dropped or we went to background
+                // while waiting.
+                guard self.playbackIntended, self.isForegrounded, self.sessionActivationPending else { return }
+
+                if self.retrySessionActivation() {
+                    return
+                }
+            }
+            // Budget exhausted without success — stop deferring so a later
+            // foreground/interruption-ended event can start fresh.
+            Log(.error, category: .playback, "Audio session activation retries exhausted; giving up for this attempt")
+            self.sessionActivationPending = false
+            self.pendingPlaybackReason = nil
+            self.sessionActivationRetryTask = nil
+        }
+    }
+
+    /// Attempts a single (re)activation of the session and, on success, resumes
+    /// the deferred playback. Returns whether activation succeeded.
+    @discardableResult
+    private func retrySessionActivation() -> Bool {
+        guard let session = audioSession else { return true }
+        configureAudioSessionIfNeeded()
+        do {
+            try session.setActive(true, options: [])
+            audioSessionActivated = true
+            let reason = pendingPlaybackReason
+            clearPendingSessionActivation()
+            Log(.info, category: .playback, "Audio session activated after deferred retry")
+            if let reason, playbackIntended, !isPlaying {
+                startPlayerAfterActivation(reason: reason)
+            }
+            return true
+        } catch {
+            Log(.info, category: .playback, "Deferred audio session activation still blocked: \(error)")
+            return false
+        }
+    }
+
+    /// Called when the system posts an interruption-ended notification. If a
+    /// session activation was deferred, activation is now permitted again, so
+    /// attempt it immediately rather than waiting out the retry cadence — this
+    /// is what "respect interruption-ended rather than busy-retrying" means.
+    private func reactivateAfterInterruptionIfPending() {
+        guard sessionActivationPending, playbackIntended, isForegrounded else { return }
+        sessionActivationRetryTask?.cancel()
+        sessionActivationRetryTask = nil
+        if !retrySessionActivation() {
+            // Still blocked — resume the bounded retry cadence.
+            sessionActivationPending = false
+            scheduleSessionActivationRetry()
+        }
+    }
+
+    /// Clears any deferred-activation bookkeeping and cancels the retry task.
+    private func clearPendingSessionActivation() {
+        sessionActivationPending = false
+        pendingPlaybackReason = nil
+        sessionActivationRetryTask?.cancel()
+        sessionActivationRetryTask = nil
     }
 
     private func deactivateAudioSession() {
@@ -591,6 +739,12 @@ public final class AudioPlayerController {
         case .ended:
             if message.options.contains(.shouldResume) && wasPlayingBeforeInterruption {
                 play(reason: .resumeAfterInterruption)
+            } else {
+                // No prior in-app interruption to resume from, but the system
+                // says the interruption is over. If a session activation was
+                // deferred (CannotInterruptOthers), try it now instead of
+                // waiting out the retry cadence. See #514.
+                reactivateAfterInterruptionIfPending()
             }
             wasPlayingBeforeInterruption = false
 
@@ -915,7 +1069,35 @@ extension AudioPlayerController {
             return .decodingError
         }
 
+        // Check for CoreAudio / AVAudioEngine / AVAudioSession errors. Without
+        // this branch every real engine/session failure fell through to
+        // `.unknown`, hiding it in telemetry (see #509 / #514). `'!int'`
+        // (CannotInterruptOthers) is a distinct session (re)activation failure
+        // and gets its own label; any other avfaudio code is a player-level
+        // error rather than truly unknown.
+        if nsError.domain == avfaudioErrorDomain {
+            if nsError.code == cannotInterruptOthersErrorCode {
+                return .sessionActivationConflict
+            }
+            return .playerError
+        }
+
         return .unknown
+    }
+
+    /// The `com.apple.coreaudio.avfaudio` NSError domain used by AVAudioEngine /
+    /// AVAudioSession failures.
+    private var avfaudioErrorDomain: String { "com.apple.coreaudio.avfaudio" }
+
+    /// FourCC `'!int'` (560557684) = `AVAudioSessionErrorCodeCannotInterruptOthers`:
+    /// the session could not be activated because another app's audio could not
+    /// be interrupted.
+    private var cannotInterruptOthersErrorCode: Int {
+        #if os(iOS) || os(tvOS) || os(watchOS)
+        Int(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue)
+        #else
+        560557684
+        #endif
     }
 }
 

@@ -161,6 +161,12 @@ public enum StreamErrorType: String, Sendable, Equatable {
     case decodingError = "decoding_error"
     /// Player-level error (AVPlayer, AudioEngine, etc.)
     case playerError = "player_error"
+    /// The audio session could not be activated because another app's audio
+    /// could not be interrupted (AVAudioSession `CannotInterruptOthers`, FourCC
+    /// `'!int'`). Distinct from buffer starvation: this is a session
+    /// (re)activation failure, typically around foreground/background
+    /// transitions and rapid play/pause. See #514.
+    case sessionActivationConflict = "session_activation_conflict"
     /// Unclassified error
     case unknown = "unknown"
 }

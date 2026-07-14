@@ -32,6 +32,18 @@ public final class MockAudioSession: AudioSessionProtocol {
     public var shouldThrowOnSetCategory = false
     public var shouldThrowOnSetActive = false
 
+    /// When non-nil, `setActive(true, …)` throws this error instead of the
+    /// generic `MockAudioSessionError.setActiveFailed`. Lets tests reproduce a
+    /// specific `com.apple.coreaudio.avfaudio` `CannotInterruptOthers` failure.
+    public var setActiveError: Error?
+
+    /// Number of leading `setActive(true, …)` calls that should fail before the
+    /// session begins activating successfully. Decrements on each activation
+    /// attempt. Used to model a transient "can't interrupt other audio" state
+    /// that clears after a bounded retry. `shouldThrowOnSetActive` still forces
+    /// every activation to fail when set.
+    public var failSetActiveCount = 0
+
     /// Configurable output latency for testing AirPlay delay scenarios
     public var outputLatency: TimeInterval = 0
 
@@ -67,8 +79,16 @@ public final class MockAudioSession: AudioSessionProtocol {
         lastActiveState = active
         lastActiveOptions = options
 
-        if shouldThrowOnSetActive {
-            throw MockAudioSessionError.setActiveFailed
+        // Only activation (true) is subject to the transient-failure model;
+        // deactivation always succeeds.
+        if active {
+            if shouldThrowOnSetActive {
+                throw setActiveError ?? MockAudioSessionError.setActiveFailed
+            }
+            if failSetActiveCount > 0 {
+                failSetActiveCount -= 1
+                throw setActiveError ?? MockAudioSessionError.setActiveFailed
+            }
         }
     }
 
@@ -89,6 +109,8 @@ public final class MockAudioSession: AudioSessionProtocol {
         lastActiveOptions = nil
         shouldThrowOnSetCategory = false
         shouldThrowOnSetActive = false
+        setActiveError = nil
+        failSetActiveCount = 0
         outputLatency = 0
     }
 }
