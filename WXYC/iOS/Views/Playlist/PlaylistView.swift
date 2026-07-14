@@ -86,7 +86,10 @@ struct PlaylistView: View {
                 // Ticket feature CTA — teaches the new Box Office ticket. The
                 // newest feature leads, so it sits above the other tips.
                 if showingTicketCTA {
-                    TicketFeatureCTAView(isVisible: $showingTicketCTA) {
+                    TicketFeatureCTAView(
+                        isVisible: $showingTicketCTA,
+                        colors: appState.themeConfiguration.effectiveTicketColors
+                    ) {
                         appState.ticketFeatureCTAPersistence.recordDismissed()
                     }
                     .padding(.vertical, 8)

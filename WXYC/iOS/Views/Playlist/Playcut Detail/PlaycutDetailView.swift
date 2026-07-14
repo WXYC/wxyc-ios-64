@@ -76,8 +76,11 @@ struct PlaycutDetailView: View {
                 // Box Office ticket — shown when the played artist has an
                 // upcoming Triangle-area show.
                 if let upcomingShow {
-                    BoxOfficeTicketView(show: upcomingShow)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    BoxOfficeTicketView(
+                        show: upcomingShow,
+                        colors: appState.themeConfiguration.effectiveTicketColors
+                    )
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                         .onAppear {
                             // Opening a real ticket retires the discovery CTA — the
                             // lesson has landed. Gate on the embedded feed value, not
