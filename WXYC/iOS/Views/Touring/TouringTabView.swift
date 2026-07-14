@@ -23,6 +23,8 @@ struct TouringTabView: View {
     @State private var model: TouringSoonModel
     @State private var isFilterSheetPresented = false
     @State private var selectedConcert: Concert?
+    /// The zoom-transition namespace tying each row to the poster detail it opens.
+    @Namespace private var zoomNamespace
     /// Latches the once-per-launch "tab viewed" event and the initial load so a
     /// tab switch-away-and-back doesn't re-fire analytics or re-fetch.
     @State private var hasAppeared = false
@@ -59,8 +61,9 @@ struct TouringTabView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(item: $selectedConcert) { concert in
-            ConcertDetailSheet(concert: concert)
+        .fullScreenCover(item: $selectedConcert) { concert in
+            ConcertDetailView(concert: concert)
+                .navigationTransition(.zoom(sourceID: concert.id, in: zoomNamespace))
         }
     }
 
@@ -160,7 +163,7 @@ struct TouringTabView: View {
         ScrollView {
             LazyVStack(spacing: 10) {
                 ForEach(concerts) { concert in
-                    ConcertRow(concert: concert) { selectedConcert = concert }
+                    ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }
                 }
             }
             .padding(.horizontal, 16)
@@ -228,45 +231,6 @@ struct TouringTabView: View {
         StructuredPostHogAnalytics.shared.capture(
             TouringFilterApplied(facet: facet, activeCount: model.filter.activeFacetCount)
         )
-    }
-}
-
-// MARK: - Concert detail sheet
-
-/// Presents the full Box Office ticket for a tapped concert. The ticket carries
-/// its own outbound CTA (`ctaURL`), so this is both the "detail" and the path to
-/// tickets. Placed on a warm gradient so the ticket's glass and amber read even
-/// off the wallpaper.
-private struct ConcertDetailSheet: View {
-    let concert: Concert
-    @Environment(\.dismiss) private var dismiss
-    @Environment(Singletonia.self) private var appState
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors)
-                    .padding()
-            }
-            .scrollBounceBehavior(.basedOnSize)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                LinearGradient(
-                    colors: [Color(red: 0.25, green: 0.28, blue: 0.55),
-                             Color(red: 0.6, green: 0.24, blue: 0.44),
-                             Color(red: 0.5, green: 0.22, blue: 0.28)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }.fontWeight(.semibold).foregroundStyle(.white)
-                }
-            }
-            .toolbarBackground(.hidden, for: .navigationBar)
-        }
-        .presentationDetents([.large])
     }
 }
 

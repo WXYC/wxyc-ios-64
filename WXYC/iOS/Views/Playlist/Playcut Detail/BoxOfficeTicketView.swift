@@ -207,15 +207,10 @@ struct BoxOfficeTicketView: View {
     }
 
     /// "with <support> · <age>", omitting whichever pieces are absent. `nil` when
-    /// neither is present.
+    /// neither is present. The string is built (and unit-tested) once on the
+    /// presenter; the poster hero shares the same helper.
     private var subline: Text? {
-        var pieces: [String] = []
-        if !show.supportingArtistsRaw.isEmpty {
-            pieces.append("with \(show.supportingArtistsRaw.joined(separator: ", "))")
-        }
-        if let age = show.ageRestriction, !age.isEmpty { pieces.append(age) }
-        guard !pieces.isEmpty else { return nil }
-        return Text(pieces.joined(separator: " · "))
+        presenter.subline.map(Text.init)
     }
 
     // MARK: - Actions (outbound CTA per status)

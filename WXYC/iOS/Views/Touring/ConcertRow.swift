@@ -17,14 +17,18 @@ import SwiftUI
 /// A single concert row in the Touring tab's list.
 struct ConcertRow: View {
     let concert: Concert
+    /// The zoom-transition namespace shared with the detail destination, so the
+    /// row is the source the poster detail animates out of.
+    let namespace: Namespace.ID
     let action: () -> Void
 
     /// Built once per row (the row is immutable) rather than recomputed on every
     /// body/subview access.
     private let presenter: BoxOfficeTicketPresenter
 
-    init(concert: Concert, action: @escaping () -> Void) {
+    init(concert: Concert, namespace: Namespace.ID, action: @escaping () -> Void) {
         self.concert = concert
+        self.namespace = namespace
         self.action = action
         self.presenter = BoxOfficeTicketPresenter(concert)
     }
@@ -48,6 +52,7 @@ struct ConcertRow: View {
             .opacity(presenter.isCancelled ? 0.7 : 1)
         }
         .buttonStyle(.plain)
+        .matchedTransitionSource(id: concert.id, in: namespace)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
