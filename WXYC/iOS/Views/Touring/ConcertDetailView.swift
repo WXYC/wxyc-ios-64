@@ -213,7 +213,7 @@ struct ConcertDetailView: View {
     }
 
     private func statusPill(_ text: String) -> some View {
-        let colors = Self.pillColors(concert.status)
+        let colors = Self.pillColors(presenter.statusPillStyle)
         return Text(text.uppercased())
             .font(.system(.caption2, design: .monospaced))
             .fontWeight(.bold)
@@ -244,19 +244,23 @@ struct ConcertDetailView: View {
         startPoint: .top, endPoint: .bottom
     )
 
-    private static func pillColors(_ status: ShowStatus) -> (fill: Color, border: Color, ink: Color) {
-        switch status {
-        case .onSale:
+    /// Maps a semantic ``StatusPillStyle`` to the hero pill's fill / border / ink
+    /// triple — the poster counterpart to `ConcertRow`'s `tagColors`, so the
+    /// status→style decision stays in the tested presenter and only the palette
+    /// lives here.
+    private static func pillColors(_ style: StatusPillStyle) -> (fill: Color, border: Color, ink: Color) {
+        switch style {
+        case .prominent:
             (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
         case .free:
             (Color.teal.opacity(0.20), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
-        case .soldOut:
+        case .muted:
             (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.2), Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
-        case .cancelled:
+        case .negative:
             (Color.red.opacity(0.24), Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
-        case .rescheduled:
+        case .caution:
             (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
-        case .unknown:
+        case .neutral:
             (.white.opacity(0.14), .white.opacity(0.3), .white.opacity(0.8))
         }
     }
