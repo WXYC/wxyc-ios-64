@@ -35,6 +35,17 @@ public struct ConcertFilterState: Sendable, Equatable {
         case thisWeekend
         /// Today through today + 6 days (inclusive).
         case next7Days
+
+        /// The short display label, shared by the filter sheet's segmented control
+        /// and the applied-filter pills.
+        public var title: String {
+            switch self {
+            case .all: "All"
+            case .tonight: "Tonight"
+            case .thisWeekend: "Weekend"
+            case .next7Days: "7 Days"
+            }
+        }
     }
 
     /// The selected date window.
