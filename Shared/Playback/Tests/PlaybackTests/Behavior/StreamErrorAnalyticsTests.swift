@@ -287,3 +287,68 @@ struct StartupTimeoutClassificationTests {
     }
 }
 #endif
+
+// MARK: - CoreAudio (avfaudio) Classification
+
+/// Deterministic classification tests for the `com.apple.coreaudio.avfaudio`
+/// error domain. Before #514 every avfaudio failure fell through to `.unknown`,
+/// hiding real AVAudioEngine / AVAudioSession errors in telemetry. Kept in its
+/// own suite (not gated behind the #371 flake skip) because `simulateError` is
+/// synchronous and reliable.
+#if os(iOS) || os(tvOS)
+@Suite("CoreAudio avfaudio Classification")
+@MainActor
+struct CoreAudioClassificationTests {
+
+    /// The `com.apple.coreaudio.avfaudio` NSError domain string as reported in
+    /// the field (see #509 / #514).
+    static let avfaudioDomain = "com.apple.coreaudio.avfaudio"
+
+    @Test("CannotInterruptOthers ('!int') classified as sessionActivationConflict")
+    func cannotInterruptOthersClassified() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        // FourCC '!int' = 560557684 = AVAudioSessionErrorCodeCannotInterruptOthers.
+        let error = NSError(
+            domain: Self.avfaudioDomain,
+            code: Int(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue)
+        )
+        harness.simulateError(error)
+        await harness.waitForAsync()
+
+        let streamErrors = harness.streamErrorEvents
+        #expect(streamErrors.count >= 1, "avfaudio error should capture a stream error event")
+        if let captured = streamErrors.first {
+            #expect(captured.errorType == .sessionActivationConflict,
+                    "'!int' CannotInterruptOthers should classify as sessionActivationConflict, not unknown")
+        }
+    }
+
+    @Test("Other avfaudio codes ('what') no longer classified as unknown")
+    func otherAvfaudioCodeNotUnknown() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        // FourCC 'what' = 2003329396, the other observed avfaudio code (#509).
+        let error = NSError(domain: Self.avfaudioDomain, code: 2003329396)
+        harness.simulateError(error)
+        await harness.waitForAsync()
+
+        let streamErrors = harness.streamErrorEvents
+        #expect(streamErrors.count >= 1, "avfaudio error should capture a stream error event")
+        if let captured = streamErrors.first {
+            #expect(captured.errorType != .unknown,
+                    "Recognized avfaudio domain errors should no longer fall through to unknown")
+            #expect(captured.errorType == .playerError,
+                    "Non-interruption avfaudio errors should classify as playerError")
+        }
+    }
+}
+#endif
