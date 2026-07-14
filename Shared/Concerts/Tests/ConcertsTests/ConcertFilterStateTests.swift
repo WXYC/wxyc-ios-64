@@ -97,6 +97,16 @@ struct ConcertFilterStateTests {
         #expect(!filter.matches(concert(on: 2026, 11, 4), now: octoberNow))          // today+7
     }
 
+    // MARK: - Date-window titles
+
+    @Test("Each date window exposes its short display title")
+    func dateWindowTitles() {
+        #expect(ConcertFilterState.DateWindow.all.title == "All")
+        #expect(ConcertFilterState.DateWindow.tonight.title == "Tonight")
+        #expect(ConcertFilterState.DateWindow.thisWeekend.title == "Weekend")
+        #expect(ConcertFilterState.DateWindow.next7Days.title == "7 Days")
+    }
+
     // MARK: - Venue facet
 
     @Test("Empty venue selection matches all venues")
