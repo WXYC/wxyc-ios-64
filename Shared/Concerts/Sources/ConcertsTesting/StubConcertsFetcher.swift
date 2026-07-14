@@ -1,0 +1,77 @@
+//
+//  StubConcertsFetcher.swift
+//  ConcertsTesting
+//
+//  A canned ``ConcertsFetching`` for driving ``TouringSoonModel`` in tests and
+//  SwiftUI previews. Returns pre-built pages in page order, records each request
+//  so pagination behavior can be asserted, and can be primed to throw.
+//
+//  Created by Jake Bromberg on 07/13/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Foundation
+import Synchronization
+import Concerts
+
+/// A single recorded `fetchConcerts` invocation.
+public struct ConcertPageRequest: Sendable, Equatable {
+    public let curated: Bool
+    public let from: Date?
+    public let to: Date?
+    public let page: Int
+    public let limit: Int
+}
+
+/// A stub concerts fetcher that replays a fixed list of pages.
+///
+/// Page N (1-indexed) returns `pages[N - 1]`. A request past the last canned page
+/// returns an empty page with `hasMore == false`, so an over-eager pagination
+/// loop terminates rather than hanging. Priming with an error makes every call
+/// throw.
+public final class StubConcertsFetcher: ConcertsFetching {
+
+    private let pages: [ConcertsResponse]
+    private let error: (any Error & Sendable)?
+    private let recorded = Mutex<[ConcertPageRequest]>([])
+
+    /// Creates a fetcher that replays `pages` in order.
+    public init(pages: [ConcertsResponse]) {
+        self.pages = pages
+        self.error = nil
+    }
+
+    /// Creates a fetcher whose every call throws `error`.
+    public init(error: any Error & Sendable) {
+        self.pages = []
+        self.error = error
+    }
+
+    /// The requests received so far, in call order.
+    public var requests: [ConcertPageRequest] {
+        recorded.withLock { $0 }
+    }
+
+    public func fetchConcerts(
+        curated: Bool,
+        from: Date?,
+        to: Date?,
+        page: Int,
+        limit: Int
+    ) async throws -> ConcertsResponse {
+        recorded.withLock {
+            $0.append(ConcertPageRequest(curated: curated, from: from, to: to, page: page, limit: limit))
+        }
+        if let error {
+            throw error
+        }
+        let index = page - 1
+        guard pages.indices.contains(index) else {
+            return ConcertsResponse(
+                concerts: [],
+                pagination: PaginationInfo(page: page, limit: limit, total: nil, hasMore: false)
+            )
+        }
+        return pages[index]
+    }
+}
