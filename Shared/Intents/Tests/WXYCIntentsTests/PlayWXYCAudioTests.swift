@@ -20,15 +20,49 @@ import Testing
 
 @Suite("PlayWXYCAudio (iOS 27 audio schema)")
 struct PlayWXYCAudioTests {
-    @Test("The station entity resolves to the single WXYC live station")
-    func liveRadioStationResolves() async throws {
+    /// Spoken phrasings whose relevant search term Siri hands the audio query
+    /// for "play WXYC". Each must resolve to the one station — this is the path
+    /// `.audio.playAudio` actually uses, and the one a `UniqueAppEntityQuery`
+    /// left unanswered ("I can't find the station WXYC").
+    static let stationSearchTerms = ["WXYC", "wxyc", "WXYC 89.3", "WXYC 89.3 FM", "89.3 FM"]
+
+    @Test("Audio search for the station name resolves to WXYC", arguments: stationSearchTerms)
+    func audioSearchResolvesStation(term: String) async throws {
         guard #available(iOS 27.0, *) else { return }
 
-        let station = try await LiveRadioStationEntity.defaultQuery.uniqueEntity()
+        let matches = try await LiveRadioStationEntity.defaultQuery.entities(matching: term)
 
-        #expect(station.id == "org.wxyc.live")
-        #expect(station.title == "WXYC 89.3 FM")
-        #expect(station.providerName == "WXYC Chapel Hill")
+        #expect(matches.count == 1)
+        #expect(matches.first?.id == "org.wxyc.live")
+        #expect(matches.first?.title == "WXYC 89.3 FM")
+    }
+
+    @Test("Audio search for an unrelated term resolves nothing")
+    func audioSearchIgnoresUnrelatedTerms() async throws {
+        guard #available(iOS 27.0, *) else { return }
+
+        let matches = try await LiveRadioStationEntity.defaultQuery.entities(matching: "the weather tomorrow")
+
+        #expect(matches.isEmpty)
+    }
+
+    @Test("The station resolves back from its stable identifier")
+    func stationResolvesByIdentifier() async throws {
+        guard #available(iOS 27.0, *) else { return }
+
+        let matches = try await LiveRadioStationEntity.defaultQuery.entities(for: ["org.wxyc.live"])
+
+        #expect(matches.count == 1)
+        #expect(matches.first?.title == "WXYC 89.3 FM")
+    }
+
+    @Test("An unknown identifier resolves to nothing")
+    func unknownIdentifierResolvesNothing() async throws {
+        guard #available(iOS 27.0, *) else { return }
+
+        let matches = try await LiveRadioStationEntity.defaultQuery.entities(for: ["org.example.other"])
+
+        #expect(matches.isEmpty)
     }
 
     @Test("The station entity's initializer carries stable identity")
