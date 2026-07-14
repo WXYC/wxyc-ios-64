@@ -694,6 +694,14 @@ public final class AudioPlayerController {
         Log(.info, category: .playback, "App entered background (playbackIntended: \(playbackIntended))")
         isForegrounded = false
 
+        // Abandon any in-flight session-activation retry. The retry loop can't
+        // run while backgrounded (it bails on `isForegrounded`), and a bailed
+        // loop leaves `sessionActivationPending` set — which would make the
+        // foreground reactivation path early-out of `scheduleSessionActivationRetry`
+        // and never reschedule, stranding playback (#514). Foregrounding
+        // re-drives activation from scratch via `handleAppWillEnterForeground`.
+        clearPendingSessionActivation()
+
         // Suspend render tap - no point running visualization in background
         if renderTapDesired {
             player.removeRenderTap()
@@ -721,7 +729,23 @@ public final class AudioPlayerController {
             cpuAggregator?.transitionContext(to: .foreground)
         }
         if playbackIntended {
-            activateAudioSession()
+            if (playerState == .idle || playerState.isError) && reconnectTask == nil {
+                // Genuinely stranded: playback is intended but the player is idle
+                // or in a terminal error and no reconnect is in flight — e.g. a
+                // session activation was deferred (CannotInterruptOthers) while
+                // backgrounded, or the stream errored out with backoff exhausted.
+                // Re-drive the full play path so activation *and* the player
+                // start happen (a fresh '!int' defers with a reason so the retry
+                // resumes playback rather than activating a silent session).
+                // See #514.
+                play(reason: .resumeAfterForeground)
+            } else {
+                // Either still playing (backgrounded mid-stream) or actively
+                // connecting / buffering / reconnecting. Don't restart — that
+                // would cancel a healthy reconnect, discard backoff progress,
+                // and emit a spurious playback-start. Just re-affirm the session.
+                activateAudioSession()
+            }
         }
     }
     #endif
