@@ -16,6 +16,7 @@ import Analytics
 import Concerts
 import MusicShareKit
 import SwiftUI
+import Wallpaper
 
 /// The root view of the Touring tab.
 struct TouringTabView: View {
@@ -239,11 +240,12 @@ struct TouringTabView: View {
 private struct ConcertDetailSheet: View {
     let concert: Concert
     @Environment(\.dismiss) private var dismiss
+    @Environment(Singletonia.self) private var appState
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                BoxOfficeTicketView(show: concert)
+                BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors)
                     .padding()
             }
             .scrollBounceBehavior(.basedOnSize)
