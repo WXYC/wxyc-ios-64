@@ -22,7 +22,7 @@ struct RootTabView: View {
         var title: String {
             switch self {
             case .playlist: "Now Playing"
-            case .touring: "Touring"
+            case .touring: "On Tour"
             case .infoDetail: "Info"
             }
         }

@@ -70,7 +70,7 @@ struct TouringTabView: View {
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Touring").font(.largeTitle).bold()
+                    Text("On Tour").font(.largeTitle).bold()
                     if let countLine {
                         Text(countLine).font(.subheadline).foregroundStyle(.white.opacity(0.7))
                     }

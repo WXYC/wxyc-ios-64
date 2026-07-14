@@ -3,7 +3,7 @@
 //  WXYC
 //
 //  Verifies the root tab metadata. As of R1 (#490) there are three tabs — Now
-//  Playing, Touring, Info — each carrying the SF Symbols the app already speaks
+//  Playing, On Tour, Info — each carrying the SF Symbols the app already speaks
 //  on adjacent surfaces: radio in the widget and Siri intent, ticket in the Box
 //  Office ticket language, info.circle in the playcut detail row.
 //
@@ -16,7 +16,7 @@ import Testing
 
 @Suite("RootTabView Page")
 struct RootTabPageTests {
-    @Test("Three tabs in order: Now Playing, Touring, Info")
+    @Test("Three tabs in order: Now Playing, On Tour, Info")
     func caseOrder() {
         #expect(RootTabView.Page.allCases == [.playlist, .touring, .infoDetail])
     }
@@ -27,9 +27,9 @@ struct RootTabPageTests {
         #expect(RootTabView.Page.playlist.systemImage == "radio")
     }
 
-    @Test("The Touring tab is labeled with the ticket glyph")
+    @Test("The On Tour tab is labeled with the ticket glyph")
     func touringMetadata() {
-        #expect(RootTabView.Page.touring.title == "Touring")
+        #expect(RootTabView.Page.touring.title == "On Tour")
         #expect(RootTabView.Page.touring.systemImage == "ticket")
     }
 
