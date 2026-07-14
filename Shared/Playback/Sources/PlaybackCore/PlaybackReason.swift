@@ -54,6 +54,10 @@ extension PlaybackReason {
     // Foreground/background
     public static let foregroundNotPlaying = PlaybackReason(rawValue: "foreground not playing")
     public static let foregroundToggle = PlaybackReason(rawValue: "foreground toggle")
+    /// Playback was intended but not running when the app returned to the
+    /// foreground (e.g. a session activation was deferred while backgrounded),
+    /// so the stream is (re)started. See #514.
+    public static let resumeAfterForeground = PlaybackReason(rawValue: "resume after foreground")
 
     // Watch/tvOS
     public static let watchPlayPause = PlaybackReason(rawValue: "Watch play/pause tapped")
