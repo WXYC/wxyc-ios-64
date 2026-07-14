@@ -93,23 +93,46 @@ struct AudioPlayerAnalyticsTests {
                "play() while already playing should capture 'already playing' event")
     }
 
-    @Test("Time to first Audio is captured on playback start", arguments: AudioPlayerTestCase.allCases)
-    func timeToFirstAudioCaptured(testCase: AudioPlayerTestCase) async throws {
+    /// The playback-start success signal (issue #513): MP3Streamer must yield exactly
+    /// one `.firstAudio` internal event when it first reaches `.playing`, carrying a
+    /// non-negative time-to-first-audio. The controller forwards this as a
+    /// `PlaybackFirstAudioEvent`; that forwarding is covered in `FirstAudioAnalyticsTests`.
+    /// RadioPlayer does not emit it, so the assertion is scoped to MP3Streamer.
+    @Test("First audio internal event fires once on a healthy start", arguments: AudioPlayerTestCase.allCases)
+    func firstAudioInternalEventFires(testCase: AudioPlayerTestCase) async throws {
         let harness = AudioPlayerTestHarness.make(for: testCase)
-        harness.mockAnalytics.reset()
+
+        final class Collector { var times: [TimeInterval] = [] }
+        let collector = Collector()
+        let drain = Task { @MainActor in
+            for await event in harness.player.eventStream {
+                if case .firstAudio(let timeToAudio) = event {
+                    collector.times.append(timeToAudio)
+                }
+            }
+        }
+        defer { drain.cancel() }
 
         harness.player.play()
         await harness.simulatePlaybackStarted()
         await harness.waitForAsync()
-/*
-        let timeToAudioEvent = harness.mockAnalytics.events.first { $0.name == "Time to first Audio" }
-        #expect(timeToAudioEvent != nil, "Should capture 'Time to first Audio' event")
+        // Give the event stream a moment to deliver.
+        try await Task.sleep(for: .milliseconds(50))
 
-        if let event = timeToAudioEvent {
-            #expect(event.properties?["timeToAudio"] != nil,
-                   "'Time to first Audio' event should include timeToAudio property")
+        switch testCase {
+        #if !os(watchOS)
+        case .mp3Streamer:
+            // Only assert when the environment actually reached .playing (CI without
+            // audio decode can't); otherwise the signal legitimately never fires.
+            guard harness.player.state == .playing else { return }
+            #expect(collector.times.count == 1, "Exactly one first-audio event on a healthy MP3Streamer start")
+            if let time = collector.times.first {
+                #expect(time >= 0, "time-to-first-audio must be non-negative")
+            }
+        #endif
+        case .radioPlayer:
+            #expect(collector.times.isEmpty, "RadioPlayer does not emit a first-audio internal event")
         }
- */
     }
 
     @Test("Multiple plays accumulate analytics events", arguments: AudioPlayerTestCase.allCases)

@@ -132,6 +132,11 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     public func simulateError(_ error: Error) {
         eventContinuation?.yield(.error(error))
     }
+
+    /// Simulate the player rendering its first audio (the playback-start success signal).
+    public func simulateFirstAudio(timeToAudio: TimeInterval = 1.0) {
+        eventContinuation?.yield(.firstAudio(timeToAudio: timeToAudio))
+    }
 }
 
 // MARK: - Test Errors

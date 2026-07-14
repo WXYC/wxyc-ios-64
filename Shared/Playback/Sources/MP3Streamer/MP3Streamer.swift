@@ -100,6 +100,13 @@ public final class MP3Streamer {
     private let analytics: AnalyticsService?
     @ObservationIgnored
     private var playbackTimer = Timer.start()
+    /// Whether the `.firstAudio` success event has already been emitted for the
+    /// current playback session. Set once when buffering first crosses into
+    /// `.playing`; it deliberately survives reconnect recovery (so a reconnect
+    /// does not double-count a start) and is reset only on a fresh `play()` or
+    /// `stop()`. See issue #513.
+    @ObservationIgnored
+    private var hasEmittedFirstAudio = false
 
     // Output format for decoded audio
     private static let outputFormat: AVAudioFormat = {
@@ -236,6 +243,9 @@ public final class MP3Streamer {
         // Connect and start streaming
         analytics?.capture(PlaybackStartedEvent(reason: "mp3Streamer play"))
         playbackTimer = Timer.start()
+        // Fresh session: the next buffering→playing crossing should count as a
+        // new successful start.
+        hasEmittedFirstAudio = false
         streamingState = .connecting
 
         Task { @MainActor [weak self] in
@@ -285,6 +295,8 @@ public final class MP3Streamer {
 
         streamingState = .idle
         backoffTimer.reset()
+        // The session is over; the next play() starts a fresh first-audio window.
+        hasEmittedFirstAudio = false
     }
 
     // MARK: - Event Handlers
@@ -367,14 +379,21 @@ public final class MP3Streamer {
                 Log(.info, category: .playback, "Buffer threshold reached (\(result.count)/\(configuration.minimumBuffersBeforePlayback)), starting playback")
                 do {
                     try audioPlayer.play()
-                    _ = playbackTimer.duration()
-                    // Temporarily removed Time to first Audio event until we define a proper event for it
-                    // analytics?.capture("Time to first Audio", properties: [
-                    //    "timeToAudio": timeToAudio
-                    // ])
                     // Playback started — disarm the startup watchdog.
                     cancelStartupWatchdog()
                     streamingState = .playing
+                    // Emit the "first audio" success signal exactly once per
+                    // session. This is the denominator for the playback-start
+                    // success rate (issue #513). It is forwarded through the
+                    // internal event stream — not captured directly here — so
+                    // MP3Streamer stays free of analytics and success/failure are
+                    // counted at the same AudioPlayerController layer. Guarding on
+                    // `hasEmittedFirstAudio` keeps reconnect recovery from
+                    // double-counting a start (that is `stall_recovery`'s job).
+                    if !hasEmittedFirstAudio {
+                        hasEmittedFirstAudio = true
+                        eventContinuationInternal.yield(.firstAudio(timeToAudio: playbackTimer.duration()))
+                    }
                     scheduleBuffers()
                 } catch {
                     Log(.error, category: .playback, "Failed to start audio engine: \(error)")

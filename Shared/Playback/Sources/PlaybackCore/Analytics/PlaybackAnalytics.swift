@@ -44,6 +44,39 @@ public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Event capturing that playback actually began rendering audio.
+///
+/// This is the success counterpart to `PlaybackStartedEvent` (name `"play"`, the
+/// *intent*): `PlaybackStartedEvent` counts every attempt, while this event —
+/// name `"first_audio"` — fires exactly once per start, only when the stream
+/// first crosses into `.playing` with audio rendering. Paired with the `play`
+/// intent count it yields a start-success rate; paired with `time_to_first_audio`
+/// it yields a start-latency distribution. It does not re-fire on stall/reconnect
+/// recovery (that is what `stall_recovery` tracks), so it stays a clean
+/// denominator for `stream_error`.
+///
+/// Player-agnostic: emitted from the shared `AudioPlayerInternalEvent.firstAudio`
+/// forwarding path, so MP3Streamer / HLS / any future player report it identically.
+public struct PlaybackFirstAudioEvent: PlaybackAnalyticsEvent {
+    public static let name = "first_audio"
+    /// The player that produced the audio.
+    public let playerType: PlayerControllerType
+    /// Seconds elapsed from the play intent to first rendered audio.
+    public let timeToFirstAudio: TimeInterval
+
+    public var properties: [String: Any]? {
+        [
+            "player_type": playerType.rawValue,
+            "time_to_first_audio": timeToFirstAudio
+        ]
+    }
+
+    public init(playerType: PlayerControllerType, timeToFirstAudio: TimeInterval) {
+        self.playerType = playerType
+        self.timeToFirstAudio = timeToFirstAudio
+    }
+}
+
 /// Event capturing that playback stopped.
 public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
     public static let name = "pause"

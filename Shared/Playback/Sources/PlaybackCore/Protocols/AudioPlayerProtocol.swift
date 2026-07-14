@@ -58,6 +58,14 @@ public enum AudioPlayerInternalEvent: Sendable {
     case error(Error)
     case stall
     case recovery
+    /// The player has begun rendering audio for the first time this session.
+    /// Emitted exactly once per successful start (not on stall/reconnect recovery),
+    /// carrying the elapsed seconds from the play intent to first audio. The
+    /// controller forwards this as a `PlaybackFirstAudioEvent` so success and
+    /// failure are counted at the same layer (issue #513). Player-agnostic: any
+    /// `AudioPlayerProtocol` implementation can emit it so the start-success rate
+    /// is comparable across player types.
+    case firstAudio(timeToAudio: TimeInterval)
 }
 
 // MARK: - Concurrency
