@@ -251,4 +251,96 @@ struct BoxOfficeTicketPresenterTests {
     func feedTagStyle(status: ShowStatus, expected: FeedTagStyle) {
         #expect(BoxOfficeTicketPresenter(.stub(status: status)).feedTagStyle == expected)
     }
+
+    // MARK: - Subline (support + age)
+
+    @Test("Composes support and age into one subline")
+    func sublineSupportAndAge() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(supportingArtistsRaw: ["Julie Byrne", "Tapir!"], ageRestriction: "18+")
+        )
+        #expect(presenter.subline == "with Julie Byrne, Tapir! · 18+")
+    }
+
+    @Test("Subline shows support alone when no age is set")
+    func sublineSupportOnly() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(supportingArtistsRaw: ["Julie Byrne"], ageRestriction: nil)
+        )
+        #expect(presenter.subline == "with Julie Byrne")
+    }
+
+    @Test("Subline shows age alone when there is no support")
+    func sublineAgeOnly() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(supportingArtistsRaw: [], ageRestriction: "All Ages")
+        )
+        #expect(presenter.subline == "All Ages")
+    }
+
+    @Test("Subline is nil when neither support nor age is present")
+    func sublineNeither() {
+        let presenter = BoxOfficeTicketPresenter(.stub(supportingArtistsRaw: [], ageRestriction: nil))
+        #expect(presenter.subline == nil)
+    }
+
+    @Test("An empty age string is treated as absent")
+    func sublineEmptyAge() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(supportingArtistsRaw: ["Julie Byrne"], ageRestriction: "")
+        )
+        #expect(presenter.subline == "with Julie Byrne")
+    }
+
+    // MARK: - Hero credit line (poster)
+
+    @Test("Hero credit line is the compact date and the city only")
+    func heroCreditLine() {
+        // Stub default: 2026-08-01 (SAT AUG 1) at Cat's Cradle, Carrboro. State
+        // and address are deliberately excluded — the tucked ticket carries the
+        // full where.
+        let presenter = BoxOfficeTicketPresenter(.stub(venue: .stub(city: "Carrboro", state: "NC")))
+        #expect(presenter.heroCreditLine == "SAT AUG 1 · Carrboro")
+    }
+
+    // MARK: - Directions URL
+
+    /// Extracts the `q` query item from a directions URL, decoded back to plain
+    /// text, so assertions read the intended query rather than percent-encoding.
+    private func mapsQuery(_ url: URL?) -> String? {
+        guard let url,
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return nil }
+        return components.queryItems?.first(where: { $0.name == "q" })?.value
+    }
+
+    @Test("Directions URL targets Apple Maps")
+    func directionsHost() {
+        let url = BoxOfficeTicketPresenter(.stub()).directionsURL
+        #expect(url?.host() == "maps.apple.com")
+    }
+
+    @Test("Directions query includes the street address when present")
+    func directionsWithAddress() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle", city: "Carrboro", state: "NC", address: "300 E Main St"))
+        )
+        #expect(mapsQuery(presenter.directionsURL) == "Cat's Cradle, 300 E Main St, Carrboro, NC")
+    }
+
+    @Test("Directions query falls back to city and state when there is no address")
+    func directionsWithoutAddress() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle", city: "Carrboro", state: "NC", address: nil))
+        )
+        #expect(mapsQuery(presenter.directionsURL) == "Cat's Cradle, Carrboro, NC")
+    }
+
+    @Test("Directions query is the venue name alone when city and state are empty")
+    func directionsNameOnly() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle", city: "", state: "", address: nil))
+        )
+        #expect(mapsQuery(presenter.directionsURL) == "Cat's Cradle")
+    }
 }
