@@ -1,0 +1,531 @@
+<!doctype html><html lang=en><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1">
+    <title>Tinted-Glass Ticket — Color Study</title><style>
+    * { box-sizing:border-box; }
+    body { margin:0; background:#0a0b12; color:#fff; line-height:1.5;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+      background-image:radial-gradient(120% 90% at 85% -10%, rgba(65,91,209,.14), transparent 55%),
+                       radial-gradient(120% 90% at 0% 8%, rgba(60,170,181,.12), transparent 55%); }
+    .wrap { max-width:1180px; margin:0 auto; padding:48px 32px 96px; }
+    .kick { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:#8ab0ff; margin:0 0 12px; }
+    h1 { font-size:clamp(28px,4.4vw,46px); line-height:1.05; letter-spacing:-.02em; margin:0 0 14px; }
+    .lede { max-width:70ch; font-size:16px; color:rgba(255,255,255,.72); margin:0 0 8px; }
+    .lede b { color:#fff; font-weight:600; }
+    h2 { font-size:24px; letter-spacing:-.01em; margin:56px 0 4px; }
+    h2 .n { font-family:ui-monospace,monospace; color:#8ab0ff; font-size:16px; margin-right:8px; }
+    .sub { color:rgba(255,255,255,.6); margin:0 0 20px; max-width:72ch; font-size:14.5px; }
+    .cols3 { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; align-items:start; }
+    @media (max-width:900px){ .cols3 { grid-template-columns:1fr; } }
+    .dircard h3 { margin:0 0 2px; font-size:16px; } .dircard h3 .tag { font-family:ui-monospace,monospace; color:#8ab0ff; margin-right:7px; }
+    .dircard p { margin:0 0 12px; font-size:12.5px; color:rgba(255,255,255,.6); min-height:34px; }
+    .ba { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+    @media (max-width:760px){ .ba { grid-template-columns:1fr; } }
+    .ba figcaption, .sw figcaption { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.5); text-align:center; margin-top:10px; }
+    .ba .bad { color:#ff9a8a; } .ba .good { color:#8fe6b0; }
+    .sweep { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:22px; }
+    .sw { margin:0; }
+    figure { margin:0; }
+    table.tok { width:100%; border-collapse:collapse; margin-top:8px; font-size:13.5px; }
+    table.tok th, table.tok td { text-align:left; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08); vertical-align:top; }
+    table.tok th { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:rgba(255,255,255,.5); }
+    table.tok code { font-family:ui-monospace,monospace; font-size:12px; color:#ffc79a; }
+    table.tok .new { color:#8fe6b0; }
+    .mech { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:12px; }
+    @media (max-width:900px){ .mech { grid-template-columns:1fr; } }
+    .mech .m { border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:18px; background:rgba(255,255,255,.03); }
+    .mech .m.rec { border-color:rgba(143,230,176,.45); background:rgba(143,230,176,.06); }
+    .mech .m h4 { margin:0 0 6px; font-size:15px; } .mech .m .rc { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#8fe6b0; }
+    .mech .m p { margin:6px 0 0; font-size:13px; color:rgba(255,255,255,.68); }
+    .note { margin-top:16px; padding:16px 18px; border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); font-size:14px; color:rgba(255,255,255,.75); }
+    .note b { color:#fff; }
+    /* old amber + cream paper (for before/after) */
+    .oldamber .bo-body { --bodyTop:rgba(48,32,20,.52); --bodyBot:rgba(26,17,11,.58); }
+    .oldamber .bo-body, .oldamber::after { --edge:rgba(255,137,64,.55); }
+    .eyebrow.oa, .dot.oa, .pill.oa { color:#ffc79a; } .dot.oa { background:#ff8940; box-shadow:0 0 7px 1px rgba(255,137,64,.55); }
+    .pill.oa { border-color:rgba(255,137,64,.55); } .city.oa { color:#ffc79a; }
+    .paperstub { background:linear-gradient(180deg,#f3ead7,#eaddc2) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; border-top:2px dashed rgba(150,96,40,.5) !important; }
+    .admit.paper { color:#b5601f; } .sub2.paper { color:#6e5334 !important; } .dow.paper { color:#b5601f; } .num.paper { color:#241a12 !important; } .mon.paper { color:#6e5334; }
+
+    .cell { border-radius:20px; padding:20px 16px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); }
+    .bo { position:relative; border-radius:16px; box-shadow:0 18px 40px -16px rgba(0,0,0,.7);
+      -webkit-mask:radial-gradient(circle 11px at 0 calc(100% - 96px), transparent 98%, #000 100%),
+                   radial-gradient(circle 11px at 100% calc(100% - 96px), transparent 98%, #000 100%);
+      -webkit-mask-composite:source-in;
+      mask:radial-gradient(circle 11px at 0 calc(100% - 96px), transparent 98%, #000 100%),
+           radial-gradient(circle 11px at 100% calc(100% - 96px), transparent 98%, #000 100%);
+      mask-composite:intersect; }
+    .bo::after { content:""; position:absolute; inset:0; border-radius:16px; pointer-events:none;
+      box-shadow:inset 0 0 0 1px var(--edge); -webkit-mask:inherit; mask:inherit; }
+    .bo-body { position:relative; padding:16px 16px 18px; border-radius:16px 16px 0 0;
+      background:linear-gradient(180deg, var(--bodyTop), var(--bodyBot));
+      -webkit-backdrop-filter:blur(16px) saturate(1.25); backdrop-filter:blur(16px) saturate(1.25); }
+    .bo-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .eyebrow { display:inline-flex; align-items:center; gap:7px; font-family:ui-monospace,monospace; font-size:10.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink); }
+    .dot { width:6px; height:6px; border-radius:50%; background:var(--ink); box-shadow:0 0 7px 1px var(--seam); }
+    .pill { font-family:ui-monospace,monospace; font-size:9.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:3px 9px; border-radius:999px; color:var(--ink); border:1px solid var(--edge); }
+    .venue { font-size:24px; font-weight:800; letter-spacing:-.01em; margin:14px 0 2px; color:#fff; }
+    .city { font-size:12.5px; color:var(--ink); margin:0; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:15px 0 12px; font-family:ui-monospace,monospace; }
+    .st .k { font-size:8.5px; letter-spacing:.12em; color:rgba(255,255,255,.5); }
+    .st .vv { font-size:13px; color:#fff; margin-top:3px; }
+    .subline { font-size:12.5px; color:var(--inkDim); } .subline b { color:#fff; font-weight:600; }
+    .bo-stub { position:relative; height:96px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 18px; border-radius:0 0 16px 16px;
+      background:linear-gradient(180deg, var(--stubTop), var(--stubBot));
+      -webkit-backdrop-filter:blur(16px) saturate(1.2); backdrop-filter:blur(16px) saturate(1.2);
+      border-top:2px dashed var(--perf); }
+    .bo-stub .left { font-family:ui-monospace,monospace; }
+    .bo-stub .admit { font-size:11.5px; font-weight:800; letter-spacing:.14em; color:var(--stubInk); }
+    .bo-stub .sub2 { font-size:9.5px; letter-spacing:.08em; color:var(--inkDim); margin-top:5px; line-height:1.5; }
+    .bo-stub .date { text-align:center; line-height:1; }
+    .bo-stub .dow { font-family:ui-monospace,monospace; font-size:10.5px; letter-spacing:.16em; color:var(--stubInk); }
+    .bo-stub .num { font-size:32px; font-weight:800; color:#fff; letter-spacing:-.01em; }
+    .bo-stub .mon { font-family:ui-monospace,monospace; font-size:10.5px; letter-spacing:.16em; color:var(--inkDim); }
+</style></head><body><div class="wrap">
+    <p class="kick">WXYC · 89.3 FM × Box Office</p>
+    <h1>The ticket, as tinted glass</h1>
+    <p class="lede">Retiring the <b>amber &amp; cream-paper</b> skin for a <b>tinted Liquid-Glass</b> ticket that takes its color from the active theme. The ticket <i>metaphor</i> lives in the shape — the perforation and the two side notches — not in paper texture, so we can drop the paper entirely and it still reads as a ticket.</p>
+    <p class="lede" style="margin-top:12px">Tints below are <b>derived from each theme's real <code style="color:#ffc79a">accent</code></b> (HSB). Wallpapers are approximated (the real ones are Metal shaders) and kept hue-coherent so they judge the ticket, not the backdrop.</p>
+
+    <h2>Why change it</h2>
+    <p class="sub">Amber (<code style="color:#ffc79a">#FF8940</code> ≈ hue 23°) is essentially the <b>WXYC&nbsp;1983</b> accent applied to every theme. Against the 7 of 9 themes whose accent is green / teal / cyan / blue, the fixed amber fights the wallpaper. Same ticket, one theme:</p>
+    <div class="ba"><figure><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo oldamber">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow oa"><span class="dot oa"></span>Playing Near You</span>
+          <span class="pill oa">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city oa">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub paperstub">
+        <div class="left"><div class="admit paper">ADMIT ONE</div><div class="sub2 paper">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow paper">FRI</div><div class="num paper">10</div><div class="mon paper">JUL</div></div>
+      </div>
+    </div></div><figcaption class="bad">Today — fixed amber + cream paper, on a blue theme</figcaption></figure><figure><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo" style="--ink:rgba(166,178,234,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(65,91,209,0.5);--seam:rgba(89,115,235,0.55);--bodyTop:rgba(26,39,96,0.5);--bodyBot:rgba(17,27,71,0.58);--stubTop:rgba(180,188,226,0.13);--stubBot:rgba(135,141,167,0.065);--stubInk:rgba(166,178,234,1.0);--perf:rgba(89,115,235,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption class="good">Tinted glass — derived from the theme accent</figcaption></figure></div>
+
+    <h2>Three directions</h2>
+    <p class="sub">All keep the glass body; they differ in what the <b>stub</b> does. Shown on <b>Space Mountain</b> (blue).</p>
+    <div class="cols3"><div class="dircard"><h3><span class="tag">A</span>Dichromatic</h3><p>body = accent · stub = analogous partner</p><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo" style="--ink:rgba(166,178,234,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(65,91,209,0.5);--seam:rgba(89,115,235,0.55);--bodyTop:rgba(26,39,96,0.5);--bodyBot:rgba(17,27,71,0.58);--stubTop:rgba(65,42,121,0.52);--stubBot:rgba(47,29,92,0.6);--stubInk:rgba(187,169,233,1.0);--perf:rgba(131,89,235,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div></div><div class="dircard"><h3><span class="tag">B</span>Tinted body · clear stub</h3><p>stub is the see-through keepsake</p><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo" style="--ink:rgba(166,178,234,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(65,91,209,0.5);--seam:rgba(89,115,235,0.55);--bodyTop:rgba(26,39,96,0.5);--bodyBot:rgba(17,27,71,0.58);--stubTop:rgba(180,188,226,0.13);--stubBot:rgba(135,141,167,0.065);--stubInk:rgba(166,178,234,1.0);--perf:rgba(89,115,235,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div></div><div class="dircard"><h3><span class="tag">C</span>Mono-graduated</h3><p>one hue, deepening across the seam</p><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo" style="--ink:rgba(166,178,234,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(65,91,209,0.5);--seam:rgba(89,115,235,0.55);--bodyTop:rgba(26,39,96,0.5);--bodyBot:rgba(17,27,71,0.58);--stubTop:rgba(17,25,63,0.56);--stubBot:rgba(11,17,46,0.64);--stubInk:rgba(166,178,234,1.0);--perf:rgba(108,126,209,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div></div></div>
+    <div class="note"><b>Cross-hue caveat for A.</b> The two-tone look is gorgeous on cool accents, but a <i>derived</i> partner hue (here accent +28°) turns warm accents muddy — orange → chartreuse. So <b>A only works if the stub's partner hue is authored per theme</b> (serialized), whereas <b>B and C derive cleanly from the accent alone</b>.</p>
+
+    <h2>Recommended — B, across all nine themes</h2>
+    <p class="sub"><b>Tinted body, clear-glass stub.</b> The stub becomes the see-through “keepsake” — the piece you'd tear off — and it derives entirely from the accent, so every current and future theme just works.</p>
+    <div class="sweep"><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(250,112,100,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(128,100,40,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(82,73,34,1), transparent 62%),linear-gradient(158deg, rgba(179,96,45,1), rgba(82,73,34,1))">
+    <div class="bo" style="--ink:rgba(255,205,175,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(255,137,64,0.5);--seam:rgba(255,149,83,0.55);--bodyTop:rgba(117,60,25,0.5);--bodyBot:rgba(87,43,15,0.58);--stubTop:rgba(255,220,198,0.13);--stubBot:rgba(204,178,161,0.065);--stubInk:rgba(255,205,175,1.0);--perf:rgba(255,149,83,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>WXYC 1983 · H23°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(237,215,133,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(98,121,60,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(60,78,44,1), transparent 62%),linear-gradient(158deg, rgba(162,170,76,1), rgba(60,78,44,1))">
+    <div class="bo" style="--ink:rgba(250,255,196,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(231,242,109,0.5);--seam:rgba(244,255,129,0.55);--bodyTop:rgba(106,111,47,0.5);--bodyBot:rgba(78,82,33,0.58);--stubTop:rgba(251,255,213,0.13);--stubBot:rgba(191,194,164,0.065);--stubInk:rgba(250,255,196,1.0);--perf:rgba(244,255,129,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Plasma · H65°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(124,212,119,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(54,108,84,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,69,60,1), transparent 62%),linear-gradient(158deg, rgba(68,152,89,1), rgba(40,69,60,1))">
+    <div class="bo" style="--ink:rgba(185,241,199,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(98,217,127,0.5);--seam:rgba(122,242,152,0.55);--bodyTop:rgba(42,100,57,0.5);--bodyBot:rgba(29,74,40,0.58);--stubTop:rgba(195,233,204,0.13);--stubBot:rgba(147,173,153,0.065);--stubInk:rgba(185,241,199,1.0);--perf:rgba(122,242,152,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Lava Lite · H135°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(108,195,131,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(48,99,93,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(36,63,64,1), transparent 62%),linear-gradient(158deg, rgba(61,139,106,1), rgba(36,63,64,1))">
+    <div class="bo" style="--ink:rgba(172,225,202,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(88,199,151,0.5);--seam:rgba(111,224,176,0.55);--bodyTop:rgba(38,91,69,0.5);--bodyBot:rgba(26,68,50,0.58);--stubTop:rgba(181,217,202,0.13);--stubBot:rgba(134,159,148,0.065);--stubInk:rgba(172,225,202,1.0);--perf:rgba(111,224,176,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Prismism · H154°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,192,135,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(39,96,98,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(31,58,63,1), transparent 62%),linear-gradient(158deg, rgba(48,137,113,1), rgba(31,58,63,1))">
+    <div class="bo" style="--ink:rgba(162,223,206,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(69,196,162,0.5);--seam:rgba(92,222,187,0.55);--bodyTop:rgba(29,90,74,0.5);--bodyBot:rgba(19,67,54,0.58);--stubTop:rgba(173,215,204,0.13);--stubBot:rgba(128,157,149,0.065);--stubInk:rgba(162,223,206,1.0);--perf:rgba(92,222,187,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Oceans 3036 · H164°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(82,177,157,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(35,69,91,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(28,42,58,1), transparent 62%),linear-gradient(158deg, rgba(42,119,127,1), rgba(28,42,58,1))">
+    <div class="bo" style="--ink:rgba(150,204,209,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(60,170,181,0.5);--seam:rgba(82,195,207,0.55);--bodyTop:rgba(25,78,83,0.5);--bodyBot:rgba(16,57,62,0.58);--stubTop:rgba(161,198,201,0.13);--stubBot:rgba(118,142,145,0.065);--stubInk:rgba(150,204,209,1.0);--perf:rgba(82,195,207,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Plastic Pulse · H185°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo" style="--ink:rgba(166,178,234,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(65,91,209,0.5);--seam:rgba(89,115,235,0.55);--bodyTop:rgba(26,39,96,0.5);--bodyBot:rgba(17,27,71,0.58);--stubTop:rgba(180,188,226,0.13);--stubBot:rgba(135,141,167,0.065);--stubInk:rgba(166,178,234,1.0);--perf:rgba(89,115,235,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Space Mountain · H229°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(198,250,219,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(97,128,127,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(65,79,82,1), transparent 62%),linear-gradient(158deg, rgba(132,179,164,1), rgba(65,79,82,1))">
+    <div class="bo" style="--ink:rgba(227,255,247,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(189,255,235,0.5);--seam:rgba(195,255,237,0.55);--bodyTop:rgba(85,117,108,0.5);--bodyBot:rgba(62,87,79,0.58);--stubTop:rgba(235,255,249,0.13);--stubBot:rgba(189,204,199,0.065);--stubInk:rgba(227,255,247,1.0);--perf:rgba(195,255,237,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Pool Suite · H162°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(250,208,204,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(128,119,101,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(82,79,67,1), transparent 62%),linear-gradient(158deg, rgba(179,153,137,1), rgba(82,79,67,1))">
+    <div class="bo" style="--ink:rgba(255,240,230,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(255,219,196,0.5);--seam:rgba(255,222,202,0.55);--bodyTop:rgba(117,100,89,0.5);--bodyBot:rgba(87,73,65,0.58);--stubTop:rgba(255,244,237,0.13);--stubBot:rgba(204,196,191,0.065);--stubInk:rgba(255,240,230,1.0);--perf:rgba(255,222,202,0.55)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Windowlight · H23°</figcaption></figure></div>
+
+    <h2>C — mono-graduated, across all nine</h2>
+    <p class="sub">The restrained alternative: one hue deepening across the seam; reads as a single solid object. Also pure-derivation.</p>
+    <div class="sweep"><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(250,112,100,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(128,100,40,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(82,73,34,1), transparent 62%),linear-gradient(158deg, rgba(179,96,45,1), rgba(82,73,34,1))">
+    <div class="bo" style="--ink:rgba(255,205,175,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(255,137,64,0.5);--seam:rgba(255,149,83,0.55);--bodyTop:rgba(117,60,25,0.5);--bodyBot:rgba(87,43,15,0.58);--stubTop:rgba(77,39,16,0.56);--stubBot:rgba(56,28,10,0.64);--stubInk:rgba(255,205,175,1.0);--perf:rgba(255,172,121,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>WXYC 1983 · H23°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(237,215,133,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(98,121,60,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(60,78,44,1), transparent 62%),linear-gradient(158deg, rgba(162,170,76,1), rgba(60,78,44,1))">
+    <div class="bo" style="--ink:rgba(250,255,196,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(231,242,109,0.5);--seam:rgba(244,255,129,0.55);--bodyTop:rgba(106,111,47,0.5);--bodyBot:rgba(78,82,33,0.58);--stubTop:rgba(69,73,31,0.56);--stubBot:rgba(51,53,21,0.64);--stubInk:rgba(250,255,196,1.0);--perf:rgba(234,242,149,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Plasma · H65°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(124,212,119,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(54,108,84,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,69,60,1), transparent 62%),linear-gradient(158deg, rgba(68,152,89,1), rgba(40,69,60,1))">
+    <div class="bo" style="--ink:rgba(185,241,199,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(98,217,127,0.5);--seam:rgba(122,242,152,0.55);--bodyTop:rgba(42,100,57,0.5);--bodyBot:rgba(29,74,40,0.58);--stubTop:rgba(27,65,37,0.56);--stubBot:rgba(19,48,26,0.64);--stubInk:rgba(185,241,199,1.0);--perf:rgba(133,217,154,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Lava Lite · H135°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(108,195,131,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(48,99,93,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(36,63,64,1), transparent 62%),linear-gradient(158deg, rgba(61,139,106,1), rgba(36,63,64,1))">
+    <div class="bo" style="--ink:rgba(172,225,202,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(88,199,151,0.5);--seam:rgba(111,224,176,0.55);--bodyTop:rgba(38,91,69,0.5);--bodyBot:rgba(26,68,50,0.58);--stubTop:rgba(25,60,45,0.56);--stubBot:rgba(17,44,32,0.64);--stubInk:rgba(172,225,202,1.0);--perf:rgba(121,199,166,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Prismism · H154°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,192,135,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(39,96,98,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(31,58,63,1), transparent 62%),linear-gradient(158deg, rgba(48,137,113,1), rgba(31,58,63,1))">
+    <div class="bo" style="--ink:rgba(162,223,206,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(69,196,162,0.5);--seam:rgba(92,222,187,0.55);--bodyTop:rgba(29,90,74,0.5);--bodyBot:rgba(19,67,54,0.58);--stubTop:rgba(19,59,48,0.56);--stubBot:rgba(12,43,35,0.64);--stubInk:rgba(162,223,206,1.0);--perf:rgba(107,196,172,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Oceans 3036 · H164°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(82,177,157,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(35,69,91,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(28,42,58,1), transparent 62%),linear-gradient(158deg, rgba(42,119,127,1), rgba(28,42,58,1))">
+    <div class="bo" style="--ink:rgba(150,204,209,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(60,170,181,0.5);--seam:rgba(82,195,207,0.55);--bodyTop:rgba(25,78,83,0.5);--bodyBot:rgba(16,57,62,0.58);--stubTop:rgba(16,51,54,0.56);--stubBot:rgba(10,37,40,0.64);--stubInk:rgba(150,204,209,1.0);--perf:rgba(96,173,181,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Plastic Pulse · H185°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(92,146,205,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(46,38,105,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(40,31,67,1), transparent 62%),linear-gradient(158deg, rgba(45,64,146,1), rgba(40,31,67,1))">
+    <div class="bo" style="--ink:rgba(166,178,234,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(65,91,209,0.5);--seam:rgba(89,115,235,0.55);--bodyTop:rgba(26,39,96,0.5);--bodyBot:rgba(17,27,71,0.58);--stubTop:rgba(17,25,63,0.56);--stubBot:rgba(11,17,46,0.64);--stubInk:rgba(166,178,234,1.0);--perf:rgba(108,126,209,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Space Mountain · H229°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(198,250,219,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(97,128,127,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(65,79,82,1), transparent 62%),linear-gradient(158deg, rgba(132,179,164,1), rgba(65,79,82,1))">
+    <div class="bo" style="--ink:rgba(227,255,247,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(189,255,235,0.5);--seam:rgba(195,255,237,0.55);--bodyTop:rgba(85,117,108,0.5);--bodyBot:rgba(62,87,79,0.58);--stubTop:rgba(56,77,70,0.56);--stubBot:rgba(40,56,51,0.64);--stubInk:rgba(227,255,247,1.0);--perf:rgba(209,255,241,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Pool Suite · H162°</figcaption></figure><figure class="sw"><div class="cell" style="background:radial-gradient(120% 120% at 12% 8%, rgba(250,208,204,1), transparent 55%),radial-gradient(120% 120% at 88% 22%, rgba(128,119,101,1), transparent 60%),radial-gradient(140% 120% at 60% 108%, rgba(82,79,67,1), transparent 62%),linear-gradient(158deg, rgba(179,153,137,1), rgba(82,79,67,1))">
+    <div class="bo" style="--ink:rgba(255,240,230,1.0);--inkDim:rgba(255,255,255,0.72);--edge:rgba(255,219,196,0.5);--seam:rgba(255,222,202,0.55);--bodyTop:rgba(117,100,89,0.5);--bodyBot:rgba(87,73,65,0.58);--stubTop:rgba(77,65,58,0.56);--stubBot:rgba(56,47,42,0.64);--stubInk:rgba(255,240,230,1.0);--perf:rgba(255,230,214,0.4)">
+      <div class="bo-body">
+        <div class="bo-head"><span class="eyebrow"><span class="dot"></span>Playing Near You</span>
+          <span class="pill">On Sale</span></div>
+        <div class="venue">Cat's Cradle</div>
+        <div class="city">Carrboro, NC</div>
+        <div class="stats">
+          <div class="st"><div class="k">DOORS</div><div class="vv">8:00 PM</div></div>
+          <div class="st"><div class="k">SHOW</div><div class="vv">9:00 PM</div></div>
+          <div class="st"><div class="k">PRICE</div><div class="vv">$22–$25</div></div>
+        </div>
+        <div class="subline">with <b>Tapir!</b> · All ages</div>
+      </div>
+      <div class="bo-stub">
+        <div class="left"><div class="admit">ADMIT ONE</div><div class="sub2">GEN ADM<br>NO. WX-3391</div></div>
+        <div class="date"><div class="dow">FRI</div><div class="num">10</div><div class="mon">JUL</div></div>
+      </div>
+    </div></div><figcaption>Windowlight · H23°</figcaption></figure></div>
+
+    <h2>What each token becomes</h2>
+    <p class="sub">Both <code style="color:#ffc79a">BoxOfficeTicketView</code> and <code style="color:#ffc79a">TicketFeatureCTAView</code> drop their file-private amber/cream <code style="color:#ffc79a">Palette</code> and read one shared, theme-derived token set.</p>
+    <table class="tok"><tr><th>role</th><th>today (fixed)</th><th>tinted-glass (theme-derived)</th></tr><tr><td>body fill</td><td>amber smoked scrim <code>#302014→#1A110B</code></td><td>accent-hue glass wash <span class='new'>HSB(H, S·1.05, B·0.4) @ ~.5</span></td></tr><tr><td>stub fill</td><td>cream <b>paper</b> <code>#F3EAD7→#EADDC2</code></td><td>tinted/clear <b>glass</b> — per direction <span class='new'>(no paper)</span></td></tr><tr><td>accent ink</td><td><code>amberInk #FFC79A</code></td><td>light accent tint <span class='new'>HSB(H, S·0.42, ↑B)</span></td></tr><tr><td>outline</td><td><code>amberLine</code> amber @55%</td><td>accent @ ~50% <span class='new'>HSB(H,S,B)</span></td></tr><tr><td>perforation</td><td>brown dashes <code>#966028 @50%</code></td><td>seam of light <span class='new'>accent @ ~55%</span></td></tr><tr><td>stub ink</td><td>brown <code>#B5601F / #6E5334</code></td><td>light accent / white-dim <span class='new'>(reads on glass)</span></td></tr></table>
+
+    <h2>How the tint is defined per theme</h2>
+    <p class="sub">The accent already lives in every theme manifest. Three ways to turn it into ticket colors:</p>
+    <div class="mech">
+      <div class="m"><span class="rc">option 1</span><h4>Derive from accent</h4><p>Ticket tints are computed from <code style="color:#ffc79a">accent</code> at render time. Zero new JSON; every theme (and every future theme) is covered automatically.</p></div>
+      <div class="m rec"><span class="rc">recommended</span><h4>Hybrid: derive + optional override</h4><p>Derive by default, but allow an optional <code style="color:#ffc79a">ticket</code> block in a theme's manifest to hand-tune (needed if we ever want direction A's partner hue). Mirrors the existing per-theme override pattern.</p></div>
+      <div class="m"><span class="rc">option 3</span><h4>Explicit per-theme palette</h4><p>Author full ticket colors in all 9 manifests. Maximum control, most work, and new themes need hand-authoring or they fall back.</p></div>
+    </div>
+    <div class="note">The CTA inherits the same tokens automatically — its “NEW” stamp roundel and stub labels re-tint from the accent, so the discovery card and the real ticket stay one visual object.</div>
+    </div></body></html>

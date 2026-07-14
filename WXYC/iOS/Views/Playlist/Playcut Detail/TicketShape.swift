@@ -18,7 +18,11 @@ import SwiftUI
 /// A rounded-rectangle ticket outline with two circular notches cut into the
 /// side edges at the perforation line (`stubHeight` up from the bottom). Used as
 /// the clip shape so the notches punch through to the wallpaper behind the card.
-struct TicketShape: Shape {
+///
+/// `nonisolated` so the `Shape` conformance doesn't inherit the module's default
+/// main-actor isolation — `Shape.path(in:)` is nonisolated, and this is a pure
+/// value type with no main-actor state.
+nonisolated struct TicketShape: Shape {
     let cornerRadius: CGFloat
     let stubHeight: CGFloat
     let notchRadius: CGFloat

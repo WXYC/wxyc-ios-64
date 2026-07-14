@@ -3,11 +3,13 @@
 //  WXYC
 //
 //  The "Box Office" ticket: a keepsake surfaced on a playcut when the played
-//  artist has an upcoming Triangle-area show. The body and stub share one
-//  continuous glass panel (the wallpaper glows through) so the perforation reads
-//  as a single dashed line rather than two stacked glass rims; two notches are
-//  cut clean through to the wallpaper at the seam. Design is the approved
-//  prototype in docs/ideas/touring-shows-box-office.html.
+//  artist has an upcoming Triangle-area show. The body is a deep, frosted tint of
+//  the theme accent; the stub is a near-clear "keepsake" window onto the
+//  wallpaper. Both sit under one clear glass layer, so the perforation reads as a
+//  single dashed line rather than two stacked glass rims, and two notches are cut
+//  clean through to the wallpaper at the seam. Layout follows the prototype in
+//  docs/ideas/touring-shows-box-office.html; the theme-tinted glass treatment
+//  follows docs/ideas/ticket-tinted-glass.html.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -20,12 +22,27 @@ import Wallpaper
 
 /// Renders a ``Concert`` as the Box Office ticket. All display strings come
 /// from ``BoxOfficeTicketPresenter`` (unit-tested); this view is pure layout.
+///
+/// The ticket's accent chrome and glass tint come from ``colors`` — the theme-
+/// derived ``TicketColors`` the host passes down from
+/// `themeConfiguration.effectiveTicketColors` — so the ticket belongs to the
+/// active wallpaper rather than a fixed amber. Status semantics stay universal
+/// (see the file-private `Palette`).
 struct BoxOfficeTicketView: View {
     let show: Concert
+    let colors: TicketColors
 
     @Environment(\.openURL) private var openURL
 
     private var presenter: BoxOfficeTicketPresenter { BoxOfficeTicketPresenter(show) }
+
+    /// Dark, accent-tinted text for the light `accentInkColor`-filled CTA — the themed
+    /// analogue of the old near-black-on-amber. The body ink is always light, so a
+    /// low-brightness ink of the same hue reads on every theme.
+    private var buttonInk: Color {
+        let ink = colors.bodyInk.components
+        return Color(hue: ink.hue / 360, saturation: min(1, ink.saturation + 0.15), brightness: 0.16)
+    }
 
     // Ticket geometry. `stubHeight` must match the stub's rendered height so the
     // notches land exactly on the perforation between body and stub.
@@ -42,18 +59,33 @@ struct BoxOfficeTicketView: View {
             ticketBody
             ticketStub
         }
-        // One continuous panel behind the whole ticket. Body and stub used to
-        // carry separate `.glassEffect` backgrounds, and their two specular rims
-        // stacked into a bright solid line at the perforation. A single panel has
-        // no internal edge, so the only mark at the seam is the dashed line.
+        // Two-tone under ONE glass. The body is a deep, frosted tint of the theme
+        // accent (MaterialView blur + gradient); the stub omits the MaterialView so
+        // it reads as a near-clear "keepsake" window onto the wallpaper, carrying
+        // only a whisper of tint. A single `glassSurface` spans both, so — as before
+        // — there is one specular rim at the outer edge and the seam stays a lone
+        // dashed line, with the notches punched clean through to the wallpaper.
         .background {
             ZStack {
-                MaterialView()
+                VStack(spacing: 0) {
+                    ZStack {
+                        MaterialView()
+                        LinearGradient(
+                            colors: [colors.bodyTopColor, colors.bodyBottomColor],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    }
+                    LinearGradient(
+                        colors: [colors.stubTopColor, colors.stubBottomColor],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(height: stubHeight)
+                }
                 glassSurface(Rectangle())
             }
         }
         .clipShape(ticketShape)
-        .overlay { ticketShape.stroke(Palette.hairline, lineWidth: 1) }
+        .overlay { ticketShape.stroke(colors.edgeColor, lineWidth: 1) }
         .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
         // Cancelled reads as "dead" by desaturating the whole ticket — no stamp.
         .saturation(presenter.isCancelled ? 0.4 : 1)
@@ -74,7 +106,7 @@ struct BoxOfficeTicketView: View {
                 .padding(.top, 16)
             Text(show.venue.city)
                 .font(.footnote)
-                .foregroundStyle(Palette.amberInk)
+                .foregroundStyle(colors.accentInkColor)
                 .padding(.top, 2)
             statsRow
             if let subline {
@@ -90,9 +122,10 @@ struct BoxOfficeTicketView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// A neutral frosted-glass surface for the ticket: real Liquid Glass on OS 26,
-    /// `.ultraThinMaterial` as a fallback. No tint — the wallpaper glows through
-    /// and the card reads as the app's standard glass, like the other sections.
+    /// The clear frosted-glass layer for the ticket: real Liquid Glass on OS 26,
+    /// `.ultraThinMaterial` as a fallback. It carries no tint of its own — the
+    /// theme tint sits in the gradient *behind* it (see `body`), so the glass
+    /// refracts the tint rather than washing it out, one rim at the outer edge.
     @ViewBuilder
     private func glassSurface<S: Shape>(_ shape: S) -> some View {
         if #available(iOS 26, macOS 26, tvOS 26, watchOS 26, *) {
@@ -108,14 +141,14 @@ struct BoxOfficeTicketView: View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: 7) {
                 Circle()
-                    .fill(Palette.amber)
+                    .fill(colors.accentInkColor)
                     .frame(width: 6, height: 6)
-                    .shadow(color: Palette.amberLine, radius: 3.5)
+                    .shadow(color: colors.accentInkColor, radius: 3.5)
                 Text("PLAYING NEAR YOU")
                     .font(.system(.caption2, design: .monospaced))
                     .fontWeight(.bold)
                     .kerning(1.6)
-                    .foregroundStyle(Palette.amberInk)
+                    .foregroundStyle(colors.accentInkColor)
             }
             Spacer(minLength: 8)
             if let pill = presenter.statusPillText {
@@ -204,7 +237,7 @@ struct BoxOfficeTicketView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .modifier(CTAButtonStyle(filled: ctaFilled))
+                    .modifier(CTAButtonStyle(filled: ctaFilled, colors: colors, buttonInk: buttonInk))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(presenter.ctaLabel). \(presenter.ctaCaption)")
@@ -235,7 +268,7 @@ struct BoxOfficeTicketView: View {
                         Image(systemName: "arrow.up.right")
                     }
                     .font(.caption)
-                    .foregroundStyle(Palette.amberInk)
+                    .foregroundStyle(colors.accentInkColor)
                 }
                 .buttonStyle(.plain)
             }
@@ -256,35 +289,37 @@ struct BoxOfficeTicketView: View {
                 Text("ADMIT ONE")
                     .font(.caption).fontWeight(.heavy)
                     .kerning(1.4)
-                    .foregroundStyle(Palette.stubAccent)
+                    .foregroundStyle(colors.stubInkColor)
                 Text("GEN ADM\n\(presenter.ticketSerial)")
                     .font(.system(.caption2, design: .monospaced))
                     .kerning(0.8)
-                    .foregroundStyle(Palette.stubFaint)
+                    .foregroundStyle(colors.stubFaintColor)
             }
             Spacer(minLength: 0)
             VStack(spacing: 1) {
                 Text(presenter.stubWeekday)
                     .font(.system(.caption2, design: .monospaced))
                     .kerning(1.6)
-                    .foregroundStyle(Palette.stubAccent)
+                    .foregroundStyle(colors.stubFaintColor)
                 Text(presenter.stubDayNumber)
                     .font(.system(size: 34, weight: .heavy))
-                    .foregroundStyle(Palette.stubInk)
+                    .foregroundStyle(colors.stubInkColor)
                 Text(presenter.stubMonth)
                     .font(.system(.caption2, design: .monospaced))
                     .kerning(1.6)
-                    .foregroundStyle(Palette.stubFaint)
+                    .foregroundStyle(colors.stubFaintColor)
             }
         }
         .padding(.horizontal, 18)
         .frame(height: stubHeight)
         .frame(maxWidth: .infinity)
-        // No background of its own — the stub sits on the ticket's shared panel
-        // (see `body`). The dashed line is the only mark at the seam.
+        // The stub content draws no surface of its own — its near-clear tint and the
+        // shared glass come from `body`. Its ink is the contrast-floored `stubInk`
+        // (dark on light themes, white on dark) so it stays legible over the
+        // keepsake window. The dashed line is the only mark at the seam.
         .overlay(alignment: .top) {
             DashedLine(approximateSegment: 5)
-                .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 2))
+                .stroke(colors.perforationColor, style: StrokeStyle(lineWidth: 2))
                 .frame(height: 2)
         }
     }
@@ -298,7 +333,7 @@ struct BoxOfficeTicketView: View {
         case .cancelled:
             return (Palette.cancel.opacity(0.20), Palette.cancel.opacity(0.55), Palette.cancelInk)
         case .rescheduled:
-            return (Palette.amber.opacity(0.18), Palette.amber.opacity(0.5), Palette.amberInk)
+            return (colors.accentInkColor.opacity(0.18), colors.accentInkColor.opacity(0.5), colors.accentInkColor)
         case .free:
             return (Palette.free.opacity(0.18), Palette.free.opacity(0.5), Palette.freeInk)
         case .unknown:
@@ -319,28 +354,26 @@ private struct StatCell: Identifiable {
 
 // MARK: - CTA button style
 
-/// The two CTA treatments: a filled amber gradient (buy/RSVP) or an amber
-/// outline (see the venue page).
+/// The two CTA treatments, both theme-tinted: a filled `accentInk` chip with dark
+/// accent-tinted ink (buy / RSVP), or an outlined accent chip (see the venue
+/// page). `accentInk` is always light, so `buttonInk` reads on the filled variant
+/// in every theme.
 private struct CTAButtonStyle: ViewModifier {
     let filled: Bool
+    let colors: TicketColors
+    let buttonInk: Color
 
     func body(content: Content) -> some View {
         if filled {
             content
-                .foregroundStyle(Palette.buttonText)
-                .background(
-                    LinearGradient(
-                        colors: [Palette.amberLight, Palette.amber],
-                        startPoint: .top, endPoint: .bottom
-                    ),
-                    in: .rect(cornerRadius: 13)
-                )
+                .foregroundStyle(buttonInk)
+                .background(colors.accentInkColor, in: .rect(cornerRadius: 13))
         } else {
             content
-                .foregroundStyle(Palette.amberInk)
-                .background(Palette.amber.opacity(0.1), in: .rect(cornerRadius: 13))
+                .foregroundStyle(colors.accentInkColor)
+                .background(colors.accentInkColor.opacity(0.1), in: .rect(cornerRadius: 13))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 13).stroke(Palette.amberLine, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 13).stroke(colors.edgeColor, lineWidth: 1)
                 )
         }
     }
@@ -348,18 +381,13 @@ private struct CTAButtonStyle: ViewModifier {
 
 // MARK: - Palette
 
-/// The ticket's warm palette, translated from the prototype's CSS tokens into HSL
-/// so the hue relationships read at a glance: the whole amber family shares a hue
-/// and steps only in lightness (`amberLine` is just `amber` at 55% alpha, and
-/// `buttonText` is that amber pushed nearly black), and both cancel tones sit at
-/// pure red (hue 0). Trailing hex is the original prototype value. Kept
-/// file-private so it doesn't leak into the app-wide color system.
+/// The ticket's **status** palette — deliberately NOT theme-derived. On-sale
+/// green, sold-out coral, cancelled red, and free teal read as universal signals
+/// across every wallpaper; only the ticket's accent chrome and glass tint follow
+/// the theme (see ``TicketColors``). Translated from the prototype's CSS into HSL
+/// so the hue relationships read at a glance; trailing hex is the prototype value.
+/// File-private so it doesn't leak into the app-wide color system.
 private enum Palette {
-    static let amber = Color(HSL(hue: 0.0637, saturation: 1, lightness: 0.6255)) // #FF8940
-    static let amberLight = Color(HSL(hue: 0.0665, saturation: 1, lightness: 0.6804)) // #FF9D5C
-    static let amberInk = Color(HSL(hue: 0.0743, saturation: 1, lightness: 0.802)) // #FFC79A
-    static let amberLine = amber.opacity(0.55)
-
     static let ok = Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)) // #34C759
     static let okInk = Color(HSL(hue: 0.3851, saturation: 0.7115, lightness: 0.7961)) // #A6F0BD
     static let soldout = Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)) // #FF8F6B
@@ -369,18 +397,8 @@ private enum Palette {
     static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
     static let freeInk = Color(HSL(hue: 0.4762, saturation: 0.6512, lightness: 0.8314)) // #B8F0E8
 
+    /// Neutral secondary ink — plain white on the deep body tint reads in every theme.
     static let inkDim = Color.white.opacity(0.72)
-
-    // The stub is now the same neutral glass as the body, so its text is white
-    // rather than the old dark-on-cream palette.
-    static let stubInk = Color.white
-    static let stubAccent = Color.white.opacity(0.82)
-    static let stubFaint = Color.white.opacity(0.5)
-    static let perforation = Color.white.opacity(0.25)
-
-    static let hairline = Color.white.opacity(0.18)
-
-    static let buttonText = Color(HSL(hue: 0.0794, saturation: 1, lightness: 0.0824)) // #2A1400
 }
 
 // MARK: - Previews
@@ -413,29 +431,91 @@ private enum Palette {
     BoxOfficeTicketPreviewStage(show: .previewSparse)
 }
 
+#Preview("Theme · WXYC 1983 (amber, dark wall)") {
+    BoxOfficeTicketPreviewStage(show: .previewOnSale, colors: .previewWXYC1983, lightWallpaper: false)
+}
+
+#Preview("Theme · Windowlight (low-sat, light wall)") {
+    BoxOfficeTicketPreviewStage(show: .previewOnSale, colors: .previewWindowlight, lightWallpaper: true)
+}
+
 #Preview("In detail view") {
     BoxOfficeTicketDetailContextPreview()
 }
 
-/// Puts the ticket on a WXYC-like gradient so the glass/notch cut-throughs read.
+/// Puts the ticket on a stand-in wallpaper so the glass, the notch cut-throughs,
+/// and — crucially — the near-clear stub read. The backdrop tracks the theme's
+/// foreground: a light wallpaper for `foreground: .dark` themes (most of them), a
+/// dark one for `.light` themes, so the contrast-floored stub ink is judged
+/// against the kind of surface it will actually sit on.
 private struct BoxOfficeTicketPreviewStage: View {
     let show: Concert
+    var colors: TicketColors = .previewPlasticPulse
+    var lightWallpaper: Bool = true
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(HSL(hue: 0.6474, saturation: 0.3786, lightness: 0.4039)), // #40498E
-                    Color(HSL(hue: 0.913, saturation: 0.4768, lightness: 0.4647)), // #AF3E79
-                    Color(HSL(hue: 0, saturation: 0.4275, lightness: 0.5)), // #B64949
-                ],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            BoxOfficeTicketView(show: show)
+            (lightWallpaper ? Self.lightBackdrop : Self.darkBackdrop)
+                .ignoresSafeArea()
+            BoxOfficeTicketView(show: show, colors: colors)
                 .padding()
         }
     }
+
+    /// Dark stand-in wallpaper for `.light`-foreground themes.
+    static let darkBackdrop = LinearGradient(
+        colors: [
+            Color(HSL(hue: 0.6474, saturation: 0.3786, lightness: 0.4039)), // #40498E
+            Color(HSL(hue: 0.913, saturation: 0.4768, lightness: 0.4647)), // #AF3E79
+            Color(HSL(hue: 0, saturation: 0.4275, lightness: 0.5)), // #B64949
+        ],
+        startPoint: .topLeading, endPoint: .bottomTrailing
+    )
+
+    /// Light stand-in wallpaper for `.dark`-foreground themes (the common case).
+    static let lightBackdrop = LinearGradient(
+        colors: [
+            Color(HSL(hue: 0.58, saturation: 0.45, lightness: 0.82)),
+            Color(HSL(hue: 0.72, saturation: 0.40, lightness: 0.80)),
+            Color(HSL(hue: 0.08, saturation: 0.55, lightness: 0.82)),
+        ],
+        startPoint: .topLeading, endPoint: .bottomTrailing
+    )
+}
+
+/// Authored ticket samples so previews match on-device, now that the palette is
+/// fully authored (nothing derived from the accent).
+private extension TicketColors {
+    /// A teal keepsake (like The Plastic Pulse) over a dark wallpaper.
+    static let previewPlasticPulse = TicketColors.resolve(
+        foreground: .light,
+        manifest: TicketPalette(
+            bodyTop: HSBAlpha(hue: 185, saturation: 0.45, brightness: 0.32, alpha: 0.52),
+            bodyBottom: HSBAlpha(hue: 190, saturation: 0.55, brightness: 0.20, alpha: 0.60),
+            stub: HSBAlpha(hue: 185, saturation: 0.22, brightness: 0.92, alpha: 0.12),
+            bodyInk: HSBAlpha(hue: 185, saturation: 0.20, brightness: 1.00, alpha: 1),
+            edge: HSBAlpha(hue: 185, saturation: 0.50, brightness: 0.85, alpha: 0.48)
+        ),
+        override: nil
+    )
+
+    /// An amber keepsake (like WXYC 1983) over a dark wallpaper.
+    static let previewWXYC1983 = TicketColors.resolve(
+        foreground: .light,
+        manifest: TicketPalette(
+            bodyTop: HSBAlpha(hue: 28, saturation: 0.55, brightness: 0.34, alpha: 0.55),
+            bodyBottom: HSBAlpha(hue: 24, saturation: 0.62, brightness: 0.22, alpha: 0.62),
+            stub: HSBAlpha(hue: 30, saturation: 0.30, brightness: 0.92, alpha: 0.12),
+            bodyInk: HSBAlpha(hue: 33, saturation: 0.30, brightness: 1.00, alpha: 1),
+            edge: HSBAlpha(hue: 30, saturation: 0.55, brightness: 0.85, alpha: 0.50)
+        ),
+        override: nil
+    )
+
+    /// The neutral default over a *light* wallpaper — exercises the dark stub ink.
+    static let previewWindowlight = TicketColors.resolve(
+        foreground: .dark, manifest: nil, override: nil
+    )
 }
 
 /// Recreates `PlaycutDetailView`'s section stack — a faithful mock header, the
@@ -471,7 +551,9 @@ private struct BoxOfficeTicketDetailContextPreview: View {
                 VStack(spacing: 24) {
                     mockHeader
                         .padding(.top, 30)
-                    BoxOfficeTicketView(show: show)
+                    // WXYC 1983 (foreground `.light`) so the stub's white ink reads
+                    // on this dark stand-in wallpaper.
+                    BoxOfficeTicketView(show: show, colors: .previewWXYC1983)
                     mockSection(title: "Add it to your library", tiles: 4)
                     mockSection(title: "More Info", tiles: 2)
                     Spacer(minLength: 40)

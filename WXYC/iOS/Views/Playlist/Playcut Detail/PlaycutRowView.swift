@@ -178,7 +178,7 @@ struct PlaycutRowView: View {
                 }
                 .aspectRatio(2.5, contentMode: .fill)
 
-                OnTourRowBadge(show: show)
+                OnTourRowBadge(show: show, colors: appState.themeConfiguration.effectiveTicketColors)
                     .frame(height: OnTourRowBadge.preferredHeight)
             }
         }

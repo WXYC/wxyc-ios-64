@@ -8,7 +8,9 @@
 //  along the top seam. The surrounding ``PlaycutRowView`` supplies the shared
 //  wallpaper background and the perforated ticket outline (the semicircle
 //  punch-outs at the seam), so this view never draws its own surface. State-
-//  colored tag: amber on sale, teal free, dimmed sold-out, red cancelled.
+//  colored tag: the theme accent for on-sale, teal free, dimmed sold-out, red
+//  cancelled — the date and tag tint with the theme (see ``TicketColors``), so the
+//  stub stays consistent with ``BoxOfficeTicketView`` and its discovery CTA.
 //  Mirrors the prototype's `.rstub` (docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
@@ -18,9 +20,11 @@
 import Concerts
 import Playlist
 import SwiftUI
+import Wallpaper
 
 struct OnTourRowBadge: View {
     let show: Concert
+    let colors: TicketColors
 
     /// The stub panel's height. ``PlaycutRowView`` frames the stub to this value
     /// and places the ticket's perforation notches at the seam it defines.
@@ -28,14 +32,22 @@ struct OnTourRowBadge: View {
 
     private var presenter: BoxOfficeTicketPresenter { BoxOfficeTicketPresenter(show) }
 
+    /// Dark, accent-tinted ink for the light `accentInkColor`-filled "go" tag —
+    /// matches ``BoxOfficeTicketView``'s CTA. The body ink is always light, so this
+    /// reads.
+    private var buttonInk: Color {
+        let ink = colors.bodyInk.components
+        return Color(hue: ink.hue / 360, saturation: min(1, ink.saturation + 0.15), brightness: 0.16)
+    }
+
     var body: some View {
         HStack(spacing: 10) {
-            // Date — amber mono, like the prototype's `.rk` ("FRI JUL 10").
+            // Date — accent mono, like the prototype's `.rk` ("FRI JUL 10").
             Text(presenter.compactDateLabel)
                 .font(.system(.caption2, design: .monospaced))
                 .fontWeight(.heavy)
                 .kerning(0.6)
-                .foregroundStyle(Palette.amberInk)
+                .foregroundStyle(colors.accentInkColor)
                 .fixedSize()
 
             // Venue — takes the middle, truncating before it crowds the tag.
@@ -52,7 +64,7 @@ struct OnTourRowBadge: View {
         .overlay(alignment: .top) {
             // The tear line, inset horizontally so it clears the corner punch-outs.
             DashedLine()
-                .stroke(Palette.perforation, style: StrokeStyle(lineWidth: 1.5))
+                .stroke(colors.perforationColor, style: StrokeStyle(lineWidth: 1.5))
                 .frame(height: 1.5)
                 .padding(.horizontal, 10)
         }
@@ -76,13 +88,13 @@ struct OnTourRowBadge: View {
             .fixedSize()
     }
 
-    /// Tag fill / border / ink per ``FeedTagStyle`` — amber and teal read as solid
-    /// "go" chips; sold-out and cancelled are translucent and muted so the feed
-    /// doesn't entice toward a show you can't attend.
+    /// Tag fill / border / ink per ``FeedTagStyle`` — the theme accent and teal
+    /// read as solid "go" chips; sold-out and cancelled are translucent and muted
+    /// so the feed doesn't entice toward a show you can't attend.
     private var tagColors: (fill: Color, border: Color, ink: Color) {
         switch presenter.feedTagStyle {
         case .prominent:
-            return (Palette.amber, .clear, Palette.onDark)
+            return (colors.accentInkColor, .clear, buttonInk)
         case .free:
             return (Palette.free, .clear, Palette.freeText)
         case .muted:
@@ -102,20 +114,15 @@ struct OnTourRowBadge: View {
 
 // MARK: - Palette
 
-/// The stub's palette, translated from the prototype's CSS tokens into HSL so the
-/// hue relationships read at a glance: `amber` and `amberInk` are one hue at two
-/// lightnesses, `onDark` is that same amber pushed nearly black, and both cancel
-/// tones sit at pure red (hue 0). Trailing hex is the original prototype value.
-/// File-private so it doesn't leak into the app-wide color system.
+/// The stub's **status** palette — free teal and cancelled red stay universal
+/// across every theme; the accent-colored "go" tag, the date, and the perforation
+/// now tint with the wallpaper (see ``TicketColors``). Translated from the
+/// prototype's CSS into HSL; trailing hex is the prototype value. File-private.
 private enum Palette {
-    static let amber = Color(HSL(hue: 0.0637, saturation: 1, lightness: 0.6255)) // #FF8940
-    static let amberInk = Color(HSL(hue: 0.0743, saturation: 1, lightness: 0.802)) // #FFC79A
     static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
     static let freeText = Color(HSL(hue: 0.4811, saturation: 0.8462, lightness: 0.102)) // #04302B
     static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
     static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
-    static let perforation = Color.white.opacity(0.28)
-    static let onDark = Color(HSL(hue: 0.0794, saturation: 1, lightness: 0.0824)) // #2A1400
 }
 
 // MARK: - Previews
@@ -149,6 +156,7 @@ private enum Palette {
 private struct OnTourRowStubPreview: View {
     let status: ShowStatus
     let venue: String
+    var colors: TicketColors = .previewPlasticPulse
 
     var body: some View {
         ZStack {
@@ -158,17 +166,37 @@ private struct OnTourRowStubPreview: View {
             )
             .ignoresSafeArea()
 
-            OnTourRowBadge(show: .init(
-                id: 4821,
-                venue: Venue(id: 1, slug: "venue", name: venue, city: "Carrboro", state: "NC", address: nil),
-                startsOn: .now,
-                headliningArtistRaw: "Nilüfer Yanya",
-                status: status
-            ))
+            OnTourRowBadge(
+                show: .init(
+                    id: 4821,
+                    venue: Venue(id: 1, slug: "venue", name: venue, city: "Carrboro", state: "NC", address: nil),
+                    startsOn: .now,
+                    headliningArtistRaw: "Nilüfer Yanya",
+                    status: status
+                ),
+                colors: colors
+            )
             .frame(height: OnTourRowBadge.preferredHeight)
             .background(.black.opacity(0.28))
             .clipShape(.rect(bottomLeadingRadius: 12, bottomTrailingRadius: 12))
             .padding()
         }
     }
+}
+
+/// An authored ticket sample so the preview matches on-device, now that the palette
+/// is fully authored (nothing derived from the accent). A teal keepsake (like The
+/// Plastic Pulse) over a dark wallpaper.
+private extension TicketColors {
+    static let previewPlasticPulse = TicketColors.resolve(
+        foreground: .light,
+        manifest: TicketPalette(
+            bodyTop: HSBAlpha(hue: 185, saturation: 0.45, brightness: 0.32, alpha: 0.52),
+            bodyBottom: HSBAlpha(hue: 190, saturation: 0.55, brightness: 0.20, alpha: 0.60),
+            stub: HSBAlpha(hue: 185, saturation: 0.22, brightness: 0.92, alpha: 0.12),
+            bodyInk: HSBAlpha(hue: 185, saturation: 0.20, brightness: 1.00, alpha: 1),
+            edge: HSBAlpha(hue: 185, saturation: 0.50, brightness: 0.85, alpha: 0.48)
+        ),
+        override: nil
+    )
 }
