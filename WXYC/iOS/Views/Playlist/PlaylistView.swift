@@ -146,7 +146,12 @@ struct PlaylistView: View {
                 }
             }
             .padding(.top, isThemePickerActive ? 24 : 0)
-            .padding(.horizontal, 12)
+            // Full-bleed scroll view: it clips at the screen edge, and the content
+            // is inset via content margins rather than padding the ScrollView. That
+            // gives every card the same width *and* a 12pt gutter its rim stroke and
+            // drop shadow can draw into — the margin sits inside the clip, so nothing
+            // gets shaved at the left/right edges.
+            .contentMargins(.horizontal, 12, for: .scrollContent)
             .coordinateSpace(name: "scroll")
         }
 
