@@ -709,6 +709,8 @@ extension AudioPlayerController {
                     handleStall()
                 case .recovery:
                     handleRecovery()
+                case .firstAudio(let timeToAudio):
+                    handleFirstAudio(timeToAudio: timeToAudio)
                 case .error(let error):
                     // Capture analytics for the error
                     let playerType = self.resolvedPlayerType
@@ -742,6 +744,21 @@ extension AudioPlayerController {
     private func handleRecovery() {
         Log(.info, category: .playback, "Playback recovered from stall")
         captureRecoveryIfNeeded()
+    }
+
+    /// Captures the playback-start success signal forwarded by the player as an
+    /// `AudioPlayerInternalEvent.firstAudio`. Emitting it here — the same layer
+    /// that captures `StreamErrorEvent` — keeps success and failure counted
+    /// together and comparable across player types (issue #513). The player is
+    /// responsible for firing this once per successful start, so no de-duplication
+    /// is needed here.
+    private func handleFirstAudio(timeToAudio: TimeInterval) {
+        let playerType = resolvedPlayerType
+        Log(.info, category: .playback, "First audio after \(String(format: "%.2f", timeToAudio))s (\(playerType.rawValue))")
+        analytics.capture(PlaybackFirstAudioEvent(
+            playerType: playerType,
+            timeToFirstAudio: timeToAudio
+        ))
     }
 
     private func attemptReconnectWithExponentialBackoff() {
