@@ -88,6 +88,12 @@ public final class MP3Streamer {
     internal var backoffTimer: ExponentialBackoff
     @ObservationIgnored
     private var reconnectTask: Task<Void, Never>?
+    /// The deferred connect Task enqueued by `play()`. Stored so a racing `stop()`
+    /// (or a superseding `play()`) can cancel it before it connects — otherwise a
+    /// stopped streamer gets resurrected into `.buffering` with a live watchdog.
+    /// See issue #488.
+    @ObservationIgnored
+    private var startupConnectTask: Task<Void, Never>?
     @ObservationIgnored
     private var startupWatchdogTask: Task<Void, Never>?
     @ObservationIgnored
@@ -248,18 +254,29 @@ public final class MP3Streamer {
         hasEmittedFirstAudio = false
         streamingState = .connecting
 
-        Task { @MainActor [weak self] in
-            guard let self else { return }
+        // Supersede any deferred connect Task still pending from a prior play(),
+        // then store this one so a racing stop() can cancel it (issue #488).
+        startupConnectTask?.cancel()
+        startupConnectTask = Task { @MainActor [weak self] in
+            guard let self, !Task.isCancelled else { return }
             if needsTeardown {
-                stop()
-                // Restore connecting state after stop() sets it to .idle
+                // Tear down stream I/O without cancelling this Task (resetStreamIO
+                // does not touch startupConnectTask — a self-cancel here would defeat
+                // the purpose). Then restore .connecting and reset the backoff ramp:
+                // resetStreamIO() does not reset the backoff, and this branch no
+                // longer routes through stop() which used to, so without this an
+                // interrupted mid-reconnect ramp would carry over.
+                resetStreamIO()
                 streamingState = .connecting
                 backoffTimer.reset()
             }
+            // A stop() (or superseding play()) that landed while this Task was
+            // pending cancels it; connect() is not cancellation-aware, so re-check
+            // here before doing any I/O. Guarding on .connecting also aborts a Task
+            // whose state was torn out from under it. See issue #488, Sentry IOS-31.
+            guard streamingState == .connecting, !Task.isCancelled else { return }
             // Arm the startup watchdog once the (possibly torn-down) state has
-            // settled back to .connecting, immediately before connecting. Placing
-            // it after any teardown stop() guarantees stop()'s cancel can't disarm
-            // this fresh watchdog. See Sentry IOS-31.
+            // settled back to .connecting, immediately before connecting.
             armStartupWatchdog()
             do {
                 try await httpClient.connect()
@@ -276,9 +293,27 @@ public final class MP3Streamer {
     public func stop() {
         Log(.info, category: .playback, "MP3Streamer stop() called")
         cancelStartupWatchdog()
+        // Cancel a deferred connect Task still pending from play() so a stop() that
+        // races it can't leave the streamer resurrected (issue #488).
+        startupConnectTask?.cancel()
+        startupConnectTask = nil
         reconnectTask?.cancel()
         reconnectTask = nil
 
+        resetStreamIO()
+
+        streamingState = .idle
+        backoffTimer.reset()
+        // The session is over; the next play() starts a fresh first-audio window.
+        hasEmittedFirstAudio = false
+    }
+
+    /// Tears down the active stream I/O — disconnects HTTP, stops the audio engine,
+    /// clears the buffer queue, and replaces the decoder with a fresh instance —
+    /// without touching `startupConnectTask`, `streamingState`, or the backoff timer.
+    /// Shared by `stop()` and `play()`'s stuck-state teardown so the latter does not
+    /// self-cancel its own deferred connect Task. See issue #488.
+    private func resetStreamIO() {
         httpClient.disconnect()
         audioPlayer.stop()
         bufferQueue.clear()
@@ -292,11 +327,6 @@ public final class MP3Streamer {
         mp3Decoder.reset()
         mp3Decoder = MP3StreamDecoder()
         startDecoderConsumer()
-
-        streamingState = .idle
-        backoffTimer.reset()
-        // The session is over; the next play() starts a fresh first-audio window.
-        hasEmittedFirstAudio = false
     }
 
     // MARK: - Event Handlers
