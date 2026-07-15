@@ -188,6 +188,76 @@ struct StallRecoverySabotageTests {
         #expect(recoveryEvents.isEmpty,
                 "User-initiated play() must not be credited as automatic recovery; got \(recoveryEvents.count) StallRecoveryEvent(s)")
     }
+
+    // MARK: - #512: ramp exhaustion enters a holding pattern, not silence
+
+    /// After the bounded exponential ramp is spent, the controller must NOT be
+    /// terminally dead. It should keep retrying at a flat cadence (the ramp's
+    /// `maximumWaitTime`), so a later successful connect still reaches `.playing`
+    /// and credits automatic recovery. Critically, the CPU-usage session must
+    /// stay open across the exhaustion boundary — it follows playback INTENT,
+    /// not a transient error — so the recovery credits the same session.
+    ///
+    /// Motivated by the 32-user `backoff_exhausted` field signal (v3.1): a
+    /// mid-stream underrun that never recovers used to hard-give-up into ~94s of
+    /// permanent silence.
+    @Test("Backoff-ramp exhaustion enters a holding pattern that still recovers and keeps the CPU session open")
+    func holdingPatternRecoversAfterRampExhaustion() async {
+        // Tiny ramp: 2 attempts, with a 0.01s flat hold interval (= maximumWaitTime).
+        let quickBackoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 2)
+        let fixture = Self.makeFixture(backoff: quickBackoff)
+
+        await Self.startPlaying(fixture)
+        await Self.triggerStall(fixture)
+
+        // Park the player in an error state so every reconnect attempt fails
+        // fast (`waitForPlayingOrError` returns immediately on `.isError`), and
+        // the bounded ramp burns through its 2 attempts quickly and exhausts.
+        fixture.mockPlayer.simulateStateChange(to: .error(.connectionFailed("sabotage")))
+
+        // Wait for the ramp to exhaust — signalled by the single
+        // `.backoffExhausted` StreamErrorEvent emitted at the boundary.
+        let exhaustionDeadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while ContinuousClock.now < exhaustionDeadline,
+              !fixture.mockAnalytics.typedEvents(ofType: StreamErrorEvent.self).contains(where: { $0.errorType == .backoffExhausted }) {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        let exhaustionEvents = fixture.mockAnalytics
+            .typedEvents(ofType: StreamErrorEvent.self)
+            .filter { $0.errorType == .backoffExhausted }
+        #expect(exhaustionEvents.count == 1,
+                "Ramp exhaustion should emit exactly one backoff_exhausted event at the boundary; got \(exhaustionEvents.count)")
+
+        // CONTRACT: the CPU session must NOT be torn down at the exhaustion
+        // boundary — it follows playback intent, not a transient error.
+        #expect(fixture.controller.cpuSessionIsActive,
+                "CPU session must stay open across backoff exhaustion so a later recovery still credits it")
+
+        // Let a subsequent connect succeed: re-enable auto state updates so the
+        // holding pattern's `player.play()` drives the player to `.playing`.
+        fixture.mockPlayer.shouldAutoUpdateState = true
+
+        // The holding pattern retries at the flat 0.01s cadence; wait for it to
+        // reconnect and reach `.playing`.
+        let recoveryDeadline = ContinuousClock.now.advanced(by: .seconds(3))
+        while ContinuousClock.now < recoveryDeadline, !fixture.controller.isPlaying {
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(fixture.controller.isPlaying,
+                "After ramp exhaustion the controller must NOT be terminally dead — the holding pattern should reconnect and reach .playing. \(fixture.controller.debugStateSnapshot)")
+
+        let recoveryEvents = fixture.mockAnalytics.typedEvents(ofType: StallRecoveryEvent.self)
+        #expect(!recoveryEvents.isEmpty,
+                "A successful holding-pattern reconnect must credit automatic recovery")
+
+        // Session still open after recovery — only stop() (intent false) closes it.
+        #expect(fixture.controller.cpuSessionIsActive,
+                "CPU session must remain open through the holding-pattern recovery")
+
+        fixture.controller.stop(reason: .test)
+    }
 }
 
 #endif

@@ -102,6 +102,18 @@ public final class AudioPlayerController {
         "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded)"
     }
 
+    /// Whether the CPU-usage aggregation session is currently open. Exposed for
+    /// tests asserting the "session follows playback intent, not transient
+    /// errors" contract (#512): the session must stay open across backoff-ramp
+    /// exhaustion so a later holding-pattern recovery still credits it.
+    public var cpuSessionIsActive: Bool {
+        #if os(watchOS)
+        false
+        #else
+        cpuAggregator?.isSessionActive ?? false
+        #endif
+    }
+
     // MARK: - Dependencies
     // These are nonisolated(unsafe) to allow cleanup in deinit
 
@@ -901,7 +913,13 @@ extension AudioPlayerController {
                         stallDuration: self.stallStartTime.map { Date().timeIntervalSince($0) },
                         recoveryMethod: .automaticReconnect
                     ))
-                    self.cpuAggregator?.endSession(reason: .error)
+                    // Do NOT end the CPU session on a transient error. The
+                    // session follows playback INTENT, not individual errors —
+                    // MP3Streamer emits `.error` on ordinary connect failures
+                    // that the reconnect loop (and holding pattern) recovers
+                    // from, so tearing the session down here would strand a
+                    // still-intended recovery. It ends only when intent goes
+                    // false (stop / play-abort). See #512.
                     Log(.error, category: .playback, "Player error: \(error.localizedDescription)")
                 }
             }
@@ -941,7 +959,10 @@ extension AudioPlayerController {
 
     private func attemptReconnectWithExponentialBackoff() {
         guard let waitTime = self.backoffTimer.nextWaitTime() else {
-            // Backoff exhausted - capture error analytics
+            // The bounded exponential ramp is spent. Emit the terminal-ramp
+            // signal ONCE at the boundary (metric continuity with the 32-user
+            // `backoff_exhausted` v3.1 baseline) — the ramp→hold split means no
+            // per-cycle re-entry, so no dedup flag is needed.
             let playerType = self.resolvedPlayerType
             let stallDuration = stallStartTime.map { Date().timeIntervalSince($0) }
             analytics.capture(StreamErrorEvent(
@@ -953,9 +974,14 @@ extension AudioPlayerController {
                 stallDuration: stallDuration,
                 recoveryMethod: .retryWithBackoff
             ))
-            cpuAggregator?.endSession(reason: .error)
-            Log(.error, category: .playback, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection")
+            // Do NOT end the CPU session here: it follows playback INTENT, not a
+            // transient error, so a later holding-pattern recovery credits the
+            // same session. Rather than returning into permanent silence, hand
+            // off to a flat, uncapped holding pattern that keeps retrying while
+            // playback is still intended. See #512.
+            Log(.warning, category: .playback, "Backoff ramp exhausted after \(self.backoffTimer.numberOfAttempts) attempts; entering flat reconnect holding pattern")
             self.backoffTimer.reset()
+            self.enterReconnectHoldingPattern()
             return
         }
 
@@ -1014,6 +1040,92 @@ extension AudioPlayerController {
                     self.backoffTimer.reset()
                 }
             } catch {
+                self.backoffTimer.reset()
+            }
+        }
+    }
+
+    /// Once the bounded exponential ramp is spent, keep trying to reconnect at a
+    /// flat, uncapped cadence — the ramp's `maximumWaitTime` (10s by default) —
+    /// for as long as playback is still intended, rather than hard-giving-up
+    /// into silence. A mid-stream underrun that outlives the ramp is almost
+    /// always a transient network condition, and the listener still wants audio.
+    ///
+    /// The retry deliberately survives backgrounding: locked-screen playback is
+    /// the core radio use case, and iOS suspends the app once it stops producing
+    /// audio, which throttles the background case naturally. The CPU-usage
+    /// session is left open — it ends with intent (stop / play-abort), not with
+    /// a transient error — so a later recovery still credits the same session.
+    ///
+    /// Motivated by the 32-user `backoff_exhausted` field signal (v3.1). A
+    /// follow-up (#517) would replace the blind 10s cadence with reachability
+    /// gating.
+    private func enterReconnectHoldingPattern() {
+        let holdInterval = backoffTimer.maximumWaitTime
+        Log(.warning, category: .playback, "Reconnect holding pattern engaged: retrying every \(String(format: "%.1f", holdInterval))s while playback is intended")
+        scheduleHoldingReconnect(after: holdInterval)
+    }
+
+    /// Schedules a single flat-cadence holding-pattern reconnect attempt,
+    /// re-scheduling itself on failure. Mirrors the ramp reconnect's
+    /// success/recovery bookkeeping (`isPlaying` short-circuit,
+    /// `waitForPlayingOrError`, recovery credit) but never exhausts.
+    private func scheduleHoldingReconnect(after holdInterval: TimeInterval) {
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+
+            // Intent dropped (stop / play-abort) — close the CPU session and
+            // leave the holding pattern. `endSession` is idempotent, so the
+            // primary teardown in `stop()`/`play()` already covered the common
+            // case; this is the belt-and-braces intent guard.
+            guard self.playbackIntended else {
+                self.cpuAggregator?.endSession(reason: .userStopped)
+                return
+            }
+
+            if self.player.isPlaying {
+                Log(.info, category: .playback, "Already playing, leaving reconnect holding pattern")
+                self.captureRecoveryIfNeeded()
+                self.backoffTimer.reset()
+                return
+            }
+
+            do {
+                try await Task.sleep(for: .seconds(holdInterval))
+                guard !Task.isCancelled else { return }
+                guard self.playbackIntended else {
+                    self.cpuAggregator?.endSession(reason: .userStopped)
+                    return
+                }
+
+                #if os(iOS) || os(tvOS)
+                guard self.activateAudioSession() else {
+                    Log(.error, category: .playback, "Holding-pattern reconnect aborted: audio session activation failed; will retry")
+                    self.scheduleHoldingReconnect(after: holdInterval)
+                    return
+                }
+                #endif
+                self.player.play()
+
+                let reachedPlaying = await self.waitForPlayingOrError(timeout: .seconds(3))
+                guard !Task.isCancelled else { return }
+
+                if !reachedPlaying {
+                    // Still not connected — keep holding.
+                    self.scheduleHoldingReconnect(after: holdInterval)
+                } else if let stallStart = self.stallStartTime {
+                    let totalStallTime = Date().timeIntervalSince(stallStart)
+                    Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s (holding pattern)")
+                    self.captureRecoveryIfNeeded()
+                    self.backoffTimer.reset()
+                } else {
+                    // Playing again, but the stall was already resolved by
+                    // someone else; just clear backoff state quietly.
+                    self.backoffTimer.reset()
+                }
+            } catch {
+                // Sleep interrupted (cancellation); intent-driven teardown owns
+                // ending the session, so just clear backoff state.
                 self.backoffTimer.reset()
             }
         }
