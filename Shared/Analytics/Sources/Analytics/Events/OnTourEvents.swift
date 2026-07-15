@@ -1,10 +1,10 @@
 //
-//  TouringEvents.swift
+//  OnTourEvents.swift
 //  Analytics
 //
-//  Structured analytics for the Touring Soon tab. These events carry no artist
+//  Structured analytics for the On Tour tab. These events carry no artist
 //  identity — only facet names, counts, and tab/sheet lifecycle — per the
-//  Touring Soon privacy invariant (taste/interest data never leaves the device).
+//  On Tour privacy invariant (taste/interest data never leaves the device).
 //
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -12,18 +12,18 @@
 
 import Foundation
 
-// MARK: - Touring Soon tab
+// MARK: - On Tour tab
 
-/// Event fired once per launch, the first time the Touring tab is opened. The
+/// Event fired once per launch, the first time the On Tour tab is opened. The
 /// view latches on first appearance, so switching away and back does not re-fire.
 @AnalyticsEvent
-public struct TouringTabViewed {
+public struct OnTourTabViewed {
     public init() {}
 }
 
 /// Event fired when the filter sheet is opened.
 @AnalyticsEvent
-public struct TouringFilterSheetOpened {
+public struct OnTourFilterSheetOpened {
     public init() {}
 }
 
@@ -32,7 +32,7 @@ public struct TouringFilterSheetOpened {
 /// "free", "all_ages") or "reset" for a full clear; `activeCount` is the resulting
 /// number of engaged facet groups. Never carries any concert or artist data.
 @AnalyticsEvent
-public struct TouringFilterApplied {
+public struct OnTourFilterApplied {
     public let facet: String
     public let activeCount: Int
 
@@ -44,6 +44,6 @@ public struct TouringFilterApplied {
 
 /// Event fired when an active filter narrows the window to zero shows.
 @AnalyticsEvent
-public struct TouringFilteredToZero {
+public struct OnTourFilteredToZero {
     public init() {}
 }

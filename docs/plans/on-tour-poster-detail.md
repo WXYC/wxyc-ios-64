@@ -4,7 +4,7 @@
 
 Replace the "barren" On Tour event-detail `.sheet` (a `BoxOfficeTicketView` on a flat gradient) with a **poster-first detail** that zooms up from the tapped row. This is the implementation of the decided prototype `docs/ideas/on-tour-poster-layouts.html`, layout **B2 (Tucked Ticket)**, resolved down to the shipped Box Office ticket as the tucked card.
 
-Not part of the R2/R3 filter chain in `474-touring-soon-tab.md`; this is a follow-on refinement of R1's detail surface.
+Not part of the R2/R3 filter chain in `474-on-tour-tab.md`; this is a follow-on refinement of R1's detail surface.
 
 **Branch:** `on-tour-poster-detail` (worktree at `.claude/worktrees/on-tour-poster-detail`). Rebase on `origin/master` before opening the PR (this repo's default branch is `master`, not `main`).
 
@@ -20,7 +20,7 @@ Not part of the R2/R3 filter chain in `474-touring-soon-tab.md`; this is a follo
 1. **Poster hero** — full-bleed art (photo or gradient) extending under the Dynamic Island, big faint artist initial, bottom scrim. Over it, bottom-aligned: status pill (if any) + **artist name** (large) + a compact credit line (`SAT AUG 1 · Carrboro`). Back button top-left.
 2. **Tucked Box Office ticket** — the existing `BoxOfficeTicketView(show:)`, pulled up (`~ -28pt`) to straddle the poster seam, on the dark body panel. Carries venue / doors·show·price / support+age / status pill / **CTA + caption** (the outbound action, thumb-height). No separate dock.
 3. **Where** — venue name + address (when present) + a **Directions** button opening Apple Maps for the venue. (Decorative map only if cheap; address is often null.)
-4. **More touring soon** *(PR2, not PR1)* — a horizontal rail of up-to-N *other* concerts (same venue first, then rest), tapping one re-navigates to that concert's detail.
+4. **More on tour** *(PR2, not PR1)* — a horizontal rail of up-to-N *other* concerts (same venue first, then rest), tapping one re-navigates to that concert's detail.
 
 **PR1 is complete and shippable without the rail** — poster hero + tucked ticket + Where fully replace the sheet. The rail (sibling-list plumbing + re-navigation to a different concert + horizontal scroll) is its own vertical slice with its own tests, so it is **PR2 unconditionally**, not a "fits if it's small" call.
 
@@ -28,9 +28,9 @@ The ticket already renders the "bill" (support in its subline) and the stats gri
 
 ## Architecture / files
 
-- **New:** `WXYC/iOS/Views/Touring/ConcertDetailView.swift` — the poster destination. App target (can use `BoxOfficeTicketView` directly, which is app-target `internal`). Takes the `Concert` plus the sibling list (or a small closure) for "More touring soon" and a re-select callback.
-- **New:** `WXYC/iOS/Views/Touring/PosterArtView.swift` (or a nested helper) — `AsyncImage` with the gradient fallback; the gradient seed helper is pure and lives in `Shared/Concerts` for testability (see below).
-- **Edit:** `TouringTabView.swift` — add `@Namespace zoom`; swap `.sheet(item:)` → `.fullScreenCover(item:)` presenting `ConcertDetailView` with `.navigationTransition(.zoom(sourceID: concert.id, in: zoom))`; pass the loaded list for the rail. Delete the private `ConcertDetailSheet`.
+- **New:** `WXYC/iOS/Views/OnTour/ConcertDetailView.swift` — the poster destination. App target (can use `BoxOfficeTicketView` directly, which is app-target `internal`). Takes the `Concert` plus the sibling list (or a small closure) for "More on tour" and a re-select callback.
+- **New:** `WXYC/iOS/Views/OnTour/PosterArtView.swift` (or a nested helper) — `AsyncImage` with the gradient fallback; the gradient seed helper is pure and lives in `Shared/Concerts` for testability (see below).
+- **Edit:** `OnTourTabView.swift` — add `@Namespace zoom`; swap `.sheet(item:)` → `.fullScreenCover(item:)` presenting `ConcertDetailView` with `.navigationTransition(.zoom(sourceID: concert.id, in: zoom))`; pass the loaded list for the rail. Delete the private `ConcertDetailSheet`.
 - **Edit:** `ConcertRow.swift` — accept the namespace; apply `.matchedTransitionSource(id: concert.id, in: zoom)` to the row.
 - **Edit (Concerts pkg):** `BoxOfficeTicketPresenter.swift` — add pure, tested helpers the view needs:
   - `heroCreditLine` → `"SAT AUG 1 · Carrboro"` (compact date + city).
@@ -56,12 +56,12 @@ Availability: `.matchedTransitionSource(id:in:)` and `.navigationTransition(.zoo
 3. `directionsURL`: built via `URLComponents` + `URLQueryItem` (encoding done by the components API, not by hand). Three cases: (a) full `address` present → `q = "name, address"`; (b) `address` null → `q = "name, city, state"`; (c) name only (empty city/state guarded) → `q = "name"`. Never emits an empty `q`.
 4. `PosterGradient.colors(for:)`: **deterministic** (same concert → same pair, asserted by calling twice) and **run-stable** (assert a fixed concert maps to a known palette index — the explicit FNV-1a fold means the expected index can be hard-coded, which would fail if someone swapped in `hashValue`). Two visibly different seeds map to different pairs (best-effort, not a hard collision guarantee).
 
-View layer (`ConcertDetailView`, `ConcertRow`, `TouringTabView`) is SwiftUI layout — covered by previews + the existing UI smoke test, not unit tests, per repo norms.
+View layer (`ConcertDetailView`, `ConcertRow`, `OnTourTabView`) is SwiftUI layout — covered by previews + the existing UI smoke test, not unit tests, per repo norms.
 
 ## PR slicing (aim ≤ ~1000 lines each)
 
-- **PR1 (this plan):** presenter helpers + tests, `PosterGradient` + tests, `ConcertDetailView` (poster hero + tucked ticket + Where), and the zoom rewiring in `TouringTabView`/`ConcertRow`. Replaces the sheet end-to-end. **No rail.**
-- **PR2 (unconditional):** "More touring soon" rail + re-navigation to a sibling concert's detail.
+- **PR1 (this plan):** presenter helpers + tests, `PosterGradient` + tests, `ConcertDetailView` (poster hero + tucked ticket + Where), and the zoom rewiring in `OnTourTabView`/`ConcertRow`. Replaces the sheet end-to-end. **No rail.**
+- **PR2 (unconditional):** "More on tour" rail + re-navigation to a sibling concert's detail.
 - **Follow-up ticket:** provenance block, wired when play-history data exists.
 
 ## Risks / watch-items

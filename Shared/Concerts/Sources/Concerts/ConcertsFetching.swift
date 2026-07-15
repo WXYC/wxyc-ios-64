@@ -2,7 +2,7 @@
 //  ConcertsFetching.swift
 //  Concerts
 //
-//  The fetch seam the Touring Soon model depends on, so the model can be driven
+//  The fetch seam the On Tour model depends on, so the model can be driven
 //  by a canned stub in tests and previews without a live network. The production
 //  ``ConcertsFetcher`` conforms; test doubles conform in `ConcertsTesting`.
 //
@@ -12,10 +12,10 @@
 
 import Foundation
 
-/// Fetches a page of concerts from the Touring Soon read API.
+/// Fetches a page of concerts from the On Tour read API.
 ///
 /// Extracted from the concrete ``ConcertsFetcher`` purely as a test/preview seam:
-/// ``TouringSoonModel`` holds `any ConcertsFetching`, so a stub can feed it
+/// ``OnTourModel`` holds `any ConcertsFetching`, so a stub can feed it
 /// deterministic pages. The single requirement mirrors
 /// ``ConcertsFetcher/fetchConcerts(curated:from:to:page:limit:)`` exactly.
 public protocol ConcertsFetching: Sendable {

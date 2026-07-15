@@ -15,14 +15,14 @@ import WXUI
 struct RootTabView: View {
     enum Page: CaseIterable {
         case playlist
-        case touring
+        case onTour
         case infoDetail
 
         /// Tab label. Also the accessibility label the tab bar exposes.
         var title: String {
             switch self {
             case .playlist: "Now Playing"
-            case .touring: "On Tour"
+            case .onTour: "On Tour"
             case .infoDetail: "Info"
             }
         }
@@ -30,11 +30,11 @@ struct RootTabView: View {
         /// SF Symbol for the tab glyph. `radio` matches the widget and Siri
         /// intent; `info.circle` matches the playcut-detail row — iconography
         /// the app already speaks on adjacent surfaces. `ticket` matches the Box
-        /// Office ticket language the Touring surface reuses.
+        /// Office ticket language the On Tour surface reuses.
         var systemImage: String {
             switch self {
             case .playlist: "radio"
-            case .touring: "ticket"
+            case .onTour: "ticket"
             case .infoDetail: "info.circle"
             }
         }
@@ -44,7 +44,7 @@ struct RootTabView: View {
         var accessibilityIdentifier: String {
             switch self {
             case .playlist: "tab.nowPlaying"
-            case .touring: "tab.touring"
+            case .onTour: "tab.onTour"
             case .infoDetail: "tab.info"
             }
         }
@@ -61,11 +61,11 @@ struct RootTabView: View {
             }
             .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
 
-            Tab(Page.touring.title, systemImage: Page.touring.systemImage, value: Page.touring) {
-                TouringTabView()
+            Tab(Page.onTour.title, systemImage: Page.onTour.systemImage, value: Page.onTour) {
+                OnTourTabView()
                     .clearTabBarBackground()
             }
-            .accessibilityIdentifier(Page.touring.accessibilityIdentifier)
+            .accessibilityIdentifier(Page.onTour.accessibilityIdentifier)
 
             Tab(Page.infoDetail.title, systemImage: Page.infoDetail.systemImage, value: Page.infoDetail) {
                 InfoDetailView()

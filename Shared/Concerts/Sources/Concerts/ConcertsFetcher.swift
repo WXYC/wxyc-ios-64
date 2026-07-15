@@ -2,7 +2,7 @@
 //  ConcertsFetcher.swift
 //  Concerts
 //
-//  Fetch layer for Backend-Service's `GET /concerts` Touring Soon read API
+//  Fetch layer for Backend-Service's `GET /concerts` On Tour read API
 //  (WXYC/Backend-Service#1603 / #1606, `wxyc-shared/api.yaml`). Mirrors
 //  the request-building + anonymous-session-auth convention used by
 //  `Metadata.PlaycutMetadataService`: an optional `SessionTokenProvider` supplies

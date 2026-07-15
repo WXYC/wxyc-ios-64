@@ -4,7 +4,7 @@
 //
 //  The paginated envelope returned by Backend-Service's `GET /concerts`
 //  (`ConcertsResponse` in `wxyc-shared/api.yaml`). A page of concerts plus the
-//  pagination cursor so the Touring Soon tab can fetch subsequent pages.
+//  pagination cursor so the On Tour tab can fetch subsequent pages.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
