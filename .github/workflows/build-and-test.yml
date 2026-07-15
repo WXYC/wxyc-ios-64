@@ -15,7 +15,10 @@ concurrency:
 env:
   SCHEME: WXYC
   TEST_PLAN: WXYC
-  DESTINATION: platform=iOS Simulator,name=iPhone 16 Pro
+  # DESTINATION is resolved at runtime by the "Resolve iOS Simulator destination"
+  # step below and exported to $GITHUB_ENV. Pinning a device name here (e.g.
+  # "iPhone 16 Pro") breaks whenever the runner's Xcode ships a newer default
+  # simulator set and drops the pinned model.
 
 jobs:
   build-and-test:
@@ -26,7 +29,7 @@ jobs:
     # 30 min absorbs the xcodebuild simulator path's current wall-clock — two
     # recent post-merge runs cancelled at 21 and 23 min with the test suite
     # still mid-run. Trait skips (#377) and the SPM-runnable swift-test step
-    # (#368) both fire correctly; the remaining cost is the iPhone 16 Pro sim's
+    # (#368) both fire correctly; the remaining cost is the simulator's
     # cold-start + per-bundle install/launch overhead. Drop back to 20 once #371
     # retires more flake-skipped suites or the sim path shrinks further.
     timeout-minutes: 30
@@ -46,6 +49,27 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+
+      - name: Resolve iOS Simulator destination
+        # Pick an available iPhone simulator by querying the selected Xcode's
+        # runtime instead of pinning a model name that drifts across Xcode
+        # versions. Prefer a non-Max "Pro" model (matches prior CI behaviour of
+        # testing on iPhone NN Pro), fall back to any available iPhone. Exports
+        # DEVICE_ID + DESTINATION (id-based, so no re-lookup by name downstream).
+        run: |
+          LINE=$(xcrun simctl list devices available | grep -E "iPhone .*Pro " | grep -v "Max" | head -1)
+          if [ -z "$LINE" ]; then
+            LINE=$(xcrun simctl list devices available | grep -E "iPhone " | head -1)
+          fi
+          DEVICE_ID=$(printf '%s\n' "$LINE" | grep -oiE '\([0-9A-F-]{36}\)' | head -1 | tr -d '()')
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No available iPhone simulator found for the selected Xcode." >&2
+            xcrun simctl list devices available >&2
+            exit 1
+          fi
+          echo "Resolved simulator:$LINE"
+          echo "DEVICE_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+          echo "DESTINATION=platform=iOS Simulator,id=$DEVICE_ID" >> "$GITHUB_ENV"
 
       - name: Set up Swift macro trust
         run: |
@@ -136,14 +160,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             $ONLY_FLAGS
 
-      - name: Pre-boot iPhone 16 Pro simulator
+      - name: Pre-boot simulator
         # Workaround for "The test runner hung before establishing connection."
         # Booting the simulator explicitly before running tests gives CoreSimulator
         # time to fully come up, which the implicit boot inside `xcodebuild test`
-        # doesn't reliably do on macos-latest runners under load.
+        # doesn't reliably do on macos-latest runners under load. Boots the same
+        # device resolved in "Resolve iOS Simulator destination".
         if: steps.affected.outputs.xcb_required == 'true' || steps.affected.outputs.run_all == 'true'
         run: |
-          DEVICE_ID=$(xcrun simctl list devices available | grep -m1 "iPhone 16 Pro " | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
           echo "Booting $DEVICE_ID"
           xcrun simctl boot "$DEVICE_ID" || true
           xcrun simctl bootstatus "$DEVICE_ID" -b
