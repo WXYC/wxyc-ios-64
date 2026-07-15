@@ -356,6 +356,11 @@ public final class MP3Streamer {
         case .error(let error):
             Log(.error, category: .playback, "HTTP error: \(error)")
             streamingState = .error(error)
+            // Deliberately NOT yielded to the internal event stream (#486): this is
+            // the transient pre-reconnect drop that usually recovers on the next
+            // connect. Emitting a StreamErrorEvent here would count a routine blip
+            // as a failure. The terminal outcome — recovery (.firstAudio/.recovery)
+            // or backoff exhaustion (yielded in attemptReconnect) — is what counts.
             attemptReconnect()
         }
     }
@@ -428,6 +433,12 @@ public final class MP3Streamer {
                 } catch {
                     Log(.error, category: .playback, "Failed to start audio engine: \(error)")
                     streamingState = .error(error)
+                    // Terminal, non-recursive failure: the buffer threshold was
+                    // crossed but the engine refused to start, so playback silently
+                    // never begins. Surface it once through the internal event stream
+                    // so the controller captures a StreamErrorEvent — this is the
+                    // failure numerator against #513's first-audio denominator (#486).
+                    eventContinuationInternal.yield(.error(error))
                 }
             } else {
                 // Still buffering - update progress using result from enqueue
@@ -516,7 +527,14 @@ public final class MP3Streamer {
         guard let waitTime = backoffTimer.nextWaitTime() else {
             // Backoff exhausted - give up and transition to error state
             Log(.error, category: .playback, "Reconnect backoff exhausted after \(backoffTimer.numberOfAttempts) attempts")
-            streamingState = .error(HTTPStreamError.connectionFailed)
+            let error = HTTPStreamError.connectionFailed
+            streamingState = .error(error)
+            // Terminal, non-recursive failure: MP3Streamer has given up its HTTP
+            // reconnects for this episode. Surface it exactly once through the
+            // internal event stream so the controller captures a StreamErrorEvent
+            // (#486). The exhaustion boundary is reached at most once per episode
+            // (the ramp does not re-enter here), so no per-attempt over-counting.
+            eventContinuationInternal.yield(.error(error))
             backoffTimer.reset()
             return
         }
@@ -545,6 +563,11 @@ public final class MP3Streamer {
             } catch {
                 Log(.warning, category: .playback, "Reconnect failed: \(error)")
                 streamingState = .error(error)
+                // Deliberately NOT yielded to the internal event stream (#486): this
+                // catch recurses once per failed reconnect attempt, so yielding here
+                // would emit one StreamErrorEvent PER attempt and over-count failures
+                // against #513's first-audio denominator. The single terminal signal
+                // is emitted once at backoff exhaustion (the guard above).
                 attemptReconnect()
             }
         }
