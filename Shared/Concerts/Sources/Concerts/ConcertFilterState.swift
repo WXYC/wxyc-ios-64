@@ -2,7 +2,7 @@
 //  ConcertFilterState.swift
 //  Concerts
 //
-//  The client-side facet state for the Touring Soon tab. Holds the user's filter
+//  The client-side facet state for the On Tour tab. Holds the user's filter
 //  selections and evaluates them as pure predicates over an already-fetched
 //  window of concerts — no refetch on change (the triangle-shows recipe). Every
 //  predicate is a value-in/value-out function so the model can recompute the

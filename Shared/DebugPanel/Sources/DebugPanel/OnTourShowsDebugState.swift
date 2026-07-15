@@ -1,5 +1,5 @@
 //
-//  TouringShowsDebugState.swift
+//  OnTourShowsDebugState.swift
 //  DebugPanel
 //
 //  Observable singleton for forcing a mock "Box Office" touring-show ticket onto
@@ -18,8 +18,8 @@ import Foundation
 /// without a real upcoming show in the data source.
 @MainActor
 @Observable
-public final class TouringShowsDebugState {
-    public static let shared = TouringShowsDebugState()
+public final class OnTourShowsDebugState {
+    public static let shared = OnTourShowsDebugState()
 
     /// When true, the now-playing (first) playlist item gets a mock upcoming show
     /// so its detail view renders the Box Office ticket.
@@ -34,7 +34,7 @@ public final class TouringShowsDebugState {
     /// provider can scope the mock to exactly that row rather than every playcut.
     public var firstPlaycutID: UInt64?
 
-    private static let storageKey = "TouringShowsDebug.mockFirstItem"
+    private static let storageKey = "OnTourShowsDebug.mockFirstItem"
 
     private init() {
         self.mockFirstItemEnabled = UserDefaults.standard.bool(forKey: Self.storageKey)

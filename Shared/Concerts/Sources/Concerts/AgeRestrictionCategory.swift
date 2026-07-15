@@ -3,7 +3,7 @@
 //  Concerts
 //
 //  Normalizes the backend's free-text `age_restriction` string into a small
-//  filterable category for the Touring Soon "All ages" facet. The scraper emits
+//  filterable category for the On Tour "All ages" facet. The scraper emits
 //  arbitrary phrasing ("18+", "21 PLUS", "All Ages", "AA"); this collapses it to
 //  three cases while deliberately erring toward `.unknown` — the All-ages filter
 //  hides only shows we can *prove* are restricted, so an unrecognized phrasing

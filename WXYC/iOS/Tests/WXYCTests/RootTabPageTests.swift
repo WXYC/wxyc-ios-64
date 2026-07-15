@@ -18,7 +18,7 @@ import Testing
 struct RootTabPageTests {
     @Test("Three tabs in order: Now Playing, On Tour, Info")
     func caseOrder() {
-        #expect(RootTabView.Page.allCases == [.playlist, .touring, .infoDetail])
+        #expect(RootTabView.Page.allCases == [.playlist, .onTour, .infoDetail])
     }
 
     @Test("The Now Playing tab is labeled for the live stream")
@@ -28,9 +28,9 @@ struct RootTabPageTests {
     }
 
     @Test("The On Tour tab is labeled with the ticket glyph")
-    func touringMetadata() {
-        #expect(RootTabView.Page.touring.title == "On Tour")
-        #expect(RootTabView.Page.touring.systemImage == "ticket")
+    func onTourMetadata() {
+        #expect(RootTabView.Page.onTour.title == "On Tour")
+        #expect(RootTabView.Page.onTour.systemImage == "ticket")
     }
 
     @Test("The Info tab is labeled as the station page")
@@ -42,7 +42,7 @@ struct RootTabPageTests {
     @Test("Each tab carries a stable accessibility identifier")
     func accessibilityIdentifiers() {
         #expect(RootTabView.Page.playlist.accessibilityIdentifier == "tab.nowPlaying")
-        #expect(RootTabView.Page.touring.accessibilityIdentifier == "tab.touring")
+        #expect(RootTabView.Page.onTour.accessibilityIdentifier == "tab.onTour")
         #expect(RootTabView.Page.infoDetail.accessibilityIdentifier == "tab.info")
     }
 }

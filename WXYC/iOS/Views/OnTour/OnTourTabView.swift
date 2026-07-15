@@ -1,12 +1,12 @@
 //
-//  TouringTabView.swift
+//  OnTourTabView.swift
 //  WXYC
 //
-//  The Touring tab: a date-ordered list of curated Triangle-area shows with an
+//  The On Tour tab: a date-ordered list of curated Triangle-area shows with an
 //  instant, client-side filter sheet. Fetches the whole curated window once into
-//  a `TouringSoonModel` and filters it in memory — every facet applies with no
+//  a `OnTourModel` and filters it in memory — every facet applies with no
 //  refetch. The model is view-owned single-screen state (see the concurrency note
-//  on `TouringSoonModel`); it is not shared with widgets or other scenes.
+//  on `OnTourModel`); it is not shared with widgets or other scenes.
 //
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -18,9 +18,9 @@ import MusicShareKit
 import SwiftUI
 import Wallpaper
 
-/// The root view of the Touring tab.
-struct TouringTabView: View {
-    @State private var model: TouringSoonModel
+/// The root view of the On Tour tab.
+struct OnTourTabView: View {
+    @State private var model: OnTourModel
     @State private var isFilterSheetPresented = false
     @State private var selectedConcert: Concert?
     /// The zoom-transition namespace tying each row to the poster detail it opens.
@@ -32,8 +32,8 @@ struct TouringTabView: View {
     /// Creates the tab. The default model talks to the live `GET /concerts`
     /// endpoint with the anonymous-session token; previews and tests inject a
     /// model backed by a stub fetcher.
-    init(model: TouringSoonModel? = nil) {
-        _model = State(wrappedValue: model ?? TouringSoonModel(
+    init(model: OnTourModel? = nil) {
+        _model = State(wrappedValue: model ?? OnTourModel(
             fetcher: ConcertsFetcher(tokenProvider: MusicShareKit.authService)
         ))
     }
@@ -46,7 +46,7 @@ struct TouringTabView: View {
         .task {
             if !hasAppeared {
                 hasAppeared = true
-                StructuredPostHogAnalytics.shared.capture(TouringTabViewed())
+                StructuredPostHogAnalytics.shared.capture(OnTourTabViewed())
             }
             // Load on first appearance and whenever a prior attempt didn't reach
             // `.loaded` (a failure to retry). A successful load — even one that
@@ -57,7 +57,7 @@ struct TouringTabView: View {
             }
         }
         .sheet(isPresented: $isFilterSheetPresented) {
-            TouringFilterSheet(model: model)
+            OnTourFilterSheet(model: model)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -85,7 +85,7 @@ struct TouringTabView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
 
-            TouringFilterPills(
+            OnTourFilterPills(
                 filter: $model.filter,
                 onClear: recordFilterApplied
             )
@@ -96,7 +96,7 @@ struct TouringTabView: View {
 
     private var filterButton: some View {
         Button {
-            StructuredPostHogAnalytics.shared.capture(TouringFilterSheetOpened())
+            StructuredPostHogAnalytics.shared.capture(OnTourFilterSheetOpened())
             isFilterSheetPresented = true
         } label: {
             HStack(spacing: 6) {
@@ -117,7 +117,7 @@ struct TouringTabView: View {
             .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("touring.filterButton")
+        .accessibilityIdentifier("onTour.filterButton")
         .accessibilityLabel(
             model.filter.activeFacetCount > 0
                 ? "Filter, \(model.filter.activeFacetCount) active"
@@ -229,7 +229,7 @@ struct TouringTabView: View {
 
     private func recordFilterApplied(_ facet: String) {
         StructuredPostHogAnalytics.shared.capture(
-            TouringFilterApplied(facet: facet, activeCount: model.filter.activeFacetCount)
+            OnTourFilterApplied(facet: facet, activeCount: model.filter.activeFacetCount)
         )
     }
 }
@@ -251,7 +251,7 @@ private struct PreviewConcertsFetcher: ConcertsFetching {
             startPoint: .top, endPoint: .bottom
         )
         .ignoresSafeArea()
-        TouringTabView(model: TouringSoonModel(fetcher: PreviewConcertsFetcher()))
+        OnTourTabView(model: OnTourModel(fetcher: PreviewConcertsFetcher()))
     }
 }
 

@@ -2,7 +2,7 @@
 //  StubConcertsFetcher.swift
 //  ConcertsTesting
 //
-//  A canned ``ConcertsFetching`` for driving ``TouringSoonModel`` in tests and
+//  A canned ``ConcertsFetching`` for driving ``OnTourModel`` in tests and
 //  SwiftUI previews. Returns pre-built pages in page order, records each request
 //  so pagination behavior can be asserted, and can be primed to throw.
 //

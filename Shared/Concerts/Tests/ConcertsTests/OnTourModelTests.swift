@@ -1,8 +1,8 @@
 //
-//  TouringSoonModelTests.swift
+//  OnTourModelTests.swift
 //  Concerts
 //
-//  Coverage for the Touring Soon data holder: pagination exhaust, request
+//  Coverage for the On Tour data holder: pagination exhaust, request
 //  parameters, load lifecycle, and the filtered/venue-group projections. Driven
 //  by `StubConcertsFetcher` with an injected fixed clock.
 //
@@ -103,12 +103,12 @@ private func page(_ concerts: [Concert], number: Int, limit: Int = 100, hasMore:
 /// `@Sendable` `now` closure can capture it.
 private let fixedNow = day(2026, 8, 1)
 
-@Suite("TouringSoonModel")
+@Suite("OnTourModel")
 @MainActor
-struct TouringSoonModelTests {
+struct OnTourModelTests {
 
-    private func makeModel(_ fetcher: any ConcertsFetching) -> TouringSoonModel {
-        TouringSoonModel(fetcher: fetcher, now: { fixedNow })
+    private func makeModel(_ fetcher: any ConcertsFetching) -> OnTourModel {
+        OnTourModel(fetcher: fetcher, now: { fixedNow })
     }
 
     // MARK: - Load lifecycle
@@ -173,7 +173,7 @@ struct TouringSoonModelTests {
         // Prime *more* pages than the cap, all claiming `hasMore`, so the cap is
         // the only thing that can end the loop — the stub can't run out first and
         // mask an off-by-one in the cap check.
-        let pages = (1...(TouringSoonModel.pageCap + 2)).map {
+        let pages = (1...(OnTourModel.pageCap + 2)).map {
             page([Concert.stub(id: $0)], number: $0, hasMore: true)
         }
         let stub = StubConcertsFetcher(pages: pages)
@@ -181,8 +181,8 @@ struct TouringSoonModelTests {
 
         await model.load()
 
-        #expect(stub.requests.count == TouringSoonModel.pageCap)
-        #expect(model.allConcerts.count == TouringSoonModel.pageCap)
+        #expect(stub.requests.count == OnTourModel.pageCap)
+        #expect(model.allConcerts.count == OnTourModel.pageCap)
         #expect(model.phase == .loaded)
     }
 
@@ -215,19 +215,19 @@ struct TouringSoonModelTests {
 
     @Test("hasMorePages prefers the server flag when present")
     func hasMorePagesPrefersFlag() {
-        #expect(TouringSoonModel.hasMorePages(
+        #expect(OnTourModel.hasMorePages(
             PaginationInfo(page: 1, limit: 100, total: nil, hasMore: true), lastPageCount: 0))
-        #expect(!TouringSoonModel.hasMorePages(
+        #expect(!OnTourModel.hasMorePages(
             PaginationInfo(page: 1, limit: 100, total: nil, hasMore: false), lastPageCount: 100))
     }
 
     @Test("hasMorePages falls back to a full page implying more when the flag is absent")
     func hasMorePagesFallback() {
         // Full page → maybe more.
-        #expect(TouringSoonModel.hasMorePages(
+        #expect(OnTourModel.hasMorePages(
             PaginationInfo(page: 1, limit: 100, total: nil, hasMore: nil), lastPageCount: 100))
         // Short page → done.
-        #expect(!TouringSoonModel.hasMorePages(
+        #expect(!OnTourModel.hasMorePages(
             PaginationInfo(page: 1, limit: 100, total: nil, hasMore: nil), lastPageCount: 9))
     }
 

@@ -1,10 +1,10 @@
 //
-//  TouringTabUITests.swift
+//  OnTourTabUITests.swift
 //  WXYC
 //
-//  UI smoke for the R1 Touring tab (#490): the third tab is reachable and its
+//  UI smoke for the R1 On Tour tab (#490): the third tab is reachable and its
 //  Filter button opens the filter sheet. Tabs are selected by accessibility
-//  identifier (`tab.touring`) via a normalized-coordinate tap, since the iOS 26
+//  identifier (`tab.onTour`) via a normalized-coordinate tap, since the iOS 26
 //  floating tab bar isn't exposed as `XCUIElement.tabBars` and reports items as
 //  existing-but-not-hittable (same constraints as `RootTabBarUITests`).
 //
@@ -16,13 +16,13 @@ import Testing
 import XCTest
 
 @Suite(
-    "Touring Tab UI Tests",
+    "On Tour Tab UI Tests",
     .serialized,
     .tags(.slow),
     .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
 )
 @MainActor
-struct TouringTabUITests {
+struct OnTourTabUITests {
 
     let app = XCUIApplication()
 
@@ -30,8 +30,8 @@ struct TouringTabUITests {
         app.launch()
     }
 
-    private var touringTab: XCUIElement { app.buttons["tab.touring"] }
-    private var filterButton: XCUIElement { app.buttons["touring.filterButton"] }
+    private var onTourTab: XCUIElement { app.buttons["tab.onTour"] }
+    private var filterButton: XCUIElement { app.buttons["onTour.filterButton"] }
 
     private let launchTimeout: Duration = .seconds(20)
     private let contentTimeout: Duration = .seconds(12)
@@ -44,14 +44,14 @@ struct TouringTabUITests {
         tab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
-    @Test("The root shows a Touring tab item")
-    func touringTabExists() async throws {
-        try await waitUntil(touringTab, is: .exists, timeout: launchTimeout)
+    @Test("The root shows an On Tour tab item")
+    func onTourTabExists() async throws {
+        try await waitUntil(onTourTab, is: .exists, timeout: launchTimeout)
     }
 
-    @Test("Tapping Touring reaches the list and the Filter button opens the sheet")
+    @Test("Tapping On Tour reaches the list and the Filter button opens the sheet")
     func filterSheetOpens() async throws {
-        try await tapTab(touringTab)
+        try await tapTab(onTourTab)
         // The Filter button is a normal (hittable) control in the tab header.
         try await waitUntil(filterButton, is: .exists, timeout: contentTimeout)
         filterButton.tap()

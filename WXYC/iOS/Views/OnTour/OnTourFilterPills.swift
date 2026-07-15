@@ -1,8 +1,8 @@
 //
-//  TouringFilterPills.swift
+//  OnTourFilterPills.swift
 //  WXYC
 //
-//  The applied-filter pills shown beneath the Touring tab's header. Each pill
+//  The applied-filter pills shown beneath the On Tour tab's header. Each pill
 //  names an engaged facet and clears just that facet when tapped. Renders nothing
 //  when no facet is active.
 //
@@ -14,7 +14,7 @@ import Concerts
 import SwiftUI
 
 /// A horizontally-scrolling strip of "clear this facet" pills.
-struct TouringFilterPills: View {
+struct OnTourFilterPills: View {
     @Binding var filter: ConcertFilterState
 
     /// Called with a facet key ("date"/"venue"/"free"/"all_ages") after a pill

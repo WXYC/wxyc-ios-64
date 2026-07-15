@@ -1,8 +1,8 @@
 //
-//  TouringSoonModel.swift
+//  OnTourModel.swift
 //  Concerts
 //
-//  The single data holder for the Touring Soon tab: fetches the whole curated
+//  The single data holder for the On Tour tab: fetches the whole curated
 //  concert window once, holds it in memory, and exposes a filtered projection
 //  recomputed synchronously as the user changes facets — no refetch on filter
 //  change (the triangle-shows recipe).
@@ -20,10 +20,10 @@
 import Foundation
 import Logger
 
-/// Fetches, holds, and filters the Touring Soon concert window.
+/// Fetches, holds, and filters the On Tour concert window.
 @MainActor
 @Observable
-public final class TouringSoonModel {
+public final class OnTourModel {
 
     /// The load lifecycle. The error is intentionally not surfaced to the view —
     /// the failure state is generic ("couldn't load"); the underlying error is
@@ -102,7 +102,7 @@ public final class TouringSoonModel {
         } catch is CancellationError {
             return
         } catch {
-            Log(.error, category: .network, "TouringSoonModel.load failed: \(error)")
+            Log(.error, category: .network, "OnTourModel.load failed: \(error)")
             if allConcerts.isEmpty {
                 phase = .failed
             }
@@ -130,7 +130,7 @@ public final class TouringSoonModel {
             page += 1
         }
         Log(.warning, category: .network,
-            "TouringSoonModel: hit \(Self.pageCap)-page cap; concert list may be truncated")
+            "OnTourModel: hit \(Self.pageCap)-page cap; concert list may be truncated")
         return collected
     }
 

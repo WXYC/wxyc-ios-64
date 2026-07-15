@@ -2,7 +2,7 @@
 //  ConcertRow.swift
 //  WXYC
 //
-//  A compact, tappable Touring-tab list row for one `Concert`. Every display
+//  A compact, tappable On Tour list row for one `Concert`. Every display
 //  string comes from `BoxOfficeTicketPresenter` — the same presenter behind the
 //  Box Office ticket — so copy and formatting match the playcut ticket surfaces.
 //  Tapping the row opens the full ticket detail.
@@ -14,7 +14,7 @@
 import Concerts
 import SwiftUI
 
-/// A single concert row in the Touring tab's list.
+/// A single concert row in the On Tour tab's list.
 struct ConcertRow: View {
     let concert: Concert
     /// The zoom-transition namespace shared with the detail destination, so the

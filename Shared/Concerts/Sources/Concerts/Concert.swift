@@ -67,7 +67,7 @@ public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
 }
 
 /// An upcoming (or recent) Triangle-area concert, as rendered by the Box Office
-/// ticket and browsed in the Touring Soon tab.
+/// ticket and browsed in the On Tour tab.
 ///
 /// Decoding is deliberately tolerant: only the fields the backend always sends
 /// (`id`, `venue`, `starts_on`, `headlining_artist_raw`, `status`) are required;

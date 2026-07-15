@@ -1,8 +1,8 @@
 //
-//  TouringFilterSheet.swift
+//  OnTourFilterSheet.swift
 //  WXYC
 //
-//  The Touring tab's filter sheet: a date-window segmented control, a venue
+//  The On Tour tab's filter sheet: a date-window segmented control, a venue
 //  checklist grouped by region, Free / All-ages toggles, a Reset action, and a
 //  live "Show N shows" call-to-action. The sheet edits the model's filter
 //  directly, so the list behind it re-filters instantly as facets change — no
@@ -16,9 +16,9 @@ import Analytics
 import Concerts
 import SwiftUI
 
-/// The filter sheet presented from the Touring tab's Filter button.
-struct TouringFilterSheet: View {
-    @Bindable var model: TouringSoonModel
+/// The filter sheet presented from the On Tour tab's Filter button.
+struct OnTourFilterSheet: View {
+    @Bindable var model: OnTourModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -127,13 +127,13 @@ struct TouringFilterSheet: View {
     // MARK: - Facet bindings
 
     // Facets write through a custom binding (rather than `$model.filter.*` +
-    // `.onChange`) so `TouringFilterApplied` fires exactly once per user action
+    // `.onChange`) so `OnTourFilterApplied` fires exactly once per user action
     // and never on a programmatic change — a Reset clears every facet in one
     // assignment without tripping four per-facet events. The no-op guard also
     // keeps a set-to-the-same-value (e.g. re-tapping the current segment) silent.
 
     private func facetBinding<Value: Equatable>(
-        _ keyPath: ReferenceWritableKeyPath<TouringSoonModel, Value>,
+        _ keyPath: ReferenceWritableKeyPath<OnTourModel, Value>,
         facet: String
     ) -> Binding<Value> {
         Binding(
@@ -158,15 +158,15 @@ struct TouringFilterSheet: View {
     }
 
     /// Records a filter action, and — since the sheet is the only surface that
-    /// *tightens* the filter — also emits ``TouringFilteredToZero`` when this
+    /// *tightens* the filter — also emits ``OnTourFilteredToZero`` when this
     /// action is what emptied a non-empty window. (The header pills only clear
     /// facets, so they can never reach zero.)
     private func fireApplied(_ facet: String) {
         StructuredPostHogAnalytics.shared.capture(
-            TouringFilterApplied(facet: facet, activeCount: model.filter.activeFacetCount)
+            OnTourFilterApplied(facet: facet, activeCount: model.filter.activeFacetCount)
         )
         if model.filter.isActive, !model.allConcerts.isEmpty, model.filtered.isEmpty {
-            StructuredPostHogAnalytics.shared.capture(TouringFilteredToZero())
+            StructuredPostHogAnalytics.shared.capture(OnTourFilteredToZero())
         }
     }
 }

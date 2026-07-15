@@ -51,7 +51,7 @@ struct EmbeddedUpcomingShowResolver: UpcomingShowResolving {
 struct DebugUpcomingShowResolver: UpcomingShowResolving {
     func upcomingShow(for playcut: Playcut) -> Concert? {
         if let embedded = playcut.upcomingShow { return embedded }
-        let debug = TouringShowsDebugState.shared
+        let debug = OnTourShowsDebugState.shared
         guard debug.mockFirstItemEnabled, debug.firstPlaycutID == playcut.id else {
             return nil
         }
