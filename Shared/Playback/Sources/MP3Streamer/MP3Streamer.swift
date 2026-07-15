@@ -483,8 +483,6 @@ public final class MP3Streamer {
     }
 
     private func attemptReconnect() {
-        // Watchdog is intentionally NOT re-armed here; reconnect-loop starvation
-        // (a reconnect that connects then starves again) is a tracked follow-up.
         guard let waitTime = backoffTimer.nextWaitTime() else {
             // Backoff exhausted - give up and transition to error state
             Log(.error, category: .playback, "Reconnect backoff exhausted after \(backoffTimer.numberOfAttempts) attempts")
@@ -500,6 +498,14 @@ public final class MP3Streamer {
             try? await Task.sleep(for: .seconds(waitTime))
 
             guard !Task.isCancelled else { return }
+
+            // Re-arm the startup watchdog so its deadline now spans reconnect connects
+            // too, not just the initial connect in play(). A reconnect that connects
+            // (HTTP 200 → .buffering) then starves before .playing would otherwise
+            // park with no live deadline and hang silently (Sentry IOS-34). This is
+            // idempotent — armStartupWatchdog() self-cancels any prior watchdog — and
+            // the .playing transition disarms it on a successful reconnect.
+            armStartupWatchdog()
 
             do {
                 try await httpClient.connect()
