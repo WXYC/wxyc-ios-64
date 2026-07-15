@@ -26,7 +26,7 @@ Read the relevant topic doc before doing work in that area.
 - SwiftUI backed up by `@Observable` classes for shared data.
 - Do not introduce third-party frameworks without asking first.
 - Avoid UIKit unless requested.
-- There is no "iPhone 16 Pro" simulator. Simulator 156E5217-1C62-4531-B8BE-B0299138F6DB should be available. Check the available simulators if not.
+- There is no "iPhone 16 Pro" simulator. Simulator B49BE311-B868-4E8B-AE14-85C159CAD776 should be available. Check the available simulators if not.
 
 ## Coding style
 
