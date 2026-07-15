@@ -316,6 +316,87 @@ struct MP3StreamerStartupWatchdogTests {
         #expect(mockHTTP.connectCompletedCount == 1,
                 "Watchdog escalation must cancel the in-flight reconnect, not leak it to completion")
     }
+
+    /// #488 (fresh-play race): `play()` enqueues a deferred connect Task; a `stop()`
+    /// landing in the SAME MainActor turn — before that Task drains — must cancel the
+    /// pending connect. Before #488 the deferred Task was un-stored, so `stop()` could
+    /// not cancel it: the stopped streamer still issued a connect and armed a watchdog.
+    @Test("A racing stop() cancels the deferred connect before it fires")
+    func racingStopBeforeDeferredConnectDrains() async throws {
+        // `connectionTimeout: 0` keeps the startupTimeout clamp at its 1.0s floor.
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        // play() then stop() in the SAME synchronous MainActor turn — no await
+        // between them — so the deferred connect Task has not run yet when stop() lands.
+        streamer.play()
+        streamer.stop()
+
+        // Drain: give the (superseded/cancelled) deferred Task ample time to run. It
+        // must observe the cancellation and abort before calling connect(). Also wait
+        // past the ~1s clamped startupTimeout floor so a leaked watchdog would fire.
+        try await Task.sleep(for: .milliseconds(1300))
+
+        #expect(mockHTTP.connectCallCount == 0,
+                "A stop() racing the deferred connect Task must cancel it before it connects")
+        #expect(streamer.streamingState == .idle,
+                "A streamer stopped in the same turn as play() must settle at .idle")
+    }
+
+    /// #488 (resurrection race): replaying from a stuck state enqueues a deferred
+    /// teardown+reconnect Task. A `stop()` in the same turn must cancel it so the
+    /// stopped streamer is not resurrected into `.buffering` with a live watchdog.
+    /// Before #488 that Task tore down, restored `.connecting`, armed a watchdog and
+    /// connected — reviving an intentionally-stopped streamer.
+    @Test("A racing stop() after a replay does not resurrect a stopped streamer")
+    func racingStopAfterReplayDoesNotResurrect() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        // Drive the streamer into a stuck (buffering) state with a live watchdog.
+        streamer.play()
+        for _ in 0..<20 {
+            try await Task.sleep(for: .milliseconds(25))
+            if mockHTTP.connectCallCount >= 1 { break }
+        }
+        #expect(mockHTTP.connectCallCount == 1, "Precondition: the initial connect happened")
+        let connectsBefore = mockHTTP.connectCallCount
+
+        // Replay from the stuck state, then stop in the SAME turn. The superseded
+        // deferred teardown+reconnect Task must be cancelled: no resurrection into
+        // buffering, no fresh connect, no re-armed watchdog.
+        streamer.play()
+        streamer.stop()
+
+        // Wait well past the ~1s clamped startupTimeout floor so a resurrected
+        // watchdog would have fired a reconnect by now.
+        try await Task.sleep(for: .milliseconds(1300))
+
+        #expect(streamer.streamingState == .idle,
+                "A stopped streamer must not be resurrected by the superseded replay Task")
+        #expect(mockHTTP.connectCallCount == connectsBefore,
+                "No new connect must be issued after stop() cancels the replay Task")
+    }
 }
 
 extension Tag {
