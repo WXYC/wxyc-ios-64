@@ -24,12 +24,17 @@ public struct MP3StreamerConfiguration: Sendable {
     /// Timeout for HTTP connection in seconds
     public let connectionTimeout: TimeInterval
 
-    /// Hard deadline, in seconds, from a fresh `play()` to reaching the `.playing`
-    /// state. If playback has not started within this window the streamer escalates
-    /// (emits a `startup_timeout` stream error and attempts a fresh reconnect) instead
-    /// of sitting in `.connecting`/`.buffering` forever. Generous relative to the
-    /// ~1.5-2s normal cold start, and longer than `connectionTimeout` so a pure
-    /// connect failure surfaces through its own path first.
+    /// Hard deadline, in seconds, from a connect attempt (the initial `play()`
+    /// connect or any reconnect) to reaching the `.playing` state. If playback has
+    /// not started within this window the streamer escalates (emits a
+    /// `startup_timeout` stream error and attempts a fresh reconnect) instead of
+    /// sitting in `.connecting`/`.buffering` forever. Generous relative to the
+    /// ~1.5-2s normal cold start.
+    ///
+    /// Precondition: this is clamped in `init` to be strictly greater than
+    /// `connectionTimeout` (`max(startupTimeout, connectionTimeout + 1)`), so a pure
+    /// connect failure always surfaces through its own path before the startup
+    /// watchdog can fire.
     public let startupTimeout: TimeInterval
 
     public init(
@@ -43,6 +48,8 @@ public struct MP3StreamerConfiguration: Sendable {
         self.bufferQueueSize = bufferQueueSize
         self.minimumBuffersBeforePlayback = minimumBuffersBeforePlayback
         self.connectionTimeout = connectionTimeout
-        self.startupTimeout = startupTimeout
+        // Clamp so the startup watchdog always outlives a pure connect failure,
+        // which surfaces through connectionTimeout's own path first.
+        self.startupTimeout = max(startupTimeout, connectionTimeout + 1)
     }
 }
