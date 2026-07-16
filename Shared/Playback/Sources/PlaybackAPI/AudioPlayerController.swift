@@ -293,10 +293,11 @@ public final class AudioPlayerController {
         stallStartTime = nil
         playbackStartTime = playbackStartTime ?? Date()
         // Arm the play-intent → first-audio watchdog (#518). Placed before the
-        // activation guard so it also covers the fully-silent paths that never
-        // reach `player.play()`: the non-`'!int'` abort below and a `'!int'`
-        // deferral whose bounded retries exhaust. Disarmed on first audio /
-        // reaching `.playing` / any error / stop.
+        // activation guard so it also covers the silent paths that never reach
+        // `player.play()`: a `'!int'` deferral whose bounded retries exhaust
+        // (the non-`'!int'` abort below doesn't wait for it — that failure is
+        // known synchronously and escalates immediately). Disarmed on first
+        // audio / reaching `.playing` / any error / stop.
         armStartupWatchdog()
         #if os(iOS) || os(tvOS)
         guard activateAudioSession() else {
@@ -308,13 +309,16 @@ public final class AudioPlayerController {
                 Log(.info, category: .playback, "Deferring play: audio session activation retry pending")
                 pendingPlaybackReason = reason
             } else {
-                // Non-`'!int'` activation failure. Rather than returning into
-                // silence (invisible, and the user still wants audio), keep
-                // `playbackIntended` set so the startup watchdog surfaces it
-                // (`silent_startup`) and escalates recovery. The CPU session
-                // follows intent (#512), so it is NOT ended here — it ends on
-                // stop / play-abort. See #518 (design 6-A).
-                Log(.error, category: .playback, "Audio session activation failed; startup watchdog will escalate")
+                // Non-`'!int'` activation failure, known synchronously. Rather
+                // than returning into silence (invisible, and the user still
+                // wants audio) or spending the whole watchdog deadline as a
+                // dead spinner, escalate recovery immediately: same
+                // `silent_startup` signal (this is one of the named fully-silent
+                // startup paths), same ramp→holding handoff. Intent stays set
+                // and the CPU session follows it (#512) — it ends when intent
+                // goes false (stop). See #518 (design 6-A).
+                Log(.error, category: .playback, "Audio session activation failed; escalating silent-startup recovery immediately")
+                escalateSilentStartup(description: "Audio session activation failed at play intent")
             }
             return
         }
@@ -959,7 +963,7 @@ extension AudioPlayerController {
                     // that the reconnect loop (and holding pattern) recovers
                     // from, so tearing the session down here would strand a
                     // still-intended recovery. It ends only when intent goes
-                    // false (stop / play-abort). See #512.
+                    // false (stop). See #512.
                     Log(.error, category: .playback, "Player error: \(error.localizedDescription)")
                 }
             }
@@ -1007,35 +1011,50 @@ extension AudioPlayerController {
     /// arm first, so re-entrant `play()` calls collapse to a single live timer.
     /// The timer is measured from the establishing `play()` (user intent), which
     /// is the span the `silent_startup` deadline is meant to bound.
+    ///
+    /// `self` is held weakly across the sleep (only the deadline is captured by
+    /// value) so an armed watchdog never extends the controller's lifetime.
     private func armStartupWatchdog() {
         startupWatchdogTask?.cancel()
-        startupWatchdogTask = Task { [weak self] in
-            guard let self else { return }
-            try? await Task.sleep(for: self.startupWatchdogDeadline)
-            guard !Task.isCancelled, self.playbackIntended, !self.isPlaying else { return }
+        startupWatchdogTask = Task { [weak self, deadline = startupWatchdogDeadline] in
+            try? await Task.sleep(for: deadline)
+            guard let self, !Task.isCancelled else { return }
+            // Consult the live player as well as the mirrored `isPlaying`: at
+            // the deadline boundary a `.playing` transition may have been
+            // emitted but not yet processed by the state observer, and that
+            // near-miss must not pollute the silent_startup fleet metric.
+            guard self.playbackIntended, !self.isPlaying, !self.player.isPlaying else { return }
             self.handleStartupWatchdogTimeout()
         }
     }
 
     /// Disarms the startup watchdog. Called on every startup-success or
     /// terminal signal — reaching `.playing`, `.firstAudio`, any `.error`, and
-    /// `stop()` — as well as `deinit`. Idempotent.
+    /// `stop()` — on the escalation handoff itself, and in `deinit`. Idempotent.
     private func disarmStartupWatchdog() {
         startupWatchdogTask?.cancel()
         startupWatchdogTask = nil
     }
 
     /// The play-intent → first-audio deadline elapsed with no audio and no other
-    /// signal: the fully-silent startup class (Sentry IOS-31 / IOS-35). Make it
-    /// visible (`silent_startup`) and self-healing by handing off to the same
-    /// ramp→holding recovery a mid-stream stall uses. One-shot: the reconnect
-    /// machinery owns the phase from here, so the watchdog does not re-arm.
+    /// signal: the fully-silent startup class (Sentry IOS-31 / IOS-35).
     private func handleStartupWatchdogTimeout() {
         Log(.error, category: .playback, "Play intent produced no audio within the startup deadline; escalating silent-startup recovery")
+        escalateSilentStartup(description: "No audio or error within the play-intent→first-audio deadline")
+    }
+
+    /// Makes a silent startup visible (`silent_startup`) and self-healing by
+    /// handing off to the same ramp→holding recovery a mid-stream stall uses.
+    /// One-shot: the reconnect machinery owns the phase from here, so the
+    /// watchdog is disarmed and does not re-arm. Reached from the watchdog
+    /// deadline and, immediately, from a synchronous non-`'!int'` activation
+    /// abort in `play()`.
+    private func escalateSilentStartup(description: String) {
+        disarmStartupWatchdog()
         analytics.capture(StreamErrorEvent(
             playerType: resolvedPlayerType,
             errorType: .silentStartup,
-            errorDescription: "No audio or error within the play-intent→first-audio deadline",
+            errorDescription: description,
             reconnectAttempts: Int(backoffTimer.numberOfAttempts),
             sessionDuration: playbackDuration,
             stallDuration: nil,
@@ -1043,10 +1062,11 @@ extension AudioPlayerController {
         ))
         // Reuse the vetted reconnect ramp (first wait is 0.0 → immediate): it
         // re-activates the session (which may itself be the problem), re-calls
-        // `player.play()`, and on continued failure ramps then falls into the
-        // uncapped, intent-gated holding pattern (#512). No `stallStartTime` is
-        // set — there was no stall, so `captureRecoveryIfNeeded` correctly stays
-        // quiet and eventual success is signalled by `.firstAudio`.
+        // `player.play()`, and on continued failure stays on the ramp then falls
+        // into the uncapped, intent-gated holding pattern (#512). No
+        // `stallStartTime` is set — there was no stall, so
+        // `captureRecoveryIfNeeded` correctly stays quiet and eventual success
+        // is signalled by `.firstAudio`.
         attemptReconnectWithExponentialBackoff()
     }
 

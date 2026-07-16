@@ -137,23 +137,26 @@ struct SessionActivationRetryTests {
 
     // MARK: - Non-interruption failures do not schedule the interruption retry
 
-    @Test("A non-CannotInterruptOthers activation failure does not spin up unbounded retries")
-    func genericFailureDoesNotRetry() async {
+    @Test("A non-CannotInterruptOthers activation failure escalates recovery instead of entering the '!int' deferral loop")
+    func genericFailureEscalatesInsteadOfDeferring() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        // A generic activation failure (not '!int') should keep the existing
-        // fail-fast behavior — no deferred interruption retry.
+        // A generic activation failure (not '!int') doesn't get the deferred
+        // interruption retry. Under #518 (design 6-A) it isn't fail-fast-into-
+        // silence either: it escalates immediately — exactly one
+        // `silent_startup` and a handoff to the reconnect ramp, which owns the
+        // re-activation attempts from here.
         harness.mockSession.shouldThrowOnSetActive = true
 
         harness.controller.play()
         await harness.waitForAsync()
 
-        let attemptsAfterPlay = harness.mockSession.setActiveCallCount
-        try? await Task.sleep(for: .milliseconds(400))
-
-        #expect(harness.mockSession.setActiveCallCount == attemptsAfterPlay,
-               "Generic activation failures should not trigger the CannotInterruptOthers retry loop")
+        let silentStartups = harness.streamErrorEvents.filter { $0.errorType == .silentStartup }
+        #expect(silentStartups.count == 1,
+               "A generic activation failure should escalate as a single silent_startup")
         #expect(!harness.controller.isPlaying)
+
+        harness.controller.stop(reason: .test)
     }
 
     // MARK: - Stop cancels a pending retry
