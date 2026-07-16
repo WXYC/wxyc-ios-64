@@ -148,6 +148,17 @@ public final class AudioPlayerController {
     @ObservationIgnored internal var backoffTimer: ExponentialBackoff
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
 
+    // Play-intent → first-audio watchdog (#518). Guards the whole intent→audio
+    // span so the fully-silent startup class (session-activation abort, deferred
+    // connect never running, `'!int'` retries exhausted) becomes visible
+    // (`silent_startup`) and self-healing instead of stranding in silence.
+    /// Deadline from play-intent to first audio. Must exceed the player's
+    /// `startupTimeout` (MP3Streamer default 12s) so the inner
+    /// connected-but-starved class (`startup_timeout`, #487) surfaces and
+    /// disarms this outer watchdog first. Injected so tests can trigger it fast.
+    private let startupWatchdogDeadline: Duration
+    @ObservationIgnored private var startupWatchdogTask: Task<Void, Never>?
+
     #if os(iOS) || os(tvOS)
     // Bounded deferral for audio-session activation that fails with
     // `CannotInterruptOthers` ('!int'). Rather than fight a legitimate
@@ -190,7 +201,8 @@ public final class AudioPlayerController {
         remoteCommandCenter: RemoteCommandCenterProtocol?,
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
-        backoffTimer: ExponentialBackoff = .default
+        backoffTimer: ExponentialBackoff = .default,
+        startupWatchdogDeadline: Duration = .seconds(15)
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -198,6 +210,7 @@ public final class AudioPlayerController {
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
+        self.startupWatchdogDeadline = startupWatchdogDeadline
 
         // NOTE: We intentionally do NOT call configureAudioSessionIfNeeded() here.
         // Setting the audio session category to .playback during init interrupts
@@ -218,12 +231,14 @@ public final class AudioPlayerController {
         player: AudioPlayerProtocol,
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
-        backoffTimer: ExponentialBackoff = .default
+        backoffTimer: ExponentialBackoff = .default,
+        startupWatchdogDeadline: Duration = .seconds(15)
     ) {
         self.player = player
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
+        self.startupWatchdogDeadline = startupWatchdogDeadline
 
         setUpPlayerObservation()
         setUpCPUAggregator()
@@ -235,6 +250,7 @@ public final class AudioPlayerController {
         stateObservationTask?.cancel()
         eventTask?.cancel()
         reconnectTask?.cancel()
+        startupWatchdogTask?.cancel()
         #if os(iOS) || os(tvOS)
         sessionActivationRetryTask?.cancel()
         #endif
@@ -276,6 +292,12 @@ public final class AudioPlayerController {
         wasPlayingBeforeRouteDisconnect = false
         stallStartTime = nil
         playbackStartTime = playbackStartTime ?? Date()
+        // Arm the play-intent → first-audio watchdog (#518). Placed before the
+        // activation guard so it also covers the fully-silent paths that never
+        // reach `player.play()`: the non-`'!int'` abort below and a `'!int'`
+        // deferral whose bounded retries exhaust. Disarmed on first audio /
+        // reaching `.playing` / any error / stop.
+        armStartupWatchdog()
         #if os(iOS) || os(tvOS)
         guard activateAudioSession() else {
             // A `CannotInterruptOthers` failure schedules a deferred retry and
@@ -286,10 +308,13 @@ public final class AudioPlayerController {
                 Log(.info, category: .playback, "Deferring play: audio session activation retry pending")
                 pendingPlaybackReason = reason
             } else {
-                Log(.error, category: .playback, "Aborting play: audio session activation failed")
-                playbackIntended = false
-                playbackStartTime = nil
-                cpuAggregator?.endSession(reason: .error)
+                // Non-`'!int'` activation failure. Rather than returning into
+                // silence (invisible, and the user still wants audio), keep
+                // `playbackIntended` set so the startup watchdog surfaces it
+                // (`silent_startup`) and escalates recovery. The CPU session
+                // follows intent (#512), so it is NOT ended here — it ends on
+                // stop / play-abort. See #518 (design 6-A).
+                Log(.error, category: .playback, "Audio session activation failed; startup watchdog will escalate")
             }
             return
         }
@@ -327,6 +352,7 @@ public final class AudioPlayerController {
 
         reconnectTask?.cancel()
         reconnectTask = nil
+        disarmStartupWatchdog()
         backoffTimer.reset()
 
         playbackIntended = false
@@ -887,6 +913,15 @@ extension AudioPlayerController {
             for await newState in player.stateStream {
                 guard !Task.isCancelled else { break }
                 self.playerState = newState
+                // Reaching `.playing` is the universal startup-success signal —
+                // it disarms the startup watchdog for every player type,
+                // including RadioPlayer/HLS which never emit `.firstAudio`. It
+                // also prevents a healthy-start-then-stall from misfiring
+                // `silent_startup` (a stall is the `.stall` reconnect path's
+                // job, not a silent start). See #518.
+                if newState == .playing {
+                    self.disarmStartupWatchdog()
+                }
             }
         }
 
@@ -902,6 +937,11 @@ extension AudioPlayerController {
                 case .firstAudio(let timeToAudio):
                     handleFirstAudio(timeToAudio: timeToAudio)
                 case .error(let error):
+                    // The inner layer surfaced a signal, so the fully-silent
+                    // hypothesis is disproven — disarm the startup watchdog so it
+                    // can't stack a `silent_startup` on top of this error for the
+                    // same failed start (dedup vs #487's `startup_timeout`). #518.
+                    self.disarmStartupWatchdog()
                     // Capture analytics for the error
                     let playerType = self.resolvedPlayerType
                     self.analytics.capture(StreamErrorEvent(
@@ -949,12 +989,65 @@ extension AudioPlayerController {
     /// responsible for firing this once per successful start, so no de-duplication
     /// is needed here.
     private func handleFirstAudio(timeToAudio: TimeInterval) {
+        // Redundant with the `.playing` state disarm (MP3Streamer emits
+        // `.firstAudio` at the same moment it reaches `.playing`), but explicit
+        // and idempotent — the richer MP3Streamer-specific success signal. #518.
+        disarmStartupWatchdog()
         let playerType = resolvedPlayerType
         Log(.info, category: .playback, "First audio after \(String(format: "%.2f", timeToAudio))s (\(playerType.rawValue))")
         analytics.capture(PlaybackFirstAudioEvent(
             playerType: playerType,
             timeToFirstAudio: timeToAudio
         ))
+    }
+
+    // MARK: - Startup Watchdog (#518)
+
+    /// Arms the play-intent → first-audio watchdog. Idempotent: cancels any prior
+    /// arm first, so re-entrant `play()` calls collapse to a single live timer.
+    /// The timer is measured from the establishing `play()` (user intent), which
+    /// is the span the `silent_startup` deadline is meant to bound.
+    private func armStartupWatchdog() {
+        startupWatchdogTask?.cancel()
+        startupWatchdogTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(for: self.startupWatchdogDeadline)
+            guard !Task.isCancelled, self.playbackIntended, !self.isPlaying else { return }
+            self.handleStartupWatchdogTimeout()
+        }
+    }
+
+    /// Disarms the startup watchdog. Called on every startup-success or
+    /// terminal signal — reaching `.playing`, `.firstAudio`, any `.error`, and
+    /// `stop()` — as well as `deinit`. Idempotent.
+    private func disarmStartupWatchdog() {
+        startupWatchdogTask?.cancel()
+        startupWatchdogTask = nil
+    }
+
+    /// The play-intent → first-audio deadline elapsed with no audio and no other
+    /// signal: the fully-silent startup class (Sentry IOS-31 / IOS-35). Make it
+    /// visible (`silent_startup`) and self-healing by handing off to the same
+    /// ramp→holding recovery a mid-stream stall uses. One-shot: the reconnect
+    /// machinery owns the phase from here, so the watchdog does not re-arm.
+    private func handleStartupWatchdogTimeout() {
+        Log(.error, category: .playback, "Play intent produced no audio within the startup deadline; escalating silent-startup recovery")
+        analytics.capture(StreamErrorEvent(
+            playerType: resolvedPlayerType,
+            errorType: .silentStartup,
+            errorDescription: "No audio or error within the play-intent→first-audio deadline",
+            reconnectAttempts: Int(backoffTimer.numberOfAttempts),
+            sessionDuration: playbackDuration,
+            stallDuration: nil,
+            recoveryMethod: .automaticReconnect
+        ))
+        // Reuse the vetted reconnect ramp (first wait is 0.0 → immediate): it
+        // re-activates the session (which may itself be the problem), re-calls
+        // `player.play()`, and on continued failure ramps then falls into the
+        // uncapped, intent-gated holding pattern (#512). No `stallStartTime` is
+        // set — there was no stall, so `captureRecoveryIfNeeded` correctly stays
+        // quiet and eventual success is signalled by `.firstAudio`.
+        attemptReconnectWithExponentialBackoff()
     }
 
     private func attemptReconnectWithExponentialBackoff() {

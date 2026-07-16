@@ -105,8 +105,8 @@ struct AudioPlayerControllerTests {
 
     // MARK: - Audio Session Failure Guard
 
-    @Test("Play bails when audio session activation fails")
-    func playBailsOnSessionActivationFailure() {
+    @Test("Play keeps intent on a generic activation failure so the startup watchdog can escalate (#518, 6-A)")
+    func playKeepsIntentOnSessionActivationFailure() {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
         let mockPlayer = MockAudioPlayerForController()
@@ -123,9 +123,13 @@ struct AudioPlayerControllerTests {
 
         controller.play()
 
+        // The player never starts (activation failed), but under #518's 6-A
+        // design the non-`'!int'` abort no longer tears intent down: it keeps
+        // `playbackIntended` set (so `isLoading` is true) so the startup
+        // watchdog surfaces `silent_startup` and escalates recovery rather than
+        // stranding the user in silence.
         #expect(controller.isPlaying == false)
-        // isLoading is false when playbackIntended is false (playerState is .idle)
-        #expect(controller.isLoading == false)
+        #expect(controller.isLoading == true)
         #expect(mockPlayer.isPlaying == false)
     }
 
