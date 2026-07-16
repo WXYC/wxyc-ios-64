@@ -155,6 +155,12 @@ public enum StreamErrorType: String, Sendable, Equatable {
     case backoffExhausted = "backoff_exhausted"
     /// Connected, but playback never began within the startup deadline (starved mid-buffering)
     case startupTimeout = "startup_timeout"
+    /// Playback was intended but no audio and no other error signal arrived
+    /// within the whole play-intent→first-audio window — the fully-silent
+    /// startup class (session-activation abort, deferred connect never ran,
+    /// `'!int'` retries exhausted). Distinct from `startupTimeout`, which
+    /// presupposes a connection was established. See #518.
+    case silentStartup = "silent_startup"
     /// Network connectivity error
     case networkError = "network_error"
     /// Audio decoding failed
