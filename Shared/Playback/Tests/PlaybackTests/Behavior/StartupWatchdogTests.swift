@@ -271,6 +271,35 @@ struct StartupWatchdogTests {
         fixture.controller.stop(reason: .test)
     }
     #endif
+
+    // MARK: - Test 8: escalation survives persistent re-activation failure
+
+    #if os(iOS) || os(tvOS)
+    @Test("Escalation stays on the ramp while re-activation keeps failing, and plays once it clears")
+    func escalationSurvivesPersistentActivationFailure() async {
+        // A fast ramp so repeated activation-failed attempts resolve quickly;
+        // maximumWaitTime caps the backoff's up-to-1s random jitter per attempt.
+        let fixture = Self.makeFixture(
+            backoff: ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.05, maximumAttempts: 10)
+        )
+        // The initial play() and the escalation's first three ramp re-activations
+        // fail with a generic (non-'!int') error; the fifth activation succeeds.
+        // A ramp that aborts on its first failed re-activation would plateau at
+        // setActiveCallCount == 2 and never reach player.play(), re-stranding
+        // the silent-startup class this watchdog exists to heal.
+        fixture.mockSession.failSetActiveCount = 4
+
+        fixture.controller.play(reason: .test)
+
+        await Self.poll(until: { fixture.mockPlayer.playCallCount >= 1 })
+
+        #expect(Self.silentStartupEvents(fixture).count == 1)
+        #expect(fixture.mockSession.setActiveCallCount >= 5)
+        #expect(fixture.mockPlayer.playCallCount >= 1)
+
+        fixture.controller.stop(reason: .test)
+    }
+    #endif
 }
 
 #endif

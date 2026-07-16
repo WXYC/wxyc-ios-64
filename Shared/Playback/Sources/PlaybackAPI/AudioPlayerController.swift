@@ -1097,8 +1097,13 @@ extension AudioPlayerController {
 
                 #if os(iOS) || os(tvOS)
                 guard self.activateAudioSession() else {
-                    Log(.error, category: .playback, "Reconnect aborted: audio session activation failed")
-                    self.backoffTimer.reset()
+                    // Activation failure is a failed attempt, not a terminal
+                    // condition: stay on the ramp (mirroring the holding
+                    // pattern) so a persistent failure escalates to
+                    // backoff_exhausted → holding rather than stranding a
+                    // still-intended playback in silence. See #518.
+                    Log(.error, category: .playback, "Reconnect attempt blocked: audio session activation failed; continuing ramp")
+                    self.attemptReconnectWithExponentialBackoff()
                     return
                 }
                 #endif
