@@ -30,8 +30,13 @@ let package = Package(
                 // uses `CSSearchableItemAttributeSet` (both @available(tvOS,
                 // unavailable), CoreSpotlight is CS_TVOS_UNAVAILABLE). Watch
                 // has no CoreSpotlight either, so the dep is gated to iOS +
-                // macOS to keep both the tvOS and watchOS build graphs clean.
-                .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macOS])),
+                // Mac Catalyst + macOS to keep both the tvOS and watchOS build
+                // graphs clean. `.macCatalyst` must be listed explicitly:
+                // SwiftPM treats it as a platform distinct from `.iOS`, so the
+                // Catalyst ("designed for iPad") build would otherwise drop the
+                // dependency while the `#if !os(watchOS) && !os(tvOS)` guard in
+                // SpotlightDonationService still compiles `import WXYCIntents`.
+                .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macCatalyst, .macOS])),
             ]
         ),
         .testTarget(
@@ -43,7 +48,7 @@ let package = Package(
                 .product(name: "PlaylistTesting", package: "Playlist"),
                 "Artwork",
                 .product(name: "PlaybackCore", package: "Playback"),
-                .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macOS])),
+                .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macCatalyst, .macOS])),
             ]
         )
     ]
