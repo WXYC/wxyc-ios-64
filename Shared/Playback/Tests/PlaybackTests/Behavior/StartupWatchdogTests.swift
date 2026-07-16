@@ -166,10 +166,12 @@ struct StartupWatchdogTests {
 
     @Test("A start that reaches .playing then stalls before the deadline does not misfire silent_startup")
     func playingThenStallDoesNotMisfire() async {
-        // Deadline long enough to sequence play → playing → stall inside it, so a
-        // lazy `!isPlaying`-only guard would (wrongly) fire at the deadline. The
-        // proactive `.playing` disarm must prevent that.
-        let fixture = Self.makeFixture(deadline: .milliseconds(400))
+        // Deadline long enough to sequence play → playing → stall inside it —
+        // with margin for a loaded CI machine, since a late disarm past the
+        // deadline would flake — so a lazy `!isPlaying`-only guard would
+        // (wrongly) fire at the deadline. The proactive `.playing` disarm must
+        // prevent that.
+        let fixture = Self.makeFixture(deadline: .seconds(1))
 
         fixture.controller.play(reason: .test)
         // RadioPlayer/HLS reach .playing without ever emitting `.firstAudio`.
@@ -182,7 +184,7 @@ struct StartupWatchdogTests {
 
         // Past the deadline: a stall after a healthy start is the `.stall`
         // reconnect path's job, not a silent start.
-        try? await Task.sleep(for: .milliseconds(400))
+        try? await Task.sleep(for: .milliseconds(1100))
 
         #expect(Self.silentStartupEvents(fixture).isEmpty)
 
@@ -222,12 +224,16 @@ struct StartupWatchdogTests {
         #expect(Self.silentStartupEvents(fixture).isEmpty)
     }
 
-    // MARK: - Test 6: non-'!int' activation abort keeps intent and escalates (6-A)
+    // MARK: - Test 6: non-'!int' activation abort escalates immediately (6-A)
 
     #if os(iOS) || os(tvOS)
-    @Test("A non-'!int' activation abort keeps intent so the watchdog escalates, and the retry recovers")
+    @Test("A non-'!int' activation abort escalates immediately — no watchdog wait — and the retry recovers")
     func nonInterruptAbortEscalates() async {
-        let fixture = Self.makeFixture()
+        // Deadline far beyond the poll window: only an immediate, synchronous
+        // escalation (not a watchdog fire) can produce the event in time. The
+        // failure is known synchronously at play(), so the user must not spend
+        // the whole intent→audio deadline staring at a dead spinner.
+        let fixture = Self.makeFixture(deadline: .seconds(30))
 
         // First activation fails with a generic (non-'!int') error; the
         // escalation's re-activation succeeds and reaches player.play().
@@ -300,6 +306,30 @@ struct StartupWatchdogTests {
         fixture.controller.stop(reason: .test)
     }
     #endif
+
+    // MARK: - Test 9: mirror lag at the deadline boundary does not misfire
+
+    @Test("A .playing the state mirror hasn't processed yet does not misfire silent_startup")
+    func mirrorLagDoesNotMisfire() async {
+        let fixture = Self.makeFixture()
+
+        fixture.controller.play(reason: .test)
+        // Put the player in .playing WITHOUT yielding to stateStream — the
+        // controller's mirrored state stays stale, modeling first audio landing
+        // in the narrow window between the deadline elapsing and the state
+        // observer catching up. The fire guard must consult the live player,
+        // not just the mirror, so this near-miss can't pollute the
+        // silent_startup fleet metric (#509) with a spurious event.
+        fixture.mockPlayer.state = .playing
+        fixture.mockPlayer.isPlaying = true
+
+        // Wait well past the deadline; the watchdog must not fire.
+        try? await Task.sleep(for: .milliseconds(300))
+
+        #expect(Self.silentStartupEvents(fixture).isEmpty)
+
+        fixture.controller.stop(reason: .test)
+    }
 }
 
 #endif

@@ -125,12 +125,16 @@ struct AudioPlayerControllerTests {
 
         // The player never starts (activation failed), but under #518's 6-A
         // design the non-`'!int'` abort no longer tears intent down: it keeps
-        // `playbackIntended` set (so `isLoading` is true) so the startup
-        // watchdog surfaces `silent_startup` and escalates recovery rather than
+        // `playbackIntended` set (so `isLoading` is true) and escalates
+        // recovery immediately (`silent_startup` + reconnect ramp) rather than
         // stranding the user in silence.
         #expect(controller.isPlaying == false)
         #expect(controller.isLoading == true)
         #expect(mockPlayer.isPlaying == false)
+
+        // Tear intent down so the escalated recovery loop doesn't keep
+        // retrying activation for the remainder of the test process.
+        controller.stop(reason: .test)
     }
 
     // MARK: - Debug Snapshot
