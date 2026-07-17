@@ -6,10 +6,9 @@
 //  rendered behind RootTabView in ThemePickerContainer, shows through.
 //
 //  The `Tab` API is backed by UITabBarController, whose view defaults to an
-//  opaque systemBackground. Left alone it paints white over the wallpaper and
-//  swallows the long-press that opens the theme picker. This mirrors the
-//  Wallpaper package's ScrollViewIntrospector: a zero-size probe walks up to
-//  the enclosing tab controller and clears the opaque backings.
+//  opaque systemBackground. Left alone it paints white over the wallpaper. A
+//  zero-size probe walks up to the enclosing tab controller and clears the
+//  opaque backings so the wallpaper shows through.
 //
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.

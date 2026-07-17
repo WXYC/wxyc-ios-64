@@ -22,7 +22,6 @@ struct InfoDetailView: View {
     @State private var showingMailComposer = false
     @State private var showingBugReport = false
     @State private var requestText = ""
-    @Environment(Singletonia.self) private var appState
     
     var body: some View {
         VStack(alignment: .center) {
@@ -78,6 +77,7 @@ struct InfoDetailView: View {
             Spacer()
         }
         .padding(.horizontal)
+        .accessibilityIdentifier("infoDetailView")
         .alert("Is this a bug?", isPresented: $showingLogPrompt) {
             Button("Yes!") {
                 showingBugReport = true
@@ -115,10 +115,6 @@ struct InfoDetailView: View {
                 logsProvider: collectBugReportLogs
             )
         }
-        .themePickerGesture(
-            pickerState: appState.themePickerState,
-            configuration: appState.themeConfiguration
-        )
     }
 
     private func sendRequest(message: String) async {

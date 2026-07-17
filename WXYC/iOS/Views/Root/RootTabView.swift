@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Playlist
+import Wallpaper
 import WXUI
 
 struct RootTabView: View {
@@ -53,22 +54,36 @@ struct RootTabView: View {
     @State private var selectedPage = Page.playlist
     @State private var selectedPlaycut: PlaycutSelection?
 
+    @Environment(Singletonia.self) private var appState
+
     var body: some View {
         TabView(selection: $selectedPage) {
             Tab(Page.playlist.title, systemImage: Page.playlist.systemImage, value: Page.playlist) {
                 PlaylistView(selectedPlaycut: $selectedPlaycut)
+                    .themePickerGesture(
+                        pickerState: appState.themePickerState,
+                        configuration: appState.themeConfiguration
+                    )
                     .clearTabBarBackground()
             }
             .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
 
             Tab(Page.onTour.title, systemImage: Page.onTour.systemImage, value: Page.onTour) {
                 OnTourTabView()
+                    .themePickerGesture(
+                        pickerState: appState.themePickerState,
+                        configuration: appState.themeConfiguration
+                    )
                     .clearTabBarBackground()
             }
             .accessibilityIdentifier(Page.onTour.accessibilityIdentifier)
 
             Tab(Page.infoDetail.title, systemImage: Page.infoDetail.systemImage, value: Page.infoDetail) {
                 InfoDetailView()
+                    .themePickerGesture(
+                        pickerState: appState.themePickerState,
+                        configuration: appState.themeConfiguration
+                    )
                     .clearTabBarBackground()
             }
             .accessibilityIdentifier(Page.infoDetail.accessibilityIdentifier)

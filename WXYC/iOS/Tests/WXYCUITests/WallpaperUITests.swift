@@ -11,6 +11,15 @@
 import Testing
 import XCTest
 
+/// The three tabs and the accessibility identifier of each one's long-pressable
+/// content surface. Extracted to a top-level constant so the `@Test(arguments:)`
+/// macro type-checks quickly.
+private let pickerTabCases: [(tab: String, content: String)] = [
+    ("tab.nowPlaying", "playlistView"),
+    ("tab.onTour", "onTourView"),
+    ("tab.info", "infoDetailView"),
+]
+
 @Suite(
     "Wallpaper UI Tests",
     .serialized,
@@ -65,29 +74,54 @@ struct WallpaperUITests {
         // Verify app is running and main UI is visible
         #expect(app.exists, "App should be running")
 
-        // The app uses a paged tab view, verify the main scroll view exists
+        // The app uses a standard tab bar; verify the main scroll view exists.
         let scrollViews = app.scrollViews
         #expect(scrollViews.count > 0 || app.otherElements.count > 0,
                 "Main UI elements should be visible")
     }
 
-    /// Test that wallpaper picker can be accessed via long press
-    @Test("Wallpaper picker access")
-    func wallpaperPickerAccess() async throws {
-        // Wait for app to be ready
-        try await waitUntil(timeout: .seconds(5), "app window") {
-            app.windows.count > 0
-        }
+    /// Test that the long press actually enters theme picker mode from *every* tab.
+    ///
+    /// The picker swaps the wallpaper for `ThemeCarouselView`, which carries the
+    /// `themeCarousel` accessibility identifier. Asserting that element appears
+    /// verifies the long-press gesture fired — not merely that the app survived
+    /// the press.
+    ///
+    /// Parameterizing over all three tabs guards the invariant the gesture
+    /// redesign establishes: the long press works uniformly, including on the Info
+    /// tab, which has no scroll view for the old `UIScrollView`-introspection
+    /// approach to attach to.
+    @Test("Long press opens the theme picker from every tab", arguments: pickerTabCases)
+    func pickerOpensFromTab(_ tabCase: (tab: String, content: String)) async throws {
+        // Cold launch renders a continuous Metal wallpaper, so (per
+        // RootTabBarUITests) gate readiness on the shallow, stable tab item with a
+        // generous timeout before interacting.
+        let tab = app.buttons[tabCase.tab]
+        try await waitUntil(tab, is: .exists, timeout: .seconds(20))
 
-        // Long press to open wallpaper picker
-        let opened = try await openWallpaperPicker()
-        #expect(opened, "Should be able to perform long press gesture")
+        // Switch to the tab under test (a harmless re-selection for the default
+        // tab). The iOS 26 floating Liquid Glass tab bar reports items as existing
+        // but not hittable, so tap by coordinate rather than `.tap()`.
+        tab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
-        // Wait for picker to appear
-        try await Task.sleep(for: .milliseconds(500))
+        // The tab's content surface hosts the long-press gesture.
+        let content = app.descendants(matching: .any)
+            .matching(identifier: tabCase.content)
+            .firstMatch
+        try await waitUntil(content, is: .exists, timeout: .seconds(12))
 
-        // App should still be responsive
-        #expect(app.exists, "App should be running after opening wallpaper picker")
+        // Long press (0.7s exceeds the 0.5s threshold) with no movement enters
+        // picker mode. Press the frame center by coordinate so container elements
+        // that aren't themselves hittable still receive the press.
+        content.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.7)
+
+        // The theme carousel appears only once the picker is active.
+        let carousel = app.descendants(matching: .any)
+            .matching(identifier: "themeCarousel")
+            .firstMatch
+        #expect(carousel.waitForExistence(timeout: 5),
+                "Theme carousel should appear after long-pressing the \(tabCase.tab) tab")
     }
 
     // MARK: - Wallpaper Selection Tests

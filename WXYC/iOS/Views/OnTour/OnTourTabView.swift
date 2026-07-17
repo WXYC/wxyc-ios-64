@@ -43,6 +43,7 @@ struct OnTourTabView: View {
             header
             content
         }
+        .accessibilityIdentifier("onTourView")
         .task {
             if !hasAppeared {
                 hasAppeared = true
