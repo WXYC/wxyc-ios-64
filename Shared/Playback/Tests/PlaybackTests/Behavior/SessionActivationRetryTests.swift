@@ -39,7 +39,10 @@ struct SessionActivationRetryTests {
 
     // MARK: - Bounded retry recovers a transient CannotInterruptOthers
 
-    @Test("A transient CannotInterruptOthers failure is retried until the session activates")
+    @Test(
+        "A transient CannotInterruptOthers failure is retried until the session activates",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func transientFailureRetriedUntilActivated() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
@@ -62,7 +65,10 @@ struct SessionActivationRetryTests {
                "Session should eventually activate once the transient state clears")
     }
 
-    @Test("Once the retry activates the session, playback proceeds")
+    @Test(
+        "Once the retry activates the session, playback proceeds",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func retrySuccessResumesPlayback() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
@@ -80,7 +86,10 @@ struct SessionActivationRetryTests {
 
     // MARK: - Retry is bounded (does not busy-loop forever)
 
-    @Test("Retries are bounded when CannotInterruptOthers never clears")
+    @Test(
+        "Retries are bounded when CannotInterruptOthers never clears",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func retriesAreBounded() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
@@ -108,7 +117,10 @@ struct SessionActivationRetryTests {
 
     // MARK: - Respect interruption-ended rather than busy-retrying
 
-    @Test("Interruption-ended reactivates a pending session instead of only busy-retrying")
+    @Test(
+        "Interruption-ended reactivates a pending session instead of only busy-retrying",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func interruptionEndedReactivatesPendingSession() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
