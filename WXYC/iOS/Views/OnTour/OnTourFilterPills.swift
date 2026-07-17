@@ -45,6 +45,11 @@ struct OnTourFilterPills: View {
                             filter.allAgesOnly = false
                         }
                     }
+                    if !filter.selectedGenres.isEmpty {
+                        pill("Genres (\(filter.selectedGenres.count))", facet: "genre") {
+                            filter.selectedGenres = []
+                        }
+                    }
                 }
                 .padding(.horizontal, 16)
             }

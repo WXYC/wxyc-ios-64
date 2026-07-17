@@ -273,11 +273,14 @@ private extension Concert {
         return [
             Concert(id: 1, venue: cradle, startsOn: day(0), headliningArtistRaw: "Jessica Pratt",
                     supportingArtistsRaw: ["Julie Byrne"], ticketURL: URL(string: "https://example.com/a"),
-                    priceMin: 22, priceMax: 25, ageRestriction: "All Ages", status: .onSale),
+                    priceMin: 22, priceMax: 25, ageRestriction: "All Ages", status: .onSale,
+                    genres: ["Rock", "Folk World & Country"]),
             Concert(id: 2, venue: motorco, startsOn: day(3), headliningArtistRaw: "Chuquimamani-Condori",
-                    ticketURL: URL(string: "https://example.com/b"), priceMin: 0, ageRestriction: "18+", status: .free),
+                    ticketURL: URL(string: "https://example.com/b"), priceMin: 0, ageRestriction: "18+", status: .free,
+                    genres: ["Electronic"]),
             Concert(id: 3, venue: local506, startsOn: day(6), headliningArtistRaw: "Juana Molina",
-                    ticketURL: URL(string: "https://example.com/c"), priceMin: 18, ageRestriction: nil, status: .soldOut),
+                    ticketURL: URL(string: "https://example.com/c"), priceMin: 18, ageRestriction: nil, status: .soldOut,
+                    genres: ["Rock", "Electronic"]),
         ]
     }
 }
