@@ -109,6 +109,16 @@ public enum RecoveryMethod: String, Sendable, Equatable {
     case bufferRefill = "buffer_refill"
     case streamRestart = "stream_restart"
     case userInitiated = "user_initiated"
+    /// Recovered inside the uncapped reconnect holding pattern because the
+    /// injected network-reachability signal crossed to `→ satisfied` and
+    /// accelerated a pending reconnect (as opposed to waiting out the timed
+    /// cadence). Attribution for the reachability gate added in #517.
+    case reachabilityResume = "reachability_resume"
+    /// Recovered inside the uncapped reconnect holding pattern via its flat
+    /// timed *fallback* cadence — either no reachability signal is wired, or the
+    /// path was already satisfied and the connect simply succeeded on a later
+    /// tick. The complement of `reachabilityResume`; see #517.
+    case holdingFallback = "holding_fallback"
 }
 
 /// Event capturing recovery from a stall.

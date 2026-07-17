@@ -102,7 +102,7 @@ public final class AudioPlayerController {
     /// that distinguish "audio session activation failed" from "stream took
     /// too long to start" — see #251.
     public var debugStateSnapshot: String {
-        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded), holdingPatternEngaged=\(holdingPatternEngaged), holdingReconnectInFlight=\(holdingReconnectInFlight)"
+        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded), holdingPatternEngaged=\(holdingPatternEngaged), holdingReconnectInFlight=\(holdingReconnectInFlight), reachabilitySatisfied=\(lastReachabilitySatisfied.map(String.init(describing:)) ?? "nil"), holdingReconnectTrigger=\(holdingReconnectTrigger.rawValue)"
     }
 
     /// Whether the CPU-usage aggregation session is currently open. Exposed for
@@ -170,6 +170,13 @@ public final class AudioPlayerController {
     /// Whether a holding-pattern connect attempt is currently in flight, so a
     /// flapping → satisfied edge cannot launch an overlapping connect.
     private var holdingReconnectInFlight = false
+    /// What triggered the *pending* holding-pattern attempt, so a successful
+    /// recovery is attributed to the right path in telemetry (#517 nice-to-have):
+    /// `.reachabilityResume` when a `→ satisfied` edge accelerated it,
+    /// `.holdingFallback` when the flat timed cadence fired it. Snapshotted at the
+    /// start of each attempt (before the `.playing` state observer can clear it
+    /// via `leaveHoldingPattern()`) and passed to `captureRecoveryIfNeeded`.
+    private var holdingReconnectTrigger: RecoveryMethod = .holdingFallback
 
     // Play-intent → first-audio watchdog (#518). Guards the whole intent→audio
     // span so the fully-silent startup class (session-activation abort, deferred
@@ -1242,14 +1249,19 @@ extension AudioPlayerController {
         Log(.warning, category: .playback, "Reconnect holding pattern engaged: reachability-gated, flat \(String(format: "%.1f", holdInterval))s fallback cadence while playback is intended")
         holdingPatternEngaged = true
         beginReachabilityMonitoring()
-        scheduleHoldingReconnect(after: holdInterval)
+        scheduleHoldingReconnect(after: holdInterval, trigger: .holdingFallback)
     }
 
     /// Schedules the holding pattern's timed *fallback* attempt after
     /// `holdInterval`. On wake it defers to `performHoldingReconnectAttempt()` —
     /// the single funnel every holding attempt (timed or reachability-triggered)
     /// passes through — so the in-flight guard coalesces them. Never exhausts.
-    private func scheduleHoldingReconnect(after holdInterval: TimeInterval) {
+    ///
+    /// `trigger` records why this attempt is being scheduled so a successful
+    /// recovery is attributed correctly (`.holdingFallback` for the timed
+    /// cadence, `.reachabilityResume` for a `→ satisfied` edge). See #517.
+    private func scheduleHoldingReconnect(after holdInterval: TimeInterval, trigger: RecoveryMethod) {
+        holdingReconnectTrigger = trigger
         reconnectTask = Task { [weak self] in
             guard let self else { return }
 
@@ -1265,7 +1277,7 @@ extension AudioPlayerController {
 
             if self.player.isPlaying {
                 Log(.info, category: .playback, "Already playing, leaving reconnect holding pattern")
-                self.captureRecoveryIfNeeded()
+                self.captureRecoveryIfNeeded(method: self.holdingReconnectTrigger)
                 self.backoffTimer.reset()
                 self.leaveHoldingPattern()
                 return
@@ -1310,6 +1322,11 @@ extension AudioPlayerController {
 
         holdingReconnectInFlight = true
 
+        // Snapshot the attribution *now*: the `.playing` state observer runs
+        // `leaveHoldingPattern()` (which resets the trigger) during the await
+        // below, so reading it after the await would lose the credit. See #517.
+        let attemptTrigger = holdingReconnectTrigger
+
         #if os(iOS) || os(tvOS)
         guard activateAudioSession() else {
             holdingReconnectInFlight = false
@@ -1331,8 +1348,8 @@ extension AudioPlayerController {
             rescheduleHoldingFallbackIfSatisfied()
         } else if let stallStart = stallStartTime {
             let totalStallTime = Date().timeIntervalSince(stallStart)
-            Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s (holding pattern)")
-            captureRecoveryIfNeeded()
+            Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s (holding pattern, \(attemptTrigger.rawValue))")
+            captureRecoveryIfNeeded(method: attemptTrigger)
             backoffTimer.reset()
             leaveHoldingPattern()
         } else {
@@ -1350,7 +1367,7 @@ extension AudioPlayerController {
     private func rescheduleHoldingFallbackIfSatisfied() {
         guard holdingPatternEngaged, playbackIntended else { return }
         if reachabilityGateAllowsAttempt {
-            scheduleHoldingReconnect(after: backoffTimer.maximumWaitTime)
+            scheduleHoldingReconnect(after: backoffTimer.maximumWaitTime, trigger: .holdingFallback)
         } else {
             Log(.info, category: .playback, "Holding-pattern fallback suspended: awaiting network path return")
         }
@@ -1397,9 +1414,20 @@ extension AudioPlayerController {
         // Fire on the rising edge only: previous was not-satisfied (unsatisfied
         // or the initial `nil`), now satisfied. Redundant satisfied→satisfied
         // updates are ignored, so a stable healthy path never re-triggers.
+        //
+        // Attribution (#517): credit `.reachabilityResume` only for a *genuine*
+        // observed outage-and-return (`previous == false`) — that is the case
+        // where the network coming back is what drove recovery. The initial
+        // delivery on an already-satisfied path (`previous == nil`) still fires
+        // the edge — the loop must resume promptly rather than risk idling if
+        // the timer raced ahead of the first delivery — but it is attributed to
+        // the timed fallback, since reachability didn't actually change: the
+        // common "origin hiccup on a stable network" case must not be mislabeled
+        // a reachability resume.
         if satisfied && previous != true {
-            Log(.info, category: .playback, "Network path satisfied; accelerating pending holding-pattern reconnect")
-            triggerHoldingReconnectOnSatisfiedEdge()
+            let trigger: RecoveryMethod = (previous == false) ? .reachabilityResume : .holdingFallback
+            Log(.info, category: .playback, "Network path satisfied; accelerating pending holding-pattern reconnect (\(trigger.rawValue))")
+            triggerHoldingReconnectOnSatisfiedEdge(trigger: trigger)
         }
         // An `→ unsatisfied` edge needs no active work: any in-flight attempt
         // fails and returns to idle via `rescheduleHoldingFallbackIfSatisfied`,
@@ -1410,10 +1438,11 @@ extension AudioPlayerController {
     /// only when the holding pattern is engaged and no attempt is already in
     /// flight. Cancels any sleeping fallback timer first so the edge supersedes
     /// it (prompt resume) rather than stacking a second attempt behind it.
-    private func triggerHoldingReconnectOnSatisfiedEdge() {
+    /// `trigger` is the attribution the resulting recovery is credited with.
+    private func triggerHoldingReconnectOnSatisfiedEdge(trigger: RecoveryMethod) {
         guard holdingPatternEngaged, !holdingReconnectInFlight else { return }
         reconnectTask?.cancel()
-        scheduleHoldingReconnect(after: 0)
+        scheduleHoldingReconnect(after: 0, trigger: trigger)
     }
 
     /// Leaves the uncapped holding phase and tears down its reachability monitor
@@ -1422,6 +1451,7 @@ extension AudioPlayerController {
     private func leaveHoldingPattern() {
         holdingPatternEngaged = false
         holdingReconnectInFlight = false
+        holdingReconnectTrigger = .holdingFallback
         reachabilityMonitorTask?.cancel()
         reachabilityMonitorTask = nil
         lastReachabilitySatisfied = nil
@@ -1447,16 +1477,25 @@ extension AudioPlayerController {
         return player.state == .playing
     }
 
-    private func captureRecoveryIfNeeded() {
+    /// Credits a successful stall/outage recovery, once per stall episode
+    /// (guarded on `stallStartTime`).
+    ///
+    /// `method`, when supplied, attributes the recovery to a specific path —
+    /// the holding-pattern sites pass `.reachabilityResume` / `.holdingFallback`
+    /// (#517) so the two reconnect mechanisms are distinguishable in telemetry.
+    /// When omitted (the mid-stream buffer-recovery and bounded-ramp sites) the
+    /// method is derived from whether the exponential ramp ran.
+    private func captureRecoveryIfNeeded(method: RecoveryMethod? = nil) {
         guard let stallStart = self.stallStartTime else { return }
         let playerType = self.resolvedPlayerType
+        let recoveryMethod = method ?? (backoffTimer.numberOfAttempts > 0 ? .retryWithBackoff : .automaticReconnect)
         analytics.capture(StallRecoveryEvent(
             playerType: playerType,
             successful: true,
             attempts: Int(self.backoffTimer.numberOfAttempts),
             stallDuration: Date().timeIntervalSince(stallStart),
             reason: .bufferUnderrun,
-            recoveryMethod: backoffTimer.numberOfAttempts > 0 ? .retryWithBackoff : .automaticReconnect
+            recoveryMethod: recoveryMethod
         ))
         self.stallStartTime = nil
     }

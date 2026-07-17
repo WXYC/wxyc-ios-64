@@ -106,6 +106,10 @@ struct ReachabilityReconnectTests {
             .count
     }
 
+    private static func stallRecoveries(_ fixture: Fixture) -> [StallRecoveryEvent] {
+        fixture.mockAnalytics.typedEvents(ofType: StallRecoveryEvent.self)
+    }
+
     /// Drives the controller from a clean start, through a stall, through the
     /// bounded ramp (parked in `.error` so every attempt fails fast), and into
     /// the reachability-gated holding pattern. Returns once the single
@@ -263,6 +267,65 @@ struct ReachabilityReconnectTests {
         try? await Task.sleep(for: .milliseconds(150))
         #expect(fixture.mockPlayer.playCallCount == playCallsAfterRecovery,
                 "A satisfied-edge after recovery must not trigger a reconnect once the holding pattern has been left")
+
+        fixture.controller.stop(reason: .test)
+    }
+
+    // MARK: - Test 6: satisfied-edge recovery is attributed in telemetry
+
+    @Test("A recovery driven by the → satisfied edge is credited recovery_method = reachability_resume")
+    func satisfiedEdgeRecoveryAttributed() async {
+        let fixture = Self.makeFixture(initialSatisfied: false)
+        await Self.driveIntoHoldingPattern(fixture)
+
+        // Wait until the monitor has subscribed and cached the initial
+        // unsatisfied state, so the send below is a genuine observed
+        // false → satisfied transition (attributed .reachabilityResume) rather
+        // than the monitor's very first delivery (attributed .holdingFallback).
+        await Self.poll(until: {
+            fixture.controller.debugStateSnapshot.contains("reachabilitySatisfied=false")
+        })
+
+        // The reachability edge is what drives this reconnect to success, so the
+        // recovery it produces must be attributed to the satisfied-edge path —
+        // not the timed fallback and not the generic derived method.
+        fixture.mockPlayer.shouldAutoUpdateState = true
+        fixture.reachability.send(satisfied: true)
+
+        await Self.poll(until: { fixture.controller.isPlaying })
+        #expect(fixture.controller.isPlaying, "\(fixture.controller.debugStateSnapshot)")
+
+        await Self.poll(until: { Self.stallRecoveries(fixture).count == 1 })
+        let recoveries = Self.stallRecoveries(fixture)
+        #expect(recoveries.count == 1,
+                "Exactly one stall_recovery should be credited; saw \(recoveries.count)")
+        #expect(recoveries.first?.recoveryMethod == .reachabilityResume,
+                "A satisfied-edge recovery must be attributed .reachabilityResume; got \(String(describing: recoveries.first?.recoveryMethod))")
+
+        fixture.controller.stop(reason: .test)
+    }
+
+    // MARK: - Test 7: timed-fallback recovery is attributed in telemetry
+
+    @Test("A recovery driven by the timed fallback is credited recovery_method = holding_fallback")
+    func timedFallbackRecoveryAttributed() async {
+        // Path satisfied throughout, so recovery comes from the flat timed
+        // cadence rather than a → satisfied edge.
+        let fixture = Self.makeFixture(initialSatisfied: true)
+        await Self.driveIntoHoldingPattern(fixture)
+
+        // Let the next timed fallback tick reconnect successfully.
+        fixture.mockPlayer.shouldAutoUpdateState = true
+
+        await Self.poll(until: { fixture.controller.isPlaying })
+        #expect(fixture.controller.isPlaying, "\(fixture.controller.debugStateSnapshot)")
+
+        await Self.poll(until: { Self.stallRecoveries(fixture).count == 1 })
+        let recoveries = Self.stallRecoveries(fixture)
+        #expect(recoveries.count == 1,
+                "Exactly one stall_recovery should be credited; saw \(recoveries.count)")
+        #expect(recoveries.first?.recoveryMethod == .holdingFallback,
+                "A timed-fallback recovery must be attributed .holdingFallback; got \(String(describing: recoveries.first?.recoveryMethod))")
 
         fixture.controller.stop(reason: .test)
     }
