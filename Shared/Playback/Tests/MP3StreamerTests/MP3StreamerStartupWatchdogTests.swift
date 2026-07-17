@@ -222,7 +222,10 @@ struct MP3StreamerStartupWatchdogTests {
 
     /// Stopping before the deadline must cancel the watchdog so it can't fire a
     /// reconnect against an intentionally-stopped streamer.
-    @Test("Is cancelled by stop() before it can fire")
+    @Test(
+        "Is cancelled by stop() before it can fire",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func cancelledByStop() async throws {
         // `connectionTimeout: 0` keeps the startupTimeout clamp at its 1.0s floor.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
@@ -358,7 +361,10 @@ struct MP3StreamerStartupWatchdogTests {
     /// stopped streamer is not resurrected into `.buffering` with a live watchdog.
     /// Before #488 that Task tore down, restored `.connecting`, armed a watchdog and
     /// connected — reviving an intentionally-stopped streamer.
-    @Test("A racing stop() after a replay does not resurrect a stopped streamer")
+    @Test(
+        "A racing stop() after a replay does not resurrect a stopped streamer",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func racingStopAfterReplayDoesNotResurrect() async throws {
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()

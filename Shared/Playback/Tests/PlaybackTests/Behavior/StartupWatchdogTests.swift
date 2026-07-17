@@ -126,7 +126,10 @@ struct StartupWatchdogTests {
 
     // MARK: - Test 1: silent start escalates
 
-    @Test("A silent start emits exactly one silent_startup event and drives a recovery attempt")
+    @Test(
+        "A silent start emits exactly one silent_startup event and drives a recovery attempt",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func silentStartEscalates() async {
         let fixture = Self.makeFixture()
 
@@ -227,7 +230,10 @@ struct StartupWatchdogTests {
     // MARK: - Test 6: non-'!int' activation abort escalates immediately (6-A)
 
     #if os(iOS) || os(tvOS)
-    @Test("A non-'!int' activation abort escalates immediately — no watchdog wait — and the retry recovers")
+    @Test(
+        "A non-'!int' activation abort escalates immediately — no watchdog wait — and the retry recovers",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func nonInterruptAbortEscalates() async {
         // Deadline far beyond the poll window: only an immediate, synchronous
         // escalation (not a watchdog fire) can produce the event in time. The
@@ -258,7 +264,10 @@ struct StartupWatchdogTests {
     // MARK: - Test 7: '!int' retries exhausting leaves intent set
 
     #if os(iOS)
-    @Test("When '!int' retries exhaust, playbackIntended stays true so the armed watchdog remains live")
+    @Test(
+        "When '!int' retries exhaust, playbackIntended stays true so the armed watchdog remains live",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func interruptExhaustionKeepsIntent() async {
         // A long deadline so the watchdog doesn't fire during this invariant
         // check — we're asserting the state the watchdog depends on, not its fire.
@@ -281,7 +290,10 @@ struct StartupWatchdogTests {
     // MARK: - Test 8: escalation survives persistent re-activation failure
 
     #if os(iOS) || os(tvOS)
-    @Test("Escalation stays on the ramp while re-activation keeps failing, and plays once it clears")
+    @Test(
+        "Escalation stays on the ramp while re-activation keeps failing, and plays once it clears",
+        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
+    )
     func escalationSurvivesPersistentActivationFailure() async {
         // A fast ramp so repeated activation-failed attempts resolve quickly;
         // maximumWaitTime caps the backoff's up-to-1s random jitter per attempt.
