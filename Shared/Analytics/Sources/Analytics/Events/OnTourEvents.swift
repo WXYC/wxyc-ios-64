@@ -29,8 +29,8 @@ public struct OnTourFilterSheetOpened {
 
 /// Event fired on an explicit user filter action — changing a facet, clearing a
 /// facet pill, or resetting. `facet` is the changed facet's key ("date", "venue",
-/// "free", "all_ages") or "reset" for a full clear; `activeCount` is the resulting
-/// number of engaged facet groups. Never carries any concert or artist data.
+/// "free", "all_ages", "genre") or "reset" for a full clear; `activeCount` is the
+/// resulting number of engaged facet groups. Never carries any concert or artist data.
 @AnalyticsEvent
 public struct OnTourFilterApplied {
     public let facet: String

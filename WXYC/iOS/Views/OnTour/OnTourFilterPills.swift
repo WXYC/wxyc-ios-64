@@ -17,8 +17,8 @@ import SwiftUI
 struct OnTourFilterPills: View {
     @Binding var filter: ConcertFilterState
 
-    /// Called with a facet key ("date"/"venue"/"free"/"all_ages") after a pill
-    /// clears it, so the caller can record analytics.
+    /// Called with a facet key ("date"/"venue"/"free"/"all_ages"/"genre") after a
+    /// pill clears it, so the caller can record analytics.
     var onClear: (String) -> Void = { _ in }
 
     var body: some View {
