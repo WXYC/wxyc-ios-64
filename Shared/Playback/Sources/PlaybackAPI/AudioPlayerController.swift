@@ -45,19 +45,22 @@ public final class AudioPlayerController {
         audioSession: AVAudioSession.sharedInstance(),
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
-        analytics: StructuredPostHogAnalytics.shared
+        analytics: StructuredPostHogAnalytics.shared,
+        reachability: NWPathMonitorReachability()
     )
     #elseif os(watchOS)
     public static let shared = AudioPlayerController(
         player: RadioPlayer(),
         notificationCenter: .default,
-        analytics: StructuredPostHogAnalytics.shared
+        analytics: StructuredPostHogAnalytics.shared,
+        reachability: NWPathMonitorReachability()
     )
     #else
     public static let shared = AudioPlayerController(
         player: makePlayer(for: PlayerControllerType.loadPersisted()),
         notificationCenter: .default,
-        analytics: StructuredPostHogAnalytics.shared
+        analytics: StructuredPostHogAnalytics.shared,
+        reachability: NWPathMonitorReachability()
     )
     #endif
 
@@ -99,7 +102,7 @@ public final class AudioPlayerController {
     /// that distinguish "audio session activation failed" from "stream took
     /// too long to start" — see #251.
     public var debugStateSnapshot: String {
-        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded)"
+        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded), holdingPatternEngaged=\(holdingPatternEngaged), holdingReconnectInFlight=\(holdingReconnectInFlight)"
     }
 
     /// Whether the CPU-usage aggregation session is currently open. Exposed for
@@ -147,6 +150,26 @@ public final class AudioPlayerController {
     // Exponential backoff for reconnection
     @ObservationIgnored internal var backoffTimer: ExponentialBackoff
     @ObservationIgnored private var reconnectTask: Task<Void, Never>?
+
+    // Reachability-gated reconnect (#517). The signal gates and accelerates the
+    // controller's uncapped holding pattern (#512) — the single owner of
+    // reachability-driven prompt resume. When no reachability is injected, the
+    // cached state stays `nil` and the holding pattern falls back to its blind
+    // timed cadence, so behaviour is unchanged for callers that don't wire it.
+    @ObservationIgnored private let reachability: NetworkReachability?
+    @ObservationIgnored private var reachabilityMonitorTask: Task<Void, Never>?
+    /// Cached path-satisfied state, updated by the reachability subscription.
+    /// `nil` until the first signal arrives (or forever when reachability is not
+    /// injected). The gate requires an explicit `true`, so a stale-optimistic
+    /// seed can never fire a blind attempt on a known-down network.
+    private var lastReachabilitySatisfied: Bool?
+    /// Whether the uncapped holding phase (#512) is active. The bounded ramp is
+    /// left un-gated (short, self-terminating); only this phase idles while
+    /// unsatisfied and accelerates on the → satisfied edge.
+    private var holdingPatternEngaged = false
+    /// Whether a holding-pattern connect attempt is currently in flight, so a
+    /// flapping → satisfied edge cannot launch an overlapping connect.
+    private var holdingReconnectInFlight = false
 
     // Play-intent → first-audio watchdog (#518). Guards the whole intent→audio
     // span so the fully-silent startup class (session-activation abort, deferred
@@ -202,7 +225,8 @@ public final class AudioPlayerController {
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default,
-        startupWatchdogDeadline: Duration = .seconds(15)
+        startupWatchdogDeadline: Duration = .seconds(15),
+        reachability: NetworkReachability? = nil
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -211,6 +235,7 @@ public final class AudioPlayerController {
         self.analytics = analytics
         self.backoffTimer = backoffTimer
         self.startupWatchdogDeadline = startupWatchdogDeadline
+        self.reachability = reachability
 
         // NOTE: We intentionally do NOT call configureAudioSessionIfNeeded() here.
         // Setting the audio session category to .playback during init interrupts
@@ -232,13 +257,15 @@ public final class AudioPlayerController {
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default,
-        startupWatchdogDeadline: Duration = .seconds(15)
+        startupWatchdogDeadline: Duration = .seconds(15),
+        reachability: NetworkReachability? = nil
     ) {
         self.player = player
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
         self.startupWatchdogDeadline = startupWatchdogDeadline
+        self.reachability = reachability
 
         setUpPlayerObservation()
         setUpCPUAggregator()
@@ -250,6 +277,7 @@ public final class AudioPlayerController {
         stateObservationTask?.cancel()
         eventTask?.cancel()
         reconnectTask?.cancel()
+        reachabilityMonitorTask?.cancel()
         startupWatchdogTask?.cancel()
         #if os(iOS) || os(tvOS)
         sessionActivationRetryTask?.cancel()
@@ -286,6 +314,7 @@ public final class AudioPlayerController {
         // recovery (see StallRecoverySabotageTests / Bug B).
         reconnectTask?.cancel()
         reconnectTask = nil
+        leaveHoldingPattern()
         backoffTimer.reset()
 
         playbackIntended = true
@@ -356,6 +385,7 @@ public final class AudioPlayerController {
 
         reconnectTask?.cancel()
         reconnectTask = nil
+        leaveHoldingPattern()
         disarmStartupWatchdog()
         backoffTimer.reset()
 
@@ -923,8 +953,16 @@ extension AudioPlayerController {
                 // also prevents a healthy-start-then-stall from misfiring
                 // `silent_startup` (a stall is the `.stall` reconnect path's
                 // job, not a silent start). See #518.
+                //
+                // It is also the universal *recovery* signal that tears down the
+                // holding pattern and its reachability monitor (#517). Routing
+                // teardown through `.playing` — rather than only the holding
+                // attempt's own success branch — closes the leak where a
+                // mid-holding `.stall` restarts the bounded ramp, the ramp
+                // succeeds, and the monitor is stranded across healthy playback.
                 if newState == .playing {
                     self.disarmStartupWatchdog()
+                    self.leaveHoldingPattern()
                 }
             }
         }
@@ -1163,11 +1201,27 @@ extension AudioPlayerController {
         }
     }
 
-    /// Once the bounded exponential ramp is spent, keep trying to reconnect at a
-    /// flat, uncapped cadence — the ramp's `maximumWaitTime` (10s by default) —
-    /// for as long as playback is still intended, rather than hard-giving-up
-    /// into silence. A mid-stream underrun that outlives the ramp is almost
-    /// always a transient network condition, and the listener still wants audio.
+    /// Once the bounded exponential ramp is spent, keep trying to reconnect for
+    /// as long as playback is still intended, rather than hard-giving-up into
+    /// silence. A mid-stream underrun that outlives the ramp is almost always a
+    /// transient network condition, and the listener still wants audio.
+    ///
+    /// #517 upgrades #512's *blind* flat-cadence loop with a reachability gate:
+    /// while the network path is unsatisfied the loop idles (no timer wakeups,
+    /// no session-activation churn), and a `→ satisfied` edge fires a pending
+    /// attempt promptly instead of waiting out the cadence. The flat cadence
+    /// (`maximumWaitTime`, 10s by default) is demoted to a *fallback* for the
+    /// "path satisfied but the connect still fails" case (captive portal, DNS,
+    /// origin down) — reachability is a gate and an accelerator, not a
+    /// guarantee. When no reachability is injected the gate is inert and the
+    /// original blind cadence is preserved exactly (see `reachabilityGateAllowsAttempt`).
+    ///
+    /// Reachability is gated at this single owner — the controller's uncapped
+    /// loop. The bounded ramp above is left un-gated (it self-terminates
+    /// quickly), and `MP3Streamer.attemptReconnect()` is deliberately NOT gated:
+    /// each holding-pattern tick calls `player.play()`, which already drives the
+    /// streamer's own bounded connect, so gating there too would fan out
+    /// overlapping connects on the same `→ satisfied` edge.
     ///
     /// The retry deliberately survives backgrounding: locked-screen playback is
     /// the core radio use case, and iOS suspends the app once it stops producing
@@ -1175,19 +1229,26 @@ extension AudioPlayerController {
     /// session is left open — it ends with intent (stop / play-abort), not with
     /// a transient error — so a later recovery still credits the same session.
     ///
-    /// Motivated by the 32-user `backoff_exhausted` field signal (v3.1). A
-    /// follow-up (#517) would replace the blind 10s cadence with reachability
-    /// gating.
+    /// Monitor lifecycle: *pending-scoped*. Monitoring starts here and is torn
+    /// down by `leaveHoldingPattern()` on recovery / stop / manual play. The
+    /// tradeoff vs. a controller-lifetime monitor: no always-on cost while
+    /// playback is healthy (the common case), at the price of a tiny per-entry
+    /// `NWPathMonitor` setup. Holding-pattern entries are rare (only after ramp
+    /// exhaustion), so the balance favours pending-scoped.
+    ///
+    /// Motivated by the 32-user `backoff_exhausted` field signal (v3.1).
     private func enterReconnectHoldingPattern() {
         let holdInterval = backoffTimer.maximumWaitTime
-        Log(.warning, category: .playback, "Reconnect holding pattern engaged: retrying every \(String(format: "%.1f", holdInterval))s while playback is intended")
+        Log(.warning, category: .playback, "Reconnect holding pattern engaged: reachability-gated, flat \(String(format: "%.1f", holdInterval))s fallback cadence while playback is intended")
+        holdingPatternEngaged = true
+        beginReachabilityMonitoring()
         scheduleHoldingReconnect(after: holdInterval)
     }
 
-    /// Schedules a single flat-cadence holding-pattern reconnect attempt,
-    /// re-scheduling itself on failure. Mirrors the ramp reconnect's
-    /// success/recovery bookkeeping (`isPlaying` short-circuit,
-    /// `waitForPlayingOrError`, recovery credit) but never exhausts.
+    /// Schedules the holding pattern's timed *fallback* attempt after
+    /// `holdInterval`. On wake it defers to `performHoldingReconnectAttempt()` —
+    /// the single funnel every holding attempt (timed or reachability-triggered)
+    /// passes through — so the in-flight guard coalesces them. Never exhausts.
     private func scheduleHoldingReconnect(after holdInterval: TimeInterval) {
         reconnectTask = Task { [weak self] in
             guard let self else { return }
@@ -1198,6 +1259,7 @@ extension AudioPlayerController {
             // case; this is the belt-and-braces intent guard.
             guard self.playbackIntended else {
                 self.cpuAggregator?.endSession(reason: .userStopped)
+                self.leaveHoldingPattern()
                 return
             }
 
@@ -1205,6 +1267,7 @@ extension AudioPlayerController {
                 Log(.info, category: .playback, "Already playing, leaving reconnect holding pattern")
                 self.captureRecoveryIfNeeded()
                 self.backoffTimer.reset()
+                self.leaveHoldingPattern()
                 return
             }
 
@@ -1213,40 +1276,155 @@ extension AudioPlayerController {
                 guard !Task.isCancelled else { return }
                 guard self.playbackIntended else {
                     self.cpuAggregator?.endSession(reason: .userStopped)
+                    self.leaveHoldingPattern()
                     return
                 }
-
-                #if os(iOS) || os(tvOS)
-                guard self.activateAudioSession() else {
-                    Log(.error, category: .playback, "Holding-pattern reconnect aborted: audio session activation failed; will retry")
-                    self.scheduleHoldingReconnect(after: holdInterval)
-                    return
-                }
-                #endif
-                self.player.play()
-
-                let reachedPlaying = await self.waitForPlayingOrError(timeout: .seconds(3))
-                guard !Task.isCancelled else { return }
-
-                if !reachedPlaying {
-                    // Still not connected — keep holding.
-                    self.scheduleHoldingReconnect(after: holdInterval)
-                } else if let stallStart = self.stallStartTime {
-                    let totalStallTime = Date().timeIntervalSince(stallStart)
-                    Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s (holding pattern)")
-                    self.captureRecoveryIfNeeded()
-                    self.backoffTimer.reset()
-                } else {
-                    // Playing again, but the stall was already resolved by
-                    // someone else; just clear backoff state quietly.
-                    self.backoffTimer.reset()
-                }
+                await self.performHoldingReconnectAttempt()
             } catch {
                 // Sleep interrupted (cancellation); intent-driven teardown owns
                 // ending the session, so just clear backoff state.
                 self.backoffTimer.reset()
             }
         }
+    }
+
+    /// The single funnel for a holding-pattern connect attempt, reached from the
+    /// timed fallback and from the `→ satisfied` reachability edge. Idempotent
+    /// under concurrency: the `holdingReconnectInFlight` guard coalesces a
+    /// flapping edge (or an edge racing the timer) into the one attempt already
+    /// running, so a burst of transitions can never launch overlapping connects.
+    private func performHoldingReconnectAttempt() async {
+        // Coalesce: never run two overlapping connects.
+        guard !holdingReconnectInFlight else { return }
+
+        // Reachability gate: if the path is known-unsatisfied, idle instead of
+        // burning a session activation + connect that cannot succeed. Do NOT
+        // reschedule a timer here — the `→ satisfied` edge is what resumes us,
+        // so an unsatisfied network produces no wakeups at all. (When no
+        // reachability is injected the gate is inert; see
+        // `reachabilityGateAllowsAttempt`.)
+        guard reachabilityGateAllowsAttempt else {
+            Log(.info, category: .playback, "Holding-pattern reconnect idle: network path unsatisfied; awaiting reachability")
+            return
+        }
+
+        holdingReconnectInFlight = true
+
+        #if os(iOS) || os(tvOS)
+        guard activateAudioSession() else {
+            holdingReconnectInFlight = false
+            Log(.error, category: .playback, "Holding-pattern reconnect aborted: audio session activation failed; will retry")
+            rescheduleHoldingFallbackIfSatisfied()
+            return
+        }
+        #endif
+        player.play()
+
+        let reachedPlaying = await waitForPlayingOrError(timeout: .seconds(3))
+        holdingReconnectInFlight = false
+        guard !Task.isCancelled else { return }
+
+        if !reachedPlaying {
+            // Still not connected. Keep the timed fallback going while the path
+            // looks usable; if it went unsatisfied mid-attempt, suspend and
+            // wait for the `→ satisfied` edge.
+            rescheduleHoldingFallbackIfSatisfied()
+        } else if let stallStart = stallStartTime {
+            let totalStallTime = Date().timeIntervalSince(stallStart)
+            Log(.info, category: .playback, "Recovery successful after \(String(format: "%.1f", totalStallTime))s (holding pattern)")
+            captureRecoveryIfNeeded()
+            backoffTimer.reset()
+            leaveHoldingPattern()
+        } else {
+            // Playing again, but the stall was already resolved by someone else;
+            // just clear backoff state quietly.
+            backoffTimer.reset()
+            leaveHoldingPattern()
+        }
+    }
+
+    /// Re-arms the timed fallback only while the path looks usable (or no
+    /// reachability signal is wired — the preserved blind cadence). When the
+    /// path is down we suspend the timer entirely; the `→ satisfied` edge
+    /// resumes the loop, so a dead network yields no blind ticking.
+    private func rescheduleHoldingFallbackIfSatisfied() {
+        guard holdingPatternEngaged, playbackIntended else { return }
+        if reachabilityGateAllowsAttempt {
+            scheduleHoldingReconnect(after: backoffTimer.maximumWaitTime)
+        } else {
+            Log(.info, category: .playback, "Holding-pattern fallback suspended: awaiting network path return")
+        }
+    }
+
+    /// Whether a holding-pattern attempt may proceed. With no reachability
+    /// injected the loop keeps its original blind cadence (always allowed). With
+    /// a signal, an attempt requires an explicit `.satisfied` — a `nil` (no
+    /// signal yet) or `.unsatisfied` path idles, so a stale-optimistic seed can
+    /// never fire a blind attempt on a known-down network.
+    ///
+    /// This idle-on-`nil` behaviour depends on the `NetworkReachability`
+    /// contract that an implementation delivers the *current* path status
+    /// promptly on subscription (`NWPathMonitor` does; the mock does). A
+    /// hypothetical impl that only reported on *change* could leave a
+    /// genuinely-satisfied path stuck at `nil` and never attempt — hence the
+    /// contract is spelled out on the protocol. `nil` is otherwise transient
+    /// (a few ms after `NWPathMonitor.start`).
+    private var reachabilityGateAllowsAttempt: Bool {
+        guard reachability != nil else { return true }
+        return lastReachabilitySatisfied == true
+    }
+
+    /// Subscribes to the injected reachability signal for the duration of the
+    /// holding pattern (pending-scoped). Idempotent — a live subscription is
+    /// reused. No-op when no reachability is injected. The `Task` inherits this
+    /// `@MainActor` context, so `handleReachabilityUpdate` runs isolated.
+    private func beginReachabilityMonitoring() {
+        guard let reachability, reachabilityMonitorTask == nil else { return }
+        reachabilityMonitorTask = Task { [weak self] in
+            for await satisfied in reachability.pathUpdates() {
+                guard let self, !Task.isCancelled else { break }
+                self.handleReachabilityUpdate(satisfied: satisfied)
+            }
+        }
+    }
+
+    /// Processes one reachability update: caches the state and, on a
+    /// `→ satisfied` edge, accelerates a pending holding-pattern reconnect.
+    private func handleReachabilityUpdate(satisfied: Bool) {
+        let previous = lastReachabilitySatisfied
+        lastReachabilitySatisfied = satisfied
+        guard holdingPatternEngaged else { return }
+        // Fire on the rising edge only: previous was not-satisfied (unsatisfied
+        // or the initial `nil`), now satisfied. Redundant satisfied→satisfied
+        // updates are ignored, so a stable healthy path never re-triggers.
+        if satisfied && previous != true {
+            Log(.info, category: .playback, "Network path satisfied; accelerating pending holding-pattern reconnect")
+            triggerHoldingReconnectOnSatisfiedEdge()
+        }
+        // An `→ unsatisfied` edge needs no active work: any in-flight attempt
+        // fails and returns to idle via `rescheduleHoldingFallbackIfSatisfied`,
+        // and the next timed wake (if any) idles at the gate.
+    }
+
+    /// Fires a holding-pattern attempt on the `→ satisfied` edge, coalesced:
+    /// only when the holding pattern is engaged and no attempt is already in
+    /// flight. Cancels any sleeping fallback timer first so the edge supersedes
+    /// it (prompt resume) rather than stacking a second attempt behind it.
+    private func triggerHoldingReconnectOnSatisfiedEdge() {
+        guard holdingPatternEngaged, !holdingReconnectInFlight else { return }
+        reconnectTask?.cancel()
+        scheduleHoldingReconnect(after: 0)
+    }
+
+    /// Leaves the uncapped holding phase and tears down its reachability monitor
+    /// (pending-scoped lifecycle). Idempotent. Called on recovery, stop, and
+    /// manual play.
+    private func leaveHoldingPattern() {
+        holdingPatternEngaged = false
+        holdingReconnectInFlight = false
+        reachabilityMonitorTask?.cancel()
+        reachabilityMonitorTask = nil
+        lastReachabilitySatisfied = nil
     }
 
     /// Polls the player's state until it reaches `.playing` (success) or
