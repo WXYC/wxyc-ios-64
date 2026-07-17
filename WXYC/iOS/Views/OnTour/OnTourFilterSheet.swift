@@ -25,6 +25,7 @@ struct OnTourFilterSheet: View {
         NavigationStack {
             Form {
                 dateSection
+                genreSection
                 venueSection
                 togglesSection
             }
@@ -58,6 +59,51 @@ struct OnTourFilterSheet: View {
             .pickerStyle(.segmented)
             .labelsHidden()
         }
+    }
+
+    // The genre chips are derived entirely from the fetched window's genres
+    // (`model.availableGenres`), so the section is absent whenever no show carries
+    // a genre — before the backend emits `Concert.genres`, or for a window of
+    // unresolved shows. The vocabulary is never a hardcoded taxonomy list.
+    @ViewBuilder
+    private var genreSection: some View {
+        if !model.availableGenres.isEmpty {
+            Section("Genre") {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 96), spacing: 8)],
+                    alignment: .leading,
+                    spacing: 8
+                ) {
+                    ForEach(model.availableGenres, id: \.self) { genre in
+                        genreChip(genre)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private func genreChip(_ genre: String) -> some View {
+        let isSelected = model.filter.selectedGenres.contains(genre)
+        return Button {
+            toggleGenre(genre)
+        } label: {
+            HStack(spacing: 4) {
+                if isSelected {
+                    Image(systemName: "checkmark").font(.caption2).fontWeight(.bold)
+                }
+                Text(genre).font(.subheadline).lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity)
+            .background(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary), in: .capsule)
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(genre)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     @ViewBuilder
@@ -155,6 +201,15 @@ struct OnTourFilterSheet: View {
             model.filter.selectedVenueIDs.insert(id)
         }
         fireApplied("venue")
+    }
+
+    private func toggleGenre(_ genre: String) {
+        if model.filter.selectedGenres.contains(genre) {
+            model.filter.selectedGenres.remove(genre)
+        } else {
+            model.filter.selectedGenres.insert(genre)
+        }
+        fireApplied("genre")
     }
 
     /// Records a filter action, and — since the sheet is the only surface that
