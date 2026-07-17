@@ -217,10 +217,6 @@ struct PlaylistView: View {
                 appState.artworkLoader.load(dismissed.playcut)
             }
         }
-        .themePickerGesture(
-            pickerState: appState.themePickerState,
-            configuration: appState.themeConfiguration
-        )
         .accessibilityIdentifier("playlistView")
     }
 
