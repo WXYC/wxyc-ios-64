@@ -264,4 +264,27 @@ struct OnTourModelTests {
         #expect(model.venueGroups.map(\.region) == ["Chapel Hill–Carrboro", "Durham"])
         #expect(model.venueGroups.first?.venues.count == 1) // Cat's Cradle once
     }
+
+    @Test("availableGenres is the distinct genres in the window, de-duplicated and sorted")
+    func availableGenresDerived() async {
+        let concerts = [
+            Concert.stub(id: 1, genres: ["Rock", "Folk World & Country"]),
+            Concert.stub(id: 2, genres: ["Electronic"]),
+            Concert.stub(id: 3, genres: ["Rock"]),      // duplicate genre
+            Concert.stub(id: 4, genres: nil),            // no genres — contributes nothing
+        ]
+        let model = makeModel(StubConcertsFetcher(pages: [page(concerts, number: 1, hasMore: false)]))
+        await model.load()
+
+        #expect(model.availableGenres == ["Electronic", "Folk World & Country", "Rock"])
+    }
+
+    @Test("availableGenres is empty when no show in the window carries a genre")
+    func availableGenresEmptyWhenNoGenres() async {
+        let concerts = [Concert.stub(id: 1, genres: nil), Concert.stub(id: 2, genres: [])]
+        let model = makeModel(StubConcertsFetcher(pages: [page(concerts, number: 1, hasMore: false)]))
+        await model.load()
+
+        #expect(model.availableGenres.isEmpty)
+    }
 }

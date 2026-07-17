@@ -77,7 +77,8 @@ extension Concert {
         priceMin: Double? = 22.0,
         priceMax: Double? = 25.0,
         ageRestriction: String? = "All Ages",
-        status: ShowStatus = .onSale
+        status: ShowStatus = .onSale,
+        genres: [String]? = nil
     ) -> Concert {
         Concert(
             id: id,
@@ -94,7 +95,8 @@ extension Concert {
             priceMin: priceMin,
             priceMax: priceMax,
             ageRestriction: ageRestriction,
-            status: status
+            status: status,
+            genres: genres
         )
     }
 }
