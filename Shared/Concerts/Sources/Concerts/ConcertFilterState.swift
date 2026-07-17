@@ -63,16 +63,25 @@ public struct ConcertFilterState: Sendable, Equatable {
     /// policy is all-ages or simply unknown remain visible.
     public var allAgesOnly: Bool
 
+    /// Discogs genres to include, multi-select with **union** semantics: a show
+    /// matches when *any* of its genres is selected. **Empty means all genres** —
+    /// no genre narrowing. A show that carries no genre data (`genres` nil/empty)
+    /// is excluded once this set is non-empty, since it can't be shown to belong
+    /// to any selected genre.
+    public var selectedGenres: Set<String>
+
     public init(
         dateWindow: DateWindow = .all,
         selectedVenueIDs: Set<Int> = [],
         freeOnly: Bool = false,
-        allAgesOnly: Bool = false
+        allAgesOnly: Bool = false,
+        selectedGenres: Set<String> = []
     ) {
         self.dateWindow = dateWindow
         self.selectedVenueIDs = selectedVenueIDs
         self.freeOnly = freeOnly
         self.allAgesOnly = allAgesOnly
+        self.selectedGenres = selectedGenres
     }
 
     // MARK: - Active-facet accounting
@@ -85,6 +94,7 @@ public struct ConcertFilterState: Sendable, Equatable {
         if !selectedVenueIDs.isEmpty { count += 1 }
         if freeOnly { count += 1 }
         if allAgesOnly { count += 1 }
+        if !selectedGenres.isEmpty { count += 1 }
         return count
     }
 
@@ -105,6 +115,7 @@ public struct ConcertFilterState: Sendable, Equatable {
             && matchesVenue(concert)
             && matchesFree(concert)
             && matchesAllAges(concert)
+            && matchesGenre(concert)
     }
 
     private func matchesDateWindow(_ concert: Concert, now: Date) -> Bool {
@@ -135,6 +146,13 @@ public struct ConcertFilterState: Sendable, Equatable {
             return false
         }
         return true
+    }
+
+    private func matchesGenre(_ concert: Concert) -> Bool {
+        guard !selectedGenres.isEmpty else { return true }
+        guard let genres = concert.genres else { return false }
+        // Union: any overlap between the show's genres and the selection passes.
+        return !selectedGenres.isDisjoint(with: genres)
     }
 
     // MARK: - Date math (station zone)

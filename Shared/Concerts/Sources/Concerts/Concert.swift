@@ -137,6 +137,16 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// Ticket-availability state. Drives the pill and CTA wording.
     public let status: ShowStatus
 
+    /// Discogs genre tags for the resolved headlining artist, aggregated across
+    /// their releases (LML discogs-cache, majority-take), or `nil` when the
+    /// headliner is unresolved or the nightly enrichment has not run yet. The chip
+    /// vocabulary for the On Tour genre filter — the same coarse taxonomy the app
+    /// shows as Playcut Detail genre capsules (`FlowsheetV2TrackEntry.genres`),
+    /// never the internal library filing codes. A forward-compatible optional: it
+    /// decodes to `nil` when the backend omits the field, so this client can ship
+    /// ahead of backend emission (same discipline as the flowsheet fields).
+    public let genres: [String]?
+
     public init(
         id: Int,
         venue: Venue,
@@ -152,7 +162,8 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         priceMin: Double? = nil,
         priceMax: Double? = nil,
         ageRestriction: String? = nil,
-        status: ShowStatus
+        status: ShowStatus,
+        genres: [String]? = nil
     ) {
         self.id = id
         self.venue = venue
@@ -169,6 +180,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.priceMax = priceMax
         self.ageRestriction = ageRestriction
         self.status = status
+        self.genres = genres
     }
 
     // MARK: - Intrinsic accessors
@@ -211,6 +223,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case priceMax = "price_max"
         case ageRestriction = "age_restriction"
         case status
+        case genres
     }
 
     /// Date-only parser pinned to the station zone and a fixed POSIX locale, so a
@@ -301,6 +314,9 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // Absent status → `.unknown`; unrecognized value is absorbed by
         // ShowStatus's own tolerant decode.
         status = try container.decodeIfPresent(ShowStatus.self, forKey: .status) ?? .unknown
+        // Forward-compatible optional: absent or explicit-null `genres` → nil, so
+        // this decode is stable whether or not the backend has shipped the field.
+        genres = try container.decodeIfPresent([String].self, forKey: .genres)
     }
 
     /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
@@ -324,5 +340,6 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encodeIfPresent(priceMax, forKey: .priceMax)
         try container.encodeIfPresent(ageRestriction, forKey: .ageRestriction)
         try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(genres, forKey: .genres)
     }
 }

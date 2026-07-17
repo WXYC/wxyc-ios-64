@@ -85,6 +85,15 @@ public final class OnTourModel {
         VenueGrouping.groupedByRegion(allConcerts.map(\.venue))
     }
 
+    /// The distinct Discogs genres present in the fetched window, de-duplicated
+    /// and sorted — the chip vocabulary for the filter sheet's genre section.
+    /// Empty when no show in the window carries a genre, in which case the sheet
+    /// omits the genre section entirely (the vocabulary is always derived from
+    /// the data, never a hardcoded taxonomy list).
+    public var availableGenres: [String] {
+        Set(allConcerts.flatMap { $0.genres ?? [] }).sorted()
+    }
+
     /// Fetches the whole curated window, exhausting pagination. Safe to call again
     /// for pull-to-refresh / foreground refresh: an already-populated list keeps
     /// showing while the refetch runs, and a failed refetch that still has cached

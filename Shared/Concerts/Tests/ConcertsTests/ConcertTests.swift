@@ -42,6 +42,7 @@ struct ConcertTests {
         "price_min": 22.0,
         "price_max": 25.0,
         "age_restriction": "All Ages",
+        "genres": ["Rock", "Folk World & Country"],
         "status": "on_sale"
     }
     """
@@ -69,6 +70,7 @@ struct ConcertTests {
         #expect(concert.ticketURL == URL(string: "https://www.etix.com/ticket/p/jessica-pratt"))
         #expect(concert.imageURL == URL(string: "https://img.example/jessica-pratt.jpg"))
         #expect(concert.ageRestriction == "All Ages")
+        #expect(concert.genres == ["Rock", "Folk World & Country"])
     }
 
     @Test("Parses starts_on as a calendar day in the station's time zone")
@@ -145,6 +147,7 @@ struct ConcertTests {
         #expect(concert.ticketURL == nil)
         #expect(concert.imageURL == nil)
         #expect(concert.ageRestriction == nil)
+        #expect(concert.genres == nil)
     }
 
     @Test("Coalesces an absent supporting_artists_raw to an empty array")
@@ -210,6 +213,51 @@ struct ConcertTests {
         """
         let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
         #expect(concert.status == .unknown)
+    }
+
+    // MARK: - Genres (R2, forward-compatible optional)
+
+    @Test("Decodes an explicit-null genres to nil without throwing")
+    func decodesNullGenresAsNil() throws {
+        // The backend emits `genres: null` for an unresolved headliner or before
+        // the nightly enrichment has run — the same null-when-absent discipline as
+        // the flowsheet `genres`/`styles` fields.
+        let json = """
+        {
+            "id": 88,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "genres": null,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.genres == nil)
+    }
+
+    @Test("Decodes a present genres array, preserving order")
+    func decodesPresentGenres() throws {
+        let json = """
+        {
+            "id": 89,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Chuquimamani-Condori",
+            "genres": ["Electronic", "Latin"],
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.genres == ["Electronic", "Latin"])
+    }
+
+    @Test("Round-trips genres through encode/decode")
+    func roundTripsGenres() throws {
+        let original = Concert.stub(genres: ["Rock", "Jazz"])
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.genres == ["Rock", "Jazz"])
     }
 
     // MARK: - ctaURL / headlineName (intrinsic data selection)

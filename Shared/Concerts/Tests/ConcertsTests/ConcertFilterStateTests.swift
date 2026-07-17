@@ -27,12 +27,14 @@ private func stationDay(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12) -
 private func concert(on year: Int, _ month: Int, _ day: Int,
                      venue: Venue = .stub(),
                      priceMin: Double? = 20,
-                     ageRestriction: String? = "All Ages") -> Concert {
+                     ageRestriction: String? = "All Ages",
+                     genres: [String]? = nil) -> Concert {
     Concert.stub(
         venue: venue,
         startsOn: stationDay(year, month, day, hour: 0),
         priceMin: priceMin,
-        ageRestriction: ageRestriction
+        ageRestriction: ageRestriction,
+        genres: genres
     )
 }
 
@@ -146,6 +148,33 @@ struct ConcertFilterStateTests {
         #expect(!filter.matches(concert(on: 2026, 8, 1, ageRestriction: "18+"), now: Self.saturdayNow))   // restricted hidden
     }
 
+    // MARK: - Genre facet (multi-select union)
+
+    @Test("Empty genre selection matches every show, including genre-less ones")
+    func emptyGenreSelectionMatchesAll() {
+        let filter = ConcertFilterState(selectedGenres: [])
+        #expect(filter.matches(concert(on: 2026, 8, 1, genres: ["Rock"]), now: Self.saturdayNow))
+        #expect(filter.matches(concert(on: 2026, 8, 1, genres: nil), now: Self.saturdayNow))
+    }
+
+    @Test("A genre selection keeps shows whose genres intersect the selection (union)")
+    func genreSelectionUnion() {
+        let filter = ConcertFilterState(selectedGenres: ["Rock", "Jazz"])
+        // Intersects on Rock.
+        #expect(filter.matches(concert(on: 2026, 8, 1, genres: ["Rock", "Pop"]), now: Self.saturdayNow))
+        // Intersects on Jazz.
+        #expect(filter.matches(concert(on: 2026, 8, 1, genres: ["Jazz"]), now: Self.saturdayNow))
+        // No overlap → excluded.
+        #expect(!filter.matches(concert(on: 2026, 8, 1, genres: ["Electronic"]), now: Self.saturdayNow))
+    }
+
+    @Test("An active genre facet excludes shows with no genre data")
+    func genreFacetExcludesGenrelessShows() {
+        let filter = ConcertFilterState(selectedGenres: ["Rock"])
+        #expect(!filter.matches(concert(on: 2026, 8, 1, genres: nil), now: Self.saturdayNow))
+        #expect(!filter.matches(concert(on: 2026, 8, 1, genres: []), now: Self.saturdayNow))
+    }
+
     // MARK: - Combined facets (AND)
 
     @Test("Facets combine with AND")
@@ -154,21 +183,27 @@ struct ConcertFilterStateTests {
             dateWindow: .next7Days,
             selectedVenueIDs: [3],
             freeOnly: true,
-            allAgesOnly: true
+            allAgesOnly: true,
+            selectedGenres: ["Rock"]
         )
         // Satisfies every facet.
         #expect(filter.matches(
-            concert(on: 2026, 8, 2, venue: .stub(id: 3), priceMin: 0, ageRestriction: "All Ages"),
+            concert(on: 2026, 8, 2, venue: .stub(id: 3), priceMin: 0, ageRestriction: "All Ages", genres: ["Rock"]),
             now: Self.saturdayNow
         ))
         // Fails the venue facet alone.
         #expect(!filter.matches(
-            concert(on: 2026, 8, 2, venue: .stub(id: 9), priceMin: 0, ageRestriction: "All Ages"),
+            concert(on: 2026, 8, 2, venue: .stub(id: 9), priceMin: 0, ageRestriction: "All Ages", genres: ["Rock"]),
             now: Self.saturdayNow
         ))
         // Fails the free facet alone.
         #expect(!filter.matches(
-            concert(on: 2026, 8, 2, venue: .stub(id: 3), priceMin: 15, ageRestriction: "All Ages"),
+            concert(on: 2026, 8, 2, venue: .stub(id: 3), priceMin: 15, ageRestriction: "All Ages", genres: ["Rock"]),
+            now: Self.saturdayNow
+        ))
+        // Fails the genre facet alone.
+        #expect(!filter.matches(
+            concert(on: 2026, 8, 2, venue: .stub(id: 3), priceMin: 0, ageRestriction: "All Ages", genres: ["Jazz"]),
             now: Self.saturdayNow
         ))
     }
@@ -186,17 +221,25 @@ struct ConcertFilterStateTests {
     func activeFacetCount() {
         #expect(ConcertFilterState(dateWindow: .tonight).activeFacetCount == 1)
         #expect(ConcertFilterState(selectedVenueIDs: [1, 2, 3]).activeFacetCount == 1) // one group, not three
+        #expect(ConcertFilterState(selectedGenres: ["Rock", "Jazz"]).activeFacetCount == 1) // one group, not two
         #expect(ConcertFilterState(
             dateWindow: .tonight,
             selectedVenueIDs: [1],
             freeOnly: true,
-            allAgesOnly: true
-        ).activeFacetCount == 4)
+            allAgesOnly: true,
+            selectedGenres: ["Rock"]
+        ).activeFacetCount == 5)
     }
 
     @Test("reset() clears every facet")
     func resetClearsFacets() {
-        var filter = ConcertFilterState(dateWindow: .tonight, selectedVenueIDs: [1], freeOnly: true, allAgesOnly: true)
+        var filter = ConcertFilterState(
+            dateWindow: .tonight,
+            selectedVenueIDs: [1],
+            freeOnly: true,
+            allAgesOnly: true,
+            selectedGenres: ["Rock"]
+        )
         filter.reset()
         #expect(filter == ConcertFilterState())
         #expect(!filter.isActive)
