@@ -246,7 +246,8 @@ struct BoxOfficeTicketView: View {
         }
     }
 
-    /// Filled amber for a live purchase/RSVP; outlined for "see the venue page".
+    /// Filled amber for a live purchase/RSVP; outlined for the "see the
+    /// venue/ticket page" statuses.
     private var ctaFilled: Bool {
         show.status == .onSale || show.status == .free
     }
