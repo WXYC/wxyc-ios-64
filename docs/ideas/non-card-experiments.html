@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WXYC · ON AIR — non-card explorations</title>
+<style>
+  :root {
+    --signal: #ff3b30;
+    --ink: rgba(255,255,255,0.96);
+    --muted: rgba(255,255,255,0.55);
+    --faint: rgba(255,255,255,0.30);
+    --page: #08080c;
+    --wp1: radial-gradient(120% 80% at 20% 0%, rgba(120,80,200,0.40) 0%, transparent 60%);
+    --wp2: radial-gradient(120% 90% at 100% 30%, rgba(20,120,120,0.40) 0%, transparent 55%);
+    --wpbase: linear-gradient(180deg, #15131f 0%, #0c0b13 100%);
+  }
+  body[data-wp="sunset"] {
+    --wp1: radial-gradient(120% 90% at 15% 0%, rgba(255,120,60,0.65) 0%, transparent 55%);
+    --wp2: radial-gradient(130% 100% at 95% 40%, rgba(230,40,140,0.60) 0%, transparent 55%);
+    --wpbase: linear-gradient(180deg, #3a1430 0%, #1a0a1f 100%);
+  }
+  body[data-wp="day"] {
+    --wp1: radial-gradient(120% 90% at 20% 0%, rgba(255,255,255,0.85) 0%, transparent 55%);
+    --wp2: radial-gradient(130% 100% at 95% 30%, rgba(180,210,255,0.85) 0%, transparent 55%);
+    --wpbase: linear-gradient(180deg, #c9cfe6 0%, #9aa3c4 100%);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(900px 600px at 12% -5%, #241a4d 0%, transparent 55%),
+      radial-gradient(800px 700px at 95% 8%, #0f4a4a 0%, transparent 50%),
+      var(--page);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; min-height: 100vh; padding-bottom: 80px;
+  }
+  body.no-motion * { animation: none !important; }
+
+  .masthead { max-width: 1040px; margin: 0 auto; padding: 36px clamp(16px,4vw,40px) 14px; }
+  .masthead h1 { font-size: clamp(22px,3vw,30px); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .masthead p { color: var(--muted); max-width: 76ch; margin: 0; }
+  .masthead em { color: var(--ink); font-style: normal; font-weight: 600; }
+
+  .bar { position: sticky; top: 0; z-index: 10; margin-top: 14px;
+    background: rgba(8,8,12,0.72); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .bar .inner { max-width: 1040px; margin: 0 auto; padding: 12px clamp(16px,4vw,40px);
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .ctl { display: flex; align-items: center; gap: 8px; }
+  .ctl > .lbl { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .seg { display: inline-flex; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 999px; padding: 3px; }
+  .seg button { appearance: none; border: 0; background: transparent; color: var(--muted); font: inherit;
+    font-size: 12.5px; padding: 5px 12px; border-radius: 999px; cursor: pointer; transition: all 0.16s; }
+  .seg button[aria-pressed="true"] { background: rgba(255,255,255,0.15); color: var(--ink); }
+  .chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+  .grid { display: grid; gap: 28px; max-width: 1040px; margin: 24px auto 0;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); padding: 0 clamp(16px,4vw,40px); }
+  .cell { display: flex; flex-direction: column; gap: 10px; }
+  .cell .meta { padding: 0 4px; }
+  .cell .tag { display: inline-block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700; margin-bottom: 4px; }
+  .cell .name { font-size: 16px; font-weight: 700; margin: 0 0 3px; }
+  .cell .blurb { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+  .phone { position: relative; border-radius: 34px; padding: 14px 12px 16px;
+    background: var(--wp1), var(--wp2), var(--wpbase);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden; transition: background 0.3s; }
+  .lcd { display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3));
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 8px 12px; margin-bottom: 12px; }
+  .lcd .wm { font: 700 13px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.18em; color: #9be7c4;
+    text-shadow: 0 0 10px rgba(80,230,160,0.4); }
+  .lcd .freq { margin-left: auto; font: 600 11px/1 ui-monospace, monospace; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; }
+  .lcd .vis { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .lcd .vis i { width: 2px; background: #5fd6a6; border-radius: 1px; opacity: 0.8; animation: vis 1.1s ease-in-out infinite; }
+
+  .slot { margin: 2px 2px 12px; }
+  .slot.bleed { margin: 2px -12px 12px; }      /* reach the phone's edges → reads as full-bleed, not a card */
+  .rowhdr { font: 700 12px/1 system-ui; letter-spacing: 0.04em; color: var(--ink);
+    font-variant: small-caps; margin: 2px 6px 8px; opacity: 0.85; }
+  .ghost { display: flex; align-items: center; gap: 12px; padding: 8px 6px; opacity: 0.5; }
+  .ghost .art { width: 42px; height: 42px; border-radius: 8px; flex: none; background: linear-gradient(135deg, #4b5bc4, #7a3f8f); }
+  .ghost .lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .ghost .l1 { height: 9px; width: 62%; border-radius: 4px; background: rgba(255,255,255,0.55); }
+  .ghost .l2 { height: 8px; width: 40%; border-radius: 4px; background: rgba(255,255,255,0.30); }
+  .ghost + .ghost { border-top: 1px solid rgba(255,255,255,0.06); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal);
+    box-shadow: 0 0 10px var(--signal); animation: pulse 1.1s ease-in-out infinite; flex: none; }
+
+  /* ===== N1 — MASTHEAD (editorial type + hairline rule, no container) ===== */
+  .n-mast { padding: 6px 6px 0; }
+  .n-mast .eyebrow { display: flex; align-items: center; gap: 8px; font: 700 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.28em; color: var(--signal); }
+  .n-mast .dj { font: 800 30px/1 "Helvetica Neue", system-ui; letter-spacing: -0.02em; color: #fff;
+    margin-top: 8px; text-shadow: 0 2px 18px rgba(0,0,0,0.45); }
+  .n-mast .rule { height: 1px; margin-top: 12px;
+    background: linear-gradient(90deg, var(--signal), rgba(255,255,255,0.12) 60%, transparent); }
+
+  /* ===== N2 — LCD-INTEGRATED (woven into the existing player header) ===== */
+  .lcd.onair { flex-direction: column; align-items: stretch; gap: 0; }
+  .lcd.onair .r1 { display: flex; align-items: center; gap: 10px; }
+  .lcd.onair .r2 { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.1); font: 700 12px/1 ui-monospace, monospace; letter-spacing: 0.1em; color: #fff; }
+  .lcd.onair .r2 .on { color: var(--signal); letter-spacing: 0.18em; }
+  .lcd.onair .r2 .sep { color: var(--faint); }
+
+  /* ===== N3 — LOWER-THIRD CHYRON (full-width broadcast band, hard edges) ===== */
+  .n-chyron { display: flex; min-height: 58px; }
+  .n-chyron .key { display: flex; align-items: center; gap: 7px; padding: 0 14px; background: var(--signal);
+    color: #fff; font: 800 12px/1 ui-monospace, monospace; letter-spacing: 0.12em; }
+  .n-chyron .key .dot { background: #fff; box-shadow: none; }
+  .n-chyron .body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 16px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.42)); border-bottom: 2px solid var(--signal); }
+  .n-chyron .dj { font: 800 19px/1 system-ui; color: #fff; letter-spacing: -0.01em; }
+  .n-chyron .sub { font: 600 10px/1 ui-monospace, monospace; color: var(--muted); margin-top: 5px; letter-spacing: 0.12em; }
+
+  /* ===== N4 — WAVEFORM SIGNATURE (name over a full-width audio line) ===== */
+  .n-wave { padding: 8px 6px 4px; }
+  .n-wave .eyebrow { display: flex; align-items: center; gap: 8px; font: 700 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.26em; color: var(--signal); }
+  .n-wave .dj { font: 800 24px/1 system-ui; color: #fff; margin: 7px 0 10px; letter-spacing: -0.01em;
+    text-shadow: 0 2px 16px rgba(0,0,0,0.45); }
+  .n-wave .wave { display: flex; align-items: center; gap: 2px; height: 28px; padding: 0 6px; }
+  .n-wave .wave i { flex: 1; background: var(--signal); border-radius: 1px; transform-origin: center;
+    opacity: 0.85; animation: wav 1.4s ease-in-out infinite; }
+
+  /* ===== N5 — LEFT SPINE RAIL (vertical edge label, breaks orientation) ===== */
+  .n-spine { display: flex; gap: 14px; min-height: 84px; align-items: stretch; padding: 6px 6px; }
+  .n-spine .rail { width: 5px; border-radius: 3px; background: var(--signal);
+    box-shadow: 0 0 14px var(--signal); flex: none; }
+  .n-spine .rot { writing-mode: vertical-rl; transform: rotate(180deg); font: 700 10px/1 ui-monospace, monospace;
+    letter-spacing: 0.32em; color: var(--signal); display: flex; align-items: center; }
+  .n-spine .txt { display: flex; flex-direction: column; justify-content: center; }
+  .n-spine .dj { font: 800 26px/1 "Helvetica Neue", system-ui; color: #fff; letter-spacing: -0.02em;
+    text-shadow: 0 2px 16px rgba(0,0,0,0.45); }
+  .n-spine .sub { font: 500 11px/1 system-ui; color: var(--muted); margin-top: 7px; letter-spacing: 0.06em; }
+
+  /* ===== N6 — STATION IDENT (call-sign forward) ===== */
+  .n-ident { display: flex; align-items: center; gap: 16px; padding: 8px 6px; }
+  .n-ident .call { font: 800 40px/0.85 "Helvetica Neue", system-ui; letter-spacing: -0.03em; color: #fff;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.5); }
+  .n-ident .call b { color: var(--signal); font-weight: 800; }
+  .n-ident .call sup { font-size: 0.4em; vertical-align: super; color: var(--muted); letter-spacing: 0; }
+  .n-ident .meta { border-left: 2px solid rgba(255,255,255,0.22); padding-left: 14px; }
+  .n-ident .on { display: flex; align-items: center; gap: 7px; font: 700 10px/1 ui-monospace, monospace;
+    letter-spacing: 0.2em; color: var(--signal); }
+  .n-ident .dj { font: 800 18px/1 system-ui; color: #fff; margin-top: 8px; letter-spacing: -0.01em; }
+
+  /* ===== N7 — PURE TYPE HERO (no chrome whatsoever) ===== */
+  .n-type { padding: 8px 6px 4px; }
+  .n-type .eyebrow { display: flex; align-items: center; gap: 8px; font: 700 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.26em; color: var(--signal); }
+  .n-type .dj { font: 900 clamp(30px,11vw,46px)/0.92 "Helvetica Neue", system-ui; letter-spacing: -0.035em;
+    color: #fff; margin-top: 6px; text-shadow: 0 2px 30px rgba(0,0,0,0.6); }
+  .n-type .sub { font: 600 11px/1 ui-monospace, monospace; color: var(--muted); margin-top: 10px; letter-spacing: 0.14em; }
+
+  @keyframes pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+  @keyframes vis   { 0%,100% { height: 30%; } 50% { height: 100%; } }
+  @keyframes wav   { 0%,100% { transform: scaleY(0.28); } 50% { transform: scaleY(1); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body data-wp="aurora">
+  <div class="masthead">
+    <h1>ON AIR — non-card explorations</h1>
+    <p>Every idea here <em>drops the rounded glass card entirely.</em> Instead of floating a cell on top of the list, they integrate with the layout — a masthead, a broadcast chyron, the LCD header itself, an edge rail, a waveform, a station ident, or pure type on the wallpaper. Stress-test legibility with <em>Wallpaper</em> (try Daylight) and check wrapping with a long <em>DJ name</em>.</p>
+  </div>
+
+  <div class="bar"><div class="inner">
+    <div class="ctl"><span class="lbl">Signal</span>
+      <div class="seg" data-var="--signal">
+        <button data-val="#ff3b30" aria-pressed="true">Red</button>
+        <button data-val="#34c759" aria-pressed="false">Green</button>
+        <button data-val="#ff2d92" aria-pressed="false">Pink</button>
+      </div>
+    </div>
+    <div class="ctl"><span class="lbl">Wallpaper</span>
+      <div class="seg" data-wp>
+        <button data-val="aurora" aria-pressed="true">Aurora</button>
+        <button data-val="sunset" aria-pressed="false">Sunset</button>
+        <button data-val="day" aria-pressed="false">Daylight</button>
+      </div>
+    </div>
+    <div class="ctl"><span class="lbl">DJ name</span>
+      <div class="seg" data-name>
+        <button data-val="HOUNDSTOOTH" aria-pressed="true">Short</button>
+        <button data-val="THE COSMIC AMERICAN HOUR" aria-pressed="false">Long</button>
+      </div>
+    </div>
+    <label class="chk"><input type="checkbox" id="motion" checked /> Motion</label>
+  </div></div>
+
+  <div class="grid" id="grid"></div>
+
+<script>
+  const VARIANTS = [
+    { tag:"N1", name:"Masthead", axis:"Editorial type + a hairline rule that ties into 'now playing'. No container at all.",
+      body:`<div class="n-mast"><div class="eyebrow"><span class="dot"></span>ON AIR</div><div class="dj">HOUNDSTOOTH</div><div class="rule"></div></div>` },
+
+    { tag:"N2", name:"LCD-integrated", axis:"Folds the on-air status into the existing player header. The most native — adds zero new surface.",
+      header:`<div class="lcd onair"><div class="r1"><span class="wm">WXYC</span><div class="vis">__VIS__</div><span class="freq">89.3 FM</span></div><div class="r2"><span class="dot"></span><span class="on">ON AIR</span><span class="sep">·</span><span class="djx">HOUNDSTOOTH</span></div></div>`,
+      emptySlot:true },
+
+    { tag:"N3", name:"Lower-third chyron", axis:"Full-width broadcast band with a hard keyline — square edges read as TV graphics, not a card.",
+      bleed:true,
+      body:`<div class="n-chyron"><div class="key"><span class="dot"></span>ON AIR</div><div class="body"><div class="dj">HOUNDSTOOTH</div><div class="sub">FREEFORM · 89.3 FM</div></div></div>` },
+
+    { tag:"N4", name:"Waveform signature", axis:"Name over a full-width audio waveform. Could be driven by the live stream's real levels.",
+      body:`<div class="n-wave"><div class="eyebrow"><span class="dot"></span>ON AIR</div><div class="dj">HOUNDSTOOTH</div><div class="wave">__WAVE__</div></div>` },
+
+    { tag:"N5", name:"Left spine rail", axis:"A glowing edge rail with vertical 'ON AIR'. Breaks the horizontal rhythm by turning sideways.",
+      body:`<div class="n-spine"><div class="rail"></div><div class="rot">ON AIR</div><div class="txt"><div class="dj">HOUNDSTOOTH</div><div class="sub">freeform · live now</div></div></div>` },
+
+    { tag:"N6", name:"Station ident", axis:"Call-sign forward, like a TV ident. Leads with 89.3, the DJ rides alongside.",
+      body:`<div class="n-ident"><div class="call">89<b>.3</b><sup>FM</sup></div><div class="meta"><div class="on"><span class="dot"></span>ON AIR</div><div class="dj">HOUNDSTOOTH</div></div></div>` },
+
+    { tag:"N7", name:"Pure type hero", axis:"No chrome, no glow — just oversized type on the wallpaper. The most extreme break from a cell.",
+      body:`<div class="n-type"><div class="eyebrow"><span class="dot"></span>ON AIR · 89.3 FM</div><div class="dj">HOUNDSTOOTH</div><div class="sub">live now</div></div>` },
+  ];
+
+  const grid = document.getElementById("grid");
+  const visBars = n => Array.from({length:n}, (_,i)=>`<i style="height:${30+((i*37)%70)}%;animation-delay:${-(i*0.13).toFixed(2)}s"></i>`).join("");
+  const waveBars = n => Array.from({length:n}, (_,i)=>{
+    const peak = 0.2 + Math.abs(Math.sin(i/n*Math.PI*3.2)) * 0.8;
+    return `<i style="height:${Math.round(peak*100)}%;animation-delay:${-(i*0.05).toFixed(2)}s;animation-duration:${(1.1+(i%4)*0.2).toFixed(2)}s"></i>`;
+  }).join("");
+
+  for (const v of VARIANTS) {
+    const header = (v.header || `<div class="lcd"><span class="wm">WXYC</span><div class="vis">__VIS__</div><span class="freq">89.3 FM</span></div>`)
+      .replace("__VIS__", visBars(7));
+    const slot = v.emptySlot ? ""
+      : `<div class="slot${v.bleed ? " bleed" : ""}">${(v.body || "").replace("__WAVE__", waveBars(44))}</div>`;
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.innerHTML = `
+      <div class="meta"><span class="tag">${v.tag}</span><div class="name">${v.name}</div><p class="blurb">${v.axis}</p></div>
+      <div class="phone">
+        ${header}
+        ${slot}
+        <div class="rowhdr">now playing</div>
+        <div class="ghost"><div class="art"></div><div class="lines"><div class="l1"></div><div class="l2"></div></div></div>
+        <div class="ghost"><div class="art"></div><div class="lines"><div class="l1"></div><div class="l2"></div></div></div>
+      </div>`;
+    grid.appendChild(cell);
+  }
+
+  function wireSeg(seg, apply) {
+    if (!seg) return;
+    seg.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      apply(b.dataset.val);
+      seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    });
+  }
+  wireSeg(document.querySelector('[data-var="--signal"]'), v => document.documentElement.style.setProperty("--signal", v));
+  wireSeg(document.querySelector('[data-wp]'), v => document.body.setAttribute("data-wp", v));
+  wireSeg(document.querySelector('[data-name]'), v =>
+    document.querySelectorAll(".n-mast .dj, .n-chyron .dj, .n-wave .dj, .n-spine .dj, .n-ident .dj, .n-type .dj, .lcd.onair .djx")
+      .forEach(el => el.textContent = v));
+  document.getElementById("motion").addEventListener("change", e =>
+    document.body.classList.toggle("no-motion", !e.target.checked));
+</script>
+</body>
+</html>

@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Touring Soon — Filter Studies</title>
+<!--
+  PROTOTYPE — throwaway. Delete or absorb once a direction wins.
+
+  Question this answers: what should filtering look like on the Touring Soon tab
+  (wxyc-ios-64#474), given that (a) filters must apply instantly like
+  triangle-shows.net — which achieves this by fetching once and filtering an
+  in-memory cache client-side — and (b) genre filters (R2) and For-You
+  recommendations (R3) ship one release at a time after the base filters (R1)?
+
+  Three variants x three release stages, all filtering the same stub dataset live:
+    A — Chip Rail      (triangle-shows transplanted to a phone: everything inline)
+    B — Filter Sheet   (iOS-native: one Filter button, bottom sheet, applied pills)
+    C — Shelves        (no controls: browsing IS the filter; sections do the work)
+
+  Run: open docs/ideas/touring-soon-filters.html
+  Keys: arrow-left/arrow-right cycle variants, 1/2/3 set release stage.
+
+  VERDICT (2026-07-13): B — Filter Sheet. One Filter button + bottom sheet absorbs
+  every future facet (genre at R2, For You at R3) with zero header/layout pressure;
+  applied pills keep state legible from the list. A's rail hits its 3-row ceiling at
+  R2; C's shelves survive as a presentation idea to revisit for For You, not as the
+  filtering mechanism.
+
+  ADDENDUM (2026-07-13, after touring-soon-reco-highlights.html): For You is NOT a
+  sheet toggle after all — recommendations render as an always-on pinned shelf (H2
+  in the sibling study) and the sheet stays facets-only. This study's R3 state
+  (pinned For You toggle + heart pill) is superseded.
+-->
+<style>
+  :root {
+    --bg-1:#303c72; --bg-2:#40498e; --bg-3:#af3e79; --bg-4:#b64949; --bg-5:#b34876;
+    --page:#101120; --page-2:#171a30;
+    --ink:#ffffff; --ink-dim:rgba(255,255,255,0.72); --ink-faint:rgba(255,255,255,0.46);
+    --glass-line:rgba(255,255,255,0.15);
+    --live:#34c759;
+    --amber:#ff8940; --amber-ink:#ffc79a; --amber-line:rgba(255,137,64,0.55);
+    --heart:#ff5c8a;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--page); }
+  body {
+    margin:0; color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro",system-ui,sans-serif;
+    background:
+      radial-gradient(120% 90% at 82% -10%, rgba(255,137,64,0.14), transparent 55%),
+      radial-gradient(120% 90% at 0% 10%, rgba(64,73,142,0.35), transparent 55%),
+      linear-gradient(180deg,var(--page),var(--page-2));
+    background-attachment:fixed; min-height:100vh;
+  }
+  .wrap { max-width:1120px; margin:0 auto; padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 72px; }
+  .kicker { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  h1 { font-size:clamp(30px,5.4vw,50px); line-height:1.04; letter-spacing:-0.02em; font-weight:700; margin:0 0 16px; text-wrap:balance; }
+  .lede { max-width:64ch; font-size:clamp(15px,1.7vw,17px); color:var(--ink-dim); margin:0; }
+  .lede b { color:var(--ink); }
+
+  .controls { display:flex; flex-wrap:wrap; gap:10px 22px; margin:34px 0 6px; align-items:center; }
+  .ctl { display:flex; align-items:center; gap:10px; }
+  .switch-label { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); }
+  .seg { display:inline-flex; flex-wrap:wrap; background:rgba(17,15,38,0.3); border:1px solid var(--glass-line); border-radius:14px; padding:4px; gap:2px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .seg button { appearance:none; border:0; background:transparent; color:var(--ink-dim); font:inherit; font-size:14px; font-weight:600; padding:9px 16px; border-radius:10px; cursor:pointer; transition:color .2s, background .2s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button[aria-pressed="true"] { background:linear-gradient(180deg,#ff9d5c,var(--amber)); color:#2a1400; box-shadow:0 4px 14px rgba(255,137,64,0.35); }
+  .seg button:focus-visible { outline:2px solid var(--amber-ink); outline-offset:2px; }
+
+  .stage { display:grid; grid-template-columns:minmax(0,348px) minmax(0,1fr); gap:clamp(22px,4vw,48px); align-items:start; margin:30px 0 8px; }
+  @media (max-width:820px){ .stage { grid-template-columns:1fr; justify-items:center; } }
+
+  .device { width:min(348px,92vw); }
+  .device figcaption { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); text-align:center; margin-top:16px; }
+  .screen { position:relative; border-radius:46px; padding:10px; background:#05060c; box-shadow:0 0 0 2px rgba(255,255,255,0.06), 0 30px 70px -20px rgba(0,0,0,0.8); }
+  .glass-in { position:relative; height:740px; max-height:82vh; border-radius:38px; overflow:hidden; background:linear-gradient(158deg,var(--bg-1) 0%,var(--bg-2) 12%,var(--bg-3) 60%,var(--bg-4) 80%,var(--bg-5) 100%); }
+  .glass-in::after { content:""; position:absolute; inset:0; background:radial-gradient(140% 80% at 50% 120%, rgba(0,0,0,0.45), transparent 60%); pointer-events:none; }
+  .island { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#05060c; border-radius:16px; z-index:20; }
+  .statusbar { position:absolute; top:16px; left:0; right:0; display:flex; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:600; z-index:15; pointer-events:none; }
+  .statusbar .r { letter-spacing:0.04em; opacity:0.9; }
+  .scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:58px 14px 26px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar { display:none; }
+
+  .tabtitle { font-size:28px; font-weight:800; letter-spacing:-0.02em; margin:4px 4px 2px; }
+  .tabsub { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--amber-ink); margin:0 4px 12px; transition:opacity .15s; }
+  .tabsub.flash { animation:countflash .45s ease; }
+  @keyframes countflash { 0% { opacity:0.2; } 100% { opacity:1; } }
+
+  /* ---------------- chips (variant A + shared) ---------------- */
+  .chiprow { display:flex; gap:7px; overflow-x:auto; padding:2px 4px 8px; scrollbar-width:none; }
+  .chiprow::-webkit-scrollbar { display:none; }
+  .chip {
+    flex:0 0 auto; appearance:none; cursor:pointer; font:inherit; font-size:13px; font-weight:600;
+    color:var(--ink-dim); background:rgba(16,14,34,0.35); border:1px solid var(--glass-line);
+    border-radius:999px; padding:7px 13px; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    transition:background .15s, color .15s, border-color .15s;
+    white-space:nowrap;
+  }
+  .chip[aria-pressed="true"] { background:linear-gradient(180deg,#ff9d5c,var(--amber)); border-color:transparent; color:#2a1400; }
+  .chip.heart[aria-pressed="true"] { background:linear-gradient(180deg,#ff7ba3,var(--heart)); color:#3d0217; }
+  .chip small { font-weight:700; opacity:0.6; margin-left:4px; }
+
+  /* ---------------- variant B: header + sheet ---------------- */
+  .brow { display:flex; align-items:center; gap:8px; padding:2px 4px 10px; flex-wrap:wrap; }
+  .filterbtn {
+    appearance:none; cursor:pointer; font:inherit; font-size:13.5px; font-weight:700;
+    display:inline-flex; align-items:center; gap:7px;
+    color:var(--ink); background:rgba(16,14,34,0.4); border:1px solid var(--amber-line);
+    border-radius:999px; padding:8px 14px; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  }
+  .filterbtn .badge { min-width:19px; height:19px; border-radius:10px; background:var(--amber); color:#2a1400; font-size:11.5px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; padding:0 5px; }
+  .filterbtn .badge:empty { display:none; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--amber-ink); background:rgba(255,137,64,0.14); border:1px solid var(--amber-line); border-radius:999px; padding:5px 10px; cursor:pointer; }
+  .pill .x { font-weight:800; opacity:0.7; }
+  .pill.heart { color:#ffc2d4; background:rgba(255,92,138,0.16); border-color:rgba(255,92,138,0.5); }
+
+  .scrim { position:absolute; inset:0; background:rgba(5,6,12,0.55); opacity:0; pointer-events:none; transition:opacity .22s; z-index:30; }
+  .scrim.open { opacity:1; pointer-events:auto; }
+  .sheet {
+    position:absolute; left:0; right:0; bottom:0; z-index:31; max-height:76%;
+    display:flex; flex-direction:column;
+    border-radius:24px 24px 38px 38px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(38,30,52,0.92), rgba(22,16,30,0.96));
+    backdrop-filter:blur(24px) saturate(1.2); -webkit-backdrop-filter:blur(24px) saturate(1.2);
+    border-top:1px solid var(--glass-line);
+    transform:translateY(105%); transition:transform .26s cubic-bezier(.32,.72,.33,1);
+  }
+  .sheet.open { transform:translateY(0); }
+  .sheet .grab { width:38px; height:5px; border-radius:3px; background:rgba(255,255,255,0.25); margin:9px auto 2px; flex:0 0 auto; }
+  .sheet .sheethead { display:flex; align-items:center; justify-content:space-between; padding:8px 18px 10px; flex:0 0 auto; }
+  .sheet .sheethead h3 { margin:0; font-size:17px; font-weight:800; }
+  .sheet .sheethead button { appearance:none; border:0; background:transparent; color:var(--amber-ink); font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  .sheetbody { overflow-y:auto; padding:0 18px 18px; scrollbar-width:none; }
+  .sheetbody::-webkit-scrollbar { display:none; }
+  .fgroup { margin:0 0 16px; }
+  .fgroup .glabel { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 8px; }
+  .fseg { display:flex; background:rgba(10,8,22,0.5); border:1px solid var(--glass-line); border-radius:11px; padding:3px; gap:2px; }
+  .fseg button { flex:1; appearance:none; border:0; background:transparent; color:var(--ink-dim); font:inherit; font-size:12.5px; font-weight:600; padding:7px 4px; border-radius:8px; cursor:pointer; }
+  .fseg button[aria-pressed="true"] { background:linear-gradient(180deg,#ff9d5c,var(--amber)); color:#2a1400; }
+  .vlist { border:1px solid var(--glass-line); border-radius:14px; overflow:hidden; }
+  .vlist .vcity { font-family:ui-monospace,monospace; font-size:9.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--amber-ink); padding:8px 13px 4px; background:rgba(255,137,64,0.07); }
+  .vrowb { display:flex; align-items:center; justify-content:space-between; width:100%; appearance:none; border:0; text-align:left; cursor:pointer; font:inherit; color:var(--ink); background:transparent; padding:9px 13px; border-top:1px solid rgba(255,255,255,0.07); }
+  .vrowb .vn { font-size:13.5px; font-weight:600; }
+  .vrowb .vc { font-size:11px; color:var(--ink-faint); margin-top:1px; }
+  .vrowb .check { width:20px; height:20px; border-radius:50%; border:1.5px solid var(--glass-line); display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:transparent; flex:0 0 auto; }
+  .vrowb[aria-pressed="true"] .check { background:var(--amber); border-color:var(--amber); color:#2a1400; }
+  .togglerow { display:flex; align-items:center; justify-content:space-between; padding:10px 2px; }
+  .togglerow .tl { font-size:14px; font-weight:600; }
+  .togglerow .tsub { font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+  .switch { width:46px; height:28px; border-radius:15px; background:rgba(255,255,255,0.18); border:0; position:relative; cursor:pointer; transition:background .18s; flex:0 0 auto; }
+  .switch::after { content:""; position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:#fff; transition:left .18s; box-shadow:0 2px 6px rgba(0,0,0,0.35); }
+  .switch[aria-pressed="true"] { background:var(--live); }
+  .switch[aria-pressed="true"]::after { left:20px; }
+  .switch.heart[aria-pressed="true"] { background:var(--heart); }
+  .sheetapply { flex:0 0 auto; padding:10px 18px 22px; }
+  .sheetapply button { width:100%; appearance:none; border:0; cursor:pointer; font:inherit; font-size:15px; font-weight:800; color:#2a1400; padding:13px; border-radius:14px; background:linear-gradient(180deg,#ff9d5c,var(--amber)); box-shadow:0 6px 18px rgba(255,137,64,0.35); }
+
+  /* ---------------- variant C: shelves ---------------- */
+  .venuerail { display:flex; gap:8px; overflow-x:auto; padding:2px 4px 12px; scrollbar-width:none; }
+  .venuerail::-webkit-scrollbar { display:none; }
+  .vcard {
+    flex:0 0 auto; appearance:none; cursor:pointer; font:inherit; text-align:left;
+    width:118px; padding:10px 11px; border-radius:14px;
+    color:var(--ink); background:rgba(16,14,34,0.4); border:1px solid var(--glass-line);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    transition:border-color .15s, background .15s, opacity .15s;
+  }
+  .vcard .vn { font-size:12.5px; font-weight:700; line-height:1.25; }
+  .vcard .vm { font-family:ui-monospace,monospace; font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint); margin-top:5px; }
+  .vcard[aria-pressed="true"] { border-color:var(--amber); background:rgba(255,137,64,0.16); }
+  .vcard[aria-pressed="true"] .vm { color:var(--amber-ink); }
+  .venuerail.soloing .vcard[aria-pressed="false"] { opacity:0.45; }
+  .genrerail { display:flex; gap:7px; overflow-x:auto; padding:0 4px 12px; scrollbar-width:none; }
+  .genrerail::-webkit-scrollbar { display:none; }
+  .shelfhead { display:flex; align-items:baseline; justify-content:space-between; margin:14px 6px 8px; }
+  .shelfhead h4 { margin:0; font-size:16px; font-weight:800; letter-spacing:-0.01em; }
+  .shelfhead h4 .hh { color:var(--heart); margin-right:6px; }
+  .shelfhead .cnt { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.12em; color:var(--ink-faint); }
+  .shelfempty { margin:0 6px; font-size:12.5px; color:var(--ink-faint); font-style:italic; }
+
+  /* ---------------- ticket rows (shared) ---------------- */
+  .rows { display:flex; flex-direction:column; gap:9px; padding:2px 2px 8px; }
+  .row {
+    position:relative; display:flex; align-items:stretch; gap:0; border-radius:14px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(48,32,20,0.5), rgba(26,17,11,0.56));
+    backdrop-filter:blur(14px) saturate(1.1); -webkit-backdrop-filter:blur(14px) saturate(1.1);
+    border:1px solid rgba(255,137,64,0.35);
+    box-shadow:0 10px 26px -14px rgba(0,0,0,0.65);
+  }
+  .row .dateblock {
+    flex:0 0 58px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; padding:10px 4px;
+    border-right:2px dashed rgba(255,137,64,0.4);
+    background:rgba(255,137,64,0.08);
+  }
+  .row .dateblock .dow { font-size:10px; font-weight:800; letter-spacing:0.16em; color:var(--amber-ink); }
+  .row .dateblock .day { font-size:12px; font-weight:700; color:#fff; letter-spacing:0.04em; text-align:center; line-height:1.3; }
+  .row .main { flex:1; min-width:0; padding:10px 12px 11px; }
+  .row .artist { font-size:15.5px; font-weight:800; letter-spacing:-0.01em; line-height:1.2; }
+  .row .place { font-size:12px; color:var(--amber-ink); margin-top:2px; }
+  .row .meta { display:flex; flex-wrap:wrap; gap:5px 10px; margin-top:6px; font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.06em; color:rgba(255,255,255,0.6); align-items:center; }
+  .row .meta .free { color:#a6f0bd; font-weight:700; }
+  .gtag { display:inline-flex; font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--amber-ink); border:1px solid rgba(255,137,64,0.45); border-radius:999px; padding:2px 7px; }
+  .row .why { display:flex; align-items:center; gap:6px; margin-top:7px; font-size:11px; font-weight:600; color:#ffc2d4; }
+  .row .why .wdot { color:var(--heart); }
+  .row .badges { position:absolute; top:9px; right:10px; display:flex; gap:5px; align-items:center; }
+  .stbadge { font-family:ui-monospace,monospace; font-size:8.5px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
+  .stbadge.sold { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.75); border:1px solid rgba(255,255,255,0.3); }
+  .stbadge.canc { background:rgba(255,69,58,0.16); color:#ffb3ad; border:1px solid rgba(255,69,58,0.5); }
+  .heartmark { color:var(--heart); font-size:13px; line-height:1; }
+  .row.dim { opacity:0.55; }
+  .row.dim .artist { text-decoration:line-through; text-decoration-thickness:1.5px; text-decoration-color:rgba(255,179,173,0.8); }
+
+  .empty {
+    margin:14px 2px; padding:26px 20px 24px; text-align:center;
+    border:2px dashed rgba(255,137,64,0.4); border-radius:16px;
+    background:rgba(255,137,64,0.05);
+  }
+  .empty .et { font-size:16px; font-weight:800; margin:0 0 6px; }
+  .empty .es { font-size:12.5px; color:var(--ink-dim); margin:0 0 14px; line-height:1.55; }
+  .empty button { appearance:none; border:1px solid var(--amber-line); background:rgba(255,137,64,0.12); color:var(--amber-ink); font:inherit; font-size:13px; font-weight:700; padding:8px 16px; border-radius:999px; cursor:pointer; }
+
+  /* ---------------- notes panel ---------------- */
+  .notes { min-width:0; }
+  .notes .ncard { border:1px solid var(--glass-line); border-radius:18px; padding:22px 24px; background:rgba(16,14,34,0.35); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .notes h2 { margin:0 0 4px; font-size:21px; letter-spacing:-0.01em; }
+  .notes .sub { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  .notes ul { margin:0 0 16px; padding-left:19px; color:var(--ink-dim); font-size:14.5px; }
+  .notes li { margin:0 0 8px; }
+  .notes li b { color:var(--ink); }
+  .shipbox { border-top:1px solid var(--glass-line); padding-top:14px; display:grid; gap:8px; }
+  .shipbox .srow { display:flex; gap:10px; font-size:13px; }
+  .shipbox .sk { flex:0 0 92px; font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-faint); padding-top:2px; }
+  .shipbox .sv { color:var(--ink-dim); }
+  .shipbox .sv b { color:var(--amber-ink); font-weight:700; }
+
+  /* ---------------- roadmap + open questions ---------------- */
+  .section { margin-top:52px; }
+  .section h2 { font-size:24px; letter-spacing:-0.01em; margin:0 0 6px; }
+  .section .slede { color:var(--ink-dim); max-width:70ch; margin:0 0 20px; font-size:15px; }
+  .relgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+  .relcard { border:1px solid var(--glass-line); border-radius:16px; padding:18px 20px; background:rgba(16,14,34,0.35); }
+  .relcard .rk { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--amber); margin:0 0 8px; }
+  .relcard h3 { margin:0 0 8px; font-size:17px; }
+  .relcard p { margin:0 0 10px; font-size:13.5px; color:var(--ink-dim); line-height:1.55; }
+  .relcard .need { font-size:12px; color:var(--amber-ink); font-family:ui-monospace,monospace; letter-spacing:0.04em; }
+  .oq { margin:14px 0 0; padding-left:19px; color:var(--ink-dim); font-size:14.5px; }
+  .oq li { margin-bottom:8px; }
+  .oq b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">WXYC · Touring Soon (#474) · prototype</p>
+  <h1>Filter studies for the Touring Soon tab</h1>
+  <p class="lede">Three interfaces over the same in-memory concert cache. Like triangle-shows.net, the feed is fetched <b>once</b> and every filter applies <b>client-side, instantly</b> — no spinner, no refetch. Flip the release switch to watch each interface absorb <b>genre filters (R2)</b> and <b>For You (R3)</b> one release at a time. Every control below is live.</p>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="switch-label">Variant</span>
+      <div class="seg" id="variantSeg" role="group" aria-label="Variant">
+        <button data-v="A" aria-pressed="true">A · Chip Rail</button>
+        <button data-v="B" aria-pressed="false">B · Filter Sheet</button>
+        <button data-v="C" aria-pressed="false">C · Shelves</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="switch-label">Release</span>
+      <div class="seg" id="releaseSeg" role="group" aria-label="Release stage">
+        <button data-r="1" aria-pressed="true">R1 · Filters</button>
+        <button data-r="2" aria-pressed="false">R2 · + Genre</button>
+        <button data-r="3" aria-pressed="false">R3 · + For You</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage" data-variant="A" data-release="1">
+    <figure class="device" style="margin:0;">
+      <div class="screen">
+        <div class="glass-in">
+          <div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r">89.3 FM</span></div>
+          <div class="scroll" id="phone"></div>
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet"></div>
+        </div>
+      </div>
+      <figcaption id="devcap">A · Chip Rail — R1</figcaption>
+    </figure>
+    <div class="notes">
+      <div class="ncard" id="notes"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The release runway</h2>
+    <p class="slede">Each stage is independently shippable and none requires rework of the previous one. The load-bearing decision is made at R1: fetch the whole window once, filter in memory — that is what makes R2 and R3 pure additions.</p>
+    <div class="relgrid">
+      <div class="relcard">
+        <p class="rk">R1 · next release</p>
+        <h3>Instant local filters</h3>
+        <p>Date window, city/venue, free, all-ages — every facet already exists on the <code>Concert</code> schema. Fetch the full curated window from <code>GET /concerts</code> (today ~9 events, page limit 100), keep it in memory, filter on tap. Sold out / cancelled render as state, not filters.</p>
+        <p class="need">Needs: nothing new — API already suffices.</p>
+      </div>
+      <div class="relcard">
+        <p class="rk">R2 · following release</p>
+        <h3>Genre filters</h3>
+        <p>Concert lacks genre today. Backend-Service enriches at read time: <code>headlining_artist_id</code> → the artist's library genre (catalog/LML), falling back to triangle-shows' scraped <code>genre</code> field (Ticketmaster tags) for unresolved headliners. Client stays local-instant — genre is just another facet on the cached rows.</p>
+        <p class="need">Needs: `genres: [String]` on Concert in api.yaml + BS read-path join.</p>
+      </div>
+      <div class="relcard">
+        <p class="rk">R3 · after that</p>
+        <h3>For You</h3>
+        <p>No likes signal exists in the app yet. Stage it: (a) on-device hearts on playcut rows, matched against <code>headlining_artist_id</code> — “You've liked them on air,” zero backend; (b) later, semantic-index expands the match to similar artists — “Because you like Stereolab.” Privacy stays on-device until (b).</p>
+        <p class="need">Needs: likes UI + local store; later semantic-index /similar.</p>
+      </div>
+    </div>
+    <h2 style="margin-top:40px; font-size:20px;">Open questions</h2>
+    <ul class="oq">
+      <li><b>Rail budget vs. sheet depth.</b> A is fastest to scan but visibly strains at three chip rows by R3. B hides everything behind one tap but absorbs R2/R3 without layout change. Does the tiny feed (~9 shows) even justify B's machinery at R1?</li>
+      <li><b>Is C a complement, not a competitor?</b> Shelves are the natural home for For You and genre browsing, but weakest for goal-directed narrowing ("free shows in Durham this weekend"). C could be the tab's default presentation with A/B's controls layered on.</li>
+      <li><b>Smart solo/restore</b> (tap a city = solo it, tap again = restore all — stolen from triangle-shows) is delightful on the web. Does it read as discoverable on iOS, or does it need the first-tap hint?</li>
+      <li><b>Search</b> is deliberately out of scope here — at 9–50 events, facets beat typing. Revisit when recall climbs (BS#1604 / triangle-shows#18).</li>
+      <li><b>Filter persistence:</b> do filters reset per visit (triangle-shows resets except hidden venues) or persist via DefaultsStorage?</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ---------------- stub data — WXYC-canonical artists, real Triangle venues ---------------- */
+const VENUES = [
+  { id:'cradle',  name:"Cat's Cradle",       city:'Carrboro',    group:'CH–Carrboro' },
+  { id:'506',     name:'Local 506',          city:'Chapel Hill', group:'CH–Carrboro' },
+  { id:'artsctr', name:'The ArtsCenter',     city:'Carrboro',    group:'CH–Carrboro' },
+  { id:'motorco', name:'Motorco Music Hall', city:'Durham',      group:'Durham' },
+  { id:'pinhook', name:'The Pinhook',        city:'Durham',      group:'Durham' },
+  { id:'fruit',   name:'The Fruit',          city:'Durham',      group:'Durham' },
+  { id:'kings',   name:'Kings',              city:'Raleigh',     group:'Raleigh' },
+  { id:'lincoln', name:'Lincoln Theatre',    city:'Raleigh',     group:'Raleigh' },
+  { id:'hawriver',name:'Haw River Ballroom', city:'Saxapahaw',   group:'Saxapahaw' },
+];
+const GROUPS = ['CH–Carrboro','Durham','Raleigh','Saxapahaw'];
+const GENRES = ['Rock','Electronic','Experimental','Folk','Jazz'];
+
+/* when: tonight | weekend | week (weeknights before the weekend) | later */
+const SHOWS = [
+  { artist:'Wednesday',              venue:'cradle',   dow:'MON', day:'JUL 13', when:'tonight', price:25,  age:'All ages', status:'on_sale',  genre:'Rock',         liked:true },
+  { artist:'Sluice · Truth Club',    venue:'506',      dow:'MON', day:'JUL 13', when:'tonight', price:0,   age:'18+',      status:'on_sale',  genre:'Rock' },
+  { artist:'Juana Molina',           venue:'pinhook',  dow:'TUE', day:'JUL 14', when:'week',    price:22,  age:'21+',      status:'on_sale',  genre:'Electronic' },
+  { artist:'Water From Your Eyes',   venue:'506',      dow:'WED', day:'JUL 15', when:'week',    price:18,  age:'18+',      status:'cancelled',genre:'Experimental' },
+  { artist:'Chuquimamani-Condori',   venue:'fruit',    dow:'WED', day:'JUL 15', when:'week',    price:15,  age:'All ages', status:'on_sale',  genre:'Electronic' },
+  { artist:'Deerhoof',               venue:'kings',    dow:'THU', day:'JUL 16', when:'week',    price:20,  age:'18+',      status:'on_sale',  genre:'Rock' },
+  { artist:'Nilüfer Yanya',          venue:'motorco',  dow:'FRI', day:'JUL 17', when:'weekend', price:28,  age:'All ages', status:'on_sale',  genre:'Rock' },
+  { artist:'MJ Lenderman',           venue:'cradle',   dow:'SAT', day:'JUL 18', when:'weekend', price:25,  age:'All ages', status:'sold_out', genre:'Rock',         liked:true },
+  { artist:'Jessica Pratt',          venue:'hawriver', dow:'SAT', day:'JUL 18', when:'weekend', price:30,  age:'All ages', status:'on_sale',  genre:'Folk',         via:'Cat Power' },
+  { artist:'Pinhook 17th Birthday Bash', venue:'pinhook', dow:'SUN', day:'JUL 19', when:'weekend', price:0, age:'All ages', status:'on_sale', genre:'Rock' },
+  { artist:'Sun Ra Arkestra',        venue:'motorco',  dow:'TUE', day:'JUL 22', when:'later',   price:30,  age:'All ages', status:'on_sale',  genre:'Jazz' },
+  { artist:'Yo La Tengo',            venue:'cradle',   dow:'FRI', day:'JUL 25', when:'later',   price:35,  age:'All ages', status:'on_sale',  genre:'Rock',         via:'Stereolab' },
+  { artist:'Kim Gordon',             venue:'lincoln',  dow:'SAT', day:'JUL 26', when:'later',   price:38,  age:'18+',      status:'on_sale',  genre:'Experimental' },
+  { artist:'Alice Gerrard',          venue:'artsctr',  dow:'SUN', day:'JUL 27', when:'later',   price:18,  age:'All ages', status:'on_sale',  genre:'Folk' },
+  { artist:'Indigo De Souza',        venue:'cradle',   dow:'THU', day:'JUL 31', when:'later',   price:28,  age:'All ages', status:'on_sale',  genre:'Rock',         via:'MJ Lenderman' },
+  { artist:'Hermanos Gutiérrez',     venue:'hawriver', dow:'SAT', day:'AUG 2',  when:'later',   price:32,  age:'All ages', status:'on_sale',  genre:'Folk' },
+];
+const venueById = Object.fromEntries(VENUES.map(v => [v.id, v]));
+
+/* ---------------- shared filter state (survives variant switches on purpose) ---------------- */
+const state = {
+  when:'all',                 // all | tonight | weekend | week7 (next 7 days)
+  groups:new Set(GROUPS),     // city groups enabled
+  venues:new Set(VENUES.map(v => v.id)),
+  free:false,
+  allAges:false,
+  genres:new Set(),           // empty = all (R2+)
+  forYou:false,               // R3+
+};
+let variant = 'A';
+let release = 1;
+let sheetOpen = false;
+
+const WHENSETS = { all:null, tonight:['tonight'], weekend:['weekend'], week7:['tonight','week','weekend'] };
+const WHENLABEL = { all:'All dates', tonight:'Tonight', weekend:'This weekend', week7:'Next 7 days' };
+
+function effectiveVenues() {
+  // a venue is on if its checkbox is on AND its city group is on
+  return new Set(VENUES.filter(v => state.venues.has(v.id) && state.groups.has(v.group)).map(v => v.id));
+}
+function matches(s) {
+  const ws = WHENSETS[state.when];
+  if (ws && !ws.includes(s.when)) return false;
+  if (!effectiveVenues().has(s.venue)) return false;
+  if (state.free && s.price !== 0) return false;
+  if (state.allAges && s.age !== 'All ages') return false;
+  if (release >= 2 && state.genres.size && !state.genres.has(s.genre)) return false;
+  if (release >= 3 && state.forYou && !(s.liked || s.via)) return false;
+  return true;
+}
+function filtered() { return SHOWS.filter(matches); }
+function activeCount() {
+  let n = 0;
+  if (state.when !== 'all') n++;
+  if (state.groups.size < GROUPS.length) n++;
+  if (state.venues.size < VENUES.length) n++;
+  if (state.free) n++;
+  if (state.allAges) n++;
+  if (release >= 2 && state.genres.size) n++;
+  if (release >= 3 && state.forYou) n++;
+  return n;
+}
+function resetFilters() {
+  state.when = 'all';
+  state.groups = new Set(GROUPS);
+  state.venues = new Set(VENUES.map(v => v.id));
+  state.free = false; state.allAges = false;
+  state.genres = new Set(); state.forYou = false;
+}
+
+/* triangle-shows' smart toggle: all on -> solo; solo already -> restore all; else -> toggle */
+function smartToggle(set, all, key) {
+  if (set.size === all.length) { set.clear(); set.add(key); }
+  else if (set.size === 1 && set.has(key)) { all.forEach(k => set.add(k)); }
+  else if (set.has(key)) { set.delete(key); if (set.size === 0) all.forEach(k => set.add(k)); }
+  else { set.add(key); }
+}
+
+/* ---------------- row rendering (shared ticket treatment) ---------------- */
+function esc(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function rowHTML(s) {
+  const v = venueById[s.venue];
+  const dim = (s.status === 'cancelled') ? ' dim' : '';
+  const badges = [];
+  if (release >= 3 && s.liked) badges.push('<span class="heartmark">&#9829;</span>');
+  if (s.status === 'sold_out') badges.push('<span class="stbadge sold">Sold out</span>');
+  if (s.status === 'cancelled') badges.push('<span class="stbadge canc">Cancelled</span>');
+  const meta = [];
+  meta.push(s.price === 0 ? '<span class="free">FREE</span>' : (s.price == null ? 'TBA' : '$' + s.price));
+  meta.push(esc(s.age));
+  if (release >= 2) meta.push('<span class="gtag">' + esc(s.genre) + '</span>');
+  let why = '';
+  if (release >= 3) {
+    if (s.liked) why = '<div class="why"><span class="wdot">&#9829;</span> You’ve liked them on air</div>';
+    else if (s.via) why = '<div class="why"><span class="wdot">&#10022;</span> Because you like ' + esc(s.via) + '</div>';
+  }
+  return `<div class="row${dim}">
+    <div class="dateblock"><span class="dow">${s.dow}</span><span class="day">${s.day}</span></div>
+    <div class="main">
+      <div class="artist">${esc(s.artist)}</div>
+      <div class="place">${esc(v.name)} · ${esc(v.city)}</div>
+      <div class="meta">${meta.join('<span style="opacity:.35">·</span>')}</div>
+      ${why}
+    </div>
+    <div class="badges">${badges.join('')}</div>
+  </div>`;
+}
+function emptyHTML(total) {
+  return `<div class="empty">
+    <p class="et">Slow week at the box office</p>
+    <p class="es">${total} shows are on the board, but none match these filters. The curated feed is small right now — loosen up or check back soon.</p>
+    <button onclick="onClearAll()">Clear filters</button>
+  </div>`;
+}
+function countLine(list) {
+  return `<p class="tabsub flash" id="countline">${list.length} of ${SHOWS.length} shows on the board</p>`;
+}
+function chip(label, pressed, handler, extra) {
+  return `<button class="chip${extra ? ' ' + extra : ''}" aria-pressed="${pressed}" onclick="${handler}">${label}</button>`;
+}
+
+/* ---------------- variant A: chip rail ---------------- */
+function renderA() {
+  const list = filtered();
+  let html = `<h2 class="tabtitle">Touring Soon</h2>` + countLine(list);
+  html += '<div class="chiprow">' +
+    Object.keys(WHENLABEL).map(k => chip(WHENLABEL[k], state.when === k, `onWhen('${k}')`)).join('') + '</div>';
+  let row2 = GROUPS.map(g => chip(g, state.groups.has(g), `onGroup('${g.replace(/'/g,"\\'")}')`)).join('');
+  row2 += chip('Free', state.free, 'onFree()');
+  row2 += chip('All ages', state.allAges, 'onAllAges()');
+  html += '<div class="chiprow">' + row2 + '</div>';
+  if (release >= 2) {
+    html += '<div class="chiprow">' + GENRES.map(g =>
+      chip(g, state.genres.has(g), `onGenre('${g}')`)).join('') + '</div>';
+  }
+  if (release >= 3) {
+    // For You leads the first rail
+    html = html.replace('<div class="chiprow">' ,
+      '<div class="chiprow">' + chip('&#9829; For You', state.forYou, 'onForYou()', 'heart'));
+  }
+  html += '<div class="rows">' + (list.length ? list.map(rowHTML).join('') : emptyHTML(SHOWS.length)) + '</div>';
+  return html;
+}
+
+/* ---------------- variant B: filter sheet ---------------- */
+function appliedPills() {
+  const pills = [];
+  if (state.when !== 'all') pills.push(`<span class="pill" onclick="onWhen('all')">${WHENLABEL[state.when]} <span class="x">&times;</span></span>`);
+  if (state.groups.size < GROUPS.length) {
+    const on = GROUPS.filter(g => state.groups.has(g)).join(' + ');
+    pills.push(`<span class="pill" onclick="onGroupsReset()">${on} <span class="x">&times;</span></span>`);
+  }
+  if (state.venues.size < VENUES.length) {
+    const n = VENUES.length - state.venues.size;
+    pills.push(`<span class="pill" onclick="onVenuesReset()">${n} venue${n>1?'s':''} hidden <span class="x">&times;</span></span>`);
+  }
+  if (state.free) pills.push('<span class="pill" onclick="onFree()">Free <span class="x">&times;</span></span>');
+  if (state.allAges) pills.push('<span class="pill" onclick="onAllAges()">All ages <span class="x">&times;</span></span>');
+  if (release >= 2 && state.genres.size) {
+    pills.push(`<span class="pill" onclick="onGenresReset()">${[...state.genres].join(' + ')} <span class="x">&times;</span></span>`);
+  }
+  if (release >= 3 && state.forYou) pills.push('<span class="pill heart" onclick="onForYou()">&#9829; For You <span class="x">&times;</span></span>');
+  return pills.join('');
+}
+function renderB() {
+  const list = filtered();
+  const n = activeCount();
+  let html = `<h2 class="tabtitle">Touring Soon</h2>` + countLine(list);
+  html += `<div class="brow">
+    <button class="filterbtn" onclick="toggleSheet(true)">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 4h12M4.5 8h7M6.5 12h3"/></svg>
+      Filter <span class="badge">${n || ''}</span>
+    </button>${appliedPills()}</div>`;
+  html += '<div class="rows">' + (list.length ? list.map(rowHTML).join('') : emptyHTML(SHOWS.length)) + '</div>';
+  return html;
+}
+function renderSheet() {
+  const sheet = document.getElementById('sheet');
+  if (variant !== 'B') {
+    sheet.innerHTML = '';
+    sheet.classList.remove('open');
+    document.getElementById('scrim').classList.remove('open');
+    return;
+  }
+  let body = '';
+  if (release >= 3) {
+    body += `<div class="togglerow" style="border:1px solid rgba(255,92,138,0.4); border-radius:14px; padding:10px 13px; margin-bottom:14px; background:rgba(255,92,138,0.08);">
+      <span><span class="tl">&#9829; For You</span><div class="tsub">Artists you&rsquo;ve liked, and artists like them</div></span>
+      <button class="switch heart" aria-pressed="${state.forYou}" onclick="onForYou()"></button></div>`;
+  }
+  body += `<div class="fgroup"><p class="glabel">When</p><div class="fseg">` +
+    Object.keys(WHENLABEL).map(k => `<button aria-pressed="${state.when===k}" onclick="onWhen('${k}')">${WHENLABEL[k]}</button>`).join('') +
+    `</div></div>`;
+  if (release >= 2) {
+    body += `<div class="fgroup"><p class="glabel">Genre</p><div class="chiprow" style="padding:0;">` +
+      GENRES.map(g => chip(g, state.genres.has(g), `onGenre('${g}')`)).join('') + `</div></div>`;
+  }
+  body += `<div class="fgroup"><p class="glabel">Venues</p><div class="vlist">`;
+  for (const grp of GROUPS) {
+    body += `<div class="vcity">${grp}</div>`;
+    for (const v of VENUES.filter(v => v.group === grp)) {
+      body += `<button class="vrowb" aria-pressed="${state.venues.has(v.id)}" onclick="onVenue('${v.id}')">
+        <span><span class="vn">${v.name}</span><div class="vc">${v.city}</div></span>
+        <span class="check">&#10003;</span></button>`;
+    }
+  }
+  body += `</div></div>`;
+  body += `<div class="togglerow"><span><span class="tl">Free shows only</span><div class="tsub">price_min = 0</div></span>
+    <button class="switch" aria-pressed="${state.free}" onclick="onFree()"></button></div>`;
+  body += `<div class="togglerow"><span><span class="tl">All ages</span><div class="tsub">Hide 18+/21+ doors</div></span>
+    <button class="switch" aria-pressed="${state.allAges}" onclick="onAllAges()"></button></div>`;
+  const list = filtered();
+  sheet.innerHTML = `<div class="grab"></div>
+    <div class="sheethead"><button onclick="onClearAll()">Reset</button><h3>Filters</h3><button onclick="toggleSheet(false)">Done</button></div>
+    <div class="sheetbody">${body}</div>
+    <div class="sheetapply"><button onclick="toggleSheet(false)">Show ${list.length} show${list.length===1?'':'s'}</button></div>`;
+  sheet.classList.toggle('open', sheetOpen);
+  document.getElementById('scrim').classList.toggle('open', sheetOpen);
+}
+
+/* ---------------- variant C: shelves ---------------- */
+function shelfRows(list) {
+  return list.length
+    ? '<div class="rows">' + list.map(rowHTML).join('') + '</div>'
+    : '<p class="shelfempty">Nothing on this shelf right now.</p>';
+}
+function renderC() {
+  const list = filtered();
+  let html = `<h2 class="tabtitle">Touring Soon</h2>` + countLine(list);
+  const soloing = state.venues.size < VENUES.length;
+  html += `<div class="venuerail${soloing ? ' soloing' : ''}">` + VENUES.map(v => {
+    const count = SHOWS.filter(s => s.venue === v.id).length;
+    return `<button class="vcard" aria-pressed="${soloing && state.venues.has(v.id)}" onclick="onVenueSolo('${v.id}')">
+      <div class="vn">${v.name}</div><div class="vm">${v.city} · ${count} show${count===1?'':'s'}</div></button>`;
+  }).join('') + '</div>';
+  if (release >= 2) {
+    html += '<div class="genrerail">' + GENRES.map(g =>
+      chip(g, state.genres.has(g), `onGenre('${g}')`)).join('') + '</div>';
+  }
+  if (release >= 3) {
+    const fy = list.filter(s => s.liked || s.via);
+    html += `<div class="shelfhead"><h4><span class="hh">&#9829;</span>For You</h4><span class="cnt">${fy.length}</span></div>` + shelfRows(fy);
+  }
+  const isFY = s => release >= 3 && (s.liked || s.via);
+  const shelves = [
+    ['Tonight',        list.filter(s => s.when === 'tonight' && !isFY(s))],
+    ['This weekend',   list.filter(s => s.when === 'weekend' && !isFY(s))],
+    ['Coming up',      list.filter(s => s.when === 'week' && !isFY(s))],
+    ['Later',          list.filter(s => s.when === 'later' && !isFY(s))],
+  ];
+  for (const [title, rows] of shelves) {
+    html += `<div class="shelfhead"><h4>${title}</h4><span class="cnt">${rows.length}</span></div>` + shelfRows(rows);
+  }
+  return html;
+}
+
+/* ---------------- notes panel ---------------- */
+const NOTES = {
+  A: {
+    name:'Chip Rail',
+    1:{ sub:'triangle-shows, transplanted', bullets:[
+      '<b>Everything inline, zero taps to discover.</b> Date row + place/price/age row sit above the list, exactly like the triangle-shows sidebar folded onto a phone.',
+      '<b>Smart solo/restore on city chips</b> — with all cities on, tapping one solos it; tapping the solo again restores all. Try it on the Durham chip.',
+      '<b>Instant feedback</b>: the count line flashes on every change; no apply step exists at all.',
+      'Cost: two rail rows already push the first ticket below the fold on smaller phones.'],
+      ship:'Nothing — GET /concerts already carries every facet shown here.' },
+    2:{ sub:'the rail hits its budget', bullets:[
+      'Genre arrives as a <b>third chip row</b> — this is the honest picture of where A strains.',
+      'Genre chips are multi-select (union), unlike cities: tap Rock + Jazz to include both.',
+      'The rail is still faster than a sheet for a single narrowing gesture — but three rows is the ceiling.'],
+      ship:'`genres: [String]` on Concert — BS joins headlining_artist_id to library genre, falls back to triangle-shows scraped genre.' },
+    3:{ sub:'For You leads the rail', bullets:[
+      '<b>&#9829; For You becomes the first chip</b>, in its own color so it reads as a mode, not a facet.',
+      'Matched tickets grow a reason line: exact likes get “You&rsquo;ve liked them on air,” semantic matches get “Because you like Stereolab.”',
+      'Verdict to test with users: is a 3-row rail + hearts still calm, or has A become a control panel?'],
+      ship:'Likes UI + on-device store; semantic-index /similar for the “because you like” expansion.' },
+  },
+  B: {
+    name:'Filter Sheet',
+    1:{ sub:'iOS-native: one button, one sheet', bullets:[
+      '<b>A single Filter button with an active-count badge</b>; all facets live in a bottom sheet (tap Filter).',
+      'Filters still apply instantly — the sheet&rsquo;s CTA live-updates to “Show N shows,” Done just closes.',
+      '<b>Applied pills</b> render next to the button so state is visible without opening the sheet; tap a pill to clear that facet.',
+      'Cost: every narrowing gesture costs a tap to open. At 9 events that overhead is real.'],
+      ship:'Nothing — GET /concerts already suffices.' },
+    2:{ sub:'this is where B earns its keep', bullets:[
+      '<b>Genre slots into the sheet as one more group</b> — the tab header does not change at all.',
+      'That is B&rsquo;s bet: absorb every future facet (genre now, price ranges or radius later) with zero layout pressure.',
+      'Compare against A at R2: same data, but A had to spend its third and final rail row.'],
+      ship:'`genres: [String]` on Concert (same BS enrichment as A).' },
+    3:{ sub:'For You as a pinned mode', bullets:[
+      'For You is a <b>pinned toggle at the top of the sheet</b>, visually separated from facets — a mode, not a filter.',
+      'When active, a heart pill sits by the Filter button so the personalized state is legible from the list.',
+      'Reason lines on tickets are identical to A — the treatment is variant-independent.'],
+      ship:'Likes UI + on-device store; semantic-index later.' },
+  },
+  C: {
+    name:'Shelves',
+    1:{ sub:'browsing is the filter', bullets:[
+      '<b>No filter controls at all.</b> Time does the work: Tonight / This weekend / Coming up / Later shelves replace the date facet.',
+      'The <b>venue rail</b> up top is tap-to-solo (tap again to restore) — spatial browsing instead of a checklist.',
+      'At today&rsquo;s feed size (~9 curated shows) shelves make sparseness look intentional — every show gets a home, empty shelves read as calm rather than broken.',
+      'Cost: goal-directed narrowing (“free + Durham + weekend”) is impossible without adding controls back.'],
+      ship:'Nothing — presentation-only over the same cache.' },
+    2:{ sub:'genre as a browsing spine', bullets:[
+      'A genre rail appears under the venues — tap to narrow every shelf at once.',
+      'Alternative worth exploring: genre <b>shelves</b> (“Electronic this month”) instead of genre <b>chips</b> — browse, don&rsquo;t filter.',
+      'C treats genre as an invitation to wander; A/B treat it as a predicate. Same field, different philosophy.'],
+      ship:'`genres: [String]` on Concert (same BS enrichment).' },
+    3:{ sub:'For You&rsquo;s natural home', bullets:[
+      '<b>The For You shelf pins to the top</b> with hearts and reasons — no toggle, no mode, it is simply first.',
+      'This is the strongest R3 of the three variants: recommendations are content here, not configuration.',
+      'Open question: does C become the default presentation, with A or B&rsquo;s controls as a later layer on top?'],
+      ship:'Likes UI + on-device store; semantic-index later.' },
+  },
+};
+function renderNotes() {
+  const n = NOTES[variant][release];
+  document.getElementById('notes').innerHTML =
+    `<h2>${variant} · ${NOTES[variant].name}</h2><p class="sub">R${release} — ${n.sub}</p>
+     <ul>${n.bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+     <div class="shipbox">
+       <div class="srow"><span class="sk">Backend ask</span><span class="sv">${n.ship}</span></div>
+       <div class="srow"><span class="sk">Architecture</span><span class="sv">Fetch the window once from <b>GET /concerts</b> (limit 100), cache in memory, filter locally on every tap — the triangle-shows recipe, and why every interaction here has zero latency.</span></div>
+     </div>`;
+  document.getElementById('devcap').textContent = `${variant} · ${NOTES[variant].name} — R${release}`;
+}
+
+/* ---------------- event handlers ---------------- */
+function rerender() {
+  const phone = document.getElementById('phone');
+  phone.innerHTML = variant === 'A' ? renderA() : variant === 'B' ? renderB() : renderC();
+  renderSheet();
+  renderNotes();
+}
+function onWhen(k) { state.when = k; rerender(); }
+function onGroup(g) { smartToggle(state.groups, GROUPS, g); rerender(); }
+function onGroupsReset() { state.groups = new Set(GROUPS); rerender(); }
+function onVenue(id) {
+  if (state.venues.has(id)) { state.venues.delete(id); if (!state.venues.size) VENUES.forEach(v => state.venues.add(v.id)); }
+  else state.venues.add(id);
+  rerender();
+}
+function onVenueSolo(id) { smartToggle(state.venues, VENUES.map(v => v.id), id); rerender(); }
+function onVenuesReset() { state.venues = new Set(VENUES.map(v => v.id)); rerender(); }
+function onFree() { state.free = !state.free; rerender(); }
+function onAllAges() { state.allAges = !state.allAges; rerender(); }
+function onGenre(g) { state.genres.has(g) ? state.genres.delete(g) : state.genres.add(g); rerender(); }
+function onGenresReset() { state.genres = new Set(); rerender(); }
+function onForYou() { state.forYou = !state.forYou; rerender(); }
+function onClearAll() { resetFilters(); rerender(); }
+function toggleSheet(open) { sheetOpen = open; renderSheet(); }
+
+const stage = document.getElementById('stage');
+function syncURL() {
+  try { history.replaceState(null, '', `?variant=${variant}&r=${release}`); } catch (e) { /* file:// may refuse */ }
+}
+function setVariant(v) {
+  variant = v; sheetOpen = false;
+  stage.dataset.variant = v;
+  document.querySelectorAll('#variantSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  syncURL();
+  rerender();
+}
+function setRelease(r) {
+  release = r;
+  if (r < 3) state.forYou = false;
+  if (r < 2) state.genres = new Set();
+  stage.dataset.release = String(r);
+  document.querySelectorAll('#releaseSeg button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.r) === r)));
+  syncURL();
+  rerender();
+}
+document.querySelectorAll('#variantSeg button').forEach(b => b.addEventListener('click', () => setVariant(b.dataset.v)));
+document.querySelectorAll('#releaseSeg button').forEach(b => b.addEventListener('click', () => setRelease(Number(b.dataset.r))));
+document.getElementById('scrim').addEventListener('click', () => toggleSheet(false));
+document.addEventListener('keydown', (e) => {
+  if (/input|textarea/i.test(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
+  const order = ['A','B','C'];
+  if (e.key === 'ArrowRight') setVariant(order[(order.indexOf(variant) + 1) % 3]);
+  if (e.key === 'ArrowLeft') setVariant(order[(order.indexOf(variant) + 2) % 3]);
+  if (e.key === '1' || e.key === '2' || e.key === '3') setRelease(Number(e.key));
+});
+const params = new URLSearchParams(location.search);
+const v0 = params.get('variant'), r0 = Number(params.get('r'));
+if (v0 && ['A','B','C'].includes(v0)) setVariant(v0);
+if (r0 >= 1 && r0 <= 3) setRelease(r0);
+if (params.get('sheet') === '1' && variant === 'B') sheetOpen = true;
+rerender();
+</script>
+</body>
+</html>

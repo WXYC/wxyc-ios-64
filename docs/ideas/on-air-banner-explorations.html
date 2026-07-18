@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WXYC · ON AIR banner — visual explorations</title>
+<style>
+  :root {
+    --signal: #ff3b30;          /* broadcast red (toggleable to green) */
+    --signal-soft: rgba(255,59,48,0.55);
+    --ink: rgba(255,255,255,0.96);
+    --muted: rgba(255,255,255,0.52);
+    --faint: rgba(255,255,255,0.30);
+    --glass: rgba(255,255,255,0.10);
+    --glass-line: rgba(255,255,255,0.16);
+    --page: #08080c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(900px 600px at 12% -5%, #241a4d 0%, transparent 55%),
+      radial-gradient(800px 700px at 95% 8%, #0f4a4a 0%, transparent 50%),
+      var(--page);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 40px clamp(16px, 4vw, 56px) 80px;
+  }
+
+  /* ---------- page header ---------- */
+  .masthead { max-width: 980px; margin: 0 auto 28px; }
+  .masthead h1 {
+    font-size: clamp(22px, 3.2vw, 32px);
+    font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px;
+  }
+  .masthead p { color: var(--muted); max-width: 70ch; margin: 0 0 6px; }
+  .masthead .lede strong { color: var(--ink); font-weight: 600; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-top: 18px;
+  }
+  .controls .lbl { color: var(--faint); font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; }
+  .seg {
+    display: inline-flex; background: rgba(255,255,255,0.06);
+    border: 1px solid var(--glass-line); border-radius: 999px; padding: 3px;
+  }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+  }
+  .seg button[aria-pressed="true"] { background: rgba(255,255,255,0.14); color: var(--ink); }
+
+  /* ---------- grid ---------- */
+  .grid {
+    display: grid; gap: 28px; max-width: 980px; margin: 0 auto;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  }
+  .cell { display: flex; flex-direction: column; gap: 10px; }
+  .cell .meta { padding: 0 4px; }
+  .cell .tag {
+    display: inline-block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700; margin-bottom: 4px;
+  }
+  .cell .name { font-size: 16px; font-weight: 700; margin: 0 0 3px; }
+  .cell .blurb { font-size: 12.5px; color: var(--muted); margin: 0; }
+  .cell.baseline .name { color: #ffd34d; }
+
+  /* ---------- phone context ---------- */
+  .phone {
+    position: relative; border-radius: 34px; padding: 14px 12px 18px;
+    background:
+      radial-gradient(120% 80% at 20% 0%, rgba(120,80,200,0.40) 0%, transparent 60%),
+      radial-gradient(120% 90% at 100% 30%, rgba(20,120,120,0.40) 0%, transparent 55%),
+      linear-gradient(180deg, #15131f 0%, #0c0b13 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  /* faux LCD player header */
+  .lcd {
+    display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.25));
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+    padding: 8px 12px; margin-bottom: 12px;
+  }
+  .lcd .wm {
+    font: 700 13px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.18em;
+    color: #9be7c4; text-shadow: 0 0 10px rgba(80,230,160,0.4);
+  }
+  .lcd .freq { margin-left: auto; font: 600 11px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0.1em; }
+  .lcd .vis { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .lcd .vis i { width: 2px; background: #5fd6a6; border-radius: 1px; opacity: 0.8; animation: vis 1.1s ease-in-out infinite; }
+
+  .slot { margin: 2px 2px 12px; }   /* where each banner variant lives */
+
+  .rowhdr { font: 700 12px/1 system-ui; letter-spacing: 0.04em; color: var(--ink);
+            text-transform: lowercase; font-variant: small-caps; margin: 2px 6px 8px; opacity: 0.85; }
+  .ghost { display: flex; align-items: center; gap: 12px; padding: 8px 6px; opacity: 0.5; }
+  .ghost .art { width: 42px; height: 42px; border-radius: 8px; flex: none;
+                background: linear-gradient(135deg, #4b5bc4, #7a3f8f); }
+  .ghost .lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .ghost .l1 { height: 9px; width: 62%; border-radius: 4px; background: rgba(255,255,255,0.55); }
+  .ghost .l2 { height: 8px; width: 40%; border-radius: 4px; background: rgba(255,255,255,0.30); }
+  .ghost + .ghost { border-top: 1px solid rgba(255,255,255,0.06); }
+
+  /* ===================================================================
+     BASELINE — current implementation (glass TipCard)
+     =================================================================== */
+  .v-base {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    border: 1px solid var(--glass-line); border-radius: 16px; padding: 12px 16px;
+  }
+  .v-base .ant { width: 32px; height: 32px; flex: none; color: #fff; }
+  .v-base .txt { display: flex; flex-direction: column; gap: 2px; }
+  .v-base .cap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.7); letter-spacing: 0.04em; }
+  .v-base .dot { width: 9px; height: 9px; border-radius: 50%; background: #34c759; box-shadow: 0 0 6px #34c759; animation: pulse 1.1s ease-in-out infinite; }
+  .v-base .name { font-size: 15px; font-weight: 600; }
+
+  /* ===================================================================
+     A — BROADCAST SIGN (illuminated studio plaque)
+     =================================================================== */
+  .v-sign {
+    position: relative; border-radius: 14px; padding: 16px 18px;
+    background:
+      linear-gradient(180deg, #1c1c22 0%, #121217 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5), inset 0 2px 10px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(255,255,255,0.03);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .v-sign::before, .v-sign::after {
+    content: ""; position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #aaa, #333); top: 8px;
+  }
+  .v-sign::before { left: 8px; } .v-sign::after { right: 8px; }
+  .v-sign .onair {
+    font: 800 30px/0.9 "Helvetica Neue", system-ui; letter-spacing: 0.14em;
+    color: #fff; white-space: nowrap;
+    color: var(--signal);
+    text-shadow: 0 0 6px var(--signal), 0 0 18px var(--signal-soft), 0 0 38px var(--signal-soft);
+    animation: flicker 4.5s steps(1) infinite;
+  }
+  .v-sign .who { margin-left: auto; text-align: right; }
+  .v-sign .who .dj { font: 700 17px/1 system-ui; letter-spacing: 0.02em; color: #fff; }
+  .v-sign .who .sub { font: 600 10px/1 ui-monospace, monospace; letter-spacing: 0.18em; color: var(--muted); margin-top: 5px; }
+
+  /* ===================================================================
+     B — ANALOG FM TUNER (dial + needle parked on 89.3)
+     =================================================================== */
+  .v-tuner {
+    border-radius: 14px; padding: 14px 16px 12px;
+    background: linear-gradient(180deg, #2a1d0e 0%, #1a1206 100%);
+    border: 1px solid rgba(255,200,120,0.14);
+    box-shadow: inset 0 0 30px rgba(255,160,40,0.10);
+  }
+  .v-tuner .top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .v-tuner .top .on { font: 700 10px/1 ui-monospace, monospace; letter-spacing: 0.22em; color: var(--signal); }
+  .v-tuner .top .dj { font: 700 16px/1 system-ui; color: #ffe6b8; letter-spacing: 0.02em; }
+  .v-tuner .dial { position: relative; height: 34px; border-radius: 6px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15)); overflow: hidden; }
+  .v-tuner .ticks { position: absolute; inset: 0 0 14px; }
+  .v-tuner .ticks i { position: absolute; bottom: 0; width: 1px; background: rgba(255,210,150,0.45); }
+  .v-tuner .scale { position: absolute; left: 0; right: 0; bottom: 1px; display: flex; justify-content: space-between;
+    font: 600 8.5px/1 ui-monospace, monospace; color: rgba(255,210,150,0.6); padding: 0 2px; }
+  .v-tuner .needle { position: absolute; top: 2px; bottom: 12px; width: 2px; left: 52%;
+    background: #ffb733; box-shadow: 0 0 8px #ffb733, 0 0 16px rgba(255,183,51,0.6); border-radius: 2px; }
+  .v-tuner .needle::after { content: "89.3"; position: absolute; top: -2px; left: 6px;
+    font: 700 10px/1 ui-monospace, monospace; color: #fff; text-shadow: 0 0 8px #ffb733; }
+
+  /* ===================================================================
+     C — LIVE EQ HERO (animated bars behind the name)
+     =================================================================== */
+  .v-eq {
+    position: relative; border-radius: 14px; padding: 16px 16px; overflow: hidden;
+    background: linear-gradient(180deg, rgba(10,10,16,0.6), rgba(10,10,16,0.85));
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .v-eq .bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 3px; padding: 6px; opacity: 0.35; }
+  .v-eq .bars i { flex: 1; border-radius: 2px 2px 0 0;
+    background: linear-gradient(180deg, var(--signal), rgba(255,59,48,0.1));
+    transform-origin: bottom; animation: eq 1.4s ease-in-out infinite; }
+  .v-eq .fg { position: relative; }
+  .v-eq .cap { display: flex; align-items: center; gap: 7px; font: 700 11px/1 ui-monospace, monospace; letter-spacing: 0.2em; color: #fff; }
+  .v-eq .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 8px var(--signal); animation: pulse 1.1s ease-in-out infinite; }
+  .v-eq .dj { font: 800 26px/1 system-ui; letter-spacing: -0.01em; margin-top: 8px; color: #fff;
+    text-shadow: 0 2px 18px rgba(0,0,0,0.6); }
+
+  /* ===================================================================
+     D — SPOTLIGHT (full-bleed, no card — deliberately breaks the row grid)
+     =================================================================== */
+  .v-spot {
+    position: relative; padding: 26px 12px 24px; text-align: center; overflow: hidden;
+    border-radius: 14px;
+    background:
+      radial-gradient(120% 140% at 50% -20%, rgba(255,59,48,0.30) 0%, transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  }
+  .v-spot .cap { display: inline-flex; align-items: center; gap: 8px; font: 700 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.32em; color: var(--signal); }
+  .v-spot .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--signal); animation: pulse 1.1s ease-in-out infinite; }
+  .v-spot .dj { font: 800 32px/1 "Helvetica Neue", system-ui; letter-spacing: -0.02em; margin-top: 12px;
+    color: #fff; text-shadow: 0 0 30px rgba(255,59,48,0.35); }
+  .v-spot .sub { font: 500 11px/1 system-ui; color: var(--muted); margin-top: 8px; letter-spacing: 0.06em; }
+
+  /* ===================================================================
+     E — MARQUEE TICKER (blinking pill + scrolling crawl)
+     =================================================================== */
+  .v-ticker {
+    display: flex; align-items: stretch; height: 42px; border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.10); background: rgba(0,0,0,0.35);
+  }
+  .v-ticker .pill {
+    display: flex; align-items: center; gap: 6px; padding: 0 12px; flex: none;
+    background: var(--signal); color: #fff; font: 800 11px/1 ui-monospace, monospace; letter-spacing: 0.16em;
+  }
+  .v-ticker .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: blink 1s steps(1) infinite; }
+  .v-ticker .crawl { flex: 1; overflow: hidden; display: flex; align-items: center; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+  .v-ticker .track { display: inline-flex; white-space: nowrap; gap: 28px; padding-left: 16px;
+    font: 600 13px/1 system-ui; color: var(--ink); animation: crawl 12s linear infinite; }
+  .v-ticker .track b { color: #fff; } .v-ticker .track span { color: var(--muted); }
+
+  /* ===================================================================
+     F — TURNTABLE (spinning vinyl + tonearm)
+     =================================================================== */
+  .v-vinyl {
+    display: flex; align-items: center; gap: 16px; border-radius: 14px; padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+  .v-vinyl .deck { position: relative; width: 60px; height: 60px; flex: none; }
+  .v-vinyl .disc { width: 60px; height: 60px; border-radius: 50%;
+    background:
+      repeating-radial-gradient(circle at 50% 50%, #000 0 2px, #15151a 2px 3px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.06);
+    animation: spin 3.4s linear infinite; }
+  .v-vinyl .disc::after { content: ""; position: absolute; inset: 22px; border-radius: 50%;
+    background: var(--signal); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4); }
+  .v-vinyl .disc::before { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+    border-radius: 50%; background: #0a0a0a; transform: translate(-50%, -50%); z-index: 2; }
+  .v-vinyl .arm { position: absolute; top: 4px; right: -2px; width: 30px; height: 4px; border-radius: 3px;
+    background: linear-gradient(90deg, #bbb, #777); transform-origin: right center; transform: rotate(28deg);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+  .v-vinyl .txt .cap { display: flex; align-items: center; gap: 6px; font: 700 11px/1 ui-monospace, monospace; letter-spacing: 0.18em; color: var(--signal); }
+  .v-vinyl .txt .dj { font: 800 20px/1 system-ui; color: #fff; margin-top: 7px; letter-spacing: -0.01em; }
+  .v-vinyl .txt .sub { font: 500 11px/1 system-ui; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- keyframes ---------- */
+  @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+  @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0.15; } }
+  @keyframes vis { 0%,100% { height: 30%; } 50% { height: 100%; } }
+  @keyframes eq { 0%,100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+  @keyframes crawl { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes flicker {
+    0%, 92%, 100% { opacity: 1; }
+    93% { opacity: 0.4; } 94% { opacity: 1; } 96% { opacity: 0.6; } 97% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="masthead">
+    <h1>ON AIR banner — visual explorations</h1>
+    <p class="lede"><strong>The problem:</strong> the current banner reuses the shared <code>TipCard</code> + <code>BackgroundLayer</code> chrome — translucent blurred glass — which is the same material as the tip cards and visually adjacent to every playlist row. It's glass-on-glass, so the one thing that should feel <em>live</em> recedes into the list.</p>
+    <p>Each exploration below sits above two ghosted playlist rows so you can judge contrast <em>in context</em>. Motion is live where the idea depends on it. Color is themeable — toggle the live signal:</p>
+    <div class="controls">
+      <span class="lbl">Live signal</span>
+      <div class="seg" id="signalToggle">
+        <button data-color="#ff3b30" aria-pressed="true">Broadcast red</button>
+        <button data-color="#34c759" aria-pressed="false">WXYC green</button>
+        <button data-color="#ff2d92" aria-pressed="false">Accent pink</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+<script>
+  // ---- variant definitions: id, name, blurb, banner markup ----
+  const VARIANTS = [
+    {
+      cls: "baseline", tag: "Baseline", name: "Current — glass TipCard",
+      blurb: "What ships today. Reads as just another translucent cell.",
+      html: `<div class="v-base">
+        <svg class="ant" viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+          <circle cx="16" cy="16" r="3" fill="#fff" stroke="none"/>
+          <path d="M11 11a7 7 0 000 10M21 11a7 7 0 010 10"/>
+          <path d="M8 8a11 11 0 000 16M24 8a11 11 0 010 16"/>
+        </svg>
+        <div class="txt"><div class="cap"><span class="dot"></span>ON AIR</div><div class="name">HOUNDSTOOTH</div></div>
+      </div>`
+    },
+    {
+      tag: "A", name: "Broadcast sign",
+      blurb: "Illuminated studio plaque. The most literal 'we're live' signifier — glowing tube letters, faint flicker.",
+      html: `<div class="v-sign">
+        <div class="onair">ON AIR</div>
+        <div class="who"><div class="dj">HOUNDSTOOTH</div><div class="sub">FREEFORM</div></div>
+      </div>`
+    },
+    {
+      tag: "B", name: "Analog FM tuner",
+      blurb: "Vintage receiver dial with the needle parked on 89.3. Hardware metaphor, warm amber backlight.",
+      html: `<div class="v-tuner">
+        <div class="top"><span class="on">● ON AIR</span><span class="dj">HOUNDSTOOTH</span></div>
+        <div class="dial"><div class="ticks" data-ticks></div><div class="needle"></div>
+          <div class="scale"><span>88</span><span>90</span><span>92</span><span>94</span><span>96</span></div>
+        </div>
+      </div>`
+    },
+    {
+      tag: "C", name: "Live EQ hero",
+      blurb: "Animated equalizer bars behind a big name. Speaks the app's own visualizer language, but as a hero.",
+      html: `<div class="v-eq">
+        <div class="bars" data-eq></div>
+        <div class="fg"><div class="cap"><span class="dot"></span>ON AIR</div><div class="dj">HOUNDSTOOTH</div></div>
+      </div>`
+    },
+    {
+      tag: "D", name: "Spotlight",
+      blurb: "No card at all. Full-bleed radial glow + oversized name. Breaks the row grid by refusing to be a cell.",
+      html: `<div class="v-spot">
+        <div class="cap"><span class="dot"></span>ON AIR</div>
+        <div class="dj">HOUNDSTOOTH</div>
+        <div class="sub">live now · 89.3 fm</div>
+      </div>`
+    },
+    {
+      tag: "E", name: "Marquee ticker",
+      blurb: "Blinking pill + scrolling crawl. Motion grabs the eye; reads as breaking / live broadcast.",
+      html: `<div class="v-ticker">
+        <div class="pill"><span class="dot"></span>ON AIR</div>
+        <div class="crawl"><div class="track">
+          <span><b>HOUNDSTOOTH</b> · freeform · 89.3 FM WXYC Chapel Hill ·</span>
+          <span><b>HOUNDSTOOTH</b> · freeform · 89.3 FM WXYC Chapel Hill ·</span>
+        </div></div>
+      </div>`
+    },
+    {
+      tag: "F", name: "Turntable",
+      blurb: "Spinning vinyl + tonearm. Evokes the physical DJ booth — the most tactile, on-brand for a freeform station.",
+      html: `<div class="v-vinyl">
+        <div class="deck"><div class="disc"></div><div class="arm"></div></div>
+        <div class="txt"><div class="cap"><span class="dot"></span>ON AIR</div><div class="dj">HOUNDSTOOTH</div><div class="sub">freeform · live now</div></div>
+      </div>`
+    }
+  ];
+
+  const grid = document.getElementById("grid");
+  const visBars = n => Array.from({length:n}, (_,i)=>`<i style="height:${30+((i*37)%70)}%;animation-delay:${-(i*0.13).toFixed(2)}s"></i>`).join("");
+
+  for (const v of VARIANTS) {
+    const cell = document.createElement("div");
+    cell.className = "cell" + (v.cls ? " " + v.cls : "");
+    cell.innerHTML = `
+      <div class="meta">
+        <span class="tag">${v.tag}</span>
+        <div class="name">${v.name}</div>
+        <p class="blurb">${v.blurb}</p>
+      </div>
+      <div class="phone">
+        <div class="lcd"><span class="wm">WXYC</span><div class="vis">${visBars(7)}</div><span class="freq">89.3 FM</span></div>
+        <div class="slot">${v.html}</div>
+        <div class="rowhdr">now playing</div>
+        <div class="ghost"><div class="art"></div><div class="lines"><div class="l1"></div><div class="l2"></div></div></div>
+        <div class="ghost"><div class="art"></div><div class="lines"><div class="l1"></div><div class="l2"></div></div></div>
+      </div>`;
+    grid.appendChild(cell);
+  }
+
+  // fill EQ bars (16) and tuner ticks
+  document.querySelectorAll("[data-eq]").forEach(el => {
+    el.innerHTML = Array.from({length:16}, (_,i)=>`<i style="animation-delay:${-(i*0.09).toFixed(2)}s;animation-duration:${(1.1+ (i%5)*0.18).toFixed(2)}s"></i>`).join("");
+  });
+  document.querySelectorAll("[data-ticks]").forEach(el => {
+    let h = "";
+    for (let p = 0; p <= 100; p += 4) {
+      const major = p % 20 === 0;
+      h += `<i style="left:${p}%;height:${major?14:7}px;opacity:${major?0.7:0.35}"></i>`;
+    }
+    el.innerHTML = h;
+  });
+
+  // live-signal color toggle
+  const toggle = document.getElementById("signalToggle");
+  toggle.addEventListener("click", e => {
+    const btn = e.target.closest("button"); if (!btn) return;
+    const c = btn.dataset.color;
+    document.documentElement.style.setProperty("--signal", c);
+    document.documentElement.style.setProperty("--signal-soft", c + "8c");
+    toggle.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b === btn));
+  });
+</script>
+</body>
+</html>

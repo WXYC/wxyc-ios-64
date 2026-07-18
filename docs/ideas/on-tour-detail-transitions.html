@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>On Tour — Detail Transition Studies</title>
+<!--
+  PROTOTYPE — throwaway. Delete or absorb once a direction wins.
+
+  Question this answers: what should happen when you tap a show on the On Tour tab
+  (wxyc-ios-64#474)? Today it is `.sheet(item:)` → a lone BoxOfficeTicketView on a
+  gradient, `.presentationDetents([.large])`. The ticket is nicely made but the
+  screen reads BARREN — one small card in a sea of gradient — and the transition
+  (a plain sheet slide-up) does nothing to connect the row you tapped to the detail
+  you land on.
+
+  Two things are being explored at once, because they are the same problem:
+    1. TRANSITION — the motion from list → detail (does the row become the detail?)
+    2. PRESENTATION — what fills the detail so it stops looking empty
+
+  Five states over one shared list + stub dataset, all live:
+    Now — Sheet (baseline)   the current barren large sheet — included so you can
+                             flip to it and feel the difference
+    A — Hero Ticket          the row ZOOMS into the full ticket, then a scroll of
+                             provenance / bill / where / more-shows fills the space
+    B — Poster               full-bleed gig-poster takeover; the ticket distills to
+                             a docked action bar; artwork parallaxes
+    C — Expand in place       no navigation at all — the row opens an inline drawer,
+                             you never leave the list
+    D — Peek Sheet           the sheet, evolved: a medium PEEK detent of essentials
+                             that drags up to a rich, full detail
+
+  Run:  open docs/ideas/on-tour-detail-transitions.html
+  Keys: arrow-left / arrow-right cycle variants · Esc closes a detail · tap any row.
+
+  RECOMMENDATION (for discussion, not a decision): A (Hero Ticket) as the default —
+  it keeps the Box Office ticket we already ship, adds the zoom-continuity that makes
+  the tap feel intentional, and fills the barren space with WXYC-specific content
+  (why-you-heard-them provenance + a browse loop). Fold D's PEEK detent in as the
+  compact-phone / one-handed variant. B is the boldest and best if we get real
+  event artwork on the wire (image_url exists but is usually null today). C is the
+  lightest and a strong fit if the tab's job is triage, not deep dives.
+-->
+<style>
+  :root {
+    --bg-1:#303c72; --bg-2:#40498e; --bg-3:#af3e79; --bg-4:#b64949; --bg-5:#b34876;
+    --page:#101120; --page-2:#171a30;
+    --ink:#ffffff; --ink-dim:rgba(255,255,255,0.72); --ink-faint:rgba(255,255,255,0.46);
+    --glass-line:rgba(255,255,255,0.15);
+    --live:#34c759;
+    --amber:#ff8940; --amber-light:#ff9d5c; --amber-ink:#ffc79a; --amber-line:rgba(255,137,64,0.55);
+    --teal:#4fd6c8; --teal-ink:#b8f0e8;
+    --sold:#ff8f6b; --sold-ink:#ffc7b4;
+    --cancel:#ff6b6b; --cancel-ink:#ffb3b3;
+    --heart:#ff5c8a;
+    --ease-sheet:cubic-bezier(.32,.72,.33,1);
+    --ease-zoom:cubic-bezier(.2,.9,.25,1);
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--page); }
+  body {
+    margin:0; color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro",system-ui,sans-serif;
+    background:
+      radial-gradient(120% 90% at 82% -10%, rgba(255,137,64,0.14), transparent 55%),
+      radial-gradient(120% 90% at 0% 10%, rgba(64,73,142,0.35), transparent 55%),
+      linear-gradient(180deg,var(--page),var(--page-2));
+    background-attachment:fixed; min-height:100vh;
+  }
+  .wrap { max-width:1120px; margin:0 auto; padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 72px; }
+  .kicker { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  h1 { font-size:clamp(30px,5.4vw,50px); line-height:1.04; letter-spacing:-0.02em; font-weight:700; margin:0 0 16px; text-wrap:balance; }
+  .lede { max-width:66ch; font-size:clamp(15px,1.7vw,17px); color:var(--ink-dim); margin:0; }
+  .lede b { color:var(--ink); }
+
+  .controls { display:flex; flex-wrap:wrap; gap:10px 22px; margin:34px 0 6px; align-items:center; }
+  .ctl { display:flex; align-items:center; gap:10px; }
+  .switch-label { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-faint); }
+  .seg { display:inline-flex; flex-wrap:wrap; background:rgba(17,15,38,0.3); border:1px solid var(--glass-line); border-radius:14px; padding:4px; gap:2px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .seg button { appearance:none; border:0; background:transparent; color:var(--ink-dim); font:inherit; font-size:14px; font-weight:600; padding:9px 15px; border-radius:10px; cursor:pointer; transition:color .2s, background .2s; white-space:nowrap; }
+  .seg button:hover { color:var(--ink); }
+  .seg button[aria-pressed="true"] { background:linear-gradient(180deg,var(--amber-light),var(--amber)); color:#2a1400; box-shadow:0 4px 14px rgba(255,137,64,0.35); }
+  .seg button:focus-visible { outline:2px solid var(--amber-ink); outline-offset:2px; }
+  .hint { font-size:12.5px; color:var(--ink-faint); margin:12px 0 0; }
+  .hint b { color:var(--amber-ink); font-weight:600; }
+
+  .stage { display:grid; grid-template-columns:minmax(0,348px) minmax(0,1fr); gap:clamp(22px,4vw,48px); align-items:start; margin:26px 0 8px; }
+  @media (max-width:820px){ .stage { grid-template-columns:1fr; justify-items:center; } }
+
+  .device { width:min(348px,92vw); position:sticky; top:24px; }
+  .device figcaption { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); text-align:center; margin-top:16px; }
+  .screen { position:relative; border-radius:46px; padding:10px; background:#05060c; box-shadow:0 0 0 2px rgba(255,255,255,0.06), 0 30px 70px -20px rgba(0,0,0,0.8); }
+  .glass-in { position:relative; height:748px; max-height:82vh; border-radius:38px; overflow:hidden; background:linear-gradient(158deg,var(--bg-1) 0%,var(--bg-2) 12%,var(--bg-3) 60%,var(--bg-4) 80%,var(--bg-5) 100%); }
+  .glass-in::after { content:""; position:absolute; inset:0; background:radial-gradient(140% 80% at 50% 120%, rgba(0,0,0,0.45), transparent 60%); pointer-events:none; z-index:1; }
+  .island { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#05060c; border-radius:16px; z-index:40; }
+  .statusbar { position:absolute; top:16px; left:0; right:0; display:flex; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:600; z-index:35; pointer-events:none; }
+  .statusbar .r { letter-spacing:0.04em; opacity:0.9; }
+  .scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; padding:58px 14px 26px; scrollbar-width:none; z-index:2; transition:transform .4s var(--ease-zoom), opacity .3s, filter .3s; }
+  .scroll::-webkit-scrollbar { display:none; }
+  .scroll.pushed { transform:scale(0.94) translateY(-6px); opacity:0.5; filter:blur(1px); }
+  .scroll.dimmed { opacity:0.55; }
+
+  .tabtitle { font-size:28px; font-weight:800; letter-spacing:-0.02em; margin:4px 4px 2px; }
+  .tabsub { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--amber-ink); margin:0 4px 14px; }
+
+  /* ---------------- list rows ---------------- */
+  .rows { display:flex; flex-direction:column; gap:9px; padding:2px 2px 8px; }
+  .row {
+    position:relative; display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+    appearance:none; border:0; cursor:pointer; font:inherit; color:var(--ink);
+    border-radius:14px; padding:12px 13px;
+    background:rgba(255,255,255,0.06);
+    backdrop-filter:blur(14px) saturate(1.1); -webkit-backdrop-filter:blur(14px) saturate(1.1);
+    border:1px solid rgba(255,255,255,0.12);
+    transition:transform .18s var(--ease-zoom), opacity .2s, background .15s;
+  }
+  .row:active { transform:scale(0.98); }
+  .row.lift { transform:scale(1.02); background:rgba(255,255,255,0.1); box-shadow:0 12px 30px -12px rgba(0,0,0,0.6); }
+  .row.fade { opacity:0.28; }
+  .row .dblk { flex:0 0 46px; display:flex; flex-direction:column; align-items:center; gap:1px; font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  .row .dblk .dow { font-size:10px; font-weight:700; letter-spacing:0.1em; color:rgba(255,255,255,0.75); }
+  .row .dblk .num { font-size:26px; font-weight:800; color:#fff; letter-spacing:-0.01em; font-family:-apple-system,system-ui,sans-serif; line-height:1; }
+  .row .dblk .mon { font-size:10px; font-weight:700; letter-spacing:0.1em; color:rgba(255,255,255,0.55); }
+  .row .rmain { flex:1; min-width:0; }
+  .row .rmain .art { font-size:16px; font-weight:700; line-height:1.2; }
+  .row .rmain .plc { font-size:13.5px; color:rgba(255,255,255,0.7); margin-top:2px; }
+  .row .rmain .det { font-size:11.5px; color:rgba(255,255,255,0.55); margin-top:3px; }
+  .rtag { flex:0 0 auto; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:9.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:4px 8px; border-radius:999px; white-space:nowrap; }
+  .rtag.prominent { color:var(--amber-ink); background:rgba(255,137,64,0.18); border:1px solid var(--amber-line); }
+  .rtag.free { color:var(--teal-ink); background:rgba(79,214,200,0.16); border:1px solid rgba(79,214,200,0.5); }
+  .rtag.muted { color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); }
+  .rtag.negative { color:var(--cancel-ink); background:rgba(255,107,107,0.16); border:1px solid rgba(255,107,107,0.5); }
+  .row.dead { opacity:0.62; }
+  .row.dead .art { text-decoration:line-through; text-decoration-color:rgba(255,179,179,0.7); }
+
+  /* ---------------- the Box Office ticket (shared: Now, A, D-large) ---------------- */
+  .ticket {
+    position:relative; --seam:92px;
+    background:rgba(255,255,255,0.09);
+    backdrop-filter:blur(18px) saturate(1.15); -webkit-backdrop-filter:blur(18px) saturate(1.15);
+    border-radius:16px;
+    -webkit-mask:
+      radial-gradient(circle 12px at 0% calc(100% - var(--seam)), transparent 11px, #000 11.5px) no-repeat,
+      radial-gradient(circle 12px at 100% calc(100% - var(--seam)), transparent 11px, #000 11.5px) no-repeat;
+    -webkit-mask-composite:source-in; mask-composite:intersect;
+    mask:
+      radial-gradient(circle 12px at 0% calc(100% - var(--seam)), transparent 11px, #000 11.5px) no-repeat,
+      radial-gradient(circle 12px at 100% calc(100% - var(--seam)), transparent 11px, #000 11.5px) no-repeat;
+    box-shadow:0 1px 2px rgba(0,0,0,0.35);
+  }
+  .ticket.frame { outline:1px solid rgba(255,255,255,0.18); outline-offset:-1px; border-radius:16px; }
+  .ticket .tbody { padding:18px 18px 20px; }
+  .ticket .thead { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .ticket .near { display:flex; align-items:center; gap:7px; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10.5px; font-weight:700; letter-spacing:0.16em; color:var(--amber-ink); }
+  .ticket .near .dot { width:6px; height:6px; border-radius:50%; background:var(--amber); box-shadow:0 0 7px var(--amber-line); }
+  .pill { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .pill.onsale { color:#a6f0bd; background:rgba(52,199,89,0.9); }
+  .pill.free { color:var(--teal-ink); background:rgba(79,214,200,0.18); border:1px solid rgba(79,214,200,0.5); }
+  .pill.soldout { color:var(--sold-ink); background:rgba(255,143,107,0.18); border:1px solid rgba(255,143,107,0.5); }
+  .pill.cancel { color:var(--cancel-ink); background:rgba(255,107,107,0.2); border:1px solid rgba(255,107,107,0.55); }
+  .ticket .venue { font-size:23px; font-weight:800; letter-spacing:-0.01em; margin-top:16px; }
+  .ticket .city { font-size:13px; color:var(--amber-ink); margin-top:2px; }
+  .ticket .stats { display:flex; gap:18px; margin-top:16px; }
+  .ticket .stats .cell .k { font-family:ui-monospace,monospace; font-size:9.5px; letter-spacing:0.1em; color:rgba(255,255,255,0.5); }
+  .ticket .stats .cell .v { font-family:ui-monospace,monospace; font-size:13px; color:#fff; margin-top:3px; }
+  .ticket .subline { font-size:12.5px; color:var(--ink-dim); margin-top:12px; }
+  .cta {
+    display:flex; align-items:center; justify-content:center; gap:9px; width:100%; margin-top:14px;
+    appearance:none; border:0; cursor:pointer; font:inherit; font-size:15.5px; font-weight:700;
+    padding:14px; border-radius:13px; color:#2a1400;
+    background:linear-gradient(180deg,var(--amber-light),var(--amber));
+    box-shadow:0 6px 18px rgba(255,137,64,0.3);
+  }
+  .cta.outline { color:var(--amber-ink); background:rgba(255,137,64,0.1); border:1px solid var(--amber-line); box-shadow:none; }
+  .cta .arw { font-size:12px; }
+  .ctacap { font-size:11.5px; color:var(--ink-dim); text-align:center; margin-top:8px; }
+  .ticket .stub {
+    height:var(--seam); display:flex; align-items:center; justify-content:space-between;
+    padding:0 18px; position:relative;
+  }
+  .ticket .stub::before {
+    content:""; position:absolute; top:0; left:15px; right:15px; height:0;
+    border-top:2px dashed rgba(255,255,255,0.28);
+  }
+  .ticket .stub .admit .a1 { font-size:12.5px; font-weight:800; letter-spacing:0.12em; color:rgba(255,255,255,0.82); }
+  .ticket .stub .admit .a2 { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.06em; color:rgba(255,255,255,0.5); margin-top:4px; line-height:1.35; }
+  .ticket .stub .sdate { text-align:center; font-family:ui-monospace,monospace; }
+  .ticket .stub .sdate .sd1 { font-size:10px; font-weight:700; letter-spacing:0.14em; color:rgba(255,255,255,0.82); }
+  .ticket .stub .sdate .sd2 { font-size:34px; font-weight:800; color:#fff; font-family:-apple-system,system-ui,sans-serif; line-height:1; }
+  .ticket .stub .sdate .sd3 { font-size:10px; font-weight:700; letter-spacing:0.14em; color:rgba(255,255,255,0.5); }
+
+  /* ---------------- detail content blocks (shared: A, B, D-large) ---------------- */
+  .block { margin-top:16px; }
+  .block .bh { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:9.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 9px; }
+  .prov {
+    display:flex; gap:11px; align-items:flex-start; padding:13px 14px; border-radius:14px;
+    background:rgba(255,137,64,0.09); border:1px solid var(--amber-line);
+  }
+  .prov .pdot { flex:0 0 auto; width:8px; height:8px; border-radius:50%; margin-top:5px; background:var(--amber); box-shadow:0 0 8px var(--amber-line); }
+  .prov .pt { font-size:13.5px; font-weight:600; line-height:1.4; }
+  .prov .ps { font-family:ui-monospace,monospace; font-size:10.5px; letter-spacing:0.06em; color:var(--amber-ink); margin-top:4px; }
+  .prov.viax { background:rgba(255,92,138,0.1); border-color:rgba(255,92,138,0.45); }
+  .prov.viax .pdot { background:var(--heart); box-shadow:0 0 8px rgba(255,92,138,0.6); }
+  .prov.viax .ps { color:#ffc2d4; }
+
+  .specgrid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .spec { padding:12px 13px; border-radius:13px; background:rgba(255,255,255,0.06); border:1px solid var(--glass-line); }
+  .spec .sk { font-family:ui-monospace,monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); }
+  .spec .sv { font-size:15px; font-weight:700; margin-top:4px; }
+
+  .bill { border:1px solid var(--glass-line); border-radius:14px; overflow:hidden; }
+  .billrow { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-top:1px solid rgba(255,255,255,0.07); }
+  .billrow:first-child { border-top:0; }
+  .billrow .bn { font-size:14.5px; font-weight:700; }
+  .billrow.sup .bn { font-weight:600; color:var(--ink-dim); font-size:13.5px; }
+  .billrow .brole { font-family:ui-monospace,monospace; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-faint); }
+
+  .where { border:1px solid var(--glass-line); border-radius:14px; overflow:hidden; background:rgba(255,255,255,0.05); }
+  .map {
+    height:104px; position:relative;
+    background:
+      linear-gradient(90deg, transparent 46px, rgba(255,255,255,0.09) 46px 49px, transparent 49px),
+      linear-gradient(0deg, transparent 34px, rgba(255,255,255,0.09) 34px 37px, transparent 37px),
+      linear-gradient(58deg, transparent 62%, rgba(255,137,64,0.16) 62% 66%, transparent 66%),
+      linear-gradient(160deg, rgba(40,50,110,0.55), rgba(30,20,44,0.55));
+  }
+  .map .pin { position:absolute; left:54%; top:42%; width:16px; height:16px; border-radius:50% 50% 50% 0; transform:translate(-50%,-100%) rotate(-45deg); background:var(--amber); box-shadow:0 3px 10px rgba(0,0,0,0.5); }
+  .map .pin::after { content:""; position:absolute; inset:4.5px; background:#2a1400; border-radius:50%; }
+  .whererow { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; }
+  .whererow .wn { font-size:14.5px; font-weight:700; }
+  .whererow .wa { font-size:12px; color:var(--ink-dim); margin-top:2px; }
+  .whererow .wgo { font-size:13px; font-weight:700; color:var(--amber-ink); white-space:nowrap; }
+
+  .morerail { display:flex; gap:10px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none; }
+  .morerail::-webkit-scrollbar { display:none; }
+  .mcard {
+    flex:0 0 auto; width:150px; text-align:left; appearance:none; border:0; cursor:pointer; font:inherit; color:var(--ink);
+    padding:12px; border-radius:13px; background:rgba(255,255,255,0.06); border:1px solid var(--glass-line);
+  }
+  .mcard .md { font-family:ui-monospace,monospace; font-size:9.5px; letter-spacing:0.1em; color:var(--amber-ink); }
+  .mcard .ma { font-size:14px; font-weight:700; margin-top:6px; line-height:1.2; }
+  .mcard .mv { font-size:11.5px; color:var(--ink-dim); margin-top:3px; }
+
+  /* ---------------- Now + A + B: the page/sheet overlays ---------------- */
+  .scrim { position:absolute; inset:0; background:rgba(5,6,12,0.55); opacity:0; pointer-events:none; transition:opacity .28s; z-index:20; }
+  .scrim.on { opacity:1; pointer-events:auto; }
+
+  .backbtn {
+    position:absolute; top:54px; left:14px; z-index:5; appearance:none; border:0; cursor:pointer;
+    width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:18px; background:rgba(10,8,20,0.4); border:1px solid var(--glass-line);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  }
+  .donebtn {
+    position:absolute; top:58px; right:16px; z-index:5; appearance:none; border:0; cursor:pointer;
+    color:#fff; font:inherit; font-size:15px; font-weight:700; background:transparent;
+  }
+
+  /* page = A (hero) + B (poster). Zoom-scales in from the tapped row's origin. */
+  .page {
+    position:absolute; inset:0; z-index:30; overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
+    opacity:0; transform:scale(0.42); pointer-events:none;
+    transition:transform .42s var(--ease-zoom), opacity .3s var(--ease-zoom);
+  }
+  .page::-webkit-scrollbar { display:none; }
+  .page.open { opacity:1; transform:none; pointer-events:auto; }
+  .page .pinner { min-height:100%; }
+
+  /* A — hero ticket page */
+  .heropage { padding:96px 16px 40px; background:linear-gradient(180deg, rgba(16,17,32,0.0), rgba(16,17,32,0.14) 60%, rgba(16,17,32,0.4)); }
+
+  /* B — poster */
+  .posterwrap { position:relative; }
+  .poster { position:relative; height:430px; overflow:hidden; }
+  .poster .art { position:absolute; inset:-40px 0 0 0; background-size:cover; }
+  .poster .grain { position:absolute; inset:0; background:radial-gradient(120% 90% at 30% 10%, rgba(255,255,255,0.14), transparent 55%); mix-blend-mode:overlay; }
+  .poster .scrim2 { position:absolute; inset:0; background:linear-gradient(180deg, rgba(8,6,16,0.15) 0%, rgba(8,6,16,0) 32%, rgba(8,6,16,0.7) 78%, rgba(8,6,16,0.96) 100%); }
+  .poster .binitial { position:absolute; right:-18px; top:-30px; font-size:280px; font-weight:900; line-height:1; color:rgba(255,255,255,0.08); letter-spacing:-0.04em; }
+  .poster .pcontent { position:absolute; left:18px; right:18px; bottom:20px; }
+  .poster .pflag { display:inline-flex; margin-bottom:12px; }
+  .poster .pname { font-size:42px; font-weight:900; line-height:0.98; letter-spacing:-0.02em; text-wrap:balance; text-shadow:0 4px 24px rgba(0,0,0,0.5); }
+  .poster .pcredit { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.1em; color:rgba(255,255,255,0.85); margin-top:12px; }
+  .poster .pcredit b { color:var(--amber-ink); }
+  .posterbody { position:relative; padding:8px 16px 40px; background:linear-gradient(180deg, rgba(8,6,16,0.96), rgba(20,14,30,0.9)); }
+  .dockbar {
+    position:sticky; bottom:0; z-index:6; margin:0 -16px -40px; padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(180deg, rgba(20,14,30,0), rgba(14,10,22,0.95) 40%);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  }
+  .dockbar .dprice { flex:0 0 auto; }
+  .dockbar .dprice .dk { font-family:ui-monospace,monospace; font-size:9px; letter-spacing:0.1em; color:var(--ink-faint); }
+  .dockbar .dprice .dv { font-size:17px; font-weight:800; }
+  .dockbar .cta { margin-top:0; flex:1; }
+
+  /* ---------------- C: inline expand drawer ---------------- */
+  .drawer { overflow:hidden; max-height:0; opacity:0; transition:max-height .38s var(--ease-sheet), opacity .28s; }
+  .drawer.open { max-height:520px; opacity:1; }
+  .drawerin {
+    margin:2px 2px 2px; padding:14px; border-radius:14px;
+    background:rgba(255,255,255,0.05); border:1px solid var(--glass-line);
+    border-top:2px solid var(--amber-line);
+  }
+  .drawerin .dtimes { display:flex; gap:8px; flex-wrap:wrap; }
+  .chipd { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.04em; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.07); border:1px solid var(--glass-line); }
+  .chipd.free { color:var(--teal-ink); border-color:rgba(79,214,200,0.5); background:rgba(79,214,200,0.12); }
+
+  /* ---------------- D: peek sheet ---------------- */
+  .sheet {
+    position:absolute; left:0; right:0; bottom:0; z-index:31;
+    display:flex; flex-direction:column;
+    border-radius:26px 26px 38px 38px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(34,27,48,0.94), rgba(18,13,26,0.97));
+    backdrop-filter:blur(26px) saturate(1.2); -webkit-backdrop-filter:blur(26px) saturate(1.2);
+    border-top:1px solid var(--glass-line);
+    height:52%;
+    transform:translateY(105%);
+    transition:transform .34s var(--ease-sheet), height .34s var(--ease-sheet);
+  }
+  .sheet.open { transform:translateY(0); }
+  .sheet.large { height:93%; }
+  .sheet .grab { width:38px; height:5px; border-radius:3px; background:rgba(255,255,255,0.28); margin:9px auto 2px; flex:0 0 auto; cursor:grab; }
+  .sheet .shbody { flex:1 1 auto; min-height:0; overflow-y:auto; scrollbar-width:none; padding:6px 16px 24px; }
+  .sheet .shbody::-webkit-scrollbar { display:none; }
+  .peekhead { padding:8px 2px 4px; }
+  .peekhead .pk-date { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.1em; color:var(--amber-ink); }
+  .peekhead .pk-art { font-size:24px; font-weight:800; letter-spacing:-0.01em; margin-top:5px; line-height:1.1; }
+  .peekhead .pk-venue { font-size:13.5px; color:var(--ink-dim); margin-top:3px; }
+  .peekmeta { display:flex; align-items:center; gap:10px; margin:14px 2px 2px; }
+  .peekmeta .pm-price { font-size:18px; font-weight:800; }
+  .peekmore { text-align:center; font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-faint); padding:14px 0 2px; }
+
+  /* ---------------- notes panel ---------------- */
+  .notes { min-width:0; }
+  .ncard { border:1px solid var(--glass-line); border-radius:18px; padding:22px 24px; background:rgba(16,14,34,0.35); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .ncard h2 { margin:0 0 3px; font-size:22px; letter-spacing:-0.01em; }
+  .ncard .nsub { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber); margin:0 0 16px; }
+  .nrow { display:grid; grid-template-columns:96px 1fr; gap:12px; padding:11px 0; border-top:1px solid rgba(255,255,255,0.08); }
+  .nrow:first-of-type { border-top:0; }
+  .nrow .nk { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-faint); padding-top:2px; }
+  .nrow .nv { font-size:14px; color:var(--ink-dim); line-height:1.55; }
+  .nrow .nv b { color:var(--ink); font-weight:600; }
+  .nrow .nv code { font-family:ui-monospace,monospace; font-size:12.5px; color:var(--amber-ink); background:rgba(255,137,64,0.1); padding:1px 5px; border-radius:5px; }
+  .verdict { margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(255,137,64,0.08); border:1px solid var(--amber-line); font-size:13px; color:var(--ink-dim); }
+  .verdict b { color:var(--amber-ink); }
+
+  /* ---------------- long-form section ---------------- */
+  .section { margin-top:54px; }
+  .section h2 { font-size:24px; letter-spacing:-0.01em; margin:0 0 6px; }
+  .section .slede { color:var(--ink-dim); max-width:72ch; margin:0 0 22px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+  .card { border:1px solid var(--glass-line); border-radius:16px; padding:18px 20px; background:rgba(16,14,34,0.35); }
+  .card .ck { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--amber); margin:0 0 8px; }
+  .card h3 { margin:0 0 8px; font-size:17px; }
+  .card p { margin:0 0 10px; font-size:13.5px; color:var(--ink-dim); line-height:1.55; }
+  .card p:last-child { margin-bottom:0; }
+  .card code { font-family:ui-monospace,monospace; font-size:12.5px; color:var(--amber-ink); }
+  .oq { margin:14px 0 0; padding-left:19px; color:var(--ink-dim); font-size:14.5px; }
+  .oq li { margin-bottom:9px; }
+  .oq b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">WXYC · On Tour (#474) · prototype</p>
+  <h1>What happens when you tap a show?</h1>
+  <p class="lede">Today the On Tour tab presents a tapped show as a <b>plain large sheet</b> holding one Box Office ticket — which reads <b>barren</b>, and the slide-up says nothing about the row you came from. Below are four ways to make the tap feel intentional <b>and</b> fill the screen. Flip between <b>Now</b> (the current barren sheet) and each proposal — the device is live: <b>tap any row</b>, watch the transition, use the back / Done control to return.</p>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="switch-label">Transition</span>
+      <div class="seg" id="variantSeg" role="group" aria-label="Transition variant">
+        <button data-v="now" aria-pressed="true">Now · Sheet</button>
+        <button data-v="A" aria-pressed="false">A · Hero Ticket</button>
+        <button data-v="B" aria-pressed="false">B · Poster</button>
+        <button data-v="C" aria-pressed="false">C · Expand</button>
+        <button data-v="D" aria-pressed="false">D · Peek Sheet</button>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Tap a show in the phone. <b>← →</b> switch transition · <b>Esc</b> closes the detail.</p>
+
+  <div class="stage" id="stage" data-variant="now">
+    <figure class="device" style="margin:0;">
+      <div class="screen">
+        <div class="glass-in" id="glass">
+          <div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r">89.3 FM</span></div>
+          <div class="scroll" id="phone"></div>
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet"></div>
+          <div class="page" id="page"></div>
+        </div>
+      </div>
+      <figcaption id="devcap">Now · Sheet</figcaption>
+    </figure>
+    <div class="notes">
+      <div class="ncard" id="notes"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>How each maps to iOS 26</h2>
+    <p class="slede">Every transition here is buildable with stock SwiftUI on our deployment target — none needs UIKit or a third-party lib. The presentation content (provenance, the bill, where, more-shows) is shared and variant-independent; it is the part that actually cures "barren," and it can land first, under the current sheet, before we pick a transition.</p>
+    <div class="grid">
+      <div class="card">
+        <p class="ck">A · Hero Ticket</p>
+        <h3>Zoom navigation</h3>
+        <p>Row carries <code>.matchedTransitionSource(id:in:)</code>; the destination pushes with <code>.navigationTransition(.zoom(sourceID:in:))</code>. The row visibly grows into the ticket, so the tap has a physical throughline.</p>
+        <p>Keeps <b>BoxOfficeTicketView</b> exactly as shipped — this is a wrapper + a scroll of content beneath, not a rewrite.</p>
+      </div>
+      <div class="card">
+        <p class="ck">B · Poster</p>
+        <h3>Zoom into full-bleed</h3>
+        <p>Same <code>.zoom</code> source, but the destination is an <code>image_url</code> hero with a <code>.scrollTransition</code> parallax and a sticky glass action bar. <b>Gated on real event artwork</b> — <code>image_url</code> is on the schema but usually null; needs a scraper/enrichment pass first.</p>
+        <p>Fallback when art is missing: a generated gradient keyed on the venue slug (we already reserve <code>slug</code> as a tint seed).</p>
+      </div>
+      <div class="card">
+        <p class="ck">C · Expand</p>
+        <h3>No navigation</h3>
+        <p>A <code>@State selectedID</code> in the <code>LazyVStack</code>; the row reveals an inline drawer under <code>withAnimation(.spring)</code>. Zero new screens, zero sheet. Best if the tab's job is quick triage.</p>
+        <p>Cost: the drawer's room is small, so deep content (map, more-shows) still wants a "See full details" push.</p>
+      </div>
+      <div class="card">
+        <p class="ck">D · Peek Sheet</p>
+        <h3>Evolved sheet</h3>
+        <p>The smallest diff from today: <code>.presentationDetents([.height(300), .large])</code> + <code>.presentationBackgroundInteraction</code> so the list stays live behind the peek. Essentials at the peek, full story on drag-up.</p>
+        <p>Reuses the exact <code>.sheet(item:)</code> plumbing already in <b>TouringTabView</b>.</p>
+      </div>
+    </div>
+
+    <h2 style="margin-top:44px; font-size:20px;">Open questions</h2>
+    <ul class="oq">
+      <li><b>Is the ticket the hero, or the artist?</b> A treats the Box Office ticket as the destination (keepsake-first); B treats the artist/poster as the destination (discovery-first) and demotes the ticket to an action bar. That is the real fork — the transition follows from it.</li>
+      <li><b>Do we have artwork?</b> B is the most striking but only if <code>image_url</code> is populated. Right now most scraped rows have none. Worth a spike on triangle-shows / Ticketmaster image coverage before committing to a poster-first detail.</li>
+      <li><b>Provenance is the WXYC-only move.</b> "You heard them on WXYC · last spun Tue 9:14 PM" is what makes this detail ours and not a generic ticketing page — but it needs an airplay-match signal (<code>headlining_artist_id</code> against play history). Cheap version: "in your library / recently played"; rich version waits on the R3 likes/semantic work already planned.</li>
+      <li><b>One-handed reachability.</b> A and B put the primary CTA far down a scroll; D and C keep it thumb-height. Do we need the CTA pinned regardless of variant (a sticky Get Tickets bar)?</li>
+      <li><b>Back-swipe.</b> The zoom transition (A/B) reverses on interactive pop for free; the sheet (Now/D) and inline (C) each have their own dismiss gesture. Consistency across the tab matters if some detail paths push and others present.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ---------------- stub data — WXYC-canonical artists, real Triangle venues ---------------- */
+const VENUES = {
+  cradle:   { name:"Cat's Cradle",       city:'Carrboro',    addr:'300 E Main St, Carrboro' },
+  local506: { name:'Local 506',          city:'Chapel Hill', addr:'506 W Franklin St, Chapel Hill' },
+  motorco:  { name:'Motorco Music Hall', city:'Durham',      addr:'723 Rigsbee Ave, Durham' },
+  pinhook:  { name:'The Pinhook',        city:'Durham',      addr:'117 W Main St, Durham' },
+  hawriver: { name:'Haw River Ballroom', city:'Saxapahaw',   addr:'1711 Saxapahaw-Bethlehem Church Rd' },
+};
+
+/* status: on_sale | free | sold_out | cancelled.  art: [c1,c2] poster gradient. */
+const SHOWS = [
+  { id:1, artist:'Nilüfer Yanya', venue:'cradle', dow:'SAT', num:'1', mon:'AUG', doors:'7 PM', show:'8 PM',
+    priceMin:22, priceMax:25, age:'All Ages', status:'on_sale', support:['Tapir!'],
+    prov:{ kind:'played', line:'You heard Nilüfer Yanya on WXYC', sub:'Last spun Tue 9:14 PM · Continental Drift' },
+    art:['#c65a2e','#7d1f3d'] },
+  { id:2, artist:'Chuquimamani-Condori', venue:'pinhook', dow:'FRI', num:'31', mon:'JUL', doors:null, show:'9 PM',
+    priceMin:0, priceMax:0, age:'18+', status:'free', support:['DJ Tony Boy'],
+    prov:{ kind:'played', line:'You heard Chuquimamani-Condori on WXYC', sub:'Last spun Sun 2:40 AM · Backroom' },
+    art:['#245b7a','#101a52'] },
+  { id:3, artist:'Jessica Pratt', venue:'hawriver', dow:'SAT', num:'8', mon:'AUG', doors:'7 PM', show:'8 PM',
+    priceMin:30, priceMax:30, age:'All Ages', status:'sold_out', support:['Julie Byrne'],
+    prov:{ kind:'played', line:'You heard Jessica Pratt on WXYC', sub:'Last spun Thu 6:02 PM · Freeform' },
+    art:['#8a6a3a','#3a2140'] },
+  { id:4, artist:'Juana Molina', venue:'motorco', dow:'THU', num:'6', mon:'AUG', doors:'7 PM', show:'8 PM',
+    priceMin:24, priceMax:24, age:'21+', status:'on_sale', support:[],
+    prov:{ kind:'played', line:'You heard Juana Molina on WXYC', sub:'Last spun Mon 11:20 PM' },
+    art:['#6d2f6a','#241246'] },
+  { id:5, artist:'Yo La Tengo', venue:'cradle', dow:'FRI', num:'14', mon:'AUG', doors:'7 PM', show:'8 PM',
+    priceMin:35, priceMax:35, age:'All Ages', status:'on_sale', support:[],
+    prov:{ kind:'via', via:'Stereolab', line:'Because you heard Stereolab on WXYC', sub:'Similar artist · they play Cat’s Cradle' },
+    art:['#2f5a8a','#151a3a'] },
+  { id:6, artist:'Water From Your Eyes', venue:'local506', dow:'WED', num:'5', mon:'AUG', doors:null, show:'8:30 PM',
+    priceMin:18, priceMax:18, age:'18+', status:'cancelled', support:['Colle'],
+    prov:null, art:['#555','#222'] },
+  { id:7, artist:'Hermanos Gutiérrez', venue:'cradle', dow:'SAT', num:'15', mon:'AUG', doors:'7 PM', show:'8 PM',
+    priceMin:32, priceMax:32, age:'All Ages', status:'on_sale', support:[],
+    prov:{ kind:'played', line:'You heard Hermanos Gutiérrez on WXYC', sub:'Last spun Fri 5:15 PM' },
+    art:['#b0632a','#4a1d22'] },
+  { id:8, artist:'Sun Ra Arkestra', venue:'motorco', dow:'TUE', num:'18', mon:'AUG', doors:'7 PM', show:'8 PM',
+    priceMin:30, priceMax:30, age:'All Ages', status:'on_sale', support:[],
+    prov:{ kind:'played', line:'You heard Sun Ra Arkestra on WXYC', sub:'Last spun Wed 1:00 AM · Jazz' },
+    art:['#7a5a1f','#20183a'] },
+];
+const byId = id => SHOWS.find(s => s.id === id);
+
+/* ---------------- presenter mirror (matches BoxOfficeTicketPresenter copy) ---------------- */
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function priceLabel(s) {
+  if (s.status === 'free' || (s.priceMin === 0 && (s.priceMax || 0) === 0)) return 'Free';
+  if (s.priceMin == null) return null;
+  return s.priceMin === s.priceMax ? '$' + s.priceMin : '$' + s.priceMin + '–$' + s.priceMax;
+}
+function timeLabel(s) {
+  if (s.doors && s.show) return 'Doors ' + s.doors + ' · Show ' + s.show;
+  if (s.show) return 'Show ' + s.show;
+  if (s.doors) return 'Doors ' + s.doors;
+  return null;
+}
+function tagInfo(s) {
+  switch (s.status) {
+    case 'on_sale':   return { text:'Tickets',   cls:'prominent' };
+    case 'free':      return { text:'Free · RSVP',cls:'free' };
+    case 'sold_out':  return { text:'Sold Out',  cls:'muted' };
+    case 'cancelled': return { text:'Cancelled', cls:'negative' };
+    default:          return { text:'Details',   cls:'muted' };
+  }
+}
+function pillInfo(s) {
+  switch (s.status) {
+    case 'on_sale':   return { text:'On Sale',  cls:'onsale' };
+    case 'free':      return { text:'Free',     cls:'free' };
+    case 'sold_out':  return { text:'Sold Out', cls:'soldout' };
+    case 'cancelled': return { text:'Cancelled',cls:'cancel' };
+    default:          return null;
+  }
+}
+function ctaInfo(s) {
+  switch (s.status) {
+    case 'free':      return { label:'RSVP',           filled:true,  cap:'Free — opens the venue’s event page' };
+    case 'sold_out':  return { label:'See Venue Page', filled:false, cap:'Sold out here — ' + VENUES[s.venue].name + ' sometimes releases more.' };
+    case 'cancelled': return null;
+    default:          return { label:'Get Tickets',    filled:true,  cap:'Opens ' + VENUES[s.venue].name + '’s event page' };
+  }
+}
+function sublineText(s) {
+  const parts = [];
+  if (s.support && s.support.length) parts.push('with ' + s.support.join(', '));
+  if (s.age) parts.push(s.age);
+  return parts.length ? parts.join(' · ') : null;
+}
+function moreShows(s) {
+  const same = SHOWS.filter(x => x.id !== s.id && x.venue === s.venue && x.status !== 'cancelled');
+  const rest = SHOWS.filter(x => x.id !== s.id && x.venue !== s.venue && x.status !== 'cancelled');
+  return same.concat(rest).slice(0, 4);
+}
+
+/* ---------------- shared fragments ---------------- */
+function ticketHTML(s) {
+  const pill = pillInfo(s);
+  const cta = ctaInfo(s);
+  const cells = [];
+  if (s.doors) cells.push(['DOORS', s.doors]);
+  if (s.show)  cells.push(['SHOW',  s.show]);
+  const pl = priceLabel(s); if (pl) cells.push(['PRICE', pl]);
+  const sub = sublineText(s);
+  const v = VENUES[s.venue];
+  return `<div class="ticket frame">
+    <div class="tbody">
+      <div class="thead">
+        <span class="near"><span class="dot"></span>PLAYING NEAR YOU</span>
+        ${pill ? `<span class="pill ${pill.cls}">${pill.text}</span>` : ''}
+      </div>
+      <div class="venue">${esc(v.name)}</div>
+      <div class="city">${esc(v.city)}</div>
+      ${cells.length ? `<div class="stats">${cells.map(c => `<div class="cell"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join('')}</div>` : ''}
+      ${sub ? `<div class="subline">${esc(sub)}</div>` : ''}
+      ${cta ? `<button class="cta ${cta.filled ? '' : 'outline'}" onclick="event.stopPropagation()">${cta.label} <span class="arw">↗</span></button>
+        <div class="ctacap">${esc(cta.cap)}</div>` : `<div class="ctacap" style="margin-top:14px">This show has been cancelled.</div>`}
+    </div>
+    <div class="stub">
+      <div class="admit"><div class="a1">ADMIT ONE</div><div class="a2">GEN ADM<br>WX-${s.id}</div></div>
+      <div class="sdate"><div class="sd1">${s.dow}</div><div class="sd2">${s.num}</div><div class="sd3">${s.mon}</div></div>
+    </div>
+  </div>`;
+}
+function provHTML(s) {
+  if (!s.prov) return '';
+  const via = s.prov.kind === 'via';
+  return `<div class="block">
+    <p class="bh">Why this is in your feed</p>
+    <div class="prov ${via ? 'viax' : ''}">
+      <span class="pdot"></span>
+      <div><div class="pt">${esc(s.prov.line)}</div><div class="ps">${esc(s.prov.sub)}</div></div>
+    </div>
+  </div>`;
+}
+function specHTML(s) {
+  const cells = [];
+  if (s.doors) cells.push(['Doors', s.doors]);
+  if (s.show)  cells.push(['Show',  s.show]);
+  const pl = priceLabel(s); if (pl) cells.push(['Price', pl]);
+  if (s.age) cells.push(['Ages', s.age]);
+  if (!cells.length) return '';
+  return `<div class="block"><p class="bh">Details</p><div class="specgrid">${
+    cells.map(c => `<div class="spec"><div class="sk">${c[0]}</div><div class="sv">${c[1]}</div></div>`).join('')
+  }</div></div>`;
+}
+function billHTML(s) {
+  const rows = [`<div class="billrow"><span class="bn">${esc(s.artist)}</span><span class="brole">Headliner</span></div>`]
+    .concat((s.support || []).map(a => `<div class="billrow sup"><span class="bn">${esc(a)}</span><span class="brole">Support</span></div>`));
+  if (rows.length === 1 && !(s.support || []).length) return '';
+  return `<div class="block"><p class="bh">The bill</p><div class="bill">${rows.join('')}</div></div>`;
+}
+function whereHTML(s) {
+  const v = VENUES[s.venue];
+  return `<div class="block"><p class="bh">Where</p>
+    <div class="where">
+      <div class="map"><div class="pin"></div></div>
+      <div class="whererow">
+        <div><div class="wn">${esc(v.name)}</div><div class="wa">${esc(v.addr)}</div></div>
+        <div class="wgo">Directions ›</div>
+      </div>
+    </div></div>`;
+}
+function moreHTML(s) {
+  const list = moreShows(s);
+  if (!list.length) return '';
+  return `<div class="block"><p class="bh">More touring soon</p>
+    <div class="morerail">${list.map(x => `
+      <button class="mcard" onclick="event.stopPropagation(); reopen(${x.id})">
+        <div class="md">${x.dow} ${x.mon} ${x.num}</div>
+        <div class="ma">${esc(x.artist)}</div>
+        <div class="mv">${esc(VENUES[x.venue].name)}${priceLabel(x) ? ' · ' + priceLabel(x) : ''}</div>
+      </button>`).join('')}</div></div>`;
+}
+
+/* ---------------- the list ---------------- */
+function rowHTML(s) {
+  const tag = tagInfo(s);
+  const det = [timeLabel(s), priceLabel(s)].filter(Boolean).join('  ·  ');
+  const drawer = (variant === 'C') ? drawerHTML(s) : '';
+  return `<button class="row ${s.status==='cancelled'?'dead':''}" data-id="${s.id}" onclick="onRowTap(${s.id}, event)">
+      <div class="dblk"><span class="dow">${s.dow}</span><span class="num">${s.num}</span><span class="mon">${s.mon}</span></div>
+      <div class="rmain">
+        <div class="art">${esc(s.artist)}</div>
+        <div class="plc">${esc(VENUES[s.venue].name)} · ${esc(VENUES[s.venue].city)}</div>
+        ${det ? `<div class="det">${det}</div>` : ''}
+      </div>
+      <span class="rtag ${tag.cls}">${tag.text}</span>
+    </button>${drawer}`;
+}
+function drawerHTML(s) {
+  const cta = ctaInfo(s);
+  const pl = priceLabel(s);
+  const tl = timeLabel(s);
+  return `<div class="drawer" id="drawer-${s.id}">
+    <div class="drawerin" onclick="event.stopPropagation()">
+      <div class="dtimes">
+        ${tl ? `<span class="chipd">${tl}</span>` : ''}
+        ${pl ? `<span class="chipd ${pl==='Free'?'free':''}">${pl}</span>` : ''}
+        ${s.age ? `<span class="chipd">${s.age}</span>` : ''}
+      </div>
+      ${s.support && s.support.length ? `<div class="det" style="margin-top:10px">with ${esc(s.support.join(', '))}</div>` : ''}
+      ${s.prov ? `<div class="prov ${s.prov.kind==='via'?'viax':''}" style="margin-top:12px"><span class="pdot"></span><div><div class="pt" style="font-size:12.5px">${esc(s.prov.line)}</div><div class="ps">${esc(s.prov.sub)}</div></div></div>` : ''}
+      ${cta ? `<button class="cta ${cta.filled?'':'outline'}" style="margin-top:13px" onclick="event.stopPropagation()">${cta.label} <span class="arw">↗</span></button>` : `<div class="ctacap" style="margin-top:12px">This show has been cancelled.</div>`}
+    </div>
+  </div>`;
+}
+function renderList() {
+  document.getElementById('phone').innerHTML =
+    `<h2 class="tabtitle">On Tour</h2><p class="tabsub">${SHOWS.length} shows · Triangle area</p>
+     <div class="rows">${SHOWS.map(rowHTML).join('')}</div>`;
+}
+
+/* ---------------- detail builders ---------------- */
+function detailStack(s) {
+  return provHTML(s) + specHTML(s) + billHTML(s) + whereHTML(s) + moreHTML(s);
+}
+function buildHero(s) {
+  return `<div class="pinner heropage">
+    <button class="backbtn" onclick="closeDetail()">‹</button>
+    ${ticketHTML(s)}
+    ${detailStack(s)}
+  </div>`;
+}
+function buildPoster(s) {
+  const cta = ctaInfo(s);
+  const pill = pillInfo(s);
+  const v = VENUES[s.venue];
+  const pl = priceLabel(s);
+  return `<div class="pinner posterwrap">
+    <button class="backbtn" onclick="closeDetail()">‹</button>
+    <div class="poster">
+      <div class="art" id="posterArt" style="background:linear-gradient(150deg, ${s.art[0]}, ${s.art[1]})"></div>
+      <div class="binitial">${esc(s.artist[0])}</div>
+      <div class="grain"></div>
+      <div class="scrim2"></div>
+      <div class="pcontent">
+        ${pill ? `<div class="pflag"><span class="pill ${pill.cls}">${pill.text}</span></div>` : ''}
+        <div class="pname">${esc(s.artist)}</div>
+        <div class="pcredit">${s.dow} ${s.mon} ${s.num} · <b>${esc(v.name)}</b> · ${esc(v.city)}${sublineText(s)?' · '+esc(sublineText(s)):''}</div>
+      </div>
+    </div>
+    <div class="posterbody">
+      ${detailStack(s)}
+      ${cta ? `<div class="dockbar">
+        ${pl ? `<div class="dprice"><div class="dk">PRICE</div><div class="dv">${pl}</div></div>` : ''}
+        <button class="cta ${cta.filled?'':'outline'}" onclick="event.stopPropagation()">${cta.label} <span class="arw">↗</span></button>
+      </div>` : `<div class="ctacap" style="margin-top:8px">This show has been cancelled.</div>`}
+    </div>
+  </div>`;
+}
+function buildSheet(s, mode) {
+  /* mode: 'now' (large barren) | 'peek' | 'large' */
+  const cta = ctaInfo(s);
+  const v = VENUES[s.venue];
+  const pl = priceLabel(s);
+  const pill = pillInfo(s);
+  if (mode === 'now') {
+    return `<div class="grab"></div>
+      <button class="donebtn" onclick="closeDetail()">Done</button>
+      <div class="shbody" style="display:flex; align-items:center">
+        <div style="width:100%">${ticketHTML(s)}</div>
+      </div>`;
+  }
+  const peekBody = `<div class="peekhead">
+      <div class="pk-date">${s.dow} · ${s.mon} ${s.num}</div>
+      <div class="pk-art">${esc(s.artist)}</div>
+      <div class="pk-venue">${esc(v.name)} · ${esc(v.city)}</div>
+    </div>
+    <div class="peekmeta">
+      ${pill ? `<span class="pill ${pill.cls}">${pill.text}</span>` : ''}
+      ${pl ? `<span class="pm-price">${pl}</span>` : ''}
+      <span style="flex:1"></span>
+    </div>
+    ${cta ? `<button class="cta ${cta.filled?'':'outline'}" onclick="event.stopPropagation()">${cta.label} <span class="arw">↗</span></button>` : ''}
+    ${s.prov ? provHTML(s) : ''}`;
+  const rest = (mode === 'large')
+    ? specHTML(s) + billHTML(s) + whereHTML(s) + moreHTML(s)
+    : `<div class="peekmore" onclick="setDetent('large')">↑ Drag up for full details</div>`;
+  return `<div class="grab" onclick="setDetent(sheetDetent==='large'?'peek':'large')"></div>
+    <button class="donebtn" onclick="closeDetail()">Done</button>
+    <div class="shbody">${peekBody}${rest}</div>`;
+}
+
+/* ---------------- transition orchestration ---------------- */
+let variant = 'now';
+let openId = null;
+let expandedId = null;      // variant C
+let sheetDetent = 'peek';   // variant D
+const glass = () => document.getElementById('glass');
+const phoneEl = () => document.getElementById('phone');
+const pageEl = () => document.getElementById('page');
+const sheetEl = () => document.getElementById('sheet');
+const scrimEl = () => document.getElementById('scrim');
+
+function rowCenterOrigin(id) {
+  const row = phoneEl().querySelector(`.row[data-id="${id}"]`);
+  const g = glass().getBoundingClientRect();
+  if (!row) return '50% 40%';
+  const r = row.getBoundingClientRect();
+  const x = ((r.left + r.width/2) - g.left) / g.width * 100;
+  const y = ((r.top + r.height/2) - g.top) / g.height * 100;
+  return x.toFixed(1) + '% ' + y.toFixed(1) + '%';
+}
+
+function onRowTap(id, ev) {
+  if (variant === 'C') { toggleExpand(id); return; }
+  openDetail(id);
+}
+function toggleExpand(id) {
+  // All rows carry a (closed) drawer in variant C, so open AND close animate via a
+  // pure class toggle — no re-render, which would kill the transition.
+  const target = document.getElementById('drawer-' + id);
+  if (expandedId === id) {
+    if (target) target.classList.remove('open');
+    expandedId = null;
+    return;
+  }
+  if (expandedId != null) {
+    const prev = document.getElementById('drawer-' + expandedId);
+    if (prev) prev.classList.remove('open');
+  }
+  expandedId = id;
+  if (target) {
+    target.classList.add('open');
+    setTimeout(() => {
+      const row = phoneEl().querySelector(`.row[data-id="${id}"]`);
+      if (row) row.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, 130);
+  }
+}
+
+function openDetail(id) {
+  openId = id;
+  const s = byId(id);
+  const row = phoneEl().querySelector(`.row[data-id="${id}"]`);
+
+  if (variant === 'A' || variant === 'B') {
+    // brief row lift, then zoom the page in from the row's center
+    if (row) { row.classList.add('lift'); phoneEl().querySelectorAll('.row').forEach(r => { if (r !== row) r.classList.add('fade'); }); }
+    const page = pageEl();
+    page.innerHTML = variant === 'A' ? buildHero(s) : buildPoster(s);
+    page.style.transformOrigin = rowCenterOrigin(id);
+    page.scrollTop = 0;
+    requestAnimationFrame(() => {
+      phoneEl().classList.add('pushed');
+      requestAnimationFrame(() => page.classList.add('open'));
+    });
+    if (variant === 'B') attachParallax();
+    return;
+  }
+
+  // Now + D: sheet
+  const sheet = sheetEl();
+  sheetDetent = 'peek';
+  sheet.className = 'sheet';
+  sheet.innerHTML = buildSheet(s, variant === 'now' ? 'now' : 'peek');
+  if (variant === 'now') sheet.classList.add('large');
+  requestAnimationFrame(() => {
+    scrimEl().classList.add('on');
+    if (variant === 'D') phoneEl().classList.add('dimmed');
+    sheet.classList.add('open');
+  });
+}
+
+function setDetent(d) {
+  if (variant !== 'D' || openId == null) return;
+  sheetDetent = d;
+  const sheet = sheetEl();
+  const wasOpen = sheet.classList.contains('open');
+  sheet.innerHTML = buildSheet(byId(openId), d);
+  sheet.classList.toggle('large', d === 'large');
+  if (wasOpen) sheet.classList.add('open');
+  scrimEl().style.opacity = d === 'large' ? '1' : '';
+}
+
+function closeDetail() {
+  if (variant === 'A' || variant === 'B') {
+    const page = pageEl();
+    page.style.transformOrigin = openId != null ? rowCenterOrigin(openId) : '50% 40%';
+    page.classList.remove('open');
+    phoneEl().classList.remove('pushed');
+    phoneEl().querySelectorAll('.row').forEach(r => r.classList.remove('lift','fade'));
+    setTimeout(() => { page.innerHTML = ''; }, 440);
+  } else {
+    const sheet = sheetEl();
+    sheet.classList.remove('open');
+    scrimEl().classList.remove('on');
+    scrimEl().style.opacity = '';
+    phoneEl().classList.remove('dimmed');
+    setTimeout(() => { sheet.className = 'sheet'; sheet.innerHTML = ''; }, 360);
+  }
+  openId = null;
+}
+function reopen(id) {
+  // jump from a "more shows" card to that show's detail with the same transition
+  closeDetail();
+  setTimeout(() => openDetail(id), variant === 'A' || variant === 'B' ? 300 : 260);
+}
+
+function attachParallax() {
+  const page = pageEl();
+  const art = document.getElementById('posterArt');
+  if (!art) return;
+  page.onscroll = () => { art.style.transform = 'translateY(' + (page.scrollTop * 0.35) + 'px)'; };
+}
+
+/* ---------------- notes ---------------- */
+const NOTES = {
+  now: { name:'Now · Sheet', sub:'the baseline being replaced',
+    rows:[
+      ['Motion','A plain <code>.sheet(item:)</code> slides up at <code>.large</code>. Nothing links the row you tapped to what appears — it could be any sheet from anywhere.'],
+      ['Screen','One ticket, vertically centered, marooned in gradient. The card is well made; the <b>screen</b> is empty. This is the "barren" everyone means.'],
+      ['Verdict','<b>The problem, drawn to scale.</b> Flip to A–D to see it filled.'],
+    ] },
+  A: { name:'A · Hero Ticket', sub:'the row becomes the ticket',
+    rows:[
+      ['Motion','The row <b>zooms into the full ticket</b> — <code>.navigationTransition(.zoom)</code> off a <code>.matchedTransitionSource</code> on the row. Continuous, physical, reversible on back-swipe.'],
+      ['Screen','Keeps the shipped Box Office ticket as the hero, then a scroll of <b>provenance → the bill → where → more touring soon</b>. Empty space gone; the ticket earns its place at the top.'],
+      ['Cost','It is a push, so it owns the back stack. Primary CTA sits inside the ticket, mid-scroll — fine, but not thumb-pinned.'],
+      ['Ship','Wraps <b>BoxOfficeTicketView</b> unchanged. Provenance is the only new data dependency (airplay match).'],
+    ] },
+  B: { name:'B · Poster', sub:'artist-first, ticket demoted to an action bar',
+    rows:[
+      ['Motion','Same zoom source, but it opens into a <b>full-bleed poster</b>; the artwork <b>parallaxes</b> under a <code>.scrollTransition</code> as you scroll into the details.'],
+      ['Screen','The artist is the hero, not the ticket. Get Tickets lives in a <b>sticky glass dock</b> at thumb height. The most striking and the most "event," not "listing".'],
+      ['Cost','<b>Needs real artwork.</b> <code>image_url</code> is on the schema but usually null today — without it we fall back to a generated gradient (shown here), which is fine but not the point.'],
+      ['Ship','New view; reuses detail blocks. Gate on an <code>image_url</code> coverage spike.'],
+    ] },
+  C: { name:'C · Expand', sub:'never leave the list',
+    rows:[
+      ['Motion','<b>No navigation at all.</b> The row springs open an inline drawer under it (<code>withAnimation(.spring)</code> on a selected id); siblings reflow. Tap again to close.'],
+      ['Screen','Essentials in place: times, price, age, the provenance one-liner, Get Tickets. You keep your scroll position and the surrounding shows.'],
+      ['Cost','Small footprint means deep content (map, more-shows) still wants a "full details" push. Best if the tab is for triage, not deep dives.'],
+      ['Ship','Lightest of all — no sheet, no new screen. Pure list state.'],
+    ] },
+  D: { name:'D · Peek Sheet', sub:'the current sheet, done right',
+    rows:[
+      ['Motion','The same sheet — but it stops at a <b>peek detent</b> first (<code>.presentationDetents([.height(300), .large])</code>), list still live behind it (<code>.presentationBackgroundInteraction</code>). Drag up for the full story.'],
+      ['Screen','Peek = date, artist, venue, price, Get Tickets, why-you-heard-them. Large = the full ticket + details + bill + where + more. Progressive, thumb-friendly.'],
+      ['Cost','Still a modal, so no shared-element continuity from the row. But it is the <b>smallest diff</b> from what ships now.'],
+      ['Ship','Reuses <b>TouringTabView</b>’s existing <code>.sheet(item:)</code> — add detents + a peek layout.'],
+    ] },
+};
+function renderNotes() {
+  const n = NOTES[variant];
+  const body = n.rows.map(r => `<div class="nrow"><div class="nk">${r[0]}</div><div class="nv">${r[1]}</div></div>`).join('');
+  const rec = variant === 'now'
+    ? `<div class="verdict"><b>Tip:</b> tap the ticket, then press <b>A</b> — same show, night-and-day arrival.</div>`
+    : (variant === 'A' ? `<div class="verdict"><b>Recommended default.</b> Keeps the ticket, adds continuity + the WXYC provenance hook. Pair with D for compact phones.</div>` : '');
+  document.getElementById('notes').innerHTML = `<h2>${n.name}</h2><p class="nsub">${n.sub}</p>${body}${rec}`;
+  document.getElementById('devcap').textContent = n.name;
+}
+
+/* ---------------- variant switching ---------------- */
+const stage = document.getElementById('stage');
+function syncURL() { try { history.replaceState(null, '', '?v=' + variant); } catch (e) {} }
+function setVariant(v) {
+  if (openId != null || expandedId != null) { closeDetail(); expandedId = null; }
+  variant = v;
+  stage.dataset.variant = v;
+  document.querySelectorAll('#variantSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  // reset all overlay state cleanly
+  sheetEl().className = 'sheet'; sheetEl().innerHTML = '';
+  pageEl().className = 'page'; pageEl().innerHTML = '';
+  scrimEl().className = 'scrim'; scrimEl().style.opacity = '';
+  phoneEl().classList.remove('pushed','dimmed');
+  renderList();
+  renderNotes();
+  syncURL();
+}
+document.querySelectorAll('#variantSeg button').forEach(b => b.addEventListener('click', () => setVariant(b.dataset.v)));
+scrimEl().addEventListener('click', closeDetail);
+document.addEventListener('keydown', (e) => {
+  if (/input|textarea/i.test(document.activeElement.tagName)) return;
+  const order = ['now','A','B','C','D'];
+  if (e.key === 'ArrowRight') setVariant(order[(order.indexOf(variant) + 1) % order.length]);
+  if (e.key === 'ArrowLeft')  setVariant(order[(order.indexOf(variant) + order.length - 1) % order.length]);
+  if (e.key === 'Escape') { if (openId != null || expandedId != null) { closeDetail(); expandedId = null; renderList(); } }
+});
+
+const v0 = new URLSearchParams(location.search).get('v');
+setVariant(['now','A','B','C','D'].includes(v0) ? v0 : 'now');
+</script>
+</body>
+</html>
