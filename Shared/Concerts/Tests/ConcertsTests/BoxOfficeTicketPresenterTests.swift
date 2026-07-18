@@ -177,9 +177,13 @@ struct BoxOfficeTicketPresenterTests {
         #expect(BoxOfficeTicketPresenter(.stub(status: .onSale)).isCancelled == false)
     }
 
-    // MARK: - CTA label
+    // MARK: - CTA label (target-aware)
 
-    @Test("Maps status to CTA label", arguments: [
+    /// A venue event page for the default stub concert, used to flip the CTA
+    /// target from the ticket seller to the venue's own page.
+    private static let venuePageURL = URL(string: "https://catscradle.com/event/jessica-pratt")
+
+    @Test("Maps status to CTA label when the CTA opens the venue's event page", arguments: [
         (ShowStatus.onSale, "Get Tickets"),
         (.free, "RSVP"),
         (.soldOut, "See Venue Page"),
@@ -187,16 +191,56 @@ struct BoxOfficeTicketPresenterTests {
         (.cancelled, "See the venue's page"),
         (.unknown, "See Venue Page"),
     ])
-    func ctaLabel(status: ShowStatus, expected: String) {
-        #expect(BoxOfficeTicketPresenter(.stub(status: status)).ctaLabel == expected)
+    func ctaLabelVenuePage(status: ShowStatus, expected: String) {
+        let presenter = BoxOfficeTicketPresenter(.stub(eventURL: Self.venuePageURL, status: status))
+        #expect(presenter.ctaLabel == expected)
     }
 
-    // MARK: - CTA caption (venue-aware)
+    @Test("Maps status to CTA label when only a ticket link is known", arguments: [
+        (ShowStatus.onSale, "Get Tickets"),
+        (.free, "RSVP"),
+        (.soldOut, "See Ticket Page"),
+        (.rescheduled, "Get Tickets"),
+        (.cancelled, "See the ticket page"),
+        (.unknown, "See Ticket Page"),
+    ])
+    func ctaLabelTicketOnly(status: ShowStatus, expected: String) {
+        let presenter = BoxOfficeTicketPresenter(.stub(eventURL: nil, status: status))
+        #expect(presenter.ctaLabel == expected)
+    }
 
-    @Test("On-sale caption names the venue")
-    func onSaleCaption() {
-        let presenter = BoxOfficeTicketPresenter(.stub(venue: .stub(name: "Cat's Cradle"), status: .onSale))
+    // MARK: - CTA caption (venue- and target-aware)
+
+    @Test("On-sale caption names the venue when the CTA opens its event page")
+    func onSaleCaptionVenuePage() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle"), eventURL: Self.venuePageURL, status: .onSale)
+        )
         #expect(presenter.ctaCaption == "Opens Cat's Cradle's event page")
+    }
+
+    @Test("On-sale caption points at the ticket page when no venue page is known")
+    func onSaleCaptionTicketOnly() {
+        let presenter = BoxOfficeTicketPresenter(.stub(eventURL: nil, status: .onSale))
+        #expect(presenter.ctaCaption == "Opens the ticket page")
+    }
+
+    @Test("Rescheduled caption tracks the CTA target")
+    func rescheduledCaptionTracksTarget() {
+        let venuePage = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle"), eventURL: Self.venuePageURL, status: .rescheduled)
+        )
+        #expect(venuePage.ctaCaption == "Rescheduled — opens Cat's Cradle's event page")
+        let ticketOnly = BoxOfficeTicketPresenter(.stub(eventURL: nil, status: .rescheduled))
+        #expect(ticketOnly.ctaCaption == "Rescheduled — opens the ticket page")
+    }
+
+    @Test("Free caption tracks the CTA target")
+    func freeCaptionTracksTarget() {
+        let venuePage = BoxOfficeTicketPresenter(.stub(eventURL: Self.venuePageURL, status: .free))
+        #expect(venuePage.ctaCaption == "Free — opens the venue's event page")
+        let ticketOnly = BoxOfficeTicketPresenter(.stub(eventURL: nil, status: .free))
+        #expect(ticketOnly.ctaCaption == "Free — opens the RSVP page")
     }
 
     @Test("Sold-out caption names the venue and hints at holds")
@@ -216,7 +260,9 @@ struct BoxOfficeTicketPresenterTests {
         // The backend `Venue.name` is always present, so the presenter always
         // names it — there is no "the venue" fallback (the old triangle-shows
         // `venue_name` was optional; the backend `Concert.venue` is not).
-        let presenter = BoxOfficeTicketPresenter(.stub(venue: .stub(name: "Local 506"), status: .onSale))
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Local 506"), eventURL: URL(string: "https://local506.com/event/x"), status: .onSale)
+        )
         #expect(presenter.ctaCaption == "Opens Local 506's event page")
     }
 
@@ -233,11 +279,19 @@ struct BoxOfficeTicketPresenterTests {
         #expect(BoxOfficeTicketPresenter(.stub(status: status)).feedTagText == expected)
     }
 
-    @Test("Exposes the concert's CTA URL (the ticket link)")
+    @Test("Exposes the concert's resolved CTA URL (ticket-link fallback)")
     func exposesCTAURL() {
         let url = URL(string: "https://www.etix.com/ticket/p/x")
-        let presenter = BoxOfficeTicketPresenter(.stub(ticketURL: url))
+        let presenter = BoxOfficeTicketPresenter(.stub(ticketURL: url, eventURL: nil))
         #expect(presenter.ctaURL == url)
+    }
+
+    @Test("CTA URL prefers the venue's event page when one is known")
+    func ctaURLPrefersVenuePage() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(ticketURL: URL(string: "https://www.etix.com/ticket/p/x"), eventURL: Self.venuePageURL)
+        )
+        #expect(presenter.ctaURL == Self.venuePageURL)
     }
 
     @Test("Maps status to the feed-row tag style", arguments: [

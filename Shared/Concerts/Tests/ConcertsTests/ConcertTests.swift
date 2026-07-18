@@ -39,6 +39,7 @@ struct ConcertTests {
         "supporting_artists_raw": ["Julie Byrne"],
         "ticket_url": "https://www.etix.com/ticket/p/jessica-pratt",
         "image_url": "https://img.example/jessica-pratt.jpg",
+        "event_url": "https://catscradle.com/event/jessica-pratt",
         "price_min": 22.0,
         "price_max": 25.0,
         "age_restriction": "All Ages",
@@ -69,6 +70,7 @@ struct ConcertTests {
         #expect(concert.priceMax == 25.0)
         #expect(concert.ticketURL == URL(string: "https://www.etix.com/ticket/p/jessica-pratt"))
         #expect(concert.imageURL == URL(string: "https://img.example/jessica-pratt.jpg"))
+        #expect(concert.eventURL == URL(string: "https://catscradle.com/event/jessica-pratt"))
         #expect(concert.ageRestriction == "All Ages")
         #expect(concert.genres == ["Rock", "Folk World & Country"])
     }
@@ -124,6 +126,7 @@ struct ConcertTests {
             "supporting_artists_raw": [],
             "ticket_url": null,
             "image_url": null,
+            "event_url": null,
             "price_min": null,
             "price_max": null,
             "age_restriction": null,
@@ -146,6 +149,7 @@ struct ConcertTests {
         #expect(concert.priceMax == nil)
         #expect(concert.ticketURL == nil)
         #expect(concert.imageURL == nil)
+        #expect(concert.eventURL == nil)
         #expect(concert.ageRestriction == nil)
         #expect(concert.genres == nil)
     }
@@ -260,17 +264,83 @@ struct ConcertTests {
         #expect(decoded.genres == ["Rock", "Jazz"])
     }
 
+    // MARK: - event_url (#540, forward-compatible optional)
+
+    @Test("Decodes an absent event_url to nil (backend not yet emitting)")
+    func decodesAbsentEventURLAsNil() throws {
+        let json = """
+        {
+            "id": 90,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.eventURL == nil)
+    }
+
+    @Test("Decodes an empty-string event_url to a nil eventURL without throwing")
+    func decodesEmptyEventURLAsNil() throws {
+        let json = """
+        {
+            "id": 91,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "event_url": "",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.eventURL == nil)
+    }
+
+    @Test("Decodes a malformed event_url to a nil eventURL without throwing")
+    func decodesMalformedEventURLAsNil() throws {
+        let json = """
+        {
+            "id": 92,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "event_url": "http://  ",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.eventURL == nil)
+    }
+
+    @Test("Round-trips event_url through encode/decode")
+    func roundTripsEventURL() throws {
+        let original = Concert.stub(eventURL: URL(string: "https://catscradle.com/event/jessica-pratt"))
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.eventURL == URL(string: "https://catscradle.com/event/jessica-pratt"))
+    }
+
     // MARK: - ctaURL / headlineName (intrinsic data selection)
 
-    @Test("ctaURL is the ticket_url")
-    func ctaURLIsTicketURL() {
-        let concert = Concert.stub(ticketURL: URL(string: "https://etix.com/x"))
+    @Test("ctaURL prefers the venue event page over the ticket link")
+    func ctaURLPrefersEventPage() {
+        let concert = Concert.stub(
+            ticketURL: URL(string: "https://etix.com/x"),
+            eventURL: URL(string: "https://catscradle.com/event/x")
+        )
+        #expect(concert.ctaURL == URL(string: "https://catscradle.com/event/x"))
+    }
+
+    @Test("ctaURL falls back to the ticket link when no venue page is known")
+    func ctaURLFallsBackToTicketURL() {
+        let concert = Concert.stub(ticketURL: URL(string: "https://etix.com/x"), eventURL: nil)
         #expect(concert.ctaURL == URL(string: "https://etix.com/x"))
     }
 
-    @Test("ctaURL is nil when the ticket link is absent")
-    func ctaURLNilWhenNoTicket() {
-        let concert = Concert.stub(ticketURL: nil)
+    @Test("ctaURL is nil when the concert carries no link at all")
+    func ctaURLNilWhenNoLink() {
+        let concert = Concert.stub(ticketURL: nil, eventURL: nil)
         #expect(concert.ctaURL == nil)
     }
 

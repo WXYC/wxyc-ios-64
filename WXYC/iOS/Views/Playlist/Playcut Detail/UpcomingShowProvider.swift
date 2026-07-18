@@ -78,6 +78,7 @@ private extension Concert {
             headliningArtistRaw: playcut.artistName,
             supportingArtistsRaw: ["Tapir!"],
             ticketURL: URL(string: "https://www.etix.com/ticket/p/mock"),
+            eventURL: URL(string: "https://catscradle.com/event/mock"),
             priceMin: 22,
             priceMax: 25,
             ageRestriction: "All Ages",

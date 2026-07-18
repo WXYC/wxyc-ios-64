@@ -259,7 +259,7 @@ struct BoxOfficeTicketView: View {
             if let url = presenter.ctaURL {
                 Button { openURL(url) } label: {
                     HStack(spacing: 4) {
-                        Text("See the venue's page")
+                        Text(presenter.ctaLabel)
                         Image(systemName: "arrow.up.right")
                     }
                     .font(.caption)
@@ -617,7 +617,8 @@ private extension Concert {
         supportingArtistsRaw: [String] = ["Julie Byrne"],
         ageRestriction: String? = "All Ages",
         venueName: String = "Cat's Cradle",
-        venueCity: String = "Carrboro"
+        venueCity: String = "Carrboro",
+        eventURL: URL? = URL(string: "https://catscradle.com/event/jessica-pratt")
     ) -> Concert {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
@@ -634,6 +635,7 @@ private extension Concert {
             headliningArtistRaw: headliningArtistRaw,
             supportingArtistsRaw: supportingArtistsRaw,
             ticketURL: URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
+            eventURL: eventURL,
             priceMin: priceMin,
             priceMax: priceMax,
             ageRestriction: ageRestriction,
@@ -651,7 +653,8 @@ private extension Concert {
         status: .unknown,
         priceMin: nil, priceMax: nil,
         doorsHour: nil, showHour: nil,
-        supportingArtistsRaw: [], ageRestriction: nil
+        supportingArtistsRaw: [], ageRestriction: nil,
+        eventURL: nil
     )
 
     /// The show for the in-detail-view mockup — the same artist as the mock

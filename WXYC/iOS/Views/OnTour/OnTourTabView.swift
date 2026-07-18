@@ -273,6 +273,7 @@ private extension Concert {
         return [
             Concert(id: 1, venue: cradle, startsOn: day(0), headliningArtistRaw: "Jessica Pratt",
                     supportingArtistsRaw: ["Julie Byrne"], ticketURL: URL(string: "https://example.com/a"),
+                    eventURL: URL(string: "https://catscradle.com/event/jessica-pratt"),
                     priceMin: 22, priceMax: 25, ageRestriction: "All Ages", status: .onSale,
                     genres: ["Rock", "Folk World & Country"]),
             Concert(id: 2, venue: motorco, startsOn: day(3), headliningArtistRaw: "Chuquimamani-Condori",
