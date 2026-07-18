@@ -13,6 +13,7 @@
 
 import Concerts
 import SwiftUI
+import Wallpaper
 
 /// A single concert row in the On Tour tab's list.
 struct ConcertRow: View {
@@ -44,9 +45,11 @@ struct ConcertRow: View {
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
-            .contentShape(.rect(cornerRadius: 14))
+            // The same theme-aware material as the playlist's playcut rows
+            // (`BackgroundLayer`), so the two list surfaces match.
+            .background(BackgroundLayer(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.12), lineWidth: 1))
+            .contentShape(.rect(cornerRadius: 12))
             // A cancelled show reads "dead": desaturated and dimmed.
             .saturation(presenter.isCancelled ? 0.4 : 1)
             .opacity(presenter.isCancelled ? 0.7 : 1)
