@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>On Tour — Share Cards</title>
+<!--
+  PROTOTYPE — throwaway. Delete or absorb once a direction wins.
+
+  Companion doc: docs/ideas/on-tour-sharing.md (architecture, phasing, App Clip
+  assessment). This file answers the VISUAL half of the question:
+
+  Question this answers: when a listener shares an On Tour show, what does the
+  recipient actually see — in iMessage, in other apps, and in Safari — and what
+  do we control at each surface?
+
+  Everything renders one canonical show (Jessica Pratt · Cat's Cradle · Sat,
+  Aug 1) shared as one canonical link: https://wxyc.org/shows/4821. The link is
+  the product; every card below is a projection of it that we author exactly
+  once — via OG tags on the share page, and (if we ship the App Clip) via the
+  App Store Connect default-experience metadata.
+
+  Sections:
+    1 — THE LINK        one URL, three destinations (app / App Clip / web)
+    2 — IMESSAGE        the three recipient states, incl. the App Clip card
+    3 — ELSEWHERE       WhatsApp / Slack unfurls, Mail, AirDrop
+    4 — OG IMAGE        the adjudication axis: A wordmark · B poster · C stub
+    5 — SHARE PAGE      the Safari fallback + Smart App Banner variants
+    6 — IN-APP          where Share lives; the share sheet itself
+    7 — MATRIX          surface × recipient state → what renders → tap target
+
+  OG-image variants to adjudicate:
+    A — WORDMARK   one static brand image for every show. Zero infra. Day-one.
+    B — POSTER     per-show generated card mirroring the app's poster hero
+                   (PosterGradient + giant initial + type). The share and the
+                   destination rhyme. Needs a tiny image worker.
+    C — STUB       the amber Box Office ticket as a keepsake image. Strongest
+                   brand equity, weakest at comms-app crop sizes.
+
+  RECOMMENDATION (for discussion): ship A on day one inside Phase 1, then move
+  to B — it is the only variant where what you tap matches what the app opens
+  into (the same poster arrival settled in on-tour-detail-transitions.html).
+  Borrow C's perforation rule as B's date block divider. C stays the fallback
+  direction if B's generated type ever feels thin next to real artwork.
+
+  Facts drawn in these mockups (verified against Apple docs, 2026-07-18):
+  · App Clip card shows in Messages only when the sender is in the recipient's
+    contacts; otherwise the plain rich link renders. SMS recipients must
+    tap-to-load the rich link first.
+  · The card always uses the DEFAULT App Clip experience metadata (header
+    image 1800×1200, title ≤30 chars, subtitle ≤56 chars, action ∈ {Open,
+    View, Play}).
+  · The message must be a bare link for the card to render — share the URL as
+    the sole ShareLink item; prose belongs in SharePreview, not the payload.
+  · App Clips get no Background Modes: stream audio stops on lock/leave. The
+    clip is a conversion vehicle, not portable radio.
+  · Size budget: 100 MB uncompressed post-thinning (iOS 17+, digital-only
+    invocations; App Clip Codes would cap us at 15 MB).
+
+  Run:  open docs/ideas/on-tour-share-cards.html
+-->
+<style>
+  :root {
+    --page:#101120; --page-2:#171a30;
+    --ink:#ffffff; --ink-dim:rgba(255,255,255,0.72); --ink-faint:rgba(255,255,255,0.46);
+    --glass-line:rgba(255,255,255,0.15);
+    --amber:#ff8940; --amber-ink:#ffc79a; --amber-line:rgba(255,137,64,0.55);
+    --live:#34c759;
+    /* poster world (PosterGradient hues) */
+    --po-1:#303c72; --po-2:#40498e; --po-3:#af3e79; --po-4:#b64949;
+    /* iOS chrome for in-frame fidelity */
+    --ios-bg:#000000; --ios-panel:#1c1c1e; --ios-bubble:#26262a; --ios-card:#2c2c2e;
+    --ios-sep:rgba(255,255,255,0.12); --ios-blue:#0a84ff; --ios-gray:#98989f;
+    --whatsapp-bg:#0b141a; --whatsapp-bubble:#202c33; --whatsapp-accent:#53bdeb;
+    --slack-bg:#1a1d21; --slack-line:#35373b; --slack-link:#1d9bd1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    padding: 48px 28px 120px;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+
+  /* ---------- page voice ---------- */
+  .kicker {
+    font: 700 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 2.2px; text-transform: uppercase; color: var(--amber);
+  }
+  h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; margin: 10px 0 8px; text-wrap: balance; }
+  .lede { color: var(--ink-dim); max-width: 62ch; }
+  .lede code, .note code, .cap code {
+    font: 500 0.92em ui-monospace, "SF Mono", Menlo, monospace;
+    color: var(--amber-ink); background: rgba(255,137,64,0.1);
+    padding: 1px 5px; border-radius: 4px; white-space: nowrap;
+  }
+  section { margin-top: 72px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--glass-line); padding-bottom: 10px; margin-bottom: 6px; }
+  .sec-head .n { font: 700 12px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-faint); }
+  h2 { font-size: 21px; font-weight: 750; letter-spacing: -0.2px; }
+  .sec-sub { color: var(--ink-faint); font-size: 13.5px; max-width: 74ch; margin-top: 8px; }
+  h3 { font-size: 14px; font-weight: 650; margin-bottom: 6px; }
+
+  /* ---------- specimen shelves ---------- */
+  .shelf { display: flex; gap: 26px; overflow-x: auto; padding: 26px 4px 10px; align-items: flex-start; }
+  .specimen { flex: 0 0 auto; width: 292px; }
+  .specimen.wide { width: 360px; }
+  .cap { margin-top: 12px; }
+  .cap .t { font: 700 11px/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-dim); }
+  .cap .d { font-size: 12.5px; color: var(--ink-faint); margin-top: 5px; }
+  .cap .flow { font-size: 12.5px; color: var(--amber-ink); margin-top: 7px; }
+  .cap .flow::before { content: "⌁ "; color: var(--amber); }
+
+  /* ---------- phone frame ---------- */
+  .phone {
+    background: var(--ios-bg); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 34px; padding: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+  }
+  .screen { background: var(--ios-bg); border-radius: 26px; overflow: hidden; }
+  .statusbar { display: flex; justify-content: space-between; padding: 8px 18px 4px; font-size: 11px; font-weight: 600; color: #fff; }
+  .msg-nav { text-align: center; padding: 4px 0 10px; border-bottom: 0.5px solid var(--ios-sep); }
+  .msg-nav .avatar {
+    width: 34px; height: 34px; border-radius: 50%; margin: 0 auto 3px;
+    background: linear-gradient(135deg,#8e8e93,#5e5e63);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;
+  }
+  .msg-nav .who { font-size: 10.5px; color: var(--ios-gray); }
+  .thread { padding: 14px 12px 18px; display: flex; flex-direction: column; gap: 8px; min-height: 250px; }
+  .bubble-in { align-self: flex-start; max-width: 86%; }
+  .bubble-in .txt { background: var(--ios-bubble); color: #fff; padding: 8px 12px; border-radius: 18px; border-bottom-left-radius: 4px; font-size: 13.5px; }
+  .timestamp { text-align: center; font-size: 10px; color: var(--ios-gray); margin-bottom: 2px; }
+
+  /* rich link bubble */
+  .richlink { width: 100%; border-radius: 14px; overflow: hidden; background: var(--ios-card); border-bottom-left-radius: 4px; }
+  .richlink .foot { padding: 8px 11px 9px; }
+  .richlink .foot .t { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+  .richlink .foot .u { font-size: 11px; color: var(--ios-gray); margin-top: 2px; }
+
+  /* og art (shared by bubbles, unfurls, og section) */
+  .og { position: relative; aspect-ratio: 1.91 / 1; overflow: hidden; display: block; }
+  .og-poster { background: linear-gradient(133deg, var(--po-1) 0%, var(--po-2) 42%, var(--po-3) 100%); }
+  .og-poster .bigJ {
+    position: absolute; right: -12px; top: -34px; font-size: 120px; font-weight: 900;
+    color: rgba(255,255,255,0.09); line-height: 1; pointer-events: none;
+  }
+  .og-poster .txt { position: absolute; left: 12px; bottom: 9px; right: 12px; }
+  .og-poster .a { font-size: 17px; font-weight: 800; letter-spacing: -0.2px; text-shadow: 0 2px 10px rgba(0,0,0,0.45); }
+  .og-poster .v { font: 600 8.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+  .og-poster .brand {
+    position: absolute; top: 9px; left: 12px; font: 800 9px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 1.6px; color: #fff; opacity: 0.92;
+  }
+  .og-wordmark { background: #17181d; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .og-wordmark .wm { font: 900 30px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 3px; }
+  .og-wordmark .tag { font: 600 8.5px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-faint); }
+  .og-wordmark .fm { color: var(--amber); }
+  .og-stub { background: linear-gradient(160deg, #2a1a10, #3a2113); display: flex; align-items: center; justify-content: center; }
+  .og-stub .ticket {
+    width: 82%; background: linear-gradient(135deg, rgba(255,137,64,0.32), rgba(255,137,64,0.16));
+    border: 1px solid var(--amber-line); border-radius: 10px; padding: 9px 12px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  .og-stub .l .hdr { font: 700 7.5px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1.6px; color: var(--amber-ink); margin-bottom: 4px; }
+  .og-stub .l .a { font-size: 14.5px; font-weight: 800; }
+  .og-stub .l .v { font-size: 9px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+  .og-stub .r { border-left: 1px dashed var(--amber-line); padding-left: 10px; text-align: center; }
+  .og-stub .r .d { font-size: 15px; font-weight: 900; }
+  .og-stub .r .m { font: 600 7.5px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1.4px; color: var(--amber-ink); }
+
+  /* App Clip card bubble */
+  .clipcard { width: 100%; border-radius: 16px; overflow: hidden; background: var(--ios-card); border-bottom-left-radius: 4px; }
+  .clipcard .hdrimg { aspect-ratio: 3 / 2; }
+  .clipcard .meta { display: flex; align-items: center; gap: 9px; padding: 10px 11px 4px; }
+  .clipcard .appicon {
+    width: 34px; height: 34px; border-radius: 8.5px; flex: 0 0 auto;
+    background: linear-gradient(140deg, var(--po-2), var(--po-3));
+    display: flex; align-items: center; justify-content: center;
+    font: 900 9px/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.5px;
+  }
+  .clipcard .m-t { font-size: 13px; font-weight: 650; line-height: 1.25; }
+  .clipcard .m-s { font-size: 11px; color: var(--ios-gray); line-height: 1.3; margin-top: 1px; }
+  .clipcard .cta { margin-left: auto; background: var(--ios-blue); color: #fff; font-size: 12.5px; font-weight: 700; padding: 5px 15px; border-radius: 999px; flex: 0 0 auto; }
+  .clipcard .legal { font-size: 9px; color: var(--ios-gray); padding: 5px 11px 9px 54px; }
+
+  /* WhatsApp */
+  .wa-screen { background: var(--whatsapp-bg); }
+  .wa-thread { padding: 14px 10px 18px; min-height: 250px; }
+  .wa-bubble { background: var(--whatsapp-bubble); border-radius: 10px; max-width: 88%; overflow: hidden; }
+  .wa-bubble .quote { padding: 4px; }
+  .wa-bubble .quote .og { border-radius: 7px; }
+  .wa-bubble .body { padding: 4px 8px 6px; }
+  .wa-bubble .t { font-size: 12.5px; font-weight: 600; }
+  .wa-bubble .d { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 1px; }
+  .wa-bubble .u { font-size: 11px; color: var(--whatsapp-accent); margin-top: 3px; word-break: break-all; }
+  .wa-bubble .time { text-align: right; font-size: 9.5px; color: rgba(255,255,255,0.45); padding: 0 8px 5px; }
+
+  /* Slack */
+  .slack { background: var(--slack-bg); border: 1px solid var(--slack-line); border-radius: 12px; padding: 14px 16px; }
+  .slack .msghead { display: flex; gap: 8px; align-items: baseline; margin-bottom: 3px; }
+  .slack .avatar2 { width: 30px; height: 30px; border-radius: 6px; background: linear-gradient(135deg, var(--po-3), var(--po-4)); flex: 0 0 auto; align-self: flex-start; }
+  .slack .who { font-size: 13.5px; font-weight: 800; }
+  .slack .when { font-size: 11px; color: var(--ink-faint); }
+  .slack .msg { font-size: 13.5px; }
+  .slack .msg a { color: var(--slack-link); text-decoration: none; }
+  .slack .unfurl { border-left: 3px solid var(--slack-line); padding-left: 10px; margin-top: 7px; }
+  .slack .site { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-dim); }
+  .slack .favicon { width: 14px; height: 14px; border-radius: 3px; background: linear-gradient(140deg, var(--po-2), var(--po-3)); }
+  .slack .u-t { color: var(--slack-link); font-size: 13.5px; font-weight: 700; margin-top: 2px; }
+  .slack .u-d { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; max-width: 46ch; }
+  .slack .u-img { margin-top: 8px; max-width: 300px; border-radius: 8px; overflow: hidden; }
+
+  /* Safari share page */
+  .safari-chrome-top { background: var(--ios-panel); padding: 6px 10px; border-bottom: 0.5px solid var(--ios-sep); }
+  .sab { display: flex; align-items: center; gap: 8px; background: #2c2c2e; border-radius: 10px; padding: 7px 9px; }
+  .sab .close { color: var(--ios-gray); font-size: 13px; }
+  .sab .appicon { width: 30px; height: 30px; border-radius: 7px; background: linear-gradient(140deg, var(--po-2), var(--po-3)); display:flex; align-items:center; justify-content:center; font: 900 8px/1 ui-monospace, monospace; }
+  .sab .t { font-size: 11.5px; font-weight: 650; line-height: 1.25; }
+  .sab .s { font-size: 9.5px; color: var(--ios-gray); }
+  .sab .get { margin-left: auto; color: var(--ios-blue); font-size: 13px; font-weight: 700; }
+  .webpage { min-height: 320px; display: flex; flex-direction: column; }
+  .web-hero { position: relative; aspect-ratio: 4 / 3.1; background: linear-gradient(133deg, var(--po-1) 0%, var(--po-2) 42%, var(--po-3) 100%); }
+  .web-hero .bigJ { position: absolute; right: -8px; top: -22px; font-size: 110px; font-weight: 900; color: rgba(255,255,255,0.09); line-height: 1; }
+  .web-hero .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0) 35%, rgba(16,17,32,0.95)); }
+  .web-hero .txt { position: absolute; left: 14px; right: 14px; bottom: 10px; }
+  .web-hero .pill { display: inline-block; font: 700 7.5px/1 ui-monospace, monospace; letter-spacing: 1px; background: var(--live); color: #06210d; border-radius: 999px; padding: 3px 7px; margin-bottom: 6px; }
+  .web-hero .a { font-size: 21px; font-weight: 850; letter-spacing: -0.3px; }
+  .web-hero .v { font: 600 8.5px/1.6 ui-monospace, monospace; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+  .web-body { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 8px; background: var(--page); flex: 1; }
+  .web-cta { text-align: center; font-size: 13px; font-weight: 750; padding: 10px; border-radius: 10px; background: var(--amber); color: #33150a; }
+  .web-cta.ghost { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid var(--glass-line); }
+  .web-listen { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid var(--glass-line); border-radius: 10px; background: var(--page-2); }
+  .web-listen .playbtn { width: 30px; height: 30px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-size: 11px; flex: 0 0 auto; }
+  .web-listen .t { font-size: 12px; font-weight: 650; }
+  .web-listen .s { font-size: 10px; color: var(--ink-faint); }
+  .web-listen .eq { margin-left: auto; display: flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .web-listen .eq i { width: 3px; background: var(--live); border-radius: 1px; display: block; }
+  .web-listen .eq i:nth-child(1) { height: 55%; } .web-listen .eq i:nth-child(2) { height: 100%; }
+  .web-listen .eq i:nth-child(3) { height: 40%; } .web-listen .eq i:nth-child(4) { height: 75%; }
+  .safari-urlbar { background: var(--ios-panel); margin-top: auto; padding: 8px 12px 10px; border-top: 0.5px solid var(--ios-sep); }
+  .safari-urlbar .pillu { background: #2c2c2e; border-radius: 10px; text-align: center; font-size: 11.5px; color: var(--ink-dim); padding: 7px; }
+
+  /* app clip card overlay variant (app-clip-display=card) */
+  .clip-overlay { position: relative; }
+  .clip-overlay .dim { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
+  .clip-sheet {
+    position: absolute; left: 8px; right: 8px; bottom: 8px;
+    background: #f2f2f7; color: #111; border-radius: 18px; overflow: hidden;
+    box-shadow: 0 -6px 40px rgba(0,0,0,0.5);
+  }
+  .clip-sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.2); margin: 6px auto 2px; }
+  .clip-sheet .meta { display: flex; align-items: center; gap: 9px; padding: 8px 12px 12px; }
+  .clip-sheet .m-t { font-size: 13px; font-weight: 700; }
+  .clip-sheet .m-s { font-size: 11px; color: #666; }
+  .clip-sheet .cta { margin-left: auto; background: var(--ios-blue); color: #fff; font-size: 12.5px; font-weight: 700; padding: 6px 16px; border-radius: 999px; }
+
+  /* in-app share affordances */
+  .app-detail { position: relative; }
+  .chip-btn {
+    position: absolute; width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .ctx-menu {
+    background: rgba(40,40,44,0.98); border-radius: 13px; overflow: hidden;
+    width: 200px; box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    font-size: 13.5px;
+  }
+  .ctx-menu .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 0.5px solid var(--ios-sep); }
+  .ctx-menu .item:last-child { border-bottom: 0; }
+  .sharesheet { background: var(--ios-panel); border-radius: 16px 16px 0 0; overflow: hidden; }
+  .sharesheet .head { display: flex; gap: 10px; align-items: center; padding: 12px; border-bottom: 0.5px solid var(--ios-sep); }
+  .sharesheet .thumb { width: 40px; height: 40px; border-radius: 8px; background: linear-gradient(133deg, var(--po-2), var(--po-3)); flex: 0 0 auto; display: flex; align-items: flex-end; padding: 3px; }
+  .sharesheet .thumb span { font-size: 7px; font-weight: 800; }
+  .sharesheet .h-t { font-size: 12.5px; font-weight: 650; }
+  .sharesheet .h-s { font-size: 10.5px; color: var(--ios-gray); }
+  .sharesheet .apps { display: flex; gap: 16px; padding: 12px; border-bottom: 0.5px solid var(--ios-sep); }
+  .sharesheet .app { text-align: center; font-size: 8.5px; color: var(--ios-gray); }
+  .sharesheet .app .i { width: 40px; height: 40px; border-radius: 10px; margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .sharesheet .actions .row { display: flex; justify-content: space-between; padding: 11px 14px; font-size: 13px; border-bottom: 0.5px solid var(--ios-sep); }
+
+  /* matrix table */
+  .matrix-wrap { overflow-x: auto; margin-top: 22px; border: 1px solid var(--glass-line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; min-width: 860px; font-size: 13px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+  th { font: 700 10.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-faint); background: var(--page-2); }
+  tr:last-child td { border-bottom: 0; }
+  td .phase2 { font: 700 9px/1 ui-monospace, monospace; letter-spacing: 1px; color: var(--amber-ink); background: rgba(255,137,64,0.12); border: 1px solid var(--amber-line); border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+  td em { color: var(--ink-faint); font-style: normal; }
+
+  .note {
+    border: 1px solid var(--amber-line); background: rgba(255,137,64,0.07);
+    border-radius: 12px; padding: 14px 18px; margin-top: 22px;
+    font-size: 13.5px; color: var(--ink-dim); max-width: 86ch;
+  }
+  .note b { color: var(--amber-ink); }
+  .caveats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .caveat { border: 1px solid var(--glass-line); border-radius: 10px; padding: 9px 13px; font-size: 12.5px; color: var(--ink-dim); background: var(--page-2); max-width: 340px; }
+  .caveat b { display: block; font: 700 10px/1.6 ui-monospace, monospace; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-dim); }
+
+  .url-anatomy { display: flex; align-items: center; gap: 0; flex-wrap: wrap; font: 650 19px/1.3 ui-monospace, "SF Mono", Menlo, monospace; margin: 26px 0 6px; }
+  .url-anatomy .seg { padding: 6px 2px; }
+  .url-anatomy .host { color: var(--ink); } .url-anatomy .path { color: var(--amber-ink); } .url-anatomy .id { color: var(--live); }
+  .anno-row { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 14px; }
+  .anno { font-size: 12.5px; color: var(--ink-faint); max-width: 250px; }
+  .anno b { display: block; font: 700 10px/1.8 ui-monospace, monospace; letter-spacing: 1.2px; text-transform: uppercase; }
+  .anno.h b { color: var(--ink-dim); } .anno.p b { color: var(--amber-ink); } .anno.i b { color: var(--live); }
+
+  .dests { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 26px; }
+  .dest { border: 1px solid var(--glass-line); border-radius: 12px; padding: 15px 17px; background: var(--page-2); }
+  .dest .k { font: 700 10px/1 ui-monospace, monospace; letter-spacing: 1.4px; text-transform: uppercase; color: var(--amber); }
+  .dest h3 { margin-top: 7px; }
+  .dest p { font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; }
+
+  .og-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 26px; margin-top: 26px; }
+  .og-cell .frame-og { border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-line); }
+  .og-cell .og { aspect-ratio: 1.91 / 1; }
+  .og-cell .og-poster .a { font-size: 24px; } .og-cell .og-poster .v { font-size: 10px; }
+  .og-cell .og-poster .bigJ { font-size: 170px; }
+  .og-cell .og-wordmark .wm { font-size: 42px; }
+  .og-cell .og-stub .l .a { font-size: 19px; }
+  .verdict { font: 700 10px/1 ui-monospace, monospace; letter-spacing: 1.2px; text-transform: uppercase; border-radius: 999px; padding: 4px 10px; }
+  .verdict.win { color: #0f2213; background: var(--live); }
+  .verdict.day1 { color: var(--ink-dim); background: rgba(255,255,255,0.12); }
+  .verdict.hold { color: var(--amber-ink); background: rgba(255,137,64,0.14); border: 1px solid var(--amber-line); }
+  .og-cell .cap .t { display: flex; align-items: center; gap: 10px; }
+
+  footer { margin-top: 90px; border-top: 1px solid var(--glass-line); padding-top: 18px; font-size: 12px; color: var(--ink-faint); max-width: 80ch; }
+  footer a { color: var(--ink-dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">docs/ideas · prototype · 2026-07-18</div>
+  <h1>On Tour — what a shared show looks like</h1>
+  <p class="lede">One listener taps Share on the Jessica Pratt show. This page renders what everyone on the other end sees — in iMessage with and without the app, with and without an App Clip, in WhatsApp and Slack, and in Safari. Every card below is a projection of a single URL; we author the projection once, in the share page's OG tags and (Phase&nbsp;2) the App Clip's default-experience metadata. Architecture and phasing live in the companion doc <code>docs/ideas/on-tour-sharing.md</code>.</p>
+
+  <!-- ======================= 1 · THE LINK ======================= -->
+  <section id="link">
+    <div class="sec-head"><span class="n">1</span><h2>The link is the product</h2></div>
+    <p class="sec-sub">Everything ships as one canonical HTTPS universal link. Who taps it, and what they have installed, decides which of three experiences answers.</p>
+
+    <div class="url-anatomy" aria-label="URL anatomy">
+      <span class="seg host">https://wxyc.org</span><span class="seg path">/shows/</span><span class="seg id">4821</span>
+    </div>
+    <div class="anno-row">
+      <div class="anno h"><b>host — wxyc.org</b>The zone is already on Cloudflare. Worker routes on <code>/shows/*</code> and the exact AASA path serve the share pages and association file; GitHub Pages keeps everything else (including ACME renewals). Links inherit the station's domain trust and outlive any app-store URL.</div>
+      <div class="anno p"><b>path — /shows/</b>Human word, not the API's "concerts" — this string is visible in every SMS fallback and copy-paste. Reserved exclusively for share targets.</div>
+      <div class="anno i"><b>id — 4821</b>Backend <code>concerts.id</code>. An optional readable suffix (<code>/shows/4821-jessica-pratt</code>) is tolerated and ignored by the parser.</div>
+    </div>
+
+    <div class="dests">
+      <div class="dest"><span class="k">has the app</span><h3>Universal link → the app</h3><p>iOS routes the tap straight into WXYC. The existing <code>NSUserActivityTypeBrowsingWeb</code> handler parses it, switches to the On Tour tab, and presents this show's poster detail.</p></div>
+      <div class="dest"><span class="k">no app · phase 2</span><h3>App Clip card → the clip</h3><p>The AASA <code>appclips</code> entry + an App Store Connect experience turn the same link into a native App Clip card in Messages and Safari. Poster detail + tickets + a foreground listen, no install.</p></div>
+      <div class="dest"><span class="k">no app · always</span><h3>Share page → Safari</h3><p>The Worker renders the OG-tagged show page: poster hero, ticket link, a live-stream web player, and the Smart App Banner pointing at the app (or the clip). This is the floor every other surface degrades to.</p></div>
+    </div>
+  </section>
+
+  <!-- ======================= 2 · IMESSAGE ======================= -->
+  <section id="imessage">
+    <div class="sec-head"><span class="n">2</span><h2>iMessage — the three recipient states</h2></div>
+    <p class="sec-sub">The sender's message is identical in all three: the bare URL, nothing else. What renders is decided per-recipient, on their device.</p>
+
+    <div class="shelf">
+      <!-- A: has app -->
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="msg-nav"><div class="avatar">M</div><div class="who">Maya ›</div></div>
+          <div class="thread">
+            <div class="timestamp">Today 7:12 PM</div>
+            <div class="bubble-in" style="width:88%">
+              <div class="richlink">
+                <div class="og og-poster"><span class="brand">WXYC 89.3</span><span class="bigJ">J</span>
+                  <div class="txt"><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Sat, Aug 1 · $22</div></div>
+                </div>
+                <div class="foot"><div class="t">Jessica Pratt at Cat's Cradle — WXYC</div><div class="u">wxyc.org</div></div>
+              </div>
+            </div>
+            <div class="bubble-in"><div class="txt">omg yes. getting tickets tonight</div></div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">A · recipient has WXYC</div>
+          <div class="d">Standard rich link, drawn from the share page's OG tags. The bubble is the OG image + title + domain — this is why the OG image carries the show, not just the brand.</div>
+          <div class="flow">tap → WXYC opens → On Tour → this show's poster detail</div>
+        </div>
+      </div>
+
+      <!-- B: no app, app clip -->
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="msg-nav"><div class="avatar">J</div><div class="who">Jake ›</div></div>
+          <div class="thread">
+            <div class="timestamp">Today 7:12 PM</div>
+            <div class="bubble-in" style="width:92%">
+              <div class="clipcard">
+                <div class="og og-poster hdrimg"><span class="brand">WXYC 89.3</span><span class="bigJ">J</span>
+                  <div class="txt"><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Sat, Aug 1</div></div>
+                </div>
+                <div class="meta">
+                  <div class="appicon">WXYC</div>
+                  <div><div class="m-t">WXYC On Tour</div><div class="m-s">See who's playing the Triangle</div></div>
+                  <div class="cta">View</div>
+                </div>
+                <div class="legal">App Clip · WXYC Radio</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">B · no app + App Clip <span class="phase2" style="font-size:9px">PHASE 2</span></div>
+          <div class="d">The App Clip card, styled by the <em>default experience</em> in App Store Connect: header image 1800×1200, title ≤30 chars, subtitle ≤56 chars, action verb from {Open, View, Play}.</div>
+          <div class="flow">tap View → clip launches on the show detail → Get WXYC</div>
+        </div>
+      </div>
+
+      <!-- C: no app, phase 1 -->
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="msg-nav"><div class="avatar">S</div><div class="who">Sam ›</div></div>
+          <div class="thread">
+            <div class="timestamp">Today 7:12 PM</div>
+            <div class="bubble-in" style="width:88%">
+              <div class="richlink">
+                <div class="og og-poster"><span class="brand">WXYC 89.3</span><span class="bigJ">J</span>
+                  <div class="txt"><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Sat, Aug 1 · $22</div></div>
+                </div>
+                <div class="foot"><div class="t">Jessica Pratt at Cat's Cradle — WXYC</div><div class="u">wxyc.org</div></div>
+              </div>
+            </div>
+            <div class="bubble-in"><div class="txt">who's jessica pratt?</div></div>
+            <div class="bubble-in"><div class="txt">turn on 89.3 and find out</div></div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">C · no app · phase 1</div>
+          <div class="d">Same rich link as A — but the tap lands on the Safari share page instead of the app. The page carries the Smart App Banner, the ticket link, and a working live-stream player.</div>
+          <div class="flow">tap → Safari share page → listen / tickets / Get WXYC</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="caveats">
+      <div class="caveat"><b>bare link required</b>The App Clip card only replaces the preview when the message is the URL alone. <code>ShareLink(item: url)</code> with prose confined to <code>SharePreview</code> — never concatenated into the payload.</div>
+      <div class="caveat"><b>contacts requirement</b>Messages shows the App Clip card only when the sender is in the recipient's contacts. Otherwise: the plain rich link (state A/C). The share page must carry the experience either way.</div>
+      <div class="caveat"><b>sms / rcs</b>Green-bubble recipients must tap-to-load the rich preview first; until then they see the raw URL — which is why the URL itself reads like a sentence.</div>
+      <div class="caveat"><b>default card only</b>Messages always renders the <em>default</em> experience's metadata, even when an advanced experience matches the URL. Card art is station-generic + og-image; per-show art lives in the rich-link path.</div>
+    </div>
+  </section>
+
+  <!-- ======================= 3 · ELSEWHERE ======================= -->
+  <section id="elsewhere">
+    <div class="sec-head"><span class="n">3</span><h2>Elsewhere — OG tags do all the work</h2></div>
+    <p class="sec-sub">WhatsApp, Slack, Discord, Mail, Notes: none of them speak App Clip. They unfurl the OG tags and open Safari on tap — which is exactly the Phase 1 flow. One page, correctly tagged, covers every one of these.</p>
+
+    <div class="shelf">
+      <div class="specimen">
+        <div class="phone"><div class="screen wa-screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="wa-thread">
+            <div class="wa-bubble">
+              <div class="quote">
+                <div class="og og-poster"><span class="brand">WXYC 89.3</span><span class="bigJ">J</span>
+                  <div class="txt"><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Sat, Aug 1</div></div>
+                </div>
+              </div>
+              <div class="body">
+                <div class="t">Jessica Pratt at Cat's Cradle — WXYC</div>
+                <div class="d">Sat, Aug 1 · Doors 7 PM · $22–25 · All Ages. Heard on WXYC 89.3 FM Chapel Hill.</div>
+                <div class="u">https://wxyc.org/shows/4821</div>
+              </div>
+              <div class="time">7:12 PM</div>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">WhatsApp</div>
+          <div class="d"><code>og:title</code> + <code>og:description</code> + <code>og:image</code>, verbatim. The description is our one line of editorial voice on this surface — it should carry date, price, and the station credit.</div>
+          <div class="flow">tap → Safari share page</div>
+        </div>
+      </div>
+
+      <div class="specimen wide">
+        <div class="slack">
+          <div style="display:flex; gap:8px;">
+            <div class="avatar2"></div>
+            <div>
+              <div class="msghead"><span class="who">tori</span><span class="when">7:12 PM</span></div>
+              <div class="msg">station folks — <a href="#">wxyc.org/shows/4821</a></div>
+              <div class="unfurl">
+                <div class="site"><span class="favicon"></span>WXYC 89.3 FM</div>
+                <div class="u-t">Jessica Pratt at Cat's Cradle — WXYC</div>
+                <div class="u-d">Sat, Aug 1 · Doors 7 PM · $22–25 · All Ages. Heard on WXYC 89.3 FM Chapel Hill.</div>
+                <div class="u-img">
+                  <div class="og og-poster"><span class="brand">WXYC 89.3</span><span class="bigJ">J</span>
+                    <div class="txt"><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Sat, Aug 1</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="t">Slack (the DJ channels)</div>
+          <div class="d">Slack unfurls favicon + site name + title + description + image. DJs sharing shows into #music is a real internal loop, not just listener-to-listener.</div>
+          <div class="flow">tap → browser → share page</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note"><b>AirDrop &amp; Mail:</b> both transmit the bare URL (AirDrop opens it immediately). No card to design — the share page is the whole experience. The one universal rule this section proves: <b>the OG page is Phase 1's deliverable; every other surface is styling on top of it.</b></div>
+  </section>
+
+  <!-- ======================= 4 · OG IMAGE ======================= -->
+  <section id="og">
+    <div class="sec-head"><span class="n">4</span><h2>The OG image — the adjudication axis</h2></div>
+    <p class="sec-sub">The 1200×630 image is most of every card's surface area. Three candidates, same show. (When a concert carries a real <code>image_url</code>, that artwork wins outright and these are the fallback — same rule as the in-app poster hero.)</p>
+
+    <div class="og-grid">
+      <div class="og-cell">
+        <div class="frame-og">
+          <div class="og og-wordmark"><div class="wm">WX<span class="fm">YC</span></div><div class="tag">89.3 FM · Chapel Hill</div></div>
+        </div>
+        <div class="cap">
+          <div class="t"><span>A · Wordmark</span><span class="verdict day1">DAY ONE</span></div>
+          <div class="d">One static brand image for every show. Zero image infra — ships inside Phase 1's Worker with no generation step. Says "WXYC sent this," says nothing about the show.</div>
+        </div>
+      </div>
+      <div class="og-cell">
+        <div class="frame-og">
+          <div class="og og-poster"><span class="brand">WXYC 89.3</span><span class="bigJ">J</span>
+            <div class="txt"><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle, Carrboro · Sat, Aug 1 · $22</div></div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="t"><span>B · Generated poster</span><span class="verdict win">RECOMMENDED</span></div>
+          <div class="d">The app's poster hero, re-rendered at card ratio: deterministic <code>PosterGradient</code> keyed on the show, oversized initial, artist + venue + date. What you tap is what the app opens into. Needs a small OG-image worker (satori/workers-og or a canvas render).</div>
+        </div>
+      </div>
+      <div class="og-cell">
+        <div class="frame-og">
+          <div class="og og-stub">
+            <div class="ticket">
+              <div class="l"><div class="hdr">WXYC BOX OFFICE</div><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Carrboro, NC</div></div>
+              <div class="r"><div class="m">SAT</div><div class="d">01</div><div class="m">AUG</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="t"><span>C · Ticket stub</span><span class="verdict hold">HOLD</span></div>
+          <div class="d">The amber Box Office keepsake as an image. Strongest brand equity, but the fine detail dies at WhatsApp thumbnail sizes, and the amber fights iMessage's dark bubble chrome. Donate the perforation rule to B's date block instead.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 5 · SHARE PAGE ======================= -->
+  <section id="sharepage">
+    <div class="sec-head"><span class="n">5</span><h2>The Safari share page — the floor</h2></div>
+    <p class="sec-sub">Where every no-app tap lands. It re-renders the app's poster detail in one screen of HTML, plays the stream, sells the ticket, and pitches the app. Right: how the same page invokes the App Clip in Phase 2 via <code>app-clip-display=card</code>.</p>
+
+    <div class="shelf">
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="safari-chrome-top">
+            <div class="sab"><span class="close">✕</span><div class="appicon">WXYC</div><div><div class="t">WXYC</div><div class="s">Chapel Hill's student radio</div></div><div class="get">GET</div></div>
+          </div>
+          <div class="webpage">
+            <div class="web-hero"><span class="bigJ">J</span><div class="scrim"></div>
+              <div class="txt"><span class="pill">ON SALE</span><div class="a">Jessica Pratt</div><div class="v">w/ Julie Byrne · Cat's Cradle, Carrboro</div><div class="v">Sat, Aug 1 · Doors 7 PM · $22–25 · All Ages</div></div>
+            </div>
+            <div class="web-body">
+              <div class="web-cta">Get Tickets — $22</div>
+              <div class="web-listen"><div class="playbtn">▶</div><div><div class="t">Listen to WXYC</div><div class="s">Live · 89.3 FM Chapel Hill</div></div><div class="eq"><i></i><i></i><i></i><i></i></div></div>
+              <div class="web-cta ghost">Open in the WXYC app</div>
+            </div>
+            <div class="safari-urlbar"><div class="pillu">wxyc.org</div></div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">Phase 1 · Smart App Banner</div>
+          <div class="d"><code>apple-itunes-app</code> meta with <code>app-id</code>. The page is a Worker render of <code>GET /concerts</code> data — same fields the app decodes, same poster fallback, plus an <code>&lt;audio&gt;</code> element on the Icecast stream. A past show swaps the CTA row for "This one's passed — here's what's coming up."</div>
+        </div>
+      </div>
+
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="webpage clip-overlay">
+            <div class="web-hero"><span class="bigJ">J</span><div class="scrim"></div>
+              <div class="txt"><span class="pill">ON SALE</span><div class="a">Jessica Pratt</div><div class="v">w/ Julie Byrne · Cat's Cradle, Carrboro</div></div>
+            </div>
+            <div class="web-body">
+              <div class="web-cta">Get Tickets — $22</div>
+              <div class="web-listen"><div class="playbtn">▶</div><div><div class="t">Listen to WXYC</div><div class="s">Live · 89.3 FM</div></div></div>
+            </div>
+            <div class="dim"></div>
+            <div class="clip-sheet">
+              <div class="grab"></div>
+              <div class="meta"><div class="appicon" style="width:34px;height:34px;border-radius:8.5px;background:linear-gradient(140deg,var(--po-2),var(--po-3));display:flex;align-items:center;justify-content:center;font:900 9px/1 ui-monospace,monospace;color:#fff;">WXYC</div>
+                <div><div class="m-t">WXYC On Tour</div><div class="m-s">See who's playing the Triangle</div></div>
+                <div class="cta">View</div>
+              </div>
+            </div>
+            <div class="safari-urlbar"><div class="pillu">wxyc.org</div></div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">Phase 2 · <code>app-clip-display=card</code> <span class="phase2" style="font-size:9px">PHASE 2</span></div>
+          <div class="d">Same page, one extra meta attribute: Safari raises the App Clip card as a sheet over the content. The page stays fully usable underneath — the clip is an upgrade offer, not a gate.</div>
+          <div class="flow">View → App Clip → full-app handoff via shared App Group</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 6 · IN-APP ======================= -->
+  <section id="inapp">
+    <div class="sec-head"><span class="n">6</span><h2>In-app — where Share lives</h2></div>
+    <p class="sec-sub">Two affordances, one <code>ShareLink</code>: a share button in the poster detail's chrome (mirroring the back button), and a long-press context menu on list rows. The share sheet's preview comes from <code>SharePreview(title, image:)</code> — the payload stays the bare URL.</p>
+
+    <div class="shelf">
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div class="webpage app-detail">
+            <div class="web-hero" style="aspect-ratio: 4 / 3.4;"><span class="bigJ">J</span><div class="scrim"></div>
+              <div class="chip-btn" style="top:10px; left:12px;">‹</div>
+              <div class="chip-btn" style="top:10px; right:12px; border-color: var(--amber-line); background: rgba(255,137,64,0.2);">↑</div>
+              <div class="txt"><span class="pill">ON SALE</span><div class="a">Jessica Pratt</div><div class="v">Cat's Cradle · Sat, Aug 1</div></div>
+            </div>
+            <div class="web-body">
+              <div class="web-cta">Get Tickets — $22</div>
+              <div class="web-cta ghost">Directions</div>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">Poster detail · share in the chrome</div>
+          <div class="d">Top-right, the system share glyph in the same frosted circle as the back chevron. The one-per-screen amber accent marks it here only for the mockup.</div>
+        </div>
+      </div>
+
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div style="padding: 16px 12px; display:flex; flex-direction:column; gap:10px; min-height:280px; background: linear-gradient(160deg, #232a52, #4a2547);">
+            <div style="opacity:0.35; border:1px solid var(--glass-line); border-radius:12px; padding:11px 12px; font-size:12px;">
+              <b style="font-size:13px;">Chuquimamani-Condori</b><br><span style="color:var(--ink-faint)">Motorco · Durham</span>
+            </div>
+            <div style="border:1px solid rgba(255,255,255,0.3); border-radius:12px; padding:11px 12px; font-size:12px; background:rgba(255,255,255,0.09); box-shadow:0 10px 34px rgba(0,0,0,0.5);">
+              <b style="font-size:13px;">Jessica Pratt</b><br><span style="color:var(--ink-dim)">Cat's Cradle · Carrboro</span><br><span style="color:var(--ink-faint)">Doors 7 PM · $22</span>
+            </div>
+            <div class="ctx-menu" style="align-self:flex-end;">
+              <div class="item"><span>Share Show…</span><span>↑</span></div>
+              <div class="item"><span>Get Tickets</span><span>⌲</span></div>
+              <div class="item"><span>Directions</span><span>◈</span></div>
+            </div>
+            <div style="opacity:0.35; border:1px solid var(--glass-line); border-radius:12px; padding:11px 12px; font-size:12px;">
+              <b style="font-size:13px;">Juana Molina</b><br><span style="color:var(--ink-faint)">Local 506 · Chapel Hill</span>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">List row · context menu</div>
+          <div class="d">Long-press a <code>ConcertRow</code>: Share Show, Get Tickets, Directions — the detail's three actions without leaving the list. Cheap to add; the row already builds the presenter.</div>
+        </div>
+      </div>
+
+      <div class="specimen">
+        <div class="phone"><div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●●●</span></div>
+          <div style="min-height:280px; display:flex; flex-direction:column; justify-content:flex-end; background:linear-gradient(160deg, #1d2244, #3a1e38);">
+            <div class="sharesheet">
+              <div class="head">
+                <div class="thumb"><span>WXYC</span></div>
+                <div><div class="h-t">Jessica Pratt at Cat's Cradle</div><div class="h-s">wxyc.org</div></div>
+              </div>
+              <div class="apps">
+                <div class="app"><div class="i" style="background:#0a84ff22; border:1px solid #0a84ff55;">◉</div>AirDrop</div>
+                <div class="app"><div class="i" style="background:#30d15833;">✉</div>Messages</div>
+                <div class="app"><div class="i" style="background:#25d36622;">☏</div>WhatsApp</div>
+                <div class="app"><div class="i" style="background:#5865f222;">✦</div>Discord</div>
+              </div>
+              <div class="actions">
+                <div class="row"><span>Copy Link</span><span>⧉</span></div>
+                <div class="row"><span>Add to Calendar</span><span>▦</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap">
+          <div class="t">The share sheet</div>
+          <div class="d"><code>SharePreview("Jessica Pratt at Cat's Cradle", image:)</code> — presenter strings, poster thumbnail. "Add to Calendar" is a natural adjacent affordance (an <code>EKEvent</code> from <code>startsAt</code>/<code>doorsAt</code>) — separate ticket, same menu family.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 7 · MATRIX ======================= -->
+  <section id="matrix">
+    <div class="sec-head"><span class="n">7</span><h2>Every surface, every state</h2></div>
+    <div class="matrix-wrap">
+      <table>
+        <thead><tr><th>Surface</th><th>Recipient state</th><th>What renders</th><th>Tap lands on</th><th>We author it via</th></tr></thead>
+        <tbody>
+          <tr><td>iMessage</td><td>Has WXYC</td><td>Rich link (OG image + title)</td><td>App → On Tour → show detail</td><td>OG tags + universal-link routing</td></tr>
+          <tr><td>iMessage</td><td>No app <em>(Phase 1)</em></td><td>Rich link</td><td>Safari share page</td><td>OG tags</td></tr>
+          <tr><td>iMessage</td><td>No app <span class="phase2">PHASE 2</span></td><td>App Clip card (default experience)</td><td>App Clip on the show</td><td>ASC default experience + AASA <code>appclips</code></td></tr>
+          <tr><td>iMessage</td><td>Sender not in contacts</td><td>Rich link (never the clip card)</td><td>Share page (or app if installed)</td><td>OG tags — the floor holds</td></tr>
+          <tr><td>SMS / RCS</td><td>Any</td><td>Raw URL until tap-to-load</td><td>Share page / app</td><td>A URL that reads like a sentence</td></tr>
+          <tr><td>WhatsApp / Slack / Discord</td><td>Any</td><td>OG unfurl</td><td>In-app browser → share page</td><td>OG tags (universal links don't fire from in-app browsers — page needs "Open in app")</td></tr>
+          <tr><td>Mail / Notes / AirDrop</td><td>Any</td><td>Link (AirDrop opens immediately)</td><td>Share page / app</td><td>The page itself</td></tr>
+          <tr><td>Safari (any web tap)</td><td>No app</td><td>Share page + Smart App Banner</td><td>App Store — or App Clip card <span class="phase2">PHASE 2</span></td><td><code>apple-itunes-app</code> meta (+ <code>app-clip-display=card</code>)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note"><b>Reading the matrix:</b> Phase 1 (universal link + share page + OG tags) fully covers seven of eight rows. The App Clip upgrades exactly one cell — iMessage, no app, sender-in-contacts — plus the Safari banner variant. That cell is likely the <em>most common</em> share (friends texting friends), which is the argument for Phase 2; the instrumentation on Phase 1's share page tells us how common, which is the argument for sequencing it second.</div>
+  </section>
+
+  <footer>
+    Mockups are hand-drawn approximations of iOS 26 chrome; fidelity is directional, not pixel-exact. Mechanics verified 2026-07-18 against Apple docs: <a href="https://developer.apple.com/documentation/appclip/supporting-invocations-from-your-website-and-the-messages-app">Messages invocations &amp; Smart App Banner</a>, <a href="https://developer.apple.com/documentation/appclip/associating-your-app-clip-with-your-website">AASA appclips association</a>, <a href="https://developer.apple.com/documentation/appclip/choosing-the-right-functionality-for-your-app-clip">App Clip capability limits (no Background Modes)</a>, <a href="https://developer.apple.com/help/app-store-connect/reference/app-uploads/maximum-build-file-sizes/">size limits (100 MB digital / 15 MB physical)</a>. Prior art: Eter's station-sharing App Clip write-up (blog.apparentsoft.com).
+  </footer>
+
+</div>
+</body>
+</html>
