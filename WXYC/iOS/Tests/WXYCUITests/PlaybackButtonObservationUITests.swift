@@ -14,8 +14,8 @@ import XCTest
 @Suite(
     "PlaybackButton UI Integration Tests",
     .serialized,
-    .tags(.slow),
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+    .tags(.uiTest),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_UI"] == "1", "UI test — excluded from CI")
 )
 @MainActor
 struct PlaybackButtonObservationUITests {

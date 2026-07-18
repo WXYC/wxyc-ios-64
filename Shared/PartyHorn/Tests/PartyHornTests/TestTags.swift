@@ -13,10 +13,10 @@ import Testing
 // MARK: - Test Tags
 
 extension Tag {
-    /// Tests that take longer than a second on a baseline reference machine, or
-    /// that hang on paravirtualized CI runners (e.g. SoundPlayerTests blocks
-    /// indefinitely activating AVAudioSession when there's no real audio
-    /// hardware). CI sets `WXYC_SKIP_SLOW=1` to exclude them; locally they run
-    /// by default.
-    @Tag static var slow: Self
+    /// Tests that hang on paravirtualized CI runners (e.g. SoundPlayerTests
+    /// blocks indefinitely activating AVAudioSession when there's no real audio
+    /// hardware). An infrastructure-incompatibility gate, not a performance one:
+    /// CI sets `WXYC_SKIP_CI_HANG=1` to exclude them; locally they run by
+    /// default.
+    @Tag static var ciHang: Self
 }

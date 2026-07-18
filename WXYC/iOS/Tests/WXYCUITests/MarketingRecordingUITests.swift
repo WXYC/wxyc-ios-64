@@ -34,8 +34,8 @@ final class MarketingRecordingUITests: XCTestCase {
     /// - Repeats until at least 15 seconds have elapsed
     func testMarketingRecordingSequence() throws {
         try XCTSkipIf(
-            ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1",
-            "Slow test — excluded from CI"
+            ProcessInfo.processInfo.environment["WXYC_SKIP_UI"] == "1",
+            "UI test — excluded from CI"
         )
         let app = XCUIApplication()
         app.launchArguments = ["-marketing"]

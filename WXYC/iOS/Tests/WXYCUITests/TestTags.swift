@@ -13,9 +13,11 @@ import Testing
 // MARK: - Test Tags
 
 extension Tag {
-    /// Tests that take longer than a second on a baseline reference machine.
-    /// CI sets `WXYC_SKIP_SLOW=1` to exclude them; locally they run by default
-    /// unless the same env var is set. See `.disabled(if:)` traits on tagged
-    /// suites/tests for the gating mechanism.
-    @Tag static var slow: Self
+    /// End-to-end XCUITest suites. These are minutes-long (driving the real app
+    /// through the simulator) and are the dominant CI-minute cost, so CI excludes
+    /// them — both at the target level (`-skip-testing:WXYCUITests`) and via this
+    /// gate as belt-and-suspenders. CI sets `WXYC_SKIP_UI=1`; locally they run by
+    /// default unless the same env var is set. See `.disabled(if:)` traits on
+    /// tagged suites/tests for the gating mechanism.
+    @Tag static var uiTest: Self
 }
