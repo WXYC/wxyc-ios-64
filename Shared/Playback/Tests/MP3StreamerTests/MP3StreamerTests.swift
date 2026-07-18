@@ -569,8 +569,7 @@ struct MP3StreamerStuckStateRecoveryTests {
 
     @Test(
         "play() from stuck state does not schedule stale buffers",
-        .tags(.stuckStateRecovery, .slow),
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+        .tags(.stuckStateRecovery)
     )
     func playFromStuckStateNoStaleBuffers() async throws {
         let config = MP3StreamerConfiguration(

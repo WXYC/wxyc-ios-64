@@ -189,12 +189,18 @@ jobs:
           # there. Drop along with the traits as #371 retires each suite from the
           # skip set.
           TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES: '1'
-          # WXYC_SKIP_SLOW excludes the >1s test set (UI tests + a handful of
-          # timer/network paths) from CI. The full plan locally takes ~91 minutes
-          # of which 14 UI tests are 98% of the time; this gate cuts CI back to
-          # the fast unit/integration tests. Drop the trait per test as each gets
-          # rewritten to run faster than 1s.
-          TEST_RUNNER_WXYC_SKIP_SLOW: '1'
+          # WXYC_SKIP_CI_HANG excludes tests that hang/stall on paravirtualized
+          # CI runners (Artwork/AppServices/PartyHorn bundles that block
+          # indefinitely — e.g. activating AVAudioSession with no real hardware).
+          # This is an infrastructure-incompatibility gate: without it the job
+          # hangs to the timeout. It is NOT a performance gate.
+          TEST_RUNNER_WXYC_SKIP_CI_HANG: '1'
+          # WXYC_SKIP_UI excludes the minutes-long XCUITest suites (the dominant
+          # CI-minute cost — driving the real app through the simulator). Belt-
+          # and-suspenders: the UI target is also excluded at the target level via
+          # `-skip-testing:WXYCUITests` (see affected-tests.sh), so this gate only
+          # matters if that target exclusion is ever removed.
+          TEST_RUNNER_WXYC_SKIP_UI: '1'
         run: |
           if [ "${{ steps.affected.outputs.run_all }}" = "true" ]; then
             ARGS="${{ steps.affected.outputs.skip_testing_flags }}"

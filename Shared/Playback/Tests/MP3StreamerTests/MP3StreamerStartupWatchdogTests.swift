@@ -110,8 +110,7 @@ struct MP3StreamerStartupWatchdogTests {
     /// issuing no further spurious reconnects.
     @Test(
         "A reconnect that reaches playing cancels the re-armed watchdog",
-        .tags(.startupWatchdog, .slow),
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+        .tags(.startupWatchdog)
     )
     func reconnectReachesPlayingCancelsWatchdog() async throws {
         let backoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 10)
@@ -176,8 +175,7 @@ struct MP3StreamerStartupWatchdogTests {
     /// reached it is cancelled and never issues a spurious reconnect.
     @Test(
         "Does not fire once playback has started",
-        .tags(.startupWatchdog, .slow),
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+        .tags(.startupWatchdog)
     )
     func doesNotFireOncePlaying() async throws {
         // startupTimeout comfortably exceeds the decode-to-playing time so a

@@ -18,8 +18,8 @@ import XCTest
 @Suite(
     "Root Tab Bar UI Tests",
     .serialized,
-    .tags(.slow),
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Slow test — excluded from CI")
+    .tags(.uiTest),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_UI"] == "1", "UI test — excluded from CI")
 )
 @MainActor
 struct RootTabBarUITests {
@@ -74,6 +74,6 @@ struct RootTabBarUITests {
     // mid-frame, which XCUITest can't snapshot, so it flaked on "matching
     // snapshots" timeouts unrelated to the tab logic. Directional reachability
     // is covered above; wallpaper-behind-the-bar visibility is covered by the
-    // TabBarBackgroundClearer unit tests. This mirrors why these `.slow` UI
-    // suites stay coarse and CI-excluded (WXYC_SKIP_SLOW=1).
+    // TabBarBackgroundClearer unit tests. This mirrors why these `.uiTest`
+    // suites stay coarse and CI-excluded (WXYC_SKIP_UI=1).
 }

@@ -17,8 +17,8 @@ import AVFoundation
 @MainActor
 @Suite(
     "SoundPlayer audio session configuration",
-    .tags(.slow),
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_SLOW"] == "1", "Hangs on CI paravirt activating AVAudioSession — excluded from CI")
+    .tags(.ciHang),
+    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_CI_HANG"] == "1", "Hangs on CI paravirt activating AVAudioSession — excluded from CI")
 )
 struct SoundPlayerTests {
 
