@@ -7,7 +7,8 @@
 //  ticket-on-a-gradient sheet. A full-bleed hero (real `image_url` when present,
 //  a deterministic `PosterGradient` fallback otherwise) carries the artist and
 //  date; the shipped Box Office ticket tucks under the poster's bottom edge as
-//  the keepsake and the outbound CTA; a compact "Where" block offers directions.
+//  the keepsake and the outbound CTA; a "Where" card locates the venue on a
+//  tap-through map (``VenueMapView``) and offers directions.
 //
 //  Implements the approved prototype docs/ideas/on-tour-poster-layouts.html,
 //  layout B2 (Tucked Ticket), with the full Box Office ticket as the card.
@@ -149,37 +150,43 @@ struct ConcertDetailView: View {
                 .kerning(1.6)
                 .foregroundStyle(.white.opacity(0.45))
 
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(concert.venue.name)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    Text(venueAddressLine)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
+            VStack(spacing: 0) {
+                VenueMapView(venue: concert.venue, searchQuery: presenter.venueSearchQuery) {
+                    if let url = presenter.directionsURL { openURL(url) }
                 }
-                Spacer(minLength: 8)
-                if let url = presenter.directionsURL {
-                    Button {
-                        openURL(url)
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "location.fill").font(.caption)
-                            Text("Directions")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14).padding(.vertical, 9)
-                        .background(Capsule().fill(.white.opacity(0.16)))
-                        .overlay(Capsule().stroke(.white.opacity(0.22), lineWidth: 1))
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(concert.venue.name)
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text(venueAddressLine)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Directions to \(concert.venue.name)")
+                    Spacer(minLength: 8)
+                    if let url = presenter.directionsURL {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "location.fill").font(.caption)
+                                Text("Directions")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 9)
+                            .background(Capsule().fill(.white.opacity(0.16)))
+                            .overlay(Capsule().stroke(.white.opacity(0.22), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Directions to \(concert.venue.name)")
+                    }
                 }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
             .background(.white.opacity(0.06), in: .rect(cornerRadius: 14))
+            .clipShape(.rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
         }
         .frame(maxWidth: .infinity, alignment: .leading)

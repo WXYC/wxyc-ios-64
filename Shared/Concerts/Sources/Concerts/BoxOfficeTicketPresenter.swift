@@ -196,19 +196,28 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         return pieces.joined(separator: " · ")
     }
 
-    /// An Apple Maps search URL for the venue, backing the detail's "Directions"
-    /// action. The query leads with the venue name, then the street address when
-    /// present, then city/state; empty components are skipped so the query is
-    /// never blank. Built via `URLComponents` so it is correctly percent-encoded.
-    public var directionsURL: URL? {
+    /// The plain-text venue search query — the venue name, then the street
+    /// address when present, then city/state, with empty components skipped so
+    /// the query is never blank. One string shared by ``directionsURL`` and the
+    /// detail's map geocoding, so the marker and the Directions action always
+    /// resolve the same place. The venue carries no coordinates on the wire, so
+    /// this query is the map's only location source.
+    public var venueSearchQuery: String {
         var parts = [show.venue.name]
         if let address = show.venue.address, !address.isEmpty { parts.append(address) }
         if !show.venue.city.isEmpty { parts.append(show.venue.city) }
         if !show.venue.state.isEmpty { parts.append(show.venue.state) }
+        return parts.joined(separator: ", ")
+    }
+
+    /// An Apple Maps search URL for the venue, backing the detail's "Directions"
+    /// action — ``venueSearchQuery`` wrapped in a maps.apple.com search link.
+    /// Built via `URLComponents` so it is correctly percent-encoded.
+    public var directionsURL: URL? {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "maps.apple.com"
-        components.queryItems = [URLQueryItem(name: "q", value: parts.joined(separator: ", "))]
+        components.queryItems = [URLQueryItem(name: "q", value: venueSearchQuery)]
         return components.url
     }
 

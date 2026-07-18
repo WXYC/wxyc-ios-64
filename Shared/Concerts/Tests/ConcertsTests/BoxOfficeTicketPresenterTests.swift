@@ -359,4 +359,23 @@ struct BoxOfficeTicketPresenterTests {
         )
         #expect(mapsQuery(presenter.directionsURL) == "Cat's Cradle")
     }
+
+    // MARK: - Venue search query (map geocoding)
+
+    @Test("Venue search query matches the directions query, plain text")
+    func venueSearchQueryMatchesDirections() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle", city: "Carrboro", state: "NC", address: "300 E Main St"))
+        )
+        #expect(presenter.venueSearchQuery == "Cat's Cradle, 300 E Main St, Carrboro, NC")
+        #expect(mapsQuery(presenter.directionsURL) == presenter.venueSearchQuery)
+    }
+
+    @Test("Venue search query skips absent or empty components")
+    func venueSearchQuerySkipsEmptyComponents() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle", city: "Carrboro", state: "", address: nil))
+        )
+        #expect(presenter.venueSearchQuery == "Cat's Cradle, Carrboro")
+    }
 }
