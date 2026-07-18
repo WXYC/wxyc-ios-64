@@ -55,6 +55,7 @@ struct RootTabView: View {
     @State private var selectedPlaycut: PlaycutSelection?
 
     @Environment(Singletonia.self) private var appState
+    @Environment(\.themeAppearance) private var appearance
 
     var body: some View {
         TabView(selection: $selectedPage) {
@@ -88,6 +89,9 @@ struct RootTabView: View {
             }
             .accessibilityIdentifier(Page.infoDetail.accessibilityIdentifier)
         }
+        // Selected tab item picks up the theme's accent color rather than the
+        // system default tint.
+        .tint(appearance.accentColor.color(brightness: appearance.accentColor.brightness))
         .overlaySheet(isPresented: Binding(
             get: { selectedPlaycut != nil },
             set: { if !$0 { selectedPlaycut = nil } }
