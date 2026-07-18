@@ -1306,6 +1306,17 @@ extension AudioPlayerController {
     /// flapping edge (or an edge racing the timer) into the one attempt already
     /// running, so a burst of transitions can never launch overlapping connects.
     private func performHoldingReconnectAttempt() async {
+        // The holding pattern may have been left out from under a still-sleeping
+        // fallback timer: `leaveHoldingPattern()` (fired by the universal
+        // `.playing` recovery signal / stop / manual play) disengages the pattern
+        // but does not cancel `reconnectTask`, so a stranded timer can still wake
+        // here. With reachability injected the gate below already blocks it (the
+        // cache was reset to `nil`), but on the blind (nil-reachability) path the
+        // gate is inert — so guard the engaged flag directly to keep a stray
+        // attempt from firing a session activation + `player.play()` against
+        // healthy playback.
+        guard holdingPatternEngaged else { return }
+
         // Coalesce: never run two overlapping connects.
         guard !holdingReconnectInFlight else { return }
 

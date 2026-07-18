@@ -329,6 +329,87 @@ struct ReachabilityReconnectTests {
 
         fixture.controller.stop(reason: .test)
     }
+
+    // MARK: - Test 8: nil reachability — recovery leaves the pattern, no stray reconnect
+
+    @Test("With no reachability injected, external recovery leaves the holding pattern so a stranded timer fires no stray reconnect")
+    func nilReachabilityRecoveryLeavesHoldingPattern() async {
+        // No reachability is wired, so the holding pattern runs its blind timed
+        // cadence and the reachability gate is inert — the gate can't be what
+        // stops a stray attempt. Only the `holdingPatternEngaged` guard can. A
+        // modest hold interval leaves the first fallback timer cleanly sleeping
+        // right after ramp exhaustion, so the recovery below strands it.
+        let holdInterval: TimeInterval = 0.2
+        let backoff = ExponentialBackoff(
+            initialWaitTime: 0.01,
+            maximumWaitTime: holdInterval,
+            maximumAttempts: 1
+        )
+        let mockPlayer = MockAudioPlayer(url: URL(string: "https://example.com/stream")!)
+        let mockAnalytics = MockStructuredAnalytics()
+        let notificationCenter = NotificationCenter()
+
+        #if os(iOS) || os(tvOS)
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            audioSession: MockAudioSession(),
+            remoteCommandCenter: MockRemoteCommandCenter(),
+            notificationCenter: notificationCenter,
+            analytics: mockAnalytics,
+            backoffTimer: backoff
+            // reachability defaults to nil — the preserved pre-#517 blind cadence.
+        )
+        #else
+        let controller = AudioPlayerController(
+            player: mockPlayer,
+            notificationCenter: notificationCenter,
+            analytics: mockAnalytics,
+            backoffTimer: backoff
+        )
+        #endif
+
+        // Drive into the holding pattern (clean start → stall → park in .error).
+        controller.play(reason: .test)
+        mockPlayer.simulateStateChange(to: .playing)
+        await Self.waitForAsync()
+        mockPlayer.shouldAutoUpdateState = false
+        mockPlayer.simulateStateChange(to: .stalled)
+        mockPlayer.simulateStall()
+        mockPlayer.simulateStateChange(to: .error(.connectionFailed("sabotage")))
+        await Self.poll(until: {
+            mockAnalytics.typedEvents(ofType: StreamErrorEvent.self)
+                .contains { $0.errorType == .backoffExhausted }
+        })
+        #expect(controller.debugStateSnapshot.contains("holdingPatternEngaged=true"),
+                "Precondition: the blind holding pattern should be engaged with its first fallback timer sleeping. \(controller.debugStateSnapshot)")
+
+        // Let the fallback timer's task run its pre-sleep guards (which see
+        // isPlaying=false while parked in .error) and settle into its holdInterval
+        // sleep. This is the window the pre-sleep `isPlaying` guard cannot cover:
+        // the task is now committed to attempting after the sleep, and only the
+        // `holdingPatternEngaged` guard inside the attempt can stop a stray fire.
+        await Self.waitForAsync()
+
+        // The fallback timer is sleeping (holdInterval away). Simulate an external
+        // recovery to .playing — the universal recovery signal — which leaves the
+        // holding pattern but deliberately does NOT cancel that sleeping timer.
+        mockPlayer.simulateStateChange(to: .playing)
+        await Self.poll(until: {
+            controller.debugStateSnapshot.contains("holdingPatternEngaged=false")
+        })
+        #expect(controller.debugStateSnapshot.contains("holdingPatternEngaged=false"),
+                "Recovery must leave the holding pattern. \(controller.debugStateSnapshot)")
+
+        // When the stranded timer wakes, the left pattern must make the attempt a
+        // no-op: no stray session activation / player.play() against healthy
+        // playback. Wait well past the cadence.
+        let playCallsAfterRecovery = mockPlayer.playCallCount
+        try? await Task.sleep(for: .milliseconds(500))
+        #expect(mockPlayer.playCallCount == playCallsAfterRecovery,
+                "A stranded holding-pattern timer must not fire a reconnect once the pattern is left; saw \(mockPlayer.playCallCount - playCallsAfterRecovery) stray attempt(s)")
+
+        controller.stop(reason: .test)
+    }
 }
 
 #endif
