@@ -9,16 +9,15 @@
 //
 
 import SwiftUI
-import UIKit
 
 extension View {
+    /// Pins the window to a dark color scheme so the status bar always renders
+    /// light (white) content, matching the app's white-on-wallpaper text.
+    ///
+    /// Scene-based apps ignore the Info.plist `UIStatusBarStyle` /
+    /// `UIViewControllerBasedStatusBarAppearance` pair; the status bar follows
+    /// the hosting controller's color scheme, so this is the supported override.
     func forceLightStatusBar() -> some View {
-        self.onAppear {
-            // Update status bar style when view appears
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = windowScene.windows.first {
-                window.rootViewController?.setNeedsStatusBarAppearanceUpdate()
-            }
-        }
+        preferredColorScheme(.dark)
     }
 }
