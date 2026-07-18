@@ -50,6 +50,7 @@ struct ConcertsResponseTests {
         #expect(first.supportingArtistsRaw == ["Julie Byrne"])
         #expect(first.status == .onSale)
         #expect(first.ticketURL == URL(string: "https://www.etix.com/ticket/p/jessica-pratt"))
+        #expect(first.eventURL == URL(string: "https://catscradle.com/event/jessica-pratt"))
         #expect(first.startsAt != nil)
         #expect(first.doorsAt != nil)
     }
@@ -67,6 +68,7 @@ struct ConcertsResponseTests {
         #expect(second.startsAt == nil)
         #expect(second.doorsAt == nil)
         #expect(second.ticketURL == nil)
+        #expect(second.eventURL == nil)
         #expect(second.status == .soldOut)
     }
 }
