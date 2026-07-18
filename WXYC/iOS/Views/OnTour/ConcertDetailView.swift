@@ -347,6 +347,7 @@ private extension Concert {
             headliningArtistRaw: headliningArtistRaw,
             supportingArtistsRaw: ["Tapir!"],
             ticketURL: URL(string: "https://www.etix.com/ticket/p/x"),
+            eventURL: URL(string: "https://catscradle.com/event/nilufer-yanya"),
             priceMin: priceMin,
             priceMax: priceMax,
             ageRestriction: "All Ages",

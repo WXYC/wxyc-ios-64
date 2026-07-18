@@ -223,26 +223,39 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
 
     // MARK: - Call to action
 
-    /// The label for the outbound CTA button/link.
+    /// Whether the CTA resolves to the venue's own event page
+    /// (``Concert/eventURL``) rather than the ticket-seller fallback. Drives
+    /// the "venue page" vs "ticket page" wording in ``ctaLabel`` and
+    /// ``ctaCaption`` so the copy never claims a venue page the tap won't open.
+    private var ctaTargetsVenuePage: Bool {
+        show.eventURL != nil
+    }
+
+    /// The label for the outbound CTA button/link, worded for where the tap
+    /// actually goes (venue event page vs ticket seller).
     public var ctaLabel: String {
         switch show.status {
         case .onSale: return "Get Tickets"
         case .free: return "RSVP"
-        case .soldOut: return "See Venue Page"
+        case .soldOut: return ctaTargetsVenuePage ? "See Venue Page" : "See Ticket Page"
         case .rescheduled: return "Get Tickets"
-        case .cancelled: return "See the venue's page"
-        case .unknown: return "See Venue Page"
+        case .cancelled: return ctaTargetsVenuePage ? "See the venue's page" : "See the ticket page"
+        case .unknown: return ctaTargetsVenuePage ? "See Venue Page" : "See Ticket Page"
         }
     }
 
     /// The caption under the CTA, naming the venue where it helps. WXYC hands
-    /// listeners off to the box office, so the copy makes clear where the tap goes.
+    /// listeners off to the box office, so the copy makes clear where the tap
+    /// goes — the venue's event page when one is known, else the ticket page.
     public var ctaCaption: String {
         let venue = show.venue.name
         switch show.status {
-        case .onSale, .unknown: return "Opens \(venue)'s event page"
-        case .rescheduled: return "Rescheduled — opens \(venue)'s event page"
-        case .free: return "Free — opens the venue's event page"
+        case .onSale, .unknown:
+            return ctaTargetsVenuePage ? "Opens \(venue)'s event page" : "Opens the ticket page"
+        case .rescheduled:
+            return ctaTargetsVenuePage ? "Rescheduled — opens \(venue)'s event page" : "Rescheduled — opens the ticket page"
+        case .free:
+            return ctaTargetsVenuePage ? "Free — opens the venue's event page" : "Free — opens the RSVP page"
         case .soldOut: return "Sold out here — \(venue) sometimes releases more."
         case .cancelled: return "This show has been cancelled."
         }
@@ -287,8 +300,8 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         }
     }
 
-    /// The outbound CTA target — the direct ticket link. `nil` when the concert
-    /// carries no link.
+    /// The outbound CTA target — the venue's own event page when known, else
+    /// the direct ticket link. `nil` when the concert carries no link.
     public var ctaURL: URL? {
         show.ctaURL
     }

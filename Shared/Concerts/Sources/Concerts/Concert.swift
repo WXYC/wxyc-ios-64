@@ -73,8 +73,8 @@ public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
 /// (`id`, `venue`, `starts_on`, `headlining_artist_raw`, `status`) are required;
 /// every nullable wire field decodes to `nil` when absent, and an unrecognized
 /// `status` degrades to ``ShowStatus/unknown`` rather than throwing. The URL
-/// fields (`ticket_url`, `image_url`) go through `URL(string:)` rather than a
-/// throwing `URL(from:)`, so a present-but-empty `""` or malformed string
+/// fields (`ticket_url`, `image_url`, `event_url`) go through `URL(string:)`
+/// rather than a throwing `URL(from:)`, so a present-but-empty `""` or malformed string
 /// decodes to `nil` instead of failing the whole page. A partially-populated
 /// concert (a common case — many scraped listings are date-only with no price
 /// or times) still decodes and renders.
@@ -119,11 +119,19 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     public let supportingArtistsRaw: [String]
 
     /// Direct ticketing link (`ticket_url`), often a third-party seller, or
-    /// `nil`. This is the CTA target (see ``ctaURL``).
+    /// `nil`. The CTA fallback target (see ``ctaURL``).
     public let ticketURL: URL?
 
     /// Event/promo image (`image_url`), or `nil`.
     public let imageURL: URL?
+
+    /// The venue's own event-detail page (`event_url`), distinct from the
+    /// often-third-party ``ticketURL``, or `nil` when no venue page is known.
+    /// The preferred CTA target (see ``ctaURL``). A forward-compatible
+    /// optional: it decodes to `nil` when the backend omits the field, so this
+    /// client is stable whether or not the backend has shipped it (same
+    /// discipline as ``genres``).
+    public let eventURL: URL?
 
     /// Lowest advertised price in dollars, or `nil` when unpriced/unknown.
     public let priceMin: Double?
@@ -159,6 +167,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         supportingArtistsRaw: [String] = [],
         ticketURL: URL? = nil,
         imageURL: URL? = nil,
+        eventURL: URL? = nil,
         priceMin: Double? = nil,
         priceMax: Double? = nil,
         ageRestriction: String? = nil,
@@ -176,6 +185,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.supportingArtistsRaw = supportingArtistsRaw
         self.ticketURL = ticketURL
         self.imageURL = imageURL
+        self.eventURL = eventURL
         self.priceMin = priceMin
         self.priceMax = priceMax
         self.ageRestriction = ageRestriction
@@ -185,18 +195,17 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
 
     // MARK: - Intrinsic accessors
 
-    /// The call-to-action target — the direct ticket link (``ticketURL``).
+    /// The call-to-action target — the venue's own event page when known
+    /// (``eventURL``), else the direct ticket link (``ticketURL``). `nil` when
+    /// the concert carries no link at all (the CTA then hides).
     ///
-    /// The old `UpcomingShow` preferred a venue event page (`source_url`) and
-    /// fell back to the ticket link, but the backend `Concert` schema carries no
-    /// `source_url`, so the CTA target is ``ticketURL`` alone. `nil` when the
-    /// concert carries no link (the CTA then hides).
-    ///
-    /// WXYC/Backend-Service#1609 will restore a venue `event_url` on the schema;
-    /// once it ships, this reverts to `eventURL ?? ticketURL` and the CTA copy's
-    /// "venue page" wording becomes correct again.
+    /// The precedence matches the `event_url` contract in `wxyc-shared/api.yaml`
+    /// ("clients fall back to `ticket_url`"), restored to the schema by
+    /// WXYC/Backend-Service#1609 — the same preference the old `UpcomingShow`
+    /// expressed via `source_url`. The Box Office presenter keys its "venue
+    /// page" vs "ticket page" CTA wording off which branch resolves.
     public var ctaURL: URL? {
-        ticketURL
+        eventURL ?? ticketURL
     }
 
     /// The artist to match/display: the ``title`` when the source gave the event
@@ -219,6 +228,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case supportingArtistsRaw = "supporting_artists_raw"
         case ticketURL = "ticket_url"
         case imageURL = "image_url"
+        case eventURL = "event_url"
         case priceMin = "price_min"
         case priceMax = "price_max"
         case ageRestriction = "age_restriction"
@@ -308,6 +318,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // "" and malformed strings, keeping the decode tolerant.
         ticketURL = Concert.parseURL(try container.decodeIfPresent(String.self, forKey: .ticketURL))
         imageURL = Concert.parseURL(try container.decodeIfPresent(String.self, forKey: .imageURL))
+        eventURL = Concert.parseURL(try container.decodeIfPresent(String.self, forKey: .eventURL))
         priceMin = try container.decodeIfPresent(Double.self, forKey: .priceMin)
         priceMax = try container.decodeIfPresent(Double.self, forKey: .priceMax)
         ageRestriction = try container.decodeIfPresent(String.self, forKey: .ageRestriction)
@@ -336,6 +347,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encode(supportingArtistsRaw, forKey: .supportingArtistsRaw)
         try container.encodeIfPresent(ticketURL, forKey: .ticketURL)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(eventURL, forKey: .eventURL)
         try container.encodeIfPresent(priceMin, forKey: .priceMin)
         try container.encodeIfPresent(priceMax, forKey: .priceMax)
         try container.encodeIfPresent(ageRestriction, forKey: .ageRestriction)
