@@ -56,6 +56,16 @@ public struct ForYouRecommendation: Sendable, Equatable, Identifiable {
         /// associated value is that neighbor's affinity ``SimilarArtist/weight``,
         /// the key the similar tier ranks and caps on.
         case similar(weight: Double)
+
+        /// The tier's stable analytics name — `"loved"` or `"similar"`. The
+        /// weight is deliberately dropped: the tier-only On Tour events record the
+        /// recommendation *kind*, never a score or any identity.
+        public var analyticsName: String {
+            switch self {
+            case .loved: "loved"
+            case .similar: "similar"
+            }
+        }
     }
 
     /// The recommended concert.

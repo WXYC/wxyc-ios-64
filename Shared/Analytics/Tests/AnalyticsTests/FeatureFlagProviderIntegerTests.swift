@@ -37,6 +37,24 @@ struct FeatureFlagProviderIntegerTests {
         #expect(provider.integerValue(forKey: "cap", default: 3) == 4)
     }
 
+    @Test("A fractional Double is truncated toward zero")
+    func fractionalDoubleTruncates() {
+        let provider = MockFeatureFlagProvider()
+        provider.flags["cap"] = 4.9
+        #expect(provider.integerValue(forKey: "cap", default: 3) == 4)
+    }
+
+    @Test("A non-finite or out-of-range Double falls back to the default", arguments: [
+        Double.nan, .infinity, -.infinity, 1e300, -1e300,
+    ])
+    func unusableDoubleUsesDefault(_ value: Double) {
+        // The whole contract is a graceful default; `Int(_:)` would trap on any
+        // of these, so the shelf must never build the cap from them.
+        let provider = MockFeatureFlagProvider()
+        provider.flags["cap"] = value
+        #expect(provider.integerValue(forKey: "cap", default: 3) == 3)
+    }
+
     @Test("A numeric String variant is parsed")
     func numericStringValue() {
         // PostHog delivers a multivariate variant as its key string; a numeric

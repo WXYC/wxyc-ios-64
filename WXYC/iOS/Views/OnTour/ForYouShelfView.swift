@@ -104,17 +104,17 @@ private struct ForYouCard: View {
     private var poster: some View {
         let pair = PosterGradient.pair(for: concert)
         let gradient = LinearGradient(
-            colors: [Self.color(pair.start), Self.color(pair.end)],
+            colors: [Color(pair.start), Color(pair.end)],
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
         return ZStack(alignment: .topLeading) {
             Group {
                 if let url = concert.imageURL {
                     AsyncImage(url: url) { image in
-                        // Drawing the fill over `Color.clear` pins the reported
-                        // size to the frame so an oversized landscape poster can't
-                        // blow out the fixed card width; `.clipped()` trims it.
-                        Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
+                        // Pins the reported size to the frame so an oversized
+                        // landscape poster can't blow out the fixed card width
+                        // (see `PosterArt.fillClipped`).
+                        PosterArt.fillClipped(image.resizable().scaledToFill())
                     } placeholder: {
                         gradient
                     }
@@ -170,11 +170,22 @@ private struct ForYouCard: View {
             Image(systemName: reason.symbol)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(reason.tint)
-            Text(reason.text)
+            Text(reasonText)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.8))
                 .lineLimit(1)
                 .truncationMode(.tail)
+        }
+    }
+
+    /// The reason copy shown on the card and read by VoiceOver. A single source
+    /// so the visible line and the accessibility label can't drift apart.
+    private var reasonText: String {
+        switch recommendation.tier {
+        // The headliner (already the card title) is itself a liked artist — don't
+        // restate the name, just mark it as loved.
+        case .loved: "In your likes"
+        case .similar: "Because you like \(recommendation.reasonArtistName)"
         }
     }
 
@@ -192,33 +203,17 @@ private struct ForYouCard: View {
         }
     }
 
-    private var reasonStyle: (symbol: String, tint: Color, text: String) {
+    /// The reason line's icon and tint. The copy itself comes from ``reasonText``.
+    private var reasonStyle: (symbol: String, tint: Color) {
         switch recommendation.tier {
-        case .loved:
-            // The headliner (already the card title) is itself a liked artist —
-            // don't restate the name, just mark it as loved.
-            (symbol: "heart.fill", tint: LikeHeartButton.likeColor, text: "In your likes")
-        case .similar:
-            (symbol: "sparkles",
-             tint: Color.white.opacity(0.6),
-             text: "Because you like \(recommendation.reasonArtistName)")
+        case .loved: (symbol: "heart.fill", tint: LikeHeartButton.likeColor)
+        case .similar: (symbol: "sparkles", tint: Color.white.opacity(0.6))
         }
     }
 
     private var accessibilityLabel: String {
-        let reason: String
-        switch recommendation.tier {
-        case .loved: reason = "In your likes"
-        case .similar: reason = "Because you like \(recommendation.reasonArtistName)"
-        }
-        return [concert.headlineName, reason, concert.venue.name, presenter.dateLabel]
+        [concert.headlineName, reasonText, concert.venue.name, presenter.dateLabel]
             .joined(separator: ", ")
-    }
-
-    /// Maps a poster palette component to a SwiftUI color. Local to the shelf so
-    /// the rail doesn't reach into `ConcertDetailView`'s private helper.
-    private static func color(_ rgb: PosterRGB) -> Color {
-        Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
     }
 }
 
