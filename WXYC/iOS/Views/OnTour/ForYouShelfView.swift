@@ -186,6 +186,9 @@ private struct ForYouCard: View {
         // restate the name, just mark it as loved.
         case .loved: "In your likes"
         case .similar: "Because you like \(recommendation.reasonArtistName)"
+        // Station affinity has no personal tie to name — the reason is the
+        // station-wide signal itself.
+        case .stationAffinity: "Heavy rotation on WXYC"
         }
     }
 
@@ -200,6 +203,8 @@ private struct ForYouCard: View {
             (symbol: "heart.fill", fill: LikeHeartButton.likeColor)
         case .similar:
             (symbol: "sparkles", fill: Color.black.opacity(0.35))
+        case .stationAffinity:
+            (symbol: "antenna.radiowaves.left.and.right", fill: Color.black.opacity(0.35))
         }
     }
 
@@ -208,6 +213,7 @@ private struct ForYouCard: View {
         switch recommendation.tier {
         case .loved: (symbol: "heart.fill", tint: LikeHeartButton.likeColor)
         case .similar: (symbol: "sparkles", tint: Color.white.opacity(0.6))
+        case .stationAffinity: (symbol: "antenna.radiowaves.left.and.right", tint: Color.white.opacity(0.6))
         }
     }
 

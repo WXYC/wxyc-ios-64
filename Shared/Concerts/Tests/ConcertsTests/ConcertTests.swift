@@ -44,6 +44,7 @@ struct ConcertTests {
         "price_max": 25.0,
         "age_restriction": "All Ages",
         "genres": ["Rock", "Folk World & Country"],
+        "station_plays": 137,
         "status": "on_sale"
     }
     """
@@ -73,6 +74,7 @@ struct ConcertTests {
         #expect(concert.eventURL == URL(string: "https://catscradle.com/event/jessica-pratt"))
         #expect(concert.ageRestriction == "All Ages")
         #expect(concert.genres == ["Rock", "Folk World & Country"])
+        #expect(concert.stationPlays == 137)
     }
 
     @Test("Parses starts_on as a calendar day in the station's time zone")
@@ -153,6 +155,7 @@ struct ConcertTests {
         #expect(concert.ageRestriction == nil)
         #expect(concert.genres == nil)
         #expect(concert.similarArtists == nil)
+        #expect(concert.stationPlays == nil)
     }
 
     @Test("Coalesces an absent supporting_artists_raw to an empty array")
@@ -434,6 +437,66 @@ struct ConcertTests {
         """
         let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
         #expect(concert.similarArtists == [])
+    }
+
+    // MARK: - Station plays (#549, forward-compatible optional)
+
+    @Test("Decodes a present station_plays to stationPlays")
+    func decodesPresentStationPlays() throws {
+        let json = """
+        {
+            "id": 200,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Deerhoof",
+            "station_plays": 137,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationPlays == 137)
+    }
+
+    @Test("Decodes an explicit-null station_plays to nil without throwing")
+    func decodesNullStationPlaysAsNil() throws {
+        // The backend emits `station_plays: null` for an unresolved headliner or an
+        // artist with no play count — the same null-when-absent discipline as
+        // `similar_artists`.
+        let json = """
+        {
+            "id": 201,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "station_plays": null,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationPlays == nil)
+    }
+
+    @Test("Decodes an absent station_plays to nil (backend not yet emitting)")
+    func decodesAbsentStationPlaysAsNil() throws {
+        let json = """
+        {
+            "id": 202,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationPlays == nil)
+    }
+
+    @Test("Round-trips station_plays through encode/decode")
+    func roundTripsStationPlays() throws {
+        let original = Concert.stub(stationPlays: 137)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.stationPlays == 137)
     }
 
     // MARK: - ctaURL / headlineName (intrinsic data selection)
