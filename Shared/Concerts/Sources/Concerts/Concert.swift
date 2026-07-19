@@ -97,6 +97,20 @@ public struct SimilarArtist: Codable, Sendable, Equatable, Hashable {
     }
 }
 
+/// Element-tolerant wrapper for decoding a ``Concert/similarArtists`` array: a
+/// neighbor object that fails to decode (a missing or non-numeric `artist_id` /
+/// `weight`) becomes ``similarArtist`` `== nil` instead of throwing, so one
+/// malformed element can't fail the whole `GET /concerts` page decode — the same
+/// one-bad-row-can't-break-the-page discipline as ``Concert/parseURL(_:)``. The
+/// caller `compactMap`s the survivors back to `[SimilarArtist]`.
+private struct LossySimilarArtist: Decodable {
+    let similarArtist: SimilarArtist?
+
+    init(from decoder: Decoder) throws {
+        similarArtist = try? SimilarArtist(from: decoder)
+    }
+}
+
 /// An upcoming (or recent) Triangle-area concert, as rendered by the Box Office
 /// ticket and browsed in the On Tour tab.
 ///
@@ -372,10 +386,16 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // Forward-compatible optional: absent or explicit-null `genres` → nil, so
         // this decode is stable whether or not the backend has shipped the field.
         genres = try container.decodeIfPresent([String].self, forKey: .genres)
-        // Forward-compatible optional, same discipline as `genres`: absent or
+        // Forward-compatible AND element-tolerant, extending the `genres`
+        // discipline with the URL fields' one-bad-row guard: absent or
         // explicit-null `similar_artists` → nil (unresolved headliner or
-        // pre-enrichment), so this client is stable ahead of backend emission.
-        similarArtists = try container.decodeIfPresent([SimilarArtist].self, forKey: .similarArtists)
+        // pre-enrichment), while a present array drops any malformed neighbor
+        // rather than throwing and failing the whole page decode. An array whose
+        // elements are all malformed decodes to [] — which the For You engine
+        // treats identically to nil.
+        similarArtists = try container
+            .decodeIfPresent([LossySimilarArtist].self, forKey: .similarArtists)?
+            .compactMap(\.similarArtist)
     }
 
     /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
