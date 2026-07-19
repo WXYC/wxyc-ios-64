@@ -45,6 +45,7 @@ struct PlaylistView: View {
     @State private var showingTicketCTA = false
     @State private var showingSiriTip = false
     @State private var showingThemeTip = false
+    @State private var showingRequestLine = false
 
     @Environment(Singletonia.self) var appState
 
@@ -63,7 +64,8 @@ struct PlaylistView: View {
                     OnAirBannerView(
                         headline: onAirBannerTitle,
                         theme: onAirBannerTheme,
-                        onDebugTapped: onAirDebugTapped
+                        onDebugTapped: onAirDebugTapped,
+                        onSayHi: requestLine.invitesConversation ? { showingRequestLine = true } : nil
                     )
                     .padding(.vertical, 8)
                 }
@@ -161,6 +163,9 @@ struct PlaylistView: View {
                     StructuredPostHogAnalytics.shared.capture(PartyHornPresented())
                 }
         }
+        .sheet(isPresented: $showingRequestLine) {
+            RequestLineSheet(requestLine: requestLine, source: "banner")
+        }
         #if DEBUG || DEBUG_TESTFLIGHT
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(
@@ -229,9 +234,20 @@ struct PlaylistView: View {
     /// substitutes a sample named DJ so the named layout can be previewed.
     private var onAirBannerTitle: String? {
         if OnAirDebugState.shared.forceOnAir {
-            return "DJ HOUNDSTOOTH"
+            return OnAirDebugState.shared.forcedDJName
         }
         return onAir.bannerTitle
+    }
+
+    /// Booth presence derived from the same on-air source as the banner title,
+    /// so the "say hi" chip and the Request Line sheet agree with what the banner
+    /// asserts. The debug "Force On Air Banner" toggle substitutes a named DJ so
+    /// the chip and sheet can be exercised without a live show.
+    private var requestLine: RequestLine {
+        if OnAirDebugState.shared.forceOnAir {
+            return RequestLine(onAir: .dj(OnAirDebugState.shared.forcedDJName))
+        }
+        return RequestLine(onAir: onAir)
     }
 
     /// Live design parameters for the on-air banner, driven by the debug controls.
@@ -251,6 +267,9 @@ struct PlaylistView: View {
                 opticalSize: debug.handleOpticalSize,
                 grade: debug.handleGrade
             ),
+            adaptiveWidth: debug.adaptiveWidth,
+            handleWidthFloor: debug.handleWidthFloor,
+            sayHiTintOpacity: debug.sayHiTintOpacity,
             onAirSpacing: CGFloat(debug.onAirSpacing),
             handleLineSpacing: CGFloat(debug.handleLineSpacing)
         )

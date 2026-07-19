@@ -18,7 +18,7 @@ private let pickerTabCases: [(tab: String, content: String)] = [
     ("tab.nowPlaying", "playlistView"),
     ("tab.onTour", "onTourView"),
     ("tab.liked", "likedTabView"),
-    ("tab.info", "infoDetailView"),
+    ("tab.station", "stationView"),
 ]
 
 @Suite(
@@ -89,9 +89,9 @@ struct WallpaperUITests {
     /// the press.
     ///
     /// Parameterizing over all four tabs guards the invariant the gesture
-    /// redesign establishes: the long press works uniformly, including on the Info
-    /// tab, which has no scroll view for the old `UIScrollView`-introspection
-    /// approach to attach to.
+    /// redesign establishes: the long press works uniformly across every tab,
+    /// regardless of whether the tab hosts a scroll view for the old
+    /// `UIScrollView`-introspection approach to attach to.
     @Test("Long press opens the theme picker from every tab", arguments: pickerTabCases)
     func pickerOpensFromTab(_ tabCase: (tab: String, content: String)) async throws {
         // Cold launch renders a continuous Metal wallpaper, so (per

@@ -18,7 +18,7 @@ struct RootTabView: View {
         case playlist
         case onTour
         case liked
-        case infoDetail
+        case station
 
         /// Tab label. Also the accessibility label the tab bar exposes.
         var title: String {
@@ -26,21 +26,23 @@ struct RootTabView: View {
             case .playlist: "Now Playing"
             case .onTour: "On Tour"
             case .liked: "Liked"
-            case .infoDetail: "Info"
+            case .station: "Station"
             }
         }
 
-        /// SF Symbol for the tab glyph. `radio` matches the widget and Siri
-        /// intent — iconography the app already speaks on adjacent surfaces.
+        /// SF Symbol for the tab glyph — iconography the app already speaks on
+        /// adjacent surfaces. `radio` matches the widget and Siri intent;
         /// `ticket` matches the Box Office ticket language the On Tour surface
-        /// reuses. `heart` matches the like affordance on playcut rows and the
-        /// detail card (#492), which replaced the row's old `info.circle`.
+        /// reuses; `heart` matches the like affordance on playcut rows and the
+        /// detail card (#492); `antenna.radiowaves.left.and.right` reads the
+        /// Station page as the broadcast itself — the "Info" junk drawer
+        /// regrouped into station identity plus the "Talk to the booth" channels.
         var systemImage: String {
             switch self {
             case .playlist: "radio"
             case .onTour: "ticket"
             case .liked: "heart"
-            case .infoDetail: "info.circle"
+            case .station: "antenna.radiowaves.left.and.right"
             }
         }
 
@@ -51,7 +53,7 @@ struct RootTabView: View {
             case .playlist: "tab.nowPlaying"
             case .onTour: "tab.onTour"
             case .liked: "tab.liked"
-            case .infoDetail: "tab.info"
+            case .station: "tab.station"
             }
         }
     }
@@ -94,15 +96,15 @@ struct RootTabView: View {
             }
             .accessibilityIdentifier(Page.liked.accessibilityIdentifier)
 
-            Tab(Page.infoDetail.title, systemImage: Page.infoDetail.systemImage, value: Page.infoDetail) {
-                InfoDetailView()
+            Tab(Page.station.title, systemImage: Page.station.systemImage, value: Page.station) {
+                StationView()
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
                         configuration: appState.themeConfiguration
                     )
                     .clearTabBarBackground()
             }
-            .accessibilityIdentifier(Page.infoDetail.accessibilityIdentifier)
+            .accessibilityIdentifier(Page.station.accessibilityIdentifier)
         }
         // Selected tab item picks up the theme's accent color rather than the
         // system default tint.
