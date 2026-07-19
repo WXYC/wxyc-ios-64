@@ -159,7 +159,7 @@ private struct ForYouCard: View {
             reasonRow
                 .padding(.top, 2)
         }
-        .frame(width: Self.cardWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
     }
