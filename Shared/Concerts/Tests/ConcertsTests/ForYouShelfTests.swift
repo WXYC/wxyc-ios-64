@@ -76,6 +76,26 @@ struct ForYouShelfTests {
         #expect(shelf[0].reasonArtistName == "Stereolab")
     }
 
+    @Test("Equal-weight liked neighbors break the reason tie toward the smaller artist id")
+    func similarReasonTieBreaksBySmallerID() {
+        // Both Stereolab (41) and Cat Power (88) are liked neighbors at the same
+        // weight; the smaller id (41 → Stereolab) is the deterministic reason.
+        let concert = Concert.stub(id: 4, headliningArtistId: 999,
+            similarArtists: [SimilarArtist(artistId: 88, weight: 0.7), SimilarArtist(artistId: 41, weight: 0.7)])
+        let shelf = ForYouShelf.recommendations(concerts: [concert], likedArtists: [stereolab, catPower], similarCap: 3)
+        #expect(shelf.count == 1)
+        #expect(shelf[0].reasonArtistName == "Stereolab")
+        #expect(shelf[0].tier == .similar(weight: 0.7))
+    }
+
+    @Test("An empty similar_artists array yields no similar card")
+    func emptyNeighborsNoCard() {
+        // Present-but-empty behaves exactly like nil: nothing to intersect.
+        let concert = Concert.stub(id: 6, headliningArtistId: 999, similarArtists: [])
+        let shelf = ForYouShelf.recommendations(concerts: [concert], likedArtists: [stereolab], similarCap: 3)
+        #expect(shelf.isEmpty)
+    }
+
     @Test("The similar reason names the highest-weight intersecting liked artist")
     func similarReasonPicksHighestWeight() {
         // Both Cat Power (88, w=0.4) and Stereolab (41, w=0.9) are liked neighbors;
@@ -165,6 +185,15 @@ struct ForYouShelfTests {
         let similar = Concert.stub(id: 42, headliningArtistId: 901, similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)])
         let shelf = ForYouShelf.recommendations(concerts: [loved, similar], likedArtists: [stereolab], similarCap: 0)
         #expect(shelf.map(\.concert.id) == [40])
+        #expect(shelf[0].tier == .loved)
+    }
+
+    @Test("A negative cap behaves like zero: no similar cards, loved untouched")
+    func negativeCap() {
+        let loved = Concert.stub(id: 43, headliningArtistId: 41, similarArtists: nil)
+        let similar = Concert.stub(id: 44, headliningArtistId: 901, similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)])
+        let shelf = ForYouShelf.recommendations(concerts: [loved, similar], likedArtists: [stereolab], similarCap: -1)
+        #expect(shelf.map(\.concert.id) == [43])
         #expect(shelf[0].tier == .loved)
     }
 
