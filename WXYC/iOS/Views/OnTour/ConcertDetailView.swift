@@ -88,25 +88,13 @@ struct ConcertDetailView: View {
         )
         if let url = concert.imageURL {
             AsyncImage(url: url) { image in
-                Self.fillClipped(image.resizable().scaledToFill())
+                PosterArt.fillClipped(image.resizable().scaledToFill())
             } placeholder: {
                 gradient
             }
         } else {
             gradient
         }
-    }
-
-    /// Bounds oversized fill artwork to the poster frame. `scaledToFill` reports a
-    /// size *larger* than the proposal for any aspect ratio that doesn't match the
-    /// box — a landscape poster fitted to the hero height reports a width wider
-    /// than the screen. That oversized width escapes `.clipped()` (which clips
-    /// drawing, not layout) and blows out the hero's width, bleeding the whole
-    /// scroll content past both screen edges. Drawing the fill over a
-    /// `Color.clear` — which reports exactly the proposed size — pins the reported
-    /// size back to the frame while the trailing `.clipped()` trims the overflow.
-    fileprivate static func fillClipped<Content: View>(_ content: Content) -> some View {
-        Color.clear.overlay { content }.clipped()
     }
 
     /// The oversized, faint artist initial behind the hero text — a poster
@@ -273,15 +261,6 @@ struct ConcertDetailView: View {
     }
 }
 
-// MARK: - Color from PosterRGB
-
-private extension Color {
-    /// Builds a SwiftUI color from the package's plain-data ``PosterRGB``.
-    init(_ rgb: PosterRGB) {
-        self.init(red: rgb.red, green: rgb.green, blue: rgb.blue)
-    }
-}
-
 // MARK: - Previews
 
 #if DEBUG
@@ -313,7 +292,7 @@ private extension Color {
 // wrapper contains the fill; remove `Color.clear` from `fillClipped` and the
 // stand-in bleeds past the border — the same failure the live artwork produced.
 #Preview("Wide artwork stays within bounds") {
-    ConcertDetailView.fillClipped(
+    PosterArt.fillClipped(
         LinearGradient(colors: [.orange, .purple], startPoint: .leading, endPoint: .trailing)
             .frame(width: 1400, height: 460)
     )

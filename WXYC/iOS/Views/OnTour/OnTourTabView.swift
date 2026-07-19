@@ -216,7 +216,7 @@ struct OnTourTabView: View {
 
     private func selectForYou(_ recommendation: ForYouRecommendation) {
         StructuredPostHogAnalytics.shared.capture(
-            ForYouCardTapped(tier: Self.tierName(recommendation.tier))
+            ForYouCardTapped(tier: recommendation.tier.analyticsName)
         )
         selectedConcert = recommendation.concert
     }
@@ -230,13 +230,6 @@ struct OnTourTabView: View {
         StructuredPostHogAnalytics.shared.capture(
             ForYouShelfImpression(lovedCount: lovedCount, similarCount: recommendations.count - lovedCount)
         )
-    }
-
-    private static func tierName(_ tier: ForYouRecommendation.Tier) -> String {
-        switch tier {
-        case .loved: "loved"
-        case .similar: "similar"
-        }
     }
 
     private var filteredToZeroState: some View {

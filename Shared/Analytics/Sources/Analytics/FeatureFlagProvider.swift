@@ -35,6 +35,11 @@ public extension FeatureFlagProvider {
     /// for a count — and any non-numeric string yield the default rather than a
     /// surprising `true → 1`.
     ///
+    /// A `Double` that isn't a finite, in-`Int`-range value (NaN, ±∞, or a
+    /// magnitude past `Int.max`, e.g. a misconfigured `1e300`) also falls back to
+    /// the default: `Int(exactly:)` guards the conversion so an unusable numeric
+    /// flag degrades gracefully instead of trapping.
+    ///
     /// - Parameters:
     ///   - key: The feature flag key.
     ///   - defaultValue: The value returned when the flag is unusable. This is the
@@ -42,14 +47,15 @@ public extension FeatureFlagProvider {
     /// - Returns: The resolved integer, or `defaultValue`.
     func integerValue(forKey key: String, default defaultValue: Int) -> Int {
         switch getFeatureFlag(key) {
-        case let value as Bool:
+        case is Bool:
             // A boolean flag is not a count; don't coerce true→1 / false→0.
-            _ = value
             return defaultValue
         case let value as Int:
             return value
         case let value as Double:
-            return Int(value)
+            // Truncate toward zero, but only when the result is a finite,
+            // in-range integer — `Int(_:)` traps on NaN/±∞/overflow.
+            return Int(exactly: value.rounded(.towardZero)) ?? defaultValue
         case let value as String:
             return Int(value) ?? defaultValue
         default:
