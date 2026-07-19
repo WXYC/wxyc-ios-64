@@ -26,22 +26,28 @@ struct LikedTabView: View {
     @State private var selectedPlaycut: PlaycutSelection?
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            content
-        }
-        .accessibilityIdentifier("likedTabView")
-        .overlaySheet(isPresented: Binding(
-            get: { selectedPlaycut != nil },
-            set: { if !$0 { selectedPlaycut = nil } }
-        )) {
-            if let selection = selectedPlaycut {
-                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
+        content
+            .accessibilityIdentifier("likedTabView")
+            .overlaySheet(isPresented: Binding(
+                get: { selectedPlaycut != nil },
+                set: { if !$0 { selectedPlaycut = nil } }
+            )) {
+                if let selection = selectedPlaycut {
+                    PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
+                }
             }
-        }
     }
 
     // MARK: - Header
+
+    /// Wraps the non-scrolling empty state under a static header, so the title
+    /// still shows when there's no list to scroll it with.
+    private func staticLayout(@ViewBuilder _ body: () -> some View) -> some View {
+        VStack(spacing: 0) {
+            header
+            body()
+        }
+    }
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -70,7 +76,7 @@ struct LikedTabView: View {
     @ViewBuilder
     private var content: some View {
         if appState.likedSongsStore.songs.isEmpty {
-            emptyState
+            staticLayout { emptyState }
         } else {
             songList
         }
@@ -78,6 +84,12 @@ struct LikedTabView: View {
 
     private var songList: some View {
         List {
+            // The heading is the first list row, so it scrolls up and away inline
+            // with the songs rather than staying pinned above them.
+            header
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
             ForEach(appState.likedSongsStore.songs) { snapshot in
                 LikedSongRow(
                     snapshot: snapshot,

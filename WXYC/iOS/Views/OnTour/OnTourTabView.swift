@@ -51,49 +51,58 @@ struct OnTourTabView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            content
-        }
-        .accessibilityIdentifier("onTourView")
-        .task {
-            if !hasAppeared {
-                hasAppeared = true
-                StructuredPostHogAnalytics.shared.capture(OnTourTabViewed())
+        content
+            .accessibilityIdentifier("onTourView")
+            .task {
+                if !hasAppeared {
+                    hasAppeared = true
+                    StructuredPostHogAnalytics.shared.capture(OnTourTabViewed())
+                }
+                // Load on first appearance and whenever a prior attempt didn't
+                // reach `.loaded` (a failure to retry). A successful load — even
+                // one that returned zero shows — stays put, so revisiting the tab
+                // neither re-fetches nor flashes the spinner.
+                if model.phase != .loaded {
+                    await model.load()
+                }
             }
-            // Load on first appearance and whenever a prior attempt didn't reach
-            // `.loaded` (a failure to retry). A successful load — even one that
-            // returned zero shows — stays put, so revisiting the tab neither
-            // re-fetches nor flashes the spinner.
-            if model.phase != .loaded {
-                await model.load()
+            .sheet(isPresented: $isFilterSheetPresented) {
+                OnTourFilterSheet(model: model)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
-        }
-        .sheet(isPresented: $isFilterSheetPresented) {
-            OnTourFilterSheet(model: model)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
-        .fullScreenCover(item: $selectedConcert) { concert in
-            ConcertDetailView(concert: concert)
-                .navigationTransition(.zoom(sourceID: concert.id, in: zoomNamespace))
-        }
+            .fullScreenCover(item: $selectedConcert) { concert in
+                ConcertDetailView(concert: concert)
+                    .navigationTransition(.zoom(sourceID: concert.id, in: zoomNamespace))
+            }
     }
 
     // MARK: - Header
 
+    /// Wraps a non-scrolling state (loading, error, empty) under a static header,
+    /// so the title still shows when there's no list to scroll it with.
+    private func staticLayout(@ViewBuilder _ body: () -> some View) -> some View {
+        VStack(spacing: 0) {
+            header
+            body()
+        }
+    }
+
     private var header: some View {
         @Bindable var model = model
         return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
+                // Title and Filter share one single-line row, centered against each
+                // other — the count line sits below so the pill lines up with the
+                // large title rather than the two-line block's midpoint.
+                HStack(alignment: .center) {
                     Text("On Tour").font(.largeTitle).bold()
-                    if let countLine {
-                        Text(countLine).font(.subheadline).foregroundStyle(.white.opacity(0.7))
-                    }
+                    Spacer()
+                    filterButton
                 }
-                Spacer()
-                filterButton
+                if let countLine {
+                    Text(countLine).font(.subheadline).foregroundStyle(.white.opacity(0.7))
+                }
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
@@ -144,9 +153,9 @@ struct OnTourTabView: View {
     private var content: some View {
         switch model.phase {
         case .loading:
-            centeredState { ProgressView().tint(.white) }
+            staticLayout { centeredState { ProgressView().tint(.white) } }
         case .failed:
-            errorState
+            staticLayout { errorState }
         case .loaded:
             loadedContent
         }
@@ -155,17 +164,19 @@ struct OnTourTabView: View {
     @ViewBuilder
     private var loadedContent: some View {
         if model.allConcerts.isEmpty {
-            emptyState(
-                systemImage: "calendar",
-                title: "No shows on the calendar",
-                message: "We list curated Triangle-area shows here. Check back soon."
-            )
+            staticLayout {
+                emptyState(
+                    systemImage: "calendar",
+                    title: "No shows on the calendar",
+                    message: "We list curated Triangle-area shows here. Check back soon."
+                )
+            }
         } else {
             // One filter pass feeds both the emptiness check and the list, rather
             // than re-deriving `model.filtered` for each.
             let filtered = model.filtered
             if filtered.isEmpty {
-                filteredToZeroState
+                staticLayout { filteredToZeroState }
             } else {
                 concertList(filtered)
             }
@@ -179,6 +190,9 @@ struct OnTourTabView: View {
         let recommendations = recommendations(for: concerts)
         return ScrollView {
             VStack(spacing: 12) {
+                // The heading is the first scrolling element, so it scrolls up and
+                // away inline with the list rather than staying pinned above it.
+                header
                 if !recommendations.isEmpty {
                     // Pinned above the date list, bleeding edge-to-edge (the rail
                     // owns its own horizontal insets), and it deliberately
