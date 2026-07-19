@@ -225,6 +225,13 @@ public enum ForYouShelf {
         }
         let cappedSimilar = similar.prefix(max(0, similarCap))
 
+        // When the station tier is off — a non-positive cap, which is the default,
+        // so this is the common flag-off production path — skip the whole
+        // pool-build and sort. The station tier is terminal, so its would-be claims
+        // feed no later tier, and `prefix(max(0, stationCap))` would discard every
+        // card anyway; computing them first is pure wasted work on every render.
+        guard stationCap > 0 else { return loved + cappedSimilar }
+
         // Station affinity: the headliner has no personal tie but is in heavy WXYC
         // rotation — its play count clears the absolute floor. No likes required,
         // so this is the tier that fills the cold-start shelf.
