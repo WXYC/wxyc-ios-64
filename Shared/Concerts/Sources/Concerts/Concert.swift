@@ -66,6 +66,37 @@ public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
     }
 }
 
+/// One affinity neighbor of a resolved concert headliner, drawn from the
+/// semantic-index graph and embedded in ``Concert/similarArtists``.
+///
+/// Mirrors the backend `SimilarArtist` schema (`wxyc-shared/api.yaml`). The
+/// ``artistId`` shares the WXYC catalog artist-id keyspace with
+/// ``Concert/headliningArtistId``, so on-device For You matching can intersect
+/// it against liked-artist ids in one id space (WXYC/wxyc-ios-64#493). No artist
+/// name rides the wire — the reason line's name comes from the local likes
+/// store, so the server never learns the listener's taste.
+public struct SimilarArtist: Codable, Sendable, Equatable, Hashable {
+
+    /// WXYC catalog artist id, same keyspace as ``Concert/headliningArtistId``.
+    public let artistId: Int
+
+    /// semantic-index affinity score; higher is closer. Drives the client-side
+    /// similar-tier ranking and noise cap. Type-max normalized **per source
+    /// artist**, so weights are comparable *within* one concert's neighbor list
+    /// but not across concerts.
+    public let weight: Double
+
+    public init(artistId: Int, weight: Double) {
+        self.artistId = artistId
+        self.weight = weight
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case artistId = "artist_id"
+        case weight
+    }
+}
+
 /// An upcoming (or recent) Triangle-area concert, as rendered by the Box Office
 /// ticket and browsed in the On Tour tab.
 ///
@@ -155,6 +186,16 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// ahead of backend emission (same discipline as the flowsheet fields).
     public let genres: [String]?
 
+    /// Affinity neighbors of the resolved headliner, ordered by ``SimilarArtist/weight``
+    /// descending (semantic-index graph, computed nightly), or `nil` when the
+    /// headliner is unresolved or the enrichment has not run. Powers the on-device
+    /// For You shelf: intersected against the listener's liked-artist ids entirely
+    /// on-device, so no taste signal is ever sent to the server (WXYC/wxyc-ios-64#493).
+    /// A forward-compatible optional: it decodes to `nil` when the backend omits
+    /// the field, so this client can ship ahead of backend emission (same
+    /// discipline as ``genres``).
+    public let similarArtists: [SimilarArtist]?
+
     public init(
         id: Int,
         venue: Venue,
@@ -172,7 +213,8 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         priceMax: Double? = nil,
         ageRestriction: String? = nil,
         status: ShowStatus,
-        genres: [String]? = nil
+        genres: [String]? = nil,
+        similarArtists: [SimilarArtist]? = nil
     ) {
         self.id = id
         self.venue = venue
@@ -191,6 +233,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.ageRestriction = ageRestriction
         self.status = status
         self.genres = genres
+        self.similarArtists = similarArtists
     }
 
     // MARK: - Intrinsic accessors
@@ -234,6 +277,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case ageRestriction = "age_restriction"
         case status
         case genres
+        case similarArtists = "similar_artists"
     }
 
     /// Date-only parser pinned to the station zone and a fixed POSIX locale, so a
@@ -328,6 +372,10 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // Forward-compatible optional: absent or explicit-null `genres` → nil, so
         // this decode is stable whether or not the backend has shipped the field.
         genres = try container.decodeIfPresent([String].self, forKey: .genres)
+        // Forward-compatible optional, same discipline as `genres`: absent or
+        // explicit-null `similar_artists` → nil (unresolved headliner or
+        // pre-enrichment), so this client is stable ahead of backend emission.
+        similarArtists = try container.decodeIfPresent([SimilarArtist].self, forKey: .similarArtists)
     }
 
     /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
@@ -353,5 +401,6 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encodeIfPresent(ageRestriction, forKey: .ageRestriction)
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(genres, forKey: .genres)
+        try container.encodeIfPresent(similarArtists, forKey: .similarArtists)
     }
 }
