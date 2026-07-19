@@ -17,6 +17,7 @@ struct RootTabView: View {
     enum Page: CaseIterable {
         case playlist
         case onTour
+        case liked
         case infoDetail
 
         /// Tab label. Also the accessibility label the tab bar exposes.
@@ -24,18 +25,21 @@ struct RootTabView: View {
             switch self {
             case .playlist: "Now Playing"
             case .onTour: "On Tour"
+            case .liked: "Liked"
             case .infoDetail: "Info"
             }
         }
 
         /// SF Symbol for the tab glyph. `radio` matches the widget and Siri
-        /// intent; `info.circle` matches the playcut-detail row — iconography
-        /// the app already speaks on adjacent surfaces. `ticket` matches the Box
-        /// Office ticket language the On Tour surface reuses.
+        /// intent — iconography the app already speaks on adjacent surfaces.
+        /// `ticket` matches the Box Office ticket language the On Tour surface
+        /// reuses. `heart` matches the like affordance on playcut rows and the
+        /// detail card (#492), which replaced the row's old `info.circle`.
         var systemImage: String {
             switch self {
             case .playlist: "radio"
             case .onTour: "ticket"
+            case .liked: "heart"
             case .infoDetail: "info.circle"
             }
         }
@@ -46,6 +50,7 @@ struct RootTabView: View {
             switch self {
             case .playlist: "tab.nowPlaying"
             case .onTour: "tab.onTour"
+            case .liked: "tab.liked"
             case .infoDetail: "tab.info"
             }
         }
@@ -78,6 +83,16 @@ struct RootTabView: View {
                     .clearTabBarBackground()
             }
             .accessibilityIdentifier(Page.onTour.accessibilityIdentifier)
+
+            Tab(Page.liked.title, systemImage: Page.liked.systemImage, value: Page.liked) {
+                LikedTabView()
+                    .themePickerGesture(
+                        pickerState: appState.themePickerState,
+                        configuration: appState.themeConfiguration
+                    )
+                    .clearTabBarBackground()
+            }
+            .accessibilityIdentifier(Page.liked.accessibilityIdentifier)
 
             Tab(Page.infoDetail.title, systemImage: Page.infoDetail.systemImage, value: Page.infoDetail) {
                 InfoDetailView()

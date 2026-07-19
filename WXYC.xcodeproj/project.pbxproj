@@ -13,6 +13,7 @@
 		1529CE89784D4CABA78CA19E /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 4F7FBFF8641D4F629866EB1F /* AppServices */; };
 		160F5276C232F51B9ABD41FA /* Caching in Frameworks */ = {isa = PBXBuildFile; productRef = 8FCE16D2F8F98E766EFCFFDF /* Caching */; };
 		1F3D795595990939AC76274D /* Playlist in Frameworks */ = {isa = PBXBuildFile; productRef = D1362165656CBF5DDD9E5DDA /* Playlist */; };
+		LIKEDSONGSFWBUILD000001 /* LikedSongs in Frameworks */ = {isa = PBXBuildFile; productRef = LIKEDSONGSPRODDEP000001 /* LikedSongs */; };
 		1F511646EB98B7621319A1DA /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = EE16E35E8F1311399E5AD843 /* AppServices */; };
 		236B51D02EFC651A0058AD01 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236B51CF2EFC651A0058AD01 /* WidgetKit.framework */; };
 		236B51D22EFC651A0058AD01 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 236B51D12EFC651A0058AD01 /* SwiftUI.framework */; };
@@ -340,6 +341,7 @@
 				062417DC96252E36AE65C585 /* Playback in Frameworks */,
 				160F5276C232F51B9ABD41FA /* Caching in Frameworks */,
 				1F3D795595990939AC76274D /* Playlist in Frameworks */,
+				LIKEDSONGSFWBUILD000001 /* LikedSongs in Frameworks */,
 				23D418182EF2C80000WALLPA /* Wallpaper in Frameworks */,
 				23D418192EF2C8000DBGPNL /* DebugPanel in Frameworks */,
 				62C0D7BB9157E5D3D858DA97 /* Metadata in Frameworks */,
@@ -617,6 +619,7 @@
 				E150313F784CF272A32EA642 /* Playback */,
 				8FCE16D2F8F98E766EFCFFDF /* Caching */,
 				D1362165656CBF5DDD9E5DDA /* Playlist */,
+				LIKEDSONGSPRODDEP000001 /* LikedSongs */,
 				BE7D47372C4F1F83B0F271DE /* Metadata */,
 				196F9D43ACA1827478F32D5D /* Artwork */,
 				EE16E35E8F1311399E5AD843 /* AppServices */,
@@ -2669,6 +2672,10 @@
 		D1362165656CBF5DDD9E5DDA /* Playlist */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Playlist;
+		};
+		LIKEDSONGSPRODDEP000001 /* LikedSongs */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LikedSongs;
 		};
 		E150313F784CF272A32EA642 /* Playback */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -15,3 +15,4 @@
 - For protecting simple accesses to a variable in a multithreaded context, prefer swift-atomics over NSLock.
 - When writing test suites, please put mocks and other ancilliary objects below the tests.
 - Inject `DefaultsStorage` (from Caching) for persistence instead of accessing `UserDefaults.standard` or `.wxyc` directly. This enables parallel test execution via `InMemoryDefaults`. Exception: widgets may use `@AppStorage` with the app group store.
+- Pick the persistence layer by the data's eviction contract: `DefaultsStorage` and the `Caching` package are for small prefs and re-derivable caches (Caching purges infinite-lifespan entries at init and TTL-expires finite ones). Durable, never-evict user data — data the app cannot re-derive, like liked songs — uses the `FileStorage` seam (`Shared/LikedSongs`): a Codable JSON file in Application Support with atomic write-through and an `InMemoryFileStorage` test double.

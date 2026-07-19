@@ -12,6 +12,7 @@ import AppServices
 import Artwork
 import Caching
 import Core
+import LikedSongs
 import Logger
 import MusicShareKit
 import Observation
@@ -38,6 +39,13 @@ final class Singletonia {
     )
     let playcutHistoryStore = PlaycutHistoryStore()
 
+    /// On-device liked songs (#492). A durable file store, not a cache — likes
+    /// are user-curated canonical data with a never-evict contract (see
+    /// docs/plans/492-liked-songs.md decision #6).
+    let likedSongsStore = LikedSongsStore(
+        storage: AppSupportFileStorage(filename: "liked-songs.json")
+    )
+
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()
 
@@ -50,6 +58,7 @@ final class Singletonia {
     private var nowPlayingObservationTask: Task<Void, Never>?
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?
+    private var likedSongsHealingTask: Task<Void, Never>?
 
     private init() {
         self.widgetStateService = WidgetStateService(
@@ -76,6 +85,7 @@ final class Singletonia {
         startNowPlayingPlaybackStateObservation()
         startSpotlightDonation()
         startPlaycutHistory()
+        startLikedSongsHealing()
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
@@ -135,6 +145,28 @@ final class Singletonia {
     private func startPlaycutHistory() {
         Task { [playcutHistoryStore, playlistService] in
             await playcutHistoryStore.start(observing: playlistService)
+        }
+    }
+
+    /// Heals name-only likes on every playlist tick.
+    ///
+    /// Subscribes to `PlaylistService.updates()` (a multi-observer broadcast),
+    /// the same insertion pattern as `startSpotlightDonation()`. Each tick's
+    /// id-bearing playcuts stamp catalog artist ids onto liked rows whose like
+    /// predates the id being on the wire (free-text plays, the v1 API path) —
+    /// what makes those likes eligible for the For You shelf (#493). `heal` is
+    /// cheap (a dictionary pass over ~KB of snapshots) and saves only when
+    /// something changed.
+    ///
+    /// The captures are intentionally strong: the task's lifetime is bound to
+    /// `Singletonia.shared` (a static let), so there is no cycle to break and
+    /// `[weak self]` would be misleading.
+    private func startLikedSongsHealing() {
+        likedSongsHealingTask = Task { [likedSongsStore, playlistService] in
+            for await playlist in playlistService.updates() {
+                guard !Task.isCancelled else { break }
+                likedSongsStore.heal(from: playlist.playcuts)
+            }
         }
     }
 
