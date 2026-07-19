@@ -60,6 +60,7 @@ enum FlowsheetConverter {
                     artistWikipediaURL: entry.artist_wikipedia_url.flatMap { URL(string: $0) },
                     genres: entry.genres,
                     styles: entry.styles,
+                    artistId: entry.artist_id,
                     upcomingShow: entry.upcoming_show?.concert
                 )
                 playcuts.append(playcut)

@@ -636,3 +636,77 @@ struct FlowsheetConverterTests {
         #expect(sorted[1].id == 5210353, "previous show's older entry must rank second")
     }
 }
+
+// MARK: - artist_id projection (BS#1625 / #492)
+
+@Suite("FlowsheetConverter artist_id Tests")
+struct FlowsheetConverterArtistIdTests {
+
+    @Test("FlowsheetEntry decodes artist_id from the wire and defaults to nil when absent")
+    func decodesArtistIdFromWire() throws {
+        let json = """
+        {
+            "id": 5194728, "show_id": 1946226, "play_order": 30,
+            "add_time": "2026-04-17T22:53:48.500Z", "entry_type": "track",
+            "artist_name": "Jessica Pratt", "track_title": "Back, Baby", "artist_id": 812
+        }
+        """
+        let entry = try JSONDecoder().decode(FlowsheetEntry.self, from: Data(json.utf8))
+        #expect(entry.artist_id == 812)
+
+        let jsonAbsent = """
+        {
+            "id": 5194728, "show_id": 1946226, "play_order": 30,
+            "add_time": "2026-04-17T22:53:48.500Z", "entry_type": "track",
+            "artist_name": "Jessica Pratt", "track_title": "Back, Baby"
+        }
+        """
+        let legacy = try JSONDecoder().decode(FlowsheetEntry.self, from: Data(jsonAbsent.utf8))
+        #expect(legacy.artist_id == nil)
+    }
+
+    @Test("Carries artist_id through to Playcut.artistId")
+    func carriesArtistId() {
+        let entry = FlowsheetEntry(
+            id: 125,
+            show_id: 456,
+            album_id: 789,
+            artist_name: "Jessica Pratt",
+            album_title: "On Your Own Love Again",
+            track_title: "Back, Baby",
+            record_label: "Drag City",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 3,
+            add_time: "2026-04-17T22:53:48.500Z",
+            artist_id: 812
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        #expect(playlist.playcuts.first?.artistId == 812)
+    }
+
+    @Test("Playcut.artistId is nil for a free-text entry (no artist_id on the wire)")
+    func freeTextEntryHasNilArtistId() {
+        let entry = FlowsheetEntry(
+            id: 126,
+            show_id: 456,
+            album_id: nil,
+            artist_name: "NIL\u{00DC}FER YANYA",
+            album_title: nil,
+            track_title: "Midnight Sun",
+            record_label: nil,
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 4,
+            add_time: "2026-04-17T22:53:48.500Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        #expect(playlist.playcuts.first?.artistId == nil)
+    }
+}
