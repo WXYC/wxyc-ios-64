@@ -79,7 +79,8 @@ extension Concert {
         priceMax: Double? = 25.0,
         ageRestriction: String? = "All Ages",
         status: ShowStatus = .onSale,
-        genres: [String]? = nil
+        genres: [String]? = nil,
+        similarArtists: [SimilarArtist]? = nil
     ) -> Concert {
         Concert(
             id: id,
@@ -98,7 +99,8 @@ extension Concert {
             priceMax: priceMax,
             ageRestriction: ageRestriction,
             status: status,
-            genres: genres
+            genres: genres,
+            similarArtists: similarArtists
         )
     }
 }

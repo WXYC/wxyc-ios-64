@@ -53,6 +53,12 @@ struct ConcertsResponseTests {
         #expect(first.eventURL == URL(string: "https://catscradle.com/event/jessica-pratt"))
         #expect(first.startsAt != nil)
         #expect(first.doorsAt != nil)
+        // Resolved headliner → enrichment-populated affinity neighbors survive
+        // the envelope decode, ordered by weight descending (WXYC/wxyc-ios-64#493).
+        #expect(first.similarArtists == [
+            SimilarArtist(artistId: 231, weight: 0.94),
+            SimilarArtist(artistId: 347, weight: 0.71),
+        ])
     }
 
     @Test("Decodes the date-only second concert, tolerating null instants and empty support")
@@ -69,6 +75,9 @@ struct ConcertsResponseTests {
         #expect(second.doorsAt == nil)
         #expect(second.ticketURL == nil)
         #expect(second.eventURL == nil)
+        // Unresolved headliner (null id) → the backend omits similar_artists, so
+        // it decodes to nil rather than [] (the null-when-unresolved contract).
+        #expect(second.similarArtists == nil)
         #expect(second.status == .soldOut)
     }
 }

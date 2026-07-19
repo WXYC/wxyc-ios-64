@@ -23,6 +23,10 @@
       "price_min": 22.0,
       "price_max": 25.0,
       "age_restriction": "All Ages",
+      "similar_artists": [
+        { "artist_id": 231, "weight": 0.94 },
+        { "artist_id": 347, "weight": 0.71 }
+      ],
       "status": "on_sale"
     },
     {

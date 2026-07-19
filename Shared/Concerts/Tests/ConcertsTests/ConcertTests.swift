@@ -152,6 +152,7 @@ struct ConcertTests {
         #expect(concert.eventURL == nil)
         #expect(concert.ageRestriction == nil)
         #expect(concert.genres == nil)
+        #expect(concert.similarArtists == nil)
     }
 
     @Test("Coalesces an absent supporting_artists_raw to an empty array")
@@ -319,6 +320,78 @@ struct ConcertTests {
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Concert.self, from: data)
         #expect(decoded.eventURL == URL(string: "https://catscradle.com/event/jessica-pratt"))
+    }
+
+    // MARK: - Similar artists (R3b For You, forward-compatible optional)
+
+    @Test("Decodes a present similar_artists array, preserving order")
+    func decodesPresentSimilarArtists() throws {
+        let json = """
+        {
+            "id": 93,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Stereolab",
+            "similar_artists": [
+                { "artist_id": 41, "weight": 0.92 },
+                { "artist_id": 77, "weight": 0.5 }
+            ],
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.similarArtists == [
+            SimilarArtist(artistId: 41, weight: 0.92),
+            SimilarArtist(artistId: 77, weight: 0.5),
+        ])
+    }
+
+    @Test("Decodes an explicit-null similar_artists to nil without throwing")
+    func decodesNullSimilarArtistsAsNil() throws {
+        // The backend emits `similar_artists: null` for an unresolved headliner or
+        // before the nightly enrichment has run — the same null-when-absent
+        // discipline as `genres`.
+        let json = """
+        {
+            "id": 94,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "similar_artists": null,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.similarArtists == nil)
+    }
+
+    @Test("Decodes an absent similar_artists to nil (backend not yet emitting)")
+    func decodesAbsentSimilarArtistsAsNil() throws {
+        let json = """
+        {
+            "id": 95,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.similarArtists == nil)
+    }
+
+    @Test("Round-trips similar_artists through encode/decode")
+    func roundTripsSimilarArtists() throws {
+        let original = Concert.stub(similarArtists: [
+            SimilarArtist(artistId: 41, weight: 0.92),
+            SimilarArtist(artistId: 77, weight: 0.5),
+        ])
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.similarArtists == [
+            SimilarArtist(artistId: 41, weight: 0.92),
+            SimilarArtist(artistId: 77, weight: 0.5),
+        ])
     }
 
     // MARK: - ctaURL / headlineName (intrinsic data selection)
