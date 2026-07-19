@@ -330,3 +330,48 @@ struct PlaycutTests {
         #expect(playcut.labelName == "Label \"Name\"")
     }
 }
+
+// MARK: - artistId (BS#1625 / #492)
+
+@Suite("Playcut artistId Tests")
+struct PlaycutArtistIdTests {
+
+    @Test("artistId decodes when present and is nil when absent")
+    func decodesArtistId() throws {
+        let json = """
+        {
+            "id": 1, "hour": 1706544000000, "chronOrderID": 1, "timeCreated": 1706549400000,
+            "songTitle": "Back, Baby", "artistName": "Jessica Pratt", "artistId": 812
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.artistId == 812)
+
+        let jsonAbsent = """
+        {
+            "id": 1, "hour": 1706544000000, "chronOrderID": 1, "timeCreated": 1706549400000,
+            "songTitle": "Back, Baby", "artistName": "Jessica Pratt"
+        }
+        """
+        let legacy = try JSONDecoder().decode(Playcut.self, from: Data(jsonAbsent.utf8))
+        #expect(legacy.artistId == nil)
+    }
+
+    @Test("artistId survives an encode/decode round-trip (disk-cached playlists)")
+    func artistIdRoundTrip() throws {
+        let original = Playcut(
+            id: 1,
+            hour: 1706544000000,
+            chronOrderID: 1,
+            timeCreated: 1706549400000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            artistId: 645
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Playcut.self, from: data)
+        #expect(decoded.artistId == 645)
+    }
+}

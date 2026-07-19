@@ -91,6 +91,12 @@ struct FlowsheetEntry: Codable, Sendable {
     /// DJ name for show start/end markers. Present only in v2 responses.
     var dj_name: String? = nil
 
+    /// Resolved catalog artist id (`library.artist_id` → the `artists.id`
+    /// keyspace shared with `Concert.headlining_artist_id`). Additive and
+    /// nullable on the wire (api.yaml 1.19.0, BS#1625): free-text rows
+    /// (`album_id` null) and feeds that predate the field decode as `nil`.
+    var artist_id: Int? = nil
+
     // Metadata fields from album_metadata/artist_metadata LEFT JOINs.
     // Present only in v2 responses after backend enrichment completes.
     // Defaults to nil so existing test constructors remain valid.

@@ -258,6 +258,14 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Discogs style classifications (more specific than genres).
     public let styles: [String]?
 
+    /// Resolved catalog artist id for this play, from the v2 flowsheet's
+    /// `artist_id` (api.yaml 1.19.0, BS#1625) — the `artists.id` keyspace shared
+    /// with `Concert.headliningArtistId`, which is what lets on-device likes
+    /// match concerts. `nil` for free-text plays (no catalog link), the v1 API,
+    /// and feeds that predate the field. Additive and nullable, exactly like the
+    /// ``artistBio`` metadata precedent.
+    public let artistId: Int?
+
     /// An upcoming Triangle-area show for this track's artist, embedded on the
     /// flowsheet feed by Backend-Service when the played track's resolved artist
     /// matches a curated upcoming concert (the soonest one). `nil` when the artist
@@ -297,6 +305,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         case artistWikipediaURL
         case genres
         case styles
+        case artistId
         // The wire field is snake_case (the backend `Concert` embed), unlike the
         // camelCase legacy playcut keys around it. Named to match the contract so
         // the value round-trips through `Concert`'s own snake_case Codable.
@@ -325,6 +334,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         artistWikipediaURL: URL? = nil,
         genres: [String]? = nil,
         styles: [String]? = nil,
+        artistId: Int? = nil,
         upcomingShow: Concert? = nil
     ) {
         self.id = id
@@ -348,6 +358,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.artistWikipediaURL = artistWikipediaURL
         self.genres = genres
         self.styles = styles
+        self.artistId = artistId
         self.upcomingShow = upcomingShow
     }
 
@@ -386,6 +397,7 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.artistWikipediaURL = try container.decodeIfPresent(URL.self, forKey: .artistWikipediaURL)
             self.genres = try container.decodeIfPresent([String].self, forKey: .genres)
             self.styles = try container.decodeIfPresent([String].self, forKey: .styles)
+            self.artistId = try container.decodeIfPresent(Int.self, forKey: .artistId)
             // Optional, additive, and tolerant: an absent/null embed decodes to
             // `nil`, `Concert`'s own tolerant decode absorbs an unknown status, and
             // a present-but-malformed embed (a missing required sub-field from a
