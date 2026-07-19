@@ -19,6 +19,10 @@ import MusicShareKit
 import SwiftUI
 import Wallpaper
 
+#if DEBUG
+import Logger  // For You shelf debug diagnostic + seed (see recommendations(for:))
+#endif
+
 /// The root view of the On Tour tab.
 struct OnTourTabView: View {
     @Environment(Singletonia.self) private var appState
@@ -209,10 +213,57 @@ struct OnTourTabView: View {
     /// similar-tier cap through the feature-flag provider (local default 3).
     private func recommendations(for concerts: [Concert]) -> [ForYouRecommendation] {
         let liked = likedArtists
-        guard !liked.isEmpty else { return [] }
-        let cap = appState.featureFlagProvider.integerValue(forKey: Self.similarCapFlagKey, default: 3)
-        return ForYouShelf.recommendations(concerts: concerts, likedArtists: liked, similarCap: cap)
+
+        // In DEBUG, fall back to a seeded like so the shelf UI is exercisable
+        // before the backend enrichment (WXYC/Backend-Service#1700) populates
+        // `similar_artists`. Release builds match on real likes only.
+        #if DEBUG
+        let matchArtists = debugSeededLikes(liked, concerts: concerts)
+        #else
+        let matchArtists = liked
+        #endif
+
+        let recs: [ForYouRecommendation]
+        if matchArtists.isEmpty {
+            recs = []
+        } else {
+            let cap = appState.featureFlagProvider.integerValue(forKey: Self.similarCapFlagKey, default: 3)
+            recs = ForYouShelf.recommendations(concerts: concerts, likedArtists: matchArtists, similarCap: cap)
+        }
+
+        #if DEBUG
+        logForYouGate(liked: liked, matched: matchArtists, concerts: concerts, cards: recs.count)
+        #endif
+
+        return recs
     }
+
+    #if DEBUG
+    /// Debug-only: when the listener has no real id-bearing likes, fake one from
+    /// the first concert with a resolved headliner so the Loved-tier shelf renders
+    /// even before the backend `similar_artists` enrichment lands
+    /// (WXYC/Backend-Service#1700 / #1701 / #1702). Never compiled into release.
+    private func debugSeededLikes(_ liked: [LikedArtist], concerts: [Concert]) -> [LikedArtist] {
+        guard liked.isEmpty,
+              let seed = concerts.first(where: { $0.headliningArtistId != nil }),
+              let seedID = seed.headliningArtistId else { return liked }
+        return [LikedArtist(id: seedID, name: seed.headlineName)]
+    }
+
+    /// Debug-only diagnostic: prints every gate the For You shelf depends on so a
+    /// "no shelf" can be localized (id-less likes vs an empty concerts feed). Fires
+    /// on each list render; DEBUG-only so it never reaches production Sentry.
+    private func logForYouGate(liked: [LikedArtist], matched: [LikedArtist], concerts: [Concert], cards: Int) {
+        let withHeadlinerId = concerts.filter { $0.headliningArtistId != nil }.count
+        let withSimilar = concerts.filter { !($0.similarArtists ?? []).isEmpty }.count
+        Log(.info, category: .ui, """
+            ForYou gate: likedSongs=\(appState.likedSongsStore.songs.count) \
+            idBearingLikes=\(liked.count) \(liked.map { "\($0.id):\($0.name)" }) \
+            seeded=\(matched.count != liked.count) | concerts=\(concerts.count) \
+            withHeadlinerId=\(withHeadlinerId) withSimilarArtists=\(withSimilar) -> cards=\(cards)
+            """)
+    }
+    #endif
 
     private func selectForYou(_ recommendation: ForYouRecommendation) {
         StructuredPostHogAnalytics.shared.capture(
