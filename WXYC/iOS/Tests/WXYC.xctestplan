@@ -26,6 +26,14 @@
       }
     },
     {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Shared\/LikedSongs",
+        "identifier" : "LikedSongsTests",
+        "name" : "LikedSongsTests"
+      }
+    },
+    {
       "target" : {
         "containerPath" : "container:WXYC.xcodeproj",
         "identifier" : "6DEE556479EB425A885731F3",

@@ -48,11 +48,11 @@ run_all_and_exit() {
     # SPM-runnable packages run via swift test on host; xcodebuild skips their
     # test targets to avoid double coverage. Keep in sync with SPM_RUNNABLE in
     # step 8a below.
-    local spm_all="AnalyticsMacros Core Caching Analytics Playlist Metadata MusicShareKit"
+    local spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit"
     local skip="-skip-testing:WXYCUITests"
     skip="$skip -skip-testing:AnalyticsMacrosTests"
     skip="$skip -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests"
-    skip="$skip -skip-testing:PlaylistTests"
+    skip="$skip -skip-testing:PlaylistTests -skip-testing:LikedSongsTests"
     skip="$skip -skip-testing:MetadataTests -skip-testing:MusicShareKitTests"
     output "run_all" "true"
     output "skip_testing_flags" "$skip"
@@ -140,6 +140,7 @@ DEPS[Core]="Logger"
 DEPS[Caching]="Core Logger"
 DEPS[Analytics]="AnalyticsMacros Logger"
 DEPS[Playlist]="Analytics Core Caching Logger"
+DEPS[LikedSongs]="Playlist Logger"
 DEPS[Playback]="Caching Core Analytics Logger"
 DEPS[Artwork]="Core Caching Playlist Logger"
 DEPS[ColorPalette]="Caching Core Logger"
@@ -205,6 +206,7 @@ TEST_TARGETS[Core]="CoreTests"
 TEST_TARGETS[Caching]="CachingTests"
 TEST_TARGETS[Analytics]="AnalyticsTests"
 TEST_TARGETS[Playlist]="PlaylistTests"
+TEST_TARGETS[LikedSongs]="LikedSongsTests"
 TEST_TARGETS[Playback]="PlaybackTests RadioPlayerTests MP3StreamerTests HLSPlayerTests"
 TEST_TARGETS[Artwork]="ArtworkTests"
 TEST_TARGETS[ColorPalette]="ColorPaletteTests"
@@ -244,7 +246,7 @@ TEST_TARGETS[PartyHorn]="PartyHornTests"
 #       - Wallpaper         — submodule
 # ---------------------------------------------------------------------------
 
-local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist Metadata MusicShareKit)
+local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit)
 typeset -A SPM_RUNNABLE_SET
 for pkg in $SPM_RUNNABLE; do
     SPM_RUNNABLE_SET[$pkg]=1
@@ -291,7 +293,7 @@ echo "Affected test targets: ${(k)affected_targets}"
 
 # ---------------------------------------------------------------------------
 # 9. Determine which test plan targets to skip in the xcodebuild step.
-#    These are the 18 targets in WXYC.xctestplan. WXYCUITests is always
+#    These are the 19 targets in WXYC.xctestplan. WXYCUITests is always
 #    skipped. CoreTests runs via `swift test --package-path Shared/Core`
 #    (host) instead of xcodebuild, bypassing Swift Testing's parallel-scheduler
 #    hang under load — so it's always in skip_flags here, and the workflow's
@@ -300,6 +302,7 @@ echo "Affected test targets: ${(k)affected_targets}"
 
 local all_test_plan_targets=(
     PlaylistTests
+    LikedSongsTests
     WXYCTests
     ArtworkTests
     RadioPlayerTests

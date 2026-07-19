@@ -1,0 +1,24 @@
+{
+  "originHash" : "df244f65418a961b012062cc5c18216939d2d2dba8a9ae14c91797d627197fea",
+  "pins" : [
+    {
+      "identity" : "posthog-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PostHog/posthog-ios.git",
+      "state" : {
+        "revision" : "19288ee2f0575606b4669b2abadda2c9db97c529",
+        "version" : "3.66.1"
+      }
+    },
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax.git",
+      "state" : {
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
