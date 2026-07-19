@@ -14,6 +14,7 @@ import Core
 import Metadata
 import MusicShareKit
 import Concerts
+import LikedSongs
 import Playlist
 import SwiftUI
 import UIKit
@@ -69,7 +70,14 @@ struct PlaycutDetailView: View {
                     hideArtwork: hideHeaderArtwork,
                     artworkNamespace: artworkNamespace,
                     artworkGeometryID: artworkGeometryID,
-                    onArtworkTap: presentArtworkLightbox
+                    onArtworkTap: presentArtworkLightbox,
+                    isLiked: {
+                        appState.likedSongsStore.isLiked(
+                            artistName: playcut.artistName,
+                            songTitle: playcut.songTitle
+                        )
+                    },
+                    onToggleLike: toggleLike
                 )
                 .padding(.top, 30)
 
@@ -250,6 +258,18 @@ struct PlaycutDetailView: View {
                 showLightboxContainer = false
             }
         }
+    }
+
+    /// Toggles the song like from the detail card's heart and records the
+    /// toggle. The event carries no artist or song identity — only lifecycle
+    /// strings and the post-toggle size bucket.
+    private func toggleLike() {
+        let liked = appState.likedSongsStore.toggle(playcut)
+        StructuredPostHogAnalytics.shared.capture(SongLikeToggled(
+            action: liked ? "like" : "unlike",
+            surface: "detail",
+            totalBucket: appState.likedSongsStore.totalBucket
+        ))
     }
 
     private func donateAddedSongIntent(service: MusicService) {

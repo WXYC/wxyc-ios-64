@@ -11,12 +11,13 @@
 import Testing
 import XCTest
 
-/// The three tabs and the accessibility identifier of each one's long-pressable
+/// The four tabs and the accessibility identifier of each one's long-pressable
 /// content surface. Extracted to a top-level constant so the `@Test(arguments:)`
 /// macro type-checks quickly.
 private let pickerTabCases: [(tab: String, content: String)] = [
     ("tab.nowPlaying", "playlistView"),
     ("tab.onTour", "onTourView"),
+    ("tab.liked", "likedTabView"),
     ("tab.info", "infoDetailView"),
 ]
 
@@ -87,7 +88,7 @@ struct WallpaperUITests {
     /// verifies the long-press gesture fired — not merely that the app survived
     /// the press.
     ///
-    /// Parameterizing over all three tabs guards the invariant the gesture
+    /// Parameterizing over all four tabs guards the invariant the gesture
     /// redesign establishes: the long press works uniformly, including on the Info
     /// tab, which has no scroll view for the old `UIScrollView`-introspection
     /// approach to attach to.

@@ -6,10 +6,12 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import Analytics
 import SwiftUI
 import UIKit
 import WXUI
 import Concerts
+import LikedSongs
 import Playlist
 import Artwork
 import Wallpaper
@@ -140,7 +142,7 @@ struct PlaycutRowView: View {
     }
 
     /// The plain playlist row: a wallpaper-blurred panel with artwork, song info,
-    /// and the info button. Used when there's no upcoming show to attach.
+    /// and the like heart. Used when there's no upcoming show to attach.
     private var songRowPanel: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
@@ -196,7 +198,7 @@ struct PlaycutRowView: View {
         ))
     }
 
-    /// The song-row content — artwork, title/artist/time, info button — shared by
+    /// The song-row content — artwork, title/artist/time, like heart — shared by
     /// the plain row and the ticket. Needs the enclosing `GeometryReader`'s proxy
     /// for the placeholder artwork's height.
     @ViewBuilder
@@ -243,17 +245,31 @@ struct PlaycutRowView: View {
 
             Spacer()
 
-            // Info button
-            Button {
-                onSelect(loadedArtwork)
-            } label: {
-                Image(systemName: "info.circle")
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .frame(width: 44, height: 44)
-            }
+            // Like heart — replaces the info-circle in the trailing slot (study
+            // verdict B, docs/plans/492-liked-songs.md): same 44pt target, same
+            // .title3 scale. "Tap for more" rides on the row tap, which already
+            // fires the identical onSelect.
+            LikeHeartButton(
+                isLiked: appState.likedSongsStore.isLiked(
+                    artistName: playcut.artistName,
+                    songTitle: playcut.songTitle
+                ),
+                action: toggleLike
+            )
             .padding(.trailing, 4)
         }
+    }
+
+    /// Toggles the song like and records the toggle. The event carries no
+    /// artist or song identity — only lifecycle strings and the post-toggle
+    /// size bucket.
+    private func toggleLike() {
+        let liked = appState.likedSongsStore.toggle(playcut)
+        StructuredPostHogAnalytics.shared.capture(SongLikeToggled(
+            action: liked ? "like" : "unlike",
+            surface: "row",
+            totalBucket: appState.likedSongsStore.totalBucket
+        ))
     }
 }
 

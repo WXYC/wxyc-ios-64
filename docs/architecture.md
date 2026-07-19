@@ -11,6 +11,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **Artwork** | Album artwork fetching from multiple sources |
 | **Caching** | Disk/memory caching with TTL support |
 | **Core** | Core types (RadioStation, Playcut, etc.) |
+| **LikedSongs** | On-device liked-songs store (#492): folded song identity, durable never-evict JSON file store (`FileStorage` seam), artist-id healing for the For You shelf |
 | **Logger** | Logging infrastructure |
 | **Metadata** | Playlist metadata parsing |
 | **MusicShareKit** | Share extension support for music sharing |

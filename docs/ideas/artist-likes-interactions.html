@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liked Songs — Interaction Study (R3a)</title>
+<!--
+  PROTOTYPE — throwaway. Sibling of touring-soon-filters.html and
+  touring-soon-reco-highlights.html. Delete or absorb once a direction wins.
+
+  v2 (2026-07-18). The v1 of this file studied ARTIST likes; that model was
+  rejected the same day: listeners like SONGS, and the For You shelf derives
+  its artist set from the songs they like. Decisions now locked:
+    - unit of a like = the song; key = folded(artist) + folded(title), album
+      excluded; artistId is an attribute, not part of the key
+    - snapshot the playcut's display fields at like time; tapping a liked row
+      reopens the standard playcut detail card
+    - heal-on-observation: an id-bearing playcut whose folded artist name
+      matches a nil-id liked row stamps the artist id (For You eligibility)
+    - browsing: a 4th root tab, "Liked"; concert-surface hearts DEFERRED
+    - persistence: Codable JSON file store (not SwiftData, not UserDefaults)
+
+  Question this v2 answers: WHERE does the heart live on the playcut row,
+  given the row as it actually ships today — a 2.5:1 wallpaper-glass panel,
+  artwork left ~40%, bold song title / artist / play-time stack, and an
+  info-circle in the trailing slot whose entire job is signaling "tap for
+  more" (it fires the same onSelect as the row itself)? Four treatments:
+
+    A - Stacked      (heart joins the trailing column, above the info-circle)
+    B - Replace      (heart takes the slot; "more info" rides the row tap)
+    C - Detail-only  (row untouched; like from the detail card; passive badge)
+    D - Swipe        (swipe-left to like; chrome untouched; passive badge)
+
+  Both phones share one live liked-songs store. Phone 1: Now Playing with
+  faithful rows (Jessica Pratt renders as the perforated On Tour ticket row).
+  Phone 2: the new Liked tab (4-tab bar), list + empty state. Inspector rail
+  shows the store, the derived For You artist projection, and an event log
+  narrating dedupe (Call Your Name, linked vs ALL-CAPS free-text replay) and
+  healing (free-text Midnight Sun gains Nilüfer Yanya's id from a linked play).
+
+  Run: open docs/ideas/artist-likes-interactions.html
+  Keys: arrow-left/arrow-right cycle treatments, "r" resets, Esc closes sheets.
+
+  VERDICT (2026-07-18): B — Replace. The heart takes the trailing slot the
+  info-circle occupied (same 44pt target, same .title3 scale); "tap for more"
+  rides on the row tap alone, which already fires the identical onSelect. A
+  (stacked) was rejected as visually cluttered. C/D rejected: liking the
+  currently-airing song must be one tap, and swipe is invisible. The detail
+  card keeps its heart beside the title in all cases.
+-->
+<style>
+  :root {
+    --bg-1:#303c72; --bg-2:#40498e; --bg-3:#af3e79; --bg-4:#b64949; --bg-5:#b34876;
+    --page:#101120; --page-2:#171a30;
+    --ink:#ffffff; --ink-dim:rgba(255,255,255,0.72); --ink-faint:rgba(255,255,255,0.46);
+    --glass:rgba(255,255,255,0.06); --glass-2:rgba(255,255,255,0.10); --glass-line:rgba(255,255,255,0.15);
+    --amber:#ff8940; --amber-ink:#ffc79a; --amber-line:rgba(255,137,64,0.55);
+    --heart:#ff5c8a; --heart-ink:#ffc2d4; --heart-line:rgba(255,92,138,0.55);
+    --good:#7ee2a8;
+    --screen-base:#14162a;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--page); }
+  body {
+    margin:0; color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro",system-ui,sans-serif;
+    background:
+      radial-gradient(120% 90% at 82% -10%, rgba(255,92,138,0.12), transparent 55%),
+      radial-gradient(120% 90% at 0% 10%, rgba(64,73,142,0.35), transparent 55%),
+      linear-gradient(180deg,var(--page),var(--page-2));
+    background-attachment:fixed; min-height:100vh;
+  }
+  .wrap { max-width:1280px; margin:0 auto; padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 72px; }
+  .kicker { font-family:var(--mono); font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--heart); margin:0 0 14px; }
+  h1 { font-size:clamp(30px,5vw,46px); line-height:1.05; letter-spacing:-0.02em; font-weight:750; margin:0 0 14px; text-wrap:balance; }
+  .lede { max-width:64ch; color:var(--ink-dim); margin:0 0 8px; }
+  .lede strong { color:var(--ink); font-weight:650; }
+
+  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:12px 20px; margin:26px 0 10px; padding:14px 16px; border:1px solid var(--glass-line); border-radius:14px; background:var(--glass); }
+  .seg { display:flex; border:1px solid var(--glass-line); border-radius:10px; overflow:hidden; }
+  .seg button { font:inherit; font-size:13px; padding:7px 13px; background:transparent; border:none; color:var(--ink-dim); cursor:pointer; }
+  .seg button + button { border-left:1px solid var(--glass-line); }
+  .seg button.on { background:var(--glass-2); color:var(--ink); font-weight:650; }
+  .seg button:focus-visible { outline:2px solid var(--heart); outline-offset:-2px; }
+  .btn-reset { font:inherit; font-size:14px; color:var(--ink-dim); background:transparent; border:1px solid var(--glass-line); border-radius:10px; padding:7px 14px; cursor:pointer; }
+  .btn-reset:hover { background:var(--glass); color:var(--ink); }
+  .btn-reset:focus-visible { outline:2px solid var(--heart); outline-offset:2px; }
+  .keys { margin-left:auto; font-family:var(--mono); font-size:11px; letter-spacing:0.06em; color:var(--ink-faint); }
+  .keys b { color:var(--ink-dim); font-weight:600; }
+  .variant-note { font-size:14px; color:var(--amber-ink); margin:0 0 26px; padding:0 4px; min-height:1.5em; }
+
+  .stage { display:grid; grid-template-columns:auto auto minmax(260px,1fr); gap:clamp(18px,3vw,36px); align-items:start; justify-content:start; }
+  @media (max-width:1120px) { .stage { grid-template-columns:auto auto; } .rail { grid-column:1 / -1; position:static; } }
+  @media (max-width:880px) { .stage { grid-template-columns:auto; justify-content:center; } }
+
+  .phone-col { display:flex; flex-direction:column; gap:14px; }
+  .caption { max-width:393px; font-size:13.5px; color:var(--ink-faint); line-height:1.55; padding:0 6px; }
+  .caption b { color:var(--ink-dim); font-weight:600; }
+
+  .phone { width:393px; background:#05060a; border-radius:54px; padding:10px; border:1px solid rgba(255,255,255,0.18); box-shadow:0 30px 80px rgba(0,0,0,0.55); flex:none; }
+  .screen { position:relative; height:784px; border-radius:44px; overflow:hidden; display:flex; flex-direction:column;
+    background:
+      radial-gradient(130% 80% at 85% 0%, rgba(175,62,121,0.34), transparent 60%),
+      radial-gradient(120% 90% at 0% 100%, rgba(48,60,114,0.55), transparent 65%),
+      linear-gradient(165deg,#171a30 0%, var(--screen-base) 45%, #101120 100%);
+  }
+  .statusbar { display:flex; align-items:center; justify-content:space-between; padding:14px 26px 6px; font-size:14px; font-weight:600; }
+  .island { width:118px; height:32px; background:#05060a; border-radius:18px; position:absolute; left:50%; top:11px; transform:translateX(-50%); }
+  .sb-r { font-family:var(--mono); font-size:11px; color:var(--ink-dim); letter-spacing:0.05em; }
+  .apphead { padding:8px 18px 10px; }
+  .apphead h2 { margin:0; font-size:28px; font-weight:750; letter-spacing:-0.02em; }
+  .apphead .sub { font-family:var(--mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint); margin-top:3px; }
+
+  .list { flex:1; overflow-y:auto; padding:2px 12px 10px; scrollbar-width:thin; }
+
+  /* ---------- faithful playcut rows: 2.5:1 glass panels ---------- */
+  .pcwrap { position:relative; border-radius:14px; overflow:hidden; margin-bottom:10px; }
+  .pc-action { position:absolute; inset:0 0 0 auto; width:96px; background:rgba(255,92,138,0.28); border:none; color:var(--heart-ink); font-weight:650; font-size:13px; cursor:pointer; display:none; }
+  body.v-swipe .pc-action { display:block; }
+  .pc-track { position:relative; transition:transform .2s; }
+  @media (prefers-reduced-motion: reduce) { .pc-track { transition:none; } }
+  body.v-swipe .pc-track { touch-action:pan-y; }
+  .pcrow { position:relative; aspect-ratio:2.5; display:flex; align-items:center; background:var(--glass); backdrop-filter:blur(10px); cursor:pointer; border:1px solid rgba(255,255,255,0.07); border-radius:14px; }
+  .pcwrap.ticket .pcrow { border-radius:14px 14px 0 0; border-bottom:none; }
+  .pcrow:hover { background:var(--glass-2); }
+  .pc-art { width:40%; flex:none; align-self:stretch; display:grid; place-items:center; padding:12px; }
+  .pc-art .tile { height:100%; aspect-ratio:1; border-radius:8px; display:grid; place-items:center; font-weight:750; font-size:30px; color:rgba(255,255,255,0.85); text-shadow:0 1px 8px rgba(0,0,0,0.4); box-shadow:0 3px 10px rgba(0,0,0,0.35); }
+  .pc-meta { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; padding-right:4px; }
+  .pc-title { font-weight:700; font-size:16px; line-height:1.25; display:flex; align-items:center; gap:7px; }
+  .pc-artist { font-size:15px; line-height:1.25; }
+  .pc-time { font-size:13px; color:rgba(255,255,255,0.7); display:flex; align-items:center; gap:6px; }
+  .ind { display:none; color:var(--heart); flex:none; }
+  .ind svg { width:13px; height:13px; display:block; }
+  body.v-detail .pcrow.liked .ind, body.v-swipe .pcrow.liked .ind { display:inline-grid; }
+  .chip { font-family:var(--mono); font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; padding:2px 6px; border-radius:6px; border:1px solid var(--glass-line); color:var(--ink-faint); flex:none; }
+  .chip.unlinked { border-color:var(--amber-line); color:var(--amber-ink); }
+  .chip.idc { border-color:rgba(126,226,168,0.4); color:var(--good); }
+
+  .pc-trail { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding-right:8px; flex:none; }
+  .info-btn { width:44px; height:44px; border:none; background:transparent; color:rgba(255,255,255,0.8); display:grid; place-items:center; cursor:pointer; padding:0; }
+  .info-btn svg { width:22px; height:22px; }
+  .info-btn:focus-visible { outline:2px solid var(--heart); border-radius:50%; }
+  body.v-replace .pcrow .info-btn { display:none; }
+  .heart-btn { width:44px; height:44px; border:none; background:transparent; display:grid; place-items:center; cursor:pointer; padding:0; color:rgba(255,255,255,0.8); }
+  .heart-btn:hover { color:var(--heart-ink); }
+  .heart-btn:focus-visible { outline:2px solid var(--heart); outline-offset:1px; border-radius:50%; }
+  .heart-btn svg { width:22px; height:22px; display:block; }
+  .heart-btn .fill { display:none; }
+  .heart-btn[aria-pressed="true"] { color:var(--heart); }
+  .heart-btn[aria-pressed="true"] .fill { display:block; }
+  .heart-btn[aria-pressed="true"] .outline { display:none; }
+  body.v-detail .pcrow .heart-btn, body.v-swipe .pcrow .heart-btn { display:none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .heart-btn.pop svg { animation:pop .32s ease; }
+    @keyframes pop { 0%{transform:scale(1)} 40%{transform:scale(1.45)} 100%{transform:scale(1)} }
+  }
+
+  /* ticket rows: song panel + On Tour stub joined by a perforated seam */
+  .stub { position:relative; height:42px; display:flex; align-items:center; gap:8px; padding:0 18px; background:rgba(255,137,64,0.10); border:1px solid rgba(255,255,255,0.07); border-top:2px dashed rgba(255,255,255,0.22); border-radius:0 0 14px 14px; font-size:12.5px; color:var(--amber-ink); cursor:pointer; }
+  .stub .tk { font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; text-transform:uppercase; flex:none; }
+  .stub .tv { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--ink-dim); }
+  .stub .chev { margin-left:auto; color:var(--ink-faint); }
+  .notch { position:absolute; width:14px; height:14px; border-radius:50%; background:var(--screen-base); top:-9px; }
+  .notch.l { left:-7px; } .notch.r { right:-7px; }
+
+  /* ---------- Liked tab (phone 2) ---------- */
+  .lk-row { position:relative; border-radius:14px; overflow:hidden; margin-bottom:8px; background:rgba(255,92,138,0.16); }
+  .lk-del { position:absolute; inset:0 0 0 auto; width:88px; border:none; background:transparent; color:#fff; font-weight:650; font-size:13px; cursor:pointer; }
+  .lk-track { position:relative; display:flex; align-items:center; gap:12px; background:#1d2038; padding:10px 10px 10px 12px; border:1px solid rgba(255,255,255,0.07); border-radius:14px; transition:transform .2s; touch-action:pan-y; cursor:grab; }
+  @media (prefers-reduced-motion: reduce) { .lk-track { transition:none; } }
+  .lk-art { width:46px; height:46px; border-radius:8px; flex:none; display:grid; place-items:center; font-weight:750; font-size:17px; color:rgba(255,255,255,0.85); }
+  .lk-meta { flex:1; min-width:0; }
+  .lk-title { font-weight:650; font-size:14.5px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lk-artist { font-size:13px; color:var(--ink-dim); line-height:1.3; display:flex; align-items:center; gap:6px; }
+  .lk-when { font-size:11px; color:var(--ink-faint); }
+  .lk-empty { text-align:center; padding:60px 26px; color:var(--ink-faint); }
+  .lk-empty .big { font-size:44px; color:var(--heart-line); margin-bottom:12px; }
+  .lk-empty b { color:var(--ink-dim); display:block; margin-bottom:5px; font-size:15px; }
+  .lk-foot { font-size:11.5px; color:var(--ink-faint); text-align:center; padding:12px 18px 4px; }
+
+  .tabbar { display:flex; justify-content:space-around; align-items:center; padding:10px 14px 22px; border-top:1px solid rgba(255,255,255,0.08); background:rgba(10,11,20,0.55); backdrop-filter:blur(8px); }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; color:var(--ink-faint); letter-spacing:0.02em; }
+  .tab svg { width:24px; height:24px; }
+  .tab.active { color:var(--heart); }
+  .tab .cnt { position:absolute; margin-left:26px; margin-top:-4px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:var(--heart); color:#2b0713; font-size:10px; font-weight:700; display:grid; place-items:center; font-family:var(--mono); }
+  .tab .cnt[hidden] { display:none; }
+
+  /* ---------- sheets ---------- */
+  .sheet { position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; justify-content:flex-end; visibility:hidden; }
+  .sheet .backdrop { position:absolute; inset:0; background:rgba(5,6,12,0.55); opacity:0; transition:opacity .22s; }
+  .sheet .card { position:relative; background:linear-gradient(180deg,#1d2038,#14162a); border-radius:24px 24px 0 0; border-top:1px solid var(--glass-line); max-height:88%; overflow-y:auto; padding:10px 18px 26px; transform:translateY(102%); transition:transform .26s cubic-bezier(.32,.72,.35,1); }
+  .sheet.open { visibility:visible; }
+  .sheet.open .backdrop { opacity:1; }
+  .sheet.open .card { transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .sheet .card, .sheet .backdrop { transition:none; } }
+  .grab { width:38px; height:5px; border-radius:3px; background:var(--glass-line); margin:2px auto 14px; }
+  .sheet h3 { margin:0 0 2px; font-size:22px; font-weight:750; letter-spacing:-0.01em; display:flex; align-items:center; gap:10px; }
+  .sheet .close { position:absolute; top:14px; right:14px; width:36px; height:36px; border-radius:50%; border:1px solid var(--glass-line); background:var(--glass); color:var(--ink-dim); display:grid; place-items:center; cursor:pointer; padding:0; }
+  .pd-art { width:100%; aspect-ratio:1; border-radius:16px; display:grid; place-items:center; font-size:64px; font-weight:800; color:rgba(255,255,255,0.85); text-shadow:0 2px 12px rgba(0,0,0,0.45); margin-bottom:16px; }
+  .pd-sub { color:var(--ink-dim); font-size:14.5px; margin:2px 0 0; }
+  .pd-note { font-size:12px; color:var(--ink-faint); margin-top:10px; }
+  .ticket-card { margin-top:16px; border:1px dashed var(--amber-line); border-radius:14px; padding:12px 14px; background:rgba(255,137,64,0.07); }
+  .ticket-card .tk { font-family:var(--mono); font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--amber-ink); margin-bottom:4px; }
+  .ticket-card .tv { font-size:14px; color:var(--ink); }
+  .ticket-card .tv span { color:var(--ink-dim); }
+
+  /* ---------- inspector rail ---------- */
+  .rail { position:sticky; top:24px; border:1px solid var(--glass-line); border-radius:16px; background:rgba(16,17,32,0.7); padding:16px 16px 18px; min-width:260px; }
+  .rail h4 { margin:0 0 10px; font-family:var(--mono); font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
+  .rail h4 .dot { color:var(--heart); }
+  .store-rows { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
+  .srow { display:flex; align-items:center; gap:8px; font-size:12.5px; padding:7px 10px; border-radius:10px; background:var(--glass); border:1px solid rgba(255,255,255,0.07); }
+  .srow .nm { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .srow .nm b { font-weight:650; }
+  .srow .nm span { color:var(--ink-faint); }
+  .srow .tm { font-family:var(--mono); font-size:10px; color:var(--ink-faint); flex:none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .srow.flash { animation:flash 1s ease; }
+    @keyframes flash { 0%{background:rgba(255,92,138,0.3)} 100%{background:var(--glass)} }
+  }
+  .store-empty { font-size:13px; color:var(--ink-faint); padding:8px 2px 10px; }
+  .store-stats { font-family:var(--mono); font-size:11px; color:var(--ink-dim); letter-spacing:0.04em; padding:8px 2px 14px; border-bottom:1px solid var(--glass-line); margin-bottom:14px; line-height:1.7; }
+  .store-stats .warn { color:var(--amber-ink); }
+  .store-stats .ids { color:var(--good); }
+  .log { display:flex; flex-direction:column; gap:7px; font-family:var(--mono); font-size:11px; line-height:1.5; color:var(--ink-dim); }
+  .log div { padding-left:14px; text-indent:-14px; }
+  .log .ev-like { color:var(--heart-ink); }
+  .log .ev-up { color:var(--good); }
+  .log .ev-un { color:var(--ink-faint); }
+  .log .ev-noop { color:var(--ink-faint); font-style:italic; }
+
+  .rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; margin-top:48px; }
+  .rule-card { border:1px solid var(--glass-line); border-radius:16px; padding:20px 22px; background:var(--glass); }
+  .rule-card.open-q { border-color:var(--amber-line); background:rgba(255,137,64,0.06); }
+  .rule-card h5 { margin:0 0 12px; font-family:var(--mono); font-size:11px; letter-spacing:0.2em; text-transform:uppercase; font-weight:600; color:var(--heart-ink); }
+  .rule-card.open-q h5 { color:var(--amber-ink); }
+  .rule-card ul { margin:0; padding-left:18px; color:var(--ink-dim); font-size:14px; display:flex; flex-direction:column; gap:9px; }
+  .rule-card li b { color:var(--ink); font-weight:650; }
+  .foot { margin-top:40px; font-family:var(--mono); font-size:11px; letter-spacing:0.05em; color:var(--ink-faint); }
+  .foot a { color:var(--ink-dim); }
+</style>
+
+<div class="wrap">
+  <p class="kicker">wxyc-ios-64 · #492 · On Tour R3a · interaction study v2 — song likes</p>
+  <h1>A heart means a song — but where does it live on the row?</h1>
+  <p class="lede">Model as decided: listeners like <strong>songs</strong>; the For You shelf derives its artist set from them. Hearts appear on playcut surfaces only, songs browse in a new <strong>Liked tab</strong>, and everything stays on-device.</p>
+  <p class="lede">This revision renders the playcut row <strong>as it actually ships</strong> — 2.5:1 wallpaper-glass panel, artwork left, bold title / artist / play-time, and the <strong>info-circle</strong> in the trailing slot signaling "tap for more" (it fires the same action as the row tap). The open question: what does the heart do to that slot? Cycle the four treatments.</p>
+
+  <div class="controls">
+    <div class="seg" id="variantSeg" role="group" aria-label="Heart placement treatment">
+      <button data-v="v-stacked" class="on">A · Stacked</button>
+      <button data-v="v-replace">B · Replace</button>
+      <button data-v="v-detail">C · Detail-only</button>
+      <button data-v="v-swipe">D · Swipe</button>
+    </div>
+    <button class="btn-reset" id="resetBtn">Reset store</button>
+    <span class="keys"><b>←/→</b> treatment · <b>r</b> reset · <b>esc</b> close</span>
+  </div>
+  <p class="variant-note" id="variantNote"></p>
+
+  <main class="stage">
+    <!-- ============ PHONE 1 — Now Playing (faithful rows) ============ -->
+    <section class="phone-col">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="sb-r">WXYC 89.3</span></div>
+          <div class="apphead"><h2>Now Playing</h2><div class="sub">Flowsheet · live</div></div>
+          <div class="list" id="playcutList" aria-label="Recent playcuts"></div>
+          <div class="tabbar" aria-hidden="true" id="tabbar1"></div>
+          <div class="sheet" id="pdSheet" role="dialog" aria-label="Playcut detail">
+            <div class="backdrop" data-close="pdSheet"></div>
+            <div class="card">
+              <div class="grab"></div>
+              <button class="close" data-close="pdSheet" aria-label="Close">✕</button>
+              <div id="pdBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption"><b>Faithful rows:</b> 2.5:1 glass panels, artwork left, <b>bold song title</b> first, artist, play time. Jessica Pratt carries an upcoming show, so her row is the perforated <b>On Tour ticket</b> — any heart treatment has to coexist with the stub. The <b>info-circle fires the same tap as the row</b>; it exists purely to signal tappability.</p>
+    </section>
+
+    <!-- ============ PHONE 2 — Liked tab ============ -->
+    <section class="phone-col">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="sb-r">WXYC 89.3</span></div>
+          <div class="apphead"><h2>Liked</h2><div class="sub" id="likedCount">No songs yet</div></div>
+          <div class="list" id="lkList" aria-label="Liked songs"></div>
+          <p class="lk-foot">Likes live on this device only. Artists derived from these songs power the For You shelf (R3b).</p>
+          <div class="tabbar" aria-hidden="true" id="tabbar2"></div>
+          <div class="sheet" id="pdSheet2" role="dialog" aria-label="Playcut detail">
+            <div class="backdrop" data-close="pdSheet2"></div>
+            <div class="card">
+              <div class="grab"></div>
+              <button class="close" data-close="pdSheet2" aria-label="Close">✕</button>
+              <div id="pdBody2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption"><b>The new 4th root tab.</b> Liked songs, newest first — artwork, title, artist. Swipe left or tap the filled heart to unlike; tap a row to reopen the standard playcut detail card (fields come from the like-time snapshot). Badge on the tab icon counts liked songs.</p>
+    </section>
+
+    <!-- ============ INSPECTOR RAIL ============ -->
+    <aside class="rail">
+      <h4><span class="dot">●</span> On-device store — liked songs</h4>
+      <div class="store-rows" id="storeRows"></div>
+      <div class="store-empty" id="storeEmpty">Empty. Heart a song on phone 1.</div>
+      <div class="store-stats" id="storeStats"></div>
+      <h4>Event log</h4>
+      <div class="log" id="log" aria-live="polite"></div>
+    </aside>
+  </main>
+
+  <section class="rules">
+    <div class="rule-card">
+      <h5>Decided (2026-07-18)</h5>
+      <ul>
+        <li><b>The unit of a like is the song.</b> Key = folded(artist) + folded(title); album excluded, so the linked play and the ALL-CAPS free-text replay of “Call Your Name” are one liked song. artistId is an attribute, not identity.</li>
+        <li><b>Snapshot at like time.</b> Artist, title, album, label, artwork, links, artistId — the Liked row and its detail card render from the snapshot after the play scrolls out of the feed.</li>
+        <li><b>Heal on observation.</b> A nil-id liked song gains its artist id from any id-bearing play whose folded artist name matches (watch the log after liking “Midnight Sun”).</li>
+        <li><b>For You projection.</b> distinct artistId across liked songs — plus liked-songs-per-artist as a free affinity weight.</li>
+        <li><b>Surfaces.</b> Playcut row + detail card only; concert hearts deferred. Browsing: the Liked tab. Persistence: Codable file store. Analytics: counts only.</li>
+      </ul>
+    </div>
+    <div class="rule-card open-q">
+      <h5>Open — the trailing slot</h5>
+      <ul>
+        <li><b>A · Stacked:</b> heart above the info-circle. Both affordances live; the 2.5:1 row has the height. Risk: two icons compete on a clean panel.</li>
+        <li><b>B · Replace:</b> heart takes the slot. Cleanest, most immediate; loses the explicit “tap for more” signal — the row tap alone carries it.</li>
+        <li><b>C · Detail-only:</b> row untouched; like from the detail card; a small filled heart marks liked rows. Zero clutter, but liking what's playing right now takes two taps.</li>
+        <li><b>D · Swipe:</b> swipe-left to like; chrome untouched; passive badge. iOS-native, but invisible until discovered.</li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="foot">Study for <a href="https://github.com/WXYC/wxyc-ios-64/issues/492">wxyc-ios-64#492</a> (pivoted to song likes 2026-07-18) · gate <a href="https://github.com/WXYC/Backend-Service/issues/1625">BS#1625</a> approved · artists from the WXYC canonical fixture pool · verdict pending</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- data (WXYC canonical; ids from the artists.id keyspace) ---------- */
+  var GRADS = [
+    "linear-gradient(140deg,#303c72,#af3e79)",
+    "linear-gradient(140deg,#40498e,#b64949)",
+    "linear-gradient(140deg,#af3e79,#303c72)",
+    "linear-gradient(140deg,#b34876,#40498e)",
+    "linear-gradient(140deg,#2c3564,#8e3d86)",
+    "linear-gradient(140deg,#9c4155,#303c72)",
+    "linear-gradient(140deg,#40498e,#af3e79)"
+  ];
+
+  var PLAYCUTS = [
+    { key:"p1", title:"Back, Baby",             artist:"Jessica Pratt",        album:"On Your Own Love Again", label:"Drag City",     artistId:812,  time:"3:42 PM",  g:0,
+      show:{ venue:"Cat's Cradle", city:"Carrboro", date:"Thu Aug 14", price:"$25" } },
+    { key:"p2", title:"Call Your Name",         artist:"Chuquimamani-Condori", album:"Edits",                  label:"self-released", artistId:977,  time:"3:12 PM",  g:4, show:null },
+    { key:"p3", title:"Midnight Sun",           artist:"NILÜFER YANYA",        album:null,                     label:null,            artistId:null, time:"2:58 PM",  g:2, show:null },
+    { key:"p4", title:"Anotherlife",            artist:"Nilüfer Yanya",        album:"Miss Universe",          label:"ATO",           artistId:1502, time:"2:31 PM",  g:2, show:null },
+    { key:"p5", title:"Metronomic Underground", artist:"Stereolab",            album:"Emperor Tomato Ketchup", label:"Duophonic UHF", artistId:118,  time:"1:26 PM",  g:1, show:null },
+    { key:"p6", title:"la paradoja",            artist:"Juana Molina",         album:"DOGA",                   label:"Sonamos",       artistId:645,  time:"12:05 PM", g:5, show:null },
+    { key:"p7", title:"CALL YOUR NAME",         artist:"CHUQUIMAMANI-CONDORI", album:null,                     label:null,            artistId:null, time:"11:48 AM", g:4, show:null }
+  ];
+
+  /* ---------- store: liked songs keyed by folded(artist)+folded(title) ---------- */
+  var store = [];
+  var seq = 0;
+
+  function fold(s) {
+    return s.normalize("NFD").replace(/[̀-ͯ]/g, "")
+            .toLowerCase().replace(/\s+/g, " ").trim();
+  }
+  function songKey(artist, title) { return fold(artist) + "|" + fold(title); }
+  function findSong(artist, title) {
+    var k = songKey(artist, title);
+    for (var i = 0; i < store.length; i++) if (store[i].k === k) return store[i];
+    return null;
+  }
+  function isLikedSong(artist, title) { return !!findSong(artist, title); }
+  function toggleSong(p, surface) {
+    var row = findSong(p.artist, p.title);
+    if (row) {
+      store.splice(store.indexOf(row), 1);
+      logEv("ev-un", "♡ unliked “" + row.title + "” — " + surface);
+    } else {
+      store.push({
+        k: songKey(p.artist, p.title), title: p.title, artist: p.artist,
+        album: p.album, label: p.label, artistId: p.artistId, g: p.g,
+        likedAt: ++seq, touched: true
+      });
+      logEv("ev-like", "❤ liked “" + p.title + "” — " + p.artist
+        + (p.artistId != null ? " (artist id " + p.artistId + ")" : " (name-only)")
+        + " — " + surface
+        + (p.artistId == null ? " · invisible to For You until an artist id is observed" : ""));
+    }
+    render();
+  }
+  /* heal-on-observation: any id-bearing play on screen stamps folded-name-matching
+     nil-id liked rows */
+  function heal() {
+    store.forEach(function (r) {
+      if (r.artistId != null) return;
+      var fa = fold(r.artist);
+      for (var i = 0; i < PLAYCUTS.length; i++) {
+        var p = PLAYCUTS[i];
+        if (p.artistId != null && fold(p.artist) === fa) {
+          r.artistId = p.artistId; r.touched = true;
+          logEv("ev-up", "⇪ healed “" + r.title + "” with artist id " + p.artistId + " — observed on the flowsheet (" + p.artist + ")");
+          break;
+        }
+      }
+    });
+  }
+
+  /* ---------- event log ---------- */
+  var logEl = document.getElementById("log");
+  var logLines = [];
+  function logEv(cls, text) {
+    logLines.unshift({ cls: cls, text: text });
+    if (logLines.length > 6) logLines.pop();
+    logEl.innerHTML = "";
+    logLines.forEach(function (l) {
+      var d = document.createElement("div");
+      d.className = l.cls; d.textContent = l.text;
+      logEl.appendChild(d);
+    });
+  }
+
+  /* ---------- shared bits ---------- */
+  function heartSVG() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true">'
+      + '<path class="outline" d="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.7-6 2 0 3.5 1.2 5.3 3.3C13.8 6.2 15.3 5 17.3 5c3.1 0 4.9 3.2 3.7 6-2 4.5-9 9-9 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
+      + '<path class="fill" d="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.7-6 2 0 3.5 1.2 5.3 3.3C13.8 6.2 15.3 5 17.3 5c3.1 0 4.9 3.2 3.7 6-2 4.5-9 9-9 9z" fill="currentColor"/>'
+      + '</svg>';
+  }
+  function heartFillSVG(size) {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:' + size + 'px;height:' + size + 'px">'
+      + '<path d="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.7-6 2 0 3.5 1.2 5.3 3.3C13.8 6.2 15.3 5 17.3 5c3.1 0 4.9 3.2 3.7 6-2 4.5-9 9-9 9z" fill="currentColor"/></svg>';
+  }
+  function infoSVG() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">'
+      + '<circle cx="12" cy="12" r="9.2"/><path d="M12 11v5.4M12 7.6v.2" stroke-linecap="round"/></svg>';
+  }
+  function initials(name) {
+    var parts = name.replace(/&/g, " ").split(/\s+/).filter(Boolean);
+    var s = parts[0] ? parts[0][0] : "?";
+    if (parts.length > 1) s += parts[parts.length - 1][0];
+    return s.toUpperCase();
+  }
+  function heartBtn(p, surface) {
+    var b = document.createElement("button");
+    b.className = "heart-btn";
+    b.innerHTML = heartSVG();
+    b.setAttribute("aria-label", "Like " + p.title);
+    b.dataset.artist = p.artist; b.dataset.title = p.title;
+    b.addEventListener("click", function (e) {
+      e.stopPropagation();
+      b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+      toggleSong(p, surface);
+    });
+    return b;
+  }
+
+  /* ---------- tab bars ---------- */
+  function tabSVG(kind) {
+    if (kind === "radio") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="13" r="2.4"/><path d="M7.5 8.5a6.5 6.5 0 0 1 9 0M5 5.6a10 10 0 0 1 14 0" stroke-linecap="round"/></svg>';
+    if (kind === "ticket") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9a2 2 0 0 0 0 6v3h16v-3a2 2 0 0 1 0-6V6H4z" stroke-linejoin="round"/><path d="M13.5 6v12" stroke-dasharray="2 2.6"/></svg>';
+    if (kind === "heart") return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.7-6 2 0 3.5 1.2 5.3 3.3C13.8 6.2 15.3 5 17.3 5c3.1 0 4.9 3.2 3.7 6-2 4.5-9 9-9 9z" stroke-linejoin="round"/></svg>';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.2" stroke-linecap="round"/></svg>';
+  }
+  function buildTabbar(el, active) {
+    var tabs = [["radio","Now Playing"],["ticket","On Tour"],["heart","Liked"],["info","Info"]];
+    el.innerHTML = "";
+    tabs.forEach(function (t) {
+      var d = document.createElement("div");
+      d.className = "tab" + (t[1] === active ? " active" : "");
+      d.innerHTML = tabSVG(t[0]) + t[1];
+      if (t[0] === "heart") {
+        var c = document.createElement("span");
+        c.className = "cnt"; c.hidden = true; c.id = el.id + "-cnt";
+        d.insertBefore(c, d.firstChild);
+      }
+      el.appendChild(d);
+    });
+  }
+  buildTabbar(document.getElementById("tabbar1"), "Now Playing");
+  buildTabbar(document.getElementById("tabbar2"), "Liked");
+
+  /* ---------- phone 1: faithful playcut rows ---------- */
+  var playcutList = document.getElementById("playcutList");
+  PLAYCUTS.forEach(function (p) {
+    var wrap = document.createElement("div");
+    wrap.className = "pcwrap" + (p.show ? " ticket" : "");
+
+    var action = document.createElement("button");
+    action.className = "pc-action";
+    action.innerHTML = heartFillSVG(18) + "<div>Like</div>";
+    action.addEventListener("click", function (e) { e.stopPropagation(); settleTrack(0); toggleSong(p, "swipe"); });
+
+    var track = document.createElement("div");
+    track.className = "pc-track";
+
+    var row = document.createElement("div");
+    row.className = "pcrow";
+    row.dataset.artist = p.artist; row.dataset.title = p.title;
+
+    var art = document.createElement("div"); art.className = "pc-art";
+    var tile = document.createElement("div"); tile.className = "tile";
+    tile.style.background = GRADS[p.g]; tile.textContent = initials(p.artist);
+    art.appendChild(tile);
+
+    var meta = document.createElement("div"); meta.className = "pc-meta";
+    var t = document.createElement("div"); t.className = "pc-title";
+    var ts = document.createElement("span"); ts.textContent = p.title; t.appendChild(ts);
+    var ind = document.createElement("span"); ind.className = "ind"; ind.innerHTML = heartFillSVG(13); t.appendChild(ind);
+    var a = document.createElement("div"); a.className = "pc-artist"; a.textContent = p.artist;
+    var tm = document.createElement("div"); tm.className = "pc-time";
+    tm.textContent = p.time;
+    if (p.artistId == null) { var ch = document.createElement("span"); ch.className = "chip unlinked"; ch.textContent = "free-text"; tm.appendChild(ch); }
+    meta.appendChild(t); meta.appendChild(a); meta.appendChild(tm);
+
+    var trail = document.createElement("div"); trail.className = "pc-trail";
+    trail.appendChild(heartBtn(p, "playcut row"));
+    var info = document.createElement("button"); info.className = "info-btn";
+    info.setAttribute("aria-label", "More info");
+    info.innerHTML = infoSVG();
+    info.addEventListener("click", function (e) { e.stopPropagation(); openDetail(p, "pdSheet"); });
+    trail.appendChild(info);
+
+    row.appendChild(art); row.appendChild(meta); row.appendChild(trail);
+    row.addEventListener("click", function () {
+      if (curOffset !== 0) { settleTrack(0); return; }
+      openDetail(p, "pdSheet");
+    });
+    track.appendChild(row);
+
+    if (p.show) {
+      var stub = document.createElement("div"); stub.className = "stub";
+      stub.innerHTML = '<span class="notch l"></span><span class="notch r"></span>'
+        + '<span class="tk">On Tour</span><span class="tv">' + p.show.venue + ", " + p.show.city + " · " + p.show.date + '</span><span class="chev">›</span>';
+      stub.addEventListener("click", function (e) { e.stopPropagation(); logEv("ev-noop", "· stub tap → concert detail (existing behavior)"); });
+      track.appendChild(stub);
+    }
+
+    wrap.appendChild(action); wrap.appendChild(track);
+    attachRowSwipe(track, action);
+    playcutList.appendChild(wrap);
+  });
+
+  /* swipe-to-like on playcut rows (active in variant D only) */
+  var curOffset = 0, settleTrack = function () {};
+  function attachRowSwipe(track, action) {
+    var startX = null, dx = 0;
+    track.addEventListener("pointerdown", function (e) {
+      if (!document.body.classList.contains("v-swipe")) return;
+      startX = e.clientX; track.style.transition = "none"; track.setPointerCapture(e.pointerId);
+    });
+    track.addEventListener("pointermove", function (e) {
+      if (startX == null) return;
+      dx = Math.min(0, Math.max(-110, e.clientX - startX));
+      track.style.transform = "translateX(" + dx + "px)";
+    });
+    function settle() {
+      if (startX == null) return;
+      track.style.transition = "";
+      if (dx < -48) { track.style.transform = "translateX(-96px)"; curOffset = -96; settleTrack = function (v) { track.style.transform = "translateX(" + v + "px)"; curOffset = v; }; }
+      else { track.style.transform = "translateX(0)"; curOffset = 0; }
+      startX = null; dx = 0;
+    }
+    track.addEventListener("pointerup", settle);
+    track.addEventListener("pointercancel", settle);
+  }
+
+  /* ---------- playcut detail (both phones) ---------- */
+  function openDetail(p, sheetId) {
+    var body = document.getElementById(sheetId === "pdSheet" ? "pdBody" : "pdBody2");
+    body.innerHTML = "";
+    var art = document.createElement("div");
+    art.className = "pd-art"; art.style.background = GRADS[p.g]; art.textContent = initials(p.artist);
+    var h = document.createElement("h3");
+    var nm = document.createElement("span"); nm.textContent = p.title; h.appendChild(nm);
+    h.appendChild(heartBtn(p, "detail card"));
+    var sub = document.createElement("p"); sub.className = "pd-sub";
+    sub.textContent = p.artist + (p.album ? " — " + p.album : "") + (p.label ? " · " + p.label : "");
+    body.appendChild(art); body.appendChild(h); body.appendChild(sub);
+    if (p.show) {
+      var tc = document.createElement("div"); tc.className = "ticket-card";
+      tc.innerHTML = '<div class="tk">Upcoming show · Box Office</div><div class="tv">'
+        + p.show.venue + ", " + p.show.city + ' <span>· ' + p.show.date + " · " + p.show.price + "</span></div>";
+      body.appendChild(tc);
+    }
+    var note = document.createElement("p"); note.className = "pd-note";
+    note.textContent = p.artistId == null
+      ? "Free-text play — a like here stores the song with no artist id (heals when one is observed)."
+      : "Linked play — artist_id " + p.artistId + " rides the V2 wire (BS#1625) and is snapshotted into the like.";
+    body.appendChild(note);
+    openSheet(sheetId);
+    syncHearts();
+  }
+
+  /* ---------- phone 2: Liked tab ---------- */
+  var lkList = document.getElementById("lkList");
+  function renderLiked() {
+    lkList.innerHTML = "";
+    if (store.length === 0) {
+      var e = document.createElement("div"); e.className = "lk-empty";
+      e.innerHTML = '<div class="big">♡</div><b>Show some love</b>Tap the heart on a song you love and it lands here.';
+      lkList.appendChild(e);
+      return;
+    }
+    store.slice().sort(function (a, b) { return b.likedAt - a.likedAt; }).forEach(function (r) {
+      var wrap = document.createElement("div"); wrap.className = "lk-row";
+      var del = document.createElement("button"); del.className = "lk-del"; del.textContent = "Unlike";
+      del.addEventListener("click", function () { toggleSong(r, "Liked tab swipe"); });
+      var track = document.createElement("div"); track.className = "lk-track";
+      var art = document.createElement("div"); art.className = "lk-art";
+      art.style.background = GRADS[r.g]; art.textContent = initials(r.artist);
+      var meta = document.createElement("div"); meta.className = "lk-meta";
+      var t = document.createElement("div"); t.className = "lk-title"; t.textContent = r.title;
+      var a = document.createElement("div"); a.className = "lk-artist";
+      var an = document.createElement("span"); an.textContent = r.artist; a.appendChild(an);
+      var idc = document.createElement("span");
+      idc.className = "chip " + (r.artistId != null ? "idc" : "unlinked");
+      idc.textContent = r.artistId != null ? "id " + r.artistId : "name-only";
+      a.appendChild(idc);
+      var w = document.createElement("div"); w.className = "lk-when"; w.textContent = "Liked just now";
+      meta.appendChild(t); meta.appendChild(a); meta.appendChild(w);
+      track.appendChild(art); track.appendChild(meta);
+      track.appendChild(heartBtn(r, "Liked tab heart-off"));
+      track.addEventListener("click", function (ev) {
+        if (ev.target.closest(".heart-btn")) return;
+        openDetail(r, "pdSheet2");
+      });
+      attachLikedSwipe(track);
+      wrap.appendChild(del); wrap.appendChild(track);
+      lkList.appendChild(wrap);
+    });
+  }
+  function attachLikedSwipe(track) {
+    var startX = null, dx = 0;
+    track.addEventListener("pointerdown", function (e) {
+      startX = e.clientX; track.style.transition = "none"; track.setPointerCapture(e.pointerId);
+    });
+    track.addEventListener("pointermove", function (e) {
+      if (startX == null) return;
+      dx = Math.min(0, Math.max(-96, e.clientX - startX));
+      track.style.transform = "translateX(" + dx + "px)";
+    });
+    function settle() {
+      if (startX == null) return;
+      track.style.transition = "";
+      track.style.transform = dx < -48 ? "translateX(-88px)" : "translateX(0)";
+      startX = null; dx = 0;
+    }
+    track.addEventListener("pointerup", settle);
+    track.addEventListener("pointercancel", settle);
+  }
+
+  /* ---------- sheets ---------- */
+  function openSheet(id) { document.getElementById(id).classList.add("open"); }
+  function closeSheet(id) { document.getElementById(id).classList.remove("open"); }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-close]"), function (el) {
+    el.addEventListener("click", function () { closeSheet(el.getAttribute("data-close")); });
+  });
+
+  /* ---------- render ---------- */
+  var storeRows = document.getElementById("storeRows");
+  var storeEmpty = document.getElementById("storeEmpty");
+  var storeStats = document.getElementById("storeStats");
+  var likedCount = document.getElementById("likedCount");
+
+  function syncHearts() {
+    Array.prototype.forEach.call(document.querySelectorAll(".heart-btn"), function (b) {
+      b.setAttribute("aria-pressed", isLikedSong(b.dataset.artist, b.dataset.title) ? "true" : "false");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".pcrow"), function (r) {
+      r.classList.toggle("liked", isLikedSong(r.dataset.artist, r.dataset.title));
+    });
+  }
+  function render() {
+    heal();
+    syncHearts();
+    storeRows.innerHTML = "";
+    storeEmpty.style.display = store.length ? "none" : "";
+    store.slice().sort(function (a, b) { return b.likedAt - a.likedAt; }).forEach(function (r) {
+      var d = document.createElement("div");
+      d.className = "srow" + (r.touched ? " flash" : "");
+      r.touched = false;
+      var nm = document.createElement("span"); nm.className = "nm";
+      nm.innerHTML = "<b></b> <span></span>";
+      nm.querySelector("b").textContent = r.title;
+      nm.querySelector("span").textContent = "— " + r.artist;
+      var idc = document.createElement("span");
+      idc.className = "chip " + (r.artistId != null ? "idc" : "unlinked");
+      idc.textContent = r.artistId != null ? "id " + r.artistId : "name-only";
+      var tm = document.createElement("span"); tm.className = "tm"; tm.textContent = "t+" + r.likedAt;
+      d.appendChild(nm); d.appendChild(idc); d.appendChild(tm);
+      storeRows.appendChild(d);
+    });
+    var ids = [];
+    store.forEach(function (r) { if (r.artistId != null && ids.indexOf(r.artistId) < 0) ids.push(r.artistId); });
+    var nameOnly = store.filter(function (r) { return r.artistId == null; }).length;
+    storeStats.innerHTML = store.length + " song" + (store.length === 1 ? "" : "s")
+      + " · " + ids.length + " artist" + (ids.length === 1 ? "" : "s")
+      + "<br>For You projection: <span class=\"ids\">[" + ids.join(", ") + "]</span>"
+      + (nameOnly ? ' · <span class="warn">' + nameOnly + " name-only</span>" : "");
+    likedCount.textContent = store.length
+      ? store.length + " song" + (store.length === 1 ? "" : "s") + " · newest first"
+      : "No songs yet";
+    ["tabbar1-cnt", "tabbar2-cnt"].forEach(function (id) {
+      var c = document.getElementById(id);
+      if (c) { c.hidden = store.length === 0; c.textContent = String(store.length); }
+    });
+    renderLiked();
+  }
+
+  /* ---------- variants ---------- */
+  var VARIANTS = ["v-stacked", "v-replace", "v-detail", "v-swipe"];
+  var NOTES = {
+    "v-stacked": "A · Stacked — the heart joins the trailing column above the info-circle. Both affordances live; the tall row absorbs two 44pt targets.",
+    "v-replace": "B · Replace — the heart takes the trailing slot. Cleanest and most immediate; “tap for more” now rides on the row tap alone.",
+    "v-detail":  "C · Detail-only — rows keep today's chrome exactly. Like from the detail card; liked rows show a small filled heart by the title.",
+    "v-swipe":   "D · Swipe — swipe a row left to reveal Like. Chrome untouched, gesture invisible until discovered; liked rows show the small filled heart."
+  };
+  var seg = document.getElementById("variantSeg");
+  var note = document.getElementById("variantNote");
+  function setVariant(v) {
+    VARIANTS.forEach(function (x) { document.body.classList.remove(x); });
+    document.body.classList.add(v);
+    Array.prototype.forEach.call(seg.querySelectorAll("button"), function (b) {
+      b.classList.toggle("on", b.dataset.v === v);
+    });
+    note.textContent = NOTES[v];
+  }
+  seg.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (b) setVariant(b.dataset.v);
+  });
+  document.addEventListener("keydown", function (e) {
+    var cur = VARIANTS.findIndex(function (v) { return document.body.classList.contains(v); });
+    if (e.key === "ArrowRight") setVariant(VARIANTS[(cur + 1) % VARIANTS.length]);
+    if (e.key === "ArrowLeft") setVariant(VARIANTS[(cur + VARIANTS.length - 1) % VARIANTS.length]);
+    if (e.key === "r") reset();
+    if (e.key === "Escape") ["pdSheet", "pdSheet2"].forEach(closeSheet);
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", reset);
+  function reset() {
+    store = []; seq = 0; logLines = []; logEl.innerHTML = "";
+    logEv("ev-un", "— store reset —");
+    render();
+  }
+
+  setVariant("v-replace"); /* VERDICT: B */
+  logEv("ev-like", "— study v2 loaded · song likes · try “Call Your Name” on both its plays —");
+  render();
+})();
+</script>
+
+</html>
