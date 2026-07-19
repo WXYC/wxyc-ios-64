@@ -394,6 +394,48 @@ struct ConcertTests {
         ])
     }
 
+    @Test("Drops malformed similar_artists elements instead of failing the whole page decode")
+    func dropsMalformedSimilarArtistElements() throws {
+        // One well-formed neighbor plus a missing-weight object and a wrong-typed
+        // weight. Per the same one-bad-row-can't-break-the-page discipline as the
+        // URL fields, the bad elements are dropped and the good one survives —
+        // rather than throwing and blanking the entire GET /concerts page.
+        let json = """
+        {
+            "id": 96,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Stereolab",
+            "similar_artists": [
+                { "artist_id": 41, "weight": 0.92 },
+                { "artist_id": 77 },
+                { "artist_id": 88, "weight": "high" }
+            ],
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.similarArtists == [SimilarArtist(artistId: 41, weight: 0.92)])
+    }
+
+    @Test("A similar_artists array whose elements are all malformed decodes to an empty array")
+    func allMalformedSimilarArtistsDecodesToEmpty() throws {
+        // The field is present (so not nil) but nothing in it is usable → []. The
+        // For You engine treats [] and nil identically, so this is a safe degrade.
+        let json = """
+        {
+            "id": 97,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Stereolab",
+            "similar_artists": [ { "artist_id": 77 } ],
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.similarArtists == [])
+    }
+
     // MARK: - ctaURL / headlineName (intrinsic data selection)
 
     @Test("ctaURL prefers the venue event page over the ticket link")
