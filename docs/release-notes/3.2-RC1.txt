@@ -1,0 +1,47 @@
+WXYC iOS — Release Notes
+Version 3.2 (RC 1)
+Range: v3.1 (2026-01-23 App Store submission) → v3.2-RC1 (2026-07-19)
+
+Distilled from the 418 commits since 3.1, filtered to what a listener actually experiences. Internal refactors, CI, tests, and reverted/debug-gated work (WXYC Recommends, HLS time-shift) are excluded.
+
+
+========================================================================
+APP STORE VERSION (scannable)
+========================================================================
+
+What's new in 3.2
+
+On Tour — A whole new tab for discovering upcoming Triangle-area concerts by the artists WXYC actually plays. Browse a poster-first list, filter by date, venue, and genre, and open a rich detail view with a venue map and ticket link. A "For You" shelf highlights shows matched to the station's rotation, and a Box Office ticket appears in the playlist when an artist you're hearing has a show coming up.
+
+Liked Songs — Tap the heart on any track to save it. Your new Liked tab keeps everything you've hearted, right on your device.
+
+Rock-solid streaming — A major overhaul of the audio engine means far fewer dropouts: the stream now automatically reconnects when it stalls, recovers from silent buffering, and handles switching between headphones, CarPlay, and Bluetooth more gracefully.
+
+Plus a redesigned tab bar tinted to your theme, a smooth crossfade between light and dark mode, reliable album artwork in the app and widgets, and dozens of stability fixes.
+
+
+========================================================================
+FULLER BREAKDOWN (for internal notes / TestFlight)
+========================================================================
+
+NEW
+- On Tour tab — concerts by WXYC-played artists in the Triangle; poster-first list, date/venue/genre filters with applied pills, concert detail with parallax poster + zoom transition + venue map, "For You" recommendation shelf, and the Box Office ticket CTA on playlist/now-playing surfaces.
+- Liked Songs — heart any playcut; on-device Liked tab.
+- Station tab + Request Line — anonymous request submission; adaptive on-air banner.
+- On-air banner — current DJ (or Auto DJ) pinned above the playlist; opens DJ controls on tap.
+- Siri "Play WXYC" — iOS 26/27 audio intent so voice actually starts the stream.
+- Standard tab bar replacing the paged root layout, tinted with the theme accent.
+- Clock in playlist rows showing each track's play time.
+
+IMPROVED
+- Streaming reliability: auto-reconnect on stall/drop, startup watchdog for silent buffering, reconnect held across app background/foreground and session re-activation, retry instead of giving up after backoff, and better audio-route-change handling.
+- Widgets: album art loads reliably (shared artwork cache with the app), Smart Stack/Spotlight relevance hints, play-button fix.
+- Theming: light/dark crossfade, configurable LCD segment brightness, theme-picker keyboard shortcuts.
+- Playlist artwork loads on launch without needing to scroll.
+
+FIXED
+- On-air banner no longer falsely shows "AUTO DJ" while a human DJ is live.
+- Party horn no longer silenced when the ringer is off.
+- Visualizer no longer freezes/dies after pause-resume or a second play session.
+- Anonymous device-session sign-in reliability (keychain sync).
+- CarPlay observation/artwork leaks; numerous playback and caching stability fixes.
