@@ -47,3 +47,33 @@ public struct OnTourFilterApplied {
 public struct OnTourFilteredToZero {
     public init() {}
 }
+
+// MARK: - For You shelf (#493)
+
+/// Event fired once per launch, the first time the For You recommendation shelf
+/// renders with at least one card. `lovedCount` / `similarCount` are the tier
+/// sizes at that first render — volume without identity, per the On Tour privacy
+/// invariant. Never carries a concert or artist id: which artists the listener
+/// likes stays on the device.
+@AnalyticsEvent
+public struct ForYouShelfImpression {
+    public let lovedCount: Int
+    public let similarCount: Int
+
+    public init(lovedCount: Int, similarCount: Int) {
+        self.lovedCount = lovedCount
+        self.similarCount = similarCount
+    }
+}
+
+/// Event fired when a For You card is tapped through to the concert detail.
+/// `tier` is "loved" or "similar" — the recommendation kind only, never the
+/// concert or the liked artist that surfaced it.
+@AnalyticsEvent
+public struct ForYouCardTapped {
+    public let tier: String
+
+    public init(tier: String) {
+        self.tier = tier
+    }
+}

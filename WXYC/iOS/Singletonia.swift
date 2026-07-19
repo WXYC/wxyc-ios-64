@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import AppServices
 import Artwork
 import Caching
@@ -45,6 +46,12 @@ final class Singletonia {
     let likedSongsStore = LikedSongsStore(
         storage: AppSupportFileStorage(filename: "liked-songs.json")
     )
+
+    /// Feature-flag source for the On Tour For You shelf's similar-tier noise cap
+    /// (#493), read through the `FeatureFlagProvider` protocol so the shelf never
+    /// links PostHog directly and can be exercised with a mock. PostHog-backed in
+    /// production; the shelf falls back to a local default when it is offline.
+    let featureFlagProvider: any FeatureFlagProvider = PostHogFeatureFlagProvider.shared
 
     let themeConfiguration = ThemeConfiguration()
     let themePickerState = ThemePickerState()

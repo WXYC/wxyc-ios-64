@@ -14,12 +14,14 @@
 
 import Analytics
 import Concerts
+import LikedSongs
 import MusicShareKit
 import SwiftUI
 import Wallpaper
 
 /// The root view of the On Tour tab.
 struct OnTourTabView: View {
+    @Environment(Singletonia.self) private var appState
     @State private var model: OnTourModel
     @State private var isFilterSheetPresented = false
     @State private var selectedConcert: Concert?
@@ -28,6 +30,12 @@ struct OnTourTabView: View {
     /// Latches the once-per-launch "tab viewed" event and the initial load so a
     /// tab switch-away-and-back doesn't re-fire analytics or re-fetch.
     @State private var hasAppeared = false
+    /// Latches the once-per-launch For You shelf impression, so scrolling the rail
+    /// off and back or switching tabs doesn't re-fire it.
+    @State private var hasRecordedForYouImpression = false
+
+    /// PostHog key for the similar-tier noise cap; local default 3 when absent.
+    private static let similarCapFlagKey = "on_tour_for_you_similar_cap"
 
     /// Creates the tab. The default model talks to the live `GET /concerts`
     /// endpoint with the anonymous-session token; previews and tests inject a
@@ -161,16 +169,74 @@ struct OnTourTabView: View {
     }
 
     private func concertList(_ concerts: [Concert]) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 10) {
-                ForEach(concerts) { concert in
-                    ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }
+        // Recommendations are derived from the same filtered window the list
+        // shows, so an active facet narrows the shelf too (the locked prototype
+        // assumption). Empty when there are no likes or nothing intersects.
+        let recommendations = recommendations(for: concerts)
+        return ScrollView {
+            VStack(spacing: 12) {
+                if !recommendations.isEmpty {
+                    // Pinned above the date list, bleeding edge-to-edge (the rail
+                    // owns its own horizontal insets), and it deliberately
+                    // duplicates shows that also appear below.
+                    ForYouShelfView(recommendations: recommendations, onSelect: selectForYou)
+                        .onAppear { recordForYouImpression(recommendations) }
                 }
+                LazyVStack(spacing: 10) {
+                    ForEach(concerts) { concert in
+                        ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }
+                    }
+                }
+                .padding(.horizontal, 16)
             }
-            .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
         .refreshable { await model.load() }
+    }
+
+    // MARK: - For You shelf
+
+    /// The listener's id-bearing liked artists, projected from the likes store.
+    /// The store is newest-first, so the engine's first-id-wins de-duplication
+    /// keeps the most recently-liked display name for a repeated artist id.
+    private var likedArtists: [LikedArtist] {
+        appState.likedSongsStore.songs.compactMap { song in
+            song.artistId.map { LikedArtist(id: $0, name: song.artistName) }
+        }
+    }
+
+    /// Builds the For You shelf over `concerts`, reading the remotely-tunable
+    /// similar-tier cap through the feature-flag provider (local default 3).
+    private func recommendations(for concerts: [Concert]) -> [ForYouRecommendation] {
+        let liked = likedArtists
+        guard !liked.isEmpty else { return [] }
+        let cap = appState.featureFlagProvider.integerValue(forKey: Self.similarCapFlagKey, default: 3)
+        return ForYouShelf.recommendations(concerts: concerts, likedArtists: liked, similarCap: cap)
+    }
+
+    private func selectForYou(_ recommendation: ForYouRecommendation) {
+        StructuredPostHogAnalytics.shared.capture(
+            ForYouCardTapped(tier: Self.tierName(recommendation.tier))
+        )
+        selectedConcert = recommendation.concert
+    }
+
+    /// Records the shelf impression once per launch, carrying the tier counts at
+    /// first render — counts only, never which artists surfaced the cards.
+    private func recordForYouImpression(_ recommendations: [ForYouRecommendation]) {
+        guard !hasRecordedForYouImpression, !recommendations.isEmpty else { return }
+        hasRecordedForYouImpression = true
+        let lovedCount = recommendations.filter { $0.tier == .loved }.count
+        StructuredPostHogAnalytics.shared.capture(
+            ForYouShelfImpression(lovedCount: lovedCount, similarCount: recommendations.count - lovedCount)
+        )
+    }
+
+    private static func tierName(_ tier: ForYouRecommendation.Tier) -> String {
+        switch tier {
+        case .loved: "loved"
+        case .similar: "similar"
+        }
     }
 
     private var filteredToZeroState: some View {
@@ -254,6 +320,7 @@ private struct PreviewConcertsFetcher: ConcertsFetching {
         .ignoresSafeArea()
         OnTourTabView(model: OnTourModel(fetcher: PreviewConcertsFetcher()))
     }
+    .environment(Singletonia.shared)
 }
 
 private extension Concert {
