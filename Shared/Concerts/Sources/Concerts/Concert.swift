@@ -210,6 +210,19 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// discipline as ``genres``).
     public let similarArtists: [SimilarArtist]?
 
+    /// All-time WXYC flowsheet play count of the resolved (in-library) headliner,
+    /// from the semantic-index graph, or `nil` when the headliner is unresolved or
+    /// has no play count. **Identical for every listener** — the public
+    /// station-affinity signal behind the On Tour For You shelf's cold-start tier,
+    /// which surfaces heavily-played artists even for a listener with no likes. It
+    /// is not personalized and carries no listener data, so intersecting it changes
+    /// nothing about the privacy invariant. Unlike ``SimilarArtist/weight`` (a
+    /// per-list normalized score) this is a genuine global scalar, so it ranks
+    /// validly across concerts. A forward-compatible optional: it decodes to `nil`
+    /// when the backend omits the field, so this client can ship ahead of backend
+    /// emission (same discipline as ``genres`` / ``similarArtists``).
+    public let stationPlays: Int?
+
     public init(
         id: Int,
         venue: Venue,
@@ -228,7 +241,8 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         ageRestriction: String? = nil,
         status: ShowStatus,
         genres: [String]? = nil,
-        similarArtists: [SimilarArtist]? = nil
+        similarArtists: [SimilarArtist]? = nil,
+        stationPlays: Int? = nil
     ) {
         self.id = id
         self.venue = venue
@@ -248,6 +262,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.status = status
         self.genres = genres
         self.similarArtists = similarArtists
+        self.stationPlays = stationPlays
     }
 
     // MARK: - Intrinsic accessors
@@ -292,6 +307,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case status
         case genres
         case similarArtists = "similar_artists"
+        case stationPlays = "station_plays"
     }
 
     /// Date-only parser pinned to the station zone and a fixed POSIX locale, so a
@@ -396,6 +412,10 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         similarArtists = try container
             .decodeIfPresent([LossySimilarArtist].self, forKey: .similarArtists)?
             .compactMap(\.similarArtist)
+        // Forward-compatible optional: absent or explicit-null `station_plays` →
+        // nil (unresolved headliner or pre-enrichment), so this decode is stable
+        // whether or not the backend has shipped the field.
+        stationPlays = try container.decodeIfPresent(Int.self, forKey: .stationPlays)
     }
 
     /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
@@ -422,5 +442,6 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encode(status, forKey: .status)
         try container.encodeIfPresent(genres, forKey: .genres)
         try container.encodeIfPresent(similarArtists, forKey: .similarArtists)
+        try container.encodeIfPresent(stationPlays, forKey: .stationPlays)
     }
 }

@@ -80,7 +80,8 @@ extension Concert {
         ageRestriction: String? = "All Ages",
         status: ShowStatus = .onSale,
         genres: [String]? = nil,
-        similarArtists: [SimilarArtist]? = nil
+        similarArtists: [SimilarArtist]? = nil,
+        stationPlays: Int? = nil
     ) -> Concert {
         Concert(
             id: id,
@@ -100,7 +101,8 @@ extension Concert {
             ageRestriction: ageRestriction,
             status: status,
             genres: genres,
-            similarArtists: similarArtists
+            similarArtists: similarArtists,
+            stationPlays: stationPlays
         )
     }
 }
