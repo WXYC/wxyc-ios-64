@@ -45,22 +45,30 @@ struct ConcertDetailView: View {
     private let ticketTuck: CGFloat = 28
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                posterHero
-                VStack(spacing: 20) {
-                    BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors)
-                    whereSection
+        // The back button is a sibling of the scrolling poster, not an overlay on
+        // it: the poster bleeds under the status bar via `.ignoresSafeArea`, but the
+        // button must sit *below* the notch/Dynamic Island. Because the `ZStack`
+        // keeps its safe area, the button anchors to the real top inset on every
+        // device rather than to a hardcoded offset from the physical screen edge.
+        ZStack(alignment: .topLeading) {
+            ScrollView {
+                VStack(spacing: 0) {
+                    posterHero
+                    VStack(spacing: 20) {
+                        BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors)
+                        whereSection
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, -ticketTuck)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, -ticketTuck)
-                .padding(.bottom, 40)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .background(Self.backdrop.ignoresSafeArea())
+            .ignoresSafeArea(.container, edges: .top)
+
+            backButton
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(Self.backdrop.ignoresSafeArea())
-        .ignoresSafeArea(.container, edges: .top)
-        .overlay(alignment: .topLeading) { backButton }
     }
 
     // MARK: - Poster hero
@@ -215,7 +223,7 @@ struct ConcertDetailView: View {
         }
         .buttonStyle(.plain)
         .padding(.leading, 14)
-        .padding(.top, 54)
+        .padding(.top, 8)
         .accessibilityLabel("Back")
     }
 
