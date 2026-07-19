@@ -105,6 +105,48 @@ public struct ForYouRecommendation: Sendable, Equatable, Identifiable {
     }
 }
 
+/// The number of For You cards in each tier of a built shelf. Feeds the
+/// shelf-impression analytics — volume without identity, per the On Tour privacy
+/// invariant. Every card falls in exactly one bucket, so the three counts sum to
+/// the shelf's card count.
+public struct ForYouTierCounts: Sendable, Equatable {
+
+    /// Cards whose headliner is itself a liked artist.
+    public let loved: Int
+
+    /// Cards surfaced by a liked affinity-neighbor of the headliner.
+    public let similar: Int
+
+    /// Cards surfaced by the station-wide play-affinity signal, with no personal
+    /// tie — the cold-start tier. Kept a separate bucket so it is never folded
+    /// into ``similar`` (WXYC/wxyc-ios-64#551).
+    public let stationAffinity: Int
+
+    public init(loved: Int, similar: Int, stationAffinity: Int) {
+        self.loved = loved
+        self.similar = similar
+        self.stationAffinity = stationAffinity
+    }
+}
+
+public extension Sequence where Element == ForYouRecommendation {
+
+    /// The per-tier card counts of this shelf, for the shelf-impression analytics.
+    /// Buckets each card by its own ``ForYouRecommendation/Tier`` — a station card
+    /// counts as station, never as similar.
+    var tierCounts: ForYouTierCounts {
+        var loved = 0, similar = 0, station = 0
+        for recommendation in self {
+            switch recommendation.tier {
+            case .loved: loved += 1
+            case .similar: similar += 1
+            case .stationAffinity: station += 1
+            }
+        }
+        return ForYouTierCounts(loved: loved, similar: similar, stationAffinity: station)
+    }
+}
+
 /// The pure For You recommendation engine.
 public enum ForYouShelf {
 

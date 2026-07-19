@@ -395,4 +395,32 @@ struct ForYouShelfTests {
         #expect(shelf.count == 1)
         #expect(shelf[0].reasonArtistName == "Protomartyr")
     }
+
+    // MARK: - Tier counts (#551, shelf-impression analytics)
+
+    @Test("Tier counts bucket every card by its own tier")
+    func tierCountsBucketByTier() {
+        let recommendations = [
+            ForYouRecommendation(concert: .stub(id: 1), tier: .loved, reasonArtistName: "Stereolab"),
+            ForYouRecommendation(concert: .stub(id: 2), tier: .similar(weight: 0.8), reasonArtistName: "Stereolab"),
+            ForYouRecommendation(concert: .stub(id: 3), tier: .similar(weight: 0.6), reasonArtistName: "Cat Power"),
+            ForYouRecommendation(concert: .stub(id: 4), tier: .stationAffinity(plays: 200), reasonArtistName: "Deerhoof"),
+        ]
+        #expect(recommendations.tierCounts == ForYouTierCounts(loved: 1, similar: 2, stationAffinity: 1))
+    }
+
+    @Test("Station cards are their own bucket, never folded into similar")
+    func stationCardsNotCountedAsSimilar() {
+        // The regression #551 guards: a station card must not inflate `similar`.
+        let counts = [
+            ForYouRecommendation(concert: .stub(id: 1), tier: .stationAffinity(plays: 300), reasonArtistName: "R.E.M."),
+        ].tierCounts
+        #expect(counts.similar == 0)
+        #expect(counts.stationAffinity == 1)
+    }
+
+    @Test("An empty shelf has zero cards in every tier")
+    func tierCountsEmpty() {
+        #expect([ForYouRecommendation]().tierCounts == ForYouTierCounts(loved: 0, similar: 0, stationAffinity: 0))
+    }
 }
