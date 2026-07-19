@@ -141,11 +141,11 @@ if (( FORCE_FULL == 1 )); then
     # Match affected-tests.sh's run_all_and_exit: swift-test all SPM-runnable
     # packages on host, xcodebuild runs the rest (skip spm-covered targets to
     # avoid double coverage).
-    SPM_AFFECTED="AnalyticsMacros Core Caching Analytics ColorPalette Playlist"
+    SPM_AFFECTED="AnalyticsMacros Core Caching Analytics ColorPalette Playlist LikedSongs"
     SKIP_FLAGS="-skip-testing:WXYCUITests \
 -skip-testing:AnalyticsMacrosTests \
 -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests \
--skip-testing:ColorPaletteTests -skip-testing:PlaylistTests"
+-skip-testing:ColorPaletteTests -skip-testing:PlaylistTests -skip-testing:LikedSongsTests"
 fi
 
 if (( FORCE_FULL == 0 )); then

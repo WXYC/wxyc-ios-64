@@ -684,6 +684,7 @@
 				CONCERTS0PKGREF00000001 /* XCLocalSwiftPackageReference "Shared/Concerts" */,
 				FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */,
 				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
+				LIKEDSONGSPKGREF0000001 /* XCLocalSwiftPackageReference "Shared/LikedSongs" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
 				9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */,
@@ -2427,6 +2428,10 @@
 		D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Playlist;
+		};
+		LIKEDSONGSPKGREF0000001 /* XCLocalSwiftPackageReference "Shared/LikedSongs" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/LikedSongs;
 		};
 		D69C03CC025D00453589D28C /* XCLocalSwiftPackageReference "Shared/Caching" */ = {
 			isa = XCLocalSwiftPackageReference;
