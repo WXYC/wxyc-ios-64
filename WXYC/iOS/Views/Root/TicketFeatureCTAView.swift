@@ -107,10 +107,6 @@ struct TicketFeatureCTAView: View {
     private var ticketBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Text(copy.headline)
-                .font(.system(size: 25, weight: .heavy))
-                .foregroundStyle(.white)
-                .padding(.top, 14)
             Text(copy.subtitle)
                 .font(.footnote)
                 .foregroundStyle(.white.opacity(0.72))
@@ -123,18 +119,13 @@ struct TicketFeatureCTAView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// The headline sits where a "NEW" badge used to — it *is* the card's flag now,
+    /// with the dismiss button pinned to the top-right corner.
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            HStack(spacing: 7) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(colors.accentInkColor)
-                Text("NEW")
-                    .font(.system(.caption2, design: .monospaced))
-                    .fontWeight(.bold)
-                    .kerning(1.6)
-                    .foregroundStyle(colors.accentInkColor)
-            }
+        HStack(alignment: .top) {
+            Text(copy.headline)
+                .font(.system(size: 25, weight: .heavy))
+                .foregroundStyle(.white)
             Spacer(minLength: 8)
             dismissButton
         }
@@ -202,7 +193,7 @@ struct TicketFeatureCTAView: View {
     /// real ticket prints the show's date. Inked in the contrast-floored `stubInk`
     /// so it reads on the keepsake stub over any wallpaper.
     private var newStamp: some View {
-        VStack(spacing: 3) {
+        VStack {
             Text("NEW")
                 .font(.system(size: 19, weight: .heavy))
                 .kerning(1)
