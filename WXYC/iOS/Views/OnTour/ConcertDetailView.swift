@@ -44,6 +44,16 @@ struct ConcertDetailView: View {
     private let posterHeight: CGFloat = 420
     private let ticketTuck: CGFloat = 28
 
+    // Parallax. The artwork is laid out `parallaxDepth` taller on *both* edges and
+    // vertically centered, so at rest it shows the same crop the fixed-height hero
+    // did while hiding `parallaxDepth` of slack above and below. On scroll-up it
+    // slides down — up to that slack — at a fraction (`parallaxRate`) of the
+    // scroll, so the poster sinks behind the rising content without ever bleeding
+    // into the side gutters. On pull-down the whole hero scales up from its bottom
+    // edge to fill the overscroll gap, a stretchy zoom.
+    private let parallaxDepth: CGFloat = 60
+    private let parallaxRate: CGFloat = 0.35
+
     var body: some View {
         // The back button is a sibling of the scrolling poster, not an overlay on
         // it: the poster bleeds under the status bar via `.ignoresSafeArea`, but the
@@ -74,8 +84,23 @@ struct ConcertDetailView: View {
     // MARK: - Poster hero
 
     private var posterHero: some View {
-        ZStack(alignment: .bottomLeading) {
+        // Locals so the `@Sendable` visual-effect closures capture plain values
+        // rather than `self`.
+        let posterHeight = posterHeight
+        let depth = parallaxDepth
+        let rate = parallaxRate
+        return ZStack(alignment: .bottomLeading) {
             posterArt
+                .frame(height: posterHeight + depth * 2)
+                .frame(maxWidth: .infinity)
+                .visualEffect { content, proxy in
+                    // Centered at rest (offset `depth`); on scroll-up slide down by
+                    // up to `depth` more so the art lags the rising content. Clamped
+                    // so the art's top edge never lifts into the frame.
+                    let minY = proxy.frame(in: .scrollView).minY
+                    let slide = min(-min(minY, 0) * rate, depth)
+                    return content.offset(y: depth + slide)
+                }
             posterInitial
             Self.heroScrim
             heroContent
@@ -83,6 +108,13 @@ struct ConcertDetailView: View {
         .frame(height: posterHeight)
         .frame(maxWidth: .infinity)
         .clipped()
+        .visualEffect { content, proxy in
+            // Pull-down only (minY > 0): grow from the bottom edge to fill the gap
+            // the overscroll opens above the poster, pinning the top to the screen.
+            let minY = proxy.frame(in: .scrollView).minY
+            let scale = minY > 0 ? (posterHeight + minY) / posterHeight : 1
+            return content.scaleEffect(scale, anchor: .bottom)
+        }
     }
 
     /// Real artwork when the concert carries an `image_url`; otherwise the
