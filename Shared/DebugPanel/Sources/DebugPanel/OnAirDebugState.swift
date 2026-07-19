@@ -28,6 +28,42 @@ public final class OnAirDebugState {
         }
     }
 
+    /// The DJ handle shown when ``forceOnAir`` is on — editable so the adaptive
+    /// width-condensing can be tried against handles of any length.
+    public var forcedDJName: String {
+        didSet {
+            UserDefaults.standard.set(forcedDJName, forKey: "OnAirDebug.forcedDJName")
+        }
+    }
+
+    // MARK: - Adaptive handle width
+
+    /// Whether the DJ handle condenses its width axis to fit one line beside the
+    /// say-hi chip (on) or renders at the fixed ``handleWidth`` (off).
+    public var adaptiveWidth: Bool {
+        didSet {
+            UserDefaults.standard.set(adaptiveWidth, forKey: "OnAirDebug.adaptiveWidth")
+        }
+    }
+
+    /// The narrowest `wdth` axis the adaptive fit will use before the handle
+    /// wraps, `30...150`.
+    public var handleWidthFloor: Double {
+        didSet {
+            UserDefaults.standard.set(handleWidthFloor, forKey: "OnAirDebug.handleWidthFloor")
+        }
+    }
+
+    // MARK: - Say Hi chip
+
+    /// Opacity of the say-hi chip's green glass tint, `0...1` — the capsule
+    /// background transparency. The chip's text and icon stay opaque.
+    public var sayHiTintOpacity: Double {
+        didSet {
+            UserDefaults.standard.set(sayHiTintOpacity, forKey: "OnAirDebug.sayHiTintOpacity")
+        }
+    }
+
     // MARK: - "ON AIR" indicator theme
 
     /// Hue of the "ON AIR" indicator, `0...1`. Combined with ``indicatorSaturation`` and
@@ -88,6 +124,10 @@ public final class OnAirDebugState {
     private init() {
         let defaults = UserDefaults.standard
         self.forceOnAir = defaults.bool(forKey: "OnAirDebug.forceOnAir")
+        self.forcedDJName = defaults.string(forKey: "OnAirDebug.forcedDJName") ?? "DJ HOUNDSTOOTH"
+        self.adaptiveWidth = defaults.object(forKey: "OnAirDebug.adaptiveWidth") as? Bool ?? true
+        self.handleWidthFloor = defaults.object(forKey: "OnAirDebug.handleWidthFloor") as? Double ?? 50
+        self.sayHiTintOpacity = defaults.object(forKey: "OnAirDebug.sayHiTintOpacity") as? Double ?? 0.75
         self.indicatorHue = defaults.object(forKey: "OnAirDebug.indicatorHue") as? Double ?? 0.33
         self.indicatorSaturation = defaults.object(forKey: "OnAirDebug.indicatorSaturation") as? Double ?? 1.0
         self.indicatorLightness = defaults.object(forKey: "OnAirDebug.indicatorLightness") as? Double ?? 0.5

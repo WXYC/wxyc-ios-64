@@ -3,10 +3,11 @@
 //  WXYC
 //
 //  UI smoke for the root tab bar (#489, #492): the root shows a standard tab
-//  bar instead of page dots, and each destination — including the Liked tab —
-//  is reachable by tap. Tabs are selected by accessibility identifier
-//  (`tab.nowPlaying` / `tab.liked` / `tab.info`) rather than element type,
-//  since the iOS 26 floating tab bar is not exposed as XCUIElement.tabBars.
+//  bar instead of page dots, and each destination — including the Liked tab and
+//  the Station page — is reachable by tap. Tabs are selected by accessibility
+//  identifier (`tab.nowPlaying` / `tab.liked` / `tab.station`) rather than
+//  element type, since the iOS 26 floating tab bar is not exposed as
+//  XCUIElement.tabBars.
 //
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -32,7 +33,7 @@ struct RootTabBarUITests {
 
     private var nowPlayingTab: XCUIElement { app.buttons["tab.nowPlaying"] }
     private var likedTab: XCUIElement { app.buttons["tab.liked"] }
-    private var infoTab: XCUIElement { app.buttons["tab.info"] }
+    private var stationTab: XCUIElement { app.buttons["tab.station"] }
 
     // The app renders a Metal wallpaper and mesh-gradient animations
     // continuously, so XCUITest is slow to reach quiescence after a cold
@@ -56,17 +57,19 @@ struct RootTabBarUITests {
         tab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
-    @Test("The root shows Now Playing, Liked, and Info tab items")
+    @Test("The root shows Now Playing, Liked, and Station tab items")
     func tabItemsExist() async throws {
         try await waitUntil(nowPlayingTab, is: .exists, timeout: launchTimeout)
         try await waitUntil(likedTab, is: .exists, timeout: launchTimeout)
-        try await waitUntil(infoTab, is: .exists, timeout: launchTimeout)
+        try await waitUntil(stationTab, is: .exists, timeout: launchTimeout)
     }
 
-    @Test("Tapping Info reaches the station page")
-    func infoTabReachable() async throws {
+    @Test("Tapping Station reaches the station page")
+    func stationTabReachable() async throws {
         try await waitForLaunch()
-        try await tapTab(infoTab)
+        try await tapTab(stationTab)
+        // On a cold launch the on-air state is unknown, so the "Talk to the
+        // booth" rows render ungated and the request row is present.
         try await waitUntil(app.buttons["Make a request"], is: .exists, timeout: contentTimeout)
     }
 

@@ -22,6 +22,8 @@ public struct OnAirBannerDebugView: View {
 
     @State private var indicatorExpanded = true
     @State private var handleExpanded = true
+    @State private var adaptiveExpanded = true
+    @State private var sayHiExpanded = true
     @State private var spacingExpanded = true
 
     public init() {}
@@ -31,8 +33,11 @@ public struct OnAirBannerDebugView: View {
             Form {
                 Section {
                     Toggle("Force Sample DJ", isOn: $state.forceOnAir)
+                    TextField("DJ handle", text: $state.forcedDJName)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 } footer: {
-                    Text("Substitutes a sample named DJ so the named-handle layout can be previewed when nobody is signed on (otherwise the banner reads \"Auto DJ\").")
+                    Text("Substitutes a sample named DJ so the named-handle layout can be previewed when nobody is signed on (otherwise the banner reads \"Auto DJ\"). Edit the handle to try the adaptive width fit against short and long names.")
                 }
 
                 DisclosureGroup("Indicator", isExpanded: $indicatorExpanded) {
@@ -56,6 +61,21 @@ public struct OnAirBannerDebugView: View {
                     labeledSlider(SFProFontAxis.width.displayName, value: $state.handleWidth, in: SFProFontAxis.width.range, format: "%.0f")
                     labeledSlider(SFProFontAxis.opticalSize.displayName, value: $state.handleOpticalSize, in: SFProFontAxis.opticalSize.range, format: "%.0f")
                     labeledSlider(SFProFontAxis.grade.displayName, value: $state.handleGrade, in: SFProFontAxis.grade.range, format: "%.0f")
+                }
+
+                DisclosureGroup("Adaptive Width", isExpanded: $adaptiveExpanded) {
+                    Toggle("Condense to fit", isOn: $state.adaptiveWidth)
+                    labeledSlider("Width Floor", value: $state.handleWidthFloor, in: SFProFontAxis.width.range, format: "%.0f")
+                    Text("When on, the handle narrows its width axis (down to the floor) so a long name stays on one line beside the say-hi chip, without shrinking the point size. \"Width\" above is the base (expanded) width used when the name already fits.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                DisclosureGroup("Say Hi Chip", isExpanded: $sayHiExpanded) {
+                    labeledSlider("Tint Opacity", value: $state.sayHiTintOpacity, in: 0...1)
+                    Text("Background transparency of the green \"SAY HI\" chip — 1 is solid, 0 is clear glass. The text and icon stay opaque.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 DisclosureGroup("Spacing", isExpanded: $spacingExpanded) {

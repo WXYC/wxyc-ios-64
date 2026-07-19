@@ -46,6 +46,41 @@ public struct BugReportSent {
     public init() {}
 }
 
+// MARK: - Request Line
+
+/// Event fired when the Request Line sheet is presented.
+///
+/// `source` is the entry point: `"banner"` (the on-air banner's say-hi chip)
+/// or `"station"` (the Station tab's booth rows).
+@AnalyticsEvent
+public struct RequestLineOpened {
+    public let source: String
+
+    public init(source: String) {
+        self.source = source
+    }
+}
+
+/// Event fired when a song request is sent from the Request Line.
+@AnalyticsEvent
+public struct RequestLineSongRequested {
+    public let source: String
+
+    public init(source: String) {
+        self.source = source
+    }
+}
+
+/// Event fired when the listener taps through to call the request line.
+@AnalyticsEvent
+public struct RequestLineCallPlaced {
+    public let source: String
+
+    public init(source: String) {
+        self.source = source
+    }
+}
+
 // MARK: - Playcut Detail
 
 /// Event fired when a playcut detail view is presented.
