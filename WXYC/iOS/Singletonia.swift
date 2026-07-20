@@ -113,7 +113,15 @@ final class Singletonia {
         // persisted on the simulator.
         if ProcessInfo.processInfo.arguments.contains("-uiTestResetForYou") {
             dismissedConcertsStore.resetState()
-            OnTourForYouSeedDebugState.shared.seedForcedForTesting = true
+            // Neutralize the two *persisted* debug knobs a prior manual session may
+            // have left on this simulator, so the forced loved seed is the shelf's
+            // ONLY source. A leaked `stationCapOverride` (or `seedLovedEnabled`)
+            // could otherwise compose a different shelf and let the dismiss test
+            // pass on a station card while the loved-seed path is silently dead.
+            let seedState = OnTourForYouSeedDebugState.shared
+            seedState.seedLovedEnabled = false
+            seedState.stationCapOverride = 0
+            seedState.seedForcedForTesting = true
         }
         #endif
     }

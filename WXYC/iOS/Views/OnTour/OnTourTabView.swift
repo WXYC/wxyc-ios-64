@@ -274,7 +274,7 @@ struct OnTourTabView: View {
         // of the PostHog flag; 0 (the default) defers to the flag.
         let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
         #if DEBUG
-        let stationCapOverride = OnTourForYouSeedDebugState.shared.stationCapOverride
+        let stationCapOverride = seedState.stationCapOverride
         let stationCap = stationCapOverride > 0 ? stationCapOverride : flagStationCap
         #else
         let stationCap = flagStationCap
