@@ -102,15 +102,6 @@ final class Singletonia {
         startSpotlightDonation()
         startPlaycutHistory()
         startLikedSongsHealing()
-
-        #if DEBUG
-        // UI-test isolation: `-uiTestResetForYou` clears the persisted dismissed-
-        // shows set at launch so the For You dismiss UI test starts from a clean
-        // shelf every run (the store file otherwise survives across sim launches).
-        if ProcessInfo.processInfo.arguments.contains("-uiTestResetForYou") {
-            dismissedConcertsStore.resetState()
-        }
-        #endif
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {

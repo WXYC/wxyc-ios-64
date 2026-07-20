@@ -116,15 +116,16 @@ private struct ForYouCard: View {
             .accessibilityAction(named: "Not interested", onDismiss)
             .accessibilityIdentifier("forYouCard.\(concert.id)")
 
-            overflowMenu.padding(6)
+            overflowMenu
         }
     }
 
     // MARK: Overflow menu
 
-    /// The top-trailing "•••" control. Its single action dismisses the card via
-    /// the tier-scoped "Not interested" line; kept visually consistent with the
-    /// tier badge (a 24pt glass circle).
+    /// The top-trailing "•••" control. The visible glass circle stays 24pt (visually
+    /// consistent with the tier badge), but its tap target is padded out to 44pt —
+    /// the app's interactive-target minimum (cf. `LikeHeartButton`) — so a near-miss
+    /// doesn't fall through to the full-card navigation button beneath it.
     private var overflowMenu: some View {
         Menu {
             Button("Not interested", systemImage: "hand.thumbsdown", role: .destructive, action: onDismiss)
@@ -136,6 +137,8 @@ private struct ForYouCard: View {
                 .background(Circle().fill(Color.black.opacity(0.4)))
                 .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 1))
                 .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                .padding(10)
+                .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("More options for \(concert.headlineName)")
