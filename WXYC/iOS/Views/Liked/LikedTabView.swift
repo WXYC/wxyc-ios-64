@@ -60,7 +60,9 @@ struct LikedTabView: View {
             Spacer()
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 16)
+        // Match the song cards' 12pt leading gutter so the title lines up with
+        // the card edges rather than sitting 4pt inboard of them.
+        .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 6)
     }

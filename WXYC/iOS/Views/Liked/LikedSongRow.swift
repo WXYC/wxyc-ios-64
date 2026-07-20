@@ -52,45 +52,30 @@ struct LikedSongRow: View {
         if case .loaded(let image) = artworkState { image } else { nil }
     }
 
-    /// Animated mesh gradient using the wallpaper-derived palette, matching the
-    /// flowsheet row's failed-artwork placeholder.
-    private var meshGradient: AnimatedMeshGradient {
-        AnimatedMeshGradient(colors: wallpaperPalette, timeOffset: stableTimeOffset)
-    }
-
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                // The same theme-aware material as the flowsheet and On Tour
-                // rows, so the three list surfaces match.
-                BackgroundLayer(cornerRadius: 12)
-
-                // The shared flowsheet row body — same artwork size, same text
-                // column — with the liked-relative date as this row's detail
-                // line and the unlike heart in the trailing slot.
-                SongRowContent(
-                    song: snapshot,
-                    artworkState: artworkState,
-                    meshGradient: meshGradient,
-                    proxy: proxy
-                ) {
-                    Text("Liked \(snapshot.likedAt, format: .relative(presentation: .named))")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
-                } trailing: {
-                    LikeHeartButton(isLiked: true, action: onUnlike)
-                        .padding(.trailing, 4)
-                }
-            }
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.12), lineWidth: 1))
-            .contentShape(.rect(cornerRadius: 12))
-            .onTapGesture {
-                onSelect(loadedArtwork)
+        // The shared card chrome (same theme-aware material as the flowsheet and
+        // On Tour rows, so the three list surfaces match); `stroked` keeps the
+        // Liked row's hairline border, which the flowsheet's plain row omits.
+        SongRowPanel(stroked: true, onTap: { onSelect(loadedArtwork) }) { proxy in
+            // The shared flowsheet row body — same artwork size, same text column
+            // — with the liked-relative date as this row's detail line and the
+            // unlike heart in the trailing slot. The mesh gradient is built lazily
+            // and only read by the failed-artwork placeholder.
+            SongRowContent(
+                song: snapshot,
+                artworkState: artworkState,
+                meshGradient: { AnimatedMeshGradient(colors: wallpaperPalette, timeOffset: stableTimeOffset) },
+                proxy: proxy
+            ) {
+                Text("Liked \(snapshot.likedAt, format: .relative(presentation: .named))")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+            } trailing: {
+                LikeHeartButton(isLiked: true, action: onUnlike)
+                    .padding(.trailing, 4)
             }
         }
-        .aspectRatio(2.5, contentMode: .fill)
-        .frame(maxWidth: .infinity)
         .onAppear {
             // Idempotent: coalesces with in-flight loads and short-circuits when
             // already loaded. The playlist's prune pass may evict a liked row's
