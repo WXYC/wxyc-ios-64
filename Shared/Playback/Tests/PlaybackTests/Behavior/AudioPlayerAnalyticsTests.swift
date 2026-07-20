@@ -291,7 +291,6 @@ struct AudioEnginePlayerAnalyticsTests {
         let mockAnalytics = MockStructuredAnalytics()
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: mockAnalytics)
-        player.volume = 0  // silence test output
 
         try player.play()
 
@@ -306,7 +305,6 @@ struct AudioEnginePlayerAnalyticsTests {
         let mockAnalytics = MockStructuredAnalytics()
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: mockAnalytics)
-        player.volume = 0  // silence test output
 
         try player.play()
         mockAnalytics.reset()
@@ -324,7 +322,6 @@ struct AudioEnginePlayerAnalyticsTests {
         let mockAnalytics = MockStructuredAnalytics()
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: mockAnalytics)
-        player.volume = 0  // silence test output
 
         try player.play()
         mockAnalytics.reset()
@@ -342,7 +339,6 @@ struct AudioEnginePlayerAnalyticsTests {
         let mockAnalytics = MockStructuredAnalytics()
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: mockAnalytics)
-        player.volume = 0  // silence test output
 
         try player.play()
         mockAnalytics.reset()
@@ -357,7 +353,6 @@ struct AudioEnginePlayerAnalyticsTests {
     func worksWithoutAnalytics() async throws {
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: nil)
-        player.volume = 0  // silence test output
 
         // Should not crash
         try player.play()
