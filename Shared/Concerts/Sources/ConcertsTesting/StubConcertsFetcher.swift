@@ -33,23 +33,38 @@ public final class StubConcertsFetcher: ConcertsFetching {
 
     private let pages: [ConcertsResponse]
     private let error: (any Error & Sendable)?
+    private let concertsByID: [Int: Concert]
     private let recorded = Mutex<[ConcertPageRequest]>([])
+    private let recordedIDs = Mutex<[Int]>([])
 
     /// Creates a fetcher that replays `pages` in order.
-    public init(pages: [ConcertsResponse]) {
+    ///
+    /// - Parameters:
+    ///   - pages: The list responses `fetchConcerts` replays, page N → `pages[N-1]`.
+    ///   - concertsByID: The concerts `fetchConcert(id:)` can answer, keyed by id.
+    ///     An id absent from this map is treated as a 404 (throws), which drives
+    ///     the resolution ladder's `.missed` rung.
+    public init(pages: [ConcertsResponse], concertsByID: [Int: Concert] = [:]) {
         self.pages = pages
         self.error = nil
+        self.concertsByID = concertsByID
     }
 
-    /// Creates a fetcher whose every call throws `error`.
+    /// Creates a fetcher whose every call — list *and* by-id — throws `error`.
     public init(error: any Error & Sendable) {
         self.pages = []
         self.error = error
+        self.concertsByID = [:]
     }
 
-    /// The requests received so far, in call order.
+    /// The list requests received so far, in call order.
     public var requests: [ConcertPageRequest] {
         recorded.withLock { $0 }
+    }
+
+    /// The concert ids passed to `fetchConcert(id:)` so far, in call order.
+    public var concertIDRequests: [Int] {
+        recordedIDs.withLock { $0 }
     }
 
     public func fetchConcerts(
@@ -73,5 +88,19 @@ public final class StubConcertsFetcher: ConcertsFetching {
             )
         }
         return pages[index]
+    }
+
+    public func fetchConcert(id: Int) async throws -> Concert {
+        recordedIDs.withLock { $0.append(id) }
+        if let error {
+            throw error
+        }
+        guard let concert = concertsByID[id] else {
+            // Mimic the endpoint's 404 for an unknown id, matching the concrete
+            // fetcher's `validateSuccessStatus()` failure so the ladder degrades
+            // to `.missed` the same way in tests as in production.
+            throw URLError(.badServerResponse)
+        }
+        return concert
     }
 }

@@ -118,6 +118,34 @@ public final class OnTourModel {
         }
     }
 
+    /// Resolves a shared deep link's concert id to a ``ConcertResolution``,
+    /// running the three-rung ladder (#537):
+    ///
+    /// 1. **window** — if the id is in the loaded window, return it for a
+    ///    zoom-from-row presentation. Loads the window first if it isn't loaded
+    ///    yet (a cold launch straight into a share link), so the common
+    ///    in-window case doesn't have to round-trip a by-id fetch.
+    /// 2. **byID** — otherwise fetch the single concert directly, covering shows
+    ///    beyond the loaded page range.
+    /// 3. **missed** — if the by-id fetch also fails (unknown id, or the endpoint
+    ///    isn't available), give up so the tab can show a "couldn't find that
+    ///    show" notice.
+    ///
+    /// - Parameter id: The concert id from `wxyc.org/shows/<id>` (or `wxyc://concert/<id>`).
+    /// - Returns: How the link resolved.
+    public func resolveConcert(id: Int) async -> ConcertResolution {
+        if phase != .loaded {
+            await load()
+        }
+        if let hit = allConcerts.first(where: { $0.id == id }) {
+            return .window(hit)
+        }
+        if let fetched = try? await fetcher.fetchConcert(id: id) {
+            return .byID(fetched)
+        }
+        return .missed
+    }
+
     /// Requests `curated` pages from `today` forward, appending until the server
     /// reports no more pages or the ``pageCap`` is reached.
     private func fetchAllPages() async throws -> [Concert] {
