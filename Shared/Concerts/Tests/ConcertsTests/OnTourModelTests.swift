@@ -82,6 +82,12 @@ private final class GatedConcertsFetcher: ConcertsFetching {
         }
         continuation?.resume()
     }
+
+    /// This double only exercises the single-flight `load()` path; single-concert
+    /// lookup is never called here, so it throws to satisfy the protocol.
+    func fetchConcert(id: Int) async throws -> Concert {
+        throw StubFetchError()
+    }
 }
 
 /// Builds a station-zone day (noon) so the injected `now` is deterministic.
@@ -286,5 +292,70 @@ struct OnTourModelTests {
         await model.load()
 
         #expect(model.availableGenres.isEmpty)
+    }
+
+    // MARK: - Deep-link resolution (#537)
+
+    @Test("resolveConcert finds an id already in the loaded window (.window)")
+    func resolvesInWindowConcert() async {
+        let concerts = [Concert.stub(id: 1), Concert.stub(id: 4821), Concert.stub(id: 2)]
+        let model = makeModel(StubConcertsFetcher(pages: [page(concerts, number: 1, hasMore: false)]))
+
+        // No explicit load(): resolveConcert drives the initial fetch itself.
+        let resolution = await model.resolveConcert(id: 4821)
+
+        #expect(resolution == .window(Concert.stub(id: 4821)))
+        #expect(resolution.concert?.id == 4821)
+    }
+
+    @Test("resolveConcert falls back to a by-id fetch when the id is outside the window (.byID)")
+    func resolvesByIDOutsideWindow() async {
+        let outOfWindow = Concert.stub(id: 9001)
+        let stub = StubConcertsFetcher(
+            pages: [page([Concert.stub(id: 1)], number: 1, hasMore: false)],
+            concertsByID: [9001: outOfWindow]
+        )
+        let model = makeModel(stub)
+
+        let resolution = await model.resolveConcert(id: 9001)
+
+        #expect(resolution == .byID(outOfWindow))
+        #expect(stub.concertIDRequests == [9001])
+    }
+
+    @Test("resolveConcert reports a miss when neither the window nor a by-id fetch has it (.missed)")
+    func missesWhenUnknown() async {
+        let stub = StubConcertsFetcher(
+            pages: [page([Concert.stub(id: 1)], number: 1, hasMore: false)]
+        )
+        let model = makeModel(stub)
+
+        let resolution = await model.resolveConcert(id: 404)
+
+        #expect(resolution == .missed)
+        #expect(resolution.concert == nil)
+        // It tried the by-id rung before giving up.
+        #expect(stub.concertIDRequests == [404])
+    }
+
+    @Test("resolveConcert reaches the by-id rung when the window is empty")
+    func resolvesByIDWhenWindowEmpty() async {
+        // An empty window (no upcoming curated shows) with the target only
+        // answerable by a single-id lookup mirrors a cold launch from a share
+        // link for a show that isn't in the loaded list.
+        let target = Concert.stub(id: 4821)
+        let stub = StubConcertsFetcher(pages: [], concertsByID: [4821: target])
+        let model = makeModel(stub)
+
+        let resolution = await model.resolveConcert(id: 4821)
+
+        #expect(resolution == .byID(target))
+    }
+
+    @Test("ConcertResolution exposes stable analytics labels")
+    func resolutionAnalyticsLabels() {
+        #expect(ConcertResolution.window(Concert.stub(id: 1)).analyticsLabel == "window")
+        #expect(ConcertResolution.byID(Concert.stub(id: 1)).analyticsLabel == "byID")
+        #expect(ConcertResolution.missed.analyticsLabel == "missed")
     }
 }
