@@ -446,4 +446,41 @@ struct BoxOfficeTicketPresenterTests {
         let presenter = BoxOfficeTicketPresenter(.stub(title: "An Evening With Jessica Pratt"))
         #expect(presenter.shareTitle == "An Evening With Jessica Pratt at Cat's Cradle")
     }
+
+    // MARK: - Passed show (#537)
+
+    /// A reference instant `dayOffset` days from the stub's default `starts_on`
+    /// (2026-08-01, station zone), optionally at a wall-clock `hour`. Used to place
+    /// "now" before, on, or after the show's day for the ``isPast`` boundary tests.
+    private func reference(dayOffset: Int, hour: Int = 12) -> Date {
+        let day = Calendar.wxycStation.date(byAdding: .day, value: dayOffset, to: Concert.defaultStartsOn) ?? Concert.defaultStartsOn
+        return Calendar.wxycStation.date(byAdding: .hour, value: hour, to: day) ?? day
+    }
+
+    @Test("A show whose day is before today is past")
+    func isPastForEarlierDay() {
+        // Show on 2026-08-01; "now" is the next day.
+        let presenter = BoxOfficeTicketPresenter(.stub())
+        #expect(presenter.isPast(asOf: reference(dayOffset: 1)))
+    }
+
+    @Test("A show happening today is not yet past, even late in the day")
+    func notPastOnShowDay() {
+        // The show is tonight — a shared link opened this afternoon must still
+        // present the live CTA, not the "this one's passed" keepsake.
+        let presenter = BoxOfficeTicketPresenter(.stub())
+        #expect(!presenter.isPast(asOf: reference(dayOffset: 0, hour: 23)))
+    }
+
+    @Test("A future show is not past")
+    func notPastForFutureDay() {
+        let presenter = BoxOfficeTicketPresenter(.stub())
+        #expect(!presenter.isPast(asOf: reference(dayOffset: -1)))
+    }
+
+    @Test("The passed-show keepsake note reads as a gentle 'you missed it'")
+    func passedShowNote() {
+        let presenter = BoxOfficeTicketPresenter(.stub())
+        #expect(presenter.passedShowNote == "This one's already happened.")
+    }
 }

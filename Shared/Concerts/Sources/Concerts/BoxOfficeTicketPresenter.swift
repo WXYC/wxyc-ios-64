@@ -174,6 +174,29 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         show.status == .cancelled
     }
 
+    /// Whether the show's day is already behind us as of `reference`, comparing
+    /// station-zone calendar days — a show happening *today* is not past (the
+    /// evening's CTA still stands), only one whose day has fully turned over.
+    ///
+    /// Only a deep link reaches a past show: the On Tour window is future-only, so
+    /// this drives the shared-link keepsake treatment (#537) rather than anything
+    /// in the normal browse flow.
+    ///
+    /// - Parameter reference: "Now" — the caller passes the current date; tests
+    ///   pass a fixed instant.
+    public func isPast(asOf reference: Date) -> Bool {
+        let showDay = Calendar.wxycStation.startOfDay(for: show.startsOn)
+        let today = Calendar.wxycStation.startOfDay(for: reference)
+        return showDay < today
+    }
+
+    /// The keepsake note shown in place of the CTA when a shared link opens a show
+    /// that has already happened — a gentle "you missed this one" rather than a
+    /// dead ticket button.
+    public var passedShowNote: String {
+        "This one's already happened."
+    }
+
     // MARK: - Poster detail
 
     /// The compact credit line printed over the poster hero: compact date and
