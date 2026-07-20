@@ -25,6 +25,11 @@ struct LikedTabView: View {
     /// `private`, so this tab presents from its own.
     @State private var selectedPlaycut: PlaycutSelection?
 
+    #if DEBUG
+    /// The like-effect tuning bench, opened by tapping the "Liked" header.
+    @State private var showEffectTuning = false
+    #endif
+
     var body: some View {
         content
             .accessibilityIdentifier("likedTabView")
@@ -36,6 +41,11 @@ struct LikedTabView: View {
                     PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
                 }
             }
+            #if DEBUG
+            .sheet(isPresented: $showEffectTuning) {
+                LikeEffectTuningView()
+            }
+            #endif
     }
 
     // MARK: - Header
@@ -50,6 +60,22 @@ struct LikedTabView: View {
     }
 
     private var header: some View {
+        #if DEBUG
+        // The title doubles as the entry point to the like-effect tuning bench.
+        // A plain-styled button keeps the heading's look while making it tappable
+        // without an `onTapGesture`.
+        Button {
+            showEffectTuning = true
+        } label: {
+            headerLabel
+        }
+        .buttonStyle(.plain)
+        #else
+        headerLabel
+        #endif
+    }
+
+    private var headerLabel: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Liked").font(.largeTitle).bold()
