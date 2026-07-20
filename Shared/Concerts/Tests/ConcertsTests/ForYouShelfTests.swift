@@ -423,4 +423,61 @@ struct ForYouShelfTests {
     func tierCountsEmpty() {
         #expect([ForYouRecommendation]().tierCounts == ForYouTierCounts(loved: 0, similar: 0, stationAffinity: 0))
     }
+
+    // MARK: - Dismissed concerts ("Not interested")
+
+    @Test("An empty dismissed set is behavior-neutral")
+    func emptyDismissedIsNeutral() {
+        // The default: passing no dismissed ids matches the pre-dismiss shelf.
+        let loved = Concert.stub(id: 1, headliningArtistId: 41, similarArtists: nil)
+        let baseline = ForYouShelf.recommendations(concerts: [loved], likedArtists: [stereolab], similarCap: 3)
+        let withEmpty = ForYouShelf.recommendations(
+            concerts: [loved], likedArtists: [stereolab], similarCap: 3, dismissedConcertIDs: [])
+        #expect(withEmpty.map(\.concert.id) == baseline.map(\.concert.id))
+    }
+
+    @Test("A dismissed loved concert is filtered out of the shelf")
+    func dismissedLovedFiltered() {
+        let loved = Concert.stub(id: 1, headliningArtistId: 41, similarArtists: nil)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [loved], likedArtists: [stereolab], similarCap: 3, dismissedConcertIDs: [1])
+        #expect(shelf.isEmpty)
+    }
+
+    @Test("A dismissed similar concert is filtered out of the shelf")
+    func dismissedSimilarFiltered() {
+        let similar = Concert.stub(id: 2, headliningArtistId: 512,
+                                   similarArtists: [SimilarArtist(artistId: 41, weight: 0.8)])
+        let shelf = ForYouShelf.recommendations(
+            concerts: [similar], likedArtists: [stereolab], similarCap: 3, dismissedConcertIDs: [2])
+        #expect(shelf.isEmpty)
+    }
+
+    @Test("A dismissed station concert is filtered out of the shelf")
+    func dismissedStationFiltered() {
+        let station = Concert.stub(id: 3, headliningArtistId: 700, stationPlays: 500)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [station], likedArtists: [], similarCap: 3,
+            stationFloor: 50, stationCap: 5, dismissedConcertIDs: [3])
+        #expect(shelf.isEmpty)
+    }
+
+    @Test("Dismissing one concert leaves the others on the shelf")
+    func dismissedIsSurgical() {
+        // Two loved concerts; dismissing only the first keeps the second.
+        let a = Concert.stub(id: 60, startsOn: day(0), headliningArtistId: 41, similarArtists: nil)
+        let b = Concert.stub(id: 61, startsOn: day(1), headliningArtistId: 88, similarArtists: nil)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [a, b], likedArtists: [stereolab, catPower], similarCap: 3, dismissedConcertIDs: [60])
+        #expect(shelf.map(\.concert.id) == [61])
+        #expect(shelf[0].tier == .loved)
+    }
+
+    @Test("A dismissed id absent from the window is a no-op")
+    func dismissedUnknownIDNoOp() {
+        let loved = Concert.stub(id: 1, headliningArtistId: 41, similarArtists: nil)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [loved], likedArtists: [stereolab], similarCap: 3, dismissedConcertIDs: [999])
+        #expect(shelf.map(\.concert.id) == [1])
+    }
 }

@@ -30,6 +30,9 @@ struct ForYouShelfView: View {
     /// Invoked with the tapped recommendation so the tab can present the detail
     /// and record the tier-only analytics event.
     let onSelect: (ForYouRecommendation) -> Void
+    /// Invoked when the listener picks "Not interested" on a card, so the tab can
+    /// record it in the dismissed-concerts store and drop the card.
+    let onDismiss: (ForYouRecommendation) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -37,7 +40,11 @@ struct ForYouShelfView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(recommendations) { recommendation in
-                        ForYouCard(recommendation: recommendation) { onSelect(recommendation) }
+                        ForYouCard(
+                            recommendation: recommendation,
+                            action: { onSelect(recommendation) },
+                            onDismiss: { onDismiss(recommendation) }
+                        )
                     }
                 }
                 .padding(.horizontal, 16)
@@ -65,6 +72,7 @@ struct ForYouShelfView: View {
 private struct ForYouCard: View {
     let recommendation: ForYouRecommendation
     let action: () -> Void
+    let onDismiss: () -> Void
 
     private let presenter: BoxOfficeTicketPresenter
 
@@ -73,30 +81,65 @@ private struct ForYouCard: View {
     private static let cardWidth: CGFloat = 168
     private static let posterHeight: CGFloat = 96
 
-    init(recommendation: ForYouRecommendation, action: @escaping () -> Void) {
+    init(recommendation: ForYouRecommendation, action: @escaping () -> Void, onDismiss: @escaping () -> Void) {
         self.recommendation = recommendation
         self.action = action
+        self.onDismiss = onDismiss
         self.presenter = BoxOfficeTicketPresenter(recommendation.concert)
     }
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                poster
-                info
+        // The tap `Button` and the overflow `Menu` are siblings in a `ZStack`, not
+        // a Menu nested in the Button's label: a control inside a Button's label
+        // never receives its own taps, and `onTapGesture` is disallowed here. The
+        // menu is drawn above, pinned to the poster's top-trailing corner.
+        ZStack(alignment: .topTrailing) {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: 0) {
+                    poster
+                    info
+                }
+                .frame(width: Self.cardWidth)
+                .background(BackgroundLayer(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 14))
+                // A cancelled show reads "dead", matching the list row.
+                .saturation(presenter.isCancelled ? 0.4 : 1)
+                .opacity(presenter.isCancelled ? 0.7 : 1)
             }
-            .frame(width: Self.cardWidth)
-            .background(BackgroundLayer(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
-            .clipShape(.rect(cornerRadius: 14))
-            // A cancelled show reads "dead", matching the list row.
-            .saturation(presenter.isCancelled ? 0.4 : 1)
-            .opacity(presenter.isCancelled ? 0.7 : 1)
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityAddTraits(.isButton)
+            // VoiceOver reaches dismissal through a rotor action, since the visual
+            // overflow menu is a separate, small hit target.
+            .accessibilityAction(named: "Not interested", onDismiss)
+            .accessibilityIdentifier("forYouCard.\(concert.id)")
+
+            overflowMenu.padding(6)
+        }
+    }
+
+    // MARK: Overflow menu
+
+    /// The top-trailing "•••" control. Its single action dismisses the card via
+    /// the tier-scoped "Not interested" line; kept visually consistent with the
+    /// tier badge (a 24pt glass circle).
+    private var overflowMenu: some View {
+        Menu {
+            Button("Not interested", systemImage: "hand.thumbsdown", role: .destructive, action: onDismiss)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.caption).fontWeight(.bold)
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(Color.black.opacity(0.4)))
+                .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 1))
+                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
         }
         .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("More options for \(concert.headlineName)")
+        .accessibilityIdentifier("forYouCard.\(concert.id).overflow")
     }
 
     // MARK: Poster
@@ -245,7 +288,7 @@ private struct ForYouCard: View {
             startPoint: .top, endPoint: .bottom
         )
         .ignoresSafeArea()
-        ForYouShelfView(recommendations: recommendations) { _ in }
+        ForYouShelfView(recommendations: recommendations, onSelect: { _ in }, onDismiss: { _ in })
     }
 }
 #endif
