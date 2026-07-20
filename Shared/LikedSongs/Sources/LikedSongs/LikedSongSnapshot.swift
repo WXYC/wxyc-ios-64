@@ -17,7 +17,7 @@
 import Foundation
 import Playlist
 
-public struct LikedSongSnapshot: Codable, Equatable, Sendable, Identifiable {
+public struct LikedSongSnapshot: Codable, Equatable, Sendable, Identifiable, SongDisplayable {
     public let songTitle: String
     public let artistName: String
 
