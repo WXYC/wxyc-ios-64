@@ -4,13 +4,13 @@
 //
 //  Trimmed to the change-effect subset used by WXYC (DEBUG previews and unused helpers removed).
 //
+//  Adapted for the app target: the particle count, travel distance, and haptic
+//  pattern are read from `LikeHapticSettings` at fire time instead of being
+//  hardcoded, so they can be tuned (see the Liked-tab effect bench).
+//
 
 import SwiftUI
 import simd
-
-#if os(iOS)
-import CoreHaptics
-#endif
 
 public extension AnyChangeEffect {
     /// An effect that emits multiple particles in different shades and sizes moving up from the origin point.
@@ -49,7 +49,7 @@ internal struct SpraySimulation<ParticleView: View>: ViewModifier, Simulative {
     private var pings: [Ping] = []
 
     private let layer: ParticleLayer
-
+    
     @Environment(\.particleLayerNames)
     var particleLayerNames
 
@@ -74,6 +74,14 @@ internal struct SpraySimulation<ParticleView: View>: ViewModifier, Simulative {
     }
 
     func body(content: Content) -> some View {
+        // Captured once per body evaluation (this runs on the main actor) so the
+        // escaping Canvas / onChange closures below use plain Sendable values
+        // rather than touching the main-actor-isolated settings object.
+        let settings = LikeHapticSettings.shared
+        let particleCount = settings.resolvedParticleCount
+        let travel = Float(settings.travel)
+        let hapticSpecs = settings.makeEvents()
+
         let hasParticleLayer: Bool = {
             if let name = layer.name, particleLayerNames.contains(name) {
                 return true
@@ -122,7 +130,7 @@ internal struct SpraySimulation<ParticleView: View>: ViewModifier, Simulative {
 
                     let value2: SIMD16<Float>  = SIMD16<Float>.random(in: 0.0 ... 1.0, using: &rng) + scaleFactors
 
-                    let insetAmount: Float = cos(ping.progress) * pow(ping.progress, 1) * -Float(symbolHeight) * 2.5
+                    let insetAmount: Float = cos(ping.progress) * pow(ping.progress, 1) * -Float(symbolHeight) * 2.5 * travel
 
                     let phases: SIMD16<Float>     = (ping.progress * 0.75) + value2
                     let sineScales: SIMD16<Float> = simd_abs(sin(phases * SIMD16(repeating: .pi)))
@@ -130,10 +138,14 @@ internal struct SpraySimulation<ParticleView: View>: ViewModifier, Simulative {
 
                     let brightness: SIMD16<Float> = .random(in: -0.1 ... 0.1, using: &rng)
 
-                    let x: SIMD16<Float> = adjustedValue * (sin(ping.progress * Float.pi) * Float(symbolWidth) * -2)
-                    let y: SIMD16<Float> = insetAmount - (value2 * ping.progress) * Float(symbolHeight) * 2.5
+                    let x: SIMD16<Float> = adjustedValue * (sin(ping.progress * Float.pi) * Float(symbolWidth) * -2 * travel)
+                    let y: SIMD16<Float> = insetAmount - (value2 * ping.progress) * Float(symbolHeight) * 2.5 * travel
 
-                    for i in 0...10 {
+                    // Draw a `particleCount`-wide window of the 16-wide fan,
+                    // centered on the stock spray's middle (index 5) so trimming
+                    // the count stays symmetric instead of skewing to one side.
+                    let lo = max(0, min(16 - particleCount, 5 - particleCount / 2))
+                    for i in lo ..< (lo + particleCount) {
                         let point = CGPoint(x: x[i], y: y[i])
 
                         let angle = Angle(degrees: angles[i])
@@ -193,8 +205,8 @@ internal struct SpraySimulation<ParticleView: View>: ViewModifier, Simulative {
                 }
 
                 #if os(iOS)
-                if let hapticPattern {
-                    Haptics.play(hapticPattern)
+                if let pattern = HapticEventSpec.pattern(from: hapticSpecs) {
+                    Haptics.play(pattern)
                 }
                 #endif
             }
@@ -225,37 +237,6 @@ internal struct SpraySimulation<ParticleView: View>: ViewModifier, Simulative {
             abs(ping.progress - ping.target) < 0.04 && ping.velocity < 0.04
         }
     }
-
-    #if os(iOS)
-    private var hapticPattern: CHHapticPattern? {
-        var rng = SeededRandomNumberGenerator(seed: 123)
-
-        return try? CHHapticPattern(
-            events: (0 ..< 5).map { i in
-                let i = Float(i)
-
-                let relativeTime: TimeInterval
-
-                if i == 0 {
-                    relativeTime = 0
-                } else {
-                    relativeTime = Double(i * 0.03) + .random(in: -0.005 ... 0.005, using: &rng)
-                }
-
-                return CHHapticEvent(
-                    eventType: .hapticContinuous,
-                    parameters: [
-                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.6 * (i / 5) + .random(in: -0.2 ... 0.2, using: &rng)),
-                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.2)
-                    ],
-                    relativeTime: relativeTime,
-                    duration: 0.05
-                )
-            },
-            parameterCurves: []
-        )
-    }
-    #endif
 }
 
 private struct RelativeOffsetModifier: GeometryEffect {
