@@ -2,11 +2,12 @@
 //  OnTourTabView.swift
 //  WXYC
 //
-//  The On Tour tab: a date-ordered list of curated Triangle-area shows with an
-//  instant, client-side filter sheet. Fetches the whole curated window once into
-//  a `OnTourModel` and filters it in memory — every facet applies with no
-//  refetch. The model is view-owned single-screen state (see the concurrency note
-//  on `OnTourModel`); it is not shared with widgets or other scenes.
+//  The On Tour tab: a date-ordered list of curated Triangle-area shows, split
+//  into month-titled sections, with an instant, client-side filter sheet.
+//  Fetches the whole curated window once into a `OnTourModel` and filters it in
+//  memory — every facet applies with no refetch. The model is view-owned
+//  single-screen state (see the concurrency note on `OnTourModel`); it is not
+//  shared with widgets or other scenes.
 //
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -220,9 +221,18 @@ struct OnTourTabView: View {
                     ForYouShelfView(recommendations: recommendations, onSelect: selectForYou, onDismiss: dismissForYou)
                         .onAppear { recordForYouImpression(recommendations) }
                 }
-                LazyVStack(spacing: 10) {
-                    ForEach(concerts) { concert in
-                        ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    // Grouped into month sections (August 2026, September 2026, …).
+                    // The window arrives `starts_on` ascending, so the sections and
+                    // the rows within them stay chronological.
+                    ForEach(ConcertMonthSection.sections(for: concerts)) { section in
+                        Section {
+                            ForEach(section.concerts) { concert in
+                                ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }
+                            }
+                        } header: {
+                            monthSectionHeader(section.title)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -230,6 +240,20 @@ struct OnTourTabView: View {
             .padding(.vertical, 8)
         }
         .refreshable { await model.load() }
+    }
+
+    /// A month divider between runs of shows, e.g. "August 2026". Inline rather
+    /// than pinned so it scrolls away with its section — matching the tab title,
+    /// which is deliberately a scrolling element, not a pinned bar (and sidestepping
+    /// a pinned header showing the wallpaper-tinted rows through it as they pass).
+    private func monthSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.title3).fontWeight(.semibold)
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
+            .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: - For You shelf
@@ -463,16 +487,18 @@ private extension Concert {
         let cradle = Venue(id: 3, slug: "cats-cradle", name: "Cat's Cradle", city: "Carrboro", state: "NC", address: nil)
         let motorco = Venue(id: 7, slug: "motorco", name: "Motorco", city: "Durham", state: "NC", address: nil)
         let local506 = Venue(id: 1, slug: "local-506", name: "Local 506", city: "Chapel Hill", state: "NC", address: nil)
+        // Spread across two calendar months so the preview exercises the month
+        // section headers (two shows in August, then one in September).
         return [
             Concert(id: 1, venue: cradle, startsOn: day(0), headliningArtistRaw: "Jessica Pratt",
                     supportingArtistsRaw: ["Julie Byrne"], ticketURL: URL(string: "https://example.com/a"),
                     eventURL: URL(string: "https://catscradle.com/event/jessica-pratt"),
                     priceMin: 22, priceMax: 25, ageRestriction: "All Ages", status: .onSale,
                     genres: ["Rock", "Folk World & Country"]),
-            Concert(id: 2, venue: motorco, startsOn: day(3), headliningArtistRaw: "Chuquimamani-Condori",
+            Concert(id: 2, venue: motorco, startsOn: day(20), headliningArtistRaw: "Chuquimamani-Condori",
                     ticketURL: URL(string: "https://example.com/b"), priceMin: 0, ageRestriction: "18+", status: .free,
                     genres: ["Electronic"]),
-            Concert(id: 3, venue: local506, startsOn: day(6), headliningArtistRaw: "Juana Molina",
+            Concert(id: 3, venue: local506, startsOn: day(40), headliningArtistRaw: "Juana Molina",
                     ticketURL: URL(string: "https://example.com/c"), priceMin: 18, ageRestriction: nil, status: .soldOut,
                     genres: ["Rock", "Electronic"]),
         ]
