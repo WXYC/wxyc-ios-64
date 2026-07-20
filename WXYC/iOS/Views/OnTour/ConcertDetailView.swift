@@ -38,9 +38,16 @@ struct ConcertDetailView: View {
     /// Built once — the concert is immutable for the lifetime of the detail.
     private let presenter: BoxOfficeTicketPresenter
 
-    init(concert: Concert) {
+    /// Whether the show has already happened, latched at presentation time. A
+    /// shared deep link (#537) can open a past show — the browse window never
+    /// does — so the detail swaps the ticket's CTA for a keepsake note.
+    private let isPast: Bool
+
+    init(concert: Concert, now: Date = Date()) {
         self.concert = concert
-        self.presenter = BoxOfficeTicketPresenter(concert)
+        let presenter = BoxOfficeTicketPresenter(concert)
+        self.presenter = presenter
+        self.isPast = presenter.isPast(asOf: now)
     }
 
     // Poster geometry. The ticket is pulled up by `ticketTuck` so it straddles
@@ -69,7 +76,7 @@ struct ConcertDetailView: View {
                 VStack(spacing: 0) {
                     posterHero
                     VStack(spacing: 20) {
-                        BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors)
+                        BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors, isPast: isPast)
                         whereSection
                     }
                     .padding(.horizontal, 16)
@@ -352,6 +359,16 @@ struct ConcertDetailView: View {
 #Preview("Cancelled") {
     ConcertDetailView(concert: .detailPreview(status: .cancelled, headliningArtistRaw: "Water From Your Eyes"))
         .environment(Singletonia.shared)
+}
+
+// A shared link opened after the show — `now` is set past the 2026-08-01 preview
+// date, so the ticket swaps its CTA for the "already happened" keepsake note.
+#Preview("Past show (deep link keepsake)") {
+    ConcertDetailView(
+        concert: .detailPreview(status: .onSale),
+        now: Date(timeIntervalSince1970: 1_800_000_000)
+    )
+    .environment(Singletonia.shared)
 }
 
 // Regression guard for the artwork-overflow bug: a real `image_url` renders via
