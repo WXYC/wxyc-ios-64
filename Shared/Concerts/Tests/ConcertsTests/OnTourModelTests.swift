@@ -194,7 +194,7 @@ struct OnTourModelTests {
 
     // MARK: - Single-flight
 
-    @Test("A load issued while one is already in flight is a no-op")
+    @Test("A load issued while one is already in flight coalesces onto it (single fetch)")
     func overlappingLoadsCoalesce() async {
         let fetcher = GatedConcertsFetcher(
             response: page([Concert.stub(id: 1)], number: 1, hasMore: false)
@@ -205,12 +205,15 @@ struct OnTourModelTests {
         async let first: Void = model.load()
         await fetcher.waitUntilParked()
 
-        // A second load while the first is in flight must not start a new fetch.
-        await model.load()
+        // A second load while the first is in flight coalesces onto it: it awaits
+        // the same task rather than starting a new fetch, so it can't be awaited
+        // before the release without deadlocking.
+        async let second: Void = model.load()
 
-        // Let the first load finish.
+        // Let the single in-flight load finish; both awaiters observe it.
         fetcher.release()
         await first
+        await second
 
         #expect(fetcher.callCount == 1)
         #expect(model.phase == .loaded)
@@ -350,6 +353,39 @@ struct OnTourModelTests {
         let resolution = await model.resolveConcert(id: 4821)
 
         #expect(resolution == .byID(target))
+    }
+
+    @Test("resolveConcert awaits an in-flight load instead of racing past it into a by-id fetch")
+    func resolveCoalescesWithInFlightLoad() async {
+        // Cold-launch shape: the tab's own load() and the deep-link
+        // resolveConcert() run concurrently. The gated fetcher holds the load in
+        // flight; the resolver must await that load and find the id in the
+        // now-loaded window — not no-op past an empty window into a by-id fetch
+        // the backend can't answer yet. GatedConcertsFetcher.fetchConcert throws,
+        // mirroring that unavailability, so a resolver that reaches the by-id rung
+        // here reports `.missed` (the failure this guards against).
+        let target = Concert.stub(id: 4821)
+        let fetcher = GatedConcertsFetcher(
+            response: page([Concert.stub(id: 1), target, Concert.stub(id: 2)], number: 1, hasMore: false)
+        )
+        let model = makeModel(fetcher)
+
+        // Start the tab's load and wait until it has parked inside the fetcher.
+        async let firstLoad: Void = model.load()
+        await fetcher.waitUntilParked()
+
+        // Kick off the deep-link resolve and let it run up to its suspension while
+        // the load is still parked (so it observes the not-yet-populated window).
+        async let resolution = model.resolveConcert(id: 4821)
+        await Task.yield()
+
+        // Release the single in-flight fetch; both awaiters observe the window.
+        fetcher.release()
+        await firstLoad
+        let resolved = await resolution
+
+        #expect(resolved == .window(target))
+        #expect(fetcher.callCount == 1)
     }
 
     @Test("ConcertResolution exposes stable analytics labels")
