@@ -53,6 +53,10 @@ struct AppLifecycleModifier: ViewModifier {
         appState.setForegrounded(true)
         appState.startWidgetStateService()
         appState.startReviewRequestTracking()
+        // Register the shared-show-link observer here, synchronously and before
+        // the launch link is delivered, so a cold launch into a `wxyc.org/shows/…`
+        // link can't post the message before anyone is listening (#537).
+        appState.startObservingConcertOpen()
 
         // First-launch path: the wallpaper isn't cached yet, so prime the
         // mesh-gradient palette before the user sees the home screen.
