@@ -54,7 +54,7 @@ struct StationView: View {
                 ) {
                     StationRow(
                         title: "Make a request",
-                        subtitle: "Lands in the DJ's Slack",
+                        subtitle: "Lands in the DJ booth",
                         systemImage: "message.fill",
                         iconColor: .blue,
                         isEnabled: requestLine.boothIsOpen

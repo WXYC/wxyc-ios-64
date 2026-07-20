@@ -58,9 +58,9 @@ public final class OnAirDebugState {
 
     /// Opacity of the say-hi chip's green glass tint, `0...1` — the capsule
     /// background transparency. The chip's text and icon stay opaque.
-    public var sayHiTintOpacity: Double {
+    public var requestLineTintOpacity: Double {
         didSet {
-            UserDefaults.standard.set(sayHiTintOpacity, forKey: "OnAirDebug.sayHiTintOpacity")
+            UserDefaults.standard.set(requestLineTintOpacity, forKey: "OnAirDebug.requestLineTintOpacity")
         }
     }
 
@@ -127,7 +127,7 @@ public final class OnAirDebugState {
         self.forcedDJName = defaults.string(forKey: "OnAirDebug.forcedDJName") ?? "DJ HOUNDSTOOTH"
         self.adaptiveWidth = defaults.object(forKey: "OnAirDebug.adaptiveWidth") as? Bool ?? true
         self.handleWidthFloor = defaults.object(forKey: "OnAirDebug.handleWidthFloor") as? Double ?? 50
-        self.sayHiTintOpacity = defaults.object(forKey: "OnAirDebug.sayHiTintOpacity") as? Double ?? 0.75
+        self.requestLineTintOpacity = defaults.object(forKey: "OnAirDebug.requestLineTintOpacity") as? Double ?? 0.75
         self.indicatorHue = defaults.object(forKey: "OnAirDebug.indicatorHue") as? Double ?? 0.33
         self.indicatorSaturation = defaults.object(forKey: "OnAirDebug.indicatorSaturation") as? Double ?? 1.0
         self.indicatorLightness = defaults.object(forKey: "OnAirDebug.indicatorLightness") as? Double ?? 0.5

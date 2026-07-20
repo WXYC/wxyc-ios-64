@@ -23,7 +23,7 @@ public struct OnAirBannerDebugView: View {
     @State private var indicatorExpanded = true
     @State private var handleExpanded = true
     @State private var adaptiveExpanded = true
-    @State private var sayHiExpanded = true
+    @State private var requestLineExpanded = true
     @State private var spacingExpanded = true
 
     public init() {}
@@ -71,8 +71,8 @@ public struct OnAirBannerDebugView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                DisclosureGroup("Say Hi Chip", isExpanded: $sayHiExpanded) {
-                    labeledSlider("Tint Opacity", value: $state.sayHiTintOpacity, in: 0...1)
+                DisclosureGroup("Request Line Chip", isExpanded: $requestLineExpanded) {
+                    labeledSlider("Tint Opacity", value: $state.requestLineTintOpacity, in: 0...1)
                     Text("Background transparency of the green \"SAY HI\" chip — 1 is solid, 0 is clear glass. The text and icon stay opaque.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)

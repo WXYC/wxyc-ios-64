@@ -35,7 +35,7 @@ struct OnAirBannerView: View {
     /// this to present the Request Line. `nil` when the booth isn't inviting
     /// conversation (automation, or an unnamed/unknown DJ), so the chip is a
     /// presence indicator — it never appears on a guess.
-    var onSayHi: (() -> Void)? = nil
+    var onrequestLine: (() -> Void)? = nil
 
     /// The point size of the DJ handle. Fixed (not Dynamic Type) so the handle
     /// yields to a long name by narrowing its width axis, never by shrinking.
@@ -71,8 +71,8 @@ struct OnAirBannerView: View {
                         handleAvailableWidth = newWidth
                     }
 
-                if let onSayHi {
-                    SayHiChip(action: onSayHi, tint: .green.opacity(theme.sayHiTintOpacity))
+                if let onrequestLine {
+                    requestLineChip(action: onrequestLine, tint: .green.opacity(theme.requestLineTintOpacity))
                 }
             }
             .padding(.top, theme.onAirSpacing)
@@ -177,7 +177,7 @@ struct OnAirBannerView: View {
 /// The "say hi" affordance shown beside a named DJ's handle: a compact,
 /// glass-capsule button that opens the Request Line. Its presence is the signal
 /// — it appears only when a human is on the board and the booth is reachable.
-struct SayHiChip: View {
+struct requestLineChip: View {
     let action: () -> Void
 
     /// The glass tint. Its opacity controls how transparent the capsule
@@ -190,8 +190,8 @@ struct SayHiChip: View {
             HStack(spacing: 5) {
                 Image(systemName: "phone.fill")
                     .font(.system(size: 10, weight: .semibold))
-                Text("Say hi")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                Text("Request")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .tracking(1.4)
                     .textCase(.uppercase)
             }
@@ -204,16 +204,16 @@ struct SayHiChip: View {
             .glassEffectClearTintedInteractiveIfAvailable(tint: tint, in: .capsule)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Say hi to the DJ")
+        .accessibilityLabel("Make a request to the DJ")
         .accessibilityHint("Opens the Request Line to request a song or call the booth")
-        .accessibilityIdentifier("banner.sayHi")
+        .accessibilityIdentifier("banner.requestLine")
     }
 }
 
 #Preview {
     ScrollView {
         VStack(spacing: 24) {
-            OnAirBannerView(headline: "DJ HOUNDSTOOTH", onSayHi: {})
+            OnAirBannerView(headline: "DJ HOUNDSTOOTH", onrequestLine: {})
             OnAirBannerView(headline: "Auto DJ")
         }
         .padding()

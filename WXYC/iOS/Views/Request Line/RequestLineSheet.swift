@@ -50,7 +50,7 @@ struct RequestLineSheet: View {
             RequestLinePresenceLabel(requestLine: requestLine)
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Request a song")
+                Text("Make a request")
                     .font(.subheadline.bold())
                     .foregroundStyle(.secondary)
 
@@ -86,7 +86,7 @@ struct RequestLineSheet: View {
             } label: {
                 Label {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Call the request line").bold()
+                        Text("Dial a DJ").bold()
                         Text("(919) 962-8989")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -164,7 +164,7 @@ struct RequestLinePresenceLabel: View {
 
     private var subtitle: String {
         if let name = requestLine.djName {
-            "\(name) is on the board"
+            "\(name) is at the controls"
         } else {
             "The booth is open"
         }

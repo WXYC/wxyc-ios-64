@@ -51,7 +51,7 @@ struct OnAirBannerTheme: Equatable {
     /// transparent the capsule background is; the chip's text and icon stay
     /// opaque, so only the background fades. Ships slightly translucent so the
     /// wallpaper reads through the chip.
-    var sayHiTintOpacity: Double = 0.75
+    var requestLineTintOpacity: Double = 0.75
 
     /// Vertical space between the "ON AIR" eyebrow and the DJ handle, in points.
     var onAirSpacing: CGFloat = 0

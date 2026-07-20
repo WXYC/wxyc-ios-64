@@ -65,7 +65,7 @@ struct PlaylistView: View {
                         headline: onAirBannerTitle,
                         theme: onAirBannerTheme,
                         onDebugTapped: onAirDebugTapped,
-                        onSayHi: requestLine.invitesConversation ? { showingRequestLine = true } : nil
+                        onrequestLine: requestLine.invitesConversation ? { showingRequestLine = true } : nil
                     )
                     .padding(.vertical, 8)
                 }
@@ -269,7 +269,7 @@ struct PlaylistView: View {
             ),
             adaptiveWidth: debug.adaptiveWidth,
             handleWidthFloor: debug.handleWidthFloor,
-            sayHiTintOpacity: debug.sayHiTintOpacity,
+            requestLineTintOpacity: debug.requestLineTintOpacity,
             onAirSpacing: CGFloat(debug.onAirSpacing),
             handleLineSpacing: CGFloat(debug.handleLineSpacing)
         )
