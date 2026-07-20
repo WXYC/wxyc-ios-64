@@ -191,6 +191,10 @@ public enum ForYouShelf {
     ///     `similarCap`; a non-positive cap drops every station card. **Defaults to
     ///     `0` (tier off)** so a caller that doesn't opt in keeps the likes-only
     ///     shelf; the app passes the flag-tuned value to turn the tier on.
+    ///   - dismissedConcertIDs: concerts the listener tapped "Not interested" on.
+    ///     Filtered out of the window up front, so a dismissed concert can surface
+    ///     no card on any tier. Defaults to empty (behavior-neutral): the shelf is
+    ///     identical to the pre-dismiss engine when nothing has been dismissed.
     /// - Returns: the ordered shelf, `loved + cappedSimilar + cappedStation`.
     ///
     /// - Note: ``SimilarArtist/weight`` is type-max normalized per source artist,
@@ -209,8 +213,16 @@ public enum ForYouShelf {
         similarCap: Int,
         relativeFloor: Double = 0.5,
         stationFloor: Int = 50,
-        stationCap: Int = 0
+        stationCap: Int = 0,
+        dismissedConcertIDs: Set<Int> = []
     ) -> [ForYouRecommendation] {
+        // Drop dismissed concerts up front so a "Not interested" show can surface
+        // no card on any tier. Skipped entirely when nothing is dismissed — the
+        // behavior-neutral common path.
+        let concerts = dismissedConcertIDs.isEmpty
+            ? concerts
+            : concerts.filter { !dismissedConcertIDs.contains($0.id) }
+
         // First like of an id wins, so the reason-line name is stable if the
         // store somehow carries the same id twice.
         let likedNameByID = Dictionary(

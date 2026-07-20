@@ -81,3 +81,15 @@ public struct ForYouCardTapped {
         self.tier = tier
     }
 }
+
+/// Event fired when the listener dismisses a For You card via its "Not interested"
+/// menu. `tier` is "loved", "similar", or "station" — the recommendation kind
+/// only, never the concert or the liked artist that surfaced it.
+@AnalyticsEvent
+public struct ForYouCardDismissed {
+    public let tier: String
+
+    public init(tier: String) {
+        self.tier = tier
+    }
+}

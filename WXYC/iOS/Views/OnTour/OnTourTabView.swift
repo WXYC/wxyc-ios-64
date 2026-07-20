@@ -207,7 +207,7 @@ struct OnTourTabView: View {
                     // Pinned above the date list, bleeding edge-to-edge (the rail
                     // owns its own horizontal insets), and it deliberately
                     // duplicates shows that also appear below.
-                    ForYouShelfView(recommendations: recommendations, onSelect: selectForYou)
+                    ForYouShelfView(recommendations: recommendations, onSelect: selectForYou, onDismiss: dismissForYou)
                         .onAppear { recordForYouImpression(recommendations) }
                 }
                 LazyVStack(spacing: 10) {
@@ -261,7 +261,8 @@ struct OnTourTabView: View {
             likedArtists: matchArtists,
             similarCap: similarCap,
             stationFloor: stationFloor,
-            stationCap: stationCap
+            stationCap: stationCap,
+            dismissedConcertIDs: appState.dismissedConcertsStore.ids
         )
 
         #if DEBUG
@@ -307,6 +308,16 @@ struct OnTourTabView: View {
             ForYouCardTapped(tier: recommendation.tier.analyticsName)
         )
         selectedConcert = recommendation.concert
+    }
+
+    /// Handles "Not interested" on a For You card: records the tier-only analytics
+    /// event, then dismisses the concert in the store. Reading the store's `ids` in
+    /// `recommendations(for:)` means the shelf drops the card on the next render.
+    private func dismissForYou(_ recommendation: ForYouRecommendation) {
+        StructuredPostHogAnalytics.shared.capture(
+            ForYouCardDismissed(tier: recommendation.tier.analyticsName)
+        )
+        appState.dismissedConcertsStore.dismiss(recommendation.concert.id)
     }
 
     /// Records the shelf impression once per launch, carrying the tier counts at

@@ -12,6 +12,7 @@ import Analytics
 import AppServices
 import Artwork
 import Caching
+import Concerts
 import Core
 import LikedSongs
 import Logger
@@ -42,9 +43,17 @@ final class Singletonia {
 
     /// On-device liked songs (#492). A durable file store, not a cache — likes
     /// are user-curated canonical data with a never-evict contract (see
-    /// docs/plans/492-liked-songs.md decision #6).
+    /// docs/plans/492-liked-songs.md decision #6). `AppSupportFileStorage` is
+    /// module-qualified because `Concerts` exports a same-named seam.
     let likedSongsStore = LikedSongsStore(
-        storage: AppSupportFileStorage(filename: "liked-songs.json")
+        storage: LikedSongs.AppSupportFileStorage(filename: "liked-songs.json")
+    )
+
+    /// Concerts the listener dismissed ("Not interested") from the On Tour For You
+    /// shelf. Same durable-file rationale as the likes store — user curation, not a
+    /// re-derivable cache — so it goes through the Concerts `FileStorage` seam.
+    let dismissedConcertsStore = DismissedConcertsStore(
+        storage: Concerts.AppSupportFileStorage(filename: "dismissed-concerts.json")
     )
 
     /// Feature-flag source for the On Tour For You shelf's similar-tier noise cap
@@ -93,6 +102,15 @@ final class Singletonia {
         startSpotlightDonation()
         startPlaycutHistory()
         startLikedSongsHealing()
+
+        #if DEBUG
+        // UI-test isolation: `-uiTestResetForYou` clears the persisted dismissed-
+        // shows set at launch so the For You dismiss UI test starts from a clean
+        // shelf every run (the store file otherwise survives across sim launches).
+        if ProcessInfo.processInfo.arguments.contains("-uiTestResetForYou") {
+            dismissedConcertsStore.resetState()
+        }
+        #endif
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
