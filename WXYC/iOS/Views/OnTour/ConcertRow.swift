@@ -11,6 +11,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import Concerts
 import SwiftUI
 import Wallpaper
@@ -22,6 +23,12 @@ struct ConcertRow: View {
     /// row is the source the poster detail animates out of.
     let namespace: Namespace.ID
     let action: () -> Void
+
+    @Environment(\.openURL) private var openURL
+
+    /// Non-nil while the row's share sheet is presented; the "Share Show" context
+    /// action sets it.
+    @State private var shareTarget: Concert?
 
     /// Built once per row (the row is immutable) rather than recomputed on every
     /// body/subview access.
@@ -56,9 +63,38 @@ struct ConcertRow: View {
         }
         .buttonStyle(.plain)
         .matchedTransitionSource(id: concert.id, in: namespace)
+        .contextMenu { contextActions }
+        .concertShareSheet(concert: $shareTarget)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
+    }
+
+    /// The long-press menu: the detail's actions without leaving the list. "Share
+    /// Show" opens the same bare-URL share sheet as the detail chrome (see
+    /// ``ConcertShareSheet``); tickets and directions open externally.
+    @ViewBuilder
+    private var contextActions: some View {
+        Button {
+            StructuredPostHogAnalytics.shared.capture(ConcertShareInitiated(surface: "row"))
+            shareTarget = concert
+        } label: {
+            Label("Share Show", systemImage: "square.and.arrow.up")
+        }
+        if let ticketsURL = presenter.ctaURL {
+            Button {
+                openURL(ticketsURL)
+            } label: {
+                Label("Get Tickets", systemImage: "ticket")
+            }
+        }
+        if let directionsURL = presenter.directionsURL {
+            Button {
+                openURL(directionsURL)
+            } label: {
+                Label("Directions", systemImage: "location.fill")
+            }
+        }
     }
 
     /// The stub-style date block: weekday, day number, month stacked.

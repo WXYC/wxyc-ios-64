@@ -17,6 +17,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import Concerts
 import SwiftUI
 import Wallpaper
@@ -30,6 +31,9 @@ struct ConcertDetailView: View {
     /// The active theme, source of the ticket's wallpaper-derived colors. Set at
     /// the app root; propagates into this `.fullScreenCover` presentation.
     @Environment(Singletonia.self) private var appState
+
+    /// Non-nil while the share sheet is presented; the chrome share button sets it.
+    @State private var shareTarget: Concert?
 
     /// Built once — the concert is immutable for the lifetime of the detail.
     private let presenter: BoxOfficeTicketPresenter
@@ -55,12 +59,12 @@ struct ConcertDetailView: View {
     private let parallaxRate: CGFloat = 0.35
 
     var body: some View {
-        // The back button is a sibling of the scrolling poster, not an overlay on
+        // The chrome buttons are siblings of the scrolling poster, not overlays on
         // it: the poster bleeds under the status bar via `.ignoresSafeArea`, but the
-        // button must sit *below* the notch/Dynamic Island. Because the `ZStack`
-        // keeps its safe area, the button anchors to the real top inset on every
-        // device rather than to a hardcoded offset from the physical screen edge.
-        ZStack(alignment: .topLeading) {
+        // buttons must sit *below* the notch/Dynamic Island. Because the `ZStack`
+        // keeps its safe area, they anchor to the real top inset on every device
+        // rather than to a hardcoded offset from the physical screen edge.
+        ZStack(alignment: .top) {
             ScrollView {
                 VStack(spacing: 0) {
                     posterHero
@@ -77,8 +81,9 @@ struct ConcertDetailView: View {
             .background(Self.backdrop.ignoresSafeArea())
             .ignoresSafeArea(.container, edges: .top)
 
-            backButton
+            topChrome
         }
+        .concertShareSheet(concert: $shareTarget)
     }
 
     // MARK: - Poster hero
@@ -230,21 +235,46 @@ struct ConcertDetailView: View {
 
     // MARK: - Chrome
 
+    /// The back chevron and the share button, pinned below the safe-area top inset.
+    private var topChrome: some View {
+        HStack(alignment: .top) {
+            backButton
+            Spacer(minLength: 0)
+            shareButton
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+    }
+
     private var backButton: some View {
         Button {
             dismiss()
         } label: {
-            Image(systemName: "chevron.left")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 38, height: 38)
-                .background(.ultraThinMaterial, in: .circle)
-                .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
+            chromeGlyph("chevron.left")
         }
         .buttonStyle(.plain)
-        .padding(.leading, 14)
-        .padding(.top, 8)
         .accessibilityLabel("Back")
+    }
+
+    private var shareButton: some View {
+        Button {
+            StructuredPostHogAnalytics.shared.capture(ConcertShareInitiated(surface: "detail"))
+            shareTarget = concert
+        } label: {
+            chromeGlyph("square.and.arrow.up")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Share")
+    }
+
+    /// The shared frosted-circle treatment for both chrome buttons.
+    private func chromeGlyph(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(width: 38, height: 38)
+            .background(.ultraThinMaterial, in: .circle)
+            .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
     }
 
     private func statusPill(_ text: String) -> some View {

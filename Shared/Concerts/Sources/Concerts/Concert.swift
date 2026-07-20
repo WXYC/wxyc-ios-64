@@ -286,6 +286,21 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         title ?? headliningArtistRaw
     }
 
+    /// The canonical public share link — `https://wxyc.org/shows/<id>`. The one
+    /// place the share-URL shape lives, so every emitting surface (the On Tour
+    /// detail's share button, the row context menu, and future widgets/Spotlight
+    /// entities) produces the same link. Resolved by the `wxyc-links-registry`
+    /// Cloudflare Worker: an app owner deep-links into this detail, everyone else
+    /// lands on the OG-tagged share page. The AASA registers `/shows/*`, so the
+    /// path word is "shows" (the tab's voice), not the API's "concerts".
+    ///
+    /// Non-optional: ``id`` is an `Int`, so the interpolation is always a valid
+    /// URL — the same known-good-literal idiom the app uses for its stream and
+    /// API base URLs.
+    public var shareURL: URL {
+        URL(string: "https://wxyc.org/shows/\(id)")!
+    }
+
     // MARK: - Codable
 
     private enum CodingKeys: String, CodingKey {

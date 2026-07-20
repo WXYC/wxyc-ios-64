@@ -183,6 +183,15 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
         "\(compactDateLabel) · \(show.venue.city)"
     }
 
+    /// The share-sheet preview title: `"<headliner> at <venue>"` (e.g. `"Jessica
+    /// Pratt at Cat's Cradle"`), matching the share page's `og:title` shape. Prose
+    /// for the `SharePreview` header only — it is **never** concatenated into the
+    /// shared message, which stays the bare ``Concert/shareURL`` so iMessage can
+    /// swap in the App Clip card later (see the emit call sites).
+    public var shareTitle: String {
+        "\(show.headlineName) at \(show.venue.name)"
+    }
+
     /// `"with <support> · <age>"`, omitting whichever pieces are absent; `nil`
     /// when neither is present. The Box Office ticket and the poster hero share
     /// this one tested string (an empty age string reads as absent).
