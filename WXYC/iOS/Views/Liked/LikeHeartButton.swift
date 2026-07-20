@@ -4,8 +4,8 @@
 //
 //  The song-like heart shared by every toggle surface (#492): the playcut row's
 //  trailing slot, the detail card's title line, and the Liked tab's rows. One
-//  component keeps the 44pt target, glyph scale, like-red fill, pop animation,
-//  and accessibility semantics identical everywhere a heart appears.
+//  component keeps the 44pt target, glyph scale, like-red fill, celebratory
+//  burst, and accessibility semantics identical everywhere a heart appears.
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -14,7 +14,8 @@
 import SwiftUI
 
 /// A heart toggle for liking a song. Outline (`heart`, white 80%) when unliked,
-/// filled (`heart.fill`, like red) when liked, with a small pop on like that is
+/// filled (`heart.fill`, like red) when liked. Crossing *into* liked fires a
+/// spray of hearts plus a springy jump (with their built-in haptics), all
 /// suppressed under Reduce Motion.
 struct LikeHeartButton: View {
     /// The like red from the interaction study's recorded verdict
@@ -25,31 +26,45 @@ struct LikeHeartButton: View {
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var popScale: CGFloat = 1
+
+    /// A monotonic counter the change-effects watch. Incrementing it once per
+    /// like-crossing fires exactly one burst; it never changes on unlike or
+    /// under Reduce Motion, so those transitions stay silent.
+    @State private var celebration = 0
+
+    /// Whether a like transition should fire the celebratory burst. The burst
+    /// belongs only to the moment a song crosses *into* the liked state, and
+    /// never when the user has asked for reduced motion.
+    static func shouldCelebrate(from wasLiked: Bool, to nowLiked: Bool, reduceMotion: Bool) -> Bool {
+        nowLiked && !wasLiked && !reduceMotion
+    }
 
     var body: some View {
         Button(action: action) {
             Image(systemName: isLiked ? "heart.fill" : "heart")
                 .font(.title3)
                 .foregroundStyle(isLiked ? Self.likeColor : Color.white.opacity(0.8))
-                .scaleEffect(popScale)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isLiked ? "Unlike" : "Like")
         .accessibilityAddTraits(isLiked ? [.isSelected] : [])
-        .onChange(of: isLiked) { _, nowLiked in
-            // Pop only on the transition into liked, and only when the user
-            // hasn't asked for reduced motion.
-            guard nowLiked, !reduceMotion else { return }
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
-                popScale = 1.3
-            }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.12)) {
-                popScale = 1
+        .changeEffect(.spray(origin: .center) { sprayHeart }, value: celebration)
+        .changeEffect(.jump(height: 12), value: celebration)
+        .onChange(of: isLiked) { wasLiked, nowLiked in
+            if Self.shouldCelebrate(from: wasLiked, to: nowLiked, reduceMotion: reduceMotion) {
+                celebration += 1
             }
         }
+    }
+
+    /// The particle the spray emits. Pow draws several of these per burst and
+    /// jitters each one's brightness, so a single like-red heart yields a range
+    /// of shades without us enumerating sizes.
+    private var sprayHeart: some View {
+        Image(systemName: "heart.fill")
+            .foregroundStyle(Self.likeColor)
     }
 }
 
