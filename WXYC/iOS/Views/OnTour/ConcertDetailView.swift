@@ -35,6 +35,10 @@ struct ConcertDetailView: View {
     /// Non-nil while the share sheet is presented; the chrome share button sets it.
     @State private var shareTarget: Concert?
 
+    /// Set by the chrome "Add to Calendar" button to start the write-only access
+    /// request and, on grant, the event editor (see ``addToCalendar(_:surface:)``).
+    @State private var calendarTrigger: Concert?
+
     /// Built once — the concert is immutable for the lifetime of the detail.
     private let presenter: BoxOfficeTicketPresenter
 
@@ -91,6 +95,7 @@ struct ConcertDetailView: View {
             topChrome
         }
         .concertShareSheet(concert: $shareTarget)
+        .addToCalendar($calendarTrigger, surface: "detail")
     }
 
     // MARK: - Poster hero
@@ -242,15 +247,29 @@ struct ConcertDetailView: View {
 
     // MARK: - Chrome
 
-    /// The back chevron and the share button, pinned below the safe-area top inset.
+    /// The back chevron and the trailing action buttons (add-to-calendar, share),
+    /// pinned below the safe-area top inset.
     private var topChrome: some View {
         HStack(alignment: .top) {
             backButton
             Spacer(minLength: 0)
-            shareButton
+            HStack(spacing: 10) {
+                calendarButton
+                shareButton
+            }
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
+    }
+
+    private var calendarButton: some View {
+        Button {
+            calendarTrigger = concert
+        } label: {
+            chromeGlyph("calendar.badge.plus")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add to Calendar")
     }
 
     private var backButton: some View {

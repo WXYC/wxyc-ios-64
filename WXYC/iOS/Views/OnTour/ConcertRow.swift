@@ -30,6 +30,10 @@ struct ConcertRow: View {
     /// action sets it.
     @State private var shareTarget: Concert?
 
+    /// Set by the "Add to Calendar" context action to kick off the write-only
+    /// access request and, on grant, the event editor (see ``addToCalendar(_:surface:)``).
+    @State private var calendarTrigger: Concert?
+
     /// Built once per row (the row is immutable) rather than recomputed on every
     /// body/subview access.
     private let presenter: BoxOfficeTicketPresenter
@@ -65,6 +69,7 @@ struct ConcertRow: View {
         .matchedTransitionSource(id: concert.id, in: namespace)
         .contextMenu { contextActions }
         .concertShareSheet(concert: $shareTarget)
+        .addToCalendar($calendarTrigger, surface: "row")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(.isButton)
@@ -80,6 +85,11 @@ struct ConcertRow: View {
             shareTarget = concert
         } label: {
             Label("Share Show", systemImage: "square.and.arrow.up")
+        }
+        Button {
+            calendarTrigger = concert
+        } label: {
+            Label("Add to Calendar", systemImage: "calendar.badge.plus")
         }
         if let ticketsURL = presenter.ctaURL {
             Button {

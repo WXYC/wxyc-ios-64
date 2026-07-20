@@ -72,6 +72,8 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>WXYC adds shows you choose to your calendar. It never reads your existing events.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>NSUserActivityTypeBrowsingWeb</string>
