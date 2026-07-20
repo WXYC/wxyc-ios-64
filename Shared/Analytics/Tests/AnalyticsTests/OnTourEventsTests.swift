@@ -76,4 +76,23 @@ struct OnTourEventsTests {
         #expect(props["resolution"] as? String == pair.resolution)
         #expect(props.count == 2)
     }
+
+    @Test(
+        "ConcertCalendarAdded records surface and timing shape, nothing else",
+        arguments: [
+            ("detail", "timed"),
+            ("row", "allDay"),
+        ]
+    )
+    func concertCalendarAdded(_ pair: (surface: String, timing: String)) throws {
+        // A committed calendar add carries the originating surface and the event
+        // shape ("timed" vs. "allDay") — both low-cardinality labels. It never
+        // carries the concert, artist, or any calendar identity, per the On Tour
+        // privacy invariant.
+        let event = ConcertCalendarAdded(surface: pair.surface, timing: pair.timing)
+        let props = try #require(event.properties)
+        #expect(props["surface"] as? String == pair.surface)
+        #expect(props["timing"] as? String == pair.timing)
+        #expect(props.count == 2)
+    }
 }
