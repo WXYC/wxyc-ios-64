@@ -65,7 +65,7 @@ struct PlaylistView: View {
                         headline: onAirBannerTitle,
                         theme: onAirBannerTheme,
                         onDebugTapped: onAirDebugTapped,
-                        onrequestLine: requestLine.invitesConversation ? { showingRequestLine = true } : nil
+                        onRequestLine: requestLine.invitesConversation ? { showingRequestLine = true } : nil
                     )
                     .padding(.vertical, 8)
                 }

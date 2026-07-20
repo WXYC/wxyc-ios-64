@@ -35,7 +35,7 @@ struct OnAirBannerView: View {
     /// this to present the Request Line. `nil` when the booth isn't inviting
     /// conversation (automation, or an unnamed/unknown DJ), so the chip is a
     /// presence indicator — it never appears on a guess.
-    var onrequestLine: (() -> Void)? = nil
+    var onRequestLine: (() -> Void)? = nil
 
     /// The point size of the DJ handle. Fixed (not Dynamic Type) so the handle
     /// yields to a long name by narrowing its width axis, never by shrinking.
@@ -71,8 +71,8 @@ struct OnAirBannerView: View {
                         handleAvailableWidth = newWidth
                     }
 
-                if let onrequestLine {
-                    requestLineChip(action: onrequestLine, tint: .green.opacity(theme.requestLineTintOpacity))
+                if let onRequestLine {
+                    RequestLineChip(action: onRequestLine, tint: .green.opacity(theme.requestLineTintOpacity))
                 }
             }
             .padding(.top, theme.onAirSpacing)
@@ -177,7 +177,7 @@ struct OnAirBannerView: View {
 /// The "say hi" affordance shown beside a named DJ's handle: a compact,
 /// glass-capsule button that opens the Request Line. Its presence is the signal
 /// — it appears only when a human is on the board and the booth is reachable.
-struct requestLineChip: View {
+struct RequestLineChip: View {
     let action: () -> Void
 
     /// The glass tint. Its opacity controls how transparent the capsule
@@ -213,7 +213,7 @@ struct requestLineChip: View {
 #Preview {
     ScrollView {
         VStack(spacing: 24) {
-            OnAirBannerView(headline: "DJ HOUNDSTOOTH", onrequestLine: {})
+            OnAirBannerView(headline: "DJ HOUNDSTOOTH", onRequestLine: {})
             OnAirBannerView(headline: "Auto DJ")
         }
         .padding()
