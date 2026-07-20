@@ -14,6 +14,7 @@
 
 import Analytics
 import Concerts
+import DebugPanel
 import LikedSongs
 import MusicShareKit
 import SwiftUI
@@ -37,6 +38,9 @@ struct OnTourTabView: View {
     /// Latches the once-per-launch For You shelf impression, so scrolling the rail
     /// off and back or switching tabs doesn't re-fire it.
     @State private var hasRecordedForYouImpression = false
+    /// Presents the DEBUG For You seed/reset sheet (long-press the title). Unused
+    /// in release — the long-press that sets it compiles only in DEBUG.
+    @State private var showForYouDebug = false
 
     /// PostHog key for the similar-tier noise cap; local default 3 when absent.
     private static let similarCapFlagKey = "on_tour_for_you_similar_cap"
@@ -85,6 +89,9 @@ struct OnTourTabView: View {
                 ConcertDetailView(concert: concert)
                     .navigationTransition(.zoom(sourceID: concert.id, in: zoomNamespace))
             }
+            .forYouDebugSheet(isPresented: $showForYouDebug) {
+                appState.dismissedConcertsStore.resetState()
+            }
     }
 
     // MARK: - Header
@@ -107,6 +114,9 @@ struct OnTourTabView: View {
                 // large title rather than the two-line block's midpoint.
                 HStack(alignment: .center) {
                     Text("On Tour").font(.largeTitle).bold()
+                        // Hidden dev affordance: long-press the title to open the
+                        // For You seed/reset controls. DEBUG-only; no-op in release.
+                        .debugLongPress { showForYouDebug = true }
                     Spacer()
                     filterButton
                 }
@@ -239,11 +249,16 @@ struct OnTourTabView: View {
     private func recommendations(for concerts: [Concert]) -> [ForYouRecommendation] {
         let liked = likedArtists
 
-        // In DEBUG, fall back to a seeded like so the shelf UI is exercisable
-        // before the backend enrichment (WXYC/Backend-Service#1700) populates
-        // `similar_artists`. Release builds match on real likes only.
+        // In DEBUG, the explicit "Seed loved card" toggle (For You debug sheet)
+        // can fabricate a like so the shelf UI is exercisable before the backend
+        // enrichment (WXYC/Backend-Service#1700) populates `similar_artists`. This
+        // replaces the old always-on auto-seed: nothing is fabricated unless the
+        // tester opts in. Release builds always match on real likes only.
         #if DEBUG
-        let matchArtists = debugSeededLikes(liked, concerts: concerts)
+        let seedState = OnTourForYouSeedDebugState.shared
+        let matchArtists = (seedState.seedLovedEnabled || seedState.seedForcedForTesting)
+            ? debugSeededLikes(liked, concerts: concerts)
+            : liked
         #else
         let matchArtists = liked
         #endif
@@ -255,7 +270,15 @@ struct OnTourTabView: View {
         // behavior-neutral until PostHog raises it.
         let similarCap = appState.featureFlagProvider.integerValue(forKey: Self.similarCapFlagKey, default: 3)
         let stationFloor = appState.featureFlagProvider.integerValue(forKey: Self.stationFloorFlagKey, default: 50)
-        let stationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
+        // A positive debug station-cap override forces the tier on locally, ahead
+        // of the PostHog flag; 0 (the default) defers to the flag.
+        let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
+        #if DEBUG
+        let stationCapOverride = OnTourForYouSeedDebugState.shared.stationCapOverride
+        let stationCap = stationCapOverride > 0 ? stationCapOverride : flagStationCap
+        #else
+        let stationCap = flagStationCap
+        #endif
         let recs = ForYouShelf.recommendations(
             concerts: concerts,
             likedArtists: matchArtists,
@@ -273,15 +296,20 @@ struct OnTourTabView: View {
     }
 
     #if DEBUG
-    /// Debug-only: when the listener has no real id-bearing likes, fake one from
-    /// the first concert with a resolved headliner so the Loved-tier shelf renders
-    /// even before the backend `similar_artists` enrichment lands
-    /// (WXYC/Backend-Service#1700 / #1701 / #1702). Never compiled into release.
+    /// Debug-only: appends a synthetic liked artist — the first concert's resolved
+    /// headliner — so a Loved-tier card renders even before the backend
+    /// `similar_artists` enrichment lands (WXYC/Backend-Service#1700 / #1701 / #1702).
+    /// Gated behind the explicit `OnTourForYouSeedDebugState.seedLovedEnabled`
+    /// toggle (no longer always-on), so it never silently fabricates a card.
+    /// Appends to `liked` rather than gating on `liked.isEmpty`, so the seed is
+    /// deterministic even when real likes are present — which keeps the dismiss UI
+    /// test's shelf reliable regardless of any likes persisted on the simulator.
+    /// The engine de-dupes ids, so a seed that duplicates a real like is harmless.
+    /// Never compiled into release.
     private func debugSeededLikes(_ liked: [LikedArtist], concerts: [Concert]) -> [LikedArtist] {
-        guard liked.isEmpty,
-              let seed = concerts.first(where: { $0.headliningArtistId != nil }),
+        guard let seed = concerts.first(where: { $0.headliningArtistId != nil }),
               let seedID = seed.headliningArtistId else { return liked }
-        return [LikedArtist(id: seedID, name: seed.headlineName)]
+        return liked + [LikedArtist(id: seedID, name: seed.headlineName)]
     }
 
     /// Debug-only diagnostic: prints every gate the For You shelf depends on so a
@@ -451,3 +479,32 @@ private extension Concert {
     }
 }
 #endif
+
+// MARK: - Debug affordance helpers
+
+private extension View {
+    /// Attaches a long-press action in DEBUG builds; a no-op passthrough in
+    /// release. Keeps the hidden debug entry point off the release hit-testing path
+    /// without an `onTapGesture` (disallowed) or a `#if` scattered at the call site.
+    @ViewBuilder
+    func debugLongPress(perform action: @escaping () -> Void) -> some View {
+        #if DEBUG
+        onLongPressGesture(perform: action)
+        #else
+        self
+        #endif
+    }
+
+    /// Presents the For You debug sheet in DEBUG builds; a no-op passthrough in
+    /// release, where `OnTourForYouDebugView` isn't compiled.
+    @ViewBuilder
+    func forYouDebugSheet(isPresented: Binding<Bool>, onResetDismissed: @escaping () -> Void) -> some View {
+        #if DEBUG
+        sheet(isPresented: isPresented) {
+            OnTourForYouDebugView(onResetDismissed: onResetDismissed)
+        }
+        #else
+        self
+        #endif
+    }
+}

@@ -14,6 +14,7 @@ import Artwork
 import Caching
 import Concerts
 import Core
+import DebugPanel
 import LikedSongs
 import Logger
 import MusicShareKit
@@ -102,6 +103,19 @@ final class Singletonia {
         startSpotlightDonation()
         startPlaycutHistory()
         startLikedSongsHealing()
+
+        #if DEBUG
+        // UI-test isolation + determinism: `-uiTestResetForYou` clears the
+        // dismissed-shows set AND forces the For You loved seed on (via the
+        // runtime-only `seedForcedForTesting`, NOT the persisted toggle — so the
+        // test can't leave the seed stuck on for later manual launches), so the
+        // dismiss UI test sees a deterministic shelf regardless of any likes
+        // persisted on the simulator.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestResetForYou") {
+            dismissedConcertsStore.resetState()
+            OnTourForYouSeedDebugState.shared.seedForcedForTesting = true
+        }
+        #endif
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
