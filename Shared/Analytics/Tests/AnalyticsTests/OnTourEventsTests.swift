@@ -36,4 +36,13 @@ struct OnTourEventsTests {
         let props = try #require(event.properties)
         #expect(props["tier"] as? String == "station")
     }
+
+    @Test("ForYouCardDismissed records the tier name")
+    func cardDismissedTier() throws {
+        // "Not interested" carries the recommendation kind only — never the concert
+        // or the liked artist that surfaced it.
+        let event = ForYouCardDismissed(tier: "loved")
+        let props = try #require(event.properties)
+        #expect(props["tier"] as? String == "loved")
+    }
 }

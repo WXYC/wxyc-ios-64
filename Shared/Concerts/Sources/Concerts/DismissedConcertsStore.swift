@@ -50,11 +50,6 @@ public final class DismissedConcertsStore {
         }
     }
 
-    /// Whether `id` has been dismissed.
-    public func isDismissed(_ id: Int) -> Bool {
-        ids.contains(id)
-    }
-
     /// Records `id` as dismissed and persists. A no-op (no redundant write) when
     /// the id is already dismissed.
     public func dismiss(_ id: Int) {

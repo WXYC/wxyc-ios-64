@@ -39,15 +39,13 @@ struct DismissedConcertsStoreTests {
     func startsEmpty() {
         let (store, _) = makeStore()
         #expect(store.ids.isEmpty)
-        #expect(!store.isDismissed(1))
     }
 
-    @Test("Dismiss records the id and reports it dismissed")
+    @Test("Dismiss records the id")
     func dismissRecords() {
         let (store, _) = makeStore()
         store.dismiss(1)
         #expect(store.ids == [1])
-        #expect(store.isDismissed(1))
     }
 
     @Test("Dismiss writes the set through to storage")
@@ -72,8 +70,6 @@ struct DismissedConcertsStoreTests {
     func reloadsPriorDismissals() throws {
         let seeded = try encodedIDs([2, 5])
         let (store, _) = makeStore(initial: seeded)
-        #expect(store.isDismissed(2))
-        #expect(store.isDismissed(5))
         #expect(store.ids == [2, 5])
     }
 
