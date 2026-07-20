@@ -94,6 +94,14 @@ struct AppLifecycleModifier: ViewModifier {
         switch WXYCDeepLink(url: url) {
         case .playcut(let id):
             NotificationCenter.default.post(PlaycutOpenMessage(playcutID: id), subject: nil)
+        case .concert(let id):
+            // `wxyc://concert/<id>` — an app-owned surface (Spotlight, shortcut).
+            // Universal `https://wxyc.org/shows/<id>` links arrive through
+            // `handleUserActivity` instead; both post the same typed message.
+            NotificationCenter.default.post(
+                ConcertOpenMessage(concertID: id, source: .scheme),
+                subject: nil
+            )
         case .play:
             AudioPlayerController.shared.play(reason: .deepLink)
         case nil:
@@ -104,7 +112,18 @@ struct AppLifecycleModifier: ViewModifier {
     }
 
     private func handleUserActivity(_ userActivity: NSUserActivity) {
-        if userActivity.activityType == "org.wxyc.iphoneapp.play" {
+        if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
+            // A tapped universal link (`https://wxyc.org/shows/<id>`). Route
+            // recognised show links to the On Tour tab; ignore any other web URL
+            // the AASA might hand us so it falls through to Safari.
+            if let webpageURL = userActivity.webpageURL,
+               case .concert(let id)? = WXYCDeepLink(universalLink: webpageURL) {
+                NotificationCenter.default.post(
+                    ConcertOpenMessage(concertID: id, source: .universalLink),
+                    subject: nil
+                )
+            }
+        } else if userActivity.activityType == "org.wxyc.iphoneapp.play" {
             AudioPlayerController.shared.play(reason: .quickAction)
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
             AudioPlayerController.shared.play(reason: .siriIntent)
