@@ -120,7 +120,7 @@ public struct ConcertFilterState: Sendable, Equatable {
 
     private func matchesDateWindow(_ concert: Concert, now: Date) -> Bool {
         guard dateWindow != .all else { return true }
-        let calendar = Self.stationCalendar
+        let calendar = Calendar.wxycStation
         let today = calendar.startOfDay(for: now)
         let concertDay = calendar.startOfDay(for: concert.startsOn)
         guard concertDay >= today else { return false }
@@ -156,12 +156,6 @@ public struct ConcertFilterState: Sendable, Equatable {
     }
 
     // MARK: - Date math (station zone)
-
-    private static var stationCalendar: Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        return calendar
-    }
 
     /// The inclusive upper-bound calendar day for a window, or `nil` for `.all`.
     private static func upperBound(for window: DateWindow, today: Date, calendar: Calendar) -> Date? {

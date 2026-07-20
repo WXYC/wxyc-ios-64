@@ -209,6 +209,8 @@ struct OnTourTabView: View {
         // shows, so an active facet narrows the shelf too (the locked prototype
         // assumption). Empty when there are no likes or nothing intersects.
         let recommendations = recommendations(for: concerts)
+        // Group once per render rather than inline in the `ForEach`.
+        let sections = ConcertMonthSection.sections(for: concerts)
         return ScrollView {
             VStack(spacing: 12) {
                 // The heading is the first scrolling element, so it scrolls up and
@@ -225,7 +227,7 @@ struct OnTourTabView: View {
                     // Grouped into month sections (August 2026, September 2026, …).
                     // The window arrives `starts_on` ascending, so the sections and
                     // the rows within them stay chronological.
-                    ForEach(ConcertMonthSection.sections(for: concerts)) { section in
+                    ForEach(sections) { section in
                         Section {
                             ForEach(section.concerts) { concert in
                                 ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }

@@ -59,42 +59,25 @@ public extension ConcertMonthSection {
     /// - Parameter concerts: The window to group (typically `OnTourModel.filtered`).
     /// - Returns: One ``ConcertMonthSection`` per month present, ascending.
     static func sections(for concerts: [Concert]) -> [ConcertMonthSection] {
-        var order: [String] = []
-        var buckets: [String: [Concert]] = [:]
-        var titles: [String: String] = [:]
-
-        for concert in concerts {
-            let components = Self.stationCalendar.dateComponents([.year, .month], from: concert.startsOn)
-            // `.year`/`.month` are always present for a valid `Date`; the guard is
-            // a total-function safeguard, not a reachable branch.
-            guard let year = components.year, let month = components.month else { continue }
-            let key = String(format: "%04d-%02d", year, month)
-            if buckets[key] == nil {
-                order.append(key)
-                titles[key] = Self.titleFormatter.string(from: concert.startsOn)
+        Dictionary(grouping: concerts, by: monthKey)
+            .sorted { $0.key < $1.key }  // `yyyy-MM` sorts lexicographically == chronologically
+            .map { key, group in
+                // Every concert in the group shares the month, so any member's
+                // date yields the same "MMMM yyyy" title; the group is non-empty
+                // by construction, so `[0]` is safe.
+                ConcertMonthSection(id: key, title: titleFormatter.string(from: group[0].startsOn), concerts: group)
             }
-            buckets[key, default: []].append(concert)
-        }
-
-        return order
-            .sorted()  // `yyyy-MM` sorts lexicographically == chronologically
-            .map { ConcertMonthSection(id: $0, title: titles[$0] ?? $0, concerts: buckets[$0] ?? []) }
     }
 
-    /// Station-zone Gregorian calendar for deriving the year/month key.
-    private static let stationCalendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        return calendar
-    }()
+    /// The station-zone `yyyy-MM` month key for a concert (e.g. `"2026-08"`).
+    private static func monthKey(for concert: Concert) -> String {
+        let components = Calendar.wxycStation.dateComponents([.year, .month], from: concert.startsOn)
+        // `.year`/`.month` are always present for a valid `Date`; the `?? 0`
+        // fallbacks are unreachable, kept only to stay force-unwrap-free.
+        return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
+    }
 
     /// Station-zone, fixed-locale formatter for the section title (`"August 2026"`),
     /// matching the deterministic date labels elsewhere in the package.
-    private static let titleFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .wxycStation
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter
-    }()
+    private static let titleFormatter = DateFormatter.station("MMMM yyyy")
 }

@@ -314,13 +314,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// `yyyy-MM-dd` `starts_on` resolves to the same calendar day regardless of
     /// the device's zone or locale. Mirrors the fixed-locale approach in
     /// `Breakpoint.hourComponent`.
-    static let dateParser: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .wxycStation
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
+    static let dateParser = DateFormatter.station("yyyy-MM-dd")
 
     /// Builds an ISO-8601 instant parser. Created per call rather than held as a
     /// `static let` because `ISO8601DateFormatter` is not `Sendable` and cannot
