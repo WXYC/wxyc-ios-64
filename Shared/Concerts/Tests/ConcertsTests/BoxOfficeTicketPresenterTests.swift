@@ -432,4 +432,18 @@ struct BoxOfficeTicketPresenterTests {
         )
         #expect(presenter.venueSearchQuery == "Cat's Cradle, Carrboro")
     }
+
+    // MARK: - Share title (#536)
+
+    @Test("Share title reads '<headliner> at <venue>'")
+    func shareTitleReadsHeadlinerAtVenue() {
+        let presenter = BoxOfficeTicketPresenter(.stub())
+        #expect(presenter.shareTitle == "Jessica Pratt at Cat's Cradle")
+    }
+
+    @Test("Share title uses the event's own title when the source gave it one")
+    func shareTitleUsesEventTitle() {
+        let presenter = BoxOfficeTicketPresenter(.stub(title: "An Evening With Jessica Pratt"))
+        #expect(presenter.shareTitle == "An Evening With Jessica Pratt at Cat's Cradle")
+    }
 }

@@ -529,4 +529,19 @@ struct ConcertTests {
         let untitled = Concert.stub(headliningArtistRaw: "Jessica Pratt", title: nil)
         #expect(untitled.headlineName == "Jessica Pratt")
     }
+
+    // MARK: - shareURL (#536 — the canonical public share link)
+
+    @Test("shareURL is the canonical wxyc.org/shows/<id> link")
+    func shareURLIsCanonical() {
+        let concert = Concert.stub(id: 4821)
+        #expect(concert.shareURL == URL(string: "https://wxyc.org/shows/4821"))
+    }
+
+    @Test("shareURL carries the concert id, so distinct shows share distinct links")
+    func shareURLRoundTripsID() {
+        #expect(Concert.stub(id: 17).shareURL == URL(string: "https://wxyc.org/shows/17"))
+        #expect(Concert.stub(id: 90210).shareURL == URL(string: "https://wxyc.org/shows/90210"))
+        #expect(Concert.stub(id: 1).shareURL != Concert.stub(id: 2).shareURL)
+    }
 }

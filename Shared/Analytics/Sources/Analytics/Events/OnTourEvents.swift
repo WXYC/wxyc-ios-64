@@ -93,3 +93,19 @@ public struct ForYouCardDismissed {
         self.tier = tier
     }
 }
+
+// MARK: - Sharing (#536)
+
+/// Event fired when the listener starts sharing a concert — invoking the detail
+/// view's share button or the row's "Share Show" context action. `surface` is the
+/// originating affordance ("detail" or "row") and is the event's only property:
+/// the shared link resolves the show server-side, so no concert or artist id ever
+/// rides along, per the On Tour privacy invariant.
+@AnalyticsEvent
+public struct ConcertShareInitiated {
+    public let surface: String
+
+    public init(surface: String) {
+        self.surface = surface
+    }
+}
