@@ -31,6 +31,11 @@ struct LikedSongRow: View {
     private let playcut: Playcut
 
     @Environment(Singletonia.self) private var appState
+    @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
+
+    /// Stable time offset for the failed-artwork mesh gradient, matching the
+    /// flowsheet row (randomized once at init).
+    private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
 
     init(snapshot: LikedSongSnapshot, onSelect: @escaping (UIImage?) -> Void, onUnlike: @escaping () -> Void) {
         self.snapshot = snapshot
@@ -47,63 +52,50 @@ struct LikedSongRow: View {
         if case .loaded(let image) = artworkState { image } else { nil }
     }
 
+    /// Animated mesh gradient using the wallpaper-derived palette, matching the
+    /// flowsheet row's failed-artwork placeholder.
+    private var meshGradient: AnimatedMeshGradient {
+        AnimatedMeshGradient(colors: wallpaperPalette, timeOffset: stableTimeOffset)
+    }
+
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            artworkThumbnail
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                // The same theme-aware material as the flowsheet and On Tour
+                // rows, so the three list surfaces match.
+                BackgroundLayer(cornerRadius: 12)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(snapshot.songTitle)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                Text(snapshot.artistName)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .lineLimit(1)
-                Text("Liked \(snapshot.likedAt, format: .relative(presentation: .named))")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.55))
-                    .lineLimit(1)
+                // The shared flowsheet row body — same artwork size, same text
+                // column — with the liked-relative date as this row's detail
+                // line and the unlike heart in the trailing slot.
+                SongRowContent(
+                    song: snapshot,
+                    artworkState: artworkState,
+                    meshGradient: meshGradient,
+                    proxy: proxy
+                ) {
+                    Text("Liked \(snapshot.likedAt, format: .relative(presentation: .named))")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                } trailing: {
+                    LikeHeartButton(isLiked: true, action: onUnlike)
+                        .padding(.trailing, 4)
+                }
             }
-
-            Spacer(minLength: 8)
-
-            LikeHeartButton(isLiked: true, action: onUnlike)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.12), lineWidth: 1))
+            .contentShape(.rect(cornerRadius: 12))
+            .onTapGesture {
+                onSelect(loadedArtwork)
+            }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // The same theme-aware material as the playcut and On Tour rows, so the
-        // three list surfaces match.
-        .background(BackgroundLayer(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.12), lineWidth: 1))
-        .contentShape(.rect(cornerRadius: 12))
-        .onTapGesture {
-            onSelect(loadedArtwork)
-        }
+        .aspectRatio(2.5, contentMode: .fill)
+        .frame(maxWidth: .infinity)
         .onAppear {
             // Idempotent: coalesces with in-flight loads and short-circuits when
             // already loaded. The playlist's prune pass may evict a liked row's
             // entry between visits; reappearing re-requests it.
             appState.artworkLoader.load(playcut)
         }
-    }
-
-    @ViewBuilder
-    private var artworkThumbnail: some View {
-        Group {
-            switch artworkState {
-            case .loaded(let image):
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            case .unloaded, .loading:
-                LoadingArtworkView(shadowYOffset: 0)
-            case .failed:
-                PlaceholderArtworkView(cornerRadius: 8)
-            }
-        }
-        .frame(width: 56, height: 56)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

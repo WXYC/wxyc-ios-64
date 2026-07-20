@@ -100,7 +100,9 @@ struct LikedTabView: View {
                 )
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                // Mirror the flowsheet's 12pt horizontal gutter and 8pt row
+                // rhythm so the two lists' cards align edge-to-edge.
+                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
                         unlike(snapshot)

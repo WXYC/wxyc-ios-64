@@ -199,52 +199,20 @@ struct PlaycutRowView: View {
     }
 
     /// The song-row content — artwork, title/artist/time, like heart — shared by
-    /// the plain row and the ticket. Needs the enclosing `GeometryReader`'s proxy
-    /// for the placeholder artwork's height.
-    @ViewBuilder
+    /// the plain row and the ticket, and (via `SongRowContent`) with the Liked
+    /// tab. Needs the enclosing `GeometryReader`'s proxy for the artwork's size.
     private func songRow(proxy: GeometryProxy) -> some View {
-        // Content that can punch through the background
-        HStack(alignment: .center, spacing: 0) {
-            // Artwork
-            Group {
-                switch artworkState {
-                case .loaded(let image):
-                    LoadedArtworkView(
-                        artwork: image,
-                        shadowYOffset: shadowYOffset
-                    )
-                case .unloaded, .loading:
-                    LoadingArtworkView(shadowYOffset: shadowYOffset)
-                case .failed:
-                    PlaceholderArtworkView(
-                        cornerRadius: ArtworkStyle.cornerRadius,
-                        shadowYOffset: shadowYOffset,
-                        meshGradient: meshGradient
-                    )
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: proxy.size.height * 0.75
-                    )
-                }
-            }
-            .padding(12.0)
-            .clipRounded()
-            .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
-
-            // Song info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(playcut.songTitle)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                Text(playcut.artistName)
-                    .foregroundStyle(.white)
-                ClockView(timeCreated: playcut.timeCreated)
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-            .padding(0)
-
-            Spacer()
-
+        SongRowContent(
+            song: playcut,
+            artworkState: artworkState,
+            shadowYOffset: shadowYOffset,
+            meshGradient: meshGradient,
+            proxy: proxy
+        ) {
+            // The play time is this row's detail line.
+            ClockView(timeCreated: playcut.timeCreated)
+                .foregroundStyle(.white.opacity(0.7))
+        } trailing: {
             // Like heart — replaces the info-circle in the trailing slot (study
             // verdict B, docs/plans/492-liked-songs.md): same 44pt target, same
             // .title3 scale. "Tap for more" rides on the row tap, which already
