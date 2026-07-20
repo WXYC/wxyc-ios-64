@@ -308,33 +308,22 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
 
     // MARK: - Formatting helpers
 
-    private static let dateFormatter = Self.stationFormatter("EEE, MMM d")
-    private static let compactDateFormatter = Self.stationFormatter("EEE MMM d")
-    private static let weekdayFormatter = Self.stationFormatter("EEE")
-    private static let dayNumberFormatter = Self.stationFormatter("d")
-    private static let monthFormatter = Self.stationFormatter("MMM")
+    private static let dateFormatter = DateFormatter.station("EEE, MMM d")
+    private static let compactDateFormatter = DateFormatter.station("EEE MMM d")
+    private static let weekdayFormatter = DateFormatter.station("EEE")
+    private static let dayNumberFormatter = DateFormatter.station("d")
+    private static let monthFormatter = DateFormatter.station("MMM")
 
     /// Station-zone, fixed-locale time formatter producing `"7 PM"` on the hour
     /// and `"8:30 PM"` otherwise. Built from two formats selected at call time so
     /// on-the-hour times drop the `:00`.
-    private static let hourOnlyTimeFormatter = Self.stationFormatter("h a")
-    private static let hourMinuteTimeFormatter = Self.stationFormatter("h:mm a")
-
-    /// Builds a station-zone, fixed-locale `DateFormatter` for a single format.
-    private static func stationFormatter(_ format: String) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .wxycStation
-        formatter.dateFormat = format
-        return formatter
-    }
+    private static let hourOnlyTimeFormatter = DateFormatter.station("h a")
+    private static let hourMinuteTimeFormatter = DateFormatter.station("h:mm a")
 
     /// Formats an instant as the venue's wall-clock time (`"7 PM"` /
     /// `"8:30 PM"`), dropping the minutes when the time falls on the hour.
     private static func wallClock(_ date: Date) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        let minute = calendar.component(.minute, from: date)
+        let minute = Calendar.wxycStation.component(.minute, from: date)
         let formatter = minute == 0 ? hourOnlyTimeFormatter : hourMinuteTimeFormatter
         return formatter.string(from: date)
     }
