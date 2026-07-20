@@ -192,4 +192,58 @@ struct ConcertsFetcherTests {
         #expect(response.concerts.first?.ticketURL == nil)
         #expect(response.concerts.last?.ticketURL == URL(string: "https://www.etix.com/ticket/p/juana-molina"))
     }
+
+    // MARK: - Single concert lookup (#537)
+
+    /// A bare `Concert` (not the `{concerts,pagination}` envelope) — the shape
+    /// `GET /concerts/:id` returns, mirroring conventional REST item lookup.
+    private static let singleConcertBody = Data("""
+    {
+        "id": 4821,
+        "venue": { "id": 3, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+        "starts_on": "2026-08-01",
+        "headlining_artist_raw": "Jessica Pratt",
+        "status": "on_sale"
+    }
+    """.utf8)
+
+    @Test("Hits /concerts/<id> and decodes a bare concert")
+    func fetchesSingleConcert() async throws {
+        StubURLProtocol.setBody(Self.singleConcertBody)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+
+        let concert = try await fetcher.fetchConcert(id: 4821)
+
+        let request = try #require(StubURLProtocol.capturedRequest())
+        #expect(request.url?.path == "/concerts/4821")
+        #expect(concert.id == 4821)
+        #expect(concert.headliningArtistRaw == "Jessica Pratt")
+    }
+
+    @Test("Sends the anonymous-session bearer token on the single-concert request")
+    func singleConcertSendsBearerToken() async throws {
+        StubURLProtocol.setBody(Self.singleConcertBody)
+        let fetcher = ConcertsFetcher(
+            baseURL: Self.base,
+            session: Self.makeSession(),
+            tokenProvider: FixedTokenProvider(value: "anon-token-123")
+        )
+
+        _ = try await fetcher.fetchConcert(id: 4821)
+
+        let request = try #require(StubURLProtocol.capturedRequest())
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer anon-token-123")
+    }
+
+    @Test("Throws on a 404 for an unknown concert id")
+    func singleConcertThrowsOnNotFound() async throws {
+        StubURLProtocol.setResponse(Data("""
+        {"error": "Not Found"}
+        """.utf8), statusCode: 404)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+
+        await #expect(throws: URLError(.badServerResponse)) {
+            _ = try await fetcher.fetchConcert(id: 999_999)
+        }
+    }
 }

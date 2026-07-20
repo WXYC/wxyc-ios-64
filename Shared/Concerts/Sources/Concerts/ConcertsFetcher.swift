@@ -102,6 +102,33 @@ public final class ConcertsFetcher: Sendable {
         return try JSONDecoder.shared.decode(ConcertsResponse.self, from: data)
     }
 
+    /// Fetches a single concert by id from `GET /concerts/:id`.
+    ///
+    /// The by-id rung of the On Tour deep-link resolution ladder (#537): when a
+    /// shared `wxyc.org/shows/<id>` link points at a show outside the loaded
+    /// window, the model falls back to this direct lookup. The endpoint returns a
+    /// bare ``Concert`` (not the `{concerts,pagination}` list envelope) and 404s
+    /// for an unknown id, which surfaces here as the same
+    /// ``HTTPURLResponse/validateSuccessStatus()`` error the list path throws.
+    ///
+    /// - Parameter id: The concert's stable id.
+    /// - Returns: The decoded ``Concert``.
+    public func fetchConcert(id: Int) async throws -> Concert {
+        let url = baseURL
+            .appending(path: "concerts")
+            .appending(path: String(id))
+
+        var request = URLRequest(url: url)
+        if let tokenProvider {
+            let token = try await tokenProvider.token()
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        try (response as? HTTPURLResponse)?.validateSuccessStatus()
+        return try JSONDecoder.shared.decode(Concert.self, from: data)
+    }
+
     /// Formats a `Date` as the `yyyy-MM-dd` `starts_on` value the endpoint
     /// windows on, in the station (venue) zone so "today" matches the server's
     /// America/New_York boundary rather than the device's zone. Reuses

@@ -35,6 +35,13 @@ public protocol ConcertsFetching: Sendable {
         page: Int,
         limit: Int
     ) async throws -> ConcertsResponse
+
+    /// Fetches a single concert by id — the by-id rung of the deep-link
+    /// resolution ladder (#537), used when a shared show falls outside the
+    /// loaded window. Throws when the id is unknown (the server 404s).
+    ///
+    /// - Parameter id: The concert's stable id (the `<id>` in `wxyc.org/shows/<id>`).
+    func fetchConcert(id: Int) async throws -> Concert
 }
 
 extension ConcertsFetcher: ConcertsFetching {}
