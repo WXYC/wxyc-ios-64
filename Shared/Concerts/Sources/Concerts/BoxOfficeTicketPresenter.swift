@@ -121,13 +121,13 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     /// The doors time on its own (`"7 PM"`), for a dedicated stat cell. `nil`
     /// when ``Concert/doorsAt`` is absent.
     public var doorsLabel: String? {
-        show.doorsAt.map(Self.wallClock)
+        show.doorsAt?.stationWallClock()
     }
 
     /// The set/show time on its own (`"8 PM"`), for a dedicated stat cell. `nil`
     /// when ``Concert/startsAt`` is absent.
     public var showLabel: String? {
-        show.startsAt.map(Self.wallClock)
+        show.startsAt?.stationWallClock()
     }
 
     // MARK: - Price
@@ -345,20 +345,6 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     private static let weekdayFormatter = DateFormatter.station("EEE")
     private static let dayNumberFormatter = DateFormatter.station("d")
     private static let monthFormatter = DateFormatter.station("MMM")
-
-    /// Station-zone, fixed-locale time formatter producing `"7 PM"` on the hour
-    /// and `"8:30 PM"` otherwise. Built from two formats selected at call time so
-    /// on-the-hour times drop the `:00`.
-    private static let hourOnlyTimeFormatter = DateFormatter.station("h a")
-    private static let hourMinuteTimeFormatter = DateFormatter.station("h:mm a")
-
-    /// Formats an instant as the venue's wall-clock time (`"7 PM"` /
-    /// `"8:30 PM"`), dropping the minutes when the time falls on the hour.
-    private static func wallClock(_ date: Date) -> String {
-        let minute = Calendar.wxycStation.component(.minute, from: date)
-        let formatter = minute == 0 ? hourOnlyTimeFormatter : hourMinuteTimeFormatter
-        return formatter.string(from: date)
-    }
 
     /// Formats a dollar amount: whole dollars drop the decimal (`22`), otherwise
     /// two fraction digits (`12.50`).
