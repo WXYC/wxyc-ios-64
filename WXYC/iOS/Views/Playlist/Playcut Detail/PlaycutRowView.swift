@@ -18,8 +18,10 @@ import Wallpaper
 
 // MARK: - Artwork View Components
 
-/// Common styling for artwork views
-private struct ArtworkStyle {
+/// Common styling for artwork views. Not `private`: `SongRowContent` reads
+/// `cornerRadius` for its failed-load placeholder so the two rows share one
+/// source of truth rather than a hardcoded copy.
+struct ArtworkStyle {
     static let cornerRadius: CGFloat = 6.0
     static let roundedRectangle = RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
 }
@@ -142,19 +144,13 @@ struct PlaycutRowView: View {
     }
 
     /// The plain playlist row: a wallpaper-blurred panel with artwork, song info,
-    /// and the like heart. Used when there's no upcoming show to attach.
+    /// and the like heart. Used when there's no upcoming show to attach. Shares
+    /// `SongRowPanel`'s chrome with the Liked tab row; the scroll-shadow lean is
+    /// this surface's own extra.
     private var songRowPanel: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                BackgroundLayer()
-                songRow(proxy: proxy)
-            }
-            .onTapGesture {
-                onSelect(loadedArtwork)
-            }
+        SongRowPanel(onTap: { onSelect(loadedArtwork) }) { proxy in
+            songRow(proxy: proxy)
         }
-        .aspectRatio(2.5, contentMode: .fill)
-        .frame(maxWidth: .infinity)
         .modifier(ScrollShadowModifier(
             shadowYOffset: $shadowYOffset,
             top: shadowOffsetAtTop,
@@ -206,7 +202,7 @@ struct PlaycutRowView: View {
             song: playcut,
             artworkState: artworkState,
             shadowYOffset: shadowYOffset,
-            meshGradient: meshGradient,
+            meshGradient: { meshGradient },
             proxy: proxy
         ) {
             // The play time is this row's detail line.

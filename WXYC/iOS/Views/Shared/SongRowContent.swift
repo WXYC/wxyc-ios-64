@@ -24,21 +24,19 @@ import WXUI
 /// (its `proxy` sizes the artwork) and the row background; this view is the
 /// content shared by the flowsheet and the Liked tab so a song's artwork and
 /// text read the same on both.
-struct SongRowContent<Detail: View, Trailing: View>: View {
-    let song: any SongDisplayable
+struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View {
+    let song: Song
     let artworkState: ArtworkLoader.State
     /// Scroll-driven shadow lean; the flowsheet feeds a live value, the Liked
     /// row leaves it at rest.
     var shadowYOffset: CGFloat = 0
-    let meshGradient: AnimatedMeshGradient
+    /// Built lazily: only the failed-artwork placeholder reads it, so the common
+    /// loaded/loading rows never allocate a gradient (and a nil palette never
+    /// regenerates its random colors on a row that isn't showing the placeholder).
+    let meshGradient: () -> AnimatedMeshGradient
     let proxy: GeometryProxy
     @ViewBuilder var detailLine: () -> Detail
     @ViewBuilder var trailing: () -> Trailing
-
-    /// Mirrors `ArtworkStyle.cornerRadius` in `PlaycutRowView`; the surrounding
-    /// `.clipRounded()` is what actually shapes the tile, so this is only the
-    /// failed-load placeholder's own fill radius.
-    private let placeholderCornerRadius: CGFloat = 6.0
 
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
@@ -52,9 +50,9 @@ struct SongRowContent<Detail: View, Trailing: View>: View {
                     LoadingArtworkView(shadowYOffset: shadowYOffset)
                 case .failed:
                     PlaceholderArtworkView(
-                        cornerRadius: placeholderCornerRadius,
+                        cornerRadius: ArtworkStyle.cornerRadius,
                         shadowYOffset: shadowYOffset,
-                        meshGradient: meshGradient
+                        meshGradient: meshGradient()
                     )
                     .frame(
                         maxWidth: .infinity,
@@ -68,9 +66,10 @@ struct SongRowContent<Detail: View, Trailing: View>: View {
 
             // Song info — title/artist shared; the detail line is per-row.
             SongInfoColumn(song: song, detailLine: detailLine)
-                .padding(0)
 
-            Spacer()
+            // Guarantee a gutter before the trailing control even when the title
+            // consumes the row's width, so text never abuts the 44pt tap target.
+            Spacer(minLength: 8)
 
             trailing()
         }
