@@ -23,6 +23,7 @@ import Playback
 import Playlist
 import SwiftUI
 import Wallpaper
+import WXYCIntents
 
 /// Shared app state for cross-scene access (main UI and CarPlay)
 @MainActor
@@ -71,6 +72,17 @@ final class Singletonia {
     /// `shouldShow` and records the dismiss, while `PlaycutDetailView` records the
     /// real-ticket view that retires it. One instance keeps both on the same keys.
     let ticketFeatureCTAPersistence = TicketFeatureCTAPersistence()
+
+    /// A shared On Tour show link that has arrived but not yet been opened (#537).
+    /// Set by ``startObservingConcertOpen()`` when a `wxyc.org/shows/<id>` (or
+    /// `wxyc://concert/<id>`) link posts a `ConcertOpenMessage`; `RootTabView`
+    /// flips to the On Tour tab in response and `OnTourTabView` runs the
+    /// resolution ladder, then clears it via ``consumePendingConcertLink()``.
+    private(set) var pendingConcertLink: PendingConcertLink?
+
+    /// Token for the app-lifetime `ConcertOpenMessage` observer. Held so the
+    /// registration stays idempotent — one observer for the app's lifetime.
+    @ObservationIgnored private var concertOpenObservation: (any NSObjectProtocol)?
 
     private var nowPlayingObservationTask: Task<Void, Never>?
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
@@ -333,5 +345,33 @@ final class Singletonia {
                 self.reviewRequestService.recordRequestSent()
             }
         }
+    }
+
+    // MARK: - Deep-link routing (#537)
+
+    /// Begins observing shared On Tour show links, so a tapped
+    /// `wxyc.org/shows/<id>` (or `wxyc://concert/<id>`) fills ``pendingConcertLink``.
+    ///
+    /// Registered synchronously (not through an `async` sequence) from the root
+    /// view's `.onAppear`, which runs before the launch link is delivered — so a
+    /// cold launch straight into a shared link can't post the `ConcertOpenMessage`
+    /// before the observer exists. Idempotent: the observer lives for the app's
+    /// lifetime, so a re-appearance doesn't stack a second one.
+    func startObservingConcertOpen() {
+        guard concertOpenObservation == nil else { return }
+        concertOpenObservation = NotificationCenter.default.addMainActorObserver(
+            for: ConcertOpenMessage.self
+        ) { [weak self] message in
+            self?.pendingConcertLink = PendingConcertLink(
+                id: message.concertID,
+                source: message.source.rawValue
+            )
+        }
+    }
+
+    /// Clears the pending link once the On Tour tab has consumed it, so dismissing
+    /// the opened show (or a re-appearance) doesn't re-trigger the resolution.
+    func consumePendingConcertLink() {
+        pendingConcertLink = nil
     }
 }

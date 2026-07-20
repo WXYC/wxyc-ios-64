@@ -117,6 +117,15 @@ struct RootTabView: View {
                 PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
             }
         }
+        // A shared show link arrived: switch to On Tour so the tab materializes and
+        // its resolution ladder (`OnTourTabView`) can open the show. Reacting here —
+        // not in `OnTourTabView` — guarantees the tab is built even when it wasn't
+        // the visible one. The tab consumes and clears the link once resolved.
+        .onChange(of: appState.pendingConcertLink) { _, link in
+            if link != nil {
+                selectedPage = .onTour
+            }
+        }
     }
 }
 

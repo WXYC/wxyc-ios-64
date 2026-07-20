@@ -42,6 +42,10 @@ struct OnTourTabView: View {
     /// Presents the DEBUG For You seed/reset sheet (long-press the title). Unused
     /// in release — the long-press that sets it compiles only in DEBUG.
     @State private var showForYouDebug = false
+    /// Raised when a shared-show deep link (#537) resolves to a hard miss — the id
+    /// is in neither the loaded window nor answerable by a by-id fetch — so the
+    /// tab shows a quiet "couldn't find that show" notice instead of a blank cover.
+    @State private var showMissedLinkNotice = false
 
     /// PostHog key for the similar-tier noise cap; local default 3 when absent.
     private static let similarCapFlagKey = "on_tour_for_you_similar_cap"
@@ -80,6 +84,18 @@ struct OnTourTabView: View {
                 if model.phase != .loaded {
                     await model.load()
                 }
+            }
+            // A shared-show link arrived (#537). `RootTabView` has already flipped
+            // to this tab (materializing the view); resolve the id here and present
+            // the poster detail. Keyed on the pending link so a new share while the
+            // tab is up re-runs, and consuming it (→ nil) settles without re-firing.
+            .task(id: appState.pendingConcertLink) {
+                await openPendingConcertLink()
+            }
+            .alert("Couldn't find that show", isPresented: $showMissedLinkNotice) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("This show may have passed or is no longer listed.")
             }
             .sheet(isPresented: $isFilterSheetPresented) {
                 OnTourFilterSheet(model: model)
@@ -256,6 +272,31 @@ struct OnTourTabView: View {
             .padding(.top, 10)
             .padding(.bottom, 2)
             .accessibilityAddTraits(.isHeader)
+    }
+
+    // MARK: - Deep-link resolution (#537)
+
+    /// Consumes a pending shared-show link: resolves the id through the window →
+    /// by-id → miss ladder, then either presents the poster detail (an in-window
+    /// hit zooms from its row; a by-id hit — a show outside the loaded window, or
+    /// a past keepsake — presents directly) or raises a quiet "couldn't find that
+    /// show" notice on a hard miss. `ConcertDetailView` decides the past-show
+    /// treatment from the concert's date, so a passed show still opens as a
+    /// keepsake. Fires `ConcertDeepLinkOpened` carrying only the link source and
+    /// how it resolved — never the concert id — then clears the pending link so
+    /// re-running this task (on consume → nil) is a no-op.
+    private func openPendingConcertLink() async {
+        guard let link = appState.pendingConcertLink else { return }
+        let resolution = await model.resolveConcert(id: link.id)
+        StructuredPostHogAnalytics.shared.capture(
+            ConcertDeepLinkOpened(source: link.source, resolution: resolution.analyticsLabel)
+        )
+        if let concert = resolution.concert {
+            selectedConcert = concert
+        } else {
+            showMissedLinkNotice = true
+        }
+        appState.consumePendingConcertLink()
     }
 
     // MARK: - For You shelf
@@ -458,8 +499,19 @@ struct OnTourTabView: View {
 #if DEBUG
 /// A canned fetcher so the preview renders a loaded list with no network.
 private struct PreviewConcertsFetcher: ConcertsFetching {
+    private struct PreviewFetchError: Error {}
+
     func fetchConcerts(curated: Bool, from: Date?, to: Date?, page: Int, limit: Int) async throws -> ConcertsResponse {
         ConcertsResponse(concerts: Concert.previewList, pagination: PaginationInfo(page: 1, limit: limit, total: nil, hasMore: false))
+    }
+
+    /// Resolves the by-id rung against the same canned list; throws for an unknown
+    /// id, mirroring the server's 404 so a preview can exercise a `.missed` link.
+    func fetchConcert(id: Int) async throws -> Concert {
+        guard let match = Concert.previewList.first(where: { $0.id == id }) else {
+            throw PreviewFetchError()
+        }
+        return match
     }
 }
 
