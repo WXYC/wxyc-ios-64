@@ -115,4 +115,127 @@ struct WXYCDeepLinkTests {
             #expect(WXYCDeepLink(url: url) == nil, "\(raw)")
         }
     }
+
+    // MARK: - Concerts (#537)
+
+    @Test("encodes a concert id into the wxyc://concert/<id> scheme alias")
+    func encodesConcert() throws {
+        let url = try #require(WXYCDeepLink.concert(4821).url)
+
+        #expect(url.scheme == "wxyc")
+        #expect(url.host == "concert")
+        #expect(url.path == "/4821")
+    }
+
+    @Test("parses the wxyc://concert/<id> scheme alias")
+    func parsesConcertSchemeAlias() throws {
+        let url = try #require(URL(string: "wxyc://concert/4821"))
+
+        #expect(WXYCDeepLink(url: url) == .concert(4821))
+    }
+
+    @Test("round-trips concert ids through the scheme alias", arguments: [0, 1, 42, 4821, 999_999])
+    func roundTripsConcerts(_ id: Int) throws {
+        let original = WXYCDeepLink.concert(id)
+        let url = try #require(original.url)
+
+        #expect(WXYCDeepLink(url: url) == original)
+    }
+
+    @Test("parses a bare https://wxyc.org/shows/<id> universal link")
+    func parsesUniversalLinkBare() throws {
+        let url = try #require(URL(string: "https://wxyc.org/shows/4821"))
+
+        #expect(WXYCDeepLink(universalLink: url) == .concert(4821))
+    }
+
+    @Test("parses a slugged universal link, ignoring the slug")
+    func parsesUniversalLinkSlugged() throws {
+        let url = try #require(URL(string: "https://wxyc.org/shows/4821-jessica-pratt-at-cats-cradle"))
+
+        #expect(WXYCDeepLink(universalLink: url) == .concert(4821))
+    }
+
+    @Test("accepts a case-insensitive scheme/host on the universal link")
+    func universalLinkCaseInsensitive() throws {
+        for raw in [
+            "HTTPS://WXYC.ORG/shows/4821",
+            "https://WXYC.org/shows/4821",
+        ] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(universalLink: url) == .concert(4821), "\(raw)")
+        }
+    }
+
+    @Test("rejects a universal link on the wrong host")
+    func rejectsUniversalLinkWrongHost() throws {
+        for raw in ["https://example.com/shows/4821", "https://wxyc.com/shows/4821"] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(universalLink: url) == nil, "\(raw)")
+        }
+    }
+
+    @Test("rejects a universal link on a non-/shows path")
+    func rejectsUniversalLinkWrongPath() throws {
+        for raw in [
+            "https://wxyc.org/artists/4821",
+            "https://wxyc.org/4821",
+            "https://wxyc.org/shows",
+            "https://wxyc.org/shows/4821/extra",
+        ] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(universalLink: url) == nil, "\(raw)")
+        }
+    }
+
+    @Test("rejects a universal link whose id is not a leading integer")
+    func rejectsUniversalLinkNonInteger() throws {
+        for raw in [
+            "https://wxyc.org/shows/jessica-pratt",
+            "https://wxyc.org/shows/-1",
+            "https://wxyc.org/shows/abc",
+        ] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(universalLink: url) == nil, "\(raw)")
+        }
+    }
+
+    @Test("rejects a non-https universal link (only https validates the AASA)")
+    func rejectsUniversalLinkNonHTTPS() throws {
+        for raw in ["http://wxyc.org/shows/4821", "wxyc://wxyc.org/shows/4821"] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(universalLink: url) == nil, "\(raw)")
+        }
+    }
+
+    @Test("rejects a wxyc://concert alias with a non-integer id")
+    func rejectsConcertSchemeNonInteger() throws {
+        for raw in [
+            "wxyc://concert/not-a-number",
+            "wxyc://concert/-1",
+            "wxyc://concert/+42",
+            "wxyc://concert/",
+        ] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(url: url) == nil, "\(raw)")
+        }
+    }
+
+    @Test("rejects a wxyc://concert alias with extra path segments")
+    func rejectsConcertSchemeExtraSegments() throws {
+        for raw in ["wxyc://concert/4821/extra", "wxyc://concert/4821/48"] {
+            let url = try #require(URL(string: raw))
+            #expect(WXYCDeepLink(url: url) == nil, "\(raw)")
+        }
+    }
+
+    @Test("the two initializers don't cross-parse each other's URL shape")
+    func initializersDoNotCrossParse() throws {
+        // A universal link is not a wxyc:// URL…
+        let web = try #require(URL(string: "https://wxyc.org/shows/4821"))
+        #expect(WXYCDeepLink(url: web) == nil)
+        // …and a scheme alias is not a universal link.
+        let scheme = try #require(URL(string: "wxyc://concert/4821"))
+        #expect(WXYCDeepLink(universalLink: scheme) == nil)
+    }
 }
