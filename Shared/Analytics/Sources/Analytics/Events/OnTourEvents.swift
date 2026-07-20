@@ -128,3 +128,23 @@ public struct ConcertDeepLinkOpened {
         self.resolution = resolution
     }
 }
+
+// MARK: - Add to Calendar (#538)
+
+/// Event fired when the listener commits an "Add to Calendar" — i.e. the
+/// EventKit editor reports a saved event, not merely on tapping the affordance.
+/// `surface` is the originating affordance ("detail" or "row"); `timing` is the
+/// event shape the concert produced — "timed" (a known start instant) or
+/// "allDay" (date-only or doors-only). Both are low-cardinality labels: no
+/// concert, artist, or calendar identity ever rides along, per the On Tour
+/// privacy invariant.
+@AnalyticsEvent
+public struct ConcertCalendarAdded {
+    public let surface: String
+    public let timing: String
+
+    public init(surface: String, timing: String) {
+        self.surface = surface
+        self.timing = timing
+    }
+}
