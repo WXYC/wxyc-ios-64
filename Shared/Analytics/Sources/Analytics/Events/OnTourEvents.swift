@@ -109,3 +109,22 @@ public struct ConcertShareInitiated {
         self.surface = surface
     }
 }
+
+/// Event fired when a shared show link opens the app and the arrival path
+/// finishes resolving it (#537). `source` is the link form — "universalLink"
+/// (`wxyc.org/shows/<id>`, a friend tapped a public link) or "scheme"
+/// (`wxyc://concert/<id>`, an app-owned surface). `resolution` is the ladder rung
+/// that resolved it — "window" (already in the loaded list), "byID" (fetched
+/// individually), or "missed" (couldn't be found). Both are low-cardinality
+/// labels; the concert id never rides along — which show a listener opened is
+/// taste data that stays on the device, per the On Tour privacy invariant.
+@AnalyticsEvent
+public struct ConcertDeepLinkOpened {
+    public let source: String
+    public let resolution: String
+
+    public init(source: String, resolution: String) {
+        self.source = source
+        self.resolution = resolution
+    }
+}

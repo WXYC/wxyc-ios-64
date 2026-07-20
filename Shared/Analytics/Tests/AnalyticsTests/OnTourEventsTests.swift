@@ -56,4 +56,24 @@ struct OnTourEventsTests {
         #expect(props["surface"] as? String == surface)
         #expect(props.count == 1)
     }
+
+    @Test(
+        "ConcertDeepLinkOpened records the link source and resolution rung, nothing else",
+        arguments: [
+            ("universalLink", "window"),
+            ("universalLink", "byID"),
+            ("scheme", "missed"),
+        ]
+    )
+    func concertDeepLinkOpened(_ pair: (source: String, resolution: String)) throws {
+        // The arrival event carries which link form opened the app and which rung
+        // of the resolution ladder resolved it — both low-cardinality labels. It
+        // never carries the concert id: a shared link is public, but which show a
+        // listener opened is taste data that stays on the device.
+        let event = ConcertDeepLinkOpened(source: pair.source, resolution: pair.resolution)
+        let props = try #require(event.properties)
+        #expect(props["source"] as? String == pair.source)
+        #expect(props["resolution"] as? String == pair.resolution)
+        #expect(props.count == 2)
+    }
 }
