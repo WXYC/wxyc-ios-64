@@ -53,11 +53,15 @@ public final class OnTourModel {
     private let fetcher: any ConcertsFetching
     private let now: @Sendable () -> Date
 
-    /// Single-flight guard: a load already in flight makes a concurrent ``load()``
-    /// a no-op, so an error-state retry that overlaps a tab-reappearance `.task`
-    /// (or a foreground refresh racing the initial load) can't kick off a second
-    /// pagination sweep. Main-actor isolation makes the check-and-set atomic.
-    private var isLoading = false
+    /// Single-flight coalescing: the in-flight load's task, if any. A concurrent
+    /// ``load()`` awaits this same task instead of kicking off a second pagination
+    /// sweep, so an error-state retry that overlaps a tab-reappearance `.task` (or
+    /// a foreground refresh racing the initial load) doesn't double-fetch — and,
+    /// crucially, the deep-link ``resolveConcert(id:)`` awaits the in-flight load
+    /// rather than racing past a not-yet-populated window into a by-id fetch.
+    /// Cleared when the sweep finishes so the next ``load()`` (pull-to-refresh)
+    /// starts fresh. Main-actor isolation makes the check-and-set atomic.
+    private var loadTask: Task<Void, Never>?
 
     /// Creates a model.
     ///
@@ -99,9 +103,22 @@ public final class OnTourModel {
     /// showing while the refetch runs, and a failed refetch that still has cached
     /// rows stays in ``Phase/loaded`` rather than flashing an error.
     public func load() async {
-        guard !isLoading else { return }
-        isLoading = true
-        defer { isLoading = false }
+        if let loadTask {
+            // A load is already in flight — await it instead of starting a second
+            // sweep. The concurrent caller then observes the loaded window.
+            await loadTask.value
+            return
+        }
+        let task = Task {
+            await self.performLoad()
+            self.loadTask = nil
+        }
+        loadTask = task
+        await task.value
+    }
+
+    /// The actual pagination sweep, run by exactly one ``load()`` at a time.
+    private func performLoad() async {
         if allConcerts.isEmpty {
             phase = .loading
         }
