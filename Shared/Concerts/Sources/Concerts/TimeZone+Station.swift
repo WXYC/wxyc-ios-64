@@ -48,3 +48,18 @@ extension DateFormatter {
         return formatter
     }
 }
+
+extension Date {
+    /// A station-zone wall-clock label (`"7 PM"` / `"8:30 PM"`), dropping the
+    /// minutes when the time falls on the hour. The one venue-local time label
+    /// shared by the Box Office ticket's door/show times and the Add-to-Calendar
+    /// doors note, so both read identically.
+    func stationWallClock() -> String {
+        let minute = Calendar.wxycStation.component(.minute, from: self)
+        let formatter = minute == 0 ? Self.stationHourOnly : Self.stationHourMinute
+        return formatter.string(from: self)
+    }
+
+    private static let stationHourOnly = DateFormatter.station("h a")
+    private static let stationHourMinute = DateFormatter.station("h:mm a")
+}
