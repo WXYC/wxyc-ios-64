@@ -32,6 +32,12 @@ struct BoxOfficeTicketView: View {
     let show: Concert
     let colors: TicketColors
 
+    /// When `true`, the outbound CTA is replaced with a gentle "this one's
+    /// already happened" keepsake note. Only a shared deep link (#537) can land
+    /// on a past show — the On Tour browse window is future-only — so this
+    /// defaults to `false` for the in-app surfaces that only ever show it.
+    var isPast: Bool = false
+
     @Environment(\.openURL) private var openURL
 
     private var presenter: BoxOfficeTicketPresenter { BoxOfficeTicketPresenter(show) }
@@ -217,7 +223,9 @@ struct BoxOfficeTicketView: View {
 
     @ViewBuilder
     private var actions: some View {
-        if presenter.isCancelled {
+        if isPast {
+            passedNotice
+        } else if presenter.isCancelled {
             cancelNotice
         } else if let url = presenter.ctaURL {
             VStack(spacing: 9) {
@@ -250,6 +258,22 @@ struct BoxOfficeTicketView: View {
     /// venue/ticket page" statuses.
     private var ctaFilled: Bool {
         show.status == .onSale || show.status == .free
+    }
+
+    /// The keepsake note shown in place of the CTA when a shared link opens a
+    /// show that has already happened (#537). A quiet dashed card in the ticket's
+    /// own edge tint — not the red cancelled treatment, since nothing went wrong.
+    private var passedNotice: some View {
+        Text(presenter.passedShowNote)
+            .font(.subheadline)
+            .foregroundStyle(Palette.inkDim)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(13)
+            .overlay(
+                RoundedRectangle(cornerRadius: 13)
+                    .stroke(colors.edgeColor.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            )
     }
 
     private var cancelNotice: some View {
@@ -427,6 +451,10 @@ private enum Palette {
     BoxOfficeTicketPreviewStage(show: .previewSparse)
 }
 
+#Preview("Passed show (deep link)") {
+    BoxOfficeTicketPreviewStage(show: .previewOnSale, isPast: true)
+}
+
 #Preview("Theme · WXYC 1983 (amber, dark wall)") {
     BoxOfficeTicketPreviewStage(show: .previewOnSale, colors: .previewWXYC1983, lightWallpaper: false)
 }
@@ -448,12 +476,13 @@ private struct BoxOfficeTicketPreviewStage: View {
     let show: Concert
     var colors: TicketColors = .previewPlasticPulse
     var lightWallpaper: Bool = true
+    var isPast: Bool = false
 
     var body: some View {
         ZStack {
             (lightWallpaper ? Self.lightBackdrop : Self.darkBackdrop)
                 .ignoresSafeArea()
-            BoxOfficeTicketView(show: show, colors: colors)
+            BoxOfficeTicketView(show: show, colors: colors, isPast: isPast)
                 .padding()
         }
     }
