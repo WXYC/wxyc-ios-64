@@ -197,7 +197,9 @@ private struct ForYouCard: View {
             Text(concert.headlineName)
                 .font(.subheadline).fontWeight(.semibold)
                 .foregroundStyle(.white)
-                .lineLimit(2)
+                // The headliner is the card's only variable-height row; reserving
+                // both lines keeps every card on the shelf the same height.
+                .lineLimit(2, reservesSpace: true)
             Text(concert.venue.name)
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.55))
@@ -281,9 +283,15 @@ private struct ForYouCard: View {
     let similar = Concert(id: 2, venue: motorco, startsOn: Date(timeIntervalSince1970: 1_786_071_600),
                           headliningArtistRaw: "Broadcast", headliningArtistId: 88,
                           ticketURL: URL(string: "https://example.com/b"), status: .onSale)
+    // A headliner long enough to wrap to two lines, so the preview shows the
+    // short-name cards matching its height.
+    let wrapping = Concert(id: 3, venue: cradle, startsOn: Date(timeIntervalSince1970: 1_786_244_400),
+                           headliningArtistRaw: "Duke Ellington & John Coltrane", headliningArtistId: 12,
+                           ticketURL: URL(string: "https://example.com/c"), status: .onSale)
     let recommendations = [
         ForYouRecommendation(concert: loved, tier: .loved, reasonArtistName: "Stereolab"),
         ForYouRecommendation(concert: similar, tier: .similar(weight: 0.82), reasonArtistName: "Stereolab"),
+        ForYouRecommendation(concert: wrapping, tier: .similar(weight: 0.7), reasonArtistName: "Sun Ra"),
     ]
     return ZStack {
         LinearGradient(
