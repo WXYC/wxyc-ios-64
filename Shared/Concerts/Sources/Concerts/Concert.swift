@@ -223,6 +223,16 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// emission (same discipline as ``genres`` / ``similarArtists``).
     public let stationPlays: Int?
 
+    /// Whether the station editorially recommends this concert (`station_recommended`),
+    /// the boolean signal behind the For You shelf's cold-start "WXYC recommends"
+    /// tier (WXYC/wxyc-shared#244, emitted by WXYC/Backend-Service#1731).
+    /// **Identical for every listener** — like ``stationPlays`` it is not
+    /// personalized and carries no listener data, so reading it changes nothing
+    /// about the privacy invariant. A forward-compatible default: absent or null
+    /// on the wire decodes to `false`, so this client can ship ahead of backend
+    /// emission (same discipline as ``genres`` / ``similarArtists``).
+    public let stationRecommended: Bool
+
     public init(
         id: Int,
         venue: Venue,
@@ -242,7 +252,8 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         status: ShowStatus,
         genres: [String]? = nil,
         similarArtists: [SimilarArtist]? = nil,
-        stationPlays: Int? = nil
+        stationPlays: Int? = nil,
+        stationRecommended: Bool = false
     ) {
         self.id = id
         self.venue = venue
@@ -263,6 +274,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.genres = genres
         self.similarArtists = similarArtists
         self.stationPlays = stationPlays
+        self.stationRecommended = stationRecommended
     }
 
     // MARK: - Intrinsic accessors
@@ -323,6 +335,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case genres
         case similarArtists = "similar_artists"
         case stationPlays = "station_plays"
+        case stationRecommended = "station_recommended"
     }
 
     /// Date-only parser pinned to the station zone and a fixed POSIX locale, so a
@@ -425,6 +438,10 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // nil (unresolved headliner or pre-enrichment), so this decode is stable
         // whether or not the backend has shipped the field.
         stationPlays = try container.decodeIfPresent(Int.self, forKey: .stationPlays)
+        // Forward-compatible default: absent or explicit-null `station_recommended`
+        // → false (not recommended), so this decode is stable whether or not the
+        // backend has shipped the field.
+        stationRecommended = try container.decodeIfPresent(Bool.self, forKey: .stationRecommended) ?? false
     }
 
     /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
@@ -452,5 +469,6 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encodeIfPresent(genres, forKey: .genres)
         try container.encodeIfPresent(similarArtists, forKey: .similarArtists)
         try container.encodeIfPresent(stationPlays, forKey: .stationPlays)
+        try container.encode(stationRecommended, forKey: .stationRecommended)
     }
 }

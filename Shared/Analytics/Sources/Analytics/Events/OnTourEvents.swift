@@ -53,8 +53,8 @@ public struct OnTourFilteredToZero {
 /// Event fired once per launch, the first time the For You recommendation shelf
 /// renders with at least one card. `lovedCount` / `similarCount` / `stationCount`
 /// are the per-tier sizes at that first render — volume without identity, per the
-/// On Tour privacy invariant. `stationCount` is the cold-start station-affinity
-/// tier (#551), broken out so it is never folded into `similarCount`. Never
+/// On Tour privacy invariant. `stationCount` is the cold-start station-recommended
+/// tier (#551/#577), broken out so it is never folded into `similarCount`. Never
 /// carries a concert or artist id: which artists the listener likes stays on the
 /// device.
 @AnalyticsEvent

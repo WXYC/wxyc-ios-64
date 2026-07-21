@@ -19,9 +19,9 @@ import Foundation
 
 /// Shared debug state for the On Tour For You recommendation shelf.
 ///
-/// Lets a tester force the loved tier and the station-affinity tier on so their
-/// cards render before real likes or the backend `similar_artists` enrichment
-/// exist, without touching production data or the PostHog flag.
+/// Lets a tester force the loved tier and the station-recommended tier on so
+/// their cards render before real likes or the backend `similar_artists`
+/// enrichment exist, without touching production data or the PostHog flag.
 @MainActor
 @Observable
 public final class OnTourForYouSeedDebugState {
@@ -42,9 +42,9 @@ public final class OnTourForYouSeedDebugState {
     /// ``OnTourShowsDebugState``'s runtime-only `firstPlaycutID`.
     public var seedForcedForTesting = false
 
-    /// Local override for the station-affinity tier cap. `0` defers to the PostHog
-    /// flag; a positive value forces the station tier on so its "Heavy rotation"
-    /// cards can be previewed without changing the remote flag.
+    /// Local override for the station-recommended tier cap. `0` defers to the
+    /// PostHog flag; a positive value forces the station tier on so its "WXYC
+    /// recommends" cards can be previewed without changing the remote flag.
     public var stationCapOverride: Int {
         didSet { UserDefaults.standard.set(stationCapOverride, forKey: Self.stationCapKey) }
     }

@@ -81,7 +81,8 @@ extension Concert {
         status: ShowStatus = .onSale,
         genres: [String]? = nil,
         similarArtists: [SimilarArtist]? = nil,
-        stationPlays: Int? = nil
+        stationPlays: Int? = nil,
+        stationRecommended: Bool = false
     ) -> Concert {
         Concert(
             id: id,
@@ -102,7 +103,8 @@ extension Concert {
             status: status,
             genres: genres,
             similarArtists: similarArtists,
-            stationPlays: stationPlays
+            stationPlays: stationPlays,
+            stationRecommended: stationRecommended
         )
     }
 }
