@@ -45,6 +45,7 @@ struct ConcertTests {
         "age_restriction": "All Ages",
         "genres": ["Rock", "Folk World & Country"],
         "station_plays": 137,
+        "station_recommended": true,
         "status": "on_sale"
     }
     """
@@ -75,6 +76,7 @@ struct ConcertTests {
         #expect(concert.ageRestriction == "All Ages")
         #expect(concert.genres == ["Rock", "Folk World & Country"])
         #expect(concert.stationPlays == 137)
+        #expect(concert.stationRecommended == true)
     }
 
     @Test("Parses starts_on as a calendar day in the station's time zone")
@@ -156,6 +158,7 @@ struct ConcertTests {
         #expect(concert.genres == nil)
         #expect(concert.similarArtists == nil)
         #expect(concert.stationPlays == nil)
+        #expect(concert.stationRecommended == false)
     }
 
     @Test("Coalesces an absent supporting_artists_raw to an empty array")
@@ -497,6 +500,81 @@ struct ConcertTests {
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Concert.self, from: data)
         #expect(decoded.stationPlays == 137)
+    }
+
+    // MARK: - Station recommended (#577, forward-compatible with a false default)
+
+    @Test("Decodes a present station_recommended to stationRecommended")
+    func decodesPresentStationRecommended() throws {
+        let json = """
+        {
+            "id": 210,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Deerhoof",
+            "station_recommended": true,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommended == true)
+    }
+
+    @Test("Decodes an explicit-false station_recommended to false")
+    func decodesFalseStationRecommended() throws {
+        let json = """
+        {
+            "id": 211,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "station_recommended": false,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommended == false)
+    }
+
+    @Test("Decodes an explicit-null station_recommended to false without throwing")
+    func decodesNullStationRecommendedAsFalse() throws {
+        // The same null-tolerant discipline as `station_plays`: a null from an
+        // in-between backend build degrades to "not recommended", never a throw.
+        let json = """
+        {
+            "id": 212,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "station_recommended": null,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommended == false)
+    }
+
+    @Test("Decodes an absent station_recommended to false (backend not yet emitting)")
+    func decodesAbsentStationRecommendedAsFalse() throws {
+        let json = """
+        {
+            "id": 213,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommended == false)
+    }
+
+    @Test("Round-trips station_recommended through encode/decode")
+    func roundTripsStationRecommended() throws {
+        let original = Concert.stub(stationRecommended: true)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.stationRecommended == true)
     }
 
     // MARK: - ctaURL / headlineName (intrinsic data selection)

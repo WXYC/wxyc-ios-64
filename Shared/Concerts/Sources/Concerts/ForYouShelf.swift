@@ -7,9 +7,9 @@
 //  liked artists, it builds the ordered shelf of cards pinned above the
 //  date-ordered list: loved shows first (the headliner is a liked artist), then
 //  similar shows (a liked artist is an affinity neighbor of the headliner),
-//  ranked by weight and capped to tame noise, then station-affinity shows (the
-//  headliner is in heavy WXYC rotation) — the one tier that needs no likes, so a
-//  cold-start listener still sees a shelf (WXYC/wxyc-ios-64#549).
+//  ranked by weight and capped to tame noise, then station-recommended shows
+//  (the station itself vouches for the show, WXYC/wxyc-ios-64#577) — the one
+//  tier that needs no likes, so a cold-start listener still sees a shelf.
 //
 //  Pure by design: the whole match/rank/cap computation is a value-in/value-out
 //  function (the ConcertFilterState recipe). Likes arrive as plain values and the
@@ -52,8 +52,8 @@ public struct ForYouRecommendation: Sendable, Equatable, Identifiable {
 
     /// Why a concert made the shelf. Ordered by descending personal confidence:
     /// ``loved`` (the listener's own artist) outranks ``similar`` (a taste
-    /// neighbor) outranks ``stationAffinity`` (a station-wide signal, no personal
-    /// tie at all).
+    /// neighbor) outranks ``stationRecommended`` (a station-wide signal, no
+    /// personal tie at all).
     public enum Tier: Sendable, Equatable {
         /// The concert's headliner is itself a liked artist.
         case loved
@@ -61,25 +61,26 @@ public struct ForYouRecommendation: Sendable, Equatable, Identifiable {
         /// associated value is that neighbor's affinity ``SimilarArtist/weight``,
         /// the key the similar tier ranks and caps on.
         case similar(weight: Double)
-        /// The headliner is not in the listener's taste graph, but is in heavy
-        /// WXYC rotation: its all-time resolved flowsheet play count clears the
-        /// station floor. The associated value is that ``Concert/stationPlays``
-        /// count, the key the station tier ranks on. Because it is a genuine global
-        /// scalar (not per-list normalized like ``similar``'s weight) cross-concert
-        /// ranking is valid. Ranked below ``similar`` — a personal signal always
-        /// outranks the station-wide one — and it is the only tier that can surface
-        /// a card with no likes, so it fills the cold-start shelf.
-        case stationAffinity(plays: Int)
+        /// The show is not in the listener's taste graph, but the station itself
+        /// recommends it: ``Concert/stationRecommended`` is true
+        /// (WXYC/wxyc-ios-64#577, replacing the play-count affinity tier of #549).
+        /// A boolean carries no rank, so within the tier shows order by concert
+        /// date ascending — soonest first. Ranked below ``similar`` — a personal
+        /// signal always outranks the station-wide one — and it is the only tier
+        /// that can surface a card with no likes, so it fills the cold-start shelf.
+        case stationRecommended
 
         /// The tier's stable analytics name — `"loved"`, `"similar"`, or
-        /// `"station"`. The associated value (weight / play count) is deliberately
-        /// dropped: the tier-only On Tour events record the recommendation *kind*,
-        /// never a score or any identity.
+        /// `"station"`. The `"station"` name deliberately survives the
+        /// play-count → recommended rewrite (#577): the PostHog funnels keyed on
+        /// it must not break over a rename. The similar weight is likewise
+        /// dropped: the tier-only On Tour events record the recommendation
+        /// *kind*, never a score or any identity.
         public var analyticsName: String {
             switch self {
             case .loved: "loved"
             case .similar: "similar"
-            case .stationAffinity: "station"
+            case .stationRecommended: "station"
             }
         }
     }
@@ -117,15 +118,15 @@ public struct ForYouTierCounts: Sendable, Equatable {
     /// Cards surfaced by a liked affinity-neighbor of the headliner.
     public let similar: Int
 
-    /// Cards surfaced by the station-wide play-affinity signal, with no personal
+    /// Cards surfaced by the station-wide recommendation signal, with no personal
     /// tie — the cold-start tier. Kept a separate bucket so it is never folded
     /// into ``similar`` (WXYC/wxyc-ios-64#551).
-    public let stationAffinity: Int
+    public let stationRecommended: Int
 
-    public init(loved: Int, similar: Int, stationAffinity: Int) {
+    public init(loved: Int, similar: Int, stationRecommended: Int) {
         self.loved = loved
         self.similar = similar
-        self.stationAffinity = stationAffinity
+        self.stationRecommended = stationRecommended
     }
 }
 
@@ -140,10 +141,10 @@ public extension Sequence where Element == ForYouRecommendation {
             switch recommendation.tier {
             case .loved: loved += 1
             case .similar: similar += 1
-            case .stationAffinity: station += 1
+            case .stationRecommended: station += 1
             }
         }
-        return ForYouTierCounts(loved: loved, similar: similar, stationAffinity: station)
+        return ForYouTierCounts(loved: loved, similar: similar, stationRecommended: station)
     }
 }
 
@@ -151,15 +152,17 @@ public extension Sequence where Element == ForYouRecommendation {
 public enum ForYouShelf {
 
     /// Builds the ordered For You shelf from the fetched concert window, the
-    /// listener's liked artists, and the station-affinity signal.
+    /// listener's liked artists, and the station-recommended signal.
     ///
     /// Ordering is by descending personal confidence: loved cards first (in the
     /// input window order — the fetched window is `starts_on` ascending, so this is
     /// chronological), then similar cards ranked by weight descending and capped to
-    /// `similarCap`, then station-affinity cards ranked by play count descending and
-    /// capped to `stationCap`. A concert is deduped to its highest qualifying tier:
-    /// one that is both loved and similar appears once as loved, and one that is a
-    /// personal match (loved *or* similar) is never re-surfaced as a station card.
+    /// `similarCap`, then station-recommended cards ordered by concert date
+    /// ascending (soonest first — the signal is a boolean, so there is no scalar to
+    /// rank on) and capped to `stationCap`. A concert is deduped to its highest
+    /// qualifying tier: one that is both loved and similar appears once as loved,
+    /// and one that is a personal match (loved *or* similar) is never re-surfaced
+    /// as a station card.
     ///
     /// Unlike the likes tiers, the station tier needs **no** likes: it clears the
     /// cold-start case where a listener with zero id-bearing likes would otherwise
@@ -182,11 +185,6 @@ public enum ForYouShelf {
     ///     surface a card, while the same absolute weight in a sparse
     ///     neighborhood still can. `0` disables the gate (any liked neighbor
     ///     counts); the default `0.5` keeps neighbors within half the list's top.
-    ///   - stationFloor: the absolute play-count threshold a headliner's
-    ///     ``Concert/stationPlays`` must reach to earn a station card. An absolute
-    ///     floor (not a window-relative percentile) so "heavy rotation" stays a
-    ///     stable claim as the window paginates. Injected; the app passes the
-    ///     PostHog-tuned value (local default `50`, the data-backed cliff).
     ///   - stationCap: the maximum number of station-tier cards. Injected like
     ///     `similarCap`; a non-positive cap drops every station card. **Defaults to
     ///     `0` (tier off)** so a caller that doesn't opt in keeps the likes-only
@@ -204,15 +202,12 @@ public enum ForYouShelf {
     ///   sparse-neighborhood headliners (WXYC/semantic-index#354 review). The
     ///   per-concert reason pick (the max intersecting weight) is on solid ground;
     ///   the cross-concert similar ranking treats the representative weight as a
-    ///   coarse proxy — acceptable for a top-N shelf cap. ``Concert/stationPlays``,
-    ///   by contrast, *is* a global scalar, so ranking station cards across
-    ///   concerts by raw play count is exact.
+    ///   coarse proxy — acceptable for a top-N shelf cap.
     public static func recommendations(
         concerts: [Concert],
         likedArtists: [LikedArtist],
         similarCap: Int,
         relativeFloor: Double = 0.5,
-        stationFloor: Int = 50,
         stationCap: Int = 0,
         dismissedConcertIDs: Set<Int> = []
     ) -> [ForYouRecommendation] {
@@ -286,25 +281,23 @@ public enum ForYouShelf {
         // card anyway; computing them first is pure wasted work on every render.
         guard stationCap > 0 else { return loved + cappedSimilar }
 
-        // Station affinity: the headliner has no personal tie but is in heavy WXYC
-        // rotation — its play count clears the absolute floor. No likes required,
-        // so this is the tier that fills the cold-start shelf.
+        // Station recommended: the show has no personal tie but the station itself
+        // vouches for it (#577). No likes required, so this is the tier that fills
+        // the cold-start shelf.
         var station: [ForYouRecommendation] = []
         for concert in concerts where !claimedConcertIDs.contains(concert.id) {
-            guard let plays = concert.stationPlays, plays >= stationFloor else { continue }
+            guard concert.stationRecommended else { continue }
             station.append(ForYouRecommendation(
                 concert: concert,
-                tier: .stationAffinity(plays: plays),
+                tier: .stationRecommended,
                 reasonArtistName: concert.headlineName
             ))
         }
 
-        // Rank by play count (desc) — a valid cross-concert ordering since the
-        // count is a global scalar; tie-break on soonest date then concert id for a
-        // deterministic order; then cap.
+        // A boolean signal carries no rank, so order by concert date ascending
+        // (soonest first); tie-break on concert id for a deterministic order; then
+        // cap.
         station.sort { lhs, rhs in
-            let lp = stationPlays(lhs), rp = stationPlays(rhs)
-            if lp != rp { return lp > rp }
             if lhs.concert.startsOn != rhs.concert.startsOn { return lhs.concert.startsOn < rhs.concert.startsOn }
             return lhs.concert.id < rhs.concert.id
         }
@@ -345,13 +338,5 @@ public enum ForYouShelf {
     private static func similarWeight(_ recommendation: ForYouRecommendation) -> Double {
         if case let .similar(weight) = recommendation.tier { return weight }
         return -.infinity
-    }
-
-    /// The station-tier ranking value (the headliner's WXYC play count) of a
-    /// recommendation. Only station cards enter the station sort, so the inert
-    /// value is never observed.
-    private static func stationPlays(_ recommendation: ForYouRecommendation) -> Int {
-        if case let .stationAffinity(plays) = recommendation.tier { return plays }
-        return .min
     }
 }

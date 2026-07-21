@@ -36,9 +36,9 @@ struct ForYouShelfTests {
 
     @Test("No likes and no station cap yields an empty shelf")
     func coldStartLikesOnly() {
-        // Cold start with the station tier off (default cap 0) and no station plays
-        // on the concert: nothing to surface. The station tier's cold-start fill is
-        // covered by the Station affinity section below.
+        // Cold start with the station tier off (default cap 0) and a concert that
+        // is not station-recommended: nothing to surface. The station tier's
+        // cold-start fill is covered by the Station recommended section below.
         let concert = Concert.stub(id: 1, headliningArtistId: 41,
                                    similarArtists: [SimilarArtist(artistId: 88, weight: 0.9)])
         let shelf = ForYouShelf.recommendations(concerts: [concert], likedArtists: [], similarCap: 3)
@@ -256,142 +256,134 @@ struct ForYouShelfTests {
         #expect(shelf[0].tier == .similar(weight: 0.5))
     }
 
-    // MARK: - Station affinity (#549, cold-start tier)
+    // MARK: - Station recommended (#577, cold-start tier)
 
-    @Test("Cold start (zero likes) surfaces station cards ranked by plays descending")
+    @Test("Cold start (zero likes) surfaces station cards, soonest first")
     func coldStartStationCards() {
-        // No likes at all — the case the station tier exists to fill. The heaviest
-        // rotation leads.
-        let deerhoof = Concert.stub(id: 100, headliningArtistRaw: "Deerhoof",
-                                    headliningArtistId: 201, stationPlays: 120)
-        let rem = Concert.stub(id: 101, headliningArtistRaw: "R.E.M.",
-                               headliningArtistId: 202, stationPlays: 300)
-        let luna = Concert.stub(id: 102, headliningArtistRaw: "Luna",
-                                headliningArtistId: 203, stationPlays: 80)
+        // No likes at all — the case the station tier exists to fill. There is no
+        // scalar to rank on, so the soonest recommended show leads.
+        let deerhoof = Concert.stub(id: 100, startsOn: day(2), headliningArtistRaw: "Deerhoof",
+                                    headliningArtistId: 201, stationRecommended: true)
+        let rem = Concert.stub(id: 101, startsOn: day(0), headliningArtistRaw: "R.E.M.",
+                               headliningArtistId: 202, stationRecommended: true)
+        let luna = Concert.stub(id: 102, startsOn: day(1), headliningArtistRaw: "Luna",
+                                headliningArtistId: 203, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
             concerts: [deerhoof, rem, luna], likedArtists: [],
-            similarCap: 3, stationFloor: 50, stationCap: 5)
-        #expect(shelf.map(\.concert.id) == [101, 100, 102])
-        #expect(shelf.allSatisfy { if case .stationAffinity = $0.tier { true } else { false } })
-        #expect(shelf[0].tier == .stationAffinity(plays: 300))
+            similarCap: 3, stationCap: 5)
+        #expect(shelf.map(\.concert.id) == [101, 102, 100])
+        #expect(shelf.allSatisfy { $0.tier == .stationRecommended })
     }
 
     @Test("Loved outranks similar outranks station in the merged shelf")
     func lovedThenSimilarThenStation() {
         // Loved: Stereolab (41) headlines. Similar: liked Stereolab is a neighbor.
-        // Station: heavy rotation, no personal tie. The loved and similar concerts
-        // also have huge play counts, but their higher tier wins.
-        let loved = Concert.stub(id: 1, headliningArtistId: 41, similarArtists: nil, stationPlays: 999)
+        // Station: recommended, no personal tie. The loved and similar concerts are
+        // also station-recommended, but their higher tier wins.
+        let loved = Concert.stub(id: 1, headliningArtistId: 41, similarArtists: nil, stationRecommended: true)
         let similar = Concert.stub(id: 2, headliningArtistId: 900,
-                                   similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)], stationPlays: 999)
-        let station = Concert.stub(id: 3, headliningArtistId: 700, similarArtists: nil, stationPlays: 500)
+                                   similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)], stationRecommended: true)
+        let station = Concert.stub(id: 3, headliningArtistId: 700, similarArtists: nil, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
             concerts: [station, similar, loved], likedArtists: [stereolab],
-            similarCap: 3, stationFloor: 50, stationCap: 5)
+            similarCap: 3, stationCap: 5)
         #expect(shelf.map(\.concert.id) == [1, 2, 3])
         #expect(shelf[0].tier == .loved)
         #expect(shelf[1].tier == .similar(weight: 0.9))
-        #expect(shelf[2].tier == .stationAffinity(plays: 500))
+        #expect(shelf[2].tier == .stationRecommended)
     }
 
     @Test("A concert that qualifies as both similar and station appears once, as similar")
     func stationDedupWithSimilar() {
         let concert = Concert.stub(id: 5, headliningArtistId: 900,
-                                   similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)], stationPlays: 999)
+                                   similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)], stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
             concerts: [concert], likedArtists: [stereolab],
-            similarCap: 3, stationFloor: 50, stationCap: 5)
+            similarCap: 3, stationCap: 5)
         #expect(shelf.count == 1)
         #expect(shelf[0].tier == .similar(weight: 0.9))
     }
 
     @Test("A concert that qualifies as both loved and station appears once, as loved")
     func stationDedupWithLoved() {
-        let concert = Concert.stub(id: 6, headliningArtistId: 41, similarArtists: nil, stationPlays: 999)
+        let concert = Concert.stub(id: 6, headliningArtistId: 41, similarArtists: nil, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
             concerts: [concert], likedArtists: [stereolab],
-            similarCap: 3, stationFloor: 50, stationCap: 5)
+            similarCap: 3, stationCap: 5)
         #expect(shelf.count == 1)
         #expect(shelf[0].tier == .loved)
     }
 
     @Test("A concert cut from the similar cap is not re-surfaced as a station card")
     func cappedSimilarNotDemotedToStation() {
-        // Both concerts qualify as similar (liked Stereolab is a neighbor) AND have
-        // heavy rotation. similarCap 1 shows only the higher-weight one; the other
-        // stays a (dropped) personal match — never a station card.
+        // Both concerts qualify as similar (liked Stereolab is a neighbor) AND are
+        // station-recommended. similarCap 1 shows only the higher-weight one; the
+        // other stays a (dropped) personal match — never a station card.
         let strongSimilar = Concert.stub(id: 40, headliningArtistId: 901,
-            similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)], stationPlays: 999)
+            similarArtists: [SimilarArtist(artistId: 41, weight: 0.9)], stationRecommended: true)
         let weakSimilar = Concert.stub(id: 41, headliningArtistId: 902,
-            similarArtists: [SimilarArtist(artistId: 41, weight: 0.6)], stationPlays: 999)
+            similarArtists: [SimilarArtist(artistId: 41, weight: 0.6)], stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
             concerts: [strongSimilar, weakSimilar], likedArtists: [stereolab],
-            similarCap: 1, stationFloor: 50, stationCap: 5)
+            similarCap: 1, stationCap: 5)
         #expect(shelf.map(\.concert.id) == [40])
         #expect(shelf[0].tier == .similar(weight: 0.9))
     }
 
-    @Test("A concert below the station floor yields no station card")
-    func belowStationFloorDropped() {
-        let concert = Concert.stub(id: 7, headliningArtistId: 900, similarArtists: nil, stationPlays: 49)
+    @Test("Station cards order by concert date ascending, not input order")
+    func stationOrderedByDateAscending() {
+        let later = Concert.stub(id: 20, startsOn: day(2), headliningArtistId: 901, stationRecommended: true)
+        let sooner = Concert.stub(id: 21, startsOn: day(1), headliningArtistId: 902, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
-            concerts: [concert], likedArtists: [], similarCap: 3, stationFloor: 50, stationCap: 5)
-        #expect(shelf.isEmpty)
-    }
-
-    @Test("A concert exactly at the station floor qualifies (inclusive boundary)")
-    func atStationFloorQualifies() {
-        let concert = Concert.stub(id: 8, headliningArtistId: 900, stationPlays: 50)
-        let shelf = ForYouShelf.recommendations(
-            concerts: [concert], likedArtists: [], similarCap: 3, stationFloor: 50, stationCap: 5)
-        #expect(shelf.count == 1)
-        #expect(shelf[0].tier == .stationAffinity(plays: 50))
-    }
-
-    @Test("The station tier is capped to `stationCap` by plays descending")
-    func stationCapEnforced() {
-        let s1 = Concert.stub(id: 10, headliningArtistId: 901, stationPlays: 300)
-        let s2 = Concert.stub(id: 11, headliningArtistId: 902, stationPlays: 200)
-        let s3 = Concert.stub(id: 12, headliningArtistId: 903, stationPlays: 100)
-        let shelf = ForYouShelf.recommendations(
-            concerts: [s1, s2, s3], likedArtists: [], similarCap: 3, stationFloor: 50, stationCap: 2)
-        #expect(shelf.map(\.concert.id) == [10, 11])
-    }
-
-    @Test("No station cards when no concert clears the station floor")
-    func noStationWhenNoneClearFloor() {
-        // One below the floor, one with no play count at all → an empty shelf.
-        let low = Concert.stub(id: 13, headliningArtistId: 901, stationPlays: 10)
-        let none = Concert.stub(id: 14, headliningArtistId: 902, stationPlays: nil)
-        let shelf = ForYouShelf.recommendations(
-            concerts: [low, none], likedArtists: [], similarCap: 3, stationFloor: 50, stationCap: 5)
-        #expect(shelf.isEmpty)
-    }
-
-    @Test("Equal-plays station cards tie-break by soonest date then id")
-    func stationTieBreak() {
-        let later = Concert.stub(id: 20, startsOn: day(2), headliningArtistId: 901, stationPlays: 100)
-        let sooner = Concert.stub(id: 21, startsOn: day(1), headliningArtistId: 902, stationPlays: 100)
-        let shelf = ForYouShelf.recommendations(
-            concerts: [later, sooner], likedArtists: [], similarCap: 3, stationFloor: 50, stationCap: 5)
+            concerts: [later, sooner], likedArtists: [], similarCap: 3, stationCap: 5)
         #expect(shelf.map(\.concert.id) == [21, 20])
+    }
+
+    @Test("Same-day station cards tie-break by concert id ascending")
+    func stationTieBreaksByID() {
+        let higherID = Concert.stub(id: 23, startsOn: day(1), headliningArtistId: 901, stationRecommended: true)
+        let lowerID = Concert.stub(id: 22, startsOn: day(1), headliningArtistId: 902, stationRecommended: true)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [higherID, lowerID], likedArtists: [], similarCap: 3, stationCap: 5)
+        #expect(shelf.map(\.concert.id) == [22, 23])
+    }
+
+    @Test("The station tier is capped to `stationCap`, keeping the soonest shows")
+    func stationCapEnforced() {
+        let s1 = Concert.stub(id: 10, startsOn: day(2), headliningArtistId: 901, stationRecommended: true)
+        let s2 = Concert.stub(id: 11, startsOn: day(0), headliningArtistId: 902, stationRecommended: true)
+        let s3 = Concert.stub(id: 12, startsOn: day(1), headliningArtistId: 903, stationRecommended: true)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [s1, s2, s3], likedArtists: [], similarCap: 3, stationCap: 2)
+        #expect(shelf.map(\.concert.id) == [11, 12])
+    }
+
+    @Test("No station cards when no concert is station-recommended")
+    func noStationWhenNoneRecommended() {
+        // Every concert says false (explicitly or by default) → an empty shelf,
+        // even with the tier turned on.
+        let explicitFalse = Concert.stub(id: 13, headliningArtistId: 901, stationRecommended: false)
+        let defaultFalse = Concert.stub(id: 14, headliningArtistId: 902)
+        let shelf = ForYouShelf.recommendations(
+            concerts: [explicitFalse, defaultFalse], likedArtists: [], similarCap: 3, stationCap: 5)
+        #expect(shelf.isEmpty)
     }
 
     @Test("The station tier is off by default (stationCap defaults to 0)")
     func stationOffByDefault() {
         // The engine default keeps the likes-only shelf: a caller must opt in with
         // a positive stationCap to turn the tier on.
-        let concert = Concert.stub(id: 30, headliningArtistId: 901, stationPlays: 999)
+        let concert = Concert.stub(id: 30, headliningArtistId: 901, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(concerts: [concert], likedArtists: [], similarCap: 3)
         #expect(shelf.isEmpty)
     }
 
-    @Test("The station tier reason names the heavily-played headliner")
+    @Test("The station tier reason names the recommended headliner")
     func stationReasonNamesHeadliner() {
         let concert = Concert.stub(id: 31, headliningArtistRaw: "Protomartyr",
-                                   headliningArtistId: 901, stationPlays: 500)
+                                   headliningArtistId: 901, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
-            concerts: [concert], likedArtists: [], similarCap: 3, stationFloor: 50, stationCap: 5)
+            concerts: [concert], likedArtists: [], similarCap: 3, stationCap: 5)
         #expect(shelf.count == 1)
         #expect(shelf[0].reasonArtistName == "Protomartyr")
     }
@@ -404,24 +396,24 @@ struct ForYouShelfTests {
             ForYouRecommendation(concert: .stub(id: 1), tier: .loved, reasonArtistName: "Stereolab"),
             ForYouRecommendation(concert: .stub(id: 2), tier: .similar(weight: 0.8), reasonArtistName: "Stereolab"),
             ForYouRecommendation(concert: .stub(id: 3), tier: .similar(weight: 0.6), reasonArtistName: "Cat Power"),
-            ForYouRecommendation(concert: .stub(id: 4), tier: .stationAffinity(plays: 200), reasonArtistName: "Deerhoof"),
+            ForYouRecommendation(concert: .stub(id: 4), tier: .stationRecommended, reasonArtistName: "Deerhoof"),
         ]
-        #expect(recommendations.tierCounts == ForYouTierCounts(loved: 1, similar: 2, stationAffinity: 1))
+        #expect(recommendations.tierCounts == ForYouTierCounts(loved: 1, similar: 2, stationRecommended: 1))
     }
 
     @Test("Station cards are their own bucket, never folded into similar")
     func stationCardsNotCountedAsSimilar() {
         // The regression #551 guards: a station card must not inflate `similar`.
         let counts = [
-            ForYouRecommendation(concert: .stub(id: 1), tier: .stationAffinity(plays: 300), reasonArtistName: "R.E.M."),
+            ForYouRecommendation(concert: .stub(id: 1), tier: .stationRecommended, reasonArtistName: "R.E.M."),
         ].tierCounts
         #expect(counts.similar == 0)
-        #expect(counts.stationAffinity == 1)
+        #expect(counts.stationRecommended == 1)
     }
 
     @Test("An empty shelf has zero cards in every tier")
     func tierCountsEmpty() {
-        #expect([ForYouRecommendation]().tierCounts == ForYouTierCounts(loved: 0, similar: 0, stationAffinity: 0))
+        #expect([ForYouRecommendation]().tierCounts == ForYouTierCounts(loved: 0, similar: 0, stationRecommended: 0))
     }
 
     // MARK: - Dismissed concerts ("Not interested")
@@ -455,10 +447,10 @@ struct ForYouShelfTests {
 
     @Test("A dismissed station concert is filtered out of the shelf")
     func dismissedStationFiltered() {
-        let station = Concert.stub(id: 3, headliningArtistId: 700, stationPlays: 500)
+        let station = Concert.stub(id: 3, headliningArtistId: 700, stationRecommended: true)
         let shelf = ForYouShelf.recommendations(
             concerts: [station], likedArtists: [], similarCap: 3,
-            stationFloor: 50, stationCap: 5, dismissedConcertIDs: [3])
+            stationCap: 5, dismissedConcertIDs: [3])
         #expect(shelf.isEmpty)
     }
 

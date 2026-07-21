@@ -50,15 +50,11 @@ struct OnTourTabView: View {
     /// PostHog key for the similar-tier noise cap; local default 3 when absent.
     private static let similarCapFlagKey = "on_tour_for_you_similar_cap"
 
-    /// PostHog key for the station-affinity tier size cap. Local default **0**
+    /// PostHog key for the station-recommended tier size cap. Local default **0**
     /// (tier off) so wiring the surface is behavior-neutral — the cold-start
     /// station tier only lights up once this is raised via PostHog, gating the
     /// controlled rollout (WXYC/wxyc-ios-64#551).
     private static let stationCapFlagKey = "on_tour_for_you_station_cap"
-
-    /// PostHog key for the station-affinity minimum `total_plays`. Local default
-    /// **50**, the data-backed heavy-rotation cliff (WXYC/Backend-Service#1702).
-    private static let stationFloorFlagKey = "on_tour_for_you_station_floor"
 
     /// Creates the tab. The default model talks to the live `GET /concerts`
     /// endpoint with the anonymous-session token; previews and tests inject a
@@ -311,8 +307,8 @@ struct OnTourTabView: View {
     }
 
     /// Builds the For You shelf over `concerts`, reading the remotely-tunable
-    /// similar cap, station floor, and station cap through the feature-flag
-    /// provider (local defaults 3 / 50 / 0).
+    /// similar cap and station cap through the feature-flag provider (local
+    /// defaults 3 / 0).
     private func recommendations(for concerts: [Concert]) -> [ForYouRecommendation] {
         let liked = likedArtists
 
@@ -330,13 +326,13 @@ struct OnTourTabView: View {
         let matchArtists = liked
         #endif
 
-        // Always run the engine — even with zero likes. The station-affinity tier
-        // reads `station_plays` off the concerts, not the likes, so it can fill
-        // the cold-start shelf on its own (#551); there is no longer an empty-likes
-        // short-circuit. The station cap defaults to 0 (tier off), so this stays
-        // behavior-neutral until PostHog raises it.
+        // Always run the engine — even with zero likes. The station-recommended
+        // tier reads `station_recommended` off the concerts, not the likes, so it
+        // can fill the cold-start shelf on its own (#551, rewired on the boolean by
+        // #577); there is no longer an empty-likes short-circuit. The station cap
+        // defaults to 0 (tier off), so this stays behavior-neutral until PostHog
+        // raises it.
         let similarCap = appState.featureFlagProvider.integerValue(forKey: Self.similarCapFlagKey, default: 3)
-        let stationFloor = appState.featureFlagProvider.integerValue(forKey: Self.stationFloorFlagKey, default: 50)
         // A positive debug station-cap override forces the tier on locally, ahead
         // of the PostHog flag; 0 (the default) defers to the flag.
         let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
@@ -350,7 +346,6 @@ struct OnTourTabView: View {
             concerts: concerts,
             likedArtists: matchArtists,
             similarCap: similarCap,
-            stationFloor: stationFloor,
             stationCap: stationCap,
             dismissedConcertIDs: appState.dismissedConcertsStore.ids
         )
@@ -385,15 +380,15 @@ struct OnTourTabView: View {
     private func logForYouGate(liked: [LikedArtist], matched: [LikedArtist], concerts: [Concert], cards: [ForYouRecommendation]) {
         let withHeadlinerId = concerts.filter { $0.headliningArtistId != nil }.count
         let withSimilar = concerts.filter { !($0.similarArtists ?? []).isEmpty }.count
-        let withStationPlays = concerts.filter { $0.stationPlays != nil }.count
+        let recommended = concerts.filter(\.stationRecommended).count
         let counts = cards.tierCounts
         Log(.info, category: .ui, """
             ForYou gate: likedSongs=\(appState.likedSongsStore.songs.count) \
             idBearingLikes=\(liked.count) \(liked.map { "\($0.id):\($0.name)" }) \
             seeded=\(matched.count != liked.count) | concerts=\(concerts.count) \
             withHeadlinerId=\(withHeadlinerId) withSimilarArtists=\(withSimilar) \
-            withStationPlays=\(withStationPlays) -> cards=\(cards.count) \
-            (loved=\(counts.loved) similar=\(counts.similar) station=\(counts.stationAffinity))
+            stationRecommended=\(recommended) -> cards=\(cards.count) \
+            (loved=\(counts.loved) similar=\(counts.similar) station=\(counts.stationRecommended))
             """)
     }
     #endif
@@ -427,7 +422,7 @@ struct OnTourTabView: View {
             ForYouShelfImpression(
                 lovedCount: counts.loved,
                 similarCount: counts.similar,
-                stationCount: counts.stationAffinity
+                stationCount: counts.stationRecommended
             )
         )
     }

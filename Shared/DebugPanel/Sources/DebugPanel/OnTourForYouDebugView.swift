@@ -3,7 +3,7 @@
 //  DebugPanel
 //
 //  Debug controls for the On Tour "For You" shelf, presented by long-pressing the
-//  "On Tour" title. Toggles the loved-tier seed, overrides the station-affinity
+//  "On Tour" title. Toggles the loved-tier seed, overrides the station-tier
 //  cap, and resets the "Not interested" dismissals — the explicit replacement for
 //  the old silent auto-seed.
 //
@@ -41,7 +41,7 @@ public struct OnTourForYouDebugView: View {
                 Section {
                     Stepper("Station tier cap: \(state.stationCapOverride)", value: $state.stationCapOverride, in: 0...10)
                 } footer: {
-                    Text("Overrides the PostHog station-affinity cap. 0 uses the remote flag; a positive value forces the station tier on so its \"Heavy rotation on WXYC\" cards can be previewed.")
+                    Text("Overrides the PostHog station-tier cap. 0 uses the remote flag; a positive value forces the station tier on so its \"WXYC recommends\" cards can be previewed.")
                 }
 
                 Section {
