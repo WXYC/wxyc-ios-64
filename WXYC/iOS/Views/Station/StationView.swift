@@ -154,15 +154,26 @@ struct StationView: View {
 
 // MARK: - Hero
 
-/// The station-identity header: the "You're tuned in." wordmark over the
-/// wallpaper. The full mission statement moves to a quiet footnote at the bottom
-/// of the page, so identity leads without a wall of text.
+/// The station-identity header: the WXYC logo over the "You're tuned in."
+/// wordmark, both over the wallpaper. The full mission statement moves to a
+/// quiet footnote at the bottom of the page, so identity leads without a wall
+/// of text.
 struct StationHero: View {
     var body: some View {
-        FittingText("You're tuned in.")
-            .fontWeight(.black)
-            .foregroundStyle(.white)
-            .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: 8) {
+            Image("logo white")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .scaleEffect(0.85)
+                .padding(.top, 10)
+                .accessibilityHidden(true)
+
+            FittingText("You're tuned in.")
+                .fontWeight(.black)
+                .foregroundStyle(.white)
+                .padding(.vertical, 8)
+        }
     }
 }
 
