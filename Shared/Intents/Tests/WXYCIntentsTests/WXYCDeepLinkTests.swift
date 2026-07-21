@@ -238,4 +238,39 @@ struct WXYCDeepLinkTests {
         let scheme = try #require(URL(string: "wxyc://concert/4821"))
         #expect(WXYCDeepLink(universalLink: scheme) == nil)
     }
+
+    // MARK: - Routing (onOpenURL: scheme + universal link in one channel)
+
+    @Test("routing resolves a wxyc:// scheme URL", arguments: [
+        ("wxyc://concert/4821", WXYCDeepLink.concert(4821)),
+        ("wxyc://play", .play),
+        ("wxyc://playcut/42", .playcut(PlaycutID(42))),
+    ])
+    func routingResolvesScheme(_ raw: String, _ expected: WXYCDeepLink) throws {
+        let url = try #require(URL(string: raw))
+
+        #expect(WXYCDeepLink(routing: url) == expected)
+    }
+
+    @Test("routing resolves an https universal link (a Smart App Banner app-argument arrives here)", arguments: [
+        "https://wxyc.org/shows/4821",
+        "https://wxyc.org/shows/4821-jessica-pratt",
+    ])
+    func routingResolvesUniversalLink(_ raw: String) throws {
+        let url = try #require(URL(string: raw))
+
+        #expect(WXYCDeepLink(routing: url) == .concert(4821))
+    }
+
+    @Test("routing returns nil for a URL neither parser recognises", arguments: [
+        "https://example.com/shows/4821",
+        "https://wxyc.org/artists/4821",
+        "wxyc://bogus",
+        "wxyc://concert/not-a-number",
+    ])
+    func routingRejectsUnknown(_ raw: String) throws {
+        let url = try #require(URL(string: raw))
+
+        #expect(WXYCDeepLink(routing: url) == nil, "\(raw)")
+    }
 }

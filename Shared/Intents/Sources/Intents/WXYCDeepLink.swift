@@ -82,6 +82,26 @@ public enum WXYCDeepLink: Equatable, Sendable {
         self = .concert(id)
     }
 
+    /// Resolves any URL delivered through `onOpenURL` into a deep link, whether
+    /// it is a `wxyc://` scheme URL (``init(url:)``) or an
+    /// `https://wxyc.org/shows/<id>` universal link (``init(universalLink:)``).
+    /// A Smart App Banner hands its `app-argument` to the app through
+    /// `onOpenURL` rather than as an `NSUserActivity`, and that argument is a
+    /// share URL; parsing the scheme first, then the universal link, lets both
+    /// spellings route identically. Returns `nil` for anything neither
+    /// initializer recognises. Universal links that arrive as a *tapped* web
+    /// link come in as an `NSUserActivity` and use ``init(universalLink:)`` at
+    /// that call site instead.
+    public init?(routing url: URL) {
+        if let link = WXYCDeepLink(url: url) {
+            self = link
+        } else if let link = WXYCDeepLink(universalLink: url) {
+            self = link
+        } else {
+            return nil
+        }
+    }
+
     /// Parses a concert id from a path segment: the leading run of ASCII digits,
     /// so `"4821"` and `"4821-jessica-pratt"` both yield `4821`. Returns `nil`
     /// for an empty, sign-prefixed (`"-1"`, `"+42"`), or non-numeric segment, and
