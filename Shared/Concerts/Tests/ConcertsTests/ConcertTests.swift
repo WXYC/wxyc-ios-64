@@ -46,6 +46,7 @@ struct ConcertTests {
         "genres": ["Rock", "Folk World & Country"],
         "station_plays": 137,
         "station_recommended": true,
+        "artist_bio": "Jessica Pratt is a Californian singer-songwriter known for her spectral folk.",
         "status": "on_sale"
     }
     """
@@ -77,6 +78,7 @@ struct ConcertTests {
         #expect(concert.genres == ["Rock", "Folk World & Country"])
         #expect(concert.stationPlays == 137)
         #expect(concert.stationRecommended == true)
+        #expect(concert.artistBio == "Jessica Pratt is a Californian singer-songwriter known for her spectral folk.")
     }
 
     @Test("Parses starts_on as a calendar day in the station's time zone")
@@ -159,6 +161,7 @@ struct ConcertTests {
         #expect(concert.similarArtists == nil)
         #expect(concert.stationPlays == nil)
         #expect(concert.stationRecommended == false)
+        #expect(concert.artistBio == nil)
     }
 
     @Test("Coalesces an absent supporting_artists_raw to an empty array")
@@ -575,6 +578,66 @@ struct ConcertTests {
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Concert.self, from: data)
         #expect(decoded.stationRecommended == true)
+    }
+
+    // MARK: - Artist bio (forward-compatible optional, same discipline as genres)
+
+    @Test("Decodes a present artist_bio to artistBio")
+    func decodesPresentArtistBio() throws {
+        let json = """
+        {
+            "id": 220,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Nilüfer Yanya",
+            "artist_bio": "Nilüfer Yanya is a British musician from West London.",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.artistBio == "Nilüfer Yanya is a British musician from West London.")
+    }
+
+    @Test("Decodes an explicit-null artist_bio to nil without throwing")
+    func decodesNullArtistBio() throws {
+        // The backend emits `artist_bio: null` for an unresolved headliner or
+        // before enrichment runs; it must decode to nil, never throw — the same
+        // forward-compatible discipline as `genres` / `similar_artists`.
+        let json = """
+        {
+            "id": 221,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "artist_bio": null,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.artistBio == nil)
+    }
+
+    @Test("Decodes an absent artist_bio to nil (backend not yet emitting)")
+    func decodesAbsentArtistBio() throws {
+        let json = """
+        {
+            "id": 222,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.artistBio == nil)
+    }
+
+    @Test("Round-trips artist_bio through encode/decode")
+    func roundTripsArtistBio() throws {
+        let original = Concert.stub(artistBio: "Stereolab pioneered a hybrid of krautrock and lounge pop.")
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.artistBio == "Stereolab pioneered a hybrid of krautrock and lounge pop.")
     }
 
     // MARK: - ctaURL / headlineName (intrinsic data selection)

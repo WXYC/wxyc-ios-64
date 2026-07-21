@@ -82,7 +82,8 @@ extension Concert {
         genres: [String]? = nil,
         similarArtists: [SimilarArtist]? = nil,
         stationPlays: Int? = nil,
-        stationRecommended: Bool = false
+        stationRecommended: Bool = false,
+        artistBio: String? = nil
     ) -> Concert {
         Concert(
             id: id,
@@ -104,7 +105,8 @@ extension Concert {
             genres: genres,
             similarArtists: similarArtists,
             stationPlays: stationPlays,
-            stationRecommended: stationRecommended
+            stationRecommended: stationRecommended,
+            artistBio: artistBio
         )
     }
 }
