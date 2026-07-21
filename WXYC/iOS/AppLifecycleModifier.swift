@@ -95,13 +95,15 @@ struct AppLifecycleModifier: ViewModifier {
     // MARK: - Deep links and Siri
 
     private func handleURL(_ url: URL) {
-        switch WXYCDeepLink(url: url) {
+        // `onOpenURL` delivers both `wxyc://` scheme links (Spotlight, shortcuts)
+        // and the https universal link handed over as a Smart App Banner's
+        // `app-argument` — which arrives here rather than as an `NSUserActivity`.
+        // `WXYCDeepLink(routing:)` resolves either spelling. A universal link
+        // that is *tapped* as a web link still comes through `handleUserActivity`.
+        switch WXYCDeepLink(routing: url) {
         case .playcut(let id):
             NotificationCenter.default.post(PlaycutOpenMessage(playcutID: id), subject: nil)
         case .concert(let id):
-            // `wxyc://concert/<id>` — an app-owned surface (Spotlight, shortcut).
-            // Universal `https://wxyc.org/shows/<id>` links arrive through
-            // `handleUserActivity` instead; both post the same typed message.
             NotificationCenter.default.post(
                 ConcertOpenMessage(concertID: id, source: .scheme),
                 subject: nil
