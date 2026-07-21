@@ -448,7 +448,11 @@ private extension Concert {
         headliningArtistRaw: String = "Nilüfer Yanya",
         priceMin: Double? = 22,
         priceMax: Double? = 25,
-        artistBio: String? = "Nilüfer Yanya is a British singer-songwriter and guitarist from West London, whose music blends indie rock, soul, and electronic textures. She emerged in the mid-2010s and drew wide notice for her 2019 debut album."
+        // nil → a name-matched placeholder is synthesized below, so every
+        // preview's bio references its own headliner rather than a hardcoded
+        // one. Swift default args can't reference `headliningArtistRaw`, hence
+        // the body fallback.
+        artistBio: String? = nil
     ) -> Concert {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
@@ -471,6 +475,7 @@ private extension Concert {
             ageRestriction: "All Ages",
             status: status,
             artistBio: artistBio
+                ?? "\(headliningArtistRaw) is a touring act featured on WXYC 89.3 FM. Placeholder biography copy standing in for the artist's Discogs profile in previews."
         )
     }
 }
