@@ -107,6 +107,17 @@ struct ConcertDetailView: View {
         let depth = parallaxDepth
         let rate = parallaxRate
         return ZStack(alignment: .bottomLeading) {
+            posterInitial
+            Self.heroScrim
+            heroContent
+        }
+        .frame(height: posterHeight)
+        .frame(maxWidth: .infinity)
+        .background {
+            // A `background`, not a ZStack sibling: the oversized frame below must
+            // not inflate the ZStack's own reported height, or the bottom-aligned
+            // layers above get bottom-anchored to the *oversized* canvas and lose
+            // their clearance to the tucked ticket once it's cropped back down.
             posterArt
                 .frame(height: posterHeight + depth * 2)
                 .frame(maxWidth: .infinity)
@@ -118,12 +129,7 @@ struct ConcertDetailView: View {
                     let slide = min(-min(minY, 0) * rate, depth)
                     return content.offset(y: depth + slide)
                 }
-            posterInitial
-            Self.heroScrim
-            heroContent
         }
-        .frame(height: posterHeight)
-        .frame(maxWidth: .infinity)
         .clipped()
         .visualEffect { content, proxy in
             // Pull-down only (minY > 0): grow from the bottom edge to fill the gap
