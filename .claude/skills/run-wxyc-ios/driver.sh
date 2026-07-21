@@ -3,17 +3,18 @@
 # driver.sh
 # WXYC
 #
-# Agent driver for building, launching, and driving the WXYC iOS app in the
-# iOS simulator. Screenshots are the observation channel; taps are injected
-# as host-level mouse clicks mapped from device-pixel coordinates.
+# Agent driver for building, launching, and observing the WXYC iOS app in the
+# iOS simulator. Fully headless: it never opens Simulator.app or sends host
+# mouse/keyboard events, so it never steals Jake's cursor or window focus.
+# Screenshots are the only observation channel. There is no synthetic tap
+# support — if a screen can only be reached by navigating through the app,
+# ask Jake to drive it (or hand him the exact steps) rather than automating
+# input.
 #
 # Usage:
 #   driver.sh build                 # xcodebuild for the simulator
-#   driver.sh launch                # boot sim, install, launch the app
+#   driver.sh launch                # boot sim headlessly, install, launch the app
 #   driver.sh screenshot <out.png>  # capture the device screen
-#   driver.sh tap <x> <y>           # tap at DEVICE-PIXEL coords (as read off a screenshot)
-#   driver.sh press <x> <y>         # 1s long-press (theme picker) at DEVICE-PIXEL coords
-#   driver.sh swipe <x> <y> <x2> <y2>  # drag between DEVICE-PIXEL coords
 #   driver.sh quit                  # terminate the app
 #
 # Created by Jake Bromberg on 07/18/26.
@@ -26,14 +27,6 @@ set -euo pipefail
 UDID="B49BE311-B868-4E8B-AE14-85C159CAD776"
 SCHEME="WXYC"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Device screen size in pixels (iPhone 17). Screenshots come out at this size,
-# so tap coords are given in this space and mapped to host-screen points.
-DEVICE_W=1206
-DEVICE_H=2622
-# Simulator window title-bar height in points (measured; see SKILL.md gotchas).
-TITLEBAR=28
 
 app_path() {
     # Resolve THIS checkout's DerivedData by WorkspacePath. Many WXYC-<hash>
@@ -62,8 +55,11 @@ build)
     ;;
 
 launch)
+    # Headless boot — no `open -a Simulator`, so no window ever appears and
+    # nothing steals foreground focus. `simctl boot` errors if already booted;
+    # that's fine, fall through to bootstatus either way.
+    xcrun simctl boot "$UDID" 2>/dev/null || true
     xcrun simctl bootstatus "$UDID" -b
-    open -a Simulator
     APP="$(app_path)"
     [ -n "$APP" ] || { echo "No Debug-iphonesimulator build; run: driver.sh build" >&2; exit 1; }
     xcrun simctl install "$UDID" "$APP"
@@ -73,41 +69,6 @@ launch)
 screenshot)
     OUT="${2:?usage: driver.sh screenshot <out.png>}"
     xcrun simctl io "$UDID" screenshot "$OUT"
-    ;;
-
-tap|press|swipe)
-    X="${2:?usage: driver.sh tap|press|swipe <device-px-x> <device-px-y> [<x2> <y2>]}"
-    Y="${3:?}"
-    # Host window geometry {x, y, w, h} in screen points. Match the window by
-    # device name: with several sims booted, "window 1" is whichever device was
-    # focused last, and taps silently go to the wrong phone.
-    # "iPhone 17 –" (en dash) so "iPhone 17 Pro Max – …" can never match.
-    GEOM=$(osascript -e 'tell application "System Events" to tell process "Simulator" to get {position, size} of (first window whose name starts with "iPhone 17 –")' | tr -d ' ')
-    IFS=',' read -r WX WY WW WH <<< "$GEOM"
-    # The device view scales uniformly to fit the content height and is
-    # centered horizontally, so map with one scale factor + a side margin.
-    CONTENT_H=$((WH - TITLEBAR))
-    SX=$(( WX + (WW - DEVICE_W * CONTENT_H / DEVICE_H) / 2 + X * CONTENT_H / DEVICE_H ))
-    SY=$(( WY + TITLEBAR + Y * CONTENT_H / DEVICE_H ))
-    osascript -e 'tell application "Simulator" to activate'
-    sleep 0.3
-    case "$1" in
-    swipe)
-        X2="${4:?}"; Y2="${5:?}"
-        SX2=$(( WX + (WW - DEVICE_W * CONTENT_H / DEVICE_H) / 2 + X2 * CONTENT_H / DEVICE_H ))
-        SY2=$(( WY + TITLEBAR + Y2 * CONTENT_H / DEVICE_H ))
-        swift "$SCRIPT_DIR/click.swift" "$SX" "$SY" "$SX2" "$SY2"
-        echo "swiped device ($X,$Y)->($X2,$Y2) as screen ($SX,$SY)->($SX2,$SY2)"
-        ;;
-    press)
-        swift "$SCRIPT_DIR/click.swift" "$SX" "$SY" press
-        echo "long-pressed device ($X,$Y) -> screen ($SX,$SY)"
-        ;;
-    *)
-        swift "$SCRIPT_DIR/click.swift" "$SX" "$SY"
-        echo "tapped device ($X,$Y) -> screen ($SX,$SY)"
-        ;;
-    esac
     ;;
 
 quit)
