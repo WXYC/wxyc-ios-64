@@ -76,7 +76,8 @@ struct AppLifecycleModifier: ViewModifier {
                 playbackController: AudioPlayerController.shared,
                 pickerState: appState.themePickerState,
                 configuration: appState.themeConfiguration,
-                playlistService: appState.playlistService
+                playlistService: appState.playlistService,
+                appState: appState
             )
         }
     }

@@ -46,10 +46,10 @@ final class Singletonia {
     /// On-device liked songs (#492). A durable file store, not a cache — likes
     /// are user-curated canonical data with a never-evict contract (see
     /// docs/plans/492-liked-songs.md decision #6). `AppSupportFileStorage` is
-    /// module-qualified because `Concerts` exports a same-named seam.
-    let likedSongsStore = LikedSongsStore(
-        storage: LikedSongs.AppSupportFileStorage(filename: "liked-songs.json")
-    )
+    /// module-qualified because `Concerts` exports a same-named seam. Routed
+    /// through `makeLikedStorage()` so a `-marketing` recording gets an
+    /// in-memory store instead (see the `-marketing` section below).
+    let likedSongsStore = LikedSongsStore(storage: Singletonia.makeLikedStorage())
 
     /// Concerts the listener dismissed ("Not interested") from the On Tour For You
     /// shelf. Same durable-file rationale as the likes store — user curation, not a
@@ -80,9 +80,30 @@ final class Singletonia {
     /// resolution ladder, then clears it via ``consumePendingConcertLink()``.
     private(set) var pendingConcertLink: PendingConcertLink?
 
+    /// Marketing-driven tab route. Set only during a `-marketing` recording; nil
+    /// in production. A small release-compiled optional, mirroring
+    /// ``pendingConcertLink`` — `RootTabView` maps it to its private `Page`.
+    private(set) var marketingRoute: MarketingRoute?
+
     /// Token for the app-lifetime `ConcertOpenMessage` observer. Held so the
     /// registration stays idempotent — one observer for the app's lifetime.
     @ObservationIgnored private var concertOpenObservation: (any NSObjectProtocol)?
+
+    #if DEBUG
+    /// Fixture-backed On Tour model for the `-marketing` recording, built once in
+    /// `init` when `-marketing` is present. Nil otherwise.
+    private var _marketingOnTourModel: OnTourModel?
+    #endif
+
+    /// The `-marketing` On Tour model, or nil (production → live endpoint).
+    /// Release always returns nil, so `RootTabView` needs no compile-time branch.
+    var marketingOnTourModel: OnTourModel? {
+        #if DEBUG
+        _marketingOnTourModel
+        #else
+        nil
+        #endif
+    }
 
     private var nowPlayingObservationTask: Task<Void, Never>?
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
@@ -134,6 +155,22 @@ final class Singletonia {
             seedState.seedLovedEnabled = false
             seedState.stationCapOverride = 0
             seedState.seedForcedForTesting = true
+        }
+
+        // `-marketing`: deterministic On Tour fixtures for the App Store preview
+        // recording (no live `/concerts` traffic). Drives the For You shelf's
+        // station-recommended tier — the only tier the canned fixtures can feed,
+        // since they carry no `headliningArtistId`/`similarArtists` — so the
+        // shelf renders "WXYC recommends" cards with no dependency on a like.
+        if ProcessInfo.processInfo.arguments.contains("-marketing") {
+            let seedState = OnTourForYouSeedDebugState.shared
+            seedState.seedLovedEnabled = false       // persisted knob — neutralize any leak
+            seedState.stationCapOverride = 5         // persisted knob — positive forces the station tier on
+            // seedForcedForTesting is runtime-only and defaults false; leave it
+            // false so no synthetic loved card is fabricated — the station tier
+            // is the shelf's sole source for this recording.
+            dismissedConcertsStore.resetState() // a leaked "Not interested" must not hide a fixture card
+            _marketingOnTourModel = OnTourModel(fetcher: PreviewConcertsFetcher())
         }
         #endif
     }
@@ -373,5 +410,34 @@ final class Singletonia {
     /// the opened show (or a re-appearance) doesn't re-trigger the resolution.
     func consumePendingConcertLink() {
         pendingConcertLink = nil
+    }
+
+    // MARK: - Marketing recording (`-marketing`)
+
+    /// Sets the marketing-driven tab route; `RootTabView` reacts via `.onChange`.
+    func setMarketingRoute(_ route: MarketingRoute?) {
+        marketingRoute = route
+    }
+
+    /// Chooses the likes-store backing. Under `-marketing` (DEBUG only) returns an
+    /// in-memory store so seeded likes never touch `liked-songs.json`; production
+    /// always gets the durable Application Support file. Static so it's callable
+    /// from the `likedSongsStore` property initializer, which runs before `self`
+    /// exists.
+    private static func makeLikedStorage() -> any LikedSongs.FileStorage {
+        likedStorage(isMarketing: ProcessInfo.processInfo.arguments.contains("-marketing"))
+    }
+
+    /// The pure storage-selection decision, factored out of `makeLikedStorage()`
+    /// so it's unit-testable without depending on `ProcessInfo` launch arguments
+    /// or `MarketingModeController.isEnabled` (a cached `static let` that a host
+    /// unit test can neither set nor reset).
+    static func likedStorage(isMarketing: Bool) -> any LikedSongs.FileStorage {
+        #if DEBUG
+        if isMarketing {
+            return MarketingLikedStorage()
+        }
+        #endif
+        return LikedSongs.AppSupportFileStorage(filename: "liked-songs.json")
     }
 }

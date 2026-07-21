@@ -56,6 +56,18 @@ struct RootTabView: View {
             case .station: "tab.station"
             }
         }
+
+        /// Maps a `-marketing` recording route to its tab. Total (never fails);
+        /// the `.onChange` call site below handles a `nil` route as a no-op, so
+        /// this mapper stays pure and directly testable.
+        static func page(for route: MarketingRoute) -> Page {
+            switch route {
+            case .nowPlaying: .playlist
+            case .onTour: .onTour
+            case .liked: .liked
+            case .station: .station
+            }
+        }
     }
 
     @State private var selectedPage = Page.playlist
@@ -77,7 +89,7 @@ struct RootTabView: View {
             .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
 
             Tab(Page.onTour.title, systemImage: Page.onTour.systemImage, value: Page.onTour) {
-                OnTourTabView()
+                OnTourTabView(model: appState.marketingOnTourModel)
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
                         configuration: appState.themeConfiguration
@@ -124,6 +136,14 @@ struct RootTabView: View {
         .onChange(of: appState.pendingConcertLink) { _, link in
             if link != nil {
                 selectedPage = .onTour
+            }
+        }
+        // A `-marketing` recording drives tab navigation from outside the view,
+        // exactly like the shared-show-link case above. Nil is a no-op — it never
+        // fires for a production launch (`marketingRoute` stays nil).
+        .onChange(of: appState.marketingRoute) { _, route in
+            if let route {
+                selectedPage = Page.page(for: route)
             }
         }
     }

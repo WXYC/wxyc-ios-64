@@ -105,6 +105,17 @@ struct OnTourTabView: View {
             .forYouDebugSheet(isPresented: $showForYouDebug) {
                 appState.dismissedConcertsStore.resetState()
             }
+            // A `-marketing` recording switches routes without going through the
+            // tab bar's own dismissal, so a `.fullScreenCover` presented from a
+            // For You / row tap has to be closed explicitly before the next
+            // scene's route change — otherwise the cover and the next tab race.
+            // `marketingRoute` is release-compiled, so this compiles in release;
+            // the `#if DEBUG` keeps the hook itself out of the release binary.
+            #if DEBUG
+            .onChange(of: appState.marketingRoute) { _, route in
+                if route != .onTour { selectedConcert = nil }
+            }
+            #endif
     }
 
     // MARK: - Header
@@ -493,7 +504,9 @@ struct OnTourTabView: View {
 
 #if DEBUG
 /// A canned fetcher so the preview renders a loaded list with no network.
-private struct PreviewConcertsFetcher: ConcertsFetching {
+/// Internal (not `private`) so `Singletonia` can also build a `-marketing`
+/// recording's fixture `OnTourModel` from it (same app target, same #if DEBUG).
+struct PreviewConcertsFetcher: ConcertsFetching {
     private struct PreviewFetchError: Error {}
 
     func fetchConcerts(curated: Bool, from: Date?, to: Date?, page: Int, limit: Int) async throws -> ConcertsResponse {
@@ -522,10 +535,16 @@ private struct PreviewConcertsFetcher: ConcertsFetching {
     .environment(Singletonia.shared)
 }
 
-private extension Concert {
+extension Concert {
     /// A small spread of WXYC-canonical touring artists across venues/cities for
-    /// the preview list. `nonisolated` so the preview's (nonisolated) stub fetcher
-    /// can read it — the app target is main-actor-isolated by default.
+    /// the preview list — also the `-marketing` recording's fixture window
+    /// (`Singletonia`'s `PreviewConcertsFetcher` use, same app target). Two
+    /// concerts carry `stationRecommended: true` so the For You "WXYC
+    /// recommends" tier has cards to show with no likes required, and the first
+    /// (the one the marketing sequence opens) carries an `artistBio` so its
+    /// About-the-Artist card renders. `nonisolated` so the preview's
+    /// (nonisolated) stub fetcher can read it — the app target is
+    /// main-actor-isolated by default.
     nonisolated static var previewList: [Concert] {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
@@ -533,7 +552,7 @@ private extension Concert {
             let base = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)) ?? Date(timeIntervalSince1970: 1_785_898_800)
             return calendar.date(byAdding: .day, value: offset, to: base) ?? base
         }
-        let cradle = Venue(id: 3, slug: "cats-cradle", name: "Cat's Cradle", city: "Carrboro", state: "NC", address: nil)
+        let cradle = Venue(id: 3, slug: "cats-cradle", name: "Cat's Cradle", city: "Carrboro", state: "NC", address: "300 E Main St")
         let motorco = Venue(id: 7, slug: "motorco", name: "Motorco", city: "Durham", state: "NC", address: nil)
         let local506 = Venue(id: 1, slug: "local-506", name: "Local 506", city: "Chapel Hill", state: "NC", address: nil)
         // Spread across two calendar months so the preview exercises the month
@@ -543,10 +562,11 @@ private extension Concert {
                     supportingArtistsRaw: ["Julie Byrne"], ticketURL: URL(string: "https://example.com/a"),
                     eventURL: URL(string: "https://catscradle.com/event/jessica-pratt"),
                     priceMin: 22, priceMax: 25, ageRestriction: "All Ages", status: .onSale,
-                    genres: ["Rock", "Folk World & Country"]),
+                    genres: ["Rock", "Folk World & Country"], stationRecommended: true,
+                    artistBio: "Jessica Pratt writes hushed, unhurried songs that sound like they've always existed — close-mic'd vocals over fingerpicked guitar, recorded live to tape. WXYC has spun her records since On Your Own Love Again."),
             Concert(id: 2, venue: motorco, startsOn: day(20), headliningArtistRaw: "Chuquimamani-Condori",
                     ticketURL: URL(string: "https://example.com/b"), priceMin: 0, ageRestriction: "18+", status: .free,
-                    genres: ["Electronic"]),
+                    genres: ["Electronic"], stationRecommended: true),
             Concert(id: 3, venue: local506, startsOn: day(40), headliningArtistRaw: "Juana Molina",
                     ticketURL: URL(string: "https://example.com/c"), priceMin: 18, ageRestriction: nil, status: .soldOut,
                     genres: ["Rock", "Electronic"]),

@@ -16,6 +16,14 @@ import PlaybackCore
 import Playlist
 import SwiftUI
 import Wallpaper
+import WXYCIntents
+
+/// Which tab the marketing recording wants shown. Written by
+/// `MarketingModeController` during a `-marketing` run; `RootTabView` maps it to
+/// its private `Page`. Nil in every production launch (mirrors `pendingConcertLink`).
+enum MarketingRoute: Sendable {
+    case nowPlaying, onTour, liked, station
+}
 
 /// Controller that runs marketing demo sequences when enabled.
 @MainActor
@@ -31,8 +39,10 @@ final class MarketingModeController {
         return enabled
     }()
 
-    /// Minimum total duration for the theme cycling sequence.
-    private let minimumDuration: Duration = .seconds(15)
+    /// Minimum total duration for the theme cycling sequence. Trimmed from the
+    /// original 15s so the retuned storyboard's on-screen total stays ≤ ~25s once
+    /// the On Tour / Liked / Station scenes are added below.
+    private let minimumDuration: Duration = .seconds(6)
 
     /// Time to wait for playlist to load before starting.
     private let playlistWaitTimeout: Duration = .seconds(10)
@@ -42,6 +52,21 @@ final class MarketingModeController {
 
     /// Delay between theme picker cycles.
     private let cycleDelay: Duration = .seconds(3)
+
+    /// Hold after liking the on-air track, to show the heart-burst celebration.
+    private let likeHoldDelay: Duration = .seconds(3)
+
+    /// Hold on the On Tour list (and its For You shelf) before opening a detail.
+    private let onTourListHoldDelay: Duration = .seconds(2)
+
+    /// Hold on the opened concert detail (poster, Where, About the Artist).
+    private let onTourDetailHoldDelay: Duration = .seconds(4)
+
+    /// Hold on the Liked tab.
+    private let likedHoldDelay: Duration = .seconds(3)
+
+    /// Hold on the Station tab.
+    private let stationHoldDelay: Duration = .seconds(2)
 
     /// Number of themes available.
     private var themeCount: Int {
@@ -54,11 +79,17 @@ final class MarketingModeController {
     ///   - pickerState: The theme picker state to control.
     ///   - configuration: The theme configuration.
     ///   - playlistService: The playlist service to wait for loading.
+    ///   - appState: Shared app state, used to drive tab routes and seed a like
+    ///     for the Liked-tab scene. Release-compiled — only release-safe members
+    ///     (`setMarketingRoute`, `likedSongsStore.toggle`) are touched here, so
+    ///     this method needs no `#if DEBUG` even though it never runs outside a
+    ///     `-marketing` launch (`isEnabled` short-circuits below).
     func start(
         playbackController: any PlaybackController,
         pickerState: ThemePickerState,
         configuration: ThemeConfiguration,
-        playlistService: PlaylistService?
+        playlistService: PlaylistService?,
+        appState: Singletonia
     ) {
         guard Self.isEnabled else { return }
 
@@ -132,7 +163,46 @@ final class MarketingModeController {
                 try? await Task.sleep(for: cycleDelay)
             }
 
-            Log(.info, category: .general, "Marketing mode: sequence complete after \(cycleCount) cycles")
+            Log(.info, category: .general, "Marketing mode: theme cycling complete after \(cycleCount) cycles")
+
+            // Scene: like the on-air track, for the heart-burst celebration on
+            // the flowsheet row. Routes through `likedSongsStore`, which under
+            // `-marketing` is backed by an in-memory store (`Singletonia`), so
+            // this never writes `liked-songs.json` on a simulator someone also
+            // uses by hand.
+            Log(.info, category: .general, "Marketing mode: liking the on-air track")
+            let playlist = await appState.playlistService.fetchPlaylist()
+            if let playcut = playlist.playcuts.first {
+                _ = appState.likedSongsStore.toggle(playcut)
+            }
+            try? await Task.sleep(for: likeHoldDelay)
+
+            // Scene: On Tour — month-grouped list + the "WXYC recommends" For
+            // You shelf (the station-recommended tier `Singletonia` seeds under
+            // `-marketing`), then open a poster-first concert detail via the
+            // same `ConcertOpenMessage` path a real shared-show link uses.
+            Log(.info, category: .general, "Marketing mode: routing to On Tour")
+            appState.setMarketingRoute(.onTour)
+            try? await Task.sleep(for: onTourListHoldDelay)
+
+            Log(.info, category: .general, "Marketing mode: opening a concert detail")
+            NotificationCenter.default.post(ConcertOpenMessage(concertID: 1, source: .scheme), subject: nil)
+            try? await Task.sleep(for: onTourDetailHoldDelay)
+
+            // Scene: Liked — the like seeded above is already in the in-memory
+            // store, so the list is non-empty. Switching routes here also closes
+            // the On Tour detail cover (see `OnTourTabView`'s DEBUG-only
+            // dismiss hook), so the two don't race.
+            Log(.info, category: .general, "Marketing mode: routing to Liked")
+            appState.setMarketingRoute(.liked)
+            try? await Task.sleep(for: likedHoldDelay)
+
+            // Scene: Station — on-air banner + Request Line.
+            Log(.info, category: .general, "Marketing mode: routing to Station")
+            appState.setMarketingRoute(.station)
+            try? await Task.sleep(for: stationHoldDelay)
+
+            Log(.info, category: .general, "Marketing mode: sequence complete")
         }
     }
 
