@@ -39,6 +39,11 @@ struct ConcertDetailView: View {
     /// request and, on grant, the event editor (see ``addToCalendar(_:surface:)``).
     @State private var calendarTrigger: Concert?
 
+    /// Whether the "About the Artist" bio is expanded past its truncation. Owned
+    /// here and bound into the reused ``ArtistBioSection`` Read More / Show Less
+    /// control (the flowsheet Playcut detail owns it the same way).
+    @State private var expandedBio = false
+
     /// Built once — the concert is immutable for the lifetime of the detail.
     private let presenter: BoxOfficeTicketPresenter
 
@@ -82,6 +87,7 @@ struct ConcertDetailView: View {
                     VStack(spacing: 20) {
                         BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors, isPast: isPast)
                         whereSection
+                        bioSection
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, -ticketTuck)
@@ -249,6 +255,26 @@ struct ConcertDetailView: View {
             return "\(address) · \(concert.venue.city)"
         }
         return "\(concert.venue.city), \(concert.venue.state)"
+    }
+
+    // MARK: - About the Artist
+
+    /// The reused flowsheet ``ArtistBioSection`` (Discogs bio, linkified, with a
+    /// Read More / Show Less control), shown only when the concert carries a
+    /// non-empty `artist_bio`. Wrapped in the detail's subtle card and pinned to
+    /// the dark color scheme so the section's `.primary` / `.secondary` text
+    /// resolves light against the poster backdrop rather than following the
+    /// device's light/dark appearance.
+    @ViewBuilder
+    private var bioSection: some View {
+        if let bio = concert.artistBio, !bio.isEmpty {
+            ArtistBioSection(bio: bio, bioTokens: nil, expandedBio: $expandedBio)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.white.opacity(0.06), in: .rect(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
+                .environment(\.colorScheme, .dark)
+        }
     }
 
     // MARK: - Chrome
@@ -421,7 +447,8 @@ private extension Concert {
         status: ShowStatus,
         headliningArtistRaw: String = "Nilüfer Yanya",
         priceMin: Double? = 22,
-        priceMax: Double? = 25
+        priceMax: Double? = 25,
+        artistBio: String? = "Nilüfer Yanya is a British singer-songwriter and guitarist from West London, whose music blends indie rock, soul, and electronic textures. She emerged in the mid-2010s and drew wide notice for her 2019 debut album."
     ) -> Concert {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
@@ -442,7 +469,8 @@ private extension Concert {
             priceMin: priceMin,
             priceMax: priceMax,
             ageRestriction: "All Ages",
-            status: status
+            status: status,
+            artistBio: artistBio
         )
     }
 }
