@@ -233,6 +233,18 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// emission (same discipline as ``genres`` / ``similarArtists``).
     public let stationRecommended: Bool
 
+    /// Artist biography for the resolved headliner, drawn from their Discogs
+    /// profile (raw Discogs markup, parsed client-side), cached nightly on the
+    /// backend and keyed by the effective Discogs artist id. `nil` when the
+    /// headliner is unresolved, has no Discogs profile, or the enrichment has
+    /// not run. **Identical for every listener** — like ``stationRecommended``
+    /// it is not personalized and carries no listener data. The text behind the
+    /// On Tour concert-detail "About the Artist" card. A forward-compatible
+    /// optional: absent or explicit-null `artist_bio` decodes to `nil`, so this
+    /// client can ship ahead of backend emission (same discipline as ``genres``
+    /// / ``similarArtists``).
+    public let artistBio: String?
+
     public init(
         id: Int,
         venue: Venue,
@@ -253,7 +265,8 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         genres: [String]? = nil,
         similarArtists: [SimilarArtist]? = nil,
         stationPlays: Int? = nil,
-        stationRecommended: Bool = false
+        stationRecommended: Bool = false,
+        artistBio: String? = nil
     ) {
         self.id = id
         self.venue = venue
@@ -275,6 +288,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.similarArtists = similarArtists
         self.stationPlays = stationPlays
         self.stationRecommended = stationRecommended
+        self.artistBio = artistBio
     }
 
     // MARK: - Intrinsic accessors
@@ -336,6 +350,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case similarArtists = "similar_artists"
         case stationPlays = "station_plays"
         case stationRecommended = "station_recommended"
+        case artistBio = "artist_bio"
     }
 
     /// Date-only parser pinned to the station zone and a fixed POSIX locale, so a
@@ -442,6 +457,10 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // → false (not recommended), so this decode is stable whether or not the
         // backend has shipped the field.
         stationRecommended = try container.decodeIfPresent(Bool.self, forKey: .stationRecommended) ?? false
+        // Forward-compatible optional: absent or explicit-null `artist_bio` →
+        // nil (unresolved headliner, no Discogs profile, or pre-enrichment), so
+        // this decode is stable whether or not the backend has shipped the field.
+        artistBio = try container.decodeIfPresent(String.self, forKey: .artistBio)
     }
 
     /// Encodes back to the wire shape, writing `starts_on` as a `yyyy-MM-dd`
@@ -470,5 +489,6 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encodeIfPresent(similarArtists, forKey: .similarArtists)
         try container.encodeIfPresent(stationPlays, forKey: .stationPlays)
         try container.encode(stationRecommended, forKey: .stationRecommended)
+        try container.encodeIfPresent(artistBio, forKey: .artistBio)
     }
 }
