@@ -170,8 +170,13 @@ xcodebuild test \
 
 TEST_RESULT=${PIPESTATUS[0]}
 
-# Stop recording (handled by trap)
-sleep 1
+# Stop recording now, before inspecting or processing the file below. The EXIT
+# trap alone doesn't fire until the whole script returns — which is after this
+# point — so relying on it here would race process-preview.sh (and ffprobe)
+# against a still-recording file with no moov atom yet. Disarm the trap after
+# the explicit call so a normal exit doesn't try to stop it a second time.
+cleanup
+trap - EXIT
 
 if [[ $TEST_RESULT -eq 0 ]]; then
     log "Recording complete: $OUTPUT_PATH"
