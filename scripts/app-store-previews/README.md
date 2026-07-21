@@ -268,6 +268,48 @@ The script performs these steps:
 4. **Commit**: Commits the upload with the checksum
 5. **Polling**: Waits for App Store Connect to process the video
 
+## Marketing Video Recording (`record-marketing.sh`)
+
+```bash
+./record-marketing.sh
+```
+
+This drives an end-to-end capture of the App Store preview video: it boots a simulator, starts `xcrun simctl io … recordVideo` in the background, runs the `-marketing`-gated UI test (`WXYCUITests/MarketingRecordingUITests/testMarketingRecordingSequence`), and — on success — hands the raw `.mov` straight to `process-preview.sh -a`. A non-zero test exit skips processing (but the recording is still stopped and kept), so a timing-drifted take still lands in the working directory even if it wasn't auto-processed.
+
+### What it captures
+
+Launching with `-marketing` (a DEBUG-only launch argument — no effect on a release build) drives the app through a scripted storyboard covering all four tabs:
+
+| # | Scene | What it shows | Hold |
+|---|-------|---------------|------|
+| 1 | **Now Playing + playback** | audio starts, flowsheet loads | ~3s |
+| 2 | **Wallpaper theme cycle** | the signature visual (1–2 swaps) | ~6s |
+| 3 | **Like a track** | toggle a like on the on-air playcut → heart-burst celebration | ~3s |
+| 4 | **On Tour tab** | month-grouped concert list + the "WXYC recommends" For You shelf, then a poster-first concert detail (parallax poster, Where/map, About-the-Artist bio), then dismiss | ~6s |
+| 5 | **Liked tab** | the saved song list (row matches the flowsheet row) | ~3s |
+| 6 | **Station tab** | on-air banner + Request Line | ~2s |
+
+On-screen storyboard ≈ 23s. Raw capture wall-clock (launch + playlist load + storyboard) runs up to ~39s worst case, so the UI test holds ~55s to leave timing headroom — the raw `.mov` is not the deliverable and always needs trimming (see below).
+
+### Deterministic fixtures
+
+The On Tour and Liked scenes never touch the network or a real listener's data, so the recording is reproducible offline and safe to run on a simulator you also use by hand:
+
+- **Concerts** come from a canned, in-app fixture list (the same three WXYC-canonical shows the Xcode `#Preview` uses) — not the live `/concerts` endpoint.
+- **Likes** route to an in-memory store — the like seeded in scene 3 never writes `liked-songs.json`.
+- **The For You shelf** is forced on via the station-recommended tier (two fixture concerts are flagged `stationRecommended`, and `-marketing` sets a positive station-cap override) — no likes are required for "WXYC recommends" cards to render.
+
+### Trimming to a deliverable
+
+The recording must land in Apple's 15–30s window (see Duration & Size above). `process-preview.sh` only *warns* above 30s — it never auto-trims — so the raw capture always needs a manual trim before upload. The `-t`/`--trim` flag takes **`start:duration`**, not `start:end`, despite how the option help reads — under the hood it's `ffmpeg -ss <start> -t <duration>`, and `-t` means *duration* to ffmpeg:
+
+```bash
+# Start at 4s, keep 24s (ends at 28s) — re-tune the window empirically per the
+# storyboard above; the right start offset depends on how quickly playback and
+# the playlist load land on your machine.
+./process-preview.sh -a -t 4:24 marketing_recording_<timestamp>.mov
+```
+
 ## Recording Tips
 
 ### iOS Simulator
