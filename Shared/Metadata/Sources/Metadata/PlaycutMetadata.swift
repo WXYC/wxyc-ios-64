@@ -42,6 +42,51 @@ public struct ArtistMetadata: Sendable, Equatable, Codable {
     public static let empty = ArtistMetadata()
 }
 
+// MARK: - Critic Review
+
+/// A single attributed external critic-review snippet for an album (ADR 0012).
+///
+/// Mirrors the `CriticReviewItem` contract in `wxyc-shared/api.yaml`. The app
+/// only ever holds the short excerpt plus its mandatory attribution and
+/// link-out — never the full review body. `url` is non-optional precisely
+/// because a card without a working link-out must not render (the attribution
+/// guardrail); the service drops any served review whose URL can't be parsed.
+public struct CriticReview: Sendable, Equatable, Codable {
+    /// Publication name, e.g. "The Quietus". Always shown as attribution.
+    public let source: String
+
+    /// Link to the original review on the publisher's site (mandatory link-out).
+    public let url: URL
+
+    /// Short attributed excerpt (<= ~300 chars); never the full review body.
+    public let snippet: String
+
+    /// Review author, when available.
+    public let author: String?
+
+    /// Review publication date when available (e.g. "2024-03-15").
+    public let publishedDate: String?
+
+    /// Source-native rating string when available (e.g. "8.0").
+    public let rating: String?
+
+    public init(
+        source: String,
+        url: URL,
+        snippet: String,
+        author: String? = nil,
+        publishedDate: String? = nil,
+        rating: String? = nil
+    ) {
+        self.source = source
+        self.url = url
+        self.snippet = snippet
+        self.author = author
+        self.publishedDate = publishedDate
+        self.rating = rating
+    }
+}
+
 // MARK: - Album Metadata
 
 /// Metadata specific to an album/release, cached by artist+release key.
@@ -70,6 +115,12 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// Artwork image URL from the metadata proxy (Discogs cover image)
     public let artworkURL: URL?
 
+    /// Attributed external critic-review snippets for this album (ADR 0012).
+    /// `nil` when the serve path didn't attach any (flag off, or no rows); the
+    /// Reviews section gates on `hasCriticReviews` and never folds into
+    /// `hasMetadataSectionContent`.
+    public let criticReviews: [CriticReview]?
+
     public init(
         label: String? = nil,
         releaseYear: Int? = nil,
@@ -78,7 +129,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         genres: [String]? = nil,
         styles: [String]? = nil,
         fullReleaseDate: String? = nil,
-        artworkURL: URL? = nil
+        artworkURL: URL? = nil,
+        criticReviews: [CriticReview]? = nil
     ) {
         self.label = label
         self.releaseYear = releaseYear
@@ -88,9 +140,18 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         self.styles = styles
         self.fullReleaseDate = fullReleaseDate
         self.artworkURL = artworkURL
+        self.criticReviews = criticReviews
     }
 
     public static let empty = AlbumMetadata()
+
+    /// Whether the album has at least one critic review worth rendering.
+    /// Gates `ReviewsSection` in the detail view — mirrors
+    /// `StreamingLinks.hasAny`, deliberately separate from
+    /// `hasMetadataSectionContent`.
+    public var hasCriticReviews: Bool {
+        !(criticReviews ?? []).isEmpty
+    }
 }
 
 // MARK: - Streaming Links

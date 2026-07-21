@@ -219,6 +219,151 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(result.album.genres == ["Electronic"])
     }
 
+    @Test("Decodes criticReviews[] from a 200 response into domain review items")
+    func decodesCriticReviews() async throws {
+        // Given
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+        let mockURLSession = URLSession(configuration: config)
+
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockWebSession = MetadataMockWebSession()
+
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            session: mockWebSession,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        // Response carries two reviews: one fully populated, one with only the
+        // required fields, plus one with a malformed URL that must be dropped.
+        MockURLProtocol.responseHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let body = """
+            {
+                "discogsReleaseId": 12345,
+                "label": "Sonamos",
+                "criticReviews": [
+                    {
+                        "source": "The Quietus",
+                        "url": "https://thequietus.com/articles/juana-molina-doga",
+                        "snippet": "DOGA folds field recordings into looped songcraft.",
+                        "author": "Jane Critic",
+                        "publishedDate": "2024-03-15",
+                        "rating": "8.0"
+                    },
+                    {
+                        "source": "The Quietus",
+                        "url": "https://thequietus.com/articles/second",
+                        "snippet": "Required-fields-only card."
+                    },
+                    {
+                        "source": "Broken",
+                        "url": "   ",
+                        "snippet": "Should be dropped for a blank link-out URL."
+                    }
+                ],
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.data(using: .utf8)!
+            return (body, response)
+        }
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — the malformed-URL review is dropped, both valid ones survive.
+        let reviews = try #require(result.album.criticReviews)
+        #expect(reviews.count == 2)
+        #expect(result.album.hasCriticReviews == true)
+
+        let first = reviews[0]
+        #expect(first.source == "The Quietus")
+        #expect(first.url.absoluteString == "https://thequietus.com/articles/juana-molina-doga")
+        #expect(first.snippet == "DOGA folds field recordings into looped songcraft.")
+        #expect(first.author == "Jane Critic")
+        #expect(first.publishedDate == "2024-03-15")
+        #expect(first.rating == "8.0")
+
+        let second = reviews[1]
+        #expect(second.author == nil)
+        #expect(second.publishedDate == nil)
+        #expect(second.rating == nil)
+    }
+
+    @Test("Omits criticReviews when the response has no such field")
+    func omitsCriticReviewsWhenAbsent() async throws {
+        // Given
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+        let mockURLSession = URLSession(configuration: config)
+
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockWebSession = MetadataMockWebSession()
+
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            session: mockWebSession,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        MockURLProtocol.responseHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let body = """
+            {
+                "label": "Sonamos",
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.data(using: .utf8)!
+            return (body, response)
+        }
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — an un-seeded album has no reviews attached, section stays hidden.
+        #expect(result.album.criticReviews == nil)
+        #expect(result.album.hasCriticReviews == false)
+    }
+
     @Test("Includes Authorization header when token provider is present")
     func includesAuthorizationHeader() async throws {
         // Given

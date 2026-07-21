@@ -136,8 +136,33 @@ public actor PlaycutMetadataService {
             genres: proxy.genres ?? inline.genres,
             styles: proxy.styles ?? inline.styles,
             fullReleaseDate: proxy.fullReleaseDate ?? inline.fullReleaseDate,
-            artworkURL: proxy.artworkURL ?? inline.artworkURL
+            artworkURL: proxy.artworkURL ?? inline.artworkURL,
+            criticReviews: proxy.criticReviews ?? inline.criticReviews
         )
+    }
+
+    /// Maps served critic-review DTOs into domain `CriticReview`s, dropping any
+    /// whose `url` can't be parsed so the mandatory link-out guarantee holds.
+    /// Returns `nil` when nothing was served (field absent) so the domain
+    /// preserves the "no reviews attached" vs. "empty after filtering" nuance —
+    /// both hide the section, but `nil` avoids caching an empty array.
+    private static func mapCriticReviews(_ dtos: [CriticReviewDTO]?) -> [CriticReview]? {
+        guard let dtos else { return nil }
+        return dtos.compactMap { dto in
+            // `URL(string:)` is lenient on modern Foundation (it will encode a
+            // string with spaces), so an empty/whitespace URL is the realistic
+            // bad-data case to reject — a card must carry a working link-out.
+            let trimmed = dto.url.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
+            return CriticReview(
+                source: dto.source,
+                url: url,
+                snippet: dto.snippet,
+                author: dto.author,
+                publishedDate: dto.publishedDate,
+                rating: dto.rating
+            )
+        }
     }
 
     // MARK: - Granular Caching Methods
@@ -225,7 +250,8 @@ public actor PlaycutMetadataService {
                 genres: apiResult.genres,
                 styles: apiResult.styles,
                 fullReleaseDate: apiResult.fullReleaseDate,
-                artworkURL: apiResult.artworkUrl.flatMap { URL(string: $0) }
+                artworkURL: apiResult.artworkUrl.flatMap { URL(string: $0) },
+                criticReviews: Self.mapCriticReviews(apiResult.criticReviews)
             )
 
             let streaming = cachedStreaming ?? StreamingLinks(
@@ -286,11 +312,25 @@ private struct AlbumMetadataAPIResponse: Codable {
     let styles: [String]?
     let label: String?
     let fullReleaseDate: String?
+    let criticReviews: [CriticReviewDTO]?
     let spotifyUrl: String?
     let appleMusicUrl: String?
     let youtubeMusicUrl: String?
     let bandcampUrl: String?
     let soundcloudUrl: String?
+}
+
+/// Wire shape of a `CriticReviewItem` on the album-metadata proxy response.
+/// `url` is a `String` here (not `URL`) so a malformed link fails decoding of
+/// just this element's mapping, not the whole response; the mapper drops any
+/// review without a parseable URL to preserve the mandatory link-out.
+private struct CriticReviewDTO: Codable {
+    let source: String
+    let url: String
+    let snippet: String
+    let author: String?
+    let publishedDate: String?
+    let rating: String?
 }
 
 private struct ArtistMetadataAPIResponse: Codable {

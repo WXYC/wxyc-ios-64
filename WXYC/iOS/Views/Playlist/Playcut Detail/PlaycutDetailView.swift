@@ -108,7 +108,24 @@ struct PlaycutDetailView: View {
                         .frame(maxWidth: .infinity)
                         .foregroundStyle(.white)
                 }
-                
+
+                // Critic reviews — attributed snippet cards (ADR 0012). Gates
+                // solely on its own non-empty array, independent of the metadata
+                // card's hasMetadataSectionContent.
+                if metadata.album.hasCriticReviews {
+                    ReviewsSection(
+                        reviews: metadata.album.criticReviews ?? [],
+                        onLinkTapped: { source in
+                            StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
+                                service: source,
+                                artist: playcut.artistName,
+                                album: playcut.releaseTitle ?? ""
+                            ))
+                        }
+                    )
+                    .foregroundStyle(.white)
+                }
+
                 // Streaming links
                 if metadata.hasStreamingLinks || !isLoadingMetadata {
                     StreamingLinksSection(
