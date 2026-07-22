@@ -47,9 +47,6 @@ struct OnTourTabView: View {
     /// tab shows a quiet "couldn't find that show" notice instead of a blank cover.
     @State private var showMissedLinkNotice = false
 
-    /// PostHog key for the similar-tier noise cap; local default 3 when absent.
-    private static let similarCapFlagKey = "on_tour_for_you_similar_cap"
-
     /// PostHog key for the station-recommended tier size cap. Local default **0**
     /// (tier off) so wiring the surface is behavior-neutral — the cold-start
     /// station tier only lights up once this is raised via PostHog, gating the
@@ -349,7 +346,6 @@ struct OnTourTabView: View {
         // #577); there is no longer an empty-likes short-circuit. The station cap
         // defaults to 0 (tier off), so this stays behavior-neutral until PostHog
         // raises it.
-        let similarCap = appState.featureFlagProvider.integerValue(forKey: Self.similarCapFlagKey, default: 3)
         // A positive debug station-cap override forces the tier on locally, ahead
         // of the PostHog flag; 0 (the default) defers to the flag.
         let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
@@ -362,7 +358,6 @@ struct OnTourTabView: View {
         let recs = ForYouShelf.recommendations(
             concerts: concerts,
             likedArtists: matchArtists,
-            similarCap: similarCap,
             stationCap: stationCap,
             dismissedConcertIDs: appState.dismissedConcertsStore.ids
         )
@@ -396,16 +391,15 @@ struct OnTourTabView: View {
     /// on each list render; DEBUG-only so it never reaches production Sentry.
     private func logForYouGate(liked: [LikedArtist], matched: [LikedArtist], concerts: [Concert], cards: [ForYouRecommendation]) {
         let withHeadlinerId = concerts.filter { $0.headliningArtistId != nil }.count
-        let withSimilar = concerts.filter { !($0.similarArtists ?? []).isEmpty }.count
         let recommended = concerts.filter(\.stationRecommended).count
         let counts = cards.tierCounts
         Log(.info, category: .ui, """
             ForYou gate: likedSongs=\(appState.likedSongsStore.songs.count) \
             idBearingLikes=\(liked.count) \(liked.map { "\($0.id):\($0.name)" }) \
             seeded=\(matched.count != liked.count) | concerts=\(concerts.count) \
-            withHeadlinerId=\(withHeadlinerId) withSimilarArtists=\(withSimilar) \
+            withHeadlinerId=\(withHeadlinerId) \
             stationRecommended=\(recommended) -> cards=\(cards.count) \
-            (loved=\(counts.loved) similar=\(counts.similar) station=\(counts.stationRecommended))
+            (loved=\(counts.loved) station=\(counts.stationRecommended))
             """)
     }
     #endif
@@ -432,13 +426,11 @@ struct OnTourTabView: View {
     private func recordForYouImpression(_ recommendations: [ForYouRecommendation]) {
         guard !hasRecordedForYouImpression, !recommendations.isEmpty else { return }
         hasRecordedForYouImpression = true
-        // Each tier is counted in its own bucket — station cards are never folded
-        // into `similar` (#551).
+        // Each tier is counted in its own bucket.
         let counts = recommendations.tierCounts
         StructuredPostHogAnalytics.shared.capture(
             ForYouShelfImpression(
                 lovedCount: counts.loved,
-                similarCount: counts.similar,
                 stationCount: counts.stationRecommended
             )
         )

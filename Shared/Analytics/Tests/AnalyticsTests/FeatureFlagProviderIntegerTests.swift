@@ -2,9 +2,10 @@
 //  FeatureFlagProviderIntegerTests.swift
 //  Analytics
 //
-//  Covers the integer-flag read used by the On Tour For You shelf's similar-tier
-//  noise cap (#493): a remotely-tunable count that must degrade to a sensible
-//  local default when the flag is absent, offline, or a non-numeric shape.
+//  Covers the integer-flag read used by the On Tour "Heard on WXYC" shelf's
+//  station-recommended tier cap (#493/#577): a remotely-tunable count that must
+//  degrade to a sensible local default when the flag is absent, offline, or a
+//  non-numeric shape.
 //
 //  Created by Jake Bromberg on 07/19/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -20,7 +21,7 @@ struct FeatureFlagProviderIntegerTests {
     @Test("An absent flag falls back to the default")
     func absentUsesDefault() {
         let provider = MockFeatureFlagProvider()
-        #expect(provider.integerValue(forKey: "on_tour_for_you_similar_cap", default: 3) == 3)
+        #expect(provider.integerValue(forKey: "on_tour_for_you_station_cap", default: 3) == 3)
     }
 
     @Test("An Int flag value is returned")

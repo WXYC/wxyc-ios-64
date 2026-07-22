@@ -194,10 +194,11 @@ final class Singletonia {
         }
 
         // `-marketing`: deterministic On Tour fixtures for the App Store preview
-        // recording (no live `/concerts` traffic). Drives the For You shelf's
-        // station-recommended tier — the only tier the canned fixtures can feed,
-        // since they carry no `headliningArtistId`/`similarArtists` — so the
-        // shelf renders "WXYC recommends" cards with no dependency on a like.
+        // recording (no live `/concerts` traffic). Drives the "Heard on WXYC"
+        // shelf's station-recommended tier — the only tier the canned fixtures can
+        // feed, since they carry no `headliningArtistId` for the loved tier to
+        // match — so the shelf renders header-only cards with no dependency on a
+        // like.
         // `dismissedConcertsStore` is already routed to an in-memory backing
         // above under `-marketing`, so it starts empty on its own — no reset
         // needed, and (unlike a reset) nothing here can touch a real listener's

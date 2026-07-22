@@ -50,29 +50,26 @@ public struct OnTourFilteredToZero {
 
 // MARK: - For You shelf (#493)
 
-/// Event fired once per launch, the first time the For You recommendation shelf
-/// renders with at least one card. `lovedCount` / `similarCount` / `stationCount`
-/// are the per-tier sizes at that first render — volume without identity, per the
-/// On Tour privacy invariant. `stationCount` is the cold-start station-recommended
-/// tier (#551/#577), broken out so it is never folded into `similarCount`. Never
-/// carries a concert or artist id: which artists the listener likes stays on the
-/// device.
+/// Event fired once per launch, the first time the "Heard on WXYC" recommendation
+/// shelf renders with at least one card. `lovedCount` / `stationCount` are the
+/// per-tier sizes at that first render — volume without identity, per the On Tour
+/// privacy invariant. `stationCount` is the cold-start station-recommended tier
+/// (#577). Never carries a concert or artist id: which artists the listener likes
+/// stays on the device.
 @AnalyticsEvent
 public struct ForYouShelfImpression {
     public let lovedCount: Int
-    public let similarCount: Int
     public let stationCount: Int
 
-    public init(lovedCount: Int, similarCount: Int, stationCount: Int) {
+    public init(lovedCount: Int, stationCount: Int) {
         self.lovedCount = lovedCount
-        self.similarCount = similarCount
         self.stationCount = stationCount
     }
 }
 
 /// Event fired when a For You card is tapped through to the concert detail.
-/// `tier` is "loved", "similar", or "station" — the recommendation kind only,
-/// never the concert or the liked artist that surfaced it.
+/// `tier` is "loved" or "station" — the recommendation kind only, never the
+/// concert or the liked artist that surfaced it.
 @AnalyticsEvent
 public struct ForYouCardTapped {
     public let tier: String
@@ -83,8 +80,8 @@ public struct ForYouCardTapped {
 }
 
 /// Event fired when the listener dismisses a For You card via its "Not interested"
-/// menu. `tier` is "loved", "similar", or "station" — the recommendation kind
-/// only, never the concert or the liked artist that surfaced it.
+/// menu. `tier` is "loved" or "station" — the recommendation kind only, never the
+/// concert or the liked artist that surfaced it.
 @AnalyticsEvent
 public struct ForYouCardDismissed {
     public let tier: String
