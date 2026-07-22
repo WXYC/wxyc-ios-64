@@ -2,13 +2,16 @@
 //  ForYouShelfView.swift
 //  WXYC
 //
-//  The pinned "For You" recommendation rail (#493): a horizontal row of compact
-//  cards above the On Tour date list, rendered only when the on-device match
-//  produced at least one card. Loved cards (a liked artist headlines) lead with a
-//  filled-heart accent; similar cards ("Because you like X") follow, ranked and
-//  capped by the pure `ForYouShelf` engine. Every recommendation is computed on
-//  the device from the local likes store — no taste signal reaches the server —
-//  and this view only renders what that engine returned.
+//  The pinned "Heard on WXYC" recommendation rail (#493): a horizontal row of
+//  compact cards above the On Tour date list, rendered only when the on-device
+//  match produced at least one card. Loved cards (a liked artist headlines) lead,
+//  followed by station-recommended cards, ranked and capped by the pure
+//  `ForYouShelf` engine. The cards are deliberately header-only — no per-card tier
+//  badge or "reason line": the section header ("Heard on WXYC") is the whole
+//  provenance the shelf claims, so it states airplay as a fact rather than dressing
+//  each card as a taste prediction. Every recommendation is computed on the device
+//  from the local likes store — no taste signal reaches the server — and this view
+//  only renders what that engine returned.
 //
 //  Card taps route to the same detail as a list row via an `onSelect` closure.
 //  The cards deliberately do NOT register a `matchedTransitionSource`: the shelf
@@ -54,21 +57,29 @@ struct ForYouShelfView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "sparkles")
-            Text("For You")
-                .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                Text("Heard on WXYC")
+                    .font(.system(.subheadline, design: .rounded)).fontWeight(.semibold)
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .accessibilityAddTraits(.isHeader)
+            // The only explanatory copy left on the shelf now that the cards are
+            // header-only: names the honest provenance in plain words.
+            Text("Artists our DJs played, coming to the Triangle")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.6))
         }
-        .foregroundStyle(.white.opacity(0.85))
         .padding(.horizontal, 16)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
 // MARK: - Card
 
 /// One compact For You card: poster (or deterministic gradient fallback), date,
-/// headliner, venue, and the tier reason line.
+/// headliner, and venue. Header-only — no tier badge or reason line; the section
+/// header carries the shelf's whole provenance.
 private struct ForYouCard: View {
     let recommendation: ForYouRecommendation
     let action: () -> Void
@@ -122,10 +133,10 @@ private struct ForYouCard: View {
 
     // MARK: Overflow menu
 
-    /// The top-trailing "•••" control. The visible glass circle stays 24pt (visually
-    /// consistent with the tier badge), but its tap target is padded out to 44pt —
-    /// the app's interactive-target minimum (cf. `LikeHeartButton`) — so a near-miss
-    /// doesn't fall through to the full-card navigation button beneath it.
+    /// The top-trailing "•••" control. The visible glass circle stays 24pt, but its
+    /// tap target is padded out to 44pt — the app's interactive-target minimum (cf.
+    /// `LikeHeartButton`) — so a near-miss doesn't fall through to the full-card
+    /// navigation button beneath it.
     private var overflowMenu: some View {
         Menu {
             Button("Not interested", systemImage: "hand.thumbsdown", role: .destructive, action: onDismiss)
@@ -153,38 +164,22 @@ private struct ForYouCard: View {
             colors: [Color(pair.start), Color(pair.end)],
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
-        return ZStack(alignment: .topLeading) {
-            Group {
-                if let url = concert.imageURL {
-                    AsyncImage(url: url) { image in
-                        // Pins the reported size to the frame so an oversized
-                        // landscape poster can't blow out the fixed card width
-                        // (see `PosterArt.fillClipped`).
-                        PosterArt.fillClipped(image.resizable().scaledToFill())
-                    } placeholder: {
-                        gradient
-                    }
-                } else {
+        return Group {
+            if let url = concert.imageURL {
+                AsyncImage(url: url) { image in
+                    // Pins the reported size to the frame so an oversized
+                    // landscape poster can't blow out the fixed card width
+                    // (see `PosterArt.fillClipped`).
+                    PosterArt.fillClipped(image.resizable().scaledToFill())
+                } placeholder: {
                     gradient
                 }
+            } else {
+                gradient
             }
-            .frame(width: Self.cardWidth, height: Self.posterHeight)
-            .clipped()
-
-            tierBadge.padding(8)
         }
         .frame(width: Self.cardWidth, height: Self.posterHeight)
-    }
-
-    private var tierBadge: some View {
-        let style = badgeStyle
-        return Image(systemName: style.symbol)
-            .font(.caption).fontWeight(.bold)
-            .foregroundStyle(.white)
-            .frame(width: 24, height: 24)
-            .background(Circle().fill(style.fill))
-            .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
-            .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+        .clipped()
     }
 
     // MARK: Info
@@ -204,69 +199,14 @@ private struct ForYouCard: View {
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.55))
                 .lineLimit(1)
-            reasonRow
-                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
     }
 
-    private var reasonRow: some View {
-        let reason = reasonStyle
-        return HStack(spacing: 4) {
-            Image(systemName: reason.symbol)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(reason.tint)
-            Text(reasonText)
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.8))
-                .lineLimit(1)
-                .truncationMode(.tail)
-        }
-    }
-
-    /// The reason copy shown on the card and read by VoiceOver. A single source
-    /// so the visible line and the accessibility label can't drift apart.
-    private var reasonText: String {
-        switch recommendation.tier {
-        // The headliner (already the card title) is itself a liked artist — don't
-        // restate the name, just mark it as loved.
-        case .loved: "In your likes"
-        case .similar: "Because you like \(recommendation.reasonArtistName)"
-        // A station recommendation has no personal tie to name — the reason is
-        // the station-wide signal itself.
-        case .stationRecommended: "WXYC recommends"
-        }
-    }
-
-    // MARK: Tier styling
-
-    /// The poster badge: a vivid pink heart for loved (a strong, unambiguous
-    /// signal) versus a muted glass sparkle for similar — the two tiers must not
-    /// read as the same confidence (`touring-soon-reco-highlights.html`).
-    private var badgeStyle: (symbol: String, fill: Color) {
-        switch recommendation.tier {
-        case .loved:
-            (symbol: "heart.fill", fill: LikeHeartButton.likeColor)
-        case .similar:
-            (symbol: "sparkles", fill: Color.black.opacity(0.35))
-        case .stationRecommended:
-            (symbol: "antenna.radiowaves.left.and.right", fill: Color.black.opacity(0.35))
-        }
-    }
-
-    /// The reason line's icon and tint. The copy itself comes from ``reasonText``.
-    private var reasonStyle: (symbol: String, tint: Color) {
-        switch recommendation.tier {
-        case .loved: (symbol: "heart.fill", tint: LikeHeartButton.likeColor)
-        case .similar: (symbol: "sparkles", tint: Color.white.opacity(0.6))
-        case .stationRecommended: (symbol: "antenna.radiowaves.left.and.right", tint: Color.white.opacity(0.6))
-        }
-    }
-
     private var accessibilityLabel: String {
-        [concert.headlineName, reasonText, concert.venue.name, presenter.dateLabel]
+        [concert.headlineName, concert.venue.name, presenter.dateLabel]
             .joined(separator: ", ")
     }
 }
@@ -280,8 +220,8 @@ private struct ForYouCard: View {
     let loved = Concert(id: 1, venue: cradle, startsOn: Date(timeIntervalSince1970: 1_785_898_800),
                         headliningArtistRaw: "Stereolab", headliningArtistId: 41,
                         ticketURL: URL(string: "https://example.com/a"), status: .onSale)
-    let similar = Concert(id: 2, venue: motorco, startsOn: Date(timeIntervalSince1970: 1_786_071_600),
-                          headliningArtistRaw: "Broadcast", headliningArtistId: 88,
+    let station = Concert(id: 2, venue: motorco, startsOn: Date(timeIntervalSince1970: 1_786_071_600),
+                          headliningArtistRaw: "Chuquimamani-Condori", headliningArtistId: 88,
                           ticketURL: URL(string: "https://example.com/b"), status: .onSale)
     // A headliner long enough to wrap to two lines, so the preview shows the
     // short-name cards matching its height.
@@ -289,9 +229,9 @@ private struct ForYouCard: View {
                            headliningArtistRaw: "Duke Ellington & John Coltrane", headliningArtistId: 12,
                            ticketURL: URL(string: "https://example.com/c"), status: .onSale)
     let recommendations = [
-        ForYouRecommendation(concert: loved, tier: .loved, reasonArtistName: "Stereolab"),
-        ForYouRecommendation(concert: similar, tier: .similar(weight: 0.82), reasonArtistName: "Stereolab"),
-        ForYouRecommendation(concert: wrapping, tier: .similar(weight: 0.7), reasonArtistName: "Sun Ra"),
+        ForYouRecommendation(concert: loved, tier: .loved),
+        ForYouRecommendation(concert: station, tier: .stationRecommended),
+        ForYouRecommendation(concert: wrapping, tier: .stationRecommended),
     ]
     return ZStack {
         LinearGradient(

@@ -221,8 +221,8 @@ final class MarketingModeController {
             }
             try? await Task.sleep(for: likeHoldDelay)
 
-            // Scene: On Tour — month-grouped list + the "WXYC recommends" For
-            // You shelf (the station-recommended tier `Singletonia` seeds under
+            // Scene: On Tour — month-grouped list + the "Heard on WXYC" shelf
+            // (the station-recommended tier `Singletonia` seeds under
             // `-marketing`), then open a poster-first concert detail via the
             // same `ConcertOpenMessage` path a real shared-show link uses.
             // `marketingHeroConcertID` is derived from the same fixture
