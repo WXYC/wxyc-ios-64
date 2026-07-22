@@ -1,66 +1,19 @@
 {
-  "fill-specializations" : [
-    {
-      "value" : {
-        "solid" : "srgb:0.67840,0.67840,1.00000,1.00000"
-      }
-    },
-    {
-      "appearance" : "dark",
-      "value" : {
-        "solid" : "extended-gray:0.00000,1.00000"
-      }
-    }
-  ],
+  "fill" : {
+    "solid" : "display-p3:0.16961,0.17938,0.36699,1.00000"
+  },
   "groups" : [
     {
+      "blur-material" : 1,
       "layers" : [
         {
-          "blend-mode-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : "overlay"
-            }
-          ],
-          "fill-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.86963,0.63574,0.71729,1.00000",
-                  "display-p3:0.45532,0.46606,0.82178,1.00000"
-                ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.5,
-                    "y" : 0.05726765316718565
-                  },
-                  "stop" : {
-                    "x" : 0.5,
-                    "y" : 0.7958218365227709
-                  }
-                }
-              }
-            }
-          ],
-          "hidden" : false,
-          "image-name" : "logo gradient.svg",
-          "name" : "logo gradient",
-          "opacity-specializations" : [
-            {
-              "value" : 0.8
-            },
-            {
-              "appearance" : "dark",
-              "value" : 1
-            },
-            {
-              "appearance" : "tinted",
-              "value" : 1
-            }
-          ],
+          "blend-mode" : "plus-lighter",
+          "glass" : true,
+          "image-name" : "logo.svg",
+          "name" : "logo",
+          "opacity" : 0.85,
           "position" : {
-            "scale" : 0.45,
+            "scale" : 0.46,
             "translation-in-points" : [
               0,
               0
@@ -68,49 +21,18 @@
           }
         },
         {
-          "hidden-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : true
-            }
-          ],
-          "image-name-specializations" : [
-            {
-              "value" : "background.svg"
-            },
-            {
-              "appearance" : "dark",
-              "value" : "background dark.svg"
-            }
-          ],
-          "name" : "background dark",
-          "position-specializations" : [
-            {
-              "value" : {
-                "scale" : 0.5,
-                "translation-in-points" : [
-                  0,
-                  0
-                ]
-              }
-            },
-            {
-              "idiom" : "watchOS",
-              "value" : {
-                "scale" : 0.53,
-                "translation-in-points" : [
-                  0,
-                  0
-                ]
-              }
-            }
-          ]
+          "blend-mode" : "darken",
+          "glass" : true,
+          "image-name" : "simulator_screenshot_DE89997B-7F5E-456E-BFEF-93C433B2CED3.png",
+          "name" : "simulator_screenshot_DE89997B-7F5E-456E-BFEF-93C433B2CED3",
+          "opacity" : 0.75
         }
       ],
       "shadow" : {
-        "kind" : "neutral",
+        "kind" : "layer-color",
         "opacity" : 0.5
       },
+      "specular" : true,
       "translucency" : {
         "enabled" : true,
         "value" : 0.5
@@ -124,4 +46,3 @@
     "squares" : "shared"
   }
 }
-
