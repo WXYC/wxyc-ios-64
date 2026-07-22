@@ -98,6 +98,16 @@ public final actor PlaylistService: Sendable {
         await waitForCacheLoad()
         return currentPlaylist.entries.count
     }
+
+    /// The current in-memory playlist snapshot (after the initial cache load).
+    /// Cheaper than `fetchPlaylist()` when a caller only needs to read
+    /// already-loaded state — no cache/network round trip — and, unlike
+    /// `currentEntryCount()`, exposes the actual playlist so a caller can check
+    /// for a specific entry type (e.g. a playcut, not just any entry).
+    public func currentPlaylistSnapshot() async -> Playlist {
+        await waitForCacheLoad()
+        return currentPlaylist
+    }
     
     /// Fetch playlist and cache it, always fetching fresh data (ignores cache).
     /// Used for background refresh to ensure we always get the latest data.

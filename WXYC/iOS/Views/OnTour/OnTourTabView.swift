@@ -108,12 +108,18 @@ struct OnTourTabView: View {
             // A `-marketing` recording switches routes without going through the
             // tab bar's own dismissal, so a `.fullScreenCover` presented from a
             // For You / row tap has to be closed explicitly before the next
-            // scene's route change — otherwise the cover and the next tab race.
-            // `marketingRoute` is release-compiled, so this compiles in release;
-            // the `#if DEBUG` keeps the hook itself out of the release binary.
+            // scene's route change. This reacts to a dedicated dismiss token
+            // (not `marketingRoute` itself) so `MarketingModeController` can
+            // sequence "dismiss, then switch tabs" deterministically — SwiftUI
+            // doesn't guarantee relative ordering between `.onChange` handlers
+            // on different views reacting to the same property write, and
+            // `RootTabView` has its own `.onChange(of: appState.marketingRoute)`
+            // that switches tabs. `marketingDismissOnTourDetailToken` is
+            // release-compiled, so this compiles in release; the `#if DEBUG`
+            // keeps the hook itself out of the release binary.
             #if DEBUG
-            .onChange(of: appState.marketingRoute) { _, route in
-                if route != .onTour { selectedConcert = nil }
+            .onChange(of: appState.marketingDismissOnTourDetailToken) { _, _ in
+                selectedConcert = nil
             }
             #endif
     }

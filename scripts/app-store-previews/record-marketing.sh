@@ -156,6 +156,12 @@ if [[ "$SKIP_BUILD" == "true" ]]; then
     BUILD_FLAG="-skip-testing:all"  # Will run test-without-building behavior
 fi
 
+# `set -e` is disabled around this pipeline: with `pipefail` (set above), a
+# non-zero `xcodebuild` exit makes the whole pipeline non-zero even though the
+# `while` loop it feeds exits 0 — and under `set -e` that trips an immediate
+# script exit right here, before `TEST_RESULT` below is ever assigned, so the
+# "Test failed" diagnostic and explicit `exit 1` further down never run.
+set +e
 xcodebuild test \
     -scheme WXYC \
     -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
@@ -169,6 +175,7 @@ xcodebuild test \
     done
 
 TEST_RESULT=${PIPESTATUS[0]}
+set -e
 
 # Stop recording now, before inspecting or processing the file below. The EXIT
 # trap alone doesn't fire until the whole script returns — which is after this
