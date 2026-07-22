@@ -54,9 +54,11 @@ final class Singletonia {
     /// Concerts the listener dismissed ("Not interested") from the On Tour For You
     /// shelf. Same durable-file rationale as the likes store — user curation, not a
     /// re-derivable cache — so it goes through the Concerts `FileStorage` seam.
-    let dismissedConcertsStore = DismissedConcertsStore(
-        storage: Concerts.AppSupportFileStorage(filename: "dismissed-concerts.json")
-    )
+    /// Routed through `makeDismissedConcertsStorage()` so a `-marketing` recording
+    /// gets an in-memory store instead (see the `-marketing` section below) — the
+    /// same treatment `likedSongsStore` gets, so a recording can never touch (or
+    /// need to reset) a real `dismissed-concerts.json`.
+    let dismissedConcertsStore = DismissedConcertsStore(storage: Singletonia.makeDismissedConcertsStorage())
 
     /// Feature-flag source for the On Tour For You shelf's similar-tier noise cap
     /// (#493), read through the `FeatureFlagProvider` protocol so the shelf never
@@ -85,6 +87,14 @@ final class Singletonia {
     /// ``pendingConcertLink`` — `RootTabView` maps it to its private `Page`.
     private(set) var marketingRoute: MarketingRoute?
 
+    /// Bumped to request `OnTourTabView` dismiss any presented concert detail,
+    /// independent of ``marketingRoute``. Two `.onChange` handlers reacting to
+    /// the same `marketingRoute` write have no SwiftUI-guaranteed relative order
+    /// across sibling views, so `-marketing`'s "close the cover, then switch
+    /// tabs" sequencing uses this separate signal — with an explicit gap before
+    /// the route change — instead of relying on that unordered simultaneity.
+    private(set) var marketingDismissOnTourDetailToken = 0
+
     /// Token for the app-lifetime `ConcertOpenMessage` observer. Held so the
     /// registration stays idempotent — one observer for the app's lifetime.
     @ObservationIgnored private var concertOpenObservation: (any NSObjectProtocol)?
@@ -93,6 +103,20 @@ final class Singletonia {
     /// Fixture-backed On Tour model for the `-marketing` recording, built once in
     /// `init` when `-marketing` is present. Nil otherwise.
     private var _marketingOnTourModel: OnTourModel?
+
+    /// The `-marketing` recording's concert-detail target id — the On Tour
+    /// fixture entry the storyboard opens (the one carrying `artistBio`). Set
+    /// once in `init` from the same fixture `_marketingOnTourModel` is built
+    /// from, so a future edit to that fixture (e.g. reordering or renumbering
+    /// its entries) can't silently desync from a hardcoded literal id.
+    private var _marketingHeroConcertID: Int?
+
+    /// The For You seed debug knobs `-marketing` overrode in `init`, captured so
+    /// a completed recording can restore them instead of leaving
+    /// `stationCapOverride` — a `UserDefaults`-persisted knob — stuck forcing the
+    /// station tier on for later non-`-marketing` launches on the same
+    /// simulator. Nil once restored (or when nothing was overridden).
+    private var marketingForYouSeedOverrideBackup: (seedLovedEnabled: Bool, stationCapOverride: Int)?
     #endif
 
     /// The `-marketing` On Tour model, or nil (production → live endpoint).
@@ -100,6 +124,18 @@ final class Singletonia {
     var marketingOnTourModel: OnTourModel? {
         #if DEBUG
         _marketingOnTourModel
+        #else
+        nil
+        #endif
+    }
+
+    /// The `-marketing` recording's concert-detail target id, or nil (production
+    /// / no id resolved). Release always returns nil, mirroring
+    /// ``marketingOnTourModel``, so `MarketingModeController` needs no
+    /// compile-time branch.
+    var marketingHeroConcertID: Int? {
+        #if DEBUG
+        _marketingHeroConcertID
         #else
         nil
         #endif
@@ -162,15 +198,27 @@ final class Singletonia {
         // station-recommended tier — the only tier the canned fixtures can feed,
         // since they carry no `headliningArtistId`/`similarArtists` — so the
         // shelf renders "WXYC recommends" cards with no dependency on a like.
+        // `dismissedConcertsStore` is already routed to an in-memory backing
+        // above under `-marketing`, so it starts empty on its own — no reset
+        // needed, and (unlike a reset) nothing here can touch a real listener's
+        // persisted "Not interested" list.
         if ProcessInfo.processInfo.arguments.contains("-marketing") {
             let seedState = OnTourForYouSeedDebugState.shared
-            seedState.seedLovedEnabled = false       // persisted knob — neutralize any leak
-            seedState.stationCapOverride = 5         // persisted knob — positive forces the station tier on
+            // `stationCapOverride`/`seedLovedEnabled` are UserDefaults-persisted
+            // knobs (the debug panel's own affordance), so overriding them here
+            // would otherwise stick past this recording and force the station
+            // tier on for a later, non-`-marketing` launch on the same
+            // simulator. Back up whatever was there before overriding, and
+            // restore it once the recording finishes
+            // (`restoreForYouSeedOverridesAfterMarketingRecording()`).
+            marketingForYouSeedOverrideBackup = (seedState.seedLovedEnabled, seedState.stationCapOverride)
+            seedState.seedLovedEnabled = false       // neutralize any leak from a prior manual session
+            seedState.stationCapOverride = 5         // positive forces the station tier on
             // seedForcedForTesting is runtime-only and defaults false; leave it
             // false so no synthetic loved card is fabricated — the station tier
             // is the shelf's sole source for this recording.
-            dismissedConcertsStore.resetState() // a leaked "Not interested" must not hide a fixture card
             _marketingOnTourModel = OnTourModel(fetcher: PreviewConcertsFetcher())
+            _marketingHeroConcertID = Concert.previewList.first?.id
         }
         #endif
     }
@@ -419,6 +467,30 @@ final class Singletonia {
         marketingRoute = route
     }
 
+    /// Requests `OnTourTabView` dismiss any presented concert detail. Called by
+    /// `MarketingModeController` before switching away from the On Tour tab, as
+    /// a signal separate from ``setMarketingRoute(_:)`` — see
+    /// ``marketingDismissOnTourDetailToken``.
+    func requestMarketingOnTourDetailDismissal() {
+        marketingDismissOnTourDetailToken += 1
+    }
+
+    /// Restores the For You seed debug knobs `-marketing` overrode in `init`, so
+    /// a completed recording doesn't leave `stationCapOverride` (a persisted
+    /// `UserDefaults` knob) stuck forcing the station tier on for a later,
+    /// non-`-marketing` launch on the same simulator. Called once by
+    /// `MarketingModeController` after the storyboard finishes. A no-op in
+    /// Release, or when nothing was overridden.
+    func restoreForYouSeedOverridesAfterMarketingRecording() {
+        #if DEBUG
+        guard let backup = marketingForYouSeedOverrideBackup else { return }
+        let seedState = OnTourForYouSeedDebugState.shared
+        seedState.seedLovedEnabled = backup.seedLovedEnabled
+        seedState.stationCapOverride = backup.stationCapOverride
+        marketingForYouSeedOverrideBackup = nil
+        #endif
+    }
+
     /// Chooses the likes-store backing. Under `-marketing` (DEBUG only) returns an
     /// in-memory store so seeded likes never touch `liked-songs.json`; production
     /// always gets the durable Application Support file. Static so it's callable
@@ -439,5 +511,27 @@ final class Singletonia {
         }
         #endif
         return LikedSongs.AppSupportFileStorage(filename: "liked-songs.json")
+    }
+
+    /// Chooses the dismissed-concerts-store backing. Under `-marketing` (DEBUG
+    /// only) returns an in-memory store so a recording can never read or
+    /// overwrite `dismissed-concerts.json`; production always gets the durable
+    /// Application Support file. Static so it's callable from the
+    /// `dismissedConcertsStore` property initializer, which runs before `self`
+    /// exists.
+    private static func makeDismissedConcertsStorage() -> any Concerts.FileStorage {
+        dismissedConcertsStorage(isMarketing: ProcessInfo.processInfo.arguments.contains("-marketing"))
+    }
+
+    /// The pure storage-selection decision, factored out of
+    /// `makeDismissedConcertsStorage()` so it's unit-testable the same way
+    /// ``likedStorage(isMarketing:)`` is.
+    static func dismissedConcertsStorage(isMarketing: Bool) -> any Concerts.FileStorage {
+        #if DEBUG
+        if isMarketing {
+            return MarketingDismissedConcertsStorage()
+        }
+        #endif
+        return Concerts.AppSupportFileStorage(filename: "dismissed-concerts.json")
     }
 }
