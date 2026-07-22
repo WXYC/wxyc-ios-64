@@ -254,6 +254,10 @@ struct WXYCApp: App {
 
             #if DEBUG
             options.debug = true
+            // Frame tracking logs a debug line per slow frame (SentryFramesTracker),
+            // which floods the console during any animation. Keep debug output but
+            // raise the floor to warnings so the SDK stays quiet in normal use.
+            options.diagnosticLevel = .warning
             #endif
         }
     }
