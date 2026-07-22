@@ -16,6 +16,11 @@ struct ArtistBioSection: View {
     let bio: String
     let bioTokens: [ResolvedBioToken]?
     @Binding var expandedBio: Bool
+    /// Whether to render the built-in "About the Artist" header. The flowsheet
+    /// Playcut detail wants it inside the section (the default); the On Tour
+    /// concert detail supplies its own header outside the card (matching the
+    /// "WHERE" section), so it opts out.
+    var showsHeader: Bool = true
     @State private var isTruncated: Bool = false
     @State private var parsedBio: AttributedString?
 
@@ -23,9 +28,11 @@ struct ArtistBioSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("About the Artist")
-                .font(.detailSectionHeader)
-                .foregroundStyle(.primary)
+            if showsHeader {
+                Text("About the Artist")
+                    .font(.detailSectionHeader)
+                    .foregroundStyle(.primary)
+            }
 
             parsedBioText
                 .textSelection(.enabled)

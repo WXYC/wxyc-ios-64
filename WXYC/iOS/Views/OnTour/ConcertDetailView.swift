@@ -86,8 +86,8 @@ struct ConcertDetailView: View {
                     posterHero
                     VStack(spacing: 20) {
                         BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors, isPast: isPast)
-                        whereSection
                         bioSection
+                        whereSection
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, -ticketTuck)
@@ -261,19 +261,28 @@ struct ConcertDetailView: View {
 
     /// The reused flowsheet ``ArtistBioSection`` (Discogs bio, linkified, with a
     /// Read More / Show Less control), shown only when the concert carries a
-    /// non-empty `artist_bio`. Wrapped in the detail's subtle card and pinned to
-    /// the dark color scheme so the section's `.primary` / `.secondary` text
-    /// resolves light against the poster backdrop rather than following the
-    /// device's light/dark appearance.
+    /// non-empty `artist_bio`. The "ABOUT THE ARTIST" header sits outside the card
+    /// in the same monospaced-caps styling as the "WHERE" section (so the section
+    /// opts out of `ArtistBioSection`'s built-in header). The card is pinned to the
+    /// dark color scheme so the bio's `.primary` / `.secondary` text resolves light
+    /// against the poster backdrop rather than following the device's appearance.
     @ViewBuilder
     private var bioSection: some View {
         if let bio = concert.artistBio, !bio.isEmpty {
-            ArtistBioSection(bio: bio, bioTokens: nil, expandedBio: $expandedBio)
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.white.opacity(0.06), in: .rect(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
-                .environment(\.colorScheme, .dark)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("ABOUT THE ARTIST")
+                    .font(.system(.caption2, design: .monospaced))
+                    .kerning(1.6)
+                    .foregroundStyle(.white.opacity(0.45))
+
+                ArtistBioSection(bio: bio, bioTokens: nil, expandedBio: $expandedBio, showsHeader: false)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.06), in: .rect(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
+                    .environment(\.colorScheme, .dark)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
