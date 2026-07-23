@@ -379,13 +379,14 @@ struct FlowsheetConverterTests {
         let response = try JSONDecoder().decode(FlowsheetResponse.self, from: data)
         let playlist = FlowsheetConverter.convert(response.entries)
 
-        #expect(playlist.playcuts.count == 1)
+        // Two track rows: the minimal Miyako Koda row and the fully-populated
+        // Jessica Pratt row added for the codegen parity test (#600).
+        #expect(playlist.playcuts.count == 2)
         #expect(playlist.talksets.count == 1)
         #expect(playlist.breakpoints.count == 1)
         #expect(playlist.showMarkers.count == 2)
 
-        let playcut = try #require(playlist.playcuts.first)
-        #expect(playcut.artistName == "Miyako Koda")
+        let playcut = try #require(playlist.playcuts.first { $0.artistName == "Miyako Koda" })
         #expect(playcut.songTitle == "Sleep in Peace")
         #expect(playcut.releaseTitle == "in the shadow of Jupiter")
         #expect(playcut.labelName == "Grandisc")
