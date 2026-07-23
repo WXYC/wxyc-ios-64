@@ -537,11 +537,11 @@ extension Concert {
     /// A small spread of WXYC-canonical touring artists across venues/cities for
     /// the preview list — also the `-marketing` recording's fixture window
     /// (`Singletonia`'s `PreviewConcertsFetcher` use, same app target). Two
-    /// concerts carry `stationRecommended: true` so the For You "WXYC
-    /// recommends" tier has cards to show with no likes required, and the first
-    /// (the one the marketing sequence opens) carries an `artistBio` so its
-    /// About-the-Artist card renders. `nonisolated` so the preview's
-    /// (nonisolated) stub fetcher can read it — the app target is
+    /// concerts carry a `stationRecommendedRank` (and `stationRecommended: true`)
+    /// so the For You "WXYC recommends" tier has cards to show with no likes
+    /// required, and the first (the one the marketing sequence opens) carries an
+    /// `artistBio` so its About-the-Artist card renders. `nonisolated` so the
+    /// preview's (nonisolated) stub fetcher can read it — the app target is
     /// main-actor-isolated by default.
     nonisolated static var previewList: [Concert] {
         var calendar = Calendar(identifier: .gregorian)
@@ -560,11 +560,11 @@ extension Concert {
                     supportingArtistsRaw: ["Julie Byrne"], ticketURL: URL(string: "https://example.com/a"),
                     eventURL: URL(string: "https://catscradle.com/event/jessica-pratt"),
                     priceMin: 22, priceMax: 25, ageRestriction: "All Ages", status: .onSale,
-                    genres: ["Rock", "Folk World & Country"], stationRecommended: true,
+                    genres: ["Rock", "Folk World & Country"], stationRecommended: true, stationRecommendedRank: 1,
                     artistBio: "Jessica Pratt writes hushed, unhurried songs that sound like they've always existed — close-mic'd vocals over fingerpicked guitar, recorded live to tape. WXYC has spun her records since On Your Own Love Again."),
             Concert(id: 2, venue: motorco, startsOn: day(20), headliningArtistRaw: "Chuquimamani-Condori",
                     ticketURL: URL(string: "https://example.com/b"), priceMin: 0, ageRestriction: "18+", status: .free,
-                    genres: ["Electronic"], stationRecommended: true),
+                    genres: ["Electronic"], stationRecommended: true, stationRecommendedRank: 2),
             Concert(id: 3, venue: local506, startsOn: day(40), headliningArtistRaw: "Juana Molina",
                     ticketURL: URL(string: "https://example.com/c"), priceMin: 18, ageRestriction: nil, status: .soldOut,
                     genres: ["Rock", "Electronic"]),
