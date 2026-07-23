@@ -39,3 +39,7 @@ worklog/
 
 # Sentry CLI config (contains auth token)
 .sentryclirc
+
+# Scratch clone used by scripts/regenerate-api-types.sh / verify-api-types.sh
+# (already covered by **/.build/* above; called out explicitly for clarity)
+.build/wxyc-shared-codegen/
