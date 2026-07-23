@@ -105,8 +105,11 @@ struct MetadataStatusTests {
         let data = try Data(contentsOf: fixtureURL)
         let response = try JSONDecoder().decode(FlowsheetResponse.self, from: data)
 
-        for entry in response.entries {
-            #expect(entry.metadata_status == nil, "fixture predates metadata_status field")
+        // All rows EXCEPT the fully-populated enriched row (id 5194731, added for
+        // the #600 codegen parity test) predate `metadata_status` and must still
+        // decode it as nil — the forward-compat regression this test guards.
+        for entry in response.entries where entry.id != 5194731 {
+            #expect(entry.metadata_status == nil, "legacy fixture rows predate metadata_status field")
             #expect(entry.metadataStatus == nil)
         }
     }

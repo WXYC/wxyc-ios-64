@@ -62,6 +62,23 @@ struct FlowsheetResponse: Codable, Sendable {
 /// Entry type is determined by the `entry_type` field (`"track"`, `"talkset"`,
 /// `"breakpoint"`, `"show_start"`, `"show_end"`). The older `message`-based
 /// detection is used as a fallback when `entry_type` is absent.
+///
+/// **Why this stays hand-written and is *not* replaced by the generated
+/// `WXYCAPIModels.FlowsheetV2TrackEntry`** (#412 Phase 2 / #600): `api.yaml`
+/// models a flowsheet entry as a polymorphic `oneOf` family, and this one flat,
+/// tolerant struct decodes every variant with hard-won degrade-don't-throw
+/// resilience the plain-`Codable` generated model can't express —
+/// ``FlowsheetResponse``'s tri-state `on_air` decoded by key presence,
+/// ``TolerantConcert`` swallowing a malformed `upcoming_show`, ``metadataStatus``
+/// forward-compat over unknown enum values, and the `entry_type`→`message`
+/// fallback. A generated model would *throw* on any of those malformed embeds,
+/// regressing the exact resilience that keeps a bad auxiliary field from
+/// freezing now-playing (the #229 class of bug). So the flowsheet gets drift
+/// protection via a contract test, not a runtime type swap: the generated type
+/// is decoded alongside this one in `FlowsheetContractParityTests` to catch
+/// upstream field drift (a new/renamed/retyped track-entry field) at test time
+/// while this decoder keeps its tolerance. Do not narrow the tolerance here to
+/// match the generated model.
 struct FlowsheetEntry: Codable, Sendable {
     let id: Int
     let show_id: Int?
