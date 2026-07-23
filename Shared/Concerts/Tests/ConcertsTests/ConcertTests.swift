@@ -580,6 +580,65 @@ struct ConcertTests {
         #expect(decoded.stationRecommended == true)
     }
 
+    // MARK: - Station recommended rank (#594, forward-compatible optional)
+
+    @Test("Decodes a present station_recommended_rank to stationRecommendedRank")
+    func decodesPresentStationRecommendedRank() throws {
+        let json = """
+        {
+            "id": 230,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Deerhoof",
+            "station_recommended_rank": 1,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommendedRank == 1)
+    }
+
+    @Test("Decodes an explicit-null station_recommended_rank to nil without throwing")
+    func decodesNullStationRecommendedRankAsNil() throws {
+        // The backend emits `station_recommended_rank: null` for a non-gated
+        // concert — the same null-when-absent discipline as `station_plays`.
+        let json = """
+        {
+            "id": 231,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "station_recommended_rank": null,
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommendedRank == nil)
+    }
+
+    @Test("Decodes an absent station_recommended_rank to nil (backend not yet emitting)")
+    func decodesAbsentStationRecommendedRankAsNil() throws {
+        let json = """
+        {
+            "id": 232,
+            "venue": { "id": 1, "slug": "cats-cradle", "name": "Cat's Cradle", "city": "Carrboro", "state": "NC", "address": null },
+            "starts_on": "2026-08-20",
+            "headlining_artist_raw": "Juana Molina",
+            "status": "on_sale"
+        }
+        """
+        let concert = try JSONDecoder().decode(Concert.self, from: Data(json.utf8))
+        #expect(concert.stationRecommendedRank == nil)
+    }
+
+    @Test("Round-trips station_recommended_rank through encode/decode")
+    func roundTripsStationRecommendedRank() throws {
+        let original = Concert.stub(stationRecommendedRank: 1)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Concert.self, from: data)
+        #expect(decoded.stationRecommendedRank == 1)
+    }
+
     // MARK: - Artist bio (forward-compatible optional, same discipline as genres)
 
     @Test("Decodes a present artist_bio to artistBio")

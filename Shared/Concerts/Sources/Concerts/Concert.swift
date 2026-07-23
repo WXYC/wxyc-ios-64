@@ -233,6 +233,20 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
     /// emission (same discipline as ``genres`` / ``similarArtists``).
     public let stationRecommended: Bool
 
+    /// The 1-based rank of this concert among all station-recommended concerts,
+    /// by all-time WXYC flowsheet plays of the resolved headliner (rank 1 =
+    /// most-played) — `station_recommended_rank`, the server-computed cap
+    /// signal behind the For You shelf's "WXYC recommends" tier
+    /// (WXYC/wxyc-ios-64#594, emitted by WXYC/Backend-Service#1756). Non-null
+    /// exactly when ``stationRecommended`` is true; `nil` otherwise.
+    /// **Identical for every listener** — like ``stationPlays`` it is not
+    /// personalized and carries no listener data, so reading it changes
+    /// nothing about the privacy invariant. A forward-compatible optional: it
+    /// decodes to `nil` when the backend omits or nulls the field, so this
+    /// client can ship ahead of backend emission (same discipline as
+    /// ``stationPlays``).
+    public let stationRecommendedRank: Int?
+
     /// Artist biography for the resolved headliner, drawn from their Discogs
     /// profile (raw Discogs markup, parsed client-side), cached nightly on the
     /// backend and keyed by the effective Discogs artist id. `nil` when the
@@ -266,6 +280,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         similarArtists: [SimilarArtist]? = nil,
         stationPlays: Int? = nil,
         stationRecommended: Bool = false,
+        stationRecommendedRank: Int? = nil,
         artistBio: String? = nil
     ) {
         self.id = id
@@ -288,6 +303,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.similarArtists = similarArtists
         self.stationPlays = stationPlays
         self.stationRecommended = stationRecommended
+        self.stationRecommendedRank = stationRecommendedRank
         self.artistBio = artistBio
     }
 
@@ -350,6 +366,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         case similarArtists = "similar_artists"
         case stationPlays = "station_plays"
         case stationRecommended = "station_recommended"
+        case stationRecommendedRank = "station_recommended_rank"
         case artistBio = "artist_bio"
     }
 
@@ -457,6 +474,11 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         // → false (not recommended), so this decode is stable whether or not the
         // backend has shipped the field.
         stationRecommended = try container.decodeIfPresent(Bool.self, forKey: .stationRecommended) ?? false
+        // Forward-compatible optional: absent or explicit-null
+        // `station_recommended_rank` → nil (a non-gated concert, or the backend
+        // hasn't shipped the field yet), so this decode is stable whether or
+        // not the backend has shipped the field.
+        stationRecommendedRank = try container.decodeIfPresent(Int.self, forKey: .stationRecommendedRank)
         // Forward-compatible optional: absent or explicit-null `artist_bio` →
         // nil (unresolved headliner, no Discogs profile, or pre-enrichment), so
         // this decode is stable whether or not the backend has shipped the field.
@@ -489,6 +511,7 @@ public struct Concert: Codable, Sendable, Equatable, Hashable, Identifiable {
         try container.encodeIfPresent(similarArtists, forKey: .similarArtists)
         try container.encodeIfPresent(stationPlays, forKey: .stationPlays)
         try container.encode(stationRecommended, forKey: .stationRecommended)
+        try container.encodeIfPresent(stationRecommendedRank, forKey: .stationRecommendedRank)
         try container.encodeIfPresent(artistBio, forKey: .artistBio)
     }
 }
