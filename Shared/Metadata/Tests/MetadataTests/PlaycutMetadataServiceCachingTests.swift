@@ -474,6 +474,54 @@ struct PlaycutMetadataServiceCachingTests {
         #expect(bioTokens == expectedTokens)
     }
 
+    @Test("Decodes an artist payload with an explicit JSON-null bioTokens as nil, matching the backend's default emission")
+    func decodesGeneratedArtistMetadataResponseWithNullBioTokens() async throws {
+        // Given - the backend's default artist emission is `bioTokens: artist.profile_tokens ?? null`,
+        // so explicit `"bioTokens": null` (not an absent key) is the common wire shape. Today the
+        // generated type handles it via synthesized decodeIfPresent; this test pins that behavior
+        // against a future regen emitting a custom init(from:) or the field going non-optional.
+        let payload = """
+        {
+            "discogsArtistId": 3117,
+            "bio": "Cat Power is the stage name of Charlyn Marie Marshall.",
+            "wikipediaUrl": "https://en.wikipedia.org/wiki/Cat_Power",
+            "bioTokens": null
+        }
+        """.data(using: .utf8)!
+
+        // The generated wire type decodes explicit null to nil rather than throwing.
+        let wireResponse = try JSONDecoder.shared.decode(WXYCAPIModels.ArtistMetadataResponse.self, from: payload)
+        #expect(wireResponse.discogsArtistId == 3117)
+        #expect(wireResponse.bioTokens == nil)
+
+        // And - the service's transform carries nil bioTokens through to ArtistMetadata,
+        // keeping the rest of the artist metadata intact.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Cross Bones Style",
+            labelName: "Matador Records",
+            artistName: "Cat Power",
+            releaseTitle: "Moon Pix"
+        )
+        mockSession.responses["proxy/metadata/album"] = """
+        {"discogsArtistId": 3117}
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/artist"] = payload
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.artist.bio == "Cat Power is the stage name of Charlyn Marie Marshall.")
+        #expect(result.artist.wikipediaURL == URL(string: "https://en.wikipedia.org/wiki/Cat_Power"))
+        #expect(result.artist.bioTokens == nil)
+        #expect(result.artist.discogsArtistId == 3117)
+    }
+
     @Test("Maps discogsArtistId from dedicated field, not discogsReleaseId")
     func mapsDiscogsArtistIdCorrectly() async throws {
         // Given
