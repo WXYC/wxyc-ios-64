@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import WXYCAPIModels
 
 /// A pre-parsed markup token from the server's Discogs markup parser.
 ///
@@ -139,6 +140,101 @@ public enum ResolvedBioToken: Sendable, Equatable, Codable {
             try container.encodeIfPresent(href, forKey: .href)
             try container.encode(content, forKey: .content)
         }
+    }
+
+    // MARK: - Generated Wire Type Mapping
+
+    /// Maps the generated wire type (`WXYCAPIModels.DiscogsResolvedToken`, api.yaml's
+    /// `DiscogsResolvedToken` schema) onto this domain type.
+    ///
+    /// This seam is deliberately tolerant rather than parity-strict with the wire shape:
+    /// - An unknown `type` (the generator's `unknownDefaultOpenApi` catch-all case) returns
+    ///   `nil`, so ``compactMap(_:)`` drops it from the mapped array.
+    /// - A known `type` missing a required variant field, or carrying a URL string that fails
+    ///   `URL(string:)`, degrades to ``plainText(_:)`` built from the best available text field
+    ///   (`display_name` / `title` / `content` / `text` / `name`, in that priority order) instead
+    ///   of failing. This initializer never throws: a malformed token loses its formatting, not
+    ///   its words, and never takes the rest of the artist bio down with it (see WXYC/wxyc-ios-64#601).
+    public init?(_ token: WXYCAPIModels.DiscogsResolvedToken) {
+        switch token.type {
+        case .unknownDefaultOpenApi:
+            return nil
+
+        case .plaintext:
+            self = .plainText(token.text ?? Self.bestAvailableText(from: token))
+
+        case .artistlink:
+            if let name = token.name, let displayName = token.displayName, let url = token.url.flatMap(URL.init(string:)) {
+                self = .artistLink(name: name, displayName: displayName, url: url)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .labelname:
+            if let name = token.name {
+                self = .labelName(name)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .releaselink:
+            if let title = token.title, let url = token.url.flatMap(URL.init(string:)) {
+                self = .releaseLink(title: title, url: url)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .masterlink:
+            if let title = token.title, let url = token.url.flatMap(URL.init(string:)) {
+                self = .masterLink(title: title, url: url)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .bold:
+            if let content = token.content {
+                self = .bold(content)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .italic:
+            if let content = token.content {
+                self = .italic(content)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .underline:
+            if let content = token.content {
+                self = .underline(content)
+            } else {
+                self = .plainText(Self.bestAvailableText(from: token))
+            }
+
+        case .urllink:
+            guard let content = token.content else {
+                self = .plainText(Self.bestAvailableText(from: token))
+                return
+            }
+            guard let hrefString = token.href else {
+                self = .urlLink(nil, content)
+                return
+            }
+            guard let href = URL(string: hrefString) else {
+                self = .plainText(Self.bestAvailableText(from: token))
+                return
+            }
+            self = .urlLink(href, content)
+        }
+    }
+
+    /// The best available text field on a generated token, in priority order, for degrading a
+    /// malformed known-type token to ``plainText(_:)``. Falls back to the empty string when the
+    /// token carries no text at all (mirroring the empty-`plainText` placeholder this type has
+    /// always used for unrecognized shapes).
+    private static func bestAvailableText(from token: WXYCAPIModels.DiscogsResolvedToken) -> String {
+        token.displayName ?? token.title ?? token.content ?? token.text ?? token.name ?? ""
     }
 
     // MARK: - Rendering

@@ -10,6 +10,7 @@
 
 import Testing
 import Foundation
+import WXYCAPIModels
 @testable import Metadata
 
 // MARK: - JSON Decoding Tests
@@ -271,6 +272,200 @@ struct ResolvedBioTokenRenderingTests {
         let serverResult = ResolvedBioToken.render(serverTokens)
 
         #expect(String(parserResult.characters) == String(serverResult.characters))
+    }
+}
+
+// MARK: - Generated Wire Type Mapping Tests
+
+/// Covers the degrading seam `ResolvedBioToken.init?(_ token: WXYCAPIModels.DiscogsResolvedToken)`,
+/// which maps the generated wire type (api.yaml's `DiscogsResolvedToken`) onto this hand-written
+/// domain type. See WXYC/wxyc-ios-64#601 "Settled design" for the tolerant-degrade rules this
+/// seam must follow: an unknown `type` drops the token (`nil`, filtered out by `compactMap`), and
+/// a known `type` missing a required field (or carrying a URL string that fails `URL(string:)`)
+/// degrades to `.plainText` of the best available text field rather than failing the whole decode.
+@Suite("ResolvedBioToken(_ token: DiscogsResolvedToken) Wire Mapping")
+struct ResolvedBioTokenWireMappingTests {
+
+    // MARK: Every known variant maps generated -> domain
+
+    @Test("Maps plainText")
+    func mapsPlainText() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .plaintext, text: "Juana Molina is an Argentine singer-songwriter.")
+        #expect(ResolvedBioToken(wire) == .plainText("Juana Molina is an Argentine singer-songwriter."))
+    }
+
+    @Test("Maps artistLink")
+    func mapsArtistLink() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(
+            type: .artistlink,
+            name: "Stereolab",
+            displayName: "Stereolab",
+            url: "https://www.discogs.com/artist/8231"
+        )
+        #expect(ResolvedBioToken(wire) == .artistLink(
+            name: "Stereolab",
+            displayName: "Stereolab",
+            url: URL(string: "https://www.discogs.com/artist/8231")!
+        ))
+    }
+
+    @Test("Maps labelName")
+    func mapsLabelName() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .labelname, name: "Drag City")
+        #expect(ResolvedBioToken(wire) == .labelName("Drag City"))
+    }
+
+    @Test("Maps releaseLink")
+    func mapsReleaseLink() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(
+            type: .releaselink,
+            title: "On Your Own Love Again",
+            url: "https://www.discogs.com/release/111"
+        )
+        #expect(ResolvedBioToken(wire) == .releaseLink(
+            title: "On Your Own Love Again",
+            url: URL(string: "https://www.discogs.com/release/111")!
+        ))
+    }
+
+    @Test("Maps masterLink")
+    func mapsMasterLink() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(
+            type: .masterlink,
+            title: "DOGA",
+            url: "https://www.discogs.com/master/222"
+        )
+        #expect(ResolvedBioToken(wire) == .masterLink(
+            title: "DOGA",
+            url: URL(string: "https://www.discogs.com/master/222")!
+        ))
+    }
+
+    @Test("Maps bold")
+    func mapsBold() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .bold, content: "essential listening")
+        #expect(ResolvedBioToken(wire) == .bold("essential listening"))
+    }
+
+    @Test("Maps italic")
+    func mapsItalic() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .italic, content: "Call Your Name")
+        #expect(ResolvedBioToken(wire) == .italic("Call Your Name"))
+    }
+
+    @Test("Maps underline")
+    func mapsUnderline() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .underline, content: "self-released")
+        #expect(ResolvedBioToken(wire) == .underline("self-released"))
+    }
+
+    @Test("Maps urlLink with an href")
+    func mapsUrlLinkWithHref() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .urllink, href: "https://chuquimamanicondori.bandcamp.com", content: "Bandcamp")
+        #expect(ResolvedBioToken(wire) == .urlLink(URL(string: "https://chuquimamanicondori.bandcamp.com"), "Bandcamp"))
+    }
+
+    @Test("Maps urlLink with no href")
+    func mapsUrlLinkWithoutHref() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .urllink, content: "dead link")
+        #expect(ResolvedBioToken(wire) == .urlLink(nil, "dead link"))
+    }
+
+    // MARK: Unknown type is dropped
+
+    @Test("Unknown type maps to nil, dropped by compactMap")
+    func unknownTypeMapsToNil() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .unknownDefaultOpenApi, text: "some future shape")
+        #expect(ResolvedBioToken(wire) == nil)
+    }
+
+    @Test("compactMap drops unknown tokens but keeps their neighbors")
+    func compactMapDropsUnknownTokens() {
+        let wire: [WXYCAPIModels.DiscogsResolvedToken] = [
+            .init(type: .plaintext, text: "Duo of "),
+            .init(type: .unknownDefaultOpenApi, text: "unrecognized"),
+            .init(type: .plaintext, text: "."),
+        ]
+        let mapped = wire.compactMap(ResolvedBioToken.init)
+        #expect(mapped == [.plainText("Duo of "), .plainText(".")])
+    }
+
+    // MARK: Missing required field degrades to plainText, never throws
+
+    @Test("artistLink missing url degrades to plainText using displayName")
+    func artistLinkMissingURLDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .artistlink, name: "Cat Power", displayName: "Cat Power")
+        #expect(ResolvedBioToken(wire) == .plainText("Cat Power"))
+    }
+
+    @Test("artistLink missing name and displayName degrades using the raw name field's absence, falling back to title")
+    func artistLinkMissingNameFieldsDegrades() {
+        // No displayName/title/content/text present, only `name` -- lowest-priority fallback.
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .artistlink, name: "Jessica Pratt", url: nil)
+        #expect(ResolvedBioToken(wire) == .plainText("Jessica Pratt"))
+    }
+
+    @Test("releaseLink missing title degrades to plainText")
+    func releaseLinkMissingTitleDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .releaselink, url: "https://www.discogs.com/release/333")
+        #expect(ResolvedBioToken(wire) == .plainText(""))
+    }
+
+    @Test("masterLink missing url degrades to plainText using title")
+    func masterLinkMissingURLDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .masterlink, title: "Edits")
+        #expect(ResolvedBioToken(wire) == .plainText("Edits"))
+    }
+
+    @Test("labelName missing name degrades to plainText")
+    func labelNameMissingNameDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .labelname)
+        #expect(ResolvedBioToken(wire) == .plainText(""))
+    }
+
+    @Test("bold missing content degrades to plainText using text")
+    func boldMissingContentDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .bold, text: "fallback text")
+        #expect(ResolvedBioToken(wire) == .plainText("fallback text"))
+    }
+
+    @Test("italic missing content degrades to plainText")
+    func italicMissingContentDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .italic)
+        #expect(ResolvedBioToken(wire) == .plainText(""))
+    }
+
+    @Test("underline missing content degrades to plainText")
+    func underlineMissingContentDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .underline)
+        #expect(ResolvedBioToken(wire) == .plainText(""))
+    }
+
+    @Test("urlLink missing content degrades to plainText")
+    func urlLinkMissingContentDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .urllink, href: "https://example.com")
+        #expect(ResolvedBioToken(wire) == .plainText(""))
+    }
+
+    // MARK: Invalid URL string degrades to plainText, never throws
+
+    @Test("artistLink with an invalid url string degrades to plainText")
+    func artistLinkInvalidURLDegrades() {
+        // A string containing raw whitespace and control-like content is not a valid URL.
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .artistlink, name: "Hermanos Gutiérrez", displayName: "Hermanos Gutiérrez", url: "")
+        #expect(ResolvedBioToken(wire) == .plainText("Hermanos Gutiérrez"))
+    }
+
+    @Test("releaseLink with an invalid url string degrades to plainText")
+    func releaseLinkInvalidURLDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .releaselink, title: "Aluminum Tunes", url: "")
+        #expect(ResolvedBioToken(wire) == .plainText("Aluminum Tunes"))
+    }
+
+    @Test("urlLink with an invalid href string degrades to plainText")
+    func urlLinkInvalidHrefDegrades() {
+        let wire = WXYCAPIModels.DiscogsResolvedToken(type: .urllink, href: "", content: "broken link")
+        #expect(ResolvedBioToken(wire) == .plainText("broken link"))
     }
 }
 
