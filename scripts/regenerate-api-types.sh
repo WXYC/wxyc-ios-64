@@ -29,9 +29,12 @@
 #   -h, --help          Show this message.
 #
 # Reads the pinned commit from Shared/WXYCAPIModels/contract-version.json's
-# `wxycSharedSha` field. To vendor a newer wxyc-shared contract, update that
-# file's `wxycSharedTag` / `wxycSharedSha` / `apiYamlVersion` first, then run
-# this script and commit the diff.
+# `wxycSharedSha` field, which is the authoritative pin (the exact commit the
+# vendored tree is generated from). `wxycSharedTag` is a human-readable label
+# for where that commit lives (e.g. "main" or a "vX.Y.Z" release once one
+# includes it) and is NOT read by this script. To vendor a newer wxyc-shared
+# contract, update `wxycSharedSha` (and, for legibility, `wxycSharedTag` /
+# `apiYamlVersion`) first, then run this script and commit the diff.
 #
 # Requires: git, npm (+ node), java (openapi-generator-cli runs on the JVM),
 # rsync.
@@ -105,7 +108,9 @@ done
 
 [[ -f "$CONTRACT_FILE" ]] || fail "contract manifest not found: $CONTRACT_FILE"
 
-SHA=$(node -e "process.stdout.write(require('$REPO_ROOT/$CONTRACT_FILE').wxycSharedSha || '')")
+# Pass the manifest path as argv (not string-interpolated into the JS source),
+# so a repo path containing a quote or backslash can't corrupt the program.
+SHA=$(node -e 'process.stdout.write(require(process.argv[1]).wxycSharedSha || "")' "$REPO_ROOT/$CONTRACT_FILE")
 [[ -n "$SHA" ]] || fail "wxycSharedSha missing or empty in $CONTRACT_FILE"
 
 log "Pinned wxyc-shared commit: $SHA"
