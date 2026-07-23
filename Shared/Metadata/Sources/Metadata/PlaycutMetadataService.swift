@@ -160,12 +160,12 @@ public actor PlaycutMetadataService {
                     path: "proxy/metadata/artist",
                     queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
                 )
-                return try JSONDecoder.shared.decode(ArtistMetadataAPIResponse.self, from: response)
+                return try JSONDecoder.shared.decode(WXYCAPIModels.ArtistMetadataResponse.self, from: response)
             },
             transform: { apiResult in
                 ArtistMetadata(
                     bio: apiResult.bio,
-                    bioTokens: apiResult.bioTokens,
+                    bioTokens: apiResult.bioTokens?.compactMap(ResolvedBioToken.init),
                     wikipediaURL: apiResult.wikipediaUrl.flatMap { URL(string: $0) },
                     discogsArtistId: apiResult.discogsArtistId ?? artistId
                 )
@@ -273,15 +273,6 @@ public actor PlaycutMetadataService {
             return try await session.data(from: url)
         }
     }
-}
-
-// MARK: - Backend API Response Models
-
-private struct ArtistMetadataAPIResponse: Codable {
-    let discogsArtistId: Int?
-    let bio: String?
-    let bioTokens: [ResolvedBioToken]?
-    let wikipediaUrl: String?
 }
 
 // MARK: - Errors

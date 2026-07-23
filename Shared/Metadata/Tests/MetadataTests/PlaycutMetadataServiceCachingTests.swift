@@ -407,6 +407,73 @@ struct PlaycutMetadataServiceCachingTests {
         #expect(result.streaming.soundcloudURL == URL(string: "https://soundcloud.com/xyz"))
     }
 
+    @Test("Decodes an api.yaml-derived artist payload via the generated ArtistMetadataResponse, mapping bioTokens through ResolvedBioToken.init? and dropping unknown-type tokens")
+    func decodesGeneratedArtistMetadataResponseIntoDomainTypes() async throws {
+        // Given - a payload shaped like the api.yaml ArtistMetadataResponse schema, with a
+        // bioTokens array covering a mapped run of known variants plus one unknown-type token
+        // that the seam must drop rather than throw on.
+        let payload = """
+        {
+            "discogsArtistId": 24601,
+            "bio": "Stereolab formed in London in 1990.",
+            "wikipediaUrl": "https://en.wikipedia.org/wiki/Stereolab",
+            "bioTokens": [
+                {"type": "plainText", "text": "Formed by "},
+                {"type": "artistLink", "name": "Laetitia Sadier", "display_name": "Laetitia Sadier", "url": "https://www.discogs.com/artist/24601"},
+                {"type": "plainText", "text": " on "},
+                {"type": "labelName", "name": "Duophonic"},
+                {"type": "someFutureTokenType", "text": "unsupported shape"},
+                {"type": "plainText", "text": "."}
+            ]
+        }
+        """.data(using: .utf8)!
+
+        // The generated wire type decodes the payload tolerantly - the unknown token type
+        // lands in the `unknownDefaultOpenApi` catch-all rather than failing the decode.
+        let wireResponse = try JSONDecoder.shared.decode(WXYCAPIModels.ArtistMetadataResponse.self, from: payload)
+        #expect(wireResponse.discogsArtistId == 24601)
+        #expect(wireResponse.bioTokens?.count == 6)
+        #expect(wireResponse.bioTokens?[4].type == .unknownDefaultOpenApi)
+
+        // And - the service maps that same payload into ArtistMetadata.bioTokens, dropping the
+        // unknown-type token via compactMap(ResolvedBioToken.init) rather than failing the fetch.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Aluminum Tunes",
+            labelName: "Duophonic",
+            artistName: "Stereolab",
+            releaseTitle: "Aluminum Tunes"
+        )
+        mockSession.responses["proxy/metadata/album"] = """
+        {"discogsArtistId": 24601}
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/artist"] = payload
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - the 5 known-variant tokens map through in order; the unknown one is gone.
+        #expect(result.artist.bio == "Stereolab formed in London in 1990.")
+        #expect(result.artist.wikipediaURL == URL(string: "https://en.wikipedia.org/wiki/Stereolab"))
+        let bioTokens = try #require(result.artist.bioTokens)
+        let expectedTokens: [ResolvedBioToken] = [
+            .plainText("Formed by "),
+            .artistLink(
+                name: "Laetitia Sadier",
+                displayName: "Laetitia Sadier",
+                url: URL(string: "https://www.discogs.com/artist/24601")!
+            ),
+            .plainText(" on "),
+            .labelName("Duophonic"),
+            .plainText("."),
+        ]
+        #expect(bioTokens == expectedTokens)
+    }
+
     @Test("Maps discogsArtistId from dedicated field, not discogsReleaseId")
     func mapsDiscogsArtistIdCorrectly() async throws {
         // Given
