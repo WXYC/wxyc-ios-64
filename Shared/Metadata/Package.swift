@@ -11,11 +11,12 @@ let package = Package(
         .package(name: "Caching", path: "../Caching"),
         .package(name: "Playlist", path: "../Playlist"),
         .package(name: "Logger", path: "../Logger"),
+        .package(name: "WXYCAPIModels", path: "../WXYCAPIModels"),
     ],
     targets: [
         .target(
             name: "Metadata",
-            dependencies: ["Artwork", "Core", "Caching", "Playlist", "Logger"]
+            dependencies: ["Artwork", "Core", "Caching", "Playlist", "Logger", "WXYCAPIModels"]
         ),
         .testTarget(
             name: "MetadataTests",

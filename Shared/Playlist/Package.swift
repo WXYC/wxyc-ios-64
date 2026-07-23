@@ -20,6 +20,7 @@ let package = Package(
         // Concerts usage inside this package (`upcoming_show: Concert?`). Dropping
         // this edge breaks the app's `import Concerts`.
         .package(name: "Concerts", path: "../Concerts"),
+        .package(name: "WXYCAPIModels", path: "../WXYCAPIModels"),
     ],
     targets: [
         .target(
@@ -38,6 +39,7 @@ let package = Package(
                 "PlaylistTesting",
                 "Caching",
                 "Concerts",
+                "WXYCAPIModels",
                 .product(name: "ConcertsTesting", package: "Concerts"),
                 .product(name: "CachingTesting", package: "Caching"),
                 .product(name: "AnalyticsTesting", package: "Analytics"),

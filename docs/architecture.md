@@ -23,6 +23,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **Playlist** | Playlist service and data models |
 | **Wallpaper** | Metal shader-based animated backgrounds (private submodule from `WXYC/wallpaper-ios`) |
 | **WXUI** | Shared SwiftUI components |
+| **WXYCAPIModels** | Vendored, generated (openapi-generator) Swift models from `wxyc-shared`'s `api.yaml`. Models + Infrastructure only, no endpoint clients. Regenerate via `scripts/regenerate-api-types.sh`; not yet adopted by app code (#412 Phase 0). |
 
 ## App Entry Point
 
