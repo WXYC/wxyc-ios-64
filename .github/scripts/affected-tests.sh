@@ -139,7 +139,7 @@ DEPS[AnalyticsMacros]=""
 DEPS[Core]="Logger"
 DEPS[Caching]="Core Logger"
 DEPS[Analytics]="AnalyticsMacros Logger"
-DEPS[Playlist]="Analytics Core Caching Logger"
+DEPS[Playlist]="Analytics Core Caching Logger WXYCAPIModels"
 DEPS[LikedSongs]="Playlist Logger"
 DEPS[Playback]="Caching Core Analytics Logger"
 DEPS[Artwork]="Core Caching Playlist Logger"
@@ -147,13 +147,18 @@ DEPS[ColorPalette]="Caching Core Logger"
 DEPS[SemanticIndex]="Core Caching Logger"
 DEPS[MusicShareKit]="WXUI Logger Core Analytics Caching"
 DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
-DEPS[Metadata]="Artwork Core Caching Playlist Logger"
+DEPS[Metadata]="Artwork Core Caching Playlist Logger WXYCAPIModels"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger"
 DEPS[Intents]="Analytics Core Logger Playback Playlist"
 # Packages without test targets (included as dependency intermediaries)
 DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView"
 DEPS[PartyHorn]=""
+# Vendored generated DTOs (no test target). A Metadata (runtime) dep and a
+# PlaylistTests-target dep; listed on both above so a change to it marks
+# MetadataTests + PlaylistTests affected. As a non-SPM-runnable package with no
+# test target, a direct change to it also conservatively forces the xcb net.
+DEPS[WXYCAPIModels]=""
 
 # ---------------------------------------------------------------------------
 # 6. Compute reverse dependency map (package → packages that depend on it)
