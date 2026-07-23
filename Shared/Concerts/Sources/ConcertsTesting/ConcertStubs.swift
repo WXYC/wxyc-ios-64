@@ -83,6 +83,7 @@ extension Concert {
         similarArtists: [SimilarArtist]? = nil,
         stationPlays: Int? = nil,
         stationRecommended: Bool = false,
+        stationRecommendedRank: Int? = nil,
         artistBio: String? = nil
     ) -> Concert {
         Concert(
@@ -106,6 +107,7 @@ extension Concert {
             similarArtists: similarArtists,
             stationPlays: stationPlays,
             stationRecommended: stationRecommended,
+            stationRecommendedRank: stationRecommendedRank,
             artistBio: artistBio
         )
     }
