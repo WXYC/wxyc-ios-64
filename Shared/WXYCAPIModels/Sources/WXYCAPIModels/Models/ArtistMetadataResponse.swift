@@ -17,12 +17,15 @@ public struct ArtistMetadataResponse: Sendable, Codable, Hashable {
     public var wikipediaUrl: String?
     /** Artist image URL from Discogs */
     public var imageUrl: String?
+    /** Pre-parsed structured tokens from the artist's Discogs profile markup. Pass-through of DiscogsArtistDetails.profile_tokens, so clients can share token rendering across the two payloads.  */
+    public var bioTokens: [DiscogsResolvedToken]?
 
-    public init(discogsArtistId: Int? = nil, bio: String? = nil, wikipediaUrl: String? = nil, imageUrl: String? = nil) {
+    public init(discogsArtistId: Int? = nil, bio: String? = nil, wikipediaUrl: String? = nil, imageUrl: String? = nil, bioTokens: [DiscogsResolvedToken]? = nil) {
         self.discogsArtistId = discogsArtistId
         self.bio = bio
         self.wikipediaUrl = wikipediaUrl
         self.imageUrl = imageUrl
+        self.bioTokens = bioTokens
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -30,6 +33,7 @@ public struct ArtistMetadataResponse: Sendable, Codable, Hashable {
         case bio
         case wikipediaUrl
         case imageUrl
+        case bioTokens
     }
 
     // Encodable protocol methods
@@ -40,6 +44,7 @@ public struct ArtistMetadataResponse: Sendable, Codable, Hashable {
         try container.encodeIfPresent(bio, forKey: .bio)
         try container.encodeIfPresent(wikipediaUrl, forKey: .wikipediaUrl)
         try container.encodeIfPresent(imageUrl, forKey: .imageUrl)
+        try container.encodeIfPresent(bioTokens, forKey: .bioTokens)
     }
 }
 
