@@ -13,6 +13,7 @@ import Foundation
 import Core
 import Playlist
 import PlaylistTesting
+import WXYCAPIModels
 @testable import Caching
 @testable import Metadata
 
@@ -341,6 +342,69 @@ struct PlaycutMetadataServiceCachingTests {
         #expect(result.album.discogsArtistId == 67890)
         #expect(result.album.releaseYear == 2001)
         #expect(result.artistBio == "Autechre are an English electronic music duo.")
+    }
+
+    @Test("Decodes an api.yaml-derived album payload via the generated AlbumMetadataResponse and maps it into domain types")
+    func decodesGeneratedAlbumMetadataResponseIntoDomainTypes() async throws {
+        // Given - a payload shaped like the api.yaml AlbumMetadataResponse schema,
+        // covering every field PlaycutMetadataService maps into AlbumMetadata/StreamingLinks.
+        let payload = """
+        {
+            "discogsReleaseId": 54321,
+            "discogsArtistId": 13579,
+            "discogsUrl": "https://www.discogs.com/release/54321",
+            "releaseYear": 1963,
+            "artworkUrl": "https://example.com/artwork.jpg",
+            "genres": ["Jazz"],
+            "styles": ["Post-Bop"],
+            "label": "Impulse Records",
+            "fullReleaseDate": "1963-02-01",
+            "spotifyUrl": "https://open.spotify.com/track/xyz",
+            "appleMusicUrl": "https://music.apple.com/album/xyz",
+            "youtubeMusicUrl": "https://music.youtube.com/watch?v=xyz",
+            "bandcampUrl": "https://bandcamp.com/xyz",
+            "soundcloudUrl": "https://soundcloud.com/xyz"
+        }
+        """.data(using: .utf8)!
+
+        // The generated wire type is a clean superset of the private struct it
+        // replaces - decoding directly proves it still matches this shape.
+        let wireResponse = try JSONDecoder.shared.decode(WXYCAPIModels.AlbumMetadataResponse.self, from: payload)
+        #expect(wireResponse.discogsArtistId == 13579)
+        #expect(wireResponse.label == "Impulse Records")
+        #expect(wireResponse.artworkUrl == "https://example.com/artwork.jpg")
+
+        // And - the service maps that same payload into the domain AlbumMetadata/StreamingLinks.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "In a Sentimental Mood",
+            labelName: "Impulse Records",
+            artistName: "Duke Ellington & John Coltrane",
+            releaseTitle: "Duke Ellington & John Coltrane"
+        )
+        mockSession.responses["proxy/metadata/album"] = payload
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - every field the wire type carries lands in the right domain slot
+        #expect(result.album.label == "Impulse Records")
+        #expect(result.album.releaseYear == 1963)
+        #expect(result.album.discogsURL == URL(string: "https://www.discogs.com/release/54321"))
+        #expect(result.album.discogsArtistId == 13579)
+        #expect(result.album.genres == ["Jazz"])
+        #expect(result.album.styles == ["Post-Bop"])
+        #expect(result.album.fullReleaseDate == "1963-02-01")
+        #expect(result.album.artworkURL == URL(string: "https://example.com/artwork.jpg"))
+        #expect(result.streaming.spotifyURL == URL(string: "https://open.spotify.com/track/xyz"))
+        #expect(result.streaming.appleMusicURL == URL(string: "https://music.apple.com/album/xyz"))
+        #expect(result.streaming.youtubeMusicURL == URL(string: "https://music.youtube.com/watch?v=xyz"))
+        #expect(result.streaming.bandcampURL == URL(string: "https://bandcamp.com/xyz"))
+        #expect(result.streaming.soundcloudURL == URL(string: "https://soundcloud.com/xyz"))
     }
 
     @Test("Maps discogsArtistId from dedicated field, not discogsReleaseId")

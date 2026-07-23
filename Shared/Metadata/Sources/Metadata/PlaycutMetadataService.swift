@@ -14,6 +14,7 @@ import Logger
 import Core
 import Caching
 import Playlist
+import WXYCAPIModels
 
 // MARK: - PlaycutMetadataService
 
@@ -215,7 +216,7 @@ public actor PlaycutMetadataService {
             queryItems.append(URLQueryItem(name: "trackTitle", value: playcut.songTitle))
 
             let data = try await fetchFromProxy(path: "proxy/metadata/album", queryItems: queryItems)
-            let apiResult = try JSONDecoder.shared.decode(AlbumMetadataAPIResponse.self, from: data)
+            let apiResult = try JSONDecoder.shared.decode(WXYCAPIModels.AlbumMetadataResponse.self, from: data)
 
             let album = cachedAlbum ?? AlbumMetadata(
                 label: apiResult.label ?? playcut.labelName,
@@ -275,23 +276,6 @@ public actor PlaycutMetadataService {
 }
 
 // MARK: - Backend API Response Models
-
-private struct AlbumMetadataAPIResponse: Codable {
-    let discogsReleaseId: Int?
-    let discogsArtistId: Int?
-    let discogsUrl: String?
-    let releaseYear: Int?
-    let artworkUrl: String?
-    let genres: [String]?
-    let styles: [String]?
-    let label: String?
-    let fullReleaseDate: String?
-    let spotifyUrl: String?
-    let appleMusicUrl: String?
-    let youtubeMusicUrl: String?
-    let bandcampUrl: String?
-    let soundcloudUrl: String?
-}
 
 private struct ArtistMetadataAPIResponse: Codable {
     let discogsArtistId: Int?
