@@ -8,7 +8,11 @@
 //  date-ordered list: loved shows first (the headliner is a liked artist), then
 //  station-recommended shows (the station itself vouches for the show,
 //  WXYC/wxyc-ios-64#577) — the one tier that needs no likes, so a cold-start
-//  listener still sees a shelf.
+//  listener still sees a shelf. The station tier's cap membership is selected
+//  by the server-computed `Concert/stationRecommendedRank` ascending
+//  (WXYC/wxyc-ios-64#594) — the device no longer decides which shows make the
+//  cap by date; the server's rank decides membership, and date only decides
+//  display order within the kept set.
 //
 //  Pure by design: the whole match/rank/cap computation is a value-in/value-out
 //  function (the ConcertFilterState recipe). Likes arrive as plain values and the
@@ -53,12 +57,14 @@ public struct ForYouRecommendation: Sendable, Equatable, Identifiable {
         /// The concert's headliner is itself a liked artist.
         case loved
         /// The show is not in the listener's likes, but the station itself
-        /// recommends it: ``Concert/stationRecommended`` is true
-        /// (WXYC/wxyc-ios-64#577, replacing the play-count affinity tier of #549).
-        /// A boolean carries no rank, so within the tier shows order by concert
-        /// date ascending — soonest first. Ranked below ``loved`` — a personal
-        /// signal always outranks the station-wide one — and it is the only tier
-        /// that can surface a card with no likes, so it fills the cold-start shelf.
+        /// recommends it: ``Concert/stationRecommendedRank`` is non-nil
+        /// (WXYC/wxyc-ios-64#577, replacing the play-count affinity tier of #549;
+        /// rank-based cap selection added by #594). Cap membership is decided by
+        /// the server's rank ascending (rank 1 = strongest), but within the kept
+        /// set shows still display by concert date ascending — soonest first.
+        /// Ranked below ``loved`` — a personal signal always outranks the
+        /// station-wide one — and it is the only tier that can surface a card
+        /// with no likes, so it fills the cold-start shelf.
         case stationRecommended
 
         /// The tier's stable analytics name — `"loved"` or `"station"`. The
@@ -132,11 +138,14 @@ public enum ForYouShelf {
     ///
     /// Ordering is by descending personal confidence: loved cards first (in the
     /// input window order — the fetched window is `starts_on` ascending, so this is
-    /// chronological), then station-recommended cards ordered by concert date
-    /// ascending (soonest first — the signal is a boolean, so there is no scalar to
-    /// rank on) and capped to `stationCap`. A concert is deduped to its highest
-    /// qualifying tier: one that is both loved and station-recommended appears once,
-    /// as loved.
+    /// chronological), then station-recommended cards. Among the concerts eligible
+    /// for the station tier (a non-nil `stationRecommendedRank`, not already
+    /// claimed by the loved tier), cap membership is selected by rank ascending
+    /// (rank 1 = strongest) and capped to `stationCap`; the kept set is then
+    /// re-sorted by concert date ascending (soonest first) for display — the
+    /// server's rank decides *which* shows make the cap, date decides the order
+    /// they render in. A concert is deduped to its highest qualifying tier: one
+    /// that is both loved and station-recommended appears once, as loved.
     ///
     /// Unlike the loved tier, the station tier needs **no** likes: it clears the
     /// cold-start case where a listener with zero id-bearing likes would otherwise
@@ -189,21 +198,35 @@ public enum ForYouShelf {
 
         // Station recommended: the show has no personal tie but the station itself
         // vouches for it (#577). No likes required, so this is the tier that fills
-        // the cold-start shelf.
-        var station: [ForYouRecommendation] = []
+        // the cold-start shelf. Eligibility is a non-nil rank — the server
+        // guarantees the rank is non-null exactly for gated concerts, so this
+        // replaces the old boolean gate.
+        var eligible: [Concert] = []
         for concert in concerts where !claimedConcertIDs.contains(concert.id) {
-            guard concert.stationRecommended else { continue }
-            station.append(ForYouRecommendation(concert: concert, tier: .stationRecommended))
+            guard concert.stationRecommendedRank != nil else { continue }
+            eligible.append(concert)
         }
 
-        // A boolean signal carries no rank, so order by concert date ascending
-        // (soonest first); tie-break on concert id for a deterministic order; then
-        // cap.
-        station.sort { lhs, rhs in
-            if lhs.concert.startsOn != rhs.concert.startsOn { return lhs.concert.startsOn < rhs.concert.startsOn }
-            return lhs.concert.id < rhs.concert.id
+        // Cap membership is selected by rank ascending (rank 1 = strongest);
+        // tie-break on concert id for a deterministic order. `?? Int.max` is
+        // unreachable in practice (every element here has a non-nil rank, just
+        // checked above) but avoids a force-unwrap.
+        eligible.sort { lhs, rhs in
+            let lhsRank = lhs.stationRecommendedRank ?? Int.max
+            let rhsRank = rhs.stationRecommendedRank ?? Int.max
+            if lhsRank != rhsRank { return lhsRank < rhsRank }
+            return lhs.id < rhs.id
+        }
+        var kept = Array(eligible.prefix(max(0, stationCap)))
+
+        // The server's rank decided *membership*; display order is still by
+        // concert date ascending (soonest first), tie-broken on concert id.
+        kept.sort { lhs, rhs in
+            if lhs.startsOn != rhs.startsOn { return lhs.startsOn < rhs.startsOn }
+            return lhs.id < rhs.id
         }
 
-        return loved + station.prefix(max(0, stationCap))
+        let station = kept.map { ForYouRecommendation(concert: $0, tier: .stationRecommended) }
+        return loved + station
     }
 }
