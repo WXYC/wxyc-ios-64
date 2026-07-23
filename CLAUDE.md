@@ -16,6 +16,7 @@ CLAUDE.md is a router for the always-loaded reference card. Topic depth lives in
 - **[`docs/project-structure.md`](docs/project-structure.md)** — Folder layout, the `project.pbxproj` editing playbook (xcodeproj/pbxproj fragility, line-by-line brace-counting fallback, UUID coordination, `xcodebuild -list` validation), naming, one-type-per-file
 - **[`docs/file-headers.md`](docs/file-headers.md)** — Standard Swift/Metal file header comment template and the `scripts/hooks/header-check.sh` pre-commit hook that enforces it
 - **[`docs/test-fixtures.md`](docs/test-fixtures.md)** — Preferred `Playcut.stub()` / `FlowsheetEntry` literals using WXYC-canonical tracks (Juana Molina, Stereolab, Cat Power, etc.) rather than generic "Test Artist" placeholders
+- **[`docs/code-generation.md`](docs/code-generation.md)** — The vendored `WXYCAPIModels` package generated from `wxyc-shared`'s `api.yaml`, the `contract-version.json` pin, `scripts/regenerate-api-types.sh`/`verify-api-types.sh`, and why the V2 flowsheet decoder stays hand-written under a parity-test guard instead of adopting the generated type
 
 Read the relevant topic doc before doing work in that area.
 
