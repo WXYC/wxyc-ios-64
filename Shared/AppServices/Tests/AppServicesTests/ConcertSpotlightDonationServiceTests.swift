@@ -9,13 +9,19 @@
 //  out of the window (a cancellation before its date) is evicted via
 //  `deleteConcerts(withIdentifiers:)`; and re-running reconcile against an
 //  unchanged window donates and evicts nothing (the dedup that makes this a
-//  reconcile, not a watermark).
+//  reconcile, not a watermark). Also verifies the #631/OT-Q1
+//  `ConcertsDonated`/`ConcertsEvicted` analytics — one donated event per
+//  priority tier represented in a batch, one evicted event per successful
+//  eviction, neither fired on failure, and neither ever carrying a concert
+//  or artist id.
 //
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 #if !os(watchOS) && !os(tvOS)
+import Analytics
+import AnalyticsTesting
 import Caching
 import Concerts
 import ConcertsTesting
@@ -387,6 +393,133 @@ struct ConcertSpotlightDonationServiceTests {
         #expect(await retryIndexer.deleteCalls.count == 1)
         let expectedIdentifier = try #require(ConcertID(concertID: 1)?.entityIdentifierString)
         #expect(await retryIndexer.deleteCalls.first?.identifiers == [expectedIdentifier])
+    }
+
+    // MARK: - Analytics (#631/OT-Q1, identity-free)
+
+    @Test("reconcile fires ConcertsDonated with the batch size and default priorityTier on a single-tier batch")
+    func donationFiresConcertsDonatedForDefaultTier() async throws {
+        let indexer = MockConcertSpotlightIndexer()
+        let analytics = MockStructuredAnalytics()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer, analytics: analytics)
+
+        await service.reconcile(window: [Concert.stub(id: 1), Concert.stub(id: 2)])
+
+        let events = analytics.typedEvents(ofType: ConcertsDonated.self)
+        #expect(events.count == 1)
+        #expect(events.first?.batchSize == 2)
+        #expect(events.first?.priorityTier == "default")
+    }
+
+    @Test("reconcile fires one ConcertsDonated event per priority tier represented in a mixed batch")
+    func donationFiresOneConcertsDonatedEventPerTier() async throws {
+        let indexer = MockConcertSpotlightIndexer()
+        let analytics = MockStructuredAnalytics()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer, analytics: analytics)
+
+        let lovedConcert = Concert.stub(id: 1, headliningArtistId: 501)
+        let stationConcert = Concert.stub(id: 2, headliningArtistId: 502, stationRecommendedRank: 1)
+        let restConcert = Concert.stub(id: 3, headliningArtistId: 503)
+
+        await service.reconcile(
+            window: [lovedConcert, stationConcert, restConcert],
+            likedArtists: [LikedArtist(id: 501, name: "Jessica Pratt")],
+            stationCap: 5
+        )
+
+        let events = analytics.typedEvents(ofType: ConcertsDonated.self)
+        let byTier = Dictionary(uniqueKeysWithValues: events.map { ($0.priorityTier, $0.batchSize) })
+        #expect(byTier == ["loved": 1, "stationRecommended": 1, "default": 1])
+    }
+
+    @Test("reconcile does not fire ConcertsDonated when a donation fails")
+    func failedDonationDoesNotFireConcertsDonated() async {
+        let failingIndexer = MockConcertSpotlightIndexer(shouldThrow: true)
+        let analytics = MockStructuredAnalytics()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: failingIndexer, analytics: analytics)
+
+        await service.reconcile(window: [Concert.stub(id: 1)])
+
+        #expect(analytics.typedEvents(ofType: ConcertsDonated.self).isEmpty)
+    }
+
+    @Test("reconcile fires ConcertsEvicted with the evicted count on a successful eviction")
+    func evictionFiresConcertsEvicted() async {
+        let indexer = MockConcertSpotlightIndexer()
+        let analytics = MockStructuredAnalytics()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer, analytics: analytics)
+
+        let staying = Concert.stub(id: 1)
+        let cancelled = Concert.stub(id: 2)
+        await service.reconcile(window: [staying, cancelled])
+        await service.reconcile(window: [staying]) // `cancelled` dropped out.
+
+        let events = analytics.typedEvents(ofType: ConcertsEvicted.self)
+        #expect(events.count == 1)
+        #expect(events.first?.evictedCount == 1)
+    }
+
+    @Test("reconcile does not fire ConcertsEvicted when nothing is evicted")
+    func noEvictionDoesNotFireConcertsEvicted() async {
+        let indexer = MockConcertSpotlightIndexer()
+        let analytics = MockStructuredAnalytics()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer, analytics: analytics)
+
+        await service.reconcile(window: [Concert.stub(id: 1)])
+        await service.reconcile(window: [Concert.stub(id: 1)])
+
+        #expect(analytics.typedEvents(ofType: ConcertsEvicted.self).isEmpty)
+    }
+
+    @Test("reconcile does not fire ConcertsEvicted when an eviction fails")
+    func failedEvictionDoesNotFireConcertsEvicted() async {
+        let defaults = InMemoryDefaults()
+        let workingIndexer = MockConcertSpotlightIndexer()
+        let analytics = MockStructuredAnalytics()
+        let firstService = ConcertSpotlightDonationService(storage: defaults, indexer: workingIndexer, analytics: analytics)
+
+        let staying = Concert.stub(id: 1)
+        let cancelled = Concert.stub(id: 2)
+        await firstService.reconcile(window: [staying, cancelled])
+        analytics.reset()
+
+        let failingIndexer = MockConcertSpotlightIndexer(shouldThrow: true)
+        let secondService = ConcertSpotlightDonationService(storage: defaults, indexer: failingIndexer, analytics: analytics)
+        await secondService.reconcile(window: [staying])
+
+        #expect(analytics.typedEvents(ofType: ConcertsEvicted.self).isEmpty)
+    }
+
+    @Test("ConcertsDonated and ConcertsEvicted never carry a concert or artist id")
+    func donationAndEvictionEventsAreIdentityFree() async throws {
+        let indexer = MockConcertSpotlightIndexer()
+        let analytics = MockStructuredAnalytics()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer, analytics: analytics)
+
+        // Distinctive artist/concert identity that must never leak into an event's
+        // property dictionary — neither as a key nor as a value.
+        let lovedConcert = Concert.stub(id: 909_001, headliningArtistRaw: "Chuquimamani-Condori", headliningArtistId: 909_002)
+        let departing = Concert.stub(id: 909_003, headliningArtistRaw: "Hermanos Gutiérrez", headliningArtistId: 909_004)
+
+        await service.reconcile(window: [lovedConcert, departing], likedArtists: [LikedArtist(id: 909_002, name: "Chuquimamani-Condori")])
+        await service.reconcile(window: [lovedConcert]) // `departing` drops out, triggering eviction.
+
+        let donated = analytics.typedEvents(ofType: ConcertsDonated.self)
+        let evicted = analytics.typedEvents(ofType: ConcertsEvicted.self)
+        #expect(!donated.isEmpty)
+        #expect(!evicted.isEmpty)
+
+        let forbiddenSubstrings = ["909001", "909002", "909003", "909004", "Chuquimamani-Condori", "Hermanos Gutiérrez"]
+        for event in (donated as [any AnalyticsEvent]) + (evicted as [any AnalyticsEvent]) {
+            let properties = try #require(event.properties)
+            for (key, value) in properties {
+                #expect(!forbiddenSubstrings.contains { key.localizedCaseInsensitiveContains($0) })
+                #expect(!forbiddenSubstrings.contains { "\(value)".localizedCaseInsensitiveContains($0) })
+            }
+            // Only the documented, non-identifying fields are present.
+            let allowedKeys: Set<String> = ["batch_size", "priority_tier", "evicted_count"]
+            #expect(Set(properties.keys).isSubset(of: allowedKeys))
+        }
     }
 }
 

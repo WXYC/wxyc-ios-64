@@ -7,10 +7,12 @@
 //  `wxyc.concerts` index, mirroring `PlaycutEntityQuery+IndexedEntityQuery`.
 //  Both handlers resolve concerts through `ConcertsFetching` — the same
 //  fetch seam `OnTourModel`/`ToursNearMeQuery` use — and re-donate through
-//  `ConcertReindexer`. Both report `SpotlightReindexRequested` through
-//  `AnalyticsService` (#445) before resolving anything, matching the playcut
-//  handlers, so a reindex ask is visible in PostHog even when nothing ends
-//  up donated.
+//  `ConcertReindexer`. Both report `ConcertReindexRequested` through
+//  `AnalyticsService` (#631/OT-Q1, mirroring the playcut handlers' own
+//  `SpotlightReindexRequested` — #445 — but as a concert-specific type so the
+//  two entity kinds' reindex volume stays disambiguated in PostHog) before
+//  resolving anything, so a reindex ask is visible even when nothing ends up
+//  donated.
 //
 //  `reindexAllEntities()` reuses `ToursNearMeQuery.fetchRequestParameters`
 //  (curated=true, from today, one page of up to 100) rather than inventing
@@ -58,7 +60,7 @@ extension ConcertEntityQuery: IndexedEntityQuery {
     ) async throws {
         let rawIDs = identifiers.compactMap(\.concertID)
         Log(.info, category: .general, "Spotlight requested reindexEntities(for:) — \(rawIDs.count) id(s)")
-        analytics.capture(SpotlightReindexRequested(kind: "single", rowCount: rawIDs.count))
+        analytics.capture(ConcertReindexRequested(kind: "single", rowCount: rawIDs.count))
 
         var concerts: [Concert] = []
         for id in rawIDs {
@@ -89,7 +91,7 @@ extension ConcertEntityQuery: IndexedEntityQuery {
         )
         let concerts = response.concerts
         Log(.info, category: .general, "Spotlight requested reindexAllEntities() — \(concerts.count) concert(s)")
-        analytics.capture(SpotlightReindexRequested(kind: "all", rowCount: concerts.count))
+        analytics.capture(ConcertReindexRequested(kind: "all", rowCount: concerts.count))
         guard !concerts.isEmpty else { return }
         try await reindexer.donate(concerts)
     }
