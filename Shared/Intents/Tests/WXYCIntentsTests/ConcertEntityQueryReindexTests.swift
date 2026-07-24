@@ -9,7 +9,9 @@
 //  an error), and `reindexAllEntities` re-donates the curated window fetched
 //  via `ConcertsFetching.fetchConcerts(curated:...)` — the same
 //  `ToursNearMeQuery.fetchRequestParameters` shape the "touring near me"
-//  Siri intent already fetches against.
+//  Siri intent already fetches against. Also verifies the #631/OT-Q1
+//  `ConcertReindexRequested` analytics event both handlers fire, including
+//  that it never carries a concert or artist id.
 //
 //  Gated to Swift 6.4 (the Xcode 27 beta toolchain), matching
 //  `ConcertEntityQuery+IndexedEntityQuery.swift`. Each test starts with
@@ -18,18 +20,19 @@
 //  no-op rather than a failure on a host OS below the runtime floor — the
 //  beta-toolchain verification for this ticket is a build, not a test run.
 //
-//  `.serialized`: `AppDependencyManager.shared` is a process-global registry
-//  keyed by dependency type, shared across every `@Dependency`-backed
-//  AppIntents query in the process — including `PlaycutEntityQueryReindexTests`,
-//  which registers its own `any AnalyticsService` the same way. `.serialized`
-//  only protects the tests *within* this suite from racing each other; a
-//  concurrent run of a different suite that also registers `any
-//  AnalyticsService` (there is exactly one other today: the playcut reindex
-//  suite) could in principle interleave with this one's add-then-read. That
-//  cross-suite risk predates this file — it's inherent to
-//  `AppDependencyManager.shared` being a single process-wide registry — and
-//  isn't something a single suite's trait can close; flagged here rather
-//  than silently ignored.
+//  Nested under `ReindexHandlerTests` (`ReindexHandlerTests.swift`) rather
+//  than carrying its own top-level `.serialized` trait: `AppDependencyManager
+//  .shared` is a process-global registry keyed by dependency type, shared
+//  across every `@Dependency`-backed AppIntents query in the process —
+//  including `PlaycutEntityQueryReindexTests`, which registers its own `any
+//  AnalyticsService` the same way. A suite-local `.serialized` only
+//  serializes the tests *within* this suite from racing each other; it does
+//  nothing to stop Swift Testing's default parallel scheduler from running a
+//  test from this suite concurrently with one from the playcut suite, which
+//  could race on `AppDependencyManager.shared`'s registration and let one
+//  suite's assertion observe the other suite's `MockStructuredAnalytics`.
+//  `.serialized` on the shared parent suite governs both children together,
+//  closing that gap.
 //
 //  Every test also registers a `MockStructuredAnalytics` — `ConcertEntityQuery`'s
 //  `analytics` property (#445) is a required `@Dependency`, which traps on
@@ -50,7 +53,9 @@ import Foundation
 import Testing
 @testable import WXYCIntents
 
-@Suite("ConcertEntityQuery+IndexedEntityQuery (F3 reindex handlers)", .serialized)
+extension ReindexHandlerTests {
+
+@Suite("ConcertEntityQuery+IndexedEntityQuery (F3 reindex handlers)")
 struct ConcertEntityQueryReindexTests {
     @Test("reindexEntities donates only ids ConcertsFetching can resolve; a miss is omitted, not an error")
     func reindexEntitiesDonatesOnlyKnownIDs() async throws {
@@ -72,9 +77,9 @@ struct ConcertEntityQueryReindexTests {
         let donated = await reindexer.donatedIDs
         #expect(donated == [1])
 
-        // #445: reports the request count (both ids asked for), not just the
-        // ids the fetcher resolved.
-        let events = analytics.typedEvents(ofType: SpotlightReindexRequested.self)
+        // #631/OT-Q1: reports the request count (both ids asked for), not
+        // just the ids the fetcher resolved.
+        let events = analytics.typedEvents(ofType: ConcertReindexRequested.self)
         #expect(events.count == 1)
         #expect(events.first?.kind == "single")
         #expect(events.first?.rowCount == 2)
@@ -128,7 +133,7 @@ struct ConcertEntityQueryReindexTests {
         #expect(request.page == 1)
         #expect(request.limit == ToursNearMeQuery.fetchLimit)
 
-        let events = analytics.typedEvents(ofType: SpotlightReindexRequested.self)
+        let events = analytics.typedEvents(ofType: ConcertReindexRequested.self)
         #expect(events.count == 1)
         #expect(events.first?.kind == "all")
         #expect(events.first?.rowCount == 2)
@@ -171,7 +176,41 @@ struct ConcertEntityQueryReindexTests {
         let batches = await reindexer.donatedBatches
         #expect(batches.isEmpty)
     }
+
+    @Test("ConcertReindexRequested never carries a concert or artist id")
+    func reindexRequestedEventIsIdentityFree() async throws {
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
+
+        // A distinctive artist name that must never leak into the event's
+        // property dictionary — neither as a key nor as a value.
+        let chuquimamani = Concert.stub(id: 909_005, headliningArtistRaw: "Chuquimamani-Condori", headliningArtistId: 909_006)
+        let fetcher = StubConcertsFetcher(pages: [], concertsByID: [909_005: chuquimamani])
+        AppDependencyManager.shared.add(dependency: fetcher as any ConcertsFetching)
+        AppDependencyManager.shared.add(dependency: SpyConcertReindexer() as any ConcertReindexer)
+        let analytics = MockStructuredAnalytics()
+        AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
+
+        let concertID = try #require(ConcertID(concertID: 909_005))
+        let query = ConcertEntityQuery()
+        try await query.reindexEntities(for: [concertID], indexDescription: CSSearchableIndexDescription())
+
+        let events = analytics.typedEvents(ofType: ConcertReindexRequested.self)
+        #expect(!events.isEmpty)
+
+        let forbiddenSubstrings = ["909005", "909006", "Chuquimamani-Condori"]
+        for event in events as [any AnalyticsEvent] {
+            let properties = try #require(event.properties)
+            let allowedKeys: Set<String> = ["kind", "row_count"]
+            #expect(Set(properties.keys).isSubset(of: allowedKeys))
+            for (key, value) in properties {
+                #expect(!forbiddenSubstrings.contains { key.localizedCaseInsensitiveContains($0) })
+                #expect(!forbiddenSubstrings.contains { "\(value)".localizedCaseInsensitiveContains($0) })
+            }
+        }
+    }
 }
+
+} // extension ReindexHandlerTests
 
 /// Records every `donate(_:)` call's concert ids as a separate batch, so
 /// tests can assert both membership and (for the single-id path) that

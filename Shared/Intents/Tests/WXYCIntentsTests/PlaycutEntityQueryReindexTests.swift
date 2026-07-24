@@ -15,11 +15,19 @@
 //  than a failure on a host OS below the runtime floor — the beta-toolchain
 //  verification for this ticket is a build, not a test run.
 //
-//  `.serialized`: `AppDependencyManager.shared` is a process-global registry
-//  keyed by dependency type, shared with `PlaycutEntityQueryTests`'
-//  production-binding tests. Parallel registration of different
-//  `PlaycutHistoryStore`/`PlaycutReindexer` instances across suites could
-//  race on which one a given test's `entities`/`reindex*` calls resolve.
+//  Nested under `ReindexHandlerTests` (`ReindexHandlerTests.swift`) rather than
+//  carrying its own top-level `.serialized` trait: `AppDependencyManager.shared`
+//  is a process-global registry keyed by dependency type, and this suite's
+//  sibling `ConcertEntityQueryReindexTests` registers the same `any
+//  AnalyticsService` type. A suite-local `.serialized` only serializes a
+//  suite's own tests against each other — it does nothing to stop Swift
+//  Testing's default parallel scheduler from running a test from this suite
+//  concurrently with one from the concert suite, which could race on
+//  `AppDependencyManager.shared`'s registration. `.serialized` on the shared
+//  parent suite governs both children together, closing that gap. (Parallel
+//  registration of different `PlaycutHistoryStore`/`PlaycutReindexer`
+//  instances against `PlaycutEntityQueryTests`' production-binding tests is a
+//  separate, pre-existing risk this file does not address.)
 //
 //  Every test also registers a `MockStructuredAnalytics` — `PlaycutEntityQuery`'s
 //  `analytics` property (#445) is a required `@Dependency`, which traps on
@@ -41,7 +49,9 @@ import Playlist
 import PlaylistTesting
 @testable import WXYCIntents
 
-@Suite("PlaycutEntityQuery+IndexedEntityQuery (F3 reindex handlers)", .serialized)
+extension ReindexHandlerTests {
+
+@Suite("PlaycutEntityQuery+IndexedEntityQuery (F3 reindex handlers)")
 struct PlaycutEntityQueryReindexTests {
     @Test("reindexEntities donates only ids present in the store; a miss is omitted, not an error")
     func reindexEntitiesDonatesOnlyKnownIDs() async throws {
@@ -138,6 +148,8 @@ struct PlaycutEntityQueryReindexTests {
         #expect(batches.isEmpty)
     }
 }
+
+} // extension ReindexHandlerTests
 
 /// Records every `donate(_:)` call's entity ids as a separate batch, so tests
 /// can assert both chunk boundaries and total membership.

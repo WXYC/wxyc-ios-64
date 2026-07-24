@@ -76,12 +76,20 @@
 //  `SpotlightDonationService` — see AppServices/Package.swift for the
 //  platform-gated `WXYCIntents` dependency.
 //
+//  `reconcile` reports `ConcertsDonated`/`ConcertsEvicted` through the
+//  injected `AnalyticsService` (#631/OT-Q1, mirroring `SpotlightDonationService`'s
+//  own `SpotlightDonated` reporting for the playcut/artist indexes) so we can
+//  see in PostHog whether `wxyc.concerts` is being kept warm. Both events
+//  carry only counts and the non-identifying priority tier a batch donated
+//  at — never a concert or artist id, per the On Tour privacy invariant.
+//
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 #if !os(watchOS) && !os(tvOS)
 
+import Analytics
 import Caching
 import Concerts
 import Foundation
@@ -127,12 +135,18 @@ public actor ConcertSpotlightDonationService: Sendable {
 
     private let storage: DefaultsStorage
     private let indexer: ConcertSpotlightIndexer
+    private let analytics: AnalyticsService
 
     // MARK: - Init
 
-    public init(storage: DefaultsStorage, indexer: ConcertSpotlightIndexer) {
+    public init(
+        storage: DefaultsStorage,
+        indexer: ConcertSpotlightIndexer,
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared
+    ) {
         self.storage = storage
         self.indexer = indexer
+        self.analytics = analytics
     }
 
     // MARK: - Public API
@@ -196,6 +210,7 @@ public actor ConcertSpotlightDonationService: Sendable {
                 // retry it.
                 persisted = persisted.filter { !evictIDs.contains($0.key) }
                 persistedSnapshot = persisted
+                analytics.capture(ConcertsEvicted(evictedCount: evictIDs.count))
             } catch {
                 Log(.warning, category: .general, "Concert Spotlight eviction failed for \(evictIDs.count) departed/cancelled concert(s): \(error)")
             }
@@ -241,6 +256,9 @@ public actor ConcertSpotlightDonationService: Sendable {
                 persisted[id] = status
             }
             persistedSnapshot = persisted
+            for (priority, batchSize) in batchSizesByPriority(donations) {
+                analytics.capture(ConcertsDonated(batchSize: batchSize, priorityTier: Self.tierLabel(forPriority: priority)))
+            }
         } catch {
             Log(.warning, category: .general, "Concert Spotlight donation failed for \(donations.count) concert(s): \(error)")
         }
@@ -272,6 +290,30 @@ public actor ConcertSpotlightDonationService: Sendable {
         case .stationRecommended: return stationRecommendedPriority
         case nil: return defaultPriority
         }
+    }
+
+    /// The non-identifying `ConcertsDonated.priorityTier` label for a donation
+    /// `priority` value, the inverse of ``priority(forTier:)``. Falls back to
+    /// `"default"` for any value other than the two elevated tiers — safe
+    /// because every donation in `reconcile` is built via `priority(forTier:)`,
+    /// so a `priority` outside the three known constants is unreachable.
+    private static func tierLabel(forPriority priority: Int) -> String {
+        switch priority {
+        case lovedPriority: return "loved"
+        case stationRecommendedPriority: return "stationRecommended"
+        default: return "default"
+        }
+    }
+
+    /// Groups `donations`' batch sizes by priority — the tally
+    /// ``ConcertsDonated`` reports one event per tier for. Sorted by
+    /// descending priority (loved, then station, then default) so a mixed
+    /// batch's events fire in a stable, human-legible order rather than
+    /// `Dictionary`'s unordered iteration.
+    private func batchSizesByPriority(_ donations: [ConcertDonation]) -> [(priority: Int, batchSize: Int)] {
+        Dictionary(grouping: donations, by: \.priority)
+            .map { (priority: $0.key, batchSize: $0.value.count) }
+            .sorted { $0.priority > $1.priority }
     }
 
     // MARK: - Expiry
