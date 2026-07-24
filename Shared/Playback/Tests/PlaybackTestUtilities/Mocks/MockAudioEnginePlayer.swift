@@ -26,6 +26,7 @@ public final class MockAudioEnginePlayer: @preconcurrency AudioEnginePlayerProto
     public let eventStream: AsyncStream<AudioPlayerEvent>
 
     public var volume: Float = 1.0
+    public var gainDecibels: Float = 0
     public private(set) var isPlaying = false
 
     /// Track scheduled buffers

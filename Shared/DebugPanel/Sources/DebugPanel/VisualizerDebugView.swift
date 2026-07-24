@@ -29,6 +29,7 @@ public struct VisualizerDebugView: View {
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
+    private var audioController = AudioPlayerController.shared
     private var onResetThemePickerState: (() -> Void)?
     private var onResetSiriTip: (() -> Void)?
     private var onResetTicketCTA: (() -> Void)?
@@ -43,6 +44,14 @@ public struct VisualizerDebugView: View {
         self.onResetThemePickerState = onResetThemePickerState
         self.onResetSiriTip = onResetSiriTip
         self.onResetTicketCTA = onResetTicketCTA
+    }
+
+    private var streamGainFooter: String {
+        if audioController.supportsGainBoost {
+            "Boosts the live stream's output level. The stream tops out around −6 dBFS, so ~+6 dB fills the headroom to 0 dBFS; higher values clip. Affects audio output only (not the visualizer). Persists across launches — use Reset to clear."
+        } else {
+            "Unavailable for the current player. Switch to the MP3 streamer in the Player section and relaunch to enable a stream boost."
+        }
     }
 
     private var processorFooter: String {
@@ -284,6 +293,34 @@ public struct VisualizerDebugView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!visualizer.signalBoostEnabled)
+                    }
+
+                    // Stream Gain (audio output boost)
+                    DebugSection(
+                        header: "Stream Gain",
+                        footer: streamGainFooter
+                    ) {
+                        HStack {
+                            Text("Boost")
+                            Spacer()
+                            Text(String(format: "%+.1f dB", audioController.gainDecibels))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { audioController.gainDecibels },
+                                set: { audioController.gainDecibels = $0 }
+                            ),
+                            in: 0...12,
+                            step: 0.5
+                        )
+                        .disabled(!audioController.supportsGainBoost)
+                        Button("Reset to 0 dB") {
+                            audioController.gainDecibels = 0
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(!audioController.supportsGainBoost)
                     }
 
                     // Actions

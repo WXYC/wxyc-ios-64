@@ -75,6 +75,7 @@ let package = Package(
                 "RadioPlayerModule",
                 "MP3StreamerModule",
                 "HLSPlayerModule",
+                "Caching",
                 "Logger",
             ],
             path: "Sources/PlaybackAPI"
@@ -109,7 +110,7 @@ let package = Package(
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities", .product(name: "AnalyticsTesting", package: "Analytics")],
+            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities", "Caching", .product(name: "AnalyticsTesting", package: "Analytics")],
             resources: [.process("Resources")]
         ),
         .testTarget(
