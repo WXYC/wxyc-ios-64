@@ -144,6 +144,7 @@ final class Singletonia {
     private var nowPlayingObservationTask: Task<Void, Never>?
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?
+    private var spotlightMetadataEnrichmentTask: Task<Void, Never>?
     private var likedSongsHealingTask: Task<Void, Never>?
 
     private init() {
@@ -170,6 +171,7 @@ final class Singletonia {
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
         startNowPlayingPlaybackStateObservation()
         startSpotlightDonation()
+        startSpotlightMetadataEnrichmentReDonation()
         startPlaycutHistory()
         startLikedSongsHealing()
 
@@ -267,6 +269,25 @@ final class Singletonia {
                 }
                 await spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
             }
+        }
+    }
+
+    /// Re-donates a single playcut to Spotlight when its `metadata_status`
+    /// lands in a terminal enriched state (issue #443).
+    ///
+    /// Separate task from `startSpotlightDonation()` because it subscribes to
+    /// a different `PlaylistService` stream (`terminalMetadataTransitions()`,
+    /// not `updates()`) with its own per-subscriber diff state. Gating on
+    /// "was this row donated before" happens inside
+    /// `SpotlightDonationService.handleMetadataEnrichment(for:)`, so this
+    /// task only has to forward transitions.
+    ///
+    /// The service references are captured strongly here on purpose, same
+    /// rationale as `startSpotlightDonation()`: the task's lifetime is bound
+    /// to `Singletonia.shared` (a static let), so there is no cycle to break.
+    private func startSpotlightMetadataEnrichmentReDonation() {
+        spotlightMetadataEnrichmentTask = Task { [spotlightDonationService, playlistService] in
+            await spotlightDonationService.observeMetadataEnrichment(from: playlistService)
         }
     }
 
