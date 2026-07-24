@@ -197,6 +197,7 @@
 				iOS/Tests/WXYCTests/TicketShapeTests.swift,
 				iOS/Tests/WXYCTests/UpcomingShowResolverTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
+				iOS/Tests/WXYCTests/WhatsPlayingOnWXYCTests.swift,
 			);
 			target = A3EC40619289B0065648A53C /* WXYCTests */;
 		};
@@ -265,6 +266,7 @@
 				iOS/Tests/WXYCTests/TicketShapeTests.swift,
 				iOS/Tests/WXYCTests/UpcomingShowResolverTests.swift,
 				iOS/Tests/WXYCTests/WallpaperPickerTests.swift,
+				iOS/Tests/WXYCTests/WhatsPlayingOnWXYCTests.swift,
 				iOS/Tests/WXYCUITests/MarketingRecordingUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackButtonObservationUITests.swift,
 				iOS/Tests/WXYCUITests/PlaybackUITests.swift,
