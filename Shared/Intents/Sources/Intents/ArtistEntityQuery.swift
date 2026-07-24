@@ -34,14 +34,17 @@ public struct ArtistEntityQuery: EntityQuery {
 
     /// Resolves `identifiers` to entities by deduping the source's playcuts
     /// down to one ArtistEntity per normalized artist name — each carrying
-    /// the play count of its dedup group — then looking up each requested
-    /// id. Preserves the input order and drops ids the source couldn't
-    /// resolve, matching the AppIntents `entities(for:)` contract.
+    /// the play count of its dedup group and displaying a representative
+    /// original-cased name via `representativeName(in:)` (#646), the same
+    /// selection rule `SpotlightDonationService.donateArtists` uses — then
+    /// looking up each requested id. Preserves the input order and drops ids
+    /// the source couldn't resolve, matching the AppIntents `entities(for:)`
+    /// contract.
     public func entities(for identifiers: [ArtistID]) async throws -> [ArtistEntity] {
         let playcuts = await source()
         let entitiesByID = Dictionary(
             uniqueKeysWithValues: Self.groupedByNormalizedArtist(playcuts).map { normalized, group in
-                (ArtistID(stableEntityID(for: normalized)), ArtistEntity(artistName: normalized, playCount: group.count))
+                (ArtistID(stableEntityID(for: normalized)), ArtistEntity(artistName: representativeName(in: group), playCount: group.count))
             }
         )
         return identifiers.compactMap { entitiesByID[$0] }

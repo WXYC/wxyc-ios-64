@@ -96,6 +96,27 @@ struct ArtistEntityQueryTests {
         #expect(catPowerEntity.playCount == 1)
     }
 
+    // MARK: - #646: representative display casing
+
+    @Test("entities(for:) displays a representative original-cased name per deduped group, matching the donation path's rule")
+    func entitiesForIdentifiersDisplaysRepresentativeCasing() async throws {
+        // Regression for #646: entities(for:) used to hand ArtistEntity the
+        // lowercased normalized key as its artistName, so a group like this
+        // (a clean casing plus a lowercased "feat." variant) rendered
+        // "stereolab" in Spotlight/Siri instead of the clean original casing
+        // the donation path (#640/#644) already shows.
+        let stereolab = Playcut.stub(id: 1, artistName: "Stereolab")
+        let stereolabFeaturing = Playcut.stub(id: 2, artistName: "stereolab feat. Nurse With Wound")
+        let query = ArtistEntityQuery(source: { [stereolab, stereolabFeaturing] })
+        let wantedID = ArtistEntity(artistName: "Stereolab").id
+
+        let entities = try await query.entities(for: [wantedID])
+
+        let entity = try #require(entities.first)
+        #expect(entity.id == wantedID)
+        #expect(entity.displayName == "Stereolab")
+    }
+
     // MARK: - C6: playcuts(forArtist:)
 
     @Test("playcuts(forArtist:) returns every playcut matching the normalized artist name, including variants")
