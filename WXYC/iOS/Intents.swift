@@ -399,6 +399,79 @@ private struct ToursNearMePosterThumbnail: View {
     }
 }
 
+/// "Add this WXYC concert to my calendar" (OT-C7, WXYC/wxyc-ios-64#630): adds
+/// an On Tour show to the listener's calendar from Siri/Spotlight, reusing
+/// the shipped `ConcertCalendarEvent` mapper (#538). Lives in the app target
+/// rather than `Shared/Intents` (unlike the other concert intents) because it
+/// needs `AppIntentServices.concertsFetcher()` -- the same
+/// `ConcertsFetcher(tokenProvider: MusicShareKit.authService)` wiring
+/// `ToursNearMe` uses -- to resolve the full `Concert` behind the parameter's
+/// minimal `ConcertEntity`. A `@Dependency`-backed fetcher would avoid that
+/// app-target wiring (mirroring `ConcertEntityQuery`'s reindex seams), but
+/// `@Dependency` properties on an `AppIntent` trap when read outside the
+/// actual AppIntents-runtime-driven perform flow, making `perform()`
+/// untestable by calling it directly -- so the resolve-map-save core lives in
+/// `AddConcertToCalendarQuery.resolveAndSave(concertID:fetcher:calendarStore:)`
+/// (WXYCIntents, unit-tested there) and this intent is a thin wrapper
+/// supplying the real fetcher and `EventKitCalendarEventSaving()`, the same
+/// shape `ToursNearMe`/`ToursNearMeQuery` already use for the same reason.
+///
+/// Every failure path -- an unresolvable concert, denied calendar access, or
+/// a save error -- returns a `.result(dialog:)` rather than throwing: Siri's
+/// generic "Something went wrong" for an uncaught throw is worse than a
+/// specific, human-readable dialog, matching `ToursNearMe`'s fetch-failure
+/// handling. The denied-access copy is verbatim `ConcertCalendarSheet`'s
+/// alert message, so the same permission ask reads identically whether it
+/// came from the in-app sheet or from Siri.
+struct AddConcertToCalendarIntent: AppIntent, InstanceDisplayRepresentable {
+    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    public static let description = IntentDescription("Adds a WXYC On Tour concert to your calendar.")
+    public static let isDiscoverable = true
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "Add Concert to Calendar"
+
+    public var displayRepresentation = DisplayRepresentation(
+        title: Self.title,
+        subtitle: nil,
+        image: .init(systemName: "calendar.badge.plus")
+    )
+
+    @Parameter(title: "Concert")
+    var concert: ConcertEntity
+
+    public init() { }
+
+    public init(concert: ConcertEntity) {
+        self.concert = concert
+    }
+
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let concertID = concert.id.concertID else {
+            return .result(dialog: "Couldn’t find that show to add to your calendar.")
+        }
+
+        let outcome = await AddConcertToCalendarQuery.resolveAndSave(
+            concertID: concertID,
+            fetcher: AppIntentServices.concertsFetcher(),
+            calendarStore: EventKitCalendarEventSaving()
+        )
+
+        switch outcome {
+        case .added(let calendarEvent):
+            StructuredPostHogAnalytics.shared.capture(
+                ConcertCalendarAdded(surface: "siri", timing: calendarEvent.isAllDay ? "allDay" : "timed")
+            )
+            return .result(dialog: "Added \(calendarEvent.title) to your calendar.")
+        case .concertUnavailable:
+            return .result(dialog: "Couldn’t find that show to add to your calendar.")
+        case .accessDenied:
+            return .result(dialog: "Turn on calendar access for WXYC in Settings to add shows to your calendar.")
+        case .saveFailed(let title):
+            return .result(dialog: "Couldn’t add \(title) to your calendar.")
+        }
+    }
+}
+
 struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -454,6 +527,15 @@ struct WXYCAppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Touring Near Me",
             systemImageName: "calendar"
+        )
+        AppShortcut(
+            intent: AddConcertToCalendarIntent(),
+            phrases: [
+                "Add this \(.applicationName) concert to my calendar",
+                "Add this \(.applicationName) show to my calendar",
+            ],
+            shortTitle: "Add Concert to Calendar",
+            systemImageName: "calendar.badge.plus"
         )
     }
 }
