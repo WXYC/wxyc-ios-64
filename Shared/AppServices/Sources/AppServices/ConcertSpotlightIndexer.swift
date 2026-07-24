@@ -29,6 +29,9 @@
 //  `WXYCIntents` (which vends `ConcertEntity`) isn't linked into either build
 //  graph — see AppServices/Package.swift.
 //
+//  F3: also conforms to `ConcertReindexer` (WXYCIntents) — see the extension
+//  below, at the bottom of this file.
+//
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -36,6 +39,7 @@
 #if !os(watchOS) && !os(tvOS)
 
 @preconcurrency import CoreSpotlight
+import Concerts
 import Foundation
 import WXYCIntents
 
@@ -107,6 +111,47 @@ public struct CoreSpotlightConcertIndexer: ConcertSpotlightIndexer {
     public func deleteConcerts(withIdentifiers identifiers: [String]) async throws {
         guard !identifiers.isEmpty else { return }
         try await index.deleteSearchableItems(withIdentifiers: identifiers)
+    }
+}
+
+/// F3: the same named index doubles as the reindex handlers' donation seam
+/// (`ConcertEntityQuery+IndexedEntityQuery`, WXYCIntents). Mirrors
+/// `CoreSpotlightIndexer: PlaycutReindexer`'s shape — the reindexer
+/// conformance lives on the low-level indexer, not the higher-level
+/// `ConcertSpotlightDonationService` reconcile orchestrator — but see
+/// `ConcertReindexer`'s doc comment for why: a reindex ask is a wholesale,
+/// unconditional upsert, never a diff against `reconcile`'s persisted id set.
+extension CoreSpotlightConcertIndexer: ConcertReindexer {
+    public func donate(_ concerts: [Concert]) async throws {
+        let donations = Self.reindexDonations(for: concerts)
+        guard !donations.isEmpty else { return }
+        try await indexConcerts(donations)
+    }
+
+    /// Builds the reindex donation batch: `ConcertSpotlightDonationService
+    /// .defaultPriority` for every concert (no liked-artist/station-cap
+    /// context exists on a Spotlight-triggered reindex — this isn't
+    /// `ForYouShelf`-tiered the way `reconcile`'s own donations are) and a
+    /// freshly computed `endOfShowDay` expiration per concert, reusing that
+    /// service's constant and helper so the two paths' notion of "when does
+    /// a donated concert expire" can never drift. A concert whose id can't
+    /// bridge to `ConcertID` (see `EntityID.init?(concertID:)`) is dropped,
+    /// not fatal — defensive; never the case for a real backend row.
+    ///
+    /// Extracted as a pure, internal function (rather than inlined in
+    /// `donate(_:)`) so it's unit-testable without a real `CSSearchableIndex`
+    /// round-trip, mirroring how `ConcertSpotlightDonationServiceTests`
+    /// exercises `reconcile`'s own donation-building through
+    /// `MockConcertSpotlightIndexer`.
+    static func reindexDonations(for concerts: [Concert]) -> [ConcertDonation] {
+        concerts.compactMap { concert in
+            guard let entity = ConcertEntity(concert: concert) else { return nil }
+            return ConcertDonation(
+                entity: entity,
+                priority: ConcertSpotlightDonationService.defaultPriority,
+                expirationDate: ConcertSpotlightDonationService.endOfShowDay(concert.startsOn)
+            )
+        }
     }
 }
 
