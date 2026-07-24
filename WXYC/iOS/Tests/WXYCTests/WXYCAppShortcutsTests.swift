@@ -5,14 +5,14 @@
 //  Unit tests for WXYCAppShortcuts (Intents.swift). AppShortcut discovery
 //  happens at build time via the App Intents compiler plugin, so these tests
 //  guard what we can observe at runtime: that `appShortcuts` resolves without
-//  crashing and, specifically, that OpenPlaycut (#428) is registered with
-//  multiple invocation phrases. `AppShortcut` type-erases both its intent and
-//  its phrases and exposes no public accessors, so the OpenPlaycut assertions
-//  reflect into the value rather than trusting a bare shortcut count — any
-//  fourth intent would satisfy a count check. #641 re-examined this
-//  reflection walk for SDK fragility and, finding no more-robust public
-//  alternative, kept it with an expanded rationale next to `reflectionContains`
-//  below plus a metatype-aware match.
+//  crashing and, specifically, that OpenPlaycut (#428) and OpenConcert (#624)
+//  are each registered with multiple invocation phrases. `AppShortcut`
+//  type-erases both its intent and its phrases and exposes no public
+//  accessors, so the per-intent assertions reflect into the value rather than
+//  trusting a bare shortcut count — any Nth intent would satisfy a count
+//  check. #641 re-examined this reflection walk for SDK fragility and,
+//  finding no more-robust public alternative, kept it with an expanded
+//  rationale next to `reflectionContains` below plus a metatype-aware match.
 //
 //  Created by Jake Bromberg on 07/23/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -26,20 +26,21 @@ import Testing
 @Suite("WXYCAppShortcuts")
 struct WXYCAppShortcutsTests {
     /// The discoverable shortcuts we register: WhatsPlayingOnWXYC, PlayWXYC,
-    /// MakeARequest, and OpenPlaycut (#428). Unlike `openPlaycutIntentIsRegistered()`
+    /// MakeARequest, OpenPlaycut (#428), and OpenConcert (#624). Unlike
+    /// `openPlaycutIntentIsRegistered()` and `openConcertIntentIsRegistered()`
     /// below, this count isn't SDK-fragile — it only changes when someone
     /// deliberately adds or removes an `AppShortcut` in `WXYCAppShortcuts`,
     /// not when Apple restructures `AppShortcut`'s private storage.
-    @Test("appShortcuts registers exactly four shortcuts")
-    func registersFourShortcuts() {
-        #expect(WXYCAppShortcuts.appShortcuts.count == 4)
+    @Test("appShortcuts registers exactly five shortcuts")
+    func registersFiveShortcuts() {
+        #expect(WXYCAppShortcuts.appShortcuts.count == 5)
     }
 
     @Test("OpenPlaycut (#428) is specifically registered, not merely a 4th intent")
     func openPlaycutIntentIsRegistered() {
         // AppShortcut type-erases its intent and phrases and exposes no public
-        // accessors, so a bare `count == 4` can't tell OpenPlaycut apart from
-        // any other 4th intent. Reflect into each shortcut for the OpenPlaycut
+        // accessors, so a bare count check can't tell OpenPlaycut apart from
+        // any other intent. Reflect into each shortcut for the OpenPlaycut
         // instance the AppShortcut stores. (The phrase list itself is validated
         // at build time by the App Intents compiler plugin — an AppShortcut with
         // no phrases won't compile — so runtime phrase-count assertions would
@@ -47,6 +48,16 @@ struct WXYCAppShortcutsTests {
         #expect(
             WXYCAppShortcuts.appShortcuts.contains { reflectionContains(OpenPlaycut.self, in: $0) },
             "No AppShortcut is registered for the OpenPlaycut intent (#428)"
+        )
+    }
+
+    @Test("OpenConcert (#624) is specifically registered, not merely a 5th intent")
+    func openConcertIntentIsRegistered() {
+        // Mirrors openPlaycutIntentIsRegistered() above for the On Tour
+        // OpenConcert shortcut (#624, part of the Spotlight epic #619).
+        #expect(
+            WXYCAppShortcuts.appShortcuts.contains { reflectionContains(OpenConcert.self, in: $0) },
+            "No AppShortcut is registered for the OpenConcert intent (#624)"
         )
     }
 }
