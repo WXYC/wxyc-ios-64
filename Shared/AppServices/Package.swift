@@ -48,6 +48,7 @@ let package = Package(
                 .product(name: "PlaylistTesting", package: "Playlist"),
                 "Artwork",
                 .product(name: "PlaybackCore", package: "Playback"),
+                .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "WXYCIntents", package: "WXYCIntents", condition: .when(platforms: [.iOS, .macCatalyst, .macOS])),
             ]
         )

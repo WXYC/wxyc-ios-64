@@ -8,7 +8,10 @@
 //  implementation fetches the entities and donates them again, rather than
 //  returning a value. `CSSearchableIndexDescription` carries only a nullable
 //  `protectionClass` — no index identity to dispatch on — so both handlers
-//  donate straight to the one named index via `PlaycutReindexer`.
+//  donate straight to the one named index via `PlaycutReindexer`. Both also
+//  report `SpotlightReindexRequested` through `AnalyticsService` (#445) before
+//  resolving anything, so a reindex ask is visible in PostHog even when the
+//  store has nothing to donate for it.
 //
 //  Gated to Swift 6.4 (the Xcode 27 beta toolchain): `IndexedEntityQuery` is
 //  new in the iOS 27 AppIntents swiftinterface and isn't present in stable
@@ -24,6 +27,7 @@
 
 #if compiler(>=6.4)
 #if !os(watchOS) && !os(tvOS)
+import Analytics
 import AppIntents
 import CoreSpotlight
 import Foundation
@@ -51,6 +55,7 @@ extension PlaycutEntityQuery: IndexedEntityQuery {
         indexDescription: CSSearchableIndexDescription
     ) async throws {
         Log(.info, category: .general, "Spotlight requested reindexEntities(for:) — \(identifiers.count) id(s)")
+        analytics.capture(SpotlightReindexRequested(kind: "single", rowCount: identifiers.count))
         let rawIDs = Set(identifiers.map(\.value))
         let playcuts = await historyStore.playcuts(ids: rawIDs)
         guard !playcuts.isEmpty else { return }
@@ -63,6 +68,7 @@ extension PlaycutEntityQuery: IndexedEntityQuery {
     public func reindexAllEntities(indexDescription: CSSearchableIndexDescription) async throws {
         let playcuts = await historyStore.allIndexable()
         Log(.info, category: .general, "Spotlight requested reindexAllEntities() — \(playcuts.count) playcut(s)")
+        analytics.capture(SpotlightReindexRequested(kind: "all", rowCount: playcuts.count))
         guard !playcuts.isEmpty else { return }
 
         for start in stride(from: 0, to: playcuts.count, by: Self.reindexChunkSize) {

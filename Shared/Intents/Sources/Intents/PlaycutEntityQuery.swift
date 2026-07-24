@@ -14,12 +14,15 @@
 //  extension file — because a Swift extension cannot add stored properties,
 //  and `@Dependency`'s backing storage is a stored property. `reindexer` is
 //  unused outside the iOS 27 extension but must live on the primary struct
-//  declaration for that extension to reach it.
+//  declaration for that extension to reach it. `analytics` (#445) is the
+//  same story: only the iOS 27 reindex extension reads it, to report
+//  `SpotlightReindexRequested`.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import AppIntents
 import Foundation
 import Playlist
@@ -41,6 +44,13 @@ public struct PlaycutEntityQuery: EntityQuery {
     /// this file's own `entities(for:)`/`suggestedEntities()`.
     @Dependency
     var reindexer: any PlaycutReindexer
+
+    /// Analytics seam the F3 reindex handlers use to report
+    /// `SpotlightReindexRequested` (#445). Declared here for the same
+    /// stored-property-in-an-extension reason as `historyStore`/`reindexer`;
+    /// unused by this file's own `entities(for:)`/`suggestedEntities()`.
+    @Dependency
+    var analytics: any AnalyticsService
 
     /// Injectable seam for tests. `nil` in production, where `init()` (the
     /// AppIntents runtime's entry point) leaves it unset and `entities(for:)`

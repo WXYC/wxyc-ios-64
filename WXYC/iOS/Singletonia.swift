@@ -174,6 +174,10 @@ final class Singletonia {
         AppDependencyManager.shared.add(dependency: self.playcutHistoryStore)
         let playcutReindexer: any PlaycutReindexer = CoreSpotlightIndexer()
         AppDependencyManager.shared.add(dependency: playcutReindexer)
+        // #445: the iOS 27 reindex handlers report `SpotlightReindexRequested`
+        // through this same `@Dependency` seam.
+        let reindexAnalytics: any AnalyticsService = StructuredPostHogAnalytics.shared
+        AppDependencyManager.shared.add(dependency: reindexAnalytics)
 
         self.widgetStateService = WidgetStateService(
             playbackController: AudioPlayerController.shared,

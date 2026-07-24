@@ -21,11 +21,17 @@
 //  `PlaycutHistoryStore`/`PlaycutReindexer` instances across suites could
 //  race on which one a given test's `entities`/`reindex*` calls resolve.
 //
+//  Every test also registers a `MockStructuredAnalytics` — `PlaycutEntityQuery`'s
+//  `analytics` property (#445) is a required `@Dependency`, which traps on
+//  access if unregistered.
+//
 //  Created by Jake Bromberg on 07/23/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 #if compiler(>=6.4)
+import Analytics
+import AnalyticsTesting
 import AppIntents
 import Caching
 import CoreSpotlight
@@ -49,6 +55,8 @@ struct PlaycutEntityQueryReindexTests {
         AppDependencyManager.shared.add(dependency: store)
         let reindexer = SpyPlaycutReindexer()
         AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        let analytics = MockStructuredAnalytics()
+        AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
         let query = PlaycutEntityQuery()
         try await query.reindexEntities(
@@ -58,6 +66,13 @@ struct PlaycutEntityQueryReindexTests {
 
         let donated = await reindexer.donatedIDs
         #expect(donated == [PlaycutID(1)])
+
+        // #445: reports the request count (both ids asked for), not just the
+        // ids the store resolved.
+        let events = analytics.typedEvents(ofType: SpotlightReindexRequested.self)
+        #expect(events.count == 1)
+        #expect(events.first?.kind == "single")
+        #expect(events.first?.rowCount == 2)
     }
 
     @Test("reindexEntities with no matches in the store donates nothing")
@@ -67,6 +82,7 @@ struct PlaycutEntityQueryReindexTests {
         AppDependencyManager.shared.add(dependency: PlaycutEntityQueryTests.makeHistoryStore())
         let reindexer = SpyPlaycutReindexer()
         AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let query = PlaycutEntityQuery()
         try await query.reindexEntities(for: [PlaycutID(404)], indexDescription: CSSearchableIndexDescription())
@@ -89,6 +105,8 @@ struct PlaycutEntityQueryReindexTests {
         AppDependencyManager.shared.add(dependency: store)
         let reindexer = SpyPlaycutReindexer()
         AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        let analytics = MockStructuredAnalytics()
+        AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
         let query = PlaycutEntityQuery()
         try await query.reindexAllEntities(indexDescription: CSSearchableIndexDescription())
@@ -97,6 +115,11 @@ struct PlaycutEntityQueryReindexTests {
         #expect(batches.map(\.count) == [50, 50, 20])
         #expect(batches.allSatisfy { $0.count <= 50 })
         #expect(Set(batches.flatMap { $0 }) == Set(playcuts.map { PlaycutID($0.id) }))
+
+        let events = analytics.typedEvents(ofType: SpotlightReindexRequested.self)
+        #expect(events.count == 1)
+        #expect(events.first?.kind == "all")
+        #expect(events.first?.rowCount == 120)
     }
 
     @Test("reindexAllEntities against an empty store donates nothing")
@@ -106,6 +129,7 @@ struct PlaycutEntityQueryReindexTests {
         AppDependencyManager.shared.add(dependency: PlaycutEntityQueryTests.makeHistoryStore())
         let reindexer = SpyPlaycutReindexer()
         AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let query = PlaycutEntityQuery()
         try await query.reindexAllEntities(indexDescription: CSSearchableIndexDescription())

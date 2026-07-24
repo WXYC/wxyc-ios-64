@@ -43,6 +43,7 @@ let package = Package(
                 // `@Dependency`-binding tests — production WXYCIntents code never
                 // imports Caching directly.
                 "Caching",
+                .product(name: "AnalyticsTesting", package: "Analytics"),
             ],
             path: "Tests/WXYCIntentsTests"
         ),
