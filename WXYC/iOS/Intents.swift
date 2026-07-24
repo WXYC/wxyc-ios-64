@@ -12,6 +12,8 @@ import Analytics
 import AppIntents
 import AppServices
 import Artwork
+import Concerts
+import LikedSongs
 import Logger
 import MusicShareKit
 import Playlist
@@ -37,6 +39,28 @@ enum AppIntentServices {
             playlistService: PlaylistService(),
             artworkService: MultisourceArtworkService()
         )
+    }
+
+    /// Builds a concerts fetcher exactly the way the On Tour tab does
+    /// (`OnTourTabView`), so `ToursNearMe` sees the same live curated window.
+    static func concertsFetcher() -> any ConcertsFetching {
+        ConcertsFetcher(tokenProvider: MusicShareKit.authService)
+    }
+
+    /// The listener's id-bearing liked artists, read fresh from the on-device
+    /// likes store. Deliberately never reaches into `Singletonia.shared` --
+    /// App Intents run in a separate process from the main app's SwiftUI
+    /// environment (see the comment above), so this builds its own
+    /// `LikedSongsStore` the same way `nowPlayingService()` builds its own
+    /// `NowPlayingService`. Routes storage selection through
+    /// `Singletonia.likedStorage(isMarketing:)` so a `-marketing` recording
+    /// gets the same in-memory swap the main app does, rather than
+    /// duplicating that decision here.
+    @MainActor
+    static func likedArtists() -> [LikedArtist] {
+        let storage = Singletonia.likedStorage(isMarketing: ProcessInfo.processInfo.arguments.contains("-marketing"))
+        let store = LikedSongsStore(storage: storage)
+        return store.songs.compactMap { song in song.artistId.map { LikedArtist(id: $0, name: song.artistName) } }
     }
 }
 
@@ -181,6 +205,200 @@ struct MakeARequest: AppIntent, InstanceDisplayRepresentable {
     }
 }
 
+/// "What WXYC artists are touring near me?" (OT-C2, WXYC/wxyc-ios-64#625): the
+/// marquee On Tour Siri/Spotlight query. Narrows the fetched curated concert
+/// window (`ConcertsFetching`, the same source `OnTourTabView` uses) to a
+/// Siri-selected date window, then prefers the listener's on-device
+/// liked-artist intersection over the plain date-filtered set -- see
+/// `ToursNearMeQuery` (WXYCIntents) for the pure, unit-tested core this thin
+/// wrapper drives. No taste signal ever reaches the network: the fetch
+/// (`AppIntentServices.concertsFetcher()`) takes no liked-artist parameter,
+/// and the intersection happens entirely in `ToursNearMeQuery.matchingConcerts`,
+/// in memory, over the already-public `curated=true` window (the On Tour
+/// privacy invariant, restated for Siri).
+///
+/// Renders the domain `Concert` list (not `ConcertEntity`, which is the
+/// minimal Spotlight-identity shape from OT-F1 and doesn't yet carry
+/// `imageURL`/`ctaURL`) in `ToursNearMeSnippetView` for the poster/date/venue
+/// card, while the `ReturnsValue` result surfaces `[ConcertEntity]` -- the
+/// structured Siri answer other shortcuts/automations can chain from.
+///
+/// Universal on the 18.6 floor: `perform()`'s declared result already
+/// includes `ShowsSnippetView`, which has shipped since iOS 16, so every
+/// listener gets the card, not just a spoken dialog -- the "static snippet"
+/// degrade path the design doc allows for pre-26. The iOS-26-only addition is
+/// the `SnippetIntent` conformance declared below this type: gated on the
+/// *type* via a same-file `@available(iOS 26, *)` extension, never branched
+/// inside `perform()`, matching the design doc's "gate the type, never
+/// branch inline" rule. That conformance unlocks `ToursNearMe.reload()` for a
+/// future in-snippet button (OT-C7's "Add to Calendar", not yet landed) to
+/// refresh this card in place without leaving Siri; no such button exists
+/// yet, so the conformance is inert today but costs nothing to carry.
+struct ToursNearMe: AppIntent, InstanceDisplayRepresentable {
+    public static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    public static let description = IntentDescription("Find WXYC-played artists with upcoming Triangle-area shows")
+    public static let isDiscoverable = true
+    public static let openAppWhenRun = false
+    public static let title: LocalizedStringResource = "What’s Touring Near Me?"
+
+    public var displayRepresentation = DisplayRepresentation(
+        title: Self.title,
+        subtitle: nil,
+        image: .init(systemName: "calendar")
+    )
+
+    @Parameter(title: "When")
+    var dateWindow: TouringDateWindow
+
+    public init() {
+        self.dateWindow = .next7Days
+    }
+
+    public init(dateWindow: TouringDateWindow) {
+        self.dateWindow = dateWindow
+    }
+
+    @MainActor
+    public func perform() async throws -> some ReturnsValue<[ConcertEntity]> & ProvidesDialog & ShowsSnippetView {
+        let today = Date()
+        let likedArtists = AppIntentServices.likedArtists()
+
+        let matched: [Concert]
+        do {
+            matched = try await ToursNearMeQuery.resolve(
+                fetcher: AppIntentServices.concertsFetcher(),
+                dateWindow: dateWindow.filterWindow,
+                likedArtists: likedArtists,
+                now: today
+            )
+        } catch {
+            ErrorReporting.shared.report(error, context: "ToursNearMe.perform")
+            return .result(
+                value: [],
+                dialog: "Couldn’t reach WXYC’s On Tour listings right now.",
+                view: ToursNearMeSnippetView(concerts: [])
+            )
+        }
+
+        StructuredPostHogAnalytics.shared.capture(
+            ToursNearMeIntentAnswered(dateWindow: dateWindow.rawValue, resultCount: matched.count)
+        )
+
+        return .result(
+            value: matched.compactMap(ConcertEntity.init(concert:)),
+            dialog: Self.dialog(for: matched),
+            view: ToursNearMeSnippetView(concerts: matched)
+        )
+    }
+
+    /// Builds the spoken answer: names up to the first three matches, then
+    /// summarizes the rest by count. Never names more than three artists --
+    /// a spoken list longer than that stops being useful.
+    private static func dialog(for concerts: [Concert]) -> IntentDialog {
+        guard !concerts.isEmpty else {
+            return "No WXYC artists have upcoming Triangle shows in that window right now."
+        }
+        let named = concerts.prefix(3).map(\.headlineName)
+        let summary = named.joined(separator: ", ")
+        let remaining = concerts.count - named.count
+        guard remaining > 0 else {
+            return IntentDialog(stringLiteral: "\(summary) \(concerts.count == 1 ? "is" : "are") touring near you.")
+        }
+        let moreWord = remaining == 1 ? "artist is" : "artists are"
+        return IntentDialog(stringLiteral: "\(summary), and \(remaining) more \(moreWord) touring near you.")
+    }
+}
+
+@available(iOS 26.0, *)
+extension ToursNearMe: SnippetIntent { }
+
+/// The interactive snippet card for ``ToursNearMe``: a poster/headliner/venue/
+/// date row per matched concert, with a "Get Tickets" link
+/// (``Concert/ctaURL``) when the concert carries one. Shown on every OS floor
+/// this app ships (`ShowsSnippetView` predates the `SnippetIntent` gating
+/// above), so this view itself has no availability gate.
+struct ToursNearMeSnippetView: View {
+    let concerts: [Concert]
+
+    var body: some View {
+        if concerts.isEmpty {
+            ContentUnavailableView(
+                "No Shows Found",
+                systemImage: "calendar.badge.exclamationmark",
+                description: Text("No WXYC artists have upcoming Triangle shows in that window right now.")
+            )
+            .padding()
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(concerts) { concert in
+                    ToursNearMeConcertRow(concert: concert)
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+private struct ToursNearMeConcertRow: View {
+    let concert: Concert
+
+    private static let dateFormat = Date.FormatStyle(timeZone: TimeZone(identifier: "America/New_York") ?? .gmt)
+        .weekday(.abbreviated)
+        .month(.abbreviated)
+        .day()
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ToursNearMePosterThumbnail(imageURL: concert.imageURL)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(concert.headlineName)
+                    .font(.headline)
+                    .foregroundStyle(.foreground)
+
+                Text("\(concert.venue.name) — \(concert.venue.city), \(concert.venue.state)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text(concert.startsOn.formatted(Self.dateFormat))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if let ctaURL = concert.ctaURL {
+                    Link("Get Tickets", destination: ctaURL)
+                        .font(.subheadline)
+                        .bold()
+                }
+            }
+        }
+    }
+}
+
+private struct ToursNearMePosterThumbnail: View {
+    let imageURL: URL?
+
+    var body: some View {
+        Group {
+            if let imageURL {
+                AsyncImage(url: imageURL) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Color.secondary.opacity(0.2)
+                }
+            } else {
+                Image(systemName: "music.mic")
+                    .resizable()
+                    .scaledToFit()
+                    .padding(12)
+                    .foregroundStyle(.secondary)
+                    .background(.secondary.opacity(0.2))
+            }
+        }
+        .frame(width: 56, height: 56)
+        .clipShape(.rect(cornerRadius: 8))
+    }
+}
+
 struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -226,6 +444,16 @@ struct WXYCAppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Open Concert",
             systemImageName: "ticket.fill"
+        )
+        AppShortcut(
+            intent: ToursNearMe(),
+            phrases: [
+                "What artists are touring near me on \(.applicationName)",
+                "What's touring near me on \(.applicationName)",
+                "What's touring this weekend on \(.applicationName)",
+            ],
+            shortTitle: "Touring Near Me",
+            systemImageName: "calendar"
         )
     }
 }
