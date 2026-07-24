@@ -17,6 +17,8 @@
 //
 
 #if !os(watchOS) && !os(tvOS)
+import Analytics
+import AnalyticsTesting
 import Caching
 import Foundation
 import Playlist
@@ -601,6 +603,127 @@ struct SpotlightDonationServiceTests {
         await service.observeMetadataEnrichment(from: source)
 
         #expect(await indexer.calls.isEmpty)
+    }
+
+    // MARK: - Donation analytics (#445)
+
+    @Test("donateRecentPlaycuts emits SpotlightDonated with the newest row's playcut id, batch size, and batch priority")
+    func recentBatchEmitsSpotlightDonated() async throws {
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        // Distinct id/chronOrderID values so the assertion below can't pass
+        // by accident if `playcutID` were mistakenly populated from
+        // chronOrderID (that value drives the watermark, not this event).
+        await service.donateRecentPlaycuts([
+            .stub(id: 5, chronOrderID: 10),
+            .stub(id: 9, chronOrderID: 30),
+        ])
+
+        let events = analytics.typedEvents(ofType: SpotlightDonated.self)
+        #expect(events.count == 1)
+        #expect(events.first?.playcutID == "9")
+        #expect(events.first?.batchSize == 2)
+        #expect(events.first?.priorityTier == SpotlightDonationService.batchPriority)
+    }
+
+    @Test("donateRecentPlaycuts emits SpotlightDonationFailed, not SpotlightDonated, when the indexer throws")
+    func recentBatchEmitsSpotlightDonationFailed() async throws {
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(shouldThrow: true),
+            analytics: analytics
+        )
+
+        await service.donateRecentPlaycuts([.stub(id: 1, chronOrderID: 10)])
+
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).isEmpty)
+        let failures = analytics.typedEvents(ofType: SpotlightDonationFailed.self)
+        #expect(failures.count == 1)
+        #expect(failures.first?.batchSize == 1)
+        #expect(failures.first?.errorKind == "MockSpotlightIndexer")
+    }
+
+    @Test("donateRecentPlaycuts emits nothing when every playcut is stale")
+    func recentBatchEmitsNothingWhenAllStale() async {
+        let defaults = InMemoryDefaults()
+        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: defaults,
+            indexer: MockSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        await service.donateRecentPlaycuts([.stub(id: 1, chronOrderID: 10)])
+
+        #expect(analytics.events.isEmpty)
+    }
+
+    @Test("donateArtists emits SpotlightDonated with the deduped entity count and batch priority")
+    func donateArtistsEmitsSpotlightDonated() async throws {
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        // Distinct id/chronOrderID values so the assertion below can't pass
+        // by accident if `playcutID` were mistakenly populated from
+        // chronOrderID instead of the playcut's own `.id`.
+        await service.donateArtists(from: [
+            .stub(id: 7, chronOrderID: 10, artistName: "Stereolab"),
+            .stub(id: 11, chronOrderID: 20, artistName: "Juana Molina"),
+        ])
+
+        let events = analytics.typedEvents(ofType: SpotlightDonated.self)
+        #expect(events.count == 1)
+        #expect(events.first?.batchSize == 2)
+        #expect(events.first?.priorityTier == SpotlightDonationService.batchPriority)
+        // Representative id is the `.id` of the input playcut with the
+        // highest chronOrderID.
+        #expect(events.first?.playcutID == "11")
+    }
+
+    @Test("donateArtists emits SpotlightDonationFailed when the artist indexer throws")
+    func donateArtistsEmitsSpotlightDonationFailed() async throws {
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(shouldThrow: true),
+            analytics: analytics
+        )
+
+        await service.donateArtists(from: [.stub(id: 1, artistName: "Stereolab")])
+
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).isEmpty)
+        let failures = analytics.typedEvents(ofType: SpotlightDonationFailed.self)
+        #expect(failures.count == 1)
+        #expect(failures.first?.batchSize == 1)
+        #expect(failures.first?.errorKind == "MockArtistSpotlightIndexer")
+    }
+
+    @Test("donateArtists emits nothing on an empty playlist")
+    func donateArtistsEmitsNothingWhenEmpty() async {
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        await service.donateArtists(from: [])
+
+        #expect(analytics.events.isEmpty)
     }
 }
 

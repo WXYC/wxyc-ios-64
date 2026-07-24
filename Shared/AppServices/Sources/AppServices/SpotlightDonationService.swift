@@ -35,6 +35,11 @@
 //  upserts at `batchPriority`. Re-donating an artist with an unchanged play
 //  count is a cheap no-op server-side, so no separate waterline is needed.
 //
+//  `donateRecentPlaycuts(_:)` and `donateArtists(from:)` report `SpotlightDonated`
+//  / `SpotlightDonationFailed` through the injected `AnalyticsService` (#445) so
+//  we can see in PostHog whether the two indexes are being kept warm. Both events
+//  carry only playcut ids, batch sizes, and coarse error kinds — no listener PII.
+//
 //  This file is compiled out on watchOS and tvOS: `CoreSpotlight`,
 //  `IndexedEntity`, and `CSSearchableItemAttributeSet` are all
 //  unavailable on those platforms, and `WXYCIntents` isn't linked into
@@ -48,6 +53,7 @@
 
 #if !os(watchOS) && !os(tvOS)
 
+import Analytics
 import Caching
 import Foundation
 import Logger
@@ -97,6 +103,7 @@ public actor SpotlightDonationService: Sendable {
     private let storage: DefaultsStorage
     private let indexer: SpotlightIndexer
     private let artistIndexer: ArtistSpotlightIndexer
+    private let analytics: AnalyticsService
 
     // MARK: - State
 
@@ -113,11 +120,13 @@ public actor SpotlightDonationService: Sendable {
     public init(
         storage: DefaultsStorage,
         indexer: SpotlightIndexer,
-        artistIndexer: ArtistSpotlightIndexer = CoreSpotlightArtistIndexer()
+        artistIndexer: ArtistSpotlightIndexer = CoreSpotlightArtistIndexer(),
+        analytics: AnalyticsService = StructuredPostHogAnalytics.shared
     ) {
         self.storage = storage
         self.indexer = indexer
         self.artistIndexer = artistIndexer
+        self.analytics = analytics
     }
 
     // MARK: - Public API
@@ -166,12 +175,19 @@ public actor SpotlightDonationService: Sendable {
 
         guard let highestID = batch.last?.chronOrderID else { return }
 
+        // The playcut `.id` (not chronOrderID, which only orders the batch and
+        // drives the watermark below) of the newest row in the batch — the
+        // representative id SpotlightDonated reports.
+        let representativeID = batch.last?.id ?? 0
+
         let entities = batch.map(PlaycutEntity.init(playcut:))
         do {
             try await indexer.indexPlaycuts(entities, priority: Self.batchPriority)
             advanceWatermarkIfNewer(highestID)
+            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority))
         } catch {
             Log(.warning, category: .general, "Spotlight batch donation failed (\(entities.count) playcuts): \(error)")
+            analytics.capture(SpotlightDonationFailed(errorKind: (error as NSError).domain, batchSize: entities.count))
         }
     }
 
@@ -232,10 +248,19 @@ public actor SpotlightDonationService: Sendable {
 
         guard !entities.isEmpty else { return }
 
+        // Representative playcut id for correlation with the flowsheet tick
+        // that produced this artist batch — the `.id` of the input playcut
+        // with the highest chronOrderID, matching donateRecentPlaycuts's
+        // newest-row-in-the-batch convention even though this path shares no
+        // watermark of its own.
+        let representativeID = playcuts.max { $0.chronOrderID < $1.chronOrderID }?.id ?? 0
+
         do {
             try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
+            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority))
         } catch {
             Log(.warning, category: .general, "Spotlight artist donation failed (\(entities.count) artists): \(error)")
+            analytics.capture(SpotlightDonationFailed(errorKind: (error as NSError).domain, batchSize: entities.count))
         }
     }
 
