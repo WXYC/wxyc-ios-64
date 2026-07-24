@@ -629,6 +629,7 @@ struct SpotlightDonationServiceTests {
         #expect(events.first?.playcutID == "9")
         #expect(events.first?.batchSize == 2)
         #expect(events.first?.priorityTier == SpotlightDonationService.batchPriority)
+        #expect(events.first?.kind == "playcuts")
     }
 
     @Test("donateRecentPlaycuts emits SpotlightDonationFailed, not SpotlightDonated, when the indexer throws")
@@ -690,6 +691,7 @@ struct SpotlightDonationServiceTests {
         // Representative id is the `.id` of the input playcut with the
         // highest chronOrderID.
         #expect(events.first?.playcutID == "11")
+        #expect(events.first?.kind == "artists")
     }
 
     @Test("donateArtists emits SpotlightDonationFailed when the artist indexer throws")
@@ -724,6 +726,31 @@ struct SpotlightDonationServiceTests {
         await service.donateArtists(from: [])
 
         #expect(analytics.events.isEmpty)
+    }
+
+    @Test("donateBatch emits two SpotlightDonated events distinguishable by kind, not just batch size")
+    func donateBatchEmitsDistinctKindsForPlaycutsAndArtists() async throws {
+        // Regression for #639: donateBatch fires donateRecentPlaycuts and
+        // donateArtists on the same tick, and each captures its own
+        // SpotlightDonated event. Before the kind discriminator, the two
+        // events shared name, priorityTier, and (here) batchSize, so
+        // PostHog couldn't attribute either to its CSSearchableIndex.
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        await service.donateBatch(from: [
+            .stub(id: 1, chronOrderID: 10, artistName: "Stereolab"),
+            .stub(id: 2, chronOrderID: 20, artistName: "Juana Molina"),
+        ])
+
+        let events = analytics.typedEvents(ofType: SpotlightDonated.self)
+        #expect(events.count == 2)
+        #expect(Set(events.map(\.kind)) == ["playcuts", "artists"])
     }
 }
 

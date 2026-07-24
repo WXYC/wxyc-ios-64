@@ -22,17 +22,22 @@ import Foundation
 /// flowsheet tick; `batchSize` is the number of entities sent; `priorityTier`
 /// is the Spotlight priority the batch was indexed at (see
 /// `SpotlightDonationService.currentPlaycutPriority` /
-/// `.batchPriority`).
+/// `.batchPriority`); `kind` is `"playcuts"` (`donateRecentPlaycuts`, feeds
+/// `wxyc.playcuts`) or `"artists"` (`donateArtists`, feeds `wxyc.artists`) —
+/// without it, the two capture sites are indistinguishable in PostHog
+/// whenever they happen to share a `batchSize` (#639).
 @AnalyticsEvent
 public struct SpotlightDonated {
     public let playcutID: String
     public let batchSize: Int
     public let priorityTier: Int
+    public let kind: String
 
-    public init(playcutID: String, batchSize: Int, priorityTier: Int) {
+    public init(playcutID: String, batchSize: Int, priorityTier: Int, kind: String) {
         self.playcutID = playcutID
         self.batchSize = batchSize
         self.priorityTier = priorityTier
+        self.kind = kind
     }
 }
 

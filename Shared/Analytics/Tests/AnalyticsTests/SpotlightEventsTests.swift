@@ -15,15 +15,23 @@ import Testing
 @Suite("Spotlight donation events")
 struct SpotlightEventsTests {
 
-    @Test("SpotlightDonated carries playcut id, batch size, and priority tier")
+    @Test("SpotlightDonated carries playcut id, batch size, priority tier, and index kind")
     func spotlightDonatedProperties() throws {
-        let event = SpotlightDonated(playcutID: "1234", batchSize: 12, priorityTier: 100)
+        let event = SpotlightDonated(playcutID: "1234", batchSize: 12, priorityTier: 100, kind: "playcuts")
         let props = try #require(event.properties)
         #expect(props["playcut_id"] as? String == "1234")
         #expect(props["batch_size"] as? Int == 12)
         #expect(props["priority_tier"] as? Int == 100)
-        #expect(props.count == 3)
+        #expect(props["kind"] as? String == "playcuts")
+        #expect(props.count == 4)
         #expect(SpotlightDonated.name == "spotlight_donated")
+    }
+
+    @Test("SpotlightDonated's kind discriminates the playcuts batch from the artists batch", arguments: ["playcuts", "artists"])
+    func spotlightDonatedKindDiscriminator(_ kind: String) throws {
+        let event = SpotlightDonated(playcutID: "1234", batchSize: 12, priorityTier: 100, kind: kind)
+        let props = try #require(event.properties)
+        #expect(props["kind"] as? String == kind)
     }
 
     @Test("SpotlightDonationFailed carries error kind and batch size, nothing else")

@@ -184,7 +184,7 @@ public actor SpotlightDonationService: Sendable {
         do {
             try await indexer.indexPlaycuts(entities, priority: Self.batchPriority)
             advanceWatermarkIfNewer(highestID)
-            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority))
+            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority, kind: "playcuts"))
         } catch {
             Log(.warning, category: .general, "Spotlight batch donation failed (\(entities.count) playcuts): \(error)")
             analytics.capture(SpotlightDonationFailed(errorKind: (error as NSError).domain, batchSize: entities.count))
@@ -257,7 +257,7 @@ public actor SpotlightDonationService: Sendable {
 
         do {
             try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
-            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority))
+            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority, kind: "artists"))
         } catch {
             Log(.warning, category: .general, "Spotlight artist donation failed (\(entities.count) artists): \(error)")
             analytics.capture(SpotlightDonationFailed(errorKind: (error as NSError).domain, batchSize: entities.count))
