@@ -21,10 +21,12 @@
 //
 //  The `IndexedEntity` conformance and the `CoreSpotlight`-backed
 //  `attributeSet` are gated to platforms where CoreSpotlight exists, exactly
-//  like `PlaycutEntity`'s gate. Donation (populating the `wxyc.concerts`
-//  index) and richer attributes (poster thumbnail, geo, genre keywords) are
-//  later slices (OT-F2/OT-F3, OT-C3/OT-C4) — this type only makes a concert
-//  addressable as an entity.
+//  like `PlaycutEntity`'s gate. The attribute set's `thumbnailURL` mirrors
+//  `PlaycutEntity.artworkURL`'s pattern, surfacing `Concert.imageURL`
+//  directly (no async fetch). Donation (populating the `wxyc.concerts`
+//  index) and further attributes (geo, genre keywords) are later slices
+//  (OT-F2/OT-F3, OT-C4) — this type only makes a concert addressable as an
+//  entity.
 //
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -78,6 +80,11 @@ public struct ConcertEntity: AppEntity {
     /// `contentDescription` share it without re-formatting.
     public let subtitleText: String
 
+    /// Event/promo poster image — surfaced as the Spotlight thumbnail so
+    /// results carry poster art rather than a placeholder glyph, mirroring
+    /// `PlaycutEntity.artworkURL`.
+    public let imageURL: URL?
+
     @Property(title: "Headliner")
     public var headlinerName: String
 
@@ -100,6 +107,7 @@ public struct ConcertEntity: AppEntity {
         self.id = id
         self.startsOn = concert.startsOn
         self.subtitleText = "\(concert.venue.name) — \(concert.venue.city), \(concert.venue.state)"
+        self.imageURL = concert.imageURL
         self.headlinerName = concert.headlineName
         self.venueName = concert.venue.name
     }
@@ -112,6 +120,7 @@ extension ConcertEntity: IndexedEntity {
         set.title = headlinerName
         set.contentDescription = subtitleText
         set.contentCreationDate = startsOn
+        set.thumbnailURL = imageURL
         // Ties the CoreSpotlight item back to the AppEntity so a Spotlight tap
         // resolves to this specific concert via OpenConcert.
         set.relatedUniqueIdentifier = id.entityIdentifierString
