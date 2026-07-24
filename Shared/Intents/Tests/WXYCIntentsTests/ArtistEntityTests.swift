@@ -79,5 +79,38 @@ struct ArtistEntityTests {
         #expect(set.title == entity.normalizedName)
         #expect(set.relatedUniqueIdentifier == entity.id.entityIdentifierString)
     }
+
+    @Test("attribute set indexes the artist field for search")
+    func attributeSetCarriesArtistField() {
+        let entity = ArtistEntity(artistName: "Chuquimamani-Condori")
+
+        let set = entity.attributeSet
+
+        #expect(set.artist == entity.normalizedName)
+    }
+
+    @Test("attribute set carries the play count under its custom indexing key")
+    func attributeSetCarriesPlayCount() throws {
+        let entity = ArtistEntity(artistName: "Stereolab", playCount: 7)
+
+        let set = entity.attributeSet
+        let key = try #require(ArtistEntity.playCountKey)
+
+        #expect(set.value(forCustomKey: key) as? Int == 7)
+    }
     #endif
+
+    @Test("playCount defaults to zero when not provided")
+    func playCountDefaultsToZero() {
+        let entity = ArtistEntity(artistName: "Jessica Pratt")
+
+        #expect(entity.playCount == 0)
+    }
+
+    @Test("playCount is carried on the entity when provided")
+    func playCountIsStored() {
+        let entity = ArtistEntity(artistName: "Duke Ellington & John Coltrane", playCount: 12)
+
+        #expect(entity.playCount == 12)
+    }
 }
