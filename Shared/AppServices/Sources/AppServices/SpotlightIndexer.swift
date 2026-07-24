@@ -39,9 +39,12 @@ public protocol SpotlightIndexer: Sendable {
 /// to the WXYC playcut catalogue so an accidental reset can't nuke other
 /// system-index entries the app might add later.
 public struct CoreSpotlightIndexer: SpotlightIndexer {
-    /// Name of the WXYC playcut index. Load-bearing: the SP-F3 reindex
-    /// handlers will target this same name.
-    public static let indexName = "wxyc.playcuts"
+    /// Name of the WXYC playcut index. Aliases `PlaycutSpotlightIndex.name`
+    /// (WXYCIntents) rather than redeclaring the literal, so this indexer and
+    /// the F3 `IndexedEntityQuery` reindex handlers — which depend on
+    /// WXYCIntents but not on AppServices — can never drift onto different
+    /// index names.
+    public static let indexName = PlaycutSpotlightIndex.name
 
     private let index: CSSearchableIndex
 
@@ -52,6 +55,16 @@ public struct CoreSpotlightIndexer: SpotlightIndexer {
     public func indexPlaycuts(_ entities: [PlaycutEntity], priority: Int) async throws {
         guard !entities.isEmpty else { return }
         try await index.indexAppEntities(entities, priority: priority)
+    }
+}
+
+/// F3: the same named index doubles as the reindex handlers' donation seam.
+/// `SpotlightDonationService.batchPriority` matches the priority the F2
+/// background-refresh batch path already uses — a reindex is functionally a
+/// backfill, not an elevated-priority "on air now" surface.
+extension CoreSpotlightIndexer: PlaycutReindexer {
+    public func donate(_ entities: [PlaycutEntity]) async throws {
+        try await indexPlaycuts(entities, priority: SpotlightDonationService.batchPriority)
     }
 }
 
