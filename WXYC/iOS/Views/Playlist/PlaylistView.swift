@@ -360,10 +360,22 @@ struct PlaylistView: View {
               let target = PlaycutOpenRouter.scrollTarget(for: link, in: playlistEntries),
               let scrollProxy
         else { return }
-        withAnimation {
-            scrollProxy.scrollTo(target, anchor: .center)
+        // Defer the scroll one runloop hop so it runs *after* SwiftUI lays out
+        // the LazyVStack rows for the `playlistEntries` we just matched (#434).
+        // On a cold launch the deep link and the first playlist tick land in the
+        // same main-actor frame — the row is in the data model (router HIT) but
+        // not yet laid out — so a synchronous `scrollTo` no-ops against nothing,
+        // yet we'd still consume the link and strand the user at the top of the
+        // tab. Re-check the link inside the hop so a HIT scrolls-and-consumes
+        // exactly once: a second call that races the hop, or a newer link that
+        // superseded this one, finds it already gone and does nothing.
+        Task { @MainActor in
+            guard appState.pendingPlaycutLink == link else { return }
+            withAnimation {
+                scrollProxy.scrollTo(target, anchor: .center)
+            }
+            appState.consumePendingPlaycutLink()
         }
-        appState.consumePendingPlaycutLink()
     }
 }
 
