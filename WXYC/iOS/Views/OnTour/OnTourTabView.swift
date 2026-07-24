@@ -22,6 +22,8 @@ import SwiftUI
 import Wallpaper
 
 #if DEBUG
+import AppServices  // Concert Spotlight inspector (OT-Q2, #632)
+import Caching       // UserDefaults.wxyc, for the debug ConcertSpotlightDonationService
 import Logger  // For You shelf debug diagnostic + seed (see recommendations(for:))
 #endif
 
@@ -99,9 +101,23 @@ struct OnTourTabView: View {
                 ConcertDetailView(concert: concert)
                     .navigationTransition(.zoom(sourceID: concert.id, in: zoomNamespace))
             }
-            .forYouDebugSheet(isPresented: $showForYouDebug) {
-                appState.dismissedConcertsStore.resetState()
-            }
+            // The DEBUG/Release argument lists differ (see `forYouDebugSheet`'s two
+            // overloads below): DEBUG passes the OT-Q2 (#632) Concert Spotlight
+            // inspector's closures, which close over `ConcertSpotlightInspectorDebugView
+            // .Row` — a type that doesn't exist in Release, so it can't appear in an
+            // ungated argument list.
+            #if DEBUG
+            .forYouDebugSheet(
+                isPresented: $showForYouDebug,
+                onResetDismissed: {
+                    appState.dismissedConcertsStore.resetState()
+                },
+                onLoadConcertSpotlightRows: loadConcertSpotlightDebugRows,
+                onForceConcertSpotlightReconcile: forceConcertSpotlightReconcile
+            )
+            #else
+            .forYouDebugSheet(isPresented: $showForYouDebug)
+            #endif
             // A `-marketing` recording switches routes without going through the
             // tab bar's own dismissal, so a `.fullScreenCover` presented from a
             // For You / row tap has to be closed explicitly before the next
@@ -402,6 +418,71 @@ struct OnTourTabView: View {
             (loved=\(counts.loved) station=\(counts.stationRecommended))
             """)
     }
+
+    // MARK: - Concert Spotlight inspector (OT-Q2, #632)
+
+    /// Builds a fresh `ConcertSpotlightDonationService` bound to the real
+    /// production storage/indexer — `UserDefaults.wxyc` (the same persisted
+    /// donated-id set `reconcile` reads/writes) and a `CoreSpotlightConcertIndexer`
+    /// targeting the real `wxyc.concerts` index. Stateless besides that shared
+    /// storage, so a fresh instance per call is safe — there's nothing instance-local
+    /// to keep alive between presses. `Singletonia` has no long-lived instance of
+    /// its own yet: wiring one in as an always-on observer is OT-C8 (#654); this
+    /// debug inspector is the manual trigger that exercises the exact same
+    /// production entry points ahead of that wiring landing.
+    private func makeConcertSpotlightDebugService() -> ConcertSpotlightDonationService {
+        ConcertSpotlightDonationService(storage: UserDefaults.wxyc, indexer: CoreSpotlightConcertIndexer())
+    }
+
+    /// The station-recommended tier cap `reconcile`/`debugRows` should use — the
+    /// same resolution `recommendations(for:)` applies (a positive debug override
+    /// takes precedence over the PostHog flag), duplicated rather than shared
+    /// because `recommendations(for:)`'s local is scoped inside that function.
+    private func concertSpotlightStationCap() -> Int {
+        let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
+        let stationCapOverride = OnTourForYouSeedDebugState.shared.stationCapOverride
+        return stationCapOverride > 0 ? stationCapOverride : flagStationCap
+    }
+
+    /// Loads the Concert Spotlight inspector's dump: `AppServices
+    /// .ConcertSpotlightDonationService.debugRows`, read-only, over the tab's
+    /// already-fetched `model.allConcerts` window — the same window `reconcile`
+    /// would be called with. Converts each `AppServices` row into `DebugPanel`'s
+    /// own primitives-only `Row`, so `DebugPanel` never links `AppServices`/`Concerts`
+    /// for this feature (mirrors `OnTourForYouSeedDebugState`'s boundary).
+    private func loadConcertSpotlightDebugRows() async -> [ConcertSpotlightInspectorDebugView.Row] {
+        let service = makeConcertSpotlightDebugService()
+        let debugRows = await service.debugRows(
+            window: model.allConcerts,
+            likedArtists: likedArtists,
+            stationCap: concertSpotlightStationCap(),
+            dismissedConcertIDs: appState.dismissedConcertsStore.ids
+        )
+        return debugRows.map {
+            ConcertSpotlightInspectorDebugView.Row(
+                id: $0.id,
+                title: $0.title,
+                priority: $0.priority,
+                expirationDate: $0.expirationDate
+            )
+        }
+    }
+
+    /// Re-runs the real `ConcertSpotlightDonationService.reconcile` pass against
+    /// the currently loaded window — no bespoke indexing logic, the same call
+    /// OT-C8 (#654) will make automatically once wired as a launch/refresh
+    /// observer. Uses raw (non-debug-seeded) `likedArtists`, deliberately: the For
+    /// You shelf's loved-seed debug toggle is a UI-only fake and should never leak
+    /// a synthetic like into the real Spotlight index.
+    private func forceConcertSpotlightReconcile() async {
+        let service = makeConcertSpotlightDebugService()
+        await service.reconcile(
+            window: model.allConcerts,
+            likedArtists: likedArtists,
+            stationCap: concertSpotlightStationCap(),
+            dismissedConcertIDs: appState.dismissedConcertsStore.ids
+        )
+    }
     #endif
 
     private func selectForYou(_ recommendation: ForYouRecommendation) {
@@ -590,14 +671,32 @@ private extension View {
 
     /// Presents the For You debug sheet in DEBUG builds; a no-op passthrough in
     /// release, where `OnTourForYouDebugView` isn't compiled.
+    ///
+    /// Two full overloads (not one signature with a `#if`-gated body) because the
+    /// DEBUG parameters close over `ConcertSpotlightInspectorDebugView.Row` — a
+    /// type that itself doesn't exist in Release, so it can't appear in an
+    /// ungated parameter list the way `onResetDismissed`'s `Void`-returning
+    /// closure can.
+    #if DEBUG
     @ViewBuilder
-    func forYouDebugSheet(isPresented: Binding<Bool>, onResetDismissed: @escaping () -> Void) -> some View {
-        #if DEBUG
+    func forYouDebugSheet(
+        isPresented: Binding<Bool>,
+        onResetDismissed: @escaping () -> Void,
+        onLoadConcertSpotlightRows: @escaping () async -> [ConcertSpotlightInspectorDebugView.Row],
+        onForceConcertSpotlightReconcile: @escaping () async -> Void
+    ) -> some View {
         sheet(isPresented: isPresented) {
-            OnTourForYouDebugView(onResetDismissed: onResetDismissed)
+            OnTourForYouDebugView(
+                onResetDismissed: onResetDismissed,
+                onLoadConcertSpotlightRows: onLoadConcertSpotlightRows,
+                onForceConcertSpotlightReconcile: onForceConcertSpotlightReconcile
+            )
         }
-        #else
-        self
-        #endif
     }
+    #else
+    @ViewBuilder
+    func forYouDebugSheet(isPresented: Binding<Bool>) -> some View {
+        self
+    }
+    #endif
 }
