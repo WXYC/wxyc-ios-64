@@ -73,7 +73,8 @@ public struct PlaycutEntity: AppEntity {
     public var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
             title: "\(title)",
-            subtitle: "\(subtitleText)"
+            subtitle: "\(subtitleText)",
+            image: artworkURL.map { .init(url: $0) }
         )
     }
 
