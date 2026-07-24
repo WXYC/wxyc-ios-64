@@ -171,12 +171,27 @@ public actor SpotlightDonationService: Sendable {
     /// an XPC round-trip on a row Spotlight has never indexed — the next
     /// batch/tick donation picks it up with the enriched fields already
     /// inline (issue #443).
+    ///
+    /// When the enriching row is the current on-air playcut, the per-tick
+    /// path (`donateCurrentPlaycut`) also upserts it this same cycle — the two
+    /// donation tasks race on the actor with nondeterministic ordering. A
+    /// second guard skips the round-trip when the per-tick path already sent
+    /// this exact entity; and when this path wins the race and donates the
+    /// on-air entity, it refreshes `lastDonatedCurrentPlaycut` so the trailing
+    /// per-tick call dedups. Either way the on-air playcut is donated once per
+    /// enrichment landing, not twice.
     public func handleMetadataEnrichment(for playcut: Playcut) async {
         guard wasPreviouslyDonated(playcut) else { return }
+        guard playcut != lastDonatedCurrentPlaycut else { return }
 
         let entity = PlaycutEntity(playcut: playcut)
         do {
             try await indexer.indexPlaycuts([entity], priority: Self.batchPriority)
+            // If this is the on-air playcut, share the watermark of "already
+            // donated this exact entity" with the per-tick path so it dedups.
+            if playcut.id == lastDonatedCurrentPlaycut?.id {
+                lastDonatedCurrentPlaycut = playcut
+            }
         } catch {
             Log(.warning, category: .general, "Spotlight re-donation failed for playcut \(playcut.id): \(error)")
         }
