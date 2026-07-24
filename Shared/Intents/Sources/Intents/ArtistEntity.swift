@@ -16,6 +16,15 @@
 //  ArtistIdentity.swift — see that file for why `String.hashValue` is unsafe
 //  here.
 //
+//  `normalizedName` (the dedup key) and `displayName` (what's actually shown)
+//  are deliberately separate fields — issue #640: entities used to display
+//  `normalizedName` itself, so "Stereolab" rendered as "stereolab" in
+//  Spotlight/Siri. `init(artistName:)` only ever sees one raw name, so it
+//  just preserves that string's casing; picking a *representative* casing
+//  for a deduped group of playcuts (most frequent raw name, ties broken by
+//  first occurrence) is `SpotlightDonationService.donateArtists`'s job — see
+//  that file for the selection logic.
+//
 //  `IndexedEntity` is gated to platforms where CoreSpotlight exists, matching
 //  PlaycutEntity: `IndexedEntity`/`CSSearchableItemAttributeSet` are both
 //  `@available(tvOS, unavailable)`, and watchOS doesn't ship CoreSpotlight.
@@ -48,9 +57,16 @@ public struct ArtistEntity: AppEntity {
 
     public var id: ArtistID
 
-    /// The dedup key ("Stereolab" and "Stereolab feat. …" both normalize to
-    /// the same value) — also the sole text this minimal slice displays.
+    /// The human-readable text this entity displays — a representative
+    /// original casing of the artist name, e.g. "Stereolab" rather than the
+    /// lowercased `normalizedName` dedup key. Preserved as-typed (trimmed of
+    /// surrounding whitespace) from whatever string `init` was given.
     @Property(title: "Name")
+    public var displayName: String
+
+    /// The dedup key ("Stereolab" and "Stereolab feat. …" both normalize to
+    /// the same value). Drives `id` and grouping; not shown to the user —
+    /// see `displayName` for that.
     public var normalizedName: String
 
     /// Count of playcuts matching this artist's normalized name, as of the
@@ -61,19 +77,24 @@ public struct ArtistEntity: AppEntity {
     public var playCount: Int
 
     public var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(normalizedName)")
+        DisplayRepresentation(title: "\(displayName)")
     }
 
     /// Builds an entity from a raw `Playcut.artistName`. Two playcuts whose
     /// artist names differ only by a "feat. …" clause or casing/whitespace
-    /// produce entities with identical `id` and `normalizedName`. `playCount`
-    /// defaults to 0 for callers (like the F5b dedup-only path) that don't
-    /// have a play count to report.
+    /// produce entities with identical `id` and `normalizedName`, but each
+    /// entity's `displayName` preserves whatever casing `artistName` was
+    /// passed in as — callers building an entity from a deduped group of
+    /// playcuts should pass a representative name (see
+    /// `SpotlightDonationService.donateArtists`), not the normalized key.
+    /// `playCount` defaults to 0 for callers (like the F5b dedup-only path)
+    /// that don't have a play count to report.
     public init(artistName: String, playCount: Int = 0) {
         let normalized = normalizedEntityKey(artistName)
         self.id = ArtistID(stableEntityID(for: normalized))
         self.playCount = playCount
         self.normalizedName = normalized
+        self.displayName = artistName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -97,11 +118,11 @@ extension ArtistEntity: IndexedEntity {
 
     public var attributeSet: CSSearchableItemAttributeSet {
         let set = CSSearchableItemAttributeSet(contentType: .item)
-        set.title = normalizedName
+        set.title = displayName
         // \.artist — the richer per-artist indexing key C6 adds so this
         // entity is discoverable under the same "artist" search facet
         // PlaycutEntity already populates.
-        set.artist = normalizedName
+        set.artist = displayName
         set.relatedUniqueIdentifier = id.entityIdentifierString
         if let playCountKey = Self.playCountKey {
             set.setValue(NSNumber(value: playCount), forCustomKey: playCountKey)
