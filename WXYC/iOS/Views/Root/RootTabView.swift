@@ -119,8 +119,9 @@ struct RootTabView: View {
             .accessibilityIdentifier(Page.station.accessibilityIdentifier)
         }
         // Selected tab item picks up the theme's accent color rather than the
-        // system default tint.
-        .tint(appearance.accentColor.color(brightness: appearance.accentColor.brightness))
+        // system default tint, with the debug tab-bar HSB offset applied on top
+        // (zero offset leaves it on the plain accent color).
+        .tint(appearance.tabBarAccentColor.color(brightness: appearance.tabBarAccentColor.brightness))
         .overlaySheet(isPresented: Binding(
             get: { selectedPlaycut != nil },
             set: { if !$0 { selectedPlaycut = nil } }
