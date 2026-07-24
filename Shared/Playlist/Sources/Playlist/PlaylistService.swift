@@ -224,8 +224,9 @@ public final actor PlaylistService: Sendable {
     }
     
     /// Playcuts whose `metadataStatus` transitions into a terminal enrichment
-    /// state (``MetadataStatus/isTerminal``) — i.e. the previous tick's status
-    /// for that `id` was `nil` or non-terminal, and the current tick's isn't.
+    /// state (``MetadataStatus/isTerminal``) — i.e. the prior recorded status
+    /// for that `id` was non-terminal (or the row was previously unseen), and
+    /// the current status is terminal.
     ///
     /// Diffed independently per subscriber against ``updates()``, so late
     /// subscribers see a transition the first time they observe a terminal
@@ -234,22 +235,50 @@ public final actor PlaylistService: Sendable {
     /// re-donation) gate on their own already-donated state — see
     /// `SpotlightDonationService.handleMetadataEnrichment(for:)` (issue #443).
     ///
+    /// The first snapshot only seeds the per-subscriber baseline and yields
+    /// nothing: on a warm launch the cached window is already fully enriched,
+    /// and yielding every terminal row against an empty diff map would
+    /// re-donate the whole window at every launch. A row is emitted only on a
+    /// genuine subsequent transition into a terminal state.
+    ///
     /// Non-terminal transitions (`nil` -> `.pending`, `.pending` -> `.enriching`)
-    /// are not yielded, nor are re-broadcasts of an already-terminal status.
+    /// are not yielded, nor are re-broadcasts of an already-terminal status, nor
+    /// a change between two different terminal states (`.enrichedMatch` ->
+    /// `.enrichedNoMatch`) — only a transition *into* terminal from a
+    /// non-terminal (or unseen) prior state fires.
+    ///
+    /// The baseline map is pruned to the current window after each snapshot so
+    /// it stays bounded by the playlist size rather than growing an entry per
+    /// unique playcut id for the app's lifetime.
     public nonisolated func terminalMetadataTransitions() -> AsyncStream<Playcut> {
         AsyncStream { continuation in
             let task = Task {
                 var previousStatusByID: [UInt64: MetadataStatus] = [:]
+                var didSeedBaseline = false
 
                 for await playlist in self.updates() {
                     for playcut in playlist.playcuts {
-                        defer { previousStatusByID[playcut.id] = playcut.metadataStatus }
+                        let previousStatus = previousStatusByID[playcut.id]
+                        previousStatusByID[playcut.id] = playcut.metadataStatus
+
+                        // The initial snapshot only establishes the baseline.
+                        guard didSeedBaseline else { continue }
 
                         guard let status = playcut.metadataStatus, status.isTerminal else { continue }
-                        guard previousStatusByID[playcut.id] != status else { continue }
+                        // Fire only on a transition *into* terminal: the prior
+                        // recorded state must be non-terminal (or unseen).
+                        // Terminal -> terminal is a re-broadcast, not a landing.
+                        guard !(previousStatus?.isTerminal ?? false) else { continue }
 
                         continuation.yield(playcut)
                     }
+
+                    didSeedBaseline = true
+
+                    // Prune ids no longer in the tracked window so the baseline
+                    // map stays bounded by the playlist size, not app lifetime.
+                    let currentIDs = Set(playlist.playcuts.map(\.id))
+                    previousStatusByID = previousStatusByID.filter { currentIDs.contains($0.key) }
                 }
                 continuation.finish()
             }

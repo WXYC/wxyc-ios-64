@@ -375,6 +375,55 @@ struct SpotlightDonationServiceTests {
         #expect(calls.first?.entityIDs == [PlaycutID(1)])
     }
 
+    @Test("handleMetadataEnrichment does not double-donate the entity the per-tick path just sent")
+    func doesNotDoubleDonateCurrentPlaycutThisCycle() async {
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        // On the tick its enrichment lands, the on-air playcut changes fields,
+        // so the per-tick path (donateCurrentPlaycut) upserts the enriched
+        // entity. The enrichment path then sees the same landing for the same
+        // entity — re-donating it would burn a redundant XPC round-trip.
+        let enriched = Playcut.stub(
+            id: 1,
+            chronOrderID: 999,
+            artworkURL: URL(string: "https://example.com/art.jpg"),
+            metadataStatus: .enrichedMatch
+        )
+
+        await service.donateCurrentPlaycut(enriched)
+        await service.handleMetadataEnrichment(for: enriched)
+
+        #expect(await indexer.calls.count == 1)
+    }
+
+    @Test("A per-tick donation dedups against an enrichment re-donation of the same on-air entity")
+    func perTickDedupsAgainstEnrichmentReDonation() async {
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        // The two donation tasks race on the same actor with nondeterministic
+        // ordering. Here the enrichment path wins: it re-donates the enriched
+        // on-air entity before the per-tick path yields it. The per-tick path
+        // must then dedup against that donation rather than sending a third
+        // round-trip for the identical entity.
+        let pending = Playcut.stub(id: 1, chronOrderID: 999, metadataStatus: .pending)
+        await service.donateCurrentPlaycut(pending)
+
+        let enriched = Playcut.stub(
+            id: 1,
+            chronOrderID: 999,
+            artworkURL: URL(string: "https://example.com/art.jpg"),
+            metadataStatus: .enrichedMatch
+        )
+        await service.handleMetadataEnrichment(for: enriched)
+        await service.donateCurrentPlaycut(enriched)
+
+        // 1: per-tick pending. 2: enrichment re-donation. The trailing per-tick
+        // call for the identical enriched entity dedups — no third call.
+        #expect(await indexer.calls.count == 2)
+    }
+
     @Test("observeMetadataEnrichment does not donate a terminal transition on an undonated row")
     func observeSkipsUndonatedRow() async {
         let defaults = InMemoryDefaults()
