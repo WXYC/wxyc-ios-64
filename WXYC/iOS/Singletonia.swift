@@ -179,6 +179,18 @@ final class Singletonia {
         let reindexAnalytics: any AnalyticsService = StructuredPostHogAnalytics.shared
         AppDependencyManager.shared.add(dependency: reindexAnalytics)
 
+        // OT-F3 (#622): same registration shape as the playcut reindex seam
+        // above, for `ConcertEntityQuery`'s reindex handlers.
+        // `tokenProvider: MusicShareKit.authService` matches
+        // `AppIntentServices.concertsFetcher()` (WXYC/iOS/Intents.swift) —
+        // the same anonymous-session wiring `ToursNearMe` already uses — so
+        // a Spotlight-driven reindex fetch is authenticated exactly like the
+        // Siri "touring near me" query.
+        let concertsFetching: any ConcertsFetching = ConcertsFetcher(tokenProvider: MusicShareKit.authService)
+        AppDependencyManager.shared.add(dependency: concertsFetching)
+        let concertReindexer: any ConcertReindexer = CoreSpotlightConcertIndexer()
+        AppDependencyManager.shared.add(dependency: concertReindexer)
+
         self.widgetStateService = WidgetStateService(
             playbackController: AudioPlayerController.shared,
             playlistService: playlistService

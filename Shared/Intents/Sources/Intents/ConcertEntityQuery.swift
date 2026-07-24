@@ -4,13 +4,23 @@
 //
 //  AppEntity query for ConcertEntity, mirroring `PlaycutEntityQuery`/
 //  `ShowEntityQuery`. Lands a wireable shape with an injectable source and a
-//  safe empty default; the production source binding, reindex handlers, and
-//  `IndexedEntityQuery` conformance are a later slice (OT-F3).
+//  safe empty default; the production `entities(for:)` source binding is a
+//  later slice. F3 wires the iOS 27-gated `IndexedEntityQuery` reindex
+//  handlers (`ConcertEntityQuery+IndexedEntityQuery.swift`), which read the
+//  `reindexer`/`concertsFetching`/`analytics` `@Dependency` properties below.
+//
+//  All three `@Dependency`-backed properties are declared here — not in the
+//  F3 extension file — because a Swift extension cannot add stored
+//  properties, and `@Dependency`'s backing storage is a stored property.
+//  They're unused outside the iOS 27 reindex extension but must live on the
+//  primary struct declaration for that extension to reach them, mirroring
+//  `PlaycutEntityQuery`'s `reindexer`/`analytics` properties exactly.
 //
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import AppIntents
 import Concerts
 import Foundation
@@ -18,6 +28,34 @@ import Foundation
 public struct ConcertEntityQuery: EntityQuery {
     public typealias ConcertSource = @Sendable ([Int]) async -> [Concert]
 
+    /// Donation seam the F3 reindex handlers use to re-donate entities to
+    /// Spotlight. See the stored-property-in-an-extension rationale above.
+    @Dependency
+    var reindexer: any ConcertReindexer
+
+    /// Fetch seam the F3 reindex handlers use to resolve concerts by id
+    /// (`reindexEntities(for:)`) and to fetch the curated window
+    /// (`reindexAllEntities()`). Distinct from `source` below: `source` is
+    /// this query's own `entities(for:)` seam (injectable via `init(source:)`
+    /// for tests, empty by default in production); the reindex handlers need
+    /// a real network-capable fetcher, injected the same way
+    /// `PlaycutEntityQuery.historyStore` is — there's no app-level call site
+    /// between the system and an `IndexedEntityQuery` handler through which
+    /// to pass one as a parameter, unlike `ToursNearMe.perform()` (app
+    /// target), which builds its own via `AppIntentServices.concertsFetcher()`.
+    @Dependency
+    var concertsFetching: any ConcertsFetching
+
+    /// Analytics seam the F3 reindex handlers use to report
+    /// `SpotlightReindexRequested` (#445). See the stored-property-in-an-
+    /// extension rationale above.
+    @Dependency
+    var analytics: any AnalyticsService
+
+    /// Injectable seam for `entities(for:)`. Production `init()` (the
+    /// AppIntents runtime's entry point) defaults it to an empty source — the
+    /// safe F1 default this type shipped with; the F3 reindex handlers below
+    /// resolve through `concertsFetching` instead, not through this closure.
     private let source: ConcertSource
 
     public init() {
