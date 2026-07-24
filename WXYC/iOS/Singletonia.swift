@@ -83,6 +83,14 @@ final class Singletonia {
     /// resolution ladder, then clears it via ``consumePendingConcertLink()``.
     private(set) var pendingConcertLink: PendingConcertLink?
 
+    /// A shared or Spotlight-donated playcut link that has arrived but not yet
+    /// been opened (#434). Set by ``startObservingPlaycutOpen()`` when a
+    /// Spotlight/Siri tap (`OpenPlaycut`) or a `wxyc://playcut/<id>` link posts
+    /// a `PlaycutOpenMessage`; `RootTabView` flips to the Now Playing tab in
+    /// response and `PlaylistView` scrolls its timeline to the matching row,
+    /// then clears it via ``consumePendingPlaycutLink()``.
+    private(set) var pendingPlaycutLink: PendingPlaycutLink?
+
     /// Marketing-driven tab route. Set only during a `-marketing` recording; nil
     /// in production. A small release-compiled optional, mirroring
     /// ``pendingConcertLink`` — `RootTabView` maps it to its private `Page`.
@@ -99,6 +107,10 @@ final class Singletonia {
     /// Token for the app-lifetime `ConcertOpenMessage` observer. Held so the
     /// registration stays idempotent — one observer for the app's lifetime.
     @ObservationIgnored private var concertOpenObservation: (any NSObjectProtocol)?
+
+    /// Token for the app-lifetime `PlaycutOpenMessage` observer. Held so the
+    /// registration stays idempotent — one observer for the app's lifetime.
+    @ObservationIgnored private var playcutOpenObservation: (any NSObjectProtocol)?
 
     #if DEBUG
     /// Fixture-backed On Tour model for the `-marketing` recording, built once in
@@ -497,6 +509,29 @@ final class Singletonia {
     /// the opened show (or a re-appearance) doesn't re-trigger the resolution.
     func consumePendingConcertLink() {
         pendingConcertLink = nil
+    }
+
+    /// Begins observing playcut deep links, so a Spotlight/Siri tap
+    /// (`OpenPlaycut`) or a tapped `wxyc://playcut/<id>` link fills
+    /// ``pendingPlaycutLink`` (#434).
+    ///
+    /// Registered synchronously from the root view's `.onAppear`, mirroring
+    /// ``startObservingConcertOpen()`` — see that method's doc comment for why
+    /// this can't wait for an `async` sequence. Idempotent: the observer lives
+    /// for the app's lifetime, so a re-appearance doesn't stack a second one.
+    func startObservingPlaycutOpen() {
+        guard playcutOpenObservation == nil else { return }
+        playcutOpenObservation = NotificationCenter.default.addMainActorObserver(
+            for: PlaycutOpenMessage.self
+        ) { [weak self] message in
+            self?.pendingPlaycutLink = PendingPlaycutLink(id: message.playcutID.value)
+        }
+    }
+
+    /// Clears the pending link once `PlaylistView` has consumed it, so a
+    /// re-appearance doesn't re-trigger the scroll.
+    func consumePendingPlaycutLink() {
+        pendingPlaycutLink = nil
     }
 
     // MARK: - Marketing recording (`-marketing`)

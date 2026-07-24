@@ -47,114 +47,128 @@ struct PlaylistView: View {
     @State private var showingThemeTip = false
     @State private var showingRequestLine = false
 
+    /// Captured from `ScrollViewReader` on appearance, so the deep-link
+    /// scroll (#434) can reach it from the `.task` modifiers below without
+    /// re-nesting the whole body inside the reader's closure.
+    @State private var scrollProxy: ScrollViewProxy?
+
     @Environment(Singletonia.self) var appState
 
     var body: some View {
         @Bindable var appState = appState
-        
+
         ZStack {
             Color.clear
-            
-            ScrollView(showsIndicators: false) {
-                // On air banner — the current DJ (or "Auto DJ"), pinned above the
-                // player. Hidden entirely when the on-air status is unknown (v1 or
-                // a backend that doesn't report it) so we never assert a false
-                // "Auto DJ" while a human DJ is live.
-                if let onAirBannerTitle {
-                    OnAirBannerView(
-                        headline: onAirBannerTitle,
-                        theme: onAirBannerTheme,
-                        onDebugTapped: onAirDebugTapped,
-                        onRequestLine: requestLine.invitesConversation ? { showingRequestLine = true } : nil
+
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    // On air banner — the current DJ (or "Auto DJ"), pinned above the
+                    // player. Hidden entirely when the on-air status is unknown (v1 or
+                    // a backend that doesn't report it) so we never assert a false
+                    // "Auto DJ" while a human DJ is live.
+                    if let onAirBannerTitle {
+                        OnAirBannerView(
+                            headline: onAirBannerTitle,
+                            theme: onAirBannerTheme,
+                            onDebugTapped: onAirDebugTapped,
+                            onRequestLine: requestLine.invitesConversation ? { showingRequestLine = true } : nil
+                        )
+                        .padding(.vertical, 8)
+                    }
+
+                    PlayerHeaderView(
+                        visualizer: visualizer,
+                        onDebugTapped: {
+                            #if DEBUG || DEBUG_TESTFLIGHT
+                            showVisualizerDebug = true
+                            #endif
+                        }
                     )
-                    .padding(.vertical, 8)
-                }
+                    .lcdAccentColor(appearance.accentColor)
+                    .lcdHSBOffsets(
+                        min: appearance.lcdMinOffset,
+                        max: appearance.lcdMaxOffset
+                    )
+                    .lcdActiveBrightness(appearance.lcdActiveBrightness)
 
-                PlayerHeaderView(
-                    visualizer: visualizer,
-                    onDebugTapped: {
-                        #if DEBUG || DEBUG_TESTFLIGHT
-                        showVisualizerDebug = true
-                        #endif
-                    }
-                )
-                .lcdAccentColor(appearance.accentColor)
-                .lcdHSBOffsets(
-                    min: appearance.lcdMinOffset,
-                    max: appearance.lcdMaxOffset
-                )
-                .lcdActiveBrightness(appearance.lcdActiveBrightness)
-
-                // Ticket feature CTA — teaches the new Box Office ticket. The
-                // newest feature leads, so it sits above the other tips.
-                if showingTicketCTA {
-                    TicketFeatureCTAView(
-                        isVisible: $showingTicketCTA,
-                        colors: appState.themeConfiguration.effectiveTicketColors
-                    ) {
-                        appState.ticketFeatureCTAPersistence.recordDismissed()
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                // Siri tip
-                if showingSiriTip {
-                    SiriTipView(isVisible: $showingSiriTip) {
-                        SiriTipView.recordDismissal()
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                // Theme tip
-                if showingThemeTip {
-                    ThemeTipView(isVisible: $showingThemeTip) {
-                        appState.themePickerState.recordTipDismissedByUser()
-                    }
-                    .padding(.vertical, 8)
-                }
-
-                // Playlist entries
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(playlistEntries.enumerated()), id: \.element.id) { index, entry in
-                        let playcutIndex = playcutIndex(for: index)
-
-                        if playcutIndex == 0 {
-                            PlaylistSectionHeader(text: "now playing")
-                        } else if playcutIndex == 1 {
-                            PlaylistSectionHeader(text: "recently played")
+                    // Ticket feature CTA — teaches the new Box Office ticket. The
+                    // newest feature leads, so it sits above the other tips.
+                    if showingTicketCTA {
+                        TicketFeatureCTAView(
+                            isVisible: $showingTicketCTA,
+                            colors: appState.themeConfiguration.effectiveTicketColors
+                        ) {
+                            appState.ticketFeatureCTAPersistence.recordDismissed()
                         }
-
-                        playlistRow(for: entry)
-                            .padding(.vertical, 8)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .opacity
-                            ))
+                        .padding(.vertical, 8)
                     }
-                    .animation(.spring(duration: 0.4, bounce: 0.2), value: playlistEntries.map(\.id))
+
+                    // Siri tip
+                    if showingSiriTip {
+                        SiriTipView(isVisible: $showingSiriTip) {
+                            SiriTipView.recordDismissal()
+                        }
+                        .padding(.vertical, 8)
+                    }
+
+                    // Theme tip
+                    if showingThemeTip {
+                        ThemeTipView(isVisible: $showingThemeTip) {
+                            appState.themePickerState.recordTipDismissedByUser()
+                        }
+                        .padding(.vertical, 8)
+                    }
+
+                    // Playlist entries
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(playlistEntries.enumerated()), id: \.element.id) { index, entry in
+                            let playcutIndex = playcutIndex(for: index)
+
+                            if playcutIndex == 0 {
+                                PlaylistSectionHeader(text: "now playing")
+                            } else if playcutIndex == 1 {
+                                PlaylistSectionHeader(text: "recently played")
+                            }
+
+                            playlistRow(for: entry)
+                                .padding(.vertical, 8)
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                                // Stable scroll target for the #434 deep-link
+                                // task below (`ScrollViewProxy.scrollTo`).
+                                .id(entry.id)
+                        }
+                        .animation(.spring(duration: 0.4, bounce: 0.2), value: playlistEntries.map(\.id))
                     
-                    // Footer button
-                    if !playlistEntries.isEmpty {
-                        Button("what the freq?") {
-                            showingPartyHorn = true
+                        // Footer button
+                        if !playlistEntries.isEmpty {
+                            Button("what the freq?") {
+                                showingPartyHorn = true
+                            }
+                            .foregroundStyle(.white)
+                            .fontWeight(.black)
+                            .foregroundStyle(AnimatedMeshGradient())
+                            .padding(.top, 20)
+                            .padding(.bottom, 20)
+                            .safeAreaPadding(.bottom)
                         }
-                        .foregroundStyle(.white)
-                        .fontWeight(.black)
-                        .foregroundStyle(AnimatedMeshGradient())
-                        .padding(.top, 20)
-                        .padding(.bottom, 20)
-                        .safeAreaPadding(.bottom)
                     }
                 }
+                .padding(.top, isThemePickerActive ? 24 : 0)
+                // Full-bleed scroll view: it clips at the screen edge, and the content
+                // is inset via content margins rather than padding the ScrollView. That
+                // gives every card the same width *and* a 12pt gutter its rim stroke and
+                // drop shadow can draw into — the margin sits inside the clip, so nothing
+                // gets shaved at the left/right edges.
+                .contentMargins(.horizontal, 12, for: .scrollContent)
+                .coordinateSpace(name: "scroll")
+                // Captured into `scrollProxy` (#434) so the deep-link scroll
+                // task below — which lives outside this closure's scope — can
+                // drive it.
+                .onAppear { scrollProxy = proxy }
             }
-            .padding(.top, isThemePickerActive ? 24 : 0)
-            // Full-bleed scroll view: it clips at the screen edge, and the content
-            // is inset via content margins rather than padding the ScrollView. That
-            // gives every card the same width *and* a 12pt gutter its rim stroke and
-            // drop shadow can draw into — the margin sits inside the clip, so nothing
-            // gets shaved at the left/right edges.
-            .contentMargins(.horizontal, 12, for: .scrollContent)
-            .coordinateSpace(name: "scroll")
         }
 
         .fullScreenCover(isPresented: $showingPartyHorn) {
@@ -211,6 +225,12 @@ struct PlaylistView: View {
                 for playcut in playcuts {
                     appState.artworkLoader.load(playcut)
                 }
+                // A playcut deep link may have arrived before this refresh
+                // populated `playlistEntries` (#434) — recheck on every tick
+                // so a link that races the initial load still resolves once
+                // its row shows up, rather than only on the one-shot
+                // `.task(id:)` below.
+                openPendingPlaycutIfPossible()
             }
         }
         // After the detail sheet dismisses, re-poll the loader for the dismissed
@@ -221,6 +241,14 @@ struct PlaylistView: View {
             if let dismissed = oldValue, newValue == nil {
                 appState.artworkLoader.load(dismissed.playcut)
             }
+        }
+        // A Spotlight/Siri tap or `wxyc://playcut/<id>` link arrived (#434).
+        // `RootTabView` has already flipped to this tab (materializing the
+        // view); resolve the row here. Keyed on the pending link so a new
+        // deep link while this tab is up re-runs, and consuming it (→ nil)
+        // settles without re-firing.
+        .task(id: appState.pendingPlaycutLink) {
+            openPendingPlaycutIfPossible()
         }
         .accessibilityIdentifier("playlistView")
     }
@@ -319,6 +347,23 @@ struct PlaylistView: View {
     private func playcutIndex(for index: Int) -> Int? {
         guard playlistEntries[index] is Playcut else { return nil }
         return playlistEntries[..<index].filter { $0 is Playcut }.count
+    }
+
+    /// Scrolls to the pending playcut deep link's row and consumes it (#434).
+    /// A miss — the target isn't (yet) among ``playlistEntries`` — leaves the
+    /// link pending, so a later refresh (see the retry call in the playlist
+    /// `.task` above) or a fresh deep link can still resolve it; there's no
+    /// "couldn't find that row" affordance for this ticket, matching
+    /// ``PlaycutOpenRouter``.
+    private func openPendingPlaycutIfPossible() {
+        guard let link = appState.pendingPlaycutLink,
+              let target = PlaycutOpenRouter.scrollTarget(for: link, in: playlistEntries),
+              let scrollProxy
+        else { return }
+        withAnimation {
+            scrollProxy.scrollTo(target, anchor: .center)
+        }
+        appState.consumePendingPlaycutLink()
     }
 }
 
