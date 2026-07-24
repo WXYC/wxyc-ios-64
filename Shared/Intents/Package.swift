@@ -13,6 +13,7 @@ let package = Package(
     dependencies: [
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Caching", path: "../Caching"),
+        .package(name: "Concerts", path: "../Concerts"),
         .package(name: "Core", path: "../Core"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "Playback", path: "../Playback"),
@@ -23,6 +24,7 @@ let package = Package(
             name: "WXYCIntents",
             dependencies: [
                 "Analytics",
+                "Concerts",
                 "Core",
                 "Logger",
                 "Playback",
@@ -35,8 +37,10 @@ let package = Package(
             name: "WXYCIntentsTests",
             dependencies: [
                 "WXYCIntents",
+                "Concerts",
                 "Core",
                 "Playlist",
+                .product(name: "ConcertsTesting", package: "Concerts"),
                 .product(name: "PlaylistTesting", package: "Playlist"),
                 // Only needed to build an isolated in-memory `PlaycutHistoryStore`
                 // (`CacheCoordinator(cache: InMemoryCache())`) for the F3
