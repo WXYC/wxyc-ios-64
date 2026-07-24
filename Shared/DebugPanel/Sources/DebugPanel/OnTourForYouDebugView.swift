@@ -5,7 +5,9 @@
 //  Debug controls for the On Tour "For You" shelf, presented by long-pressing the
 //  "On Tour" title. Toggles the loved-tier seed, overrides the station-tier
 //  cap, and resets the "Not interested" dismissals — the explicit replacement for
-//  the old silent auto-seed.
+//  the old silent auto-seed. Also links out to the OT-Q2 (#632) Concert Spotlight
+//  inspector — a sibling debug view, reachable from this sheet rather than a
+//  second long-press entry point.
 //
 //  Created by Jake Bromberg on 07/19/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -25,8 +27,22 @@ public struct OnTourForYouDebugView: View {
     /// lives in the Concerts package, which DebugPanel deliberately doesn't link.
     private let onResetDismissed: () -> Void
 
-    public init(onResetDismissed: @escaping () -> Void) {
+    /// Recomputes the Concert Spotlight inspector's dump. Injected — see
+    /// ``ConcertSpotlightInspectorDebugView``'s own doc comment for why.
+    private let onLoadConcertSpotlightRows: () async -> [ConcertSpotlightInspectorDebugView.Row]
+
+    /// Forces a real `ConcertSpotlightDonationService.reconcile` pass. Injected —
+    /// see ``ConcertSpotlightInspectorDebugView``'s own doc comment for why.
+    private let onForceConcertSpotlightReconcile: () async -> Void
+
+    public init(
+        onResetDismissed: @escaping () -> Void,
+        onLoadConcertSpotlightRows: @escaping () async -> [ConcertSpotlightInspectorDebugView.Row],
+        onForceConcertSpotlightReconcile: @escaping () async -> Void
+    ) {
         self.onResetDismissed = onResetDismissed
+        self.onLoadConcertSpotlightRows = onLoadConcertSpotlightRows
+        self.onForceConcertSpotlightReconcile = onForceConcertSpotlightReconcile
     }
 
     public var body: some View {
@@ -48,6 +64,17 @@ public struct OnTourForYouDebugView: View {
                     Button("Reset dismissed shows", role: .destructive, action: onResetDismissed)
                 } footer: {
                     Text("Clears every \"Not interested\" dismissal so hidden shows return to the shelf.")
+                }
+
+                Section {
+                    NavigationLink("Concert Spotlight Inspector") {
+                        ConcertSpotlightInspectorDebugView(
+                            onLoadRows: onLoadConcertSpotlightRows,
+                            onForceReconcile: onForceConcertSpotlightReconcile
+                        )
+                    }
+                } footer: {
+                    Text("Dumps the app's donated view of wxyc.concerts (OT-Q2, #632) and can force a reconcile pass on demand.")
                 }
             }
             .navigationTitle("For You Shelf")

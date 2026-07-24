@@ -362,6 +362,84 @@ public actor ConcertSpotlightDonationService: Sendable {
             storage.set(data, forKey: Self.donatedSnapshotKey)
         }
     }
+
+    // MARK: - DEBUG inspector (OT-Q2, #632)
+
+    #if DEBUG
+    /// One row of the `#if DEBUG` Concert Spotlight inspector's dump
+    /// (`Shared/DebugPanel`'s `ConcertSpotlightInspectorDebugView`): a
+    /// donated concert's id/title, the priority `reconcile` donated it at,
+    /// and its `endOfShowDay` expiration. Primitives only (no `Concert` or
+    /// `ConcertEntity`), so the row can cross into DebugPanel without pulling
+    /// `Concerts`/`WXYCIntents` along.
+    public struct DebugRow: Sendable, Identifiable, Equatable {
+        public let id: Int
+        public let title: String
+        public let priority: Int
+        public let expirationDate: Date
+
+        public init(id: Int, title: String, priority: Int, expirationDate: Date) {
+            self.id = id
+            self.title = title
+            self.priority = priority
+            self.expirationDate = expirationDate
+        }
+    }
+
+    /// DEBUG-only, read-only dump of the app's own donated-state view of
+    /// `wxyc.concerts`, for on-device triage (OT-Q2).
+    ///
+    /// `CSSearchableIndex` has no public enumeration API — there is no way to
+    /// ask the OS "what do you actually hold" — so this reflects the app's
+    /// *belief* about what it donated instead: the intersection of the
+    /// persisted last-donated snapshot's id set (``persistedSnapshot``, the
+    /// same state ``reconcile(window:likedArtists:stationCap:dismissedConcertIDs:)``
+    /// reads and updates) with `window`. A concert that dropped out of
+    /// `window` since it was last donated (evicted by a prior `reconcile`
+    /// call) is correctly absent even if a caller passes a stale `window`
+    /// that still contains it — the persisted snapshot, not `window`, is the
+    /// source of truth for "currently believed live".
+    ///
+    /// Priority and `expirationDate` are recomputed with the same helpers
+    /// `reconcile` itself uses (``tierByConcertID(window:likedArtists:
+    /// stationCap:dismissedConcertIDs:)``, ``priority(forTier:)``,
+    /// ``endOfShowDay(_:)``), so the dump matches what was actually donated
+    /// as long as the caller passes the same inputs `reconcile` was last
+    /// called with. Never mutates ``persistedSnapshot`` and never calls
+    /// ``indexer`` — safe to call at any time, including mid-`reconcile`.
+    ///
+    /// Sorted by soonest ``DebugRow/expirationDate`` first, so the inspector
+    /// reads as a chronological "what's about to fall out of the index"
+    /// triage list.
+    public func debugRows(
+        window: [Concert],
+        likedArtists: [LikedArtist] = [],
+        stationCap: Int = 0,
+        dismissedConcertIDs: Set<Int> = []
+    ) -> [DebugRow] {
+        let donatedIDs = Set(persistedSnapshot.keys)
+        guard !donatedIDs.isEmpty else { return [] }
+
+        let tierByConcertID = Self.tierByConcertID(
+            window: window,
+            likedArtists: likedArtists,
+            stationCap: stationCap,
+            dismissedConcertIDs: dismissedConcertIDs
+        )
+
+        return window
+            .filter { donatedIDs.contains($0.id) }
+            .map { concert in
+                DebugRow(
+                    id: concert.id,
+                    title: concert.headlineName,
+                    priority: Self.priority(forTier: tierByConcertID[concert.id]),
+                    expirationDate: Self.endOfShowDay(concert.startsOn)
+                )
+            }
+            .sorted { $0.expirationDate < $1.expirationDate }
+    }
+    #endif
 }
 
 #endif
