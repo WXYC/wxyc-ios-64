@@ -52,7 +52,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     )
 
     public init() { }
-    public func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
+    public func perform() async throws -> some ReturnsValue<PlaycutEntity> & ProvidesDialog & ShowsSnippetView {
         let nowPlayingService = await AppIntentServices.nowPlayingService()
 
         // Get the first item from the now playing service
@@ -64,10 +64,11 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         }
 
         StructuredPostHogAnalytics.shared.capture(WhatsPlayingOnWXYCIntent())
-        let value = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
+        let playcutEntity = PlaycutEntity(playcut: nowPlayingItem.playcut)
+        let dialog = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
         return .result(
-            value: value,
-            dialog: IntentDialog(stringLiteral: value),
+            value: playcutEntity,
+            dialog: IntentDialog(stringLiteral: dialog),
             view: NowPlayingView(item: nowPlayingItem)
         )
     }
@@ -182,7 +183,10 @@ struct WXYCAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: WhatsPlayingOnWXYC(),
-            phrases: ["What’s playing on \(.applicationName)?"],
+            phrases: [
+                "What’s playing on \(.applicationName)?",
+                "What was the last song on \(.applicationName)",
+            ],
             shortTitle: "What’s playing on WXYC?",
             systemImageName: "magnifyingglass"
         )
