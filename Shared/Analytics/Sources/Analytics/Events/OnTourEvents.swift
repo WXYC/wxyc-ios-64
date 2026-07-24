@@ -145,3 +145,23 @@ public struct ConcertCalendarAdded {
         self.timing = timing
     }
 }
+
+// MARK: - Siri / Spotlight (OT-C2, #625)
+
+/// Event fired when the "What WXYC artists are touring near me?" Siri intent
+/// (`ToursNearMe`) finishes answering. `dateWindow` is the selected window's
+/// raw case name ("tonight" / "thisWeekend" / "next7Days"); `resultCount` is
+/// the number of concerts returned. Neither carries a concert or artist
+/// identity, and the on-device liked-artist intersection that may have
+/// shaped `resultCount` never appears here at all — per the On Tour privacy
+/// invariant this file's header documents.
+@AnalyticsEvent
+public struct ToursNearMeIntentAnswered {
+    public let dateWindow: String
+    public let resultCount: Int
+
+    public init(dateWindow: String, resultCount: Int) {
+        self.dateWindow = dateWindow
+        self.resultCount = resultCount
+    }
+}
