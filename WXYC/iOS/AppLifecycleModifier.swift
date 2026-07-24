@@ -60,6 +60,9 @@ struct AppLifecycleModifier: ViewModifier {
         // Same reasoning for a cold launch straight into a Spotlight/Siri
         // playcut result or a `wxyc://playcut/<id>` link (#434).
         appState.startObservingPlaycutOpen()
+        // Same reasoning for a cold launch straight into a Spotlight/Siri
+        // `OpenVenue` result (OT-C4).
+        appState.startObservingVenueOpen()
 
         // First-launch path: the wallpaper isn't cached yet, so prime the
         // mesh-gradient palette before the user sees the home screen.

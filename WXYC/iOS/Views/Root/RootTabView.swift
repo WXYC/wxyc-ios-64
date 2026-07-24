@@ -148,6 +148,15 @@ struct RootTabView: View {
                 selectedPage = .playlist
             }
         }
+        // An `OpenVenue` intent arrived (OT-C4): switch to On Tour so the tab
+        // materializes and can narrow its venue filter, even when On Tour
+        // wasn't the visible tab. `OnTourTabView` consumes and clears the
+        // link once it's applied the filter.
+        .onChange(of: appState.pendingVenueLink) { _, link in
+            if link != nil {
+                selectedPage = .onTour
+            }
+        }
         // A `-marketing` recording drives tab navigation from outside the view,
         // exactly like the shared-show-link case above. Nil is a no-op — it never
         // fires for a production launch (`marketingRoute` stays nil).

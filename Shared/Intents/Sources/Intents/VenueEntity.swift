@@ -7,9 +7,9 @@
 //  Carries just enough to present a minimal Siri/Spotlight result — venue
 //  name as title, city/state as subtitle — for a single venue.
 //
-//  Declaration only (OT-F4): no geo (OT-C4) and no donation pipeline yet.
-//  Sibling of the parent epic's F5 entity declarations. See
-//  `docs/ideas/spotlight-on-tour-entities.md`.
+//  OT-F4 shipped the declaration; OT-C4 adds the bundled-table geo affordances
+//  below (no donation pipeline yet). Sibling of the parent epic's F5 entity
+//  declarations. See `docs/ideas/spotlight-on-tour-entities.md`.
 //
 //  `EntityID`'s storage is `UInt64`, but the backend's `Venue.id` (embedded on
 //  `Concert.venue`) speaks `Int`. The two representations coexist via the
@@ -66,6 +66,11 @@ public struct VenueEntity: AppEntity {
     /// `contentDescription` share it without re-formatting.
     public let subtitleText: String
 
+    /// The backend's stable venue key (`Venue.slug`) — not shown to the
+    /// user, only used to look up bundled geo coordinates (OT-C4, see
+    /// `VenueCoordinates`).
+    let slug: String
+
     @Property(title: "Name")
     public var name: String
 
@@ -84,6 +89,7 @@ public struct VenueEntity: AppEntity {
         guard let id = VenueID(venueID: venue.id) else { return nil }
         self.id = id
         self.subtitleText = "\(venue.city), \(venue.state)"
+        self.slug = venue.slug
         self.name = venue.name
     }
 }
@@ -97,6 +103,16 @@ extension VenueEntity: IndexedEntity {
         // Ties the CoreSpotlight item back to the AppEntity so a Spotlight
         // tap resolves to this specific venue.
         set.relatedUniqueIdentifier = id.entityIdentifierString
+        // Bundled slug -> coordinate lookup (OT-C4). A venue outside the
+        // table indexes as a searchable name with no geo — the documented,
+        // graceful miss path (`VenueCoordinates.coordinate(forSlug:)`), not
+        // an error.
+        if let coordinate = VenueCoordinates.coordinate(forSlug: slug) {
+            set.latitude = NSNumber(value: coordinate.latitude)
+            set.longitude = NSNumber(value: coordinate.longitude)
+            set.supportsNavigation = true
+            set.namedLocation = name
+        }
         return set
     }
 }
