@@ -32,6 +32,9 @@ extension Playcut {
     ///   - artworkURL: Optional artwork URL. Defaults to nil.
     ///   - genres: Optional Discogs genre classifications. Defaults to nil.
     ///   - styles: Optional Discogs style classifications. Defaults to nil.
+    ///   - artistId: Resolved WXYC catalog artist id (the `artists.id` keyspace
+    ///     shared with `Concert.headliningArtistId`). Defaults to nil, matching
+    ///     free-text plays with no catalog link.
     ///   - metadataStatus: Optional enrichment lifecycle state. Defaults to nil.
     public static func stub(
         id: UInt64 = 1,
@@ -46,6 +49,7 @@ extension Playcut {
         artworkURL: URL? = nil,
         genres: [String]? = nil,
         styles: [String]? = nil,
+        artistId: Int? = nil,
         upcomingShow: Concert? = nil,
         metadataStatus: MetadataStatus? = nil
     ) -> Playcut {
@@ -62,6 +66,7 @@ extension Playcut {
             artworkURL: artworkURL,
             genres: genres,
             styles: styles,
+            artistId: artistId,
             upcomingShow: upcomingShow,
             metadataStatus: metadataStatus
         )
