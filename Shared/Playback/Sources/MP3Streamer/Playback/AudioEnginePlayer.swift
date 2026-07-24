@@ -30,8 +30,17 @@ enum AudioPlayerError: Error {
 
 /// Manages audio playback using AVAudioEngine
 final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
+    /// The `AVAudioUnitEQ.globalGain` range, in decibels.
+    private static let minGainDecibels: Float = -96
+    private static let maxGainDecibels: Float = 24
+
     private let engine: AVAudioEngine
     private let playerNode: AVAudioPlayerNode
+    /// Output gain stage inserted between the player node and the main mixer.
+    /// Uses only `globalGain` (no bands) to apply a flat decibel boost/cut.
+    private let gainNode: AVAudioUnitEQ
+    /// Clamped source of truth for `gainDecibels`, mirrored onto `gainNode.globalGain`.
+    private var _gainDecibels: Float = 0
     private let format: AVAudioFormat
     private let stateBox: PlayerStateBox
     private let schedulingQueue: DispatchQueue
@@ -69,11 +78,26 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         set { playerNode.volume = newValue }
     }
 
+    /// Output gain applied after the player node, in decibels. Backed by
+    /// `gainNode.globalGain`. `0` (the default) is unity — no boost or cut.
+    /// Clamped to the unit's valid range (-96...24 dB). The value is stored so
+    /// it round-trips before the engine graph is built, and is re-applied to the
+    /// node whenever the graph is (re)connected.
+    var gainDecibels: Float {
+        get { _gainDecibels }
+        set {
+            let clamped = min(max(newValue, Self.minGainDecibels), Self.maxGainDecibels)
+            _gainDecibels = clamped
+            gainNode.globalGain = clamped
+        }
+    }
+
     init(format: AVAudioFormat, analytics: AnalyticsService? = nil) {
         self.format = format
         self.analytics = analytics
         self.engine = AVAudioEngine()
         self.playerNode = AVAudioPlayerNode()
+        self.gainNode = AVAudioUnitEQ(numberOfBands: 0)
         self.stateBox = PlayerStateBox()
         self.scheduledBufferCount = ScheduledBufferCount()
         self.schedulingQueue = DispatchQueue(label: "com.avaudiostreamer.scheduling", qos: .userInitiated)
@@ -96,8 +120,14 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     private func setUpAudioEngineIfNeeded() {
         guard engineSetUpState.setUpIfNeeded() else { return } // Already set up
 
+        // Graph: playerNode -> gainNode (globalGain) -> mainMixerNode.
+        // The render tap stays on playerNode (pre-gain), so the visualizer is
+        // unaffected by the output boost.
         engine.attach(playerNode)
-        engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+        engine.attach(gainNode)
+        engine.connect(playerNode, to: gainNode, format: format)
+        engine.connect(gainNode, to: engine.mainMixerNode, format: format)
+        gainNode.globalGain = _gainDecibels
 
         // Install any pending render tap that was requested before engine was ready
         if pendingRenderTapState.remove() {
@@ -133,8 +163,11 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         do {
             // Reconnect the audio graph - configuration change may have invalidated it
             engine.disconnectNodeOutput(playerNode)
-            engine.connect(playerNode, to: engine.mainMixerNode, format: format)
-        
+            engine.disconnectNodeOutput(gainNode)
+            engine.connect(playerNode, to: gainNode, format: format)
+            engine.connect(gainNode, to: engine.mainMixerNode, format: format)
+            gainNode.globalGain = _gainDecibels
+
             try engine.start()
             playerNode.play()
             Log(.info, category: .playback, "Audio engine restarted after configuration change")
@@ -247,7 +280,9 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         configurationObserverTask = nil
 
         engine.disconnectNodeOutput(playerNode)
+        engine.disconnectNodeOutput(gainNode)
         engine.detach(playerNode)
+        engine.detach(gainNode)
 
         // Detaching the player node physically removes any installed tap.
         // Reset renderTapState to match, and if a tap was installed, mark it

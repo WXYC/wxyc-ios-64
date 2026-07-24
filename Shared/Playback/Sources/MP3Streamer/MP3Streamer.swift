@@ -67,7 +67,14 @@ public final class MP3Streamer {
         get { audioPlayer.volume }
         set { audioPlayer.volume = newValue }
     }
-    
+
+    /// Output gain applied to the stream, in decibels. `0` is unity (no boost).
+    /// Forwarded to the underlying `AudioEnginePlayer`'s gain stage.
+    public var gainDecibels: Float {
+        get { audioPlayer.gainDecibels }
+        set { audioPlayer.gainDecibels = newValue }
+    }
+
     /// The stream URL this streamer is configured for
     private let streamURL: URL
 
@@ -607,5 +614,12 @@ extension MP3Streamer: AudioPlayerProtocol {
         audioPlayer.removeRenderTap()
     }
 }
+
+// MARK: - GainBoostablePlayer Conformance
+
+/// MP3Streamer supports a decibel output boost via its `AudioEnginePlayer` gain
+/// stage. `gainDecibels` is declared on the main type; this marks the capability
+/// for `as? GainBoostablePlayer` discovery at the controller layer.
+extension MP3Streamer: GainBoostablePlayer {}
 
 #endif // !os(watchOS)

@@ -10,6 +10,7 @@
 //
 
 import AVFoundation
+import Caching
 import Core
 import Foundation
 import Logger
@@ -123,6 +124,9 @@ public final class AudioPlayerController {
     @ObservationIgnored private nonisolated(unsafe) var player: AudioPlayerProtocol
     @ObservationIgnored private nonisolated(unsafe) var notificationCenter: NotificationCenter
     @ObservationIgnored private nonisolated(unsafe) var analytics: AnalyticsService
+    /// Backing store for the persisted stream-gain boost. `DefaultsStorage` is
+    /// Sendable, so a plain `let` is safe across the controller's isolation.
+    @ObservationIgnored private let defaults: DefaultsStorage
 
     #if os(iOS) || os(tvOS)
     @ObservationIgnored private nonisolated(unsafe) var audioSession: AudioSessionProtocol?
@@ -233,7 +237,8 @@ public final class AudioPlayerController {
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default,
         startupWatchdogDeadline: Duration = .seconds(15),
-        reachability: NetworkReachability? = nil
+        reachability: NetworkReachability? = nil,
+        defaults: DefaultsStorage = UserDefaults.standard
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -243,6 +248,7 @@ public final class AudioPlayerController {
         self.backoffTimer = backoffTimer
         self.startupWatchdogDeadline = startupWatchdogDeadline
         self.reachability = reachability
+        self.defaults = defaults
 
         // NOTE: We intentionally do NOT call configureAudioSessionIfNeeded() here.
         // Setting the audio session category to .playback during init interrupts
@@ -251,6 +257,7 @@ public final class AudioPlayerController {
         setUpNotifications()
         setUpPlayerObservation()
         setUpCPUAggregator()
+        applyPersistedGain()
     }
     #else
     /// Creates a controller with injected dependencies (macOS/watchOS)
@@ -265,7 +272,8 @@ public final class AudioPlayerController {
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default,
         startupWatchdogDeadline: Duration = .seconds(15),
-        reachability: NetworkReachability? = nil
+        reachability: NetworkReachability? = nil,
+        defaults: DefaultsStorage = UserDefaults.standard
     ) {
         self.player = player
         self.notificationCenter = notificationCenter
@@ -273,9 +281,11 @@ public final class AudioPlayerController {
         self.backoffTimer = backoffTimer
         self.startupWatchdogDeadline = startupWatchdogDeadline
         self.reachability = reachability
+        self.defaults = defaults
 
         setUpPlayerObservation()
         setUpCPUAggregator()
+        applyPersistedGain()
     }
     #endif
 
@@ -447,6 +457,47 @@ public final class AudioPlayerController {
     /// Stream of time position updates from the underlying player, if it supports time-shifting.
     public var timePositionStream: AsyncStream<TimeInterval>? {
         (player as? TimeShiftablePlayer)?.timePositionStream
+    }
+
+    // MARK: - Gain Boost
+
+    /// Whether the current player supports an output gain boost (in decibels).
+    /// True for the AVAudioEngine-based MP3 streamer; false for the AVPlayer-based
+    /// Radio/HLS players, which have no gain stage.
+    public var supportsGainBoost: Bool {
+        player is GainBoostablePlayer
+    }
+
+    /// UserDefaults key for the persisted stream-gain boost.
+    private static let gainDecibelsKey = "debug.streamGainDecibels"
+
+    /// Output gain applied to the stream, in decibels. `0` is unity; the effective
+    /// startup value comes from persistence, or `defaultGainDecibels` on a fresh
+    /// install (see `applyPersistedGain()`). Forwarded to the player when it
+    /// supports boosting; a no-op otherwise. Persisted via the injected
+    /// `DefaultsStorage`. Intended for the debug menu; the player clamps to its
+    /// supported range.
+    public var gainDecibels: Float = 0 {
+        didSet {
+            (player as? GainBoostablePlayer)?.gainDecibels = gainDecibels
+            defaults.set(gainDecibels, forKey: Self.gainDecibelsKey)
+        }
+    }
+
+    /// Out-of-the-box boost applied when nothing has been persisted, in decibels.
+    /// Every fresh install / post-Reset launch starts here; change this literal to
+    /// ship a different default. `0` means no boost until the user opts in.
+    static let defaultGainDecibels: Float = 4.5
+
+    /// Restores the persisted stream gain and forwards it to the current player.
+    /// Called at the end of `init`, after `player` and `defaults` are set, so a
+    /// boost survives relaunch and player recreation. When nothing is persisted
+    /// (fresh install), falls back to `defaultGainDecibels` and seeds it — setting
+    /// via this method (not the initializer) fires `didSet`, so the value reaches
+    /// the player and is written to defaults.
+    private func applyPersistedGain() {
+        let stored = defaults.object(forKey: Self.gainDecibelsKey) as? Float ?? Self.defaultGainDecibels
+        gainDecibels = stored
     }
 
     // MARK: - CPU Session Aggregation

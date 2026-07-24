@@ -35,6 +35,11 @@ public protocol AudioEnginePlayerProtocol: AnyObject, Sendable {
     /// The current volume level (0.0 to 1.0)
     var volume: Float { get set }
 
+    /// Additional output gain applied after the player node, in decibels.
+    /// `0` (the default) is unity — no boost or cut. Implementations clamp to
+    /// their supported range.
+    var gainDecibels: Float { get set }
+
     /// Whether the player is currently playing
     var isPlaying: Bool { get }
 
