@@ -266,11 +266,13 @@ final class Singletonia {
     /// Per tick this observer runs BOTH donation paths: `donateCurrentPlaycut`
     /// for elevated-priority surfacing of the on-air track (deduped against
     /// the last donated playcut inside the actor so metadata re-broadcasts
-    /// don't burn XPC), and `donateRecentPlaycuts` so a long-running
-    /// foreground session — the case where the user never lets iOS run
-    /// `BGAppRefresh` — still rebuilds the recent-50-row window. The batch
-    /// path is watermark-idempotent so post-first-fetch ticks short-circuit
-    /// at the `chronOrderID > watermark` filter.
+    /// don't burn XPC), and `donateBatch` — the shared batch entry point that
+    /// feeds both the `wxyc.playcuts` and `wxyc.artists` indexes from the same
+    /// window — so a long-running foreground session (the case where the user
+    /// never lets iOS run `BGAppRefresh`) still rebuilds the recent-50-row
+    /// window and the derived artist rows. The playcut batch is
+    /// watermark-idempotent so post-first-fetch ticks short-circuit at the
+    /// `chronOrderID > watermark` filter.
     ///
     /// The service references are captured strongly here on purpose: the
     /// task's lifetime is bound to `Singletonia.shared` (a static let), so
@@ -282,7 +284,7 @@ final class Singletonia {
                 if let currentPlaycut = playlist.playcuts.first {
                     await spotlightDonationService.donateCurrentPlaycut(currentPlaycut)
                 }
-                await spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
+                await spotlightDonationService.donateBatch(from: playlist.playcuts)
             }
         }
     }

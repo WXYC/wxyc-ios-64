@@ -239,6 +239,25 @@ public actor SpotlightDonationService: Sendable {
         }
     }
 
+    /// Single background-refresh / foreground-tick batch entry point.
+    ///
+    /// Feeds the same `playcuts` window to both the `wxyc.playcuts` batch
+    /// (``donateRecentPlaycuts(_:)``) and the `wxyc.artists` batch
+    /// (``donateArtists(from:)``) so the two indexes advance together on the
+    /// same tick from the same source. `BackgroundRefreshController.handleRefresh`
+    /// and `Singletonia.startSpotlightDonation` both call this rather than the
+    /// two methods separately, so a caller can't donate playcuts while
+    /// silently dropping artists (or vice versa) — the C6 artist index is
+    /// populated on exactly the ticks the playcut index already was.
+    ///
+    /// Playcuts donate first: on a cold-install tick that lands close to the
+    /// BGAppRefresh budget, the playcut catalogue (the primary Spotlight
+    /// surface) takes precedence over the derived artist rows.
+    public func donateBatch(from playcuts: [Playcut]) async {
+        await donateRecentPlaycuts(playcuts)
+        await donateArtists(from: playcuts)
+    }
+
     /// Consumes a stream of terminal metadata-enrichment transitions and
     /// re-donates each one via ``handleMetadataEnrichment(for:)``.
     ///
