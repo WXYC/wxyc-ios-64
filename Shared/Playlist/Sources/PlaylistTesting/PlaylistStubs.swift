@@ -32,6 +32,7 @@ extension Playcut {
     ///   - artworkURL: Optional artwork URL. Defaults to nil.
     ///   - genres: Optional Discogs genre classifications. Defaults to nil.
     ///   - styles: Optional Discogs style classifications. Defaults to nil.
+    ///   - metadataStatus: Optional enrichment lifecycle state. Defaults to nil.
     public static func stub(
         id: UInt64 = 1,
         hour: UInt64 = 1000,
@@ -45,7 +46,8 @@ extension Playcut {
         artworkURL: URL? = nil,
         genres: [String]? = nil,
         styles: [String]? = nil,
-        upcomingShow: Concert? = nil
+        upcomingShow: Concert? = nil,
+        metadataStatus: MetadataStatus? = nil
     ) -> Playcut {
         Playcut(
             id: id,
@@ -60,7 +62,8 @@ extension Playcut {
             artworkURL: artworkURL,
             genres: genres,
             styles: styles,
-            upcomingShow: upcomingShow
+            upcomingShow: upcomingShow,
+            metadataStatus: metadataStatus
         )
     }
 }

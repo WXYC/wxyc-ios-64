@@ -61,7 +61,8 @@ enum FlowsheetConverter {
                     genres: entry.genres,
                     styles: entry.styles,
                     artistId: entry.artist_id,
-                    upcomingShow: entry.upcoming_show?.concert
+                    upcomingShow: entry.upcoming_show?.concert,
+                    metadataStatus: entry.metadataStatus
                 )
                 playcuts.append(playcut)
 

@@ -280,6 +280,115 @@ struct SpotlightDonationServiceTests {
         #expect(await secondIndexer.calls.isEmpty)
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "777")
     }
+
+    // MARK: - Metadata enrichment re-donation (issue #443)
+
+    @Test("handleMetadataEnrichment re-donates a row previously donated by the batch path")
+    func reDonatesPreviouslyBatchDonatedRow() async {
+        let defaults = InMemoryDefaults()
+        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        let enriched = Playcut.stub(
+            id: 1,
+            chronOrderID: 50,
+            artworkURL: URL(string: "https://example.com/art.jpg"),
+            metadataStatus: .enrichedMatch
+        )
+        await service.handleMetadataEnrichment(for: enriched)
+
+        let calls = await indexer.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.entityIDs == [PlaycutID(1)])
+    }
+
+    @Test("handleMetadataEnrichment re-donates the current on-air playcut even below the batch watermark")
+    func reDonatesCurrentPlaycutBelowWatermark() async {
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        // The per-tick path donates ahead of the batch path advancing the
+        // watermark, so a row can be "previously donated" without being at
+        // or below the watermark.
+        await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 999, metadataStatus: .pending))
+
+        let enriched = Playcut.stub(
+            id: 1,
+            chronOrderID: 999,
+            artworkURL: URL(string: "https://example.com/art.jpg"),
+            metadataStatus: .enrichedMatch
+        )
+        await service.handleMetadataEnrichment(for: enriched)
+
+        // One call from donateCurrentPlaycut, one from the re-donation.
+        #expect(await indexer.calls.count == 2)
+    }
+
+    @Test("handleMetadataEnrichment is a no-op for a row that was never donated")
+    func skipsRowNeverDonated() async {
+        let defaults = InMemoryDefaults()
+        defaults.set("10", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        // chronOrderID 999 is above the watermark, and this instance never
+        // donated it via the per-tick path either.
+        let enriched = Playcut.stub(id: 1, chronOrderID: 999, metadataStatus: .enrichedMatch)
+        await service.handleMetadataEnrichment(for: enriched)
+
+        #expect(await indexer.calls.isEmpty)
+    }
+
+    @Test("handleMetadataEnrichment re-donates at batch priority, not elevated")
+    func reDonatesAtBatchPriority() async throws {
+        let defaults = InMemoryDefaults()
+        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        await service.handleMetadataEnrichment(for: .stub(id: 1, chronOrderID: 50, metadataStatus: .enrichedMatch))
+
+        let call = try #require(await indexer.calls.first)
+        #expect(call.priority == SpotlightDonationService.batchPriority)
+    }
+
+    @Test("observeMetadataEnrichment re-donates exactly once for a terminal transition on a donated row")
+    func observeReDonatesExactlyOnceForDonatedRow() async {
+        let defaults = InMemoryDefaults()
+        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        let enriched = Playcut.stub(
+            id: 1,
+            chronOrderID: 50,
+            artworkURL: URL(string: "https://example.com/art.jpg"),
+            metadataStatus: .enrichedMatch
+        )
+        let source = MockPlaylistService(transitions: [enriched])
+
+        await service.observeMetadataEnrichment(from: source)
+
+        let calls = await indexer.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.entityIDs == [PlaycutID(1)])
+    }
+
+    @Test("observeMetadataEnrichment does not donate a terminal transition on an undonated row")
+    func observeSkipsUndonatedRow() async {
+        let defaults = InMemoryDefaults()
+        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        let neverDonated = Playcut.stub(id: 2, chronOrderID: 999, metadataStatus: .enrichedMatch)
+        let source = MockPlaylistService(transitions: [neverDonated])
+
+        await service.observeMetadataEnrichment(from: source)
+
+        #expect(await indexer.calls.isEmpty)
+    }
 }
 
 // MARK: - Test double
@@ -303,6 +412,24 @@ actor MockSpotlightIndexer: SpotlightIndexer {
         calls.append(Call(entityIDs: entities.map(\.id), priority: priority))
         if shouldThrow {
             throw NSError(domain: "MockSpotlightIndexer", code: 1)
+        }
+    }
+}
+
+/// Stand-in for a live `PlaylistService` in `observeMetadataEnrichment(from:)`
+/// tests. Yields a fixed, pre-filtered sequence of terminal-transition
+/// playcuts — the diffing behavior that produces such a sequence from raw
+/// playlist ticks is `PlaylistService`'s own contract, covered by
+/// `PlaylistServiceMetadataTransitionsTests` in the `Playlist` package.
+struct MockPlaylistService: MetadataEnrichmentTransitionsSource {
+    let transitions: [Playcut]
+
+    func terminalMetadataTransitions() -> AsyncStream<Playcut> {
+        AsyncStream { continuation in
+            for playcut in transitions {
+                continuation.yield(playcut)
+            }
+            continuation.finish()
         }
     }
 }
