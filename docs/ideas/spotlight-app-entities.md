@@ -132,10 +132,15 @@ Each idea is sized **S/M/L/XL** for delivery scope and tagged with prerequisites
 - **Risks**: Background-refresh budget — we already have a tight budget per `docs/configuration.md`; the donation work must be bounded (≤50 rows per refresh).
 - **Privacy**: All donated content is public radio metadata. No listener PII in the index.
 
-#### F3. `IndexedEntityQuery` reindex handlers
+#### F3. `IndexedEntityQuery` reindex handlers — shipped ([#427](https://github.com/WXYC/wxyc-ios-64/issues/427))
 - **Scope**: S.
-- **What**: Implement `reindexEntities(for:indexDescription:)` and `reindexAllEntities(indexDescription:)` on `PlaycutEntityQuery`. Sources from `CacheCoordinator.Playlist`.
-- **Prereqs**: F1, F2.
+- **What**: `PlaycutEntityQuery` adopts `IndexedEntityQuery` (new in iOS 27; gated `#if compiler(>=6.4)` in its own file, `PlaycutEntityQuery+IndexedEntityQuery.swift`, since the API isn't in the stable Xcode 26.5/26.6 SDK). Both handlers **return `Void`** — per Apple's docs, the implementation fetches the entities and *donates them again* rather than returning a value:
+  ```swift
+  func reindexEntities(for identifiers: [PlaycutID], indexDescription: CSSearchableIndexDescription) async throws
+  func reindexAllEntities(indexDescription: CSSearchableIndexDescription) async throws
+  ```
+  `CSSearchableIndexDescription` is an `NSObject` subclass exposing only a nullable `protectionClass` — there is no index name/identity on it to dispatch against, so both handlers donate straight to the one named `wxyc.playcuts` index via a small `PlaycutReindexer` seam (`donate(_ entities: [PlaycutEntity]) async throws`), regardless of what `indexDescription` carries. `reindexEntities(for:)` sources rows from `PlaycutHistoryStore.playcuts(ids:)` ([#465](https://github.com/WXYC/wxyc-ios-64/issues/465), not `CacheCoordinator.Playlist` as originally scoped here — that store didn't exist yet when this idea was written); ids the store doesn't have are omitted, not an error. `reindexAllEntities` donates `PlaycutHistoryStore.allIndexable()` (the last ~90 days + the durable rotation set) in `SpotlightDonationService.batchLimit`-sized (50) chunks. Both `PlaycutHistoryStore` and the reindexer seam are requested via `@Dependency` (`AppDependencyManager`), registered in `Singletonia.init()` before any intent/query can run.
+- **Prereqs**: F1, F2, F3 prerequisite `PlaycutHistoryStore` ([#465](https://github.com/WXYC/wxyc-ios-64/issues/465)).
 
 #### F4. Extend `WXYCAppShortcuts` with the new `OpenIntent` types
 - **Scope**: S.

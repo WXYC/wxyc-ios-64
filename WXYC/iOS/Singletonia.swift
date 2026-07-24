@@ -9,6 +9,7 @@
 //
 
 import Analytics
+import AppIntents
 import AppServices
 import Artwork
 import Caching
@@ -147,6 +148,20 @@ final class Singletonia {
     private var likedSongsHealingTask: Task<Void, Never>?
 
     private init() {
+        // F3 (#427): register PlaycutHistoryStore and the Spotlight reindex
+        // seam before anything else runs, so both are in place before any
+        // intent/query the AppIntents runtime might construct — including
+        // PlaycutEntityQuery's `@Dependency`-backed production `entities(for:)`
+        // and iOS 27 reindex handlers — can run. `@Dependency`'s wrappedValue
+        // traps if its type was never registered, so this must precede every
+        // other line here. `playcutHistoryStore` is already initialized at
+        // this point: stored properties with default-value expressions (like
+        // this one, declared above) are set before a class's custom `init()`
+        // body runs.
+        AppDependencyManager.shared.add(dependency: self.playcutHistoryStore)
+        let playcutReindexer: any PlaycutReindexer = CoreSpotlightIndexer()
+        AppDependencyManager.shared.add(dependency: playcutReindexer)
+
         self.widgetStateService = WidgetStateService(
             playbackController: AudioPlayerController.shared,
             playlistService: playlistService

@@ -12,6 +12,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "Analytics", path: "../Analytics"),
+        .package(name: "Caching", path: "../Caching"),
         .package(name: "Core", path: "../Core"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "Playback", path: "../Playback"),
@@ -37,6 +38,11 @@ let package = Package(
                 "Core",
                 "Playlist",
                 .product(name: "PlaylistTesting", package: "Playlist"),
+                // Only needed to build an isolated in-memory `PlaycutHistoryStore`
+                // (`CacheCoordinator(cache: InMemoryCache())`) for the F3
+                // `@Dependency`-binding tests — production WXYCIntents code never
+                // imports Caching directly.
+                "Caching",
             ],
             path: "Tests/WXYCIntentsTests"
         ),
