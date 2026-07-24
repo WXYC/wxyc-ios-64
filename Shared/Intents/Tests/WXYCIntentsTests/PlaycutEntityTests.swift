@@ -112,6 +112,21 @@ struct PlaycutEntityTests {
         #expect(entity.subtitleText == "Cat Power")
     }
 
+    @Test("display representation resolves artwork synchronously from the playcut's artwork URL")
+    func displayRepresentationCarriesArtworkImage() {
+        let artwork = URL(string: "https://example.com/juana.jpg")
+        let entity = PlaycutEntity(playcut: .stub(artworkURL: artwork))
+
+        #expect(entity.displayRepresentation.image != nil)
+    }
+
+    @Test("display representation falls back to no image when the playcut has no artwork URL")
+    func displayRepresentationFallsBackWithoutArtwork() {
+        let entity = PlaycutEntity(playcut: .stub(artworkURL: nil))
+
+        #expect(entity.displayRepresentation.image == nil)
+    }
+
     #if !os(watchOS) && !os(tvOS)
     @Test("populates the CoreSpotlight attribute set with Spotlight-visible metadata")
     func attributeSetCarriesSpotlightFields() {
