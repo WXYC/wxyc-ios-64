@@ -87,6 +87,13 @@ struct OnTourTabView: View {
             .task(id: appState.pendingConcertLink) {
                 await openPendingConcertLink()
             }
+            // An `OpenVenue` intent arrived (OT-C4). `RootTabView` has already
+            // flipped to this tab; narrow the venue filter here. This is a
+            // synchronous state mutation (no fetch, unlike the concert
+            // resolution ladder above), so `.onChange` rather than `.task(id:)`.
+            .onChange(of: appState.pendingVenueLink) { _, link in
+                openPendingVenueLink(link)
+            }
             .alert("Couldn't find that show", isPresented: $showMissedLinkNotice) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -323,6 +330,19 @@ struct OnTourTabView: View {
             showMissedLinkNotice = true
         }
         appState.consumePendingConcertLink()
+    }
+
+    /// Consumes a pending `OpenVenue` intent request (OT-C4): replaces the
+    /// filter wholesale with just this venue selected, so the venue's full
+    /// show list is visible regardless of whatever facets (date window, free,
+    /// …) happened to be engaged before the intent arrived — "what's on at
+    /// Cat's Cradle?" shouldn't be silently narrowed by a stale "This
+    /// weekend" filter. Then clears the pending link so re-running this on
+    /// consume (→ nil) is a no-op.
+    private func openPendingVenueLink(_ link: PendingVenueLink?) {
+        guard let link else { return }
+        model.filter = ConcertFilterState(selectedVenueIDs: [link.id])
+        appState.consumePendingVenueLink()
     }
 
     // MARK: - For You shelf

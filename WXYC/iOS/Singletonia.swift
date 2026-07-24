@@ -91,6 +91,14 @@ final class Singletonia {
     /// then clears it via ``consumePendingPlaycutLink()``.
     private(set) var pendingPlaycutLink: PendingPlaycutLink?
 
+    /// A venue request from an `OpenVenue` Siri/Spotlight intent that has
+    /// arrived but not yet been opened (OT-C4). Set by
+    /// ``startObservingVenueOpen()`` when `OpenVenue.perform()` posts a
+    /// `VenueOpenMessage`; `RootTabView` flips to the On Tour tab in response
+    /// and `OnTourTabView` narrows its venue filter to just this venue, then
+    /// clears it via ``consumePendingVenueLink()``.
+    private(set) var pendingVenueLink: PendingVenueLink?
+
     /// Marketing-driven tab route. Set only during a `-marketing` recording; nil
     /// in production. A small release-compiled optional, mirroring
     /// ``pendingConcertLink`` — `RootTabView` maps it to its private `Page`.
@@ -111,6 +119,10 @@ final class Singletonia {
     /// Token for the app-lifetime `PlaycutOpenMessage` observer. Held so the
     /// registration stays idempotent — one observer for the app's lifetime.
     @ObservationIgnored private var playcutOpenObservation: (any NSObjectProtocol)?
+
+    /// Token for the app-lifetime `VenueOpenMessage` observer. Held so the
+    /// registration stays idempotent — one observer for the app's lifetime.
+    @ObservationIgnored private var venueOpenObservation: (any NSObjectProtocol)?
 
     #if DEBUG
     /// Fixture-backed On Tour model for the `-marketing` recording, built once in
@@ -548,6 +560,28 @@ final class Singletonia {
     /// re-appearance doesn't re-trigger the scroll.
     func consumePendingPlaycutLink() {
         pendingPlaycutLink = nil
+    }
+
+    /// Begins observing `OpenVenue` intent requests, so a Siri/Spotlight tap
+    /// on a venue fills ``pendingVenueLink`` (OT-C4).
+    ///
+    /// Registered synchronously from the root view's `.onAppear`, mirroring
+    /// ``startObservingConcertOpen()`` — see that method's doc comment for why
+    /// this can't wait for an `async` sequence. Idempotent: the observer lives
+    /// for the app's lifetime, so a re-appearance doesn't stack a second one.
+    func startObservingVenueOpen() {
+        guard venueOpenObservation == nil else { return }
+        venueOpenObservation = NotificationCenter.default.addMainActorObserver(
+            for: VenueOpenMessage.self
+        ) { [weak self] message in
+            self?.pendingVenueLink = PendingVenueLink(id: message.venueID)
+        }
+    }
+
+    /// Clears the pending link once the On Tour tab has consumed it, so a
+    /// re-appearance doesn't re-apply the venue filter.
+    func consumePendingVenueLink() {
+        pendingVenueLink = nil
     }
 
     // MARK: - Marketing recording (`-marketing`)

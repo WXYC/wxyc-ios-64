@@ -100,5 +100,34 @@ struct VenueEntityTests {
         #expect(set.contentDescription == entity.subtitleText)
         #expect(set.relatedUniqueIdentifier == "3")
     }
+
+    @Test("sets geo fields on the attribute set when the venue's slug is in the bundled coordinate table (OT-C4)")
+    func attributeSetSetsGeoForKnownSlug() throws {
+        let venue = Venue.stub(slug: "cats-cradle", name: "Cat's Cradle")
+        let entity = try #require(VenueEntity(venue: venue))
+        let coordinate = try #require(VenueCoordinates.coordinate(forSlug: "cats-cradle"))
+
+        let set = entity.attributeSet
+
+        #expect(set.latitude?.doubleValue == coordinate.latitude)
+        #expect(set.longitude?.doubleValue == coordinate.longitude)
+        #expect(set.supportsNavigation?.boolValue == true)
+        #expect(set.namedLocation == "Cat's Cradle")
+    }
+
+    @Test("leaves geo fields unset — no crash — for a venue whose slug isn't in the bundled table (OT-C4)")
+    func attributeSetOmitsGeoForUnknownSlug() throws {
+        let venue = Venue.stub(slug: "some-brand-new-venue-not-yet-added", name: "Some New Venue")
+        let entity = try #require(VenueEntity(venue: venue))
+
+        let set = entity.attributeSet
+
+        #expect(set.latitude == nil)
+        #expect(set.longitude == nil)
+        #expect(set.supportsNavigation == nil)
+        #expect(set.namedLocation == nil)
+        // Still a searchable name, even without geo — the graceful path.
+        #expect(set.title == "Some New Venue")
+    }
     #endif
 }
