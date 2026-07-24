@@ -64,6 +64,8 @@ enum BackgroundRefreshController {
         // batch for the same reason the analytics capture does.
         await appState.playcutHistoryStore.ingest(playlist.playcuts)
 
-        await appState.spotlightDonationService.donateRecentPlaycuts(playlist.playcuts)
+        // Feeds both the `wxyc.playcuts` and `wxyc.artists` indexes from the
+        // same fetched window on this refresh tick (see `donateBatch`).
+        await appState.spotlightDonationService.donateBatch(from: playlist.playcuts)
     }
 }

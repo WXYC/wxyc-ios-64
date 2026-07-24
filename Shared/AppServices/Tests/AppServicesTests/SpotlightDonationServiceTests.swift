@@ -357,6 +357,72 @@ struct SpotlightDonationServiceTests {
         #expect(await artistIndexer.calls.isEmpty)
     }
 
+    @Test("donateArtists swallows a throwing indexer without propagating or crashing")
+    func donateArtistsSwallowsIndexerFailure() async {
+        // The actor method is `async` but not throwing — an indexer failure
+        // must be logged and swallowed (mirroring the playcut-batch path) so a
+        // transient Spotlight error on one tick can't tear down the donation
+        // task. Reaching the assertion below at all proves the throw did not
+        // propagate.
+        let artistIndexer = MockArtistSpotlightIndexer(shouldThrow: true)
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [.stub(id: 1, artistName: "Stereolab")])
+
+        #expect(await artistIndexer.calls.count == 1)
+    }
+
+    // MARK: - Batch donation tick (production entry point)
+
+    @Test("donateBatch donates both playcuts and artists from one refresh tick")
+    func donateBatchDonatesPlaycutsAndArtists() async throws {
+        // Proves the single entry point both production call sites use
+        // (`BackgroundRefreshController.handleRefresh` and
+        // `Singletonia.startSpotlightDonation`) drives the `wxyc.artists`
+        // index on the same tick, from the same playcut window, as the
+        // `wxyc.playcuts` batch — the C6 artist-donation wiring the review
+        // found had no production caller.
+        let playcutIndexer = MockSpotlightIndexer()
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: playcutIndexer,
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateBatch(from: [
+            .stub(id: 1, chronOrderID: 10, artistName: "Stereolab"),
+            .stub(id: 2, chronOrderID: 20, artistName: "Juana Molina"),
+        ])
+
+        let playcutCall = try #require(await playcutIndexer.calls.first)
+        #expect(playcutCall.entityIDs == [PlaycutID(1), PlaycutID(2)])
+
+        let artistCall = try #require(await artistIndexer.calls.first)
+        #expect(artistCall.entities.count == 2)
+        #expect(artistCall.priority == SpotlightDonationService.batchPriority)
+    }
+
+    @Test("donateBatch is a no-op on an empty playlist")
+    func donateBatchSkipsWhenEmpty() async {
+        let playcutIndexer = MockSpotlightIndexer()
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: playcutIndexer,
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateBatch(from: [])
+
+        #expect(await playcutIndexer.calls.isEmpty)
+        #expect(await artistIndexer.calls.isEmpty)
+    }
+
     // MARK: - Watermark persistence
 
     @Test("Watermark persists across service instances backed by the same storage")
