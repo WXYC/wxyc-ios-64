@@ -138,6 +138,16 @@ struct RootTabView: View {
                 selectedPage = .onTour
             }
         }
+        // A playcut deep link arrived (#434): switch to Now Playing so the tab
+        // materializes and its `ScrollViewReader` can scroll to the row, even
+        // when Now Playing wasn't the visible tab. `PlaylistView` consumes and
+        // clears the link once it's handled the scroll (or determined the row
+        // isn't currently loaded).
+        .onChange(of: appState.pendingPlaycutLink) { _, link in
+            if link != nil {
+                selectedPage = .playlist
+            }
+        }
         // A `-marketing` recording drives tab navigation from outside the view,
         // exactly like the shared-show-link case above. Nil is a no-op — it never
         // fires for a production launch (`marketingRoute` stays nil).
