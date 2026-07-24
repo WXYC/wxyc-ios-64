@@ -4,8 +4,11 @@
 //
 //  Verifies ArtistEntity's dedup contract: artist-name variations ("Stereolab"
 //  vs "Stereolab feat. …", casing, extra whitespace) normalize to the same
-//  entity id and displayable name, and that the id is derived deterministically
-//  (not via `String.hashValue`, which is randomized per process launch).
+//  entity id, and that the id is derived deterministically (not via
+//  `String.hashValue`, which is randomized per process launch). Also verifies
+//  the display contract: `displayName` preserves the original casing/text
+//  passed to `init`, distinct from the lowercased `normalizedName` dedup key
+//  (issue #640 — entities used to display the normalized key itself).
 //
 //  Created by Jake Bromberg on 07/23/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -60,13 +63,37 @@ struct ArtistEntityTests {
         #expect(juana.id != stereolab.id)
     }
 
-    @Test("displayRepresentation title uses the normalized name")
-    func displayRepresentationUsesNormalizedName() {
-        let entity = ArtistEntity(artistName: "Stereolab feat. Nurse With Wound")
+    @Test("id stays stable across casing variants even though displayName differs per instance")
+    func idStableAcrossCasingVariantsWithDifferingDisplayNames() {
+        // Regression for #640: the entity used to display `normalizedName`
+        // (the lowercased dedup key) directly, so "Stereolab" rendered as
+        // "stereolab". `id` must stay keyed on the normalized form no matter
+        // which casing variant built the entity, while `displayName` is free
+        // to differ per instance.
+        let properCase = ArtistEntity(artistName: "Stereolab")
+        let allCaps = ArtistEntity(artistName: "STEREOLAB")
+
+        #expect(properCase.id == allCaps.id)
+        #expect(properCase.normalizedName == allCaps.normalizedName)
+        #expect(properCase.displayName == "Stereolab")
+        #expect(allCaps.displayName == "STEREOLAB")
+    }
+
+    @Test("displayName preserves original casing while normalizedName stays lowercased")
+    func displayNamePreservesOriginalCasing() {
+        let entity = ArtistEntity(artistName: "Stereolab")
+
+        #expect(entity.displayName == "Stereolab")
+        #expect(entity.normalizedName == "stereolab")
+    }
+
+    @Test("displayRepresentation title uses the display name, not the normalized key")
+    func displayRepresentationUsesDisplayName() {
+        let entity = ArtistEntity(artistName: "Stereolab")
 
         let title = String(localized: entity.displayRepresentation.title)
 
-        #expect(title == "stereolab")
+        #expect(title == "Stereolab")
     }
 
     #if !os(watchOS) && !os(tvOS)
@@ -76,7 +103,7 @@ struct ArtistEntityTests {
 
         let set = entity.attributeSet
 
-        #expect(set.title == entity.normalizedName)
+        #expect(set.title == entity.displayName)
         #expect(set.relatedUniqueIdentifier == entity.id.entityIdentifierString)
     }
 
@@ -86,7 +113,7 @@ struct ArtistEntityTests {
 
         let set = entity.attributeSet
 
-        #expect(set.artist == entity.normalizedName)
+        #expect(set.artist == entity.displayName)
     }
 
     @Test("attribute set carries the play count under its custom indexing key")

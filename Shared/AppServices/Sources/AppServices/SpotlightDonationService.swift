@@ -233,17 +233,22 @@ public actor SpotlightDonationService: Sendable {
     /// Groups `playcuts` by normalized artist name — the same dedup key
     /// `ArtistEntityQuery`/`ArtistEntity` use elsewhere — so name variations
     /// ("Stereolab" vs. "Stereolab feat. …", casing, whitespace) collapse to
-    /// one entity carrying the group's play count as of this call. The
-    /// resulting entities are capped at ``batchLimit`` (mirroring
-    /// `donateRecentPlaycuts`'s bound on background-refresh work) and sent
-    /// at ``batchPriority``. No watermark: unlike the playcut batch, this
-    /// path always re-derives entities fresh from whatever playcuts the
-    /// caller passes, so play counts never go stale, and a re-donation of an
-    /// unchanged count is a free upsert server-side.
+    /// one entity carrying the group's play count as of this call. Each
+    /// entity's *display* name is a representative original casing drawn
+    /// from the group (see ``representativeArtistName(in:)``), not the
+    /// normalized key itself — issue #640. The resulting entities are capped
+    /// at ``batchLimit`` (mirroring `donateRecentPlaycuts`'s bound on
+    /// background-refresh work) and sent at ``batchPriority``. No watermark:
+    /// unlike the playcut batch, this path always re-derives entities fresh
+    /// from whatever playcuts the caller passes, so play counts never go
+    /// stale, and a re-donation of an unchanged count is a free upsert
+    /// server-side.
     public func donateArtists(from playcuts: [Playcut]) async {
         let grouped = Dictionary(grouping: playcuts) { normalizedEntityKey($0.artistName) }
         let entities = grouped
-            .map { normalized, group in ArtistEntity(artistName: normalized, playCount: group.count) }
+            .map { _, group in
+                ArtistEntity(artistName: Self.representativeArtistName(in: group), playCount: group.count)
+            }
             .prefix(Self.batchLimit)
 
         guard !entities.isEmpty else { return }
@@ -301,6 +306,42 @@ public actor SpotlightDonationService: Sendable {
     /// it's the most recent per-tick current-playcut donation.
     private func wasPreviouslyDonated(_ playcut: Playcut) -> Bool {
         playcut.chronOrderID <= currentWatermark || playcut.id == lastDonatedCurrentPlaycut?.id
+    }
+
+    // MARK: - Artist display casing (#640)
+
+    /// Picks a representative original-cased artist name from `group` — a
+    /// set of playcuts that all normalize to the same `ArtistEntity` dedup
+    /// key — for `donateArtists` to hand to `ArtistEntity.init(artistName:)`
+    /// as the entity's `displayName`. Ranked by how often each exact raw
+    /// `Playcut.artistName` string recurs in `group` (so a clean "Stereolab"
+    /// outvotes a rarer "STEREOLAB" typo or a "Stereolab feat. …" variant),
+    /// ties broken by whichever raw string appears first in `group`'s order.
+    /// `group` is always non-empty at the `donateArtists` call site — it
+    /// comes from `Dictionary(grouping:)`, which never produces an empty
+    /// value array — but this falls back to `""` rather than trapping if
+    /// ever called with an empty group.
+    private static func representativeArtistName(in group: [Playcut]) -> String {
+        var counts: [String: Int] = [:]
+        var order: [String] = []
+        for playcut in group {
+            let name = playcut.artistName
+            if counts[name] == nil {
+                order.append(name)
+            }
+            counts[name, default: 0] += 1
+        }
+
+        guard var representative = order.first else { return "" }
+        var representativeCount = counts[representative, default: 0]
+        for name in order.dropFirst() {
+            let count = counts[name, default: 0]
+            if count > representativeCount {
+                representative = name
+                representativeCount = count
+            }
+        }
+        return representative
     }
 
     // MARK: - Watermark

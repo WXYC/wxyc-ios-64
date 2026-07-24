@@ -10,7 +10,11 @@
 //  adds `donateArtists(from:)`, which mirrors the batch playcut path
 //  against the separate `wxyc.artists` named index: dedup by normalized
 //  artist name (mixed-case/whitespace/"feat." variants collapse to one
-//  entity), cap at `batchLimit`, donate at `batchPriority`.
+//  entity), cap at `batchLimit`, donate at `batchPriority`. Issue #640
+//  additionally covers the entity's *display* casing: each deduped group
+//  picks a representative original-cased name (most frequent raw
+//  `Playcut.artistName` in the group, ties broken by first occurrence)
+//  rather than handing the already-lowercased dedup key to `ArtistEntity`.
 //
 //  Created by Jake Bromberg on 07/09/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -309,6 +313,74 @@ struct SpotlightDonationServiceTests {
         let stereolabID = ArtistEntity(artistName: "Stereolab").id
         let stereolabEntity = try #require(entities.first { $0.id == stereolabID })
         #expect(stereolabEntity.playCount == 2)
+    }
+
+    @Test("donateArtists displays a representative original-cased name per deduped group")
+    func donateArtistsDisplaysRepresentativeCasing() async throws {
+        // The literal #640 example: a group mixing clean casing with a
+        // lowercased "feat." variant still collapses to one entity (id
+        // unchanged) and displays the clean original casing, not the
+        // normalized dedup key.
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "stereolab feat. Nurse With Wound"),
+        ])
+
+        let calls = await artistIndexer.calls
+        let entities = try #require(calls.first?.entities)
+        #expect(entities.count == 1)
+
+        let entity = try #require(entities.first)
+        #expect(entity.id == ArtistEntity(artistName: "Stereolab").id)
+        #expect(entity.displayName == "Stereolab")
+    }
+
+    @Test("donateArtists prefers the most frequent raw casing within a group")
+    func donateArtistsPrefersMostFrequentCasing() async throws {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "STEREOLAB"),
+            .stub(id: 2, artistName: "Stereolab"),
+            .stub(id: 3, artistName: "Stereolab"),
+        ])
+
+        let calls = await artistIndexer.calls
+        let entity = try #require(calls.first?.entities.first)
+
+        #expect(entity.displayName == "Stereolab")
+    }
+
+    @Test("donateArtists ties on frequency by preferring the first-seen raw casing")
+    func donateArtistsTiesOnFrequencyPreferFirstSeen() async throws {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "STEREOLAB"),
+            .stub(id: 2, artistName: "Stereolab"),
+        ])
+
+        let calls = await artistIndexer.calls
+        let entity = try #require(calls.first?.entities.first)
+
+        #expect(entity.displayName == "STEREOLAB")
     }
 
     @Test("donateArtists uses batch priority")
