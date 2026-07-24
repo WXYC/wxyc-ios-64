@@ -223,6 +223,41 @@ public final actor PlaylistService: Sendable {
         ensureFetchTaskRunning()
     }
     
+    /// Playcuts whose `metadataStatus` transitions into a terminal enrichment
+    /// state (``MetadataStatus/isTerminal``) — i.e. the previous tick's status
+    /// for that `id` was `nil` or non-terminal, and the current tick's isn't.
+    ///
+    /// Diffed independently per subscriber against ``updates()``, so late
+    /// subscribers see a transition the first time they observe a terminal
+    /// status for a given playcut, even if an earlier subscriber already saw
+    /// it. Consumers that need "only once, ever" (e.g. Spotlight
+    /// re-donation) gate on their own already-donated state — see
+    /// `SpotlightDonationService.handleMetadataEnrichment(for:)` (issue #443).
+    ///
+    /// Non-terminal transitions (`nil` -> `.pending`, `.pending` -> `.enriching`)
+    /// are not yielded, nor are re-broadcasts of an already-terminal status.
+    public nonisolated func terminalMetadataTransitions() -> AsyncStream<Playcut> {
+        AsyncStream { continuation in
+            let task = Task {
+                var previousStatusByID: [UInt64: MetadataStatus] = [:]
+
+                for await playlist in self.updates() {
+                    for playcut in playlist.playcuts {
+                        defer { previousStatusByID[playcut.id] = playcut.metadataStatus }
+
+                        guard let status = playcut.metadataStatus, status.isTerminal else { continue }
+                        guard previousStatusByID[playcut.id] != status else { continue }
+
+                        continuation.yield(playcut)
+                    }
+                }
+                continuation.finish()
+            }
+
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     private func removeContinuation(for id: UUID) {
         continuations.removeValue(forKey: id)
         

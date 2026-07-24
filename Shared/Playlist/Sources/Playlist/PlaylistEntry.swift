@@ -278,6 +278,13 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// ``artistBio`` metadata precedent above.
     public let upcomingShow: Concert?
 
+    /// Server-side enrichment lifecycle for this row (`FlowsheetEntry.metadata_status`,
+    /// `MetadataStatus`). `nil` for the v1 API, feeds that predate the field, and rows
+    /// the backend hasn't attempted enrichment on yet in a way that emitted the field.
+    /// Drives Spotlight re-donation on a terminal transition — see
+    /// `PlaylistService.terminalMetadataTransitions()` (issue #443).
+    public let metadataStatus: MetadataStatus?
+
     /// Whether this playcut carries inline metadata from the v2 flowsheet API.
     public var hasV2Metadata: Bool {
         artworkURL != nil || discogsURL != nil || spotifyURL != nil
@@ -310,6 +317,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         // camelCase legacy playcut keys around it. Named to match the contract so
         // the value round-trips through `Concert`'s own snake_case Codable.
         case upcomingShow = "upcoming_show"
+        case metadataStatus
     }
 
     public init(
@@ -335,7 +343,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         genres: [String]? = nil,
         styles: [String]? = nil,
         artistId: Int? = nil,
-        upcomingShow: Concert? = nil
+        upcomingShow: Concert? = nil,
+        metadataStatus: MetadataStatus? = nil
     ) {
         self.id = id
         self.hour = hour
@@ -360,6 +369,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.styles = styles
         self.artistId = artistId
         self.upcomingShow = upcomingShow
+        self.metadataStatus = metadataStatus
     }
 
     public init(from decoder: Decoder) throws {
@@ -407,6 +417,10 @@ public struct Playcut: PlaylistEntry, Hashable {
             // catches the throw, mirroring the `onAir` degrade-don't-throw
             // discipline in `FlowsheetResponse.init(from:)`.
             self.upcomingShow = (try? container.decodeIfPresent(Concert.self, forKey: .upcomingShow)) ?? nil
+            // Forward-compat with unrecognized future enum values: an unknown raw
+            // string degrades to `nil` rather than failing the whole playcut decode,
+            // mirroring `FlowsheetEntry.metadataStatus`'s tolerance.
+            self.metadataStatus = (try? container.decodeIfPresent(MetadataStatus.self, forKey: .metadataStatus)) ?? nil
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error

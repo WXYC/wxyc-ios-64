@@ -26,7 +26,7 @@ import Foundation
 ///   from the inline `FlowsheetEntry` fields. No outbound proxy request.
 ///
 /// See https://github.com/WXYC/wxyc-ios-64/issues/270 for the consumer logic.
-enum MetadataStatus: String, Codable, Sendable, Equatable {
+public enum MetadataStatus: String, Codable, Sendable, Equatable {
     /// Row inserted; no enrichment attempt yet, OR a transient failure left
     /// the row eligible for retry.
     case pending
@@ -48,4 +48,18 @@ enum MetadataStatus: String, Codable, Sendable, Equatable {
     /// distinct from `pending`: the recurring drift-repair cron skips
     /// `failedNoRetry` rows and they require manual triage.
     case failedNoRetry = "failed_no_retry"
+
+    /// Whether this is a terminal enrichment outcome — enrichment will not
+    /// run again for this row (barring a manual drift-repair retry).
+    /// `pending`/`enriching` are in-flight; the three `enriched*`/`failed*`
+    /// cases are final. Spotlight re-donation (issue #443) fires only on a
+    /// transition into one of these states.
+    public var isTerminal: Bool {
+        switch self {
+        case .pending, .enriching:
+            return false
+        case .enrichedMatch, .enrichedNoMatch, .failedNoRetry:
+            return true
+        }
+    }
 }

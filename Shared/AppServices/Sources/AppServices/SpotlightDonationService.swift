@@ -2,7 +2,7 @@
 //  SpotlightDonationService.swift
 //  AppServices
 //
-//  Feeds the `wxyc.playcuts` Spotlight content index. Two donation paths
+//  Feeds the `wxyc.playcuts` Spotlight content index. Three donation paths
 //  share one watermark:
 //
 //  * `donateCurrentPlaycut(_:)` fires from a `PlaylistService.updates()`
@@ -16,12 +16,16 @@
 //    the whole recent playlist — up to 50 unseen playcuts at normal
 //    priority, so a cold catalogue rebuilds without exhausting BGAppRefresh
 //    budget in a single tick.
+//  * `observeMetadataEnrichment(from:)` consumes
+//    `PlaylistService.terminalMetadataTransitions()` and re-donates a single
+//    already-donated row through `handleMetadataEnrichment(for:)` when its
+//    `metadata_status` lands in a terminal enriched state — issue #443.
 //
 //  The watermark ("last successfully-donated chronOrderID" from the batch
 //  path) lives in `DefaultsStorage` so the catalogue keeps advancing across
 //  launches. Only `donateRecentPlaycuts` moves the watermark — the per-tick
-//  path is idempotent-upsert-only so it can't skip playcuts the batch has
-//  not yet seen.
+//  and enrichment-re-donation paths are idempotent-upsert-only so neither
+//  can skip playcuts the batch has not yet seen.
 //
 //  This file is compiled out on watchOS and tvOS: `CoreSpotlight`,
 //  `IndexedEntity`, and `CSSearchableItemAttributeSet` are all
@@ -41,6 +45,20 @@ import Foundation
 import Logger
 import Playlist
 import WXYCIntents
+
+/// Source of terminal metadata-enrichment transitions for
+/// ``SpotlightDonationService/observeMetadataEnrichment(from:)``.
+///
+/// `PlaylistService` conforms via the extension below. Tests inject a
+/// lightweight double so `SpotlightDonationService`'s re-donation gating can
+/// be exercised without a live `PlaylistService` (network fetcher, cache
+/// coordinator, etc.).
+public protocol MetadataEnrichmentTransitionsSource: Sendable {
+    /// See `PlaylistService.terminalMetadataTransitions()`.
+    func terminalMetadataTransitions() -> AsyncStream<Playcut>
+}
+
+extension PlaylistService: MetadataEnrichmentTransitionsSource {}
 
 public actor SpotlightDonationService: Sendable {
 
@@ -141,6 +159,47 @@ public actor SpotlightDonationService: Sendable {
         } catch {
             Log(.warning, category: .general, "Spotlight batch donation failed (\(entities.count) playcuts): \(error)")
         }
+    }
+
+    /// Re-donates a single playcut whose `metadataStatus` just transitioned
+    /// to a terminal enrichment state (see
+    /// `PlaylistService.terminalMetadataTransitions()`), but only when the
+    /// row was donated previously — either by the batch path
+    /// (`chronOrderID <= watermark`) or by the per-tick path (it's the
+    /// current on-air playcut). `indexAppEntities` upserts on identifier, so
+    /// this is a free no-op server-side; the guard exists so we don't spend
+    /// an XPC round-trip on a row Spotlight has never indexed — the next
+    /// batch/tick donation picks it up with the enriched fields already
+    /// inline (issue #443).
+    public func handleMetadataEnrichment(for playcut: Playcut) async {
+        guard wasPreviouslyDonated(playcut) else { return }
+
+        let entity = PlaycutEntity(playcut: playcut)
+        do {
+            try await indexer.indexPlaycuts([entity], priority: Self.batchPriority)
+        } catch {
+            Log(.warning, category: .general, "Spotlight re-donation failed for playcut \(playcut.id): \(error)")
+        }
+    }
+
+    /// Consumes a stream of terminal metadata-enrichment transitions and
+    /// re-donates each one via ``handleMetadataEnrichment(for:)``.
+    ///
+    /// Callers wire this to a live `PlaylistService` at app-launch time
+    /// (`source.terminalMetadataTransitions()`); tests inject a
+    /// ``MetadataEnrichmentTransitionsSource`` double. Runs until the
+    /// underlying stream finishes.
+    public func observeMetadataEnrichment(from source: MetadataEnrichmentTransitionsSource) async {
+        for await playcut in source.terminalMetadataTransitions() {
+            await handleMetadataEnrichment(for: playcut)
+        }
+    }
+
+    /// Whether `playcut` was already sent to Spotlight by either donation
+    /// path — the batch watermark has advanced past its `chronOrderID`, or
+    /// it's the most recent per-tick current-playcut donation.
+    private func wasPreviouslyDonated(_ playcut: Playcut) -> Bool {
+        playcut.chronOrderID <= currentWatermark || playcut.id == lastDonatedCurrentPlaycut?.id
     }
 
     // MARK: - Watermark
