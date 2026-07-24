@@ -262,6 +262,132 @@ struct ConcertSpotlightDonationServiceTests {
         let donation = try #require(await indexer.indexCalls.first?.donations.first)
         #expect(donation.priority == ConcertSpotlightDonationService.defaultPriority)
     }
+
+    // MARK: - Status transitions (OT-C5)
+
+    @Test("reconcile evicts an in-window concert whose status changes to cancelled")
+    func evictsInWindowConcertThatBecomesCancelled() async throws {
+        let indexer = MockConcertSpotlightIndexer()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        let onSale = Concert.stub(id: 1, status: .onSale)
+        await service.reconcile(window: [onSale])
+
+        let cancelled = Concert.stub(id: 1, status: .cancelled)
+        await service.reconcile(window: [cancelled]) // still in the window, but now cancelled
+
+        let deleteCalls = await indexer.deleteCalls
+        #expect(deleteCalls.count == 1)
+        let expectedIdentifier = try #require(ConcertID(concertID: 1)?.entityIdentifierString)
+        #expect(deleteCalls.first?.identifiers == [expectedIdentifier])
+
+        // Only the initial donation — becoming cancelled must not also
+        // re-donate the row before evicting it.
+        #expect(await indexer.indexCalls.count == 1)
+    }
+
+    @Test("reconcile re-donates a single row with a refreshed attribute set and fresh expirationDate on a non-cancelled status change")
+    func redonatesWithRefreshedAttributesOnNonCancelledStatusChange() async throws {
+        let indexer = MockConcertSpotlightIndexer()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        let control = Concert.stub(id: 2) // unaffected — must not be re-donated alongside id 1
+        let onSale = Concert.stub(id: 1, status: .onSale)
+        await service.reconcile(window: [onSale, control])
+
+        // Rescheduled: status changes *and* the show moves to a new date —
+        // the re-donation must reflect the concert's current fields, not the
+        // ones captured by the first donation.
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = .gmt
+        let newDate = try #require(utc.date(byAdding: .day, value: 14, to: Concert.defaultStartsOn))
+        let rescheduled = Concert.stub(id: 1, startsOn: newDate, status: .rescheduled)
+        await service.reconcile(window: [rescheduled, control])
+
+        let indexCalls = await indexer.indexCalls
+        #expect(indexCalls.count == 2)
+        let secondDonations = try #require(indexCalls.last?.donations)
+        let expectedID = try #require(ConcertID(concertID: 1))
+        #expect(secondDonations.map(\.entity.id) == [expectedID]) // single-row re-donation, control untouched
+
+        let eastern = try #require(TimeZone(identifier: "America/New_York"))
+        var stationCalendar = Calendar(identifier: .gregorian)
+        stationCalendar.timeZone = eastern
+        let expectedExpiration = try #require(stationCalendar.dateInterval(of: .day, for: newDate)?.end)
+        #expect(secondDonations.first?.expirationDate == expectedExpiration)
+
+        // soldOut/rescheduled/free/unknown stay donated — only cancellation
+        // and leaving the window evict.
+        #expect(await indexer.deleteCalls.isEmpty)
+    }
+
+    @Test("reconcile does not re-donate an in-window concert whose status is unchanged")
+    func doesNotRedonateWhenStatusUnchanged() async {
+        let indexer = MockConcertSpotlightIndexer()
+        let service = ConcertSpotlightDonationService(storage: InMemoryDefaults(), indexer: indexer)
+
+        let soldOut = Concert.stub(id: 1, status: .soldOut)
+        await service.reconcile(window: [soldOut])
+        await service.reconcile(window: [soldOut]) // same status, re-run
+
+        #expect(await indexer.indexCalls.count == 1) // only the initial donation
+        #expect(await indexer.deleteCalls.isEmpty)
+    }
+
+    @Test("reconcile does not update the persisted status snapshot when a status-change re-donation fails")
+    func failedRedonationDoesNotAdvancePersistedSnapshot() async throws {
+        let defaults = InMemoryDefaults()
+        let workingIndexer = MockConcertSpotlightIndexer()
+        let firstService = ConcertSpotlightDonationService(storage: defaults, indexer: workingIndexer)
+
+        let onSale = Concert.stub(id: 1, status: .onSale)
+        await firstService.reconcile(window: [onSale])
+
+        let failingIndexer = MockConcertSpotlightIndexer(shouldThrow: true)
+        let failingService = ConcertSpotlightDonationService(storage: defaults, indexer: failingIndexer)
+        let soldOut = Concert.stub(id: 1, status: .soldOut)
+        await failingService.reconcile(window: [soldOut])
+        #expect(await failingIndexer.indexCalls.count == 1)
+
+        // Retry with a working indexer: the snapshot must still read
+        // `.onSale` (not silently advanced to `.soldOut` by the failed
+        // attempt), so this reconcile detects the same status change again
+        // and retries the re-donation.
+        let retryIndexer = MockConcertSpotlightIndexer()
+        let retryService = ConcertSpotlightDonationService(storage: defaults, indexer: retryIndexer)
+        await retryService.reconcile(window: [soldOut])
+
+        #expect(await retryIndexer.indexCalls.count == 1)
+        let expectedID = try #require(ConcertID(concertID: 1))
+        #expect(await retryIndexer.indexCalls.first?.donations.map(\.entity.id) == [expectedID])
+    }
+
+    @Test("reconcile does not drop a cancelled in-window concert from the persisted snapshot when eviction fails")
+    func failedInWindowCancelledEvictionRetainsPersistedSnapshot() async throws {
+        let defaults = InMemoryDefaults()
+        let workingIndexer = MockConcertSpotlightIndexer()
+        let firstService = ConcertSpotlightDonationService(storage: defaults, indexer: workingIndexer)
+
+        let onSale = Concert.stub(id: 1, status: .onSale)
+        await firstService.reconcile(window: [onSale])
+
+        let failingIndexer = MockConcertSpotlightIndexer(shouldThrow: true)
+        let failingService = ConcertSpotlightDonationService(storage: defaults, indexer: failingIndexer)
+        let cancelled = Concert.stub(id: 1, status: .cancelled)
+        await failingService.reconcile(window: [cancelled])
+        #expect(await failingIndexer.deleteCalls.count == 1)
+
+        // Retry with a working indexer: the snapshot must still show the
+        // concert as donated, so this reconcile retries the eviction rather
+        // than silently giving up.
+        let retryIndexer = MockConcertSpotlightIndexer()
+        let retryService = ConcertSpotlightDonationService(storage: defaults, indexer: retryIndexer)
+        await retryService.reconcile(window: [cancelled])
+
+        #expect(await retryIndexer.deleteCalls.count == 1)
+        let expectedIdentifier = try #require(ConcertID(concertID: 1)?.entityIdentifierString)
+        #expect(await retryIndexer.deleteCalls.first?.identifiers == [expectedIdentifier])
+    }
 }
 
 // MARK: - Test double
