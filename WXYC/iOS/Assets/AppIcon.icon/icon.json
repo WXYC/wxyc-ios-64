@@ -11,7 +11,7 @@
           "glass" : true,
           "image-name" : "logo.svg",
           "name" : "logo",
-          "opacity" : 0.85,
+          "opacity" : 0.65,
           "position" : {
             "scale" : 0.46,
             "translation-in-points" : [
