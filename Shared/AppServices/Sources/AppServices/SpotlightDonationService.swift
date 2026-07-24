@@ -27,6 +27,14 @@
 //  and enrichment-re-donation paths are idempotent-upsert-only so neither
 //  can skip playcuts the batch has not yet seen.
 //
+//  A fourth path, `donateArtists(from:)` (C6), feeds a separate
+//  `wxyc.artists` index. It shares no watermark with the playcut paths
+//  above — it dedups whatever playcuts the caller hands it (typically the
+//  same batch passed to `donateRecentPlaycuts`) down to one `ArtistEntity`
+//  per normalized artist name, via `ArtistEntityQuery`'s grouping, and
+//  upserts at `batchPriority`. Re-donating an artist with an unchanged play
+//  count is a cheap no-op server-side, so no separate waterline is needed.
+//
 //  This file is compiled out on watchOS and tvOS: `CoreSpotlight`,
 //  `IndexedEntity`, and `CSSearchableItemAttributeSet` are all
 //  unavailable on those platforms, and `WXYCIntents` isn't linked into
@@ -88,6 +96,7 @@ public actor SpotlightDonationService: Sendable {
 
     private let storage: DefaultsStorage
     private let indexer: SpotlightIndexer
+    private let artistIndexer: ArtistSpotlightIndexer
 
     // MARK: - State
 
@@ -101,9 +110,14 @@ public actor SpotlightDonationService: Sendable {
 
     // MARK: - Init
 
-    public init(storage: DefaultsStorage, indexer: SpotlightIndexer) {
+    public init(
+        storage: DefaultsStorage,
+        indexer: SpotlightIndexer,
+        artistIndexer: ArtistSpotlightIndexer = CoreSpotlightArtistIndexer()
+    ) {
         self.storage = storage
         self.indexer = indexer
+        self.artistIndexer = artistIndexer
     }
 
     // MARK: - Public API
@@ -194,6 +208,34 @@ public actor SpotlightDonationService: Sendable {
             }
         } catch {
             Log(.warning, category: .general, "Spotlight re-donation failed for playcut \(playcut.id): \(error)")
+        }
+    }
+
+    /// Batch-upsert `ArtistEntity` values derived from `playcuts` into the
+    /// `wxyc.artists` index (C6).
+    ///
+    /// Groups `playcuts` by normalized artist name — the same dedup key
+    /// `ArtistEntityQuery`/`ArtistEntity` use elsewhere — so name variations
+    /// ("Stereolab" vs. "Stereolab feat. …", casing, whitespace) collapse to
+    /// one entity carrying the group's play count as of this call. The
+    /// resulting entities are capped at ``batchLimit`` (mirroring
+    /// `donateRecentPlaycuts`'s bound on background-refresh work) and sent
+    /// at ``batchPriority``. No watermark: unlike the playcut batch, this
+    /// path always re-derives entities fresh from whatever playcuts the
+    /// caller passes, so play counts never go stale, and a re-donation of an
+    /// unchanged count is a free upsert server-side.
+    public func donateArtists(from playcuts: [Playcut]) async {
+        let grouped = Dictionary(grouping: playcuts) { normalizedEntityKey($0.artistName) }
+        let entities = grouped
+            .map { normalized, group in ArtistEntity(artistName: normalized, playCount: group.count) }
+            .prefix(Self.batchLimit)
+
+        guard !entities.isEmpty else { return }
+
+        do {
+            try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
+        } catch {
+            Log(.warning, category: .general, "Spotlight artist donation failed (\(entities.count) artists): \(error)")
         }
     }
 

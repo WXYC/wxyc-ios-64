@@ -6,7 +6,11 @@
 //  elevated priority on every tick; recent playcuts are batch-indexed
 //  filtered by the persisted watermark; the watermark only advances after
 //  a successful `indexAppEntities` return; and batches cap at 50 rows so
-//  the background refresh budget can't be blown by a large playlist.
+//  the background refresh budget can't be blown by a large playlist. C6
+//  adds `donateArtists(from:)`, which mirrors the batch playcut path
+//  against the separate `wxyc.artists` named index: dedup by normalized
+//  artist name (mixed-case/whitespace/"feat." variants collapse to one
+//  entity), cap at `batchLimit`, donate at `batchPriority`.
 //
 //  Created by Jake Bromberg on 07/09/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -259,6 +263,100 @@ struct SpotlightDonationServiceTests {
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == nil)
     }
 
+    // MARK: - Artist donation (C6)
+
+    @Test("donateArtists indexes one deduped entity per normalized artist name")
+    func donateArtistsDedupsNameVariants() async throws {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Stereolab feat. Nurse With Wound"),
+            .stub(id: 3, artistName: "  STEREOLAB  "),
+            .stub(id: 4, artistName: "Juana Molina"),
+        ])
+
+        let calls = await artistIndexer.calls
+        #expect(calls.count == 1)
+        let entities = try #require(calls.first?.entities)
+        #expect(entities.count == 2)
+    }
+
+    @Test("donateArtists carries the play count per artist")
+    func donateArtistsCarriesPlayCount() async throws {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Stereolab feat. Nurse With Wound"),
+            .stub(id: 3, artistName: "Juana Molina"),
+        ])
+
+        let calls = await artistIndexer.calls
+        let entities = try #require(calls.first?.entities)
+        let stereolabID = ArtistEntity(artistName: "Stereolab").id
+        let stereolabEntity = try #require(entities.first { $0.id == stereolabID })
+        #expect(stereolabEntity.playCount == 2)
+    }
+
+    @Test("donateArtists uses batch priority")
+    func donateArtistsUsesBatchPriority() async throws {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [.stub(id: 1, artistName: "Stereolab")])
+
+        let call = try #require(await artistIndexer.calls.first)
+        #expect(call.priority == SpotlightDonationService.batchPriority)
+    }
+
+    @Test("donateArtists caps the deduped batch at batchLimit")
+    func donateArtistsCapsAtBatchLimit() async throws {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        let playcuts = (1...80).map { i in
+            Playcut.stub(id: UInt64(i), artistName: "Artist \(i)")
+        }
+
+        await service.donateArtists(from: playcuts)
+
+        let call = try #require(await artistIndexer.calls.first)
+        #expect(call.entities.count == SpotlightDonationService.batchLimit)
+    }
+
+    @Test("donateArtists is a no-op on an empty playlist")
+    func donateArtistsSkipsWhenEmpty() async {
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer
+        )
+
+        await service.donateArtists(from: [])
+
+        #expect(await artistIndexer.calls.isEmpty)
+    }
+
     // MARK: - Watermark persistence
 
     @Test("Watermark persists across service instances backed by the same storage")
@@ -461,6 +559,28 @@ actor MockSpotlightIndexer: SpotlightIndexer {
         calls.append(Call(entityIDs: entities.map(\.id), priority: priority))
         if shouldThrow {
             throw NSError(domain: "MockSpotlightIndexer", code: 1)
+        }
+    }
+}
+
+/// Records `indexArtists` calls for `donateArtists(from:)` assertions (C6).
+actor MockArtistSpotlightIndexer: ArtistSpotlightIndexer {
+    struct Call: Sendable {
+        let entities: [ArtistEntity]
+        let priority: Int
+    }
+
+    private(set) var calls: [Call] = []
+    private let shouldThrow: Bool
+
+    init(shouldThrow: Bool = false) {
+        self.shouldThrow = shouldThrow
+    }
+
+    func indexArtists(_ entities: [ArtistEntity], priority: Int) async throws {
+        calls.append(Call(entities: entities, priority: priority))
+        if shouldThrow {
+            throw NSError(domain: "MockArtistSpotlightIndexer", code: 1)
         }
     }
 }

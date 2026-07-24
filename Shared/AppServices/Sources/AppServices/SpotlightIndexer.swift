@@ -7,6 +7,11 @@
 //  named `wxyc.playcuts` index; the SP-F1 identifier scheme (`PlaycutID`)
 //  determines what a Spotlight tap resolves to via `OpenPlaycut`.
 //
+//  `ArtistSpotlightIndexer`/`CoreSpotlightArtistIndexer` (C6) mirror this
+//  same seam shape against the separate named `wxyc.artists` index — a
+//  distinct type rather than a second method on `SpotlightIndexer` so the
+//  two entity kinds' named indexes can never be conflated at a callsite.
+//
 //  Compiled out on watchOS and tvOS: `CoreSpotlight`, `IndexedEntity`,
 //  and `CSSearchableItemAttributeSet` are all unavailable on those
 //  platforms, and `WXYCIntents` (which vends `PlaycutEntity`) isn't
@@ -65,6 +70,41 @@ public struct CoreSpotlightIndexer: SpotlightIndexer {
 extension CoreSpotlightIndexer: PlaycutReindexer {
     public func donate(_ entities: [PlaycutEntity]) async throws {
         try await indexPlaycuts(entities, priority: SpotlightDonationService.batchPriority)
+    }
+}
+
+/// Injectable Spotlight indexing seam for `ArtistEntity`, mirroring
+/// `SpotlightIndexer`. The production impl forwards to
+/// `CSSearchableIndex.indexAppEntities` against the `wxyc.artists` index;
+/// tests provide a recording double.
+public protocol ArtistSpotlightIndexer: Sendable {
+    /// Upserts `entities` into the `wxyc.artists` index.
+    ///
+    /// `priority` follows the same convention as ``SpotlightIndexer/indexPlaycuts(_:priority:)``.
+    /// `SpotlightDonationService.donateArtists(from:)` sends `batchPriority`
+    /// — artist donation piggybacks on the same background-refresh
+    /// cadence as the playcut batch, with no elevated per-tick path.
+    func indexArtists(_ entities: [ArtistEntity], priority: Int) async throws
+}
+
+/// Production `ArtistSpotlightIndexer` backed by a named `CSSearchableIndex`,
+/// separate from `CoreSpotlightIndexer`'s playcut index so the two entity
+/// kinds' named indexes can't be conflated at a callsite.
+public struct CoreSpotlightArtistIndexer: ArtistSpotlightIndexer {
+    /// Name of the WXYC artist index. Aliases `ArtistSpotlightIndex.name`
+    /// (WXYCIntents) so this indexer and any future artist-side reindex
+    /// handler can never drift onto different index names.
+    public static let indexName = ArtistSpotlightIndex.name
+
+    private let index: CSSearchableIndex
+
+    public init(indexName: String = Self.indexName) {
+        self.index = CSSearchableIndex(name: indexName)
+    }
+
+    public func indexArtists(_ entities: [ArtistEntity], priority: Int) async throws {
+        guard !entities.isEmpty else { return }
+        try await index.indexAppEntities(entities, priority: priority)
     }
 }
 
