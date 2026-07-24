@@ -15,6 +15,8 @@
 
 import Foundation
 import Testing
+import Concerts
+import ConcertsTesting
 import Playlist
 import PlaylistTesting
 @testable import WXYCIntents
@@ -140,6 +142,71 @@ struct ArtistEntityQueryTests {
         let unknownID = ArtistEntity(artistName: "Cat Power").id
 
         let matches = try await query.playcuts(forArtist: unknownID)
+
+        #expect(matches.isEmpty)
+    }
+
+    // MARK: - OT-C6: concerts(forArtist:)
+
+    @Test("concerts(forArtist:) returns curated concerts headlined by the artist's catalog id")
+    func concertsForArtistReturnsMatchingCuratedConcerts() async throws {
+        let stereolab = Playcut.stub(id: 1, artistName: "Stereolab", artistId: 512)
+        let concert = Concert.stub(id: 4821, headliningArtistRaw: "Stereolab", headliningArtistId: 512)
+        let query = ArtistEntityQuery(source: { [stereolab] }, concertSource: { [concert] })
+        let stereolabID = ArtistEntity(artistName: "Stereolab").id
+
+        let matches = try await query.concerts(forArtist: stereolabID)
+
+        #expect(matches == [concert])
+    }
+
+    @Test("concerts(forArtist:) returns an empty array when no concert headlines the artist's catalog id")
+    func concertsForArtistReturnsEmptyForUnmatchedCatalogId() async throws {
+        let stereolab = Playcut.stub(id: 1, artistName: "Stereolab", artistId: 512)
+        let unrelatedConcert = Concert.stub(id: 1, headliningArtistRaw: "Cat Power", headliningArtistId: 999)
+        let query = ArtistEntityQuery(source: { [stereolab] }, concertSource: { [unrelatedConcert] })
+        let stereolabID = ArtistEntity(artistName: "Stereolab").id
+
+        let matches = try await query.concerts(forArtist: stereolabID)
+
+        #expect(matches.isEmpty)
+    }
+
+    @Test("concerts(forArtist:) never falls back to name matching when the artist has no resolved catalog id")
+    func concertsForArtistNeverFallsBackToNameMatching() async throws {
+        // Regression for the OT-C6 "no name matching" invariant: the concert's
+        // headliningArtistRaw matches the playcut's artistName exactly, but the
+        // playcut never resolved a catalog artistId, so there is nothing to
+        // intersect on and the match must not happen anyway.
+        let stereolab = Playcut.stub(id: 1, artistName: "Stereolab")
+        let sameNameConcert = Concert.stub(id: 1, headliningArtistRaw: "Stereolab", headliningArtistId: 512)
+        let query = ArtistEntityQuery(source: { [stereolab] }, concertSource: { [sameNameConcert] })
+        let stereolabID = ArtistEntity(artistName: "Stereolab").id
+
+        let matches = try await query.concerts(forArtist: stereolabID)
+
+        #expect(matches.isEmpty)
+    }
+
+    @Test("concerts(forArtist:) filters out concerts with no resolved headliningArtistId, matching ForYouShelf's curated discipline")
+    func concertsForArtistIgnoresUncuratedConcerts() async throws {
+        let stereolab = Playcut.stub(id: 1, artistName: "Stereolab", artistId: 512)
+        let uncuratedConcert = Concert.stub(id: 1, headliningArtistRaw: "Stereolab", headliningArtistId: nil)
+        let query = ArtistEntityQuery(source: { [stereolab] }, concertSource: { [uncuratedConcert] })
+        let stereolabID = ArtistEntity(artistName: "Stereolab").id
+
+        let matches = try await query.concerts(forArtist: stereolabID)
+
+        #expect(matches.isEmpty)
+    }
+
+    @Test("concerts(forArtist:) default concert source returns an empty array")
+    func concertsForArtistDefaultSourceReturnsEmpty() async throws {
+        let stereolab = Playcut.stub(id: 1, artistName: "Stereolab", artistId: 512)
+        let query = ArtistEntityQuery(source: { [stereolab] })
+        let stereolabID = ArtistEntity(artistName: "Stereolab").id
+
+        let matches = try await query.concerts(forArtist: stereolabID)
 
         #expect(matches.isEmpty)
     }
