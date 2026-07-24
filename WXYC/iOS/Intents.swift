@@ -25,6 +25,7 @@ import WXYCIntents
 @_exported import struct WXYCIntents.ToggleWXYC
 @_exported import struct WXYCIntents.IntentError
 @_exported import struct WXYCIntents.OpenPlaycut
+@_exported import struct WXYCIntents.OpenConcert
 
 // App-level service access for intents
 // App Intents run in a separate process and cannot access the main app's
@@ -216,6 +217,15 @@ struct WXYCAppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Open Playcut",
             systemImageName: "music.note"
+        )
+        AppShortcut(
+            intent: OpenConcert(),
+            phrases: [
+                "Open the \(.applicationName) concert",
+                "Show me a \(.applicationName) concert",
+            ],
+            shortTitle: "Open Concert",
+            systemImageName: "ticket.fill"
         )
     }
 }
