@@ -6,7 +6,8 @@
 //  displayable fields (headliner, venue, date), that the id-bridging
 //  initializer guards a negative backend id rather than crashing on the
 //  UInt64(negative) conversion, and that the CoreSpotlight attribute set
-//  links back to the entity id for OpenConcert routing.
+//  links back to the entity id for OpenConcert routing and surfaces the
+//  concert's poster image as the Spotlight thumbnail.
 //
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -126,6 +127,23 @@ struct ConcertEntityTests {
         #expect(set.contentDescription == entity.subtitleText)
         #expect(set.contentCreationDate == Concert.defaultStartsOn)
         #expect(set.relatedUniqueIdentifier == "4821")
+    }
+
+    @Test("surfaces the source concert's poster image as the Spotlight thumbnail")
+    func attributeSetCarriesPosterThumbnail() throws {
+        let poster = URL(string: "https://example.com/jessica-pratt-poster.jpg")
+        let concert = Concert.stub(imageURL: poster)
+        let entity = try #require(ConcertEntity(concert: concert))
+
+        #expect(entity.attributeSet.thumbnailURL == poster)
+    }
+
+    @Test("attribute set thumbnail is nil when the source concert has no poster image")
+    func attributeSetThumbnailNilWithoutPoster() throws {
+        let concert = Concert.stub(imageURL: nil)
+        let entity = try #require(ConcertEntity(concert: concert))
+
+        #expect(entity.attributeSet.thumbnailURL == nil)
     }
     #endif
 }
