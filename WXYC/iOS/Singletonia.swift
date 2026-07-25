@@ -383,10 +383,13 @@ final class Singletonia {
     /// when the window is reassigned — a load or refresh, not a trivial repaint)
     /// and hands each window to
     /// `ConcertSpotlightWindowObserver.donate(window:reconciler:inputs:)`, which
-    /// skips the not-loaded-yet empty window and dedups no-op refreshes before
-    /// calling `reconcile`. The on-device inputs (liked artists, station cap,
-    /// dismissed set) are gathered fresh per emission so a like or flag change
-    /// since the last refresh is reflected.
+    /// skips only the not-loaded-yet empty window before calling `reconcile`
+    /// (`reconcile` itself dedups an unchanged window against its persisted
+    /// snapshot). The on-device inputs (liked artists, station cap, dismissed
+    /// set) are gathered fresh per emission; because `reconcile` re-tiers a
+    /// concert only when its identity or status changes, an inputs-only change
+    /// takes effect on the next window change rather than instantly (see
+    /// `ConcertSpotlightReconcileInputs`).
     ///
     /// Kicks off one launch load of `onTourModel` so the window populates — and
     /// the first donation happens — even if the user never opens the On Tour tab,
@@ -396,18 +399,22 @@ final class Singletonia {
     /// `-marketing`, where the tab drives a fixture model and the production
     /// window must never hit the network.
     ///
-    /// Captures are strong on purpose, same rationale as
-    /// ``startSpotlightDonation()``: the task's lifetime is bound to
-    /// `Singletonia.shared` (a static let), so there is no cycle to break.
+    /// The task is stored on `Singletonia.shared` and captures `self` strongly,
+    /// forming a self → task → self cycle — but `Singletonia.shared` is a
+    /// process-lifetime `static let` that is never released, so there is nothing
+    /// to break (the same immortal-singleton rationale as
+    /// ``startSpotlightDonation()``). Capturing `self` — rather than a `weak self`
+    /// that could never actually go nil here — keeps the per-emission
+    /// ``currentConcertSpotlightInputs`` read direct.
     private func startConcertSpotlightDonation() {
-        concertSpotlightDonationTask = Task { [concertSpotlightDonationService, concertSpotlightWindowObserver, onTourModel, weak self] in
-            let windows = Observations { onTourModel.allConcerts }
+        concertSpotlightDonationTask = Task { [self] in
+            let windows = Observations { self.onTourModel.allConcerts }
             for await window in windows {
-                guard !Task.isCancelled, let self else { break }
+                guard !Task.isCancelled else { break }
                 await concertSpotlightWindowObserver.donate(
                     window: window,
                     reconciler: concertSpotlightDonationService,
-                    inputs: self.currentConcertSpotlightInputs
+                    inputs: currentConcertSpotlightInputs
                 )
             }
         }
@@ -417,12 +424,13 @@ final class Singletonia {
     }
 
     /// The on-device inputs `ConcertSpotlightDonationService.reconcile` needs
-    /// beyond the window, assembled from the same sources the On Tour tab's For
-    /// You shelf reads. Uses raw (non-debug-seeded) liked artists, deliberately:
-    /// the For You shelf's loved-seed debug toggle is a UI-only fake that must
-    /// never leak a synthetic like into the real Spotlight index (mirroring
-    /// `OnTourTabView.forceConcertSpotlightReconcile()`).
-    private var currentConcertSpotlightInputs: ConcertSpotlightReconcileInputs {
+    /// beyond the window — the **single source** both the live donation loop and
+    /// `OnTourTabView` (its For You shelf, its OT-Q2 debug reconcile/inspect
+    /// triggers) read, so the tier resolution can't drift between the visible
+    /// shelf and the donated index. Uses raw (non-debug-seeded) liked artists,
+    /// deliberately: the For You shelf's loved-seed debug toggle is a UI-only fake
+    /// that must never leak a synthetic like into the real Spotlight index.
+    var currentConcertSpotlightInputs: ConcertSpotlightReconcileInputs {
         ConcertSpotlightReconcileInputs(
             likedArtists: currentLikedArtists,
             stationCap: currentConcertSpotlightStationCap,
@@ -430,23 +438,26 @@ final class Singletonia {
         )
     }
 
-    /// The listener's id-bearing liked artists, projected from the likes store —
-    /// the same projection `OnTourTabView.likedArtists` uses.
-    private var currentLikedArtists: [LikedArtist] {
+    /// The listener's id-bearing liked artists, projected from the likes store.
+    /// The store is newest-first, so the engine's first-id-wins de-duplication
+    /// keeps the most recently-liked display name for a repeated artist id. The
+    /// single source `OnTourTabView.likedArtists` also reads.
+    var currentLikedArtists: [LikedArtist] {
         likedSongsStore.songs.compactMap { song in
             song.artistId.map { LikedArtist(id: $0, name: song.artistName) }
         }
     }
 
-    /// PostHog key for the On Tour For You station-recommended tier cap, mirrored
-    /// from `OnTourTabView.stationCapFlagKey` (private there). Local default 0
-    /// (tier off) until PostHog raises it (WXYC/wxyc-ios-64#551).
+    /// PostHog key for the On Tour For You station-recommended tier cap. The
+    /// single canonical definition; `OnTourTabView` reads the resolved cap via
+    /// ``currentConcertSpotlightStationCap`` rather than re-reading the key. Local
+    /// default 0 (tier off) until PostHog raises it (WXYC/wxyc-ios-64#551).
     private static let onTourStationCapFlagKey = "on_tour_for_you_station_cap"
 
-    /// The station-recommended tier cap `reconcile` should use — the same
-    /// resolution `OnTourTabView.concertSpotlightStationCap()` applies: a positive
-    /// DEBUG override takes precedence over the PostHog flag.
-    private var currentConcertSpotlightStationCap: Int {
+    /// The station-recommended tier cap the For You shelf and `reconcile` should
+    /// use: a positive DEBUG seed override takes precedence over the PostHog flag.
+    /// The single source `OnTourTabView`'s shelf and debug triggers also read.
+    var currentConcertSpotlightStationCap: Int {
         let flagStationCap = featureFlagProvider.integerValue(forKey: Self.onTourStationCapFlagKey, default: 0)
         #if DEBUG
         let override = OnTourForYouSeedDebugState.shared.stationCapOverride
