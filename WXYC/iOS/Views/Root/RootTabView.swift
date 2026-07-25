@@ -89,7 +89,7 @@ struct RootTabView: View {
             .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
 
             Tab(Page.onTour.title, systemImage: Page.onTour.systemImage, value: Page.onTour) {
-                OnTourTabView(model: appState.marketingOnTourModel)
+                OnTourTabView(model: appState.marketingOnTourModel ?? appState.onTourModel)
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
                         configuration: appState.themeConfiguration

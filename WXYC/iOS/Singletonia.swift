@@ -42,6 +42,31 @@ final class Singletonia {
         storage: UserDefaults.wxyc,
         indexer: CoreSpotlightIndexer()
     )
+
+    /// The always-on concert Spotlight donor (OT-C8, #654) — the concert analogue
+    /// of ``spotlightDonationService``. Bound to the same production storage
+    /// (`UserDefaults.wxyc`, holding the reconcile id -> status snapshot) and the
+    /// real `wxyc.concerts` index (`CoreSpotlightConcertIndexer`). Driven from
+    /// ``startConcertSpotlightDonation()`` on every On Tour window refresh.
+    let concertSpotlightDonationService = ConcertSpotlightDonationService(
+        storage: UserDefaults.wxyc,
+        indexer: CoreSpotlightConcertIndexer()
+    )
+
+    /// Owns the launch-empty-skip + no-op-refresh dedup that keeps the concert
+    /// donation loop within the background-refresh budget (OT-C8). Its state is
+    /// the reason the loop is one shared instance, not one per window emission.
+    let concertSpotlightWindowObserver = ConcertSpotlightWindowObserver()
+
+    /// The production On Tour window, held here (not per-scene) so
+    /// ``startConcertSpotlightDonation()`` can observe it independently of whether
+    /// the user ever opens the On Tour tab. `RootTabView` hands this same instance
+    /// to `OnTourTabView` (falling back to it only when there's no `-marketing`
+    /// fixture model), so opening the tab shows the already-loaded window rather
+    /// than triggering a second fetch — `OnTourModel`'s single-flight `load()`
+    /// coalesces the launch load with the tab's `.task` load.
+    let onTourModel = OnTourModel(fetcher: ConcertsFetcher(tokenProvider: MusicShareKit.authService))
+
     let playcutHistoryStore = PlaycutHistoryStore()
 
     /// On-device liked songs (#492). A durable file store, not a cache — likes
@@ -170,6 +195,7 @@ final class Singletonia {
     private var nowPlayingPlaybackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?
     private var spotlightMetadataEnrichmentTask: Task<Void, Never>?
+    private var concertSpotlightDonationTask: Task<Void, Never>?
     private var likedSongsHealingTask: Task<Void, Never>?
 
     private init() {
@@ -227,6 +253,7 @@ final class Singletonia {
         startNowPlayingPlaybackStateObservation()
         startSpotlightDonation()
         startSpotlightMetadataEnrichmentReDonation()
+        startConcertSpotlightDonation()
         startPlaycutHistory()
         startLikedSongsHealing()
 
@@ -346,6 +373,87 @@ final class Singletonia {
         spotlightMetadataEnrichmentTask = Task { [spotlightDonationService, playlistService] in
             await spotlightDonationService.observeMetadataEnrichment(from: playlistService)
         }
+    }
+
+    /// Feeds the `wxyc.concerts` Spotlight index on every On Tour window refresh
+    /// (OT-C8, #654) — the live caller that makes the concert Spotlight pipeline
+    /// non-dormant. The concert analogue of ``startSpotlightDonation()``.
+    ///
+    /// Observes `onTourModel.allConcerts` via `Observations` (which re-emits only
+    /// when the window is reassigned — a load or refresh, not a trivial repaint)
+    /// and hands each window to
+    /// `ConcertSpotlightWindowObserver.donate(window:reconciler:inputs:)`, which
+    /// skips the not-loaded-yet empty window and dedups no-op refreshes before
+    /// calling `reconcile`. The on-device inputs (liked artists, station cap,
+    /// dismissed set) are gathered fresh per emission so a like or flag change
+    /// since the last refresh is reflected.
+    ///
+    /// Kicks off one launch load of `onTourModel` so the window populates — and
+    /// the first donation happens — even if the user never opens the On Tour tab,
+    /// satisfying the "on launch the curated window is donated" acceptance
+    /// criterion. `OnTourModel`'s single-flight `load()` coalesces this with the
+    /// tab's own `.task` load, so the two never double-fetch. Skipped under
+    /// `-marketing`, where the tab drives a fixture model and the production
+    /// window must never hit the network.
+    ///
+    /// Captures are strong on purpose, same rationale as
+    /// ``startSpotlightDonation()``: the task's lifetime is bound to
+    /// `Singletonia.shared` (a static let), so there is no cycle to break.
+    private func startConcertSpotlightDonation() {
+        concertSpotlightDonationTask = Task { [concertSpotlightDonationService, concertSpotlightWindowObserver, onTourModel, weak self] in
+            let windows = Observations { onTourModel.allConcerts }
+            for await window in windows {
+                guard !Task.isCancelled, let self else { break }
+                await concertSpotlightWindowObserver.donate(
+                    window: window,
+                    reconciler: concertSpotlightDonationService,
+                    inputs: self.currentConcertSpotlightInputs
+                )
+            }
+        }
+
+        guard !ProcessInfo.processInfo.arguments.contains("-marketing") else { return }
+        Task { [onTourModel] in await onTourModel.load() }
+    }
+
+    /// The on-device inputs `ConcertSpotlightDonationService.reconcile` needs
+    /// beyond the window, assembled from the same sources the On Tour tab's For
+    /// You shelf reads. Uses raw (non-debug-seeded) liked artists, deliberately:
+    /// the For You shelf's loved-seed debug toggle is a UI-only fake that must
+    /// never leak a synthetic like into the real Spotlight index (mirroring
+    /// `OnTourTabView.forceConcertSpotlightReconcile()`).
+    private var currentConcertSpotlightInputs: ConcertSpotlightReconcileInputs {
+        ConcertSpotlightReconcileInputs(
+            likedArtists: currentLikedArtists,
+            stationCap: currentConcertSpotlightStationCap,
+            dismissedConcertIDs: dismissedConcertsStore.ids
+        )
+    }
+
+    /// The listener's id-bearing liked artists, projected from the likes store —
+    /// the same projection `OnTourTabView.likedArtists` uses.
+    private var currentLikedArtists: [LikedArtist] {
+        likedSongsStore.songs.compactMap { song in
+            song.artistId.map { LikedArtist(id: $0, name: song.artistName) }
+        }
+    }
+
+    /// PostHog key for the On Tour For You station-recommended tier cap, mirrored
+    /// from `OnTourTabView.stationCapFlagKey` (private there). Local default 0
+    /// (tier off) until PostHog raises it (WXYC/wxyc-ios-64#551).
+    private static let onTourStationCapFlagKey = "on_tour_for_you_station_cap"
+
+    /// The station-recommended tier cap `reconcile` should use — the same
+    /// resolution `OnTourTabView.concertSpotlightStationCap()` applies: a positive
+    /// DEBUG override takes precedence over the PostHog flag.
+    private var currentConcertSpotlightStationCap: Int {
+        let flagStationCap = featureFlagProvider.integerValue(forKey: Self.onTourStationCapFlagKey, default: 0)
+        #if DEBUG
+        let override = OnTourForYouSeedDebugState.shared.stationCapOverride
+        return override > 0 ? override : flagStationCap
+        #else
+        return flagStationCap
+        #endif
     }
 
     /// Feeds the persistent playcut history on every playlist tick.
