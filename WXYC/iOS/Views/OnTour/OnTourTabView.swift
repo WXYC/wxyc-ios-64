@@ -49,12 +49,6 @@ struct OnTourTabView: View {
     /// tab shows a quiet "couldn't find that show" notice instead of a blank cover.
     @State private var showMissedLinkNotice = false
 
-    /// PostHog key for the station-recommended tier size cap. Local default **0**
-    /// (tier off) so wiring the surface is behavior-neutral — the cold-start
-    /// station tier only lights up once this is raised via PostHog, gating the
-    /// controlled rollout (WXYC/wxyc-ios-64#551).
-    private static let stationCapFlagKey = "on_tour_for_you_station_cap"
-
     /// Creates the tab. The default model talks to the live `GET /concerts`
     /// endpoint with the anonymous-session token; previews and tests inject a
     /// model backed by a stub fetcher.
@@ -347,13 +341,11 @@ struct OnTourTabView: View {
 
     // MARK: - For You shelf
 
-    /// The listener's id-bearing liked artists, projected from the likes store.
-    /// The store is newest-first, so the engine's first-id-wins de-duplication
-    /// keeps the most recently-liked display name for a repeated artist id.
+    /// The listener's id-bearing liked artists. Delegates to the single source
+    /// on `Singletonia` so the shelf and the live Spotlight donation project
+    /// likes identically.
     private var likedArtists: [LikedArtist] {
-        appState.likedSongsStore.songs.compactMap { song in
-            song.artistId.map { LikedArtist(id: $0, name: song.artistName) }
-        }
+        appState.currentLikedArtists
     }
 
     /// Builds the For You shelf over `concerts`, reading the remotely-tunable
@@ -381,16 +373,9 @@ struct OnTourTabView: View {
         // can fill the cold-start shelf on its own (#551, rewired on the boolean by
         // #577); there is no longer an empty-likes short-circuit. The station cap
         // defaults to 0 (tier off), so this stays behavior-neutral until PostHog
-        // raises it.
-        // A positive debug station-cap override forces the tier on locally, ahead
-        // of the PostHog flag; 0 (the default) defers to the flag.
-        let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
-        #if DEBUG
-        let stationCapOverride = seedState.stationCapOverride
-        let stationCap = stationCapOverride > 0 ? stationCapOverride : flagStationCap
-        #else
-        let stationCap = flagStationCap
-        #endif
+        // raises it. Resolution (a positive debug override ahead of the PostHog
+        // flag) lives on `Singletonia` so the shelf and the live donation agree.
+        let stationCap = appState.currentConcertSpotlightStationCap
         let recs = ForYouShelf.recommendations(
             concerts: concerts,
             likedArtists: matchArtists,
@@ -454,16 +439,6 @@ struct OnTourTabView: View {
         ConcertSpotlightDonationService(storage: UserDefaults.wxyc, indexer: CoreSpotlightConcertIndexer())
     }
 
-    /// The station-recommended tier cap `reconcile`/`debugRows` should use — the
-    /// same resolution `recommendations(for:)` applies (a positive debug override
-    /// takes precedence over the PostHog flag), duplicated rather than shared
-    /// because `recommendations(for:)`'s local is scoped inside that function.
-    private func concertSpotlightStationCap() -> Int {
-        let flagStationCap = appState.featureFlagProvider.integerValue(forKey: Self.stationCapFlagKey, default: 0)
-        let stationCapOverride = OnTourForYouSeedDebugState.shared.stationCapOverride
-        return stationCapOverride > 0 ? stationCapOverride : flagStationCap
-    }
-
     /// Loads the Concert Spotlight inspector's dump: `AppServices
     /// .ConcertSpotlightDonationService.debugRows`, read-only, over the tab's
     /// already-fetched `model.allConcerts` window — the same window `reconcile`
@@ -472,11 +447,12 @@ struct OnTourTabView: View {
     /// for this feature (mirrors `OnTourForYouSeedDebugState`'s boundary).
     private func loadConcertSpotlightDebugRows() async -> [ConcertSpotlightInspectorDebugView.Row] {
         let service = makeConcertSpotlightDebugService()
+        let inputs = appState.currentConcertSpotlightInputs
         let debugRows = await service.debugRows(
             window: model.allConcerts,
-            likedArtists: likedArtists,
-            stationCap: concertSpotlightStationCap(),
-            dismissedConcertIDs: appState.dismissedConcertsStore.ids
+            likedArtists: inputs.likedArtists,
+            stationCap: inputs.stationCap,
+            dismissedConcertIDs: inputs.dismissedConcertIDs
         )
         return debugRows.map {
             ConcertSpotlightInspectorDebugView.Row(
@@ -489,18 +465,20 @@ struct OnTourTabView: View {
     }
 
     /// Re-runs the real `ConcertSpotlightDonationService.reconcile` pass against
-    /// the currently loaded window — no bespoke indexing logic, the same call
-    /// OT-C8 (#654) will make automatically once wired as a launch/refresh
-    /// observer. Uses raw (non-debug-seeded) `likedArtists`, deliberately: the For
-    /// You shelf's loved-seed debug toggle is a UI-only fake and should never leak
-    /// a synthetic like into the real Spotlight index.
+    /// the currently loaded window through the *same* inputs the live OT-C8
+    /// observer uses (``Singletonia/currentConcertSpotlightInputs``), so the debug
+    /// trigger can't diverge from production. Those inputs use raw
+    /// (non-debug-seeded) liked artists, deliberately: the For You shelf's
+    /// loved-seed debug toggle is a UI-only fake and should never leak a synthetic
+    /// like into the real Spotlight index.
     private func forceConcertSpotlightReconcile() async {
         let service = makeConcertSpotlightDebugService()
+        let inputs = appState.currentConcertSpotlightInputs
         await service.reconcile(
             window: model.allConcerts,
-            likedArtists: likedArtists,
-            stationCap: concertSpotlightStationCap(),
-            dismissedConcertIDs: appState.dismissedConcertsStore.ids
+            likedArtists: inputs.likedArtists,
+            stationCap: inputs.stationCap,
+            dismissedConcertIDs: inputs.dismissedConcertIDs
         )
     }
     #endif

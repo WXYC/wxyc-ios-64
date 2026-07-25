@@ -16,26 +16,34 @@
 //  `SpotlightDonationService.donateBatch(...)` on every playlist tick. Here the
 //  driver is the On Tour window: `Singletonia` subscribes to
 //  `Observations { onTourModel.allConcerts }` and hands each emitted window to
-//  ``donate(window:reconciler:inputs:)``, which owns the two guards that keep
-//  the app-lifecycle donation honest with the background-refresh budget:
+//  ``donate(window:reconciler:inputs:)``, whose sole job is the one guard the
+//  reconcile service cannot make on its own — distinguishing the not-loaded-yet
+//  empty window from a genuine one:
 //
-//  * **Skip the empty window.** `OnTourModel.allConcerts` starts empty and stays
-//    empty until the first load resolves, so an emitted empty window is the
-//    "not loaded yet" sentinel — *not* "the curated window is genuinely empty."
-//    Reconciling against it would read every previously-donated concert as
-//    departed and evict the whole persisted index on every cold launch before
-//    the load finishes. A genuinely-empty curated window (every show has
-//    passed) needs no eviction anyway: each donated item already carries an
-//    `expirationDate` pinned to the end of its show day, so Spotlight evicts it
-//    on its own (see `ConcertSpotlightDonationService`'s expiry half).
-//  * **Dedup on the window's id -> status signature.** `Observations` only
-//    re-emits when `allConcerts` is reassigned, but a pull-to-refresh that
-//    returns byte-identical data still reassigns it. Comparing the incoming
-//    window's `(id, status)` signature to the last donated one collapses those
-//    no-op refreshes to nothing, so a trivial repaint never burns an XPC
-//    round-trip. The signature is `(id, status)` — not ids alone — so OT-C5's
-//    status axis still gets through: a concert that stays in the window but
-//    turns `soldOut`/`cancelled` changes the signature and re-reconciles.
+//  * **Skip the empty window until the first real load.**
+//    `OnTourModel.allConcerts` starts empty and stays empty until the first
+//    load resolves, so an empty window emitted *before any non-empty window has
+//    been donated* is the "not loaded yet" sentinel — *not* "the curated window
+//    is genuinely empty." Reconciling against it would read every
+//    previously-donated concert as departed and evict the whole persisted index
+//    on every cold launch before the load finishes. Once a real (non-empty)
+//    window has been donated, a later empty window is a genuine shrink-to-zero —
+//    a successful fetch that returned no shows — and *is* forwarded, so
+//    `reconcile` evicts the departed shows. (Expiry alone would miss a
+//    cancelled-then-departed show, whose `expirationDate` is still in the
+//    future; see `ConcertSpotlightDonationService`'s eviction half.) The gate is
+//    ``hasDonated``.
+//
+//  Deduping unchanged windows is deliberately *not* this observer's job — it is
+//  `reconcile`'s. `reconcile` diffs each window against its persisted
+//  id -> status snapshot and short-circuits (no CoreSpotlight call) when nothing
+//  changed, so a byte-identical pull-to-refresh already collapses to a no-op
+//  there. Crucially, `reconcile` advances that snapshot *only on a successful
+//  index write*, so a transient CoreSpotlight failure is retried on the next
+//  pass. An earlier design mirrored the snapshot here as a separate dedup
+//  signature; that second copy could drift ahead of `reconcile`'s on a failed
+//  write and suppress the very retry the snapshot discipline exists to allow, so
+//  the observer now keeps no window state beyond the ``hasDonated`` sentinel.
 //
 //  Why this is safe alongside the OT-F3 reindex path (the "no double-donation"
 //  acceptance criterion): both this observer and
@@ -83,10 +91,17 @@ public protocol ConcertSpotlightReconciling: Sendable {
 extension ConcertSpotlightDonationService: ConcertSpotlightReconciling {}
 
 /// The on-device inputs a `reconcile` pass needs beyond the window itself —
-/// gathered fresh at each donation so a like or a flag change since the last
-/// window refresh is reflected. Mirrors the argument set
-/// `OnTourTabView.forceConcertSpotlightReconcile()` already assembles for the
-/// OT-Q2 debug trigger.
+/// gathered fresh at each donation. Assembled once by
+/// `Singletonia.currentConcertSpotlightInputs`, the single source both this
+/// live loop and `OnTourTabView`'s OT-Q2 debug trigger read.
+///
+/// Note the granularity: because `reconcile` re-donates a concert only when its
+/// identity or `status` changes, an inputs-only change (a new like, a dismissal,
+/// a station-cap flag flip) against an otherwise-unchanged window does not
+/// re-tier that concert in Spotlight immediately — it takes effect the next time
+/// the window's membership or a status changes and the concert is re-donated.
+/// Fresh inputs at each donation is what makes that eventual re-tier correct; it
+/// is not a promise of instantaneous reflection.
 public struct ConcertSpotlightReconcileInputs: Sendable {
     /// The listener's id-bearing liked artists, matched on-device against the
     /// window for the loved tier.
@@ -110,28 +125,32 @@ public struct ConcertSpotlightReconcileInputs: Sendable {
     }
 }
 
-/// Feeds each fetched On Tour window into `reconcile`, skipping the
-/// not-loaded-yet empty window and deduping byte-identical refreshes.
+/// Feeds each fetched On Tour window into `reconcile`, skipping only the
+/// not-loaded-yet empty window (dedup of unchanged windows is `reconcile`'s
+/// own responsibility — see the file-level comment).
 ///
-/// An `actor` so its `lastSignature` dedup state is race-free across the
-/// main-actor `Observations` loop that drives it — `Singletonia` awaits
+/// An `actor` so its ``hasDonated`` gate is race-free across the main-actor
+/// `Observations` loop that drives it — `Singletonia` awaits
 /// ``donate(window:reconciler:inputs:)`` per emitted window and the actor
 /// serializes the reads/writes of that state.
 public actor ConcertSpotlightWindowObserver {
 
-    /// The id -> status signature of the window last handed to `reconcile`, or
-    /// `nil` before the first donation. Compared against each incoming window to
-    /// collapse no-op refreshes.
-    private var lastSignature: [Int: ShowStatus]?
+    /// Whether a non-empty window has been forwarded to `reconcile` yet. Until
+    /// it has, an empty window is the "not loaded yet" sentinel and is skipped;
+    /// afterward, an empty window is a genuine shrink-to-zero and is forwarded so
+    /// `reconcile` evicts the departed shows.
+    private var hasDonated = false
 
     public init() {}
 
-    /// Donates `window` through `reconciler` unless it's the not-loaded-yet
-    /// empty window, or its id -> status signature matches the last donated
-    /// window.
+    /// Forwards `window` to `reconciler`, skipping only the not-loaded-yet empty
+    /// window (an empty window seen before any non-empty window has been
+    /// donated). Everything else — including a genuine shrink-to-zero and a
+    /// byte-identical refresh — is forwarded; `reconcile` diffs against its
+    /// persisted snapshot and no-ops when nothing changed.
     ///
     /// - Returns: `true` if `reconciler.reconcile` was called, `false` if the
-    ///   window was skipped (empty or unchanged) — surfaced for tests; callers
+    ///   not-loaded-yet empty window was skipped — surfaced for tests; callers
     ///   can ignore it.
     @discardableResult
     public func donate(
@@ -139,13 +158,14 @@ public actor ConcertSpotlightWindowObserver {
         reconciler: some ConcertSpotlightReconciling,
         inputs: ConcertSpotlightReconcileInputs
     ) async -> Bool {
-        // The not-loaded-yet sentinel — never evict the whole persisted index
-        // just because the window hasn't resolved. See the file-level comment.
-        guard !window.isEmpty else { return false }
-
-        let signature = Self.signature(of: window)
-        guard signature != lastSignature else { return false }
-        lastSignature = signature
+        // The not-loaded-yet sentinel: an empty window before any real load has
+        // resolved. Never reconcile against it — reconcile would read every
+        // previously-donated concert as departed and evict the whole persisted
+        // index on cold launch. Once a non-empty window has been donated, a
+        // later empty window is a genuine shrink-to-zero and IS forwarded so the
+        // departed shows are evicted. See the file-level comment.
+        guard hasDonated || !window.isEmpty else { return false }
+        hasDonated = true
 
         await reconciler.reconcile(
             window: window,
@@ -154,13 +174,6 @@ public actor ConcertSpotlightWindowObserver {
             dismissedConcertIDs: inputs.dismissedConcertIDs
         )
         return true
-    }
-
-    /// The window's id -> status signature — the dedup key. Duplicate ids in a
-    /// window (never expected from the curated endpoint) resolve first-wins,
-    /// matching `reconcile`'s own `statusByID` construction.
-    private static func signature(of window: [Concert]) -> [Int: ShowStatus] {
-        Dictionary(window.map { ($0.id, $0.status) }, uniquingKeysWith: { first, _ in first })
     }
 }
 
