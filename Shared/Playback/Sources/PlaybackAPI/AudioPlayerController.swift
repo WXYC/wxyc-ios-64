@@ -144,6 +144,13 @@ public final class AudioPlayerController {
     /// Tracks when playback started for analytics duration reporting
     private var playbackStartTime: Date?
     private var stallStartTime: Date?
+    /// Stable per-listen identifier (#665), generated at the play intent
+    /// alongside `playbackStartTime` and threaded onto every playback
+    /// analytics event so one continuous listen can be reconstructed from
+    /// the event stream. Cleared in `stop()` — except for the interruption
+    /// and route-disconnect reasons, which stop playback only as a prelude
+    /// to an imminent auto-resume and must preserve the id (see `stop(reason:)`).
+    private var sessionID: String?
     @ObservationIgnored private var interruptionObservation: (any NSObjectProtocol)?
     @ObservationIgnored private var routeChangeObservation: (any NSObjectProtocol)?
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
@@ -312,7 +319,7 @@ public final class AudioPlayerController {
     /// - Parameter reason: Why playback was toggled (for analytics)
     public func toggle(reason: PlaybackReason) {
         if isPlaying {
-            analytics.capture(PlaybackStoppedEvent(duration: playbackDuration))
+            analytics.capture(PlaybackStoppedEvent(duration: playbackDuration, sessionID: sessionID))
             stop(reason: reason)
         } else {
             play(reason: reason)
@@ -338,6 +345,7 @@ public final class AudioPlayerController {
         wasPlayingBeforeRouteDisconnect = false
         stallStartTime = nil
         playbackStartTime = playbackStartTime ?? Date()
+        sessionID = sessionID ?? UUID().uuidString
         // Arm the play-intent → first-audio watchdog (#518). Placed before the
         // activation guard so it also covers the silent paths that never reach
         // `player.play()`: a `'!int'` deferral whose bounded retries exhaust
@@ -384,7 +392,7 @@ public final class AudioPlayerController {
         // waiting for the async stateStream to propagate. The stateStream observation
         // will keep playerState in sync for subsequent player-driven transitions.
         playerState = player.state
-        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue))
+        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, sessionID: sessionID))
         donatePlayIntent()
     }
     
@@ -414,6 +422,13 @@ public final class AudioPlayerController {
         player.stop()
         playerState = player.state
         playbackStartTime = nil
+        // Interruption/route-disconnect stops are an implementation detail of
+        // "pause, then auto-resume" — the listen itself isn't over, so the
+        // session id must survive them. Any other reason is a genuine end of
+        // the listen; the next `play()` mints a fresh id. See #665.
+        if reason != .interruptionBegan && reason != .routeDisconnected {
+            sessionID = nil
+        }
         #if os(iOS) || os(tvOS)
         // Cancel any deferred session-activation retry — the user (or system)
         // no longer wants playback, so we must not keep trying to interrupt.
@@ -706,7 +721,7 @@ public final class AudioPlayerController {
         let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
-                self.analytics.capture(PlaybackStoppedEvent(duration: self.playbackDuration))
+                self.analytics.capture(PlaybackStoppedEvent(duration: self.playbackDuration, sessionID: self.sessionID))
                 self.stop(reason: .remotePauseCommand)
             }
             return .success
@@ -886,7 +901,7 @@ public final class AudioPlayerController {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackDuration))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackDuration, sessionID: sessionID))
                 stop(reason: .interruptionBegan)
             }
 
@@ -913,7 +928,7 @@ public final class AudioPlayerController {
             // Headphones unplugged - stop playback per Apple HIG
             wasPlayingBeforeRouteDisconnect = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackDuration))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackDuration, sessionID: sessionID))
                 stop(reason: .routeDisconnected)
             }
 
@@ -1051,7 +1066,8 @@ extension AudioPlayerController {
                         reconnectAttempts: Int(self.backoffTimer.numberOfAttempts),
                         sessionDuration: self.playbackDuration,
                         stallDuration: self.stallStartTime.map { Date().timeIntervalSince($0) },
-                        recoveryMethod: .automaticReconnect
+                        recoveryMethod: .automaticReconnect,
+                        sessionID: self.sessionID
                     ))
                     // Do NOT end the CPU session on a transient error. The
                     // session follows playback INTENT, not individual errors —
@@ -1071,7 +1087,7 @@ extension AudioPlayerController {
         // Only record the first stall timestamp so repeated stall events don't
         // shorten the reported stall duration.
         stallStartTime = stallStartTime ?? Date()
-        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration))
+        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration, sessionID: sessionID))
 
         // Attempt reconnection with exponential backoff
         attemptReconnectWithExponentialBackoff()
@@ -1097,7 +1113,8 @@ extension AudioPlayerController {
         Log(.info, category: .playback, "First audio after \(String(format: "%.2f", timeToAudio))s (\(playerType.rawValue))")
         analytics.capture(PlaybackFirstAudioEvent(
             playerType: playerType,
-            timeToFirstAudio: timeToAudio
+            timeToFirstAudio: timeToAudio,
+            sessionID: sessionID
         ))
     }
 
@@ -1154,7 +1171,8 @@ extension AudioPlayerController {
             reconnectAttempts: Int(backoffTimer.numberOfAttempts),
             sessionDuration: playbackDuration,
             stallDuration: nil,
-            recoveryMethod: .automaticReconnect
+            recoveryMethod: .automaticReconnect,
+            sessionID: sessionID
         ))
         // Reuse the vetted reconnect ramp (first wait is 0.0 → immediate): it
         // re-activates the session (which may itself be the problem), re-calls
@@ -1181,7 +1199,8 @@ extension AudioPlayerController {
                 reconnectAttempts: Int(backoffTimer.numberOfAttempts),
                 sessionDuration: playbackDuration,
                 stallDuration: stallDuration,
-                recoveryMethod: .retryWithBackoff
+                recoveryMethod: .retryWithBackoff,
+                sessionID: sessionID
             ))
             // Do NOT end the CPU session here: it follows playback INTENT, not a
             // transient error, so a later holding-pattern recovery credits the
@@ -1557,7 +1576,8 @@ extension AudioPlayerController {
             attempts: Int(self.backoffTimer.numberOfAttempts),
             stallDuration: Date().timeIntervalSince(stallStart),
             reason: .bufferUnderrun,
-            recoveryMethod: recoveryMethod
+            recoveryMethod: recoveryMethod,
+            sessionID: sessionID
         ))
         self.stallStartTime = nil
     }

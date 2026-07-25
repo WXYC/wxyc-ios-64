@@ -207,6 +207,63 @@ struct PlaybackAnalyticsTests {
         await Task { @Sendable in _ = event }.value
     }
 
+    // MARK: - Session Identity (#665)
+
+    @Test("PlaybackStartedEvent surfaces session_id in properties when provided")
+    func playbackStartedEventSurfacesSessionID() {
+        let event = PlaybackStartedEvent(reason: "user initiated", sessionID: "session-1")
+        #expect(event.properties?["session_id"] as? String == "session-1")
+    }
+
+    @Test("PlaybackStartedEvent omits session_id when nil")
+    func playbackStartedEventOmitsSessionIDWhenNil() {
+        let event = PlaybackStartedEvent(reason: "user initiated")
+        #expect(event.properties?["session_id"] == nil)
+    }
+
+    @Test("PlaybackStoppedEvent surfaces session_id in properties when provided")
+    func playbackStoppedEventSurfacesSessionID() {
+        let event = PlaybackStoppedEvent(duration: 10.0, sessionID: "session-2")
+        #expect(event.properties?["session_id"] as? String == "session-2")
+    }
+
+    @Test("PlaybackStoppedEvent omits session_id when nil")
+    func playbackStoppedEventOmitsSessionIDWhenNil() {
+        let event = PlaybackStoppedEvent(duration: 10.0)
+        #expect(event.properties?["session_id"] == nil)
+    }
+
+    @Test("StallRecoveryEvent surfaces session_id in properties when provided")
+    func stallRecoveryEventSurfacesSessionID() {
+        let event = StallRecoveryEvent(playerType: .radioPlayer, attempts: 1, stallDuration: 1.0, sessionID: "session-3")
+        #expect(event.properties?["session_id"] as? String == "session-3")
+    }
+
+    @Test("StreamErrorEvent surfaces session_id in properties when provided")
+    func streamErrorEventSurfacesSessionID() {
+        let event = StreamErrorEvent(
+            playerType: .mp3Streamer,
+            errorType: .networkError,
+            errorDescription: "Network connection failed",
+            reconnectAttempts: 1,
+            sessionDuration: 10.0,
+            sessionID: "session-4"
+        )
+        #expect(event.properties?["session_id"] as? String == "session-4")
+    }
+
+    @Test("InterruptionEvent surfaces session_id in properties when provided")
+    func interruptionEventSurfacesSessionID() {
+        let event = InterruptionEvent(type: .began, sessionID: "session-5")
+        #expect(event.properties?["session_id"] as? String == "session-5")
+    }
+
+    @Test("PlaybackFirstAudioEvent surfaces session_id in properties when provided")
+    func playbackFirstAudioEventSurfacesSessionID() {
+        let event = PlaybackFirstAudioEvent(playerType: .radioPlayer, timeToFirstAudio: 1.5, sessionID: "session-6")
+        #expect(event.properties?["session_id"] as? String == "session-6")
+    }
+
     @Test("StreamErrorType raw values", arguments: [
         (StreamErrorType.backoffExhausted, "backoff_exhausted"),
         (StreamErrorType.startupTimeout, "startup_timeout"),

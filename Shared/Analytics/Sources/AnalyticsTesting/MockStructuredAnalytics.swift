@@ -62,12 +62,16 @@ public extension MockStructuredAnalytics {
     /// Represents a started event for testing.
     struct StartedEventProxy {
         public let reason: String
+        /// The listening-session id (#665) carried by the event, if any.
+        public let sessionID: String?
     }
 
     /// Represents a stopped event for testing.
     struct StoppedEventProxy {
         public let reason: String?
         public let duration: TimeInterval
+        /// The listening-session id (#665) carried by the event, if any.
+        public let sessionID: String?
     }
 
     /// All playback started events (events named "play").
@@ -76,7 +80,8 @@ public extension MockStructuredAnalytics {
             .compactMap { event -> StartedEventProxy? in
                 guard let props = event.properties,
                       let reason = props["reason"] as? String else { return nil }
-                return StartedEventProxy(reason: reason)
+                let sessionID = props["session_id"] as? String
+                return StartedEventProxy(reason: reason, sessionID: sessionID)
             }
     }
 
@@ -87,7 +92,8 @@ public extension MockStructuredAnalytics {
                 guard let props = event.properties,
                       let duration = props["duration"] as? TimeInterval else { return nil }
                 let reason = props["reason"] as? String
-                return StoppedEventProxy(reason: reason, duration: duration)
+                let sessionID = props["session_id"] as? String
+                return StoppedEventProxy(reason: reason, duration: duration, sessionID: sessionID)
             }
     }
 
