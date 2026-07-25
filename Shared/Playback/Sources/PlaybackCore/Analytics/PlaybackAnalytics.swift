@@ -34,13 +34,21 @@ public protocol PlaybackAnalyticsEvent: AnalyticsEvent {}
 public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
     public static let name = "play"
     public let reason: String
+    /// The stable per-listen identifier (#665) active when this event fired,
+    /// so a `play` intent can be joined back to the listen it belongs to.
+    /// `nil` at call sites that don't yet have a controller-tracked session
+    /// (e.g. the lower player-implementation layers).
+    public let sessionID: String?
 
     public var properties: [String: Any]? {
-        ["reason": reason]
+        var props: [String: Any] = ["reason": reason]
+        if let sessionID { props["session_id"] = sessionID }
+        return props
     }
 
-    public init(reason: String) {
+    public init(reason: String, sessionID: String? = nil) {
         self.reason = reason
+        self.sessionID = sessionID
     }
 }
 
@@ -63,17 +71,22 @@ public struct PlaybackFirstAudioEvent: PlaybackAnalyticsEvent {
     public let playerType: PlayerControllerType
     /// Seconds elapsed from the play intent to first rendered audio.
     public let timeToFirstAudio: TimeInterval
+    /// The stable per-listen identifier (#665) active when this event fired.
+    public let sessionID: String?
 
     public var properties: [String: Any]? {
-        [
+        var props: [String: Any] = [
             "player_type": playerType.rawValue,
             "time_to_first_audio": timeToFirstAudio
         ]
+        if let sessionID { props["session_id"] = sessionID }
+        return props
     }
 
-    public init(playerType: PlayerControllerType, timeToFirstAudio: TimeInterval) {
+    public init(playerType: PlayerControllerType, timeToFirstAudio: TimeInterval, sessionID: String? = nil) {
         self.playerType = playerType
         self.timeToFirstAudio = timeToFirstAudio
+        self.sessionID = sessionID
     }
 }
 
@@ -82,16 +95,20 @@ public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
     public static let name = "pause"
     public let reason: String?
     public let duration: TimeInterval
+    /// The stable per-listen identifier (#665) active when this event fired.
+    public let sessionID: String?
 
     public var properties: [String: Any]? {
         var props: [String: Any] = ["duration": duration]
         if let reason { props["reason"] = reason }
+        if let sessionID { props["session_id"] = sessionID }
         return props
     }
 
-    public init(reason: String? = nil, duration: TimeInterval) {
+    public init(reason: String? = nil, duration: TimeInterval, sessionID: String? = nil) {
         self.reason = reason
         self.duration = duration
+        self.sessionID = sessionID
     }
 }
 
@@ -130,9 +147,12 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
     public let stallDuration: TimeInterval
     public let reason: StallReason
     public let recoveryMethod: RecoveryMethod
-    
+    /// The stable per-listen identifier (#665) active when this event fired,
+    /// so a stall/recovery pair can be attributed to the listen it interrupted.
+    public let sessionID: String?
+
     public var properties: [String: Any]? {
-        [
+        var props: [String: Any] = [
             "player_type": playerType.rawValue,
             "successful": successful,
             "attempts": attempts,
@@ -140,6 +160,8 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
             "reason": reason.rawValue,
             "recovery_method": recoveryMethod.rawValue
         ]
+        if let sessionID { props["session_id"] = sessionID }
+        return props
     }
 
     public init(
@@ -148,7 +170,8 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
         attempts: Int,
         stallDuration: TimeInterval,
         reason: StallReason = .bufferUnderrun,
-        recoveryMethod: RecoveryMethod = .bufferRefill
+        recoveryMethod: RecoveryMethod = .bufferRefill,
+        sessionID: String? = nil
     ) {
         self.playerType = playerType
         self.successful = successful
@@ -156,6 +179,7 @@ public struct StallRecoveryEvent: PlaybackAnalyticsEvent {
         self.stallDuration = stallDuration
         self.reason = reason
         self.recoveryMethod = recoveryMethod
+        self.sessionID = sessionID
     }
 }
 
@@ -207,6 +231,8 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
     public let stallDuration: TimeInterval?
     /// What recovery method was attempted
     public let recoveryMethod: RecoveryMethod
+    /// The stable per-listen identifier (#665) active when this event fired.
+    public let sessionID: String?
 
     public var properties: [String: Any]? {
         var props: [String: Any] = [
@@ -220,6 +246,9 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
         if let stallDuration {
             props["stall_duration"] = stallDuration
         }
+        if let sessionID {
+            props["session_id"] = sessionID
+        }
         return props
     }
 
@@ -230,7 +259,8 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
         reconnectAttempts: Int,
         sessionDuration: TimeInterval,
         stallDuration: TimeInterval? = nil,
-        recoveryMethod: RecoveryMethod = .retryWithBackoff
+        recoveryMethod: RecoveryMethod = .retryWithBackoff,
+        sessionID: String? = nil
     ) {
         self.playerType = playerType
         self.errorType = errorType
@@ -239,6 +269,7 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
         self.sessionDuration = sessionDuration
         self.stallDuration = stallDuration
         self.recoveryMethod = recoveryMethod
+        self.sessionID = sessionID
     }
 }
 
@@ -246,13 +277,21 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
 public struct InterruptionEvent: PlaybackAnalyticsEvent {
     public static let name = "interruption"
     public let type: InterruptionType
-    
+    /// The stable per-listen identifier (#665) active when this event fired.
+    /// Interruptions preserve the session across the auto-resume path, so
+    /// this is expected to match the id on the `play`/`pause` pair that
+    /// bracket the interruption.
+    public let sessionID: String?
+
     public var properties: [String: Any]? {
-        ["type": type.rawValue]
+        var props: [String: Any] = ["type": type.rawValue]
+        if let sessionID { props["session_id"] = sessionID }
+        return props
     }
 
-    public init(type: InterruptionType) {
+    public init(type: InterruptionType, sessionID: String? = nil) {
         self.type = type
+        self.sessionID = sessionID
     }
 }
 

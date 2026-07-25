@@ -193,7 +193,7 @@ public final class RadioPlayerController: PlaybackController {
     
     public func toggle(reason: PlaybackReason) throws {
         if self.isPlaying {
-            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
+            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
             self.stop(reason: reason)
         } else {
             try self.play(reason: reason)
@@ -205,6 +205,7 @@ public final class RadioPlayerController: PlaybackController {
         self.playbackTimer = Timer.start()
         self.playbackIntended = true
         self.wasPlayingBeforeRouteDisconnect = false
+        sessionID = sessionID ?? UUID().uuidString
 
         #if os(iOS) || os(tvOS)
         do {
@@ -214,18 +215,19 @@ public final class RadioPlayerController: PlaybackController {
             self.playbackIntended = false
             analytics.capture(PlaybackStoppedEvent(
                 reason: "audio session activation failed",
-                duration: 0
+                duration: 0,
+                sessionID: sessionID
             ))
             Log(.error, category: .playback, "RadioPlayerController could not start playback: \(error)")
             return
         }
         #endif
 
-        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue))
+        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, sessionID: sessionID))
         self.radioPlayer.play()
         // State transitions to .playing when radioPlayer.isPlaying becomes true
     }
-    
+
     /// Stops playback without capturing analytics.
     /// Call sites should capture analytics BEFORE calling this method.
     /// - Parameter reason: Why playback was stopped (for analytics)
@@ -236,6 +238,13 @@ public final class RadioPlayerController: PlaybackController {
         self.playbackIntended = false
         if reason != .routeDisconnected {
             self.wasPlayingBeforeRouteDisconnect = false
+        }
+        // Interruption/route-disconnect stops are an implementation detail of
+        // "pause, then auto-resume" — the listen itself isn't over, so the
+        // session id must survive them. Any other reason is a genuine end of
+        // the listen; the next `play()` mints a fresh id. See #665.
+        if reason != .interruptionBegan && reason != .routeDisconnected {
+            sessionID = nil
         }
         self.radioPlayer.stop()
         self.state = .idle
@@ -294,6 +303,13 @@ public final class RadioPlayerController: PlaybackController {
     private var wasPlayingBeforeInterruption = false
     private var wasPlayingBeforeRouteDisconnect = false
     private var playbackIntended = false
+    /// Stable per-listen identifier (#665), generated at the play intent
+    /// alongside `playbackTimer` and threaded onto every playback analytics
+    /// event so one continuous listen can be reconstructed from the event
+    /// stream. Cleared in `stop()` — except for the interruption and
+    /// route-disconnect reasons, which stop playback only as a prelude to an
+    /// imminent auto-resume and must preserve the id (see `stop(reason:)`).
+    private var sessionID: String?
 }
 
 private extension RadioPlayerController {
@@ -305,7 +321,7 @@ private extension RadioPlayerController {
         self.state = .stalled
         self.stallStartTime = Date()
 
-        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackTimer.duration()))
+        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackTimer.duration(), sessionID: sessionID))
         self.radioPlayer.stop()
         self.attemptReconnectWithExponentialBackoff()
     }
@@ -319,8 +335,8 @@ private extension RadioPlayerController {
             // Per Apple's guidance: always stop on interruption began
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
-                analytics.capture(InterruptionEvent(type: .began))
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackTimer.duration()))
+                analytics.capture(InterruptionEvent(type: .began, sessionID: sessionID))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackTimer.duration(), sessionID: sessionID))
                 self.stop(reason: .interruptionBegan)
             }
             self.state = .interrupted
@@ -344,7 +360,7 @@ private extension RadioPlayerController {
             // Headphones unplugged - stop playback per Apple HIG
             wasPlayingBeforeRouteDisconnect = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackTimer.duration()))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackTimer.duration(), sessionID: sessionID))
                 self.stop(reason: .routeDisconnected)
             }
 
@@ -377,7 +393,8 @@ private extension RadioPlayerController {
                 reconnectAttempts: Int(backoffTimer.numberOfAttempts),
                 sessionDuration: playbackTimer.duration(),
                 stallDuration: stallDuration,
-                recoveryMethod: .retryWithBackoff
+                recoveryMethod: .retryWithBackoff,
+                sessionID: sessionID
             ))
             Log(.info, category: .playback, "Backoff exhausted after \(self.backoffTimer.numberOfAttempts) attempts, giving up reconnection.")
             self.state = .error(.maxReconnectAttemptsExceeded)
@@ -418,7 +435,8 @@ private extension RadioPlayerController {
             attempts: Int(self.backoffTimer.numberOfAttempts),
             stallDuration: Date().timeIntervalSince(stallStart),
             reason: .bufferUnderrun,
-            recoveryMethod: .retryWithBackoff
+            recoveryMethod: .retryWithBackoff,
+            sessionID: sessionID
         ))
         self.stallStartTime = nil
     }
@@ -443,7 +461,7 @@ private extension RadioPlayerController {
         if self.radioPlayer.isPlaying {
             try? self.play(reason: .foregroundToggle)
         } else {
-            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
+            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
             self.stop(reason: .foregroundNotPlaying)
         }
     }
@@ -459,7 +477,7 @@ private extension RadioPlayerController {
     }
 
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
+        analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
         self.stop(reason: .remotePauseCommand)
 
         return .success
@@ -468,7 +486,7 @@ private extension RadioPlayerController {
     func remoteTogglePlayPauseCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
             if self.radioPlayer.isPlaying {
-                analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration()))
+                analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
                 self.stop(reason: .remoteToggleCommand)
             } else {
                 try self.play(reason: .remoteToggleCommand)
