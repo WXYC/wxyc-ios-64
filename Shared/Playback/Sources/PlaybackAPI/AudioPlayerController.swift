@@ -141,11 +141,16 @@ public final class AudioPlayerController {
     private var playbackIntended = false
     /// Tracks whether the audio session has been activated (to avoid deactivating when never activated)
     private var audioSessionActivated = false
-    /// Tracks when playback started for analytics duration reporting
-    private var playbackStartTime: Date?
+    /// Tracks when playback started for analytics duration reporting. Backed
+    /// by the monotonic `Core.Timer` (`ContinuousClock`), not a wall-clock
+    /// `Date`, so an NTP step / DST change / manual clock adjustment mid-listen
+    /// can't corrupt the reported `pause.duration` — and so this matches
+    /// `RadioPlayerController`'s `playbackTimer`, which already used the
+    /// monotonic clock. See #667.
+    private var playbackTimer: Core.Timer?
     private var stallStartTime: Date?
     /// Stable per-listen identifier (#665), generated at the play intent
-    /// alongside `playbackStartTime` and threaded onto every playback
+    /// alongside `playbackTimer` and threaded onto every playback
     /// analytics event so one continuous listen can be reconstructed from
     /// the event stream. Cleared in `stop()` — except for the interruption
     /// and route-disconnect reasons, which stop playback only as a prelude
@@ -344,7 +349,7 @@ public final class AudioPlayerController {
         playbackIntended = true
         wasPlayingBeforeRouteDisconnect = false
         stallStartTime = nil
-        playbackStartTime = playbackStartTime ?? Date()
+        playbackTimer = playbackTimer ?? Core.Timer.start()
         sessionID = sessionID ?? UUID().uuidString
         // Arm the play-intent → first-audio watchdog (#518). Placed before the
         // activation guard so it also covers the silent paths that never reach
@@ -398,8 +403,7 @@ public final class AudioPlayerController {
     
     /// Calculate how long playback has been active
     private var playbackDuration: TimeInterval {
-        guard let startTime = playbackStartTime else { return 0 }
-        return Date().timeIntervalSince(startTime)
+        playbackTimer?.duration() ?? 0
     }
 
     /// Stop playback and disconnect from stream
@@ -421,7 +425,7 @@ public final class AudioPlayerController {
         }
         player.stop()
         playerState = player.state
-        playbackStartTime = nil
+        playbackTimer = nil
         // Interruption/route-disconnect stops are an implementation detail of
         // "pause, then auto-resume" — the listen itself isn't over, so the
         // session id must survive them. Any other reason is a genuine end of
@@ -1087,7 +1091,11 @@ extension AudioPlayerController {
         // Only record the first stall timestamp so repeated stall events don't
         // shorten the reported stall duration.
         stallStartTime = stallStartTime ?? Date()
-        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackDuration, sessionID: sessionID))
+        // Deliberately does NOT capture a `pause` event (#667): a stall is not
+        // a session end, and the previous "stalled"-reason `PlaybackStoppedEvent`
+        // here double-counted the same elapsed seconds into the `pause.duration`
+        // average once per stall in a stally session. The reliability signal
+        // already lives in `StallRecoveryEvent` / `StreamErrorEvent`.
 
         // Attempt reconnection with exponential backoff
         attemptReconnectWithExponentialBackoff()

@@ -321,7 +321,11 @@ private extension RadioPlayerController {
         self.state = .stalled
         self.stallStartTime = Date()
 
-        analytics.capture(PlaybackStoppedEvent(reason: "stalled", duration: playbackTimer.duration(), sessionID: sessionID))
+        // Deliberately does NOT capture a `pause` event (#667): a stall is not
+        // a session end, and the previous "stalled"-reason `PlaybackStoppedEvent`
+        // here double-counted the same elapsed seconds into the `pause.duration`
+        // average once per stall in a stally session. The reliability signal
+        // already lives in `StallRecoveryEvent` / `StreamErrorEvent`.
         self.radioPlayer.stop()
         self.attemptReconnectWithExponentialBackoff()
     }

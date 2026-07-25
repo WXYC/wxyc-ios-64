@@ -74,6 +74,39 @@ struct AnalyticsIntegrationTests {
         }
     }
 
+    @Test("Play, stall, stall, and a genuine stop report a single duration measurement (#667)", arguments: PlayerControllerTestCase.allCases)
+    func stallDoesNotDoubleCountDuration(testCase: PlayerControllerTestCase) async throws {
+        let harness = PlayerControllerTestHarness.make(for: testCase)
+        harness.reset()
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        try? await Task.sleep(for: .milliseconds(20))
+
+        harness.simulateStall()
+        await harness.waitForAsync()
+
+        try? await Task.sleep(for: .milliseconds(20))
+
+        harness.simulateStall()
+        await harness.waitForAsync()
+
+        // Bring playback back to a confirmed-playing state before the real
+        // stop — RadioPlayerController's `isPlaying` is a direct passthrough
+        // to the underlying player, which a stall correctly drives to `false`.
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        try harness.controller.toggle(reason: .testToggle)
+
+        #expect(harness.mockAnalytics.stoppedEvents.count == 1,
+               "A stall must never emit its own 'pause' event (#667) — only the genuine stop should")
+        let duration = try #require(harness.mockAnalytics.stoppedEvents.first?.duration)
+        #expect(duration >= 0.04, "Duration should reflect the full elapsed listen, undiluted by the stalls in between")
+    }
+
     @Test("toggle() to stop reports analytics stopped event", arguments: PlayerControllerTestCase.allCases)
     func toggleToStopReportsAnalyticsStoppedEvent(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
@@ -198,8 +231,8 @@ struct AnalyticsReasonStringTests {
                "Route disconnected should report 'route disconnected' reason")
     }
 
-    @Test("Stall reports 'stalled' reason")
-    func stallReportsCorrectReason() async throws {
+    @Test("Stall no longer reports a 'pause' event (#667)")
+    func stallDoesNotReportPauseEvent() async throws {
         // Test with RadioPlayerController which has stall handling via notification
         let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
 
@@ -211,10 +244,8 @@ struct AnalyticsReasonStringTests {
         harness.simulateStall()
         await harness.waitForAsync()
 
-        #expect(harness.mockAnalytics.stoppedEvents.count >= 1,
-               "Stall should capture stopped event")
-        #expect(harness.mockAnalytics.stoppedEvents.first?.reason == "stalled",
-               "Stall should report 'stalled' reason")
+        #expect(harness.mockAnalytics.stoppedEvents.isEmpty,
+               "A stall is not a session end (#667) — it must not emit a 'pause' event; the reliability signal lives in stall_recovery/stream_error instead")
     }
 }
 #endif

@@ -317,36 +317,42 @@ struct AudioEnginePlayerAnalyticsTests {
         player.stop()
     }
 
-    @Test("AudioEnginePlayer captures pause event")
+    @Test("AudioEnginePlayer captures pause event with a real, non-hardcoded duration (#667)")
     func capturesPauseEvent() async throws {
         let mockAnalytics = MockStructuredAnalytics()
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: mockAnalytics)
 
         try player.play()
+        try? await Task.sleep(for: .milliseconds(50))
         mockAnalytics.reset()
 
         player.pause()
 
         let events = mockAnalytics.events.compactMap { $0 as? PlaybackStoppedEvent }
         #expect(events.contains { $0.reason == "audioEnginePlayer pause" })
+        #expect(events.first { $0.reason == "audioEnginePlayer pause" }?.duration ?? 0 > 0,
+               "duration must reflect real elapsed time, not the previous hardcoded 0 (#667)")
 
         player.stop()
     }
 
-    @Test("AudioEnginePlayer captures stop event")
+    @Test("AudioEnginePlayer captures stop event with a real, non-hardcoded duration (#667)")
     func capturesStopEvent() async throws {
         let mockAnalytics = MockStructuredAnalytics()
         let format = TestAudioBufferFactory.makeStandardFormat()
         let player = AudioEnginePlayer(format: format, analytics: mockAnalytics)
 
         try player.play()
+        try? await Task.sleep(for: .milliseconds(50))
         mockAnalytics.reset()
 
         player.stop()
 
         let events = mockAnalytics.events.compactMap { $0 as? PlaybackStoppedEvent }
         #expect(events.contains { $0.reason == "audioEnginePlayer stop" })
+        #expect(events.first { $0.reason == "audioEnginePlayer stop" }?.duration ?? 0 > 0,
+               "duration must reflect real elapsed time, not the previous hardcoded 0 (#667)")
     }
 
     @Test("AudioEnginePlayer works without analytics")

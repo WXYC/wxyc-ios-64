@@ -45,6 +45,12 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
     private let stateBox: PlayerStateBox
     private let schedulingQueue: DispatchQueue
     private let analytics: AnalyticsService?
+    /// Tracks when the current play span started, for accurate `pause`/`stop`
+    /// duration reporting. Backed by the monotonic `Core.Timer`
+    /// (`ContinuousClock`), consistent with the higher-level controllers
+    /// (#667). `nil` when not playing — `pause()`/`stop()` then report `0`,
+    /// which is accurate (nothing was playing), not a hardcoded placeholder.
+    private var playbackTimer: Core.Timer?
 
     // Track scheduled buffers to know when to request more
     private let scheduledBufferCount: ScheduledBufferCount
@@ -217,6 +223,7 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
 
         Log(.info, category: .playback, "Audio engine play requested")
         analytics?.capture(PlaybackStartedEvent(reason: "audioEnginePlayer play"))
+        playbackTimer = Core.Timer.start()
 
         // Defer audio engine setup until first play to avoid interrupting other apps on launch
         setUpAudioEngineIfNeeded()
@@ -241,9 +248,10 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         guard stateBox.isPlaying else { return }
 
         Log(.info, category: .playback, "Audio engine paused")
-        analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer pause", duration: 0)) // Duration 0 as we don't track it here yet
+        analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer pause", duration: playbackTimer?.duration() ?? 0))
         playerNode.pause()
         stateBox.isPlaying = false
+        playbackTimer = nil
         eventContinuation.yield(.paused)
     }
 
@@ -251,7 +259,8 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         guard stateBox.isPlaying || engine.isRunning else { return }
 
         Log(.info, category: .playback, "Audio engine stopped")
-        analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer stop", duration: 0))
+        analytics?.capture(PlaybackStoppedEvent(reason: "audioEnginePlayer stop", duration: playbackTimer?.duration() ?? 0))
+        playbackTimer = nil
 
         // Set isPlaying false first so in-flight scheduling blocks see it immediately
         // via their isPlaying check and exit early.

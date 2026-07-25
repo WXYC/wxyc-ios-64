@@ -42,12 +42,26 @@ struct SessionIdentityTests {
         harness.simulateStall()
         await harness.waitForAsync()
 
-        let stalledEvents = harness.mockAnalytics.stoppedEvents.filter { $0.reason == "stalled" }
-        #expect(stalledEvents.last?.sessionID == startedSessionID,
-               "A stall mid-listen must not mint a new session id")
+        // A stall no longer emits a "pause" event at all (#667) — a stall is
+        // not a session end. Confirm that here so this test fails loudly if
+        // that regresses, rather than the `stoppedEvents` filter below
+        // silently finding nothing.
+        #expect(harness.mockAnalytics.stoppedEvents.isEmpty,
+               "A stall must not emit a 'pause' event (#667)")
+
+        // Bring playback back to a confirmed-playing state before stopping.
+        // RadioPlayerController's `isPlaying` is a direct passthrough to the
+        // underlying player, which `simulateStall()` (correctly, matching
+        // production `RadioPlayer` behaviour) drives to `false`. Toggling
+        // immediately after a stall would therefore hit `play()`, not
+        // `stop()`, making this a no-op rather than a genuine stop.
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
 
         try harness.controller.toggle(reason: .testToggle)
 
+        #expect(harness.mockAnalytics.stoppedEvents.count == 1,
+               "The genuine stop should be the only 'pause' event in this listen")
         #expect(harness.mockAnalytics.stoppedEvents.last?.sessionID == startedSessionID,
                "The genuine stop that ends the listen should still report the same session id")
     }
@@ -124,6 +138,51 @@ struct SessionIdentityTests {
         let resumedSessionID = try #require(harness.mockAnalytics.startedEvents.last?.sessionID)
         #expect(resumedSessionID == originalSessionID,
                "Auto-resume after a route reconnect is one listen with a gap, not a new session")
+
+        harness.controller.stop()
+    }
+
+    @Test("Foreground auto-resume after a stranded background preserves the session id")
+    func foregroundAutoResumePreservesSessionID() async throws {
+        // `.resumeAfterForeground` is an AudioPlayerController-specific path
+        // (RadioPlayerController's foreground handler uses `.foregroundToggle` /
+        // `.foregroundNotPlaying` instead), so this is scoped to that controller,
+        // mirroring `routeDisconnectAutoResumePreservesSessionID` above.
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        let originalSessionID = try #require(harness.mockAnalytics.startedEvents.last?.sessionID)
+
+        // AudioPlayerController's background/foreground handlers are driven
+        // directly from SwiftUI's `scenePhase` (see the doc comments on
+        // `handleAppDidEnterBackground`/`handleAppWillEnterForeground`), not
+        // via `NotificationCenter` — unlike RadioPlayerController, it never
+        // subscribes to `UIApplication` notifications. So this calls the
+        // methods directly, matching `AudioPlayerControllerBackgroundBehaviorTests`
+        // in BackgroundForegroundBehaviorTests.swift, rather than
+        // `harness.postBackgroundNotification()` (a no-op for this controller).
+        harness.controller.handleAppDidEnterBackground()
+        await harness.waitForAsync()
+
+        // Simulate the player having silently dropped while backgrounded (e.g.
+        // a deferred session activation, or a terminal error) — playback
+        // intent is still set, but the player itself has gone idle. This is
+        // the "genuinely stranded" branch that re-drives
+        // `play(reason: .resumeAfterForeground)` on foreground (see #514).
+        harness.simulatePlaybackStopped()
+        await harness.waitForAsync()
+
+        harness.controller.handleAppWillEnterForeground()
+        await harness.waitForAsync()
+
+        let resumedEvent = try #require(harness.mockAnalytics.startedEvents.last)
+        #expect(resumedEvent.reason == PlaybackReason.resumeAfterForeground.rawValue,
+               "Sanity check: this scenario should exercise the resumeAfterForeground path")
+        #expect(resumedEvent.sessionID == originalSessionID,
+               "Auto-resume after a stranded background is one listen with a gap, not a new session")
 
         harness.controller.stop()
     }
