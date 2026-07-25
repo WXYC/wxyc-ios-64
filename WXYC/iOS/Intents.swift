@@ -25,6 +25,7 @@ import WXYCIntents
 @_exported import struct WXYCIntents.PlayWXYC
 @_exported import struct WXYCIntents.PauseWXYC
 @_exported import struct WXYCIntents.ToggleWXYC
+@_exported import struct WXYCIntents.WidgetToggleWXYC
 @_exported import struct WXYCIntents.IntentError
 @_exported import struct WXYCIntents.OpenPlaycut
 @_exported import struct WXYCIntents.OpenConcert

@@ -193,11 +193,25 @@ public final class RadioPlayerController: PlaybackController {
     
     public func toggle(reason: PlaybackReason) throws {
         if self.isPlaying {
-            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
-            self.stop(reason: reason)
+            stopWithAnalytics(reason: reason)
         } else {
             try self.play(reason: reason)
         }
+    }
+
+    /// Captures a `PlaybackStoppedEvent` — attributing `source` from `reason`
+    /// (#668) — and then stops. The free-text `reason` string is deliberately
+    /// withheld here (matches the pre-existing "user-initiated stops report a
+    /// nil reason" contract), but `source` is never nil: every stop site
+    /// knows its `PlaybackReason` even when it doesn't want to surface the
+    /// free-text string. Shared by `toggle(reason:)`'s stop branch,
+    /// `remotePauseOrStopCommand`, `remoteTogglePlayPauseCommand`'s stop
+    /// branch, and `handleApplicationWillEnterForeground`'s reconciliation
+    /// stop, so all four paths stay identical — some of which are gated
+    /// behind a real `MPRemoteCommandEvent` a unit test can't construct.
+    private func stopWithAnalytics(reason: PlaybackReason) {
+        analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackTimer.duration(), sessionID: sessionID))
+        self.stop(reason: reason)
     }
 
     public func play(reason: PlaybackReason) throws {
@@ -215,6 +229,7 @@ public final class RadioPlayerController: PlaybackController {
             self.playbackIntended = false
             analytics.capture(PlaybackStoppedEvent(
                 reason: "audio session activation failed",
+                source: reason.playbackSource,
                 duration: 0,
                 sessionID: sessionID
             ))
@@ -223,7 +238,7 @@ public final class RadioPlayerController: PlaybackController {
         }
         #endif
 
-        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, sessionID: sessionID))
+        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, source: reason.playbackSource, sessionID: sessionID))
         self.radioPlayer.play()
         // State transitions to .playing when radioPlayer.isPlaying becomes true
     }
@@ -340,7 +355,7 @@ private extension RadioPlayerController {
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
                 analytics.capture(InterruptionEvent(type: .began, sessionID: sessionID))
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackTimer.duration(), sessionID: sessionID))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, source: PlaybackReason.interruptionBegan.playbackSource, duration: playbackTimer.duration(), sessionID: sessionID))
                 self.stop(reason: .interruptionBegan)
             }
             self.state = .interrupted
@@ -364,7 +379,7 @@ private extension RadioPlayerController {
             // Headphones unplugged - stop playback per Apple HIG
             wasPlayingBeforeRouteDisconnect = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackTimer.duration(), sessionID: sessionID))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, source: PlaybackReason.routeDisconnected.playbackSource, duration: playbackTimer.duration(), sessionID: sessionID))
                 self.stop(reason: .routeDisconnected)
             }
 
@@ -465,8 +480,7 @@ private extension RadioPlayerController {
         if self.radioPlayer.isPlaying {
             try? self.play(reason: .foregroundToggle)
         } else {
-            analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
-            self.stop(reason: .foregroundNotPlaying)
+            stopWithAnalytics(reason: .foregroundNotPlaying)
         }
     }
 #endif
@@ -481,8 +495,7 @@ private extension RadioPlayerController {
     }
 
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
-        self.stop(reason: .remotePauseCommand)
+        stopWithAnalytics(reason: .remotePauseCommand)
 
         return .success
     }
@@ -490,8 +503,7 @@ private extension RadioPlayerController {
     func remoteTogglePlayPauseCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
             if self.radioPlayer.isPlaying {
-                analytics.capture(PlaybackStoppedEvent(duration: playbackTimer.duration(), sessionID: sessionID))
-                self.stop(reason: .remoteToggleCommand)
+                stopWithAnalytics(reason: .remoteToggleCommand)
             } else {
                 try self.play(reason: .remoteToggleCommand)
             }

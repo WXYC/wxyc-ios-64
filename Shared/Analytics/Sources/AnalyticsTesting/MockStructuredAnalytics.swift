@@ -62,6 +62,8 @@ public extension MockStructuredAnalytics {
     /// Represents a started event for testing.
     struct StartedEventProxy {
         public let reason: String
+        /// The clean, low-cardinality attribution surface (#668), e.g. `"carPlay"` / `"siri"`.
+        public let source: String?
         /// The listening-session id (#665) carried by the event, if any.
         public let sessionID: String?
     }
@@ -69,6 +71,8 @@ public extension MockStructuredAnalytics {
     /// Represents a stopped event for testing.
     struct StoppedEventProxy {
         public let reason: String?
+        /// The clean, low-cardinality attribution surface (#668), e.g. `"remote"` / `"auto"`.
+        public let source: String?
         public let duration: TimeInterval
         /// The listening-session id (#665) carried by the event, if any.
         public let sessionID: String?
@@ -80,8 +84,9 @@ public extension MockStructuredAnalytics {
             .compactMap { event -> StartedEventProxy? in
                 guard let props = event.properties,
                       let reason = props["reason"] as? String else { return nil }
+                let source = props["source"] as? String
                 let sessionID = props["session_id"] as? String
-                return StartedEventProxy(reason: reason, sessionID: sessionID)
+                return StartedEventProxy(reason: reason, source: source, sessionID: sessionID)
             }
     }
 
@@ -92,8 +97,9 @@ public extension MockStructuredAnalytics {
                 guard let props = event.properties,
                       let duration = props["duration"] as? TimeInterval else { return nil }
                 let reason = props["reason"] as? String
+                let source = props["source"] as? String
                 let sessionID = props["session_id"] as? String
-                return StoppedEventProxy(reason: reason, duration: duration, sessionID: sessionID)
+                return StoppedEventProxy(reason: reason, source: source, duration: duration, sessionID: sessionID)
             }
     }
 

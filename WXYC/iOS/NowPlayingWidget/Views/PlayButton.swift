@@ -18,7 +18,7 @@ struct PlayButton: View {
     var isPlaying: Bool = false
     
     var body: some View {
-        Button(intent: ToggleWXYC()) {
+        Button(intent: WidgetToggleWXYC()) {
             Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                 .foregroundStyle(.white)
                 .font(.caption)

@@ -324,11 +324,25 @@ public final class AudioPlayerController {
     /// - Parameter reason: Why playback was toggled (for analytics)
     public func toggle(reason: PlaybackReason) {
         if isPlaying {
-            analytics.capture(PlaybackStoppedEvent(duration: playbackDuration, sessionID: sessionID))
-            stop(reason: reason)
+            stopWithAnalytics(reason: reason)
         } else {
             play(reason: reason)
         }
+    }
+
+    /// Captures a `PlaybackStoppedEvent` — attributing `source` from `reason`
+    /// (#668) — and then stops. The free-text `reason` string is deliberately
+    /// withheld here (matches the pre-existing "user-initiated stops report a
+    /// nil reason" contract), but `source` is never nil: this is what closes
+    /// the "user pauses carry no attribution" gap, since every stop site
+    /// knows its `PlaybackReason` even when it doesn't want to surface the
+    /// free-text string. Shared by `toggle(reason:)`'s stop branch and the
+    /// remote pause command target in `setUpRemoteCommandCenter()` so both
+    /// paths — one directly testable, one gated behind a real
+    /// `MPRemoteCommandEvent` a unit test can't construct — stay identical.
+    private func stopWithAnalytics(reason: PlaybackReason) {
+        analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackDuration, sessionID: sessionID))
+        stop(reason: reason)
     }
 
     /// Start playback
@@ -397,7 +411,7 @@ public final class AudioPlayerController {
         // waiting for the async stateStream to propagate. The stateStream observation
         // will keep playerState in sync for subsequent player-driven transitions.
         playerState = player.state
-        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, sessionID: sessionID))
+        analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, source: reason.playbackSource, sessionID: sessionID))
         donatePlayIntent()
     }
     
@@ -725,8 +739,7 @@ public final class AudioPlayerController {
         let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
-                self.analytics.capture(PlaybackStoppedEvent(duration: self.playbackDuration, sessionID: self.sessionID))
-                self.stop(reason: .remotePauseCommand)
+                self.stopWithAnalytics(reason: .remotePauseCommand)
             }
             return .success
         }
@@ -905,7 +918,7 @@ public final class AudioPlayerController {
         case .began:
             wasPlayingBeforeInterruption = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, duration: playbackDuration, sessionID: sessionID))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, source: PlaybackReason.interruptionBegan.playbackSource, duration: playbackDuration, sessionID: sessionID))
                 stop(reason: .interruptionBegan)
             }
 
@@ -932,7 +945,7 @@ public final class AudioPlayerController {
             // Headphones unplugged - stop playback per Apple HIG
             wasPlayingBeforeRouteDisconnect = isPlaying
             if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, duration: playbackDuration, sessionID: sessionID))
+                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, source: PlaybackReason.routeDisconnected.playbackSource, duration: playbackDuration, sessionID: sessionID))
                 stop(reason: .routeDisconnected)
             }
 
