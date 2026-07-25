@@ -66,7 +66,7 @@ struct PlaybackStateProvider: ControlValueProvider {
 struct NowPlayingControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "org.wxyc.control", provider: PlaybackStateProvider()) { isPlaying in
-            ControlWidgetToggle(isOn: isPlaying, action: ToggleWXYC(value: !isPlaying)) {
+            ControlWidgetToggle(isOn: isPlaying, action: WidgetToggleWXYC(value: !isPlaying)) {
                 Label {
                     Text("WXYC")
                 } icon: {

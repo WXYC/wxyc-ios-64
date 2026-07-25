@@ -34,6 +34,16 @@ public protocol PlaybackAnalyticsEvent: AnalyticsEvent {}
 public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
     public static let name = "play"
     public let reason: String
+    /// The clean, low-cardinality attribution surface (#668) — e.g. `.carPlay`,
+    /// `.siri`, `.widget` — derived from the `PlaybackReason` at the call site
+    /// via `PlaybackReason.playbackSource`. Supersedes the old call-site
+    /// `source` string (a `#function` call-site name) that PostHog received
+    /// before the analytics-architecture unification and that every event
+    /// since has shipped as `null`; see `PlaybackSource`. Defaults to
+    /// `.unknown` for the lower player-implementation layers (MP3Streamer,
+    /// HLSPlayer, RadioPlayer) that emit their own diagnostic `play` events
+    /// without a `PlaybackReason` in scope.
+    public let source: PlaybackSource
     /// The stable per-listen identifier (#665) active when this event fired,
     /// so a `play` intent can be joined back to the listen it belongs to.
     /// `nil` at call sites that don't yet have a controller-tracked session
@@ -41,13 +51,14 @@ public struct PlaybackStartedEvent: PlaybackAnalyticsEvent {
     public let sessionID: String?
 
     public var properties: [String: Any]? {
-        var props: [String: Any] = ["reason": reason]
+        var props: [String: Any] = ["reason": reason, "source": source.rawValue]
         if let sessionID { props["session_id"] = sessionID }
         return props
     }
 
-    public init(reason: String, sessionID: String? = nil) {
+    public init(reason: String, source: PlaybackSource = .unknown, sessionID: String? = nil) {
         self.reason = reason
+        self.source = source
         self.sessionID = sessionID
     }
 }
@@ -94,19 +105,28 @@ public struct PlaybackFirstAudioEvent: PlaybackAnalyticsEvent {
 public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
     public static let name = "pause"
     public let reason: String?
+    /// The clean, low-cardinality attribution surface (#668) for this pause —
+    /// see `PlaybackStartedEvent.source` / `PlaybackSource` for the full
+    /// rationale. Unlike `reason`, this is never nil: every call site knows
+    /// (or can derive) a `PlaybackReason` for the stop even when it
+    /// deliberately withholds the free-text `reason` for a user-initiated
+    /// pause (see `AudioPlayerController.toggle(reason:)`), so `source` is
+    /// what closes the "user pauses carry no attribution" gap.
+    public let source: PlaybackSource
     public let duration: TimeInterval
     /// The stable per-listen identifier (#665) active when this event fired.
     public let sessionID: String?
 
     public var properties: [String: Any]? {
-        var props: [String: Any] = ["duration": duration]
+        var props: [String: Any] = ["duration": duration, "source": source.rawValue]
         if let reason { props["reason"] = reason }
         if let sessionID { props["session_id"] = sessionID }
         return props
     }
 
-    public init(reason: String? = nil, duration: TimeInterval, sessionID: String? = nil) {
+    public init(reason: String? = nil, source: PlaybackSource = .unknown, duration: TimeInterval, sessionID: String? = nil) {
         self.reason = reason
+        self.source = source
         self.duration = duration
         self.sessionID = sessionID
     }
