@@ -14,7 +14,7 @@ import Playlist
 import AppServices
 
 struct PlaylistPage: View {
-    @State private var playlistEntries: [any PlaylistEntry] = []
+    @State private var timelineItems: [TimelineItem] = []
     @Environment(\.playlistService) private var playlistService
     
     var body: some View {
@@ -24,13 +24,13 @@ struct PlaylistPage: View {
             ScrollView {
                 // Playlist entries
                 LazyVStack(spacing: 0) {
-                    ForEach(playlistEntries, id: \.id) { entry in
-                        playlistRow(for: entry)
+                    ForEach(timelineItems, id: \.id) { item in
+                        playlistRow(for: item)
                             .padding(.vertical, 8)
                     }
-                    
+
                     // Footer button
-                    if !playlistEntries.isEmpty {
+                    if !timelineItems.isEmpty {
                         Button("what the freq?") {
                             // Footer action
                         }
@@ -47,22 +47,18 @@ struct PlaylistPage: View {
     }
     
     @ViewBuilder
-    private func playlistRow(for entry: any PlaylistEntry) -> some View {
-        switch entry {
-        case let playcut as Playcut:
+    private func playlistRow(for item: TimelineItem) -> some View {
+        switch item {
+        case .playcut(let playcut):
             PlaycutView(playcut: playcut)
                 .listRowInsets(EdgeInsets(10))
-            
-        case let breakpoint as Breakpoint:
-            BreakpointView(breakpoint: breakpoint)
+
+        case .seam(let seam):
+            SeamView(seam: seam)
                 .listRowBackground(Color.black)
-            
-        case _ as Talkset:
-            TalksetView()
-                .background()
-                .listRowBackground(Color.black)
-            
-        default:
+
+        case .showMarker:
+            // watchOS has never surfaced show markers; keep it that way.
             EmptyView()
         }
     }
@@ -71,7 +67,7 @@ struct PlaylistPage: View {
     private func observePlaylist() async {
         guard let playlistService else { return }
         for await playlist in playlistService.updates() {
-            self.playlistEntries = playlist.entries
+            self.timelineItems = playlist.timelineItems
         }
     }
 }
@@ -108,23 +104,11 @@ struct PlaycutView: View {
     }
 }
 
-struct BreakpointView: View {
-    let date: String
-    
-    init(breakpoint: Breakpoint) {
-        self.date = breakpoint.formattedDate
-    }
-    
-    var body: some View {
-        Text("\(date)")
-            .font(.footnote)
-            .frame(maxWidth: .infinity, alignment: .center)
-    }
-}
+struct SeamView: View {
+    let seam: Seam
 
-struct TalksetView: View {
     var body: some View {
-        Text("Talkset")
+        Text(seam.plainLabel)
             .font(.footnote)
             .frame(maxWidth: .infinity, alignment: .center)
     }

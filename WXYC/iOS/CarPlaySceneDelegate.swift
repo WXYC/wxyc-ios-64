@@ -127,16 +127,14 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
     }
     
     private func makePlaylistSection() -> CPListSection {
-        let playlistItems = playlist.entries.compactMap { entry in
-            switch entry {
-            case let entry as Playcut:
-                CPListItem(playcut: entry, artworkService: Singletonia.shared.artworkService)
-            case _ as Talkset:
-                CPListItem(text: nil, detailText: "Talkset", image: nil)
-            case let entry as Breakpoint:
-                CPListItem(text: nil, detailText: entry.formattedDate, image: nil)
-            default:
-                fatalError()
+        let playlistItems: [CPListItem] = playlist.timelineItems.compactMap { item in
+            switch item {
+            case .playcut(let playcut):
+                CPListItem(playcut: playcut, artworkService: Singletonia.shared.artworkService)
+            case .seam(let seam):
+                CPListItem(text: nil, detailText: seam.plainLabel, image: nil)
+            case .showMarker:
+                nil
             }
         }
         

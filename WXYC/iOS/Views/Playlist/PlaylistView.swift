@@ -32,7 +32,7 @@ struct PlaycutSelection: Equatable {
 struct PlaylistView: View {
     @Binding var selectedPlaycut: PlaycutSelection?
 
-    @State private var playlistEntries: [any PlaylistEntry] = []
+    @State private var timelineItems: [TimelineItem] = []
     @State private var onAir: OnAir = .unknown
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
@@ -121,7 +121,7 @@ struct PlaylistView: View {
 
                     // Playlist entries
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(playlistEntries.enumerated()), id: \.element.id) { index, entry in
+                        ForEach(Array(timelineItems.enumerated()), id: \.element.id) { index, item in
                             let playcutIndex = playcutIndex(for: index)
 
                             if playcutIndex == 0 {
@@ -130,7 +130,7 @@ struct PlaylistView: View {
                                 PlaylistSectionHeader(text: "recently played")
                             }
 
-                            playlistRow(for: entry)
+                            playlistRow(for: item)
                                 .padding(.vertical, 8)
                                 .transition(.asymmetric(
                                     insertion: .move(edge: .top).combined(with: .opacity),
@@ -138,12 +138,12 @@ struct PlaylistView: View {
                                 ))
                                 // Stable scroll target for the #434 deep-link
                                 // task below (`ScrollViewProxy.scrollTo`).
-                                .id(entry.id)
+                                .id(item.id)
                         }
-                        .animation(.spring(duration: 0.4, bounce: 0.2), value: playlistEntries.map(\.id))
+                        .animation(.spring(duration: 0.4, bounce: 0.2), value: timelineItems.map(\.id))
                     
                         // Footer button
-                        if !playlistEntries.isEmpty {
+                        if !timelineItems.isEmpty {
                             Button("what the freq?") {
                                 showingPartyHorn = true
                             }
@@ -214,7 +214,7 @@ struct PlaylistView: View {
             for await playlist in playlistService.updates() {
                 withAnimation {
                     self.onAir = playlist.onAir
-                    self.playlistEntries = playlist.timelineEntries
+                    self.timelineItems = playlist.timelineItems
                 }
                 // Publish the now-playing (first) playcut id for the debug
                 // touring-shows mock to target. Harmless in release (unread).
@@ -314,24 +314,18 @@ struct PlaylistView: View {
     }
 
     @ViewBuilder
-    private func playlistRow(for entry: any PlaylistEntry) -> some View {
-        switch entry {
-        case let playcut as Playcut:
+    private func playlistRow(for item: TimelineItem) -> some View {
+        switch item {
+        case .playcut(let playcut):
             PlaycutRowView(playcut: playcut) { artwork in
                 selectedPlaycut = PlaycutSelection(playcut: playcut, artwork: artwork)
             }
 
-        case let breakpoint as Breakpoint:
-            TextRowView(text: breakpoint.formattedDate)
+        case .seam(let seam):
+            SeamRowView(seam: seam)
 
-        case _ as Talkset:
-            TextRowView(text: "Talkset")
-
-        case let showMarker as ShowMarker:
-            TextRowView(text: showMarkerText(for: showMarker))
-
-        default:
-            EmptyView()
+        case .showMarker(let marker):
+            TextRowView(text: showMarkerText(for: marker))
         }
     }
 
@@ -343,10 +337,21 @@ struct PlaylistView: View {
         }
     }
 
-    /// Returns the playcut index (0-based) if the entry at the given index is a Playcut, or nil otherwise.
+    /// Returns the playcut index (0-based) if the item at the given index is a
+    /// playcut, or nil otherwise. Seams and show markers don't get a section
+    /// header, so they're skipped in the count.
     private func playcutIndex(for index: Int) -> Int? {
-        guard playlistEntries[index] is Playcut else { return nil }
-        return playlistEntries[..<index].filter { $0 is Playcut }.count
+        guard case .playcut = timelineItems[index] else { return nil }
+        return timelineItems[..<index].filter { if case .playcut = $0 { true } else { false } }.count
+    }
+
+    /// The playcut entries currently on screen, for the deep-link router (#434),
+    /// which matches on `Playcut` identity. Derived from `timelineItems` so it
+    /// stays in sync with what's rendered.
+    private var playcutEntries: [any PlaylistEntry] {
+        timelineItems.compactMap { item -> Playcut? in
+            if case .playcut(let playcut) = item { playcut } else { nil }
+        }
     }
 
     /// Scrolls to the pending playcut deep link's row and consumes it (#434).
@@ -357,7 +362,7 @@ struct PlaylistView: View {
     /// ``PlaycutOpenRouter``.
     private func openPendingPlaycutIfPossible() {
         guard let link = appState.pendingPlaycutLink,
-              let target = PlaycutOpenRouter.scrollTarget(for: link, in: playlistEntries),
+              let target = PlaycutOpenRouter.scrollTarget(for: link, in: playcutEntries),
               let scrollProxy
         else { return }
         // Defer the scroll one runloop hop so it runs *after* SwiftUI lays out
