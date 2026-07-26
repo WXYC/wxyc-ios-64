@@ -26,6 +26,14 @@ public final class RadioPlayer: Sendable {
     private let analytics: AnalyticsService?
     private let notificationCenter: NotificationCenter
 
+    /// Whether this instance holds a live analytics sink. `internal`, not part
+    /// of the public API — exposed so tests (`@testable import`) can assert
+    /// that a controller-wrapped instance was constructed with `analytics:
+    /// nil`, since the wrapping controller (`RadioPlayerController`,
+    /// `AudioPlayerController`) is expected to be the sole emitter of
+    /// playback analytics (#669).
+    var hasAnalyticsSink: Bool { analytics != nil }
+
     // MARK: - State
 
     /// The current player state

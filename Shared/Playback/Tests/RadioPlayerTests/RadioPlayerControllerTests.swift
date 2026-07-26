@@ -167,11 +167,21 @@ struct RadioPlayerControllerTests {
     /// wrapped `radioPlayer` is left at its default, exactly as both the
     /// public convenience init `RadioPlayerController.shared` resolves to
     /// (production's watchOS path) and this designated init construct it.
-    /// That default is what the production defect (#669) was about: it
-    /// previously defaulted to the real, shared analytics service and
-    /// emitted its own "play" alongside this controller's — double-counting
-    /// every play on watchOS, which exclusively uses `RadioPlayerController`.
-    @Test("The convenience init's default RadioPlayer never double-emits play — the controller is the sole source of a single play event (#669)")
+    ///
+    /// The pre-#669 defect's redundant emission targeted the live
+    /// `StructuredPostHogAnalytics` singleton, not this test's injected
+    /// `MockStructuredAnalytics` — so a `count == 1` assertion against the
+    /// mock alone can't distinguish "the controller emitted once" from "the
+    /// controller emitted once AND the default `radioPlayer` quietly emitted
+    /// a second, unobserved 'play' to the real service." The
+    /// `hasAnalyticsSink` assertion below closes that gap by inspecting the
+    /// actual invariant #669 establishes on the wrapped player itself: it
+    /// must carry no analytics sink at all, so it is structurally incapable
+    /// of emitting regardless of what sink the controller uses. Together the
+    /// two assertions pin "controller emits exactly one, wrapped player
+    /// emits none" — which is what ends watchOS's unconditional double-count,
+    /// since the watch app exclusively uses `RadioPlayerController`.
+    @Test("The designated init's default RadioPlayer carries no analytics sink, so the controller alone emits exactly one play event (#669)")
     func defaultConstructionEmitsPlayExactlyOnce() throws {
         let mockAnalytics = MockStructuredAnalytics()
 
@@ -188,6 +198,9 @@ struct RadioPlayerControllerTests {
             analytics: mockAnalytics
         )
         #endif
+
+        let radioPlayer = try #require(controller.radioPlayer as? RadioPlayer, "The default wrapped player should be a RadioPlayer")
+        #expect(radioPlayer.hasAnalyticsSink == false, "The default RadioPlayer must carry no analytics sink — the controller is the sole emitter")
 
         try controller.play(reason: .test)
 

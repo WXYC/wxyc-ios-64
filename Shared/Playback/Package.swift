@@ -110,7 +110,7 @@ let package = Package(
 
         .testTarget(
             name: "PlaybackTests",
-            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "PlaybackTestUtilities", "Caching", .product(name: "AnalyticsTesting", package: "Analytics")],
+            dependencies: ["Playback", "RadioPlayerModule", "MP3StreamerModule", "HLSPlayerModule", "PlaybackTestUtilities", "Caching", .product(name: "AnalyticsTesting", package: "Analytics")],
             resources: [.process("Resources")]
         ),
         .testTarget(

@@ -39,6 +39,13 @@ public final class HLSPlayer: Sendable {
     private var failureObservation: (any NSObjectProtocol)?
     private var timePositionTask: Task<Void, Never>?
 
+    /// Whether this instance holds a live analytics sink. `internal`, not part
+    /// of the public API — exposed so tests (`@testable import`) can assert
+    /// that a controller-wrapped instance was constructed with `analytics:
+    /// nil`, since the wrapping `AudioPlayerController` is expected to be the
+    /// sole emitter of playback analytics (#669).
+    var hasAnalyticsSink: Bool { analytics != nil }
+
     // MARK: - State
 
     public private(set) var state: PlayerState = .idle {

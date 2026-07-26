@@ -300,7 +300,11 @@ public final class RadioPlayerController: PlaybackController {
 
     // MARK: Private
 
-    private let radioPlayer: any AudioPlayerProtocol
+    /// `internal` (not `private`) so tests (`@testable import`) can downcast
+    /// to the concrete player type and assert `hasAnalyticsSink == false` —
+    /// this controller is expected to be the sole emitter of playback
+    /// analytics (#669).
+    let radioPlayer: any AudioPlayerProtocol
     private let notificationCenter: NotificationCenter
     #if os(iOS) || os(tvOS)
     private var interruptionObservation: (any NSObjectProtocol)?
