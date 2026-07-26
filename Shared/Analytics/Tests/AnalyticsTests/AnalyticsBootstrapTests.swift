@@ -31,8 +31,10 @@ struct AnalyticsBootstrapTests {
         // events would otherwise resolve to $os = None (#670). This is the pure, platform-agnostic
         // half of the fix, kept testable on any host — see AnalyticsBootstrap.start for the thin
         // #if os(watchOS) call site that feeds this into PostHogSDK.shared.register.
-        let properties = AnalyticsBootstrap.watchOSOSSuperProperties(systemVersion: "11.0")
+        // Use a sentinel that can never be a real OS version, so this also proves the
+        // systemVersion argument is threaded through to $os_version rather than hardcoded.
+        let properties = AnalyticsBootstrap.watchOSOSSuperProperties(systemVersion: "sentinel-99.9")
 
-        #expect(properties == ["$os": "watchOS", "$os_name": "watchOS", "$os_version": "11.0"])
+        #expect(properties == ["$os": "watchOS", "$os_name": "watchOS", "$os_version": "sentinel-99.9"])
     }
 }
