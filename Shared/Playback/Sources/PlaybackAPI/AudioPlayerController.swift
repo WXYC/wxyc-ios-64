@@ -166,6 +166,20 @@ public final class AudioPlayerController {
     /// and route-disconnect reasons, which stop playback only as a prelude
     /// to an imminent auto-resume and must preserve the id (see `stop(reason:)`).
     private var sessionID: String?
+    /// Cadence at which `playback_heartbeat` fires while playing (#666), so
+    /// listening-hours and a killed/never-paused session's duration can be
+    /// reconstructed from `max(cumulative_seconds)` per `session_id` without
+    /// requiring a `pause`. 60s: coarse enough to be negligible next to the
+    /// existing 5s CPU-sample cadence and any reasonable network budget —
+    /// this rides the same active background-audio session that already
+    /// keeps the app alive indefinitely while playing (unlike the widget's
+    /// 40-70/day background-refresh budget, which this does not touch; see
+    /// docs/configuration.md) — while still granular enough that a killed
+    /// session's last heartbeat under-reports its true duration by at most a
+    /// minute. Injectable so tests can use a short interval and observe
+    /// several ticks quickly.
+    private let heartbeatInterval: Duration
+    @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
     @ObservationIgnored private var interruptionObservation: (any NSObjectProtocol)?
     @ObservationIgnored private var routeChangeObservation: (any NSObjectProtocol)?
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
@@ -260,7 +274,8 @@ public final class AudioPlayerController {
         backoffTimer: ExponentialBackoff = .default,
         startupWatchdogDeadline: Duration = .seconds(15),
         reachability: NetworkReachability? = nil,
-        defaults: DefaultsStorage = UserDefaults.standard
+        defaults: DefaultsStorage = UserDefaults.standard,
+        heartbeatInterval: Duration = .seconds(60)
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -271,6 +286,7 @@ public final class AudioPlayerController {
         self.startupWatchdogDeadline = startupWatchdogDeadline
         self.reachability = reachability
         self.defaults = defaults
+        self.heartbeatInterval = heartbeatInterval
 
         // NOTE: We intentionally do NOT call configureAudioSessionIfNeeded() here.
         // Setting the audio session category to .playback during init interrupts
@@ -295,7 +311,8 @@ public final class AudioPlayerController {
         backoffTimer: ExponentialBackoff = .default,
         startupWatchdogDeadline: Duration = .seconds(15),
         reachability: NetworkReachability? = nil,
-        defaults: DefaultsStorage = UserDefaults.standard
+        defaults: DefaultsStorage = UserDefaults.standard,
+        heartbeatInterval: Duration = .seconds(60)
     ) {
         self.player = player
         self.notificationCenter = notificationCenter
@@ -304,6 +321,7 @@ public final class AudioPlayerController {
         self.startupWatchdogDeadline = startupWatchdogDeadline
         self.reachability = reachability
         self.defaults = defaults
+        self.heartbeatInterval = heartbeatInterval
 
         setUpPlayerObservation()
         setUpCPUAggregator()
@@ -318,6 +336,7 @@ public final class AudioPlayerController {
         reconnectTask?.cancel()
         reachabilityMonitorTask?.cancel()
         startupWatchdogTask?.cancel()
+        heartbeatTask?.cancel()
         #if os(iOS) || os(tvOS)
         sessionActivationRetryTask?.cancel()
         #endif
@@ -440,6 +459,7 @@ public final class AudioPlayerController {
         reconnectTask = nil
         leaveHoldingPattern()
         disarmStartupWatchdog()
+        stopHeartbeat()
         backoffTimer.reset()
 
         playbackIntended = false
@@ -1063,6 +1083,15 @@ extension AudioPlayerController {
                 if newState == .playing {
                     self.disarmStartupWatchdog()
                     self.leaveHoldingPattern()
+                    self.startHeartbeat()
+                } else {
+                    // Any non-playing state (idle, loading, stalled, error) means
+                    // the listener isn't hearing audio right now — stop the
+                    // cadence so a stall or a mid-reconnect gap doesn't keep
+                    // emitting heartbeats for time that wasn't actually played.
+                    // `startHeartbeat()` above resumes it if/when playback
+                    // genuinely recovers. See #666.
+                    self.stopHeartbeat()
                 }
             }
         }
@@ -1119,6 +1148,16 @@ extension AudioPlayerController {
         // here double-counted the same elapsed seconds into the `pause.duration`
         // average once per stall in a stally session. The reliability signal
         // already lives in `StallRecoveryEvent` / `StreamErrorEvent`.
+        //
+        // Stop the heartbeat explicitly (#666) rather than relying solely on
+        // the `player.stateStream` observer: a stall arrives over
+        // `player.eventStream` and isn't guaranteed to also push a
+        // `.stalled`/non-`.playing` value through the state stream (the
+        // player may keep reporting a stale `.playing` state while
+        // reconnecting), so listener-side silence must cancel the cadence
+        // here directly. `startHeartbeat()` resumes it once a genuine
+        // recovery reaches `.playing` again via the state stream.
+        stopHeartbeat()
 
         // Attempt reconnection with exponential backoff
         attemptReconnectWithExponentialBackoff()
@@ -1146,6 +1185,60 @@ extension AudioPlayerController {
             playerType: playerType,
             timeToFirstAudio: timeToAudio,
             sessionID: sessionID
+        ))
+    }
+
+    // MARK: - Playback Heartbeat (#666)
+
+    /// Starts (or restarts) the periodic `playback_heartbeat` cadence. Called
+    /// only when the mirrored player state reaches `.playing` (see
+    /// `setUpPlayerObservation()`), so the cadence only ever runs while audio
+    /// is genuinely rendering — not while loading, stalled, or stopped.
+    ///
+    /// Idempotent by construction: cancels any prior loop first, so a
+    /// redundant `.playing` transition collapses to a single live timer
+    /// rather than stacking overlapping loops (mirrors `armStartupWatchdog()`).
+    ///
+    /// `self` is held weakly across the sleep so an armed heartbeat never
+    /// extends the controller's lifetime; only the interval is captured by value.
+    private func startHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self, interval = heartbeatInterval] in
+            while true {
+                do {
+                    try await Task.sleep(for: interval)
+                } catch {
+                    // Cancelled mid-sleep.
+                    return
+                }
+                guard !Task.isCancelled, let self else { return }
+                self.emitHeartbeat()
+            }
+        }
+    }
+
+    /// Stops the heartbeat cadence and cancels its task. Idempotent — safe to
+    /// call whether or not a heartbeat is currently running. Called on every
+    /// transition away from `.playing` in `setUpPlayerObservation()`, and
+    /// explicitly from `stop(reason:)` for an immediate cancellation
+    /// guarantee that doesn't wait on the async state-stream round-trip.
+    private func stopHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+    }
+
+    /// Captures one `PlaybackHeartbeatEvent` using the same monotonic
+    /// duration source as `pause.duration` (#667) and the same `sessionID`
+    /// (#665) threaded onto every other playback event, so a killed or
+    /// never-paused session's last heartbeat is directly usable as that
+    /// listen's reconstructed duration.
+    private func emitHeartbeat() {
+        let context: PlaybackContext = isForegrounded ? .foreground : .background
+        analytics.capture(PlaybackHeartbeatEvent(
+            sessionID: sessionID,
+            cumulativeSeconds: playbackDuration,
+            context: context,
+            playerType: resolvedPlayerType
         ))
     }
 

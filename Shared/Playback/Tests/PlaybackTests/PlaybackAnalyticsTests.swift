@@ -117,6 +117,27 @@ struct PlaybackAnalyticsTests {
         #expect(streamErrorEvents[0].recoveryMethod == .retryWithBackoff) // default
     }
 
+    @Test("Mock captures playback heartbeat events")
+    @MainActor
+    func mockCapturesHeartbeat() {
+        let mock = MockStructuredAnalytics()
+
+        mock.capture(PlaybackHeartbeatEvent(
+            sessionID: "session-heartbeat",
+            cumulativeSeconds: 90.5,
+            context: .foreground,
+            playerType: .mp3Streamer
+        ))
+
+        let heartbeatEvents = mock.events.compactMap { $0 as? PlaybackHeartbeatEvent }
+
+        #expect(heartbeatEvents.count == 1)
+        #expect(heartbeatEvents[0].sessionID == "session-heartbeat")
+        #expect(heartbeatEvents[0].cumulativeSeconds == 90.5)
+        #expect(heartbeatEvents[0].context == .foreground)
+        #expect(heartbeatEvents[0].playerType == .mp3Streamer)
+    }
+
     @Test("Mock captures interruption events")
     @MainActor
     func mockCapturesInterruption() {
@@ -262,6 +283,39 @@ struct PlaybackAnalyticsTests {
     func playbackFirstAudioEventSurfacesSessionID() {
         let event = PlaybackFirstAudioEvent(playerType: .radioPlayer, timeToFirstAudio: 1.5, sessionID: "session-6")
         #expect(event.properties?["session_id"] as? String == "session-6")
+    }
+
+    @Test("PlaybackHeartbeatEvent surfaces session_id in properties when provided")
+    func playbackHeartbeatEventSurfacesSessionID() {
+        let event = PlaybackHeartbeatEvent(
+            sessionID: "session-7",
+            cumulativeSeconds: 30.0,
+            context: .background,
+            playerType: .radioPlayer
+        )
+        #expect(event.properties?["session_id"] as? String == "session-7")
+        #expect(event.properties?["cumulative_seconds"] as? TimeInterval == 30.0)
+        #expect(event.properties?["context"] as? String == "background")
+        #expect(event.properties?["player_type"] as? String == "RadioPlayer")
+    }
+
+    @Test("PlaybackHeartbeatEvent omits session_id when nil")
+    func playbackHeartbeatEventOmitsSessionIDWhenNil() {
+        let event = PlaybackHeartbeatEvent(
+            sessionID: nil,
+            cumulativeSeconds: 30.0,
+            context: .foreground,
+            playerType: .mp3Streamer
+        )
+        #expect(event.properties?["session_id"] == nil)
+    }
+
+    @Test("PlaybackHeartbeatEvent is Sendable", arguments: [
+        PlaybackHeartbeatEvent(sessionID: "a", cumulativeSeconds: 10.0, context: .foreground, playerType: .mp3Streamer),
+        PlaybackHeartbeatEvent(sessionID: nil, cumulativeSeconds: 20.0, context: .background, playerType: .radioPlayer)
+    ])
+    func heartbeatEventsAreSendable(event: PlaybackHeartbeatEvent) async {
+        await Task { @Sendable in _ = event }.value
     }
 
     @Test("StreamErrorType raw values", arguments: [

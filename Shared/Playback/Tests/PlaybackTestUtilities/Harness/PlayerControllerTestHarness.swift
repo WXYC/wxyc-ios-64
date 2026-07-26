@@ -146,9 +146,13 @@ public final class PlayerControllerTestHarness {
     /// - Parameters:
     ///   - testCase: The type of controller to create
     ///   - backoffTimer: Optional custom backoff timer for testing exhaustion scenarios
+    ///   - heartbeatInterval: Cadence for the `playback_heartbeat` timer (#666).
+    ///     Defaults to the 60s production value; tests exercising the cadence
+    ///     itself inject a short interval so several ticks happen quickly.
     public static func make(
         for testCase: PlayerControllerTestCase,
-        backoffTimer: ExponentialBackoff = .default
+        backoffTimer: ExponentialBackoff = .default,
+        heartbeatInterval: Duration = .seconds(60)
     ) -> PlayerControllerTestHarness {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         let mockPlayer = MockAudioPlayer(url: streamURL)
@@ -167,7 +171,8 @@ public final class PlayerControllerTestHarness {
                 remoteCommandCenter: mockCommandCenter,
                 notificationCenter: notificationCenter,
                 analytics: mockAnalytics,
-                backoffTimer: backoffTimer
+                backoffTimer: backoffTimer,
+                heartbeatInterval: heartbeatInterval
             )
 
             return PlayerControllerTestHarness(
@@ -190,7 +195,8 @@ public final class PlayerControllerTestHarness {
                 notificationCenter: notificationCenter,
                 analytics: mockAnalytics,
                 remoteCommandCenter: .shared(),
-                backoffTimer: backoffTimer
+                backoffTimer: backoffTimer,
+                heartbeatInterval: heartbeatInterval
             )
 
             return PlayerControllerTestHarness(
@@ -208,7 +214,8 @@ public final class PlayerControllerTestHarness {
                 radioPlayer: mockPlayer,
                 notificationCenter: notificationCenter,
                 analytics: mockAnalytics,
-                backoffTimer: backoffTimer
+                backoffTimer: backoffTimer,
+                heartbeatInterval: heartbeatInterval
             )
 
             return PlayerControllerTestHarness(
@@ -339,6 +346,11 @@ public final class PlayerControllerTestHarness {
     /// Returns all captured stream error events
     public var streamErrorEvents: [StreamErrorEvent] {
         mockAnalytics.events.compactMap { $0 as? StreamErrorEvent }
+    }
+
+    /// Returns all captured `playback_heartbeat` events (#666), in emission order.
+    public var heartbeatEvents: [PlaybackHeartbeatEvent] {
+        mockAnalytics.events.compactMap { $0 as? PlaybackHeartbeatEvent }
     }
 
     #if os(iOS)
