@@ -76,6 +76,10 @@ struct RootTabView: View {
     @Environment(Singletonia.self) private var appState
     @Environment(\.themeAppearance) private var appearance
 
+    static func tabTintBrightness(for appearance: ThemeAppearance) -> Double {
+        appearance.lcdActiveBrightness
+    }
+
     var body: some View {
         TabView(selection: $selectedPage) {
             Tab(Page.playlist.title, systemImage: Page.playlist.systemImage, value: Page.playlist) {
@@ -118,9 +122,9 @@ struct RootTabView: View {
             }
             .accessibilityIdentifier(Page.station.accessibilityIdentifier)
         }
-        // Selected tab item picks up the theme's accent color rather than the
-        // system default tint.
-        .tint(appearance.accentColor.color(brightness: appearance.accentColor.brightness))
+        // Selected tab item uses the LCD accent hue/saturation at the active
+        // segment brightness rather than the system default tint.
+        .tint(appearance.accentColor.color(brightness: Self.tabTintBrightness(for: appearance)))
         .overlaySheet(isPresented: Binding(
             get: { selectedPlaycut != nil },
             set: { if !$0 { selectedPlaycut = nil } }

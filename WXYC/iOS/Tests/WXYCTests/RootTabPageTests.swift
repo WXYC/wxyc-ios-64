@@ -14,6 +14,7 @@
 //
 
 import Testing
+import Wallpaper
 @testable import WXYC
 
 @Suite("RootTabView Page")
@@ -53,5 +54,15 @@ struct RootTabPageTests {
         #expect(RootTabView.Page.onTour.accessibilityIdentifier == "tab.onTour")
         #expect(RootTabView.Page.liked.accessibilityIdentifier == "tab.liked")
         #expect(RootTabView.Page.station.accessibilityIdentifier == "tab.station")
+    }
+
+    @Test("The tab tint uses LCD active brightness")
+    func tabTintBrightnessUsesLCDActiveBrightness() {
+        let appearance = ThemeAppearance(
+            accentColor: AccentColor(hue: 120, saturation: 0.4, brightness: 0.35),
+            lcdActiveBrightness: 1.42
+        )
+
+        #expect(RootTabView.tabTintBrightness(for: appearance) == 1.42)
     }
 }
