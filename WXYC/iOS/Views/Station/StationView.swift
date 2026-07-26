@@ -33,6 +33,7 @@ struct StationView: View {
     @State private var showingLogPrompt = false
     @State private var showingMailComposer = false
     @State private var showingBugReport = false
+    @State private var showingNoMailFallback = false
 
     @Environment(\.playlistService) private var playlistService
     @Environment(\.openURL) private var openURL
@@ -128,6 +129,11 @@ struct StationView: View {
         .sheet(isPresented: $showingMailComposer) {
             MailComposerView(subject: Self.feedbackSubject)
         }
+        .alert("No mail app set up", isPresented: $showingNoMailFallback) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(FeedbackMailRouter.noMailHandlerMessage)
+        }
         .sheet(isPresented: $showingBugReport) {
             BugReportView(
                 submitter: SentryBugReportSubmitter(),
@@ -145,7 +151,9 @@ struct StationView: View {
     /// `MFMailComposeViewController` when the device has no configured Mail
     /// account crashes on iOS 26, so we only present it when `canSendMail()` is
     /// true and otherwise hand off to a `mailto:` URL (which the Mail app, or any
-    /// third-party mail client, can open — even to prompt an account set-up).
+    /// third-party mail client, can open — even to prompt an account set-up). If
+    /// nothing can open the URL either, `openURL`'s completion reports failure
+    /// and we surface the address in an alert rather than dead-ending silently.
     private func sendPlainFeedback() {
         switch FeedbackMailRouter.route(
             canSendMail: MFMailComposeViewController.canSendMail(),
@@ -154,7 +162,11 @@ struct StationView: View {
         case .inAppComposer:
             showingMailComposer = true
         case .externalMailto(let url):
-            openURL(url)
+            openURL(url) { accepted in
+                if !accepted {
+                    showingNoMailFallback = true
+                }
+            }
         }
     }
 

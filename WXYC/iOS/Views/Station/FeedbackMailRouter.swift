@@ -32,6 +32,14 @@ enum FeedbackMailRouter {
     /// The address every feedback path targets.
     static let recipient = "feedback@wxyc.org"
 
+    /// The message shown when the device can neither compose in-app nor open a
+    /// `mailto:` URL (no Mail account and no registered handler). It names the
+    /// address in plain text so the tap isn't a dead end — the user still sees
+    /// where to reach us instead of nothing happening.
+    static var noMailHandlerMessage: String {
+        "You can email us at \(recipient)."
+    }
+
     /// Chooses the delivery route for a feedback email.
     /// - Parameters:
     ///   - canSendMail: The result of `MFMailComposeViewController.canSendMail()`

@@ -48,4 +48,9 @@ struct FeedbackMailRouterTests {
 
         #expect(url.absoluteString == "mailto:feedback@wxyc.org?subject=Feedback%20on%20the%20WXYC%20app")
     }
+
+    @Test("The no-mail-handler fallback message names the feedback address so it stays recoverable")
+    func noMailHandlerMessageNamesAddress() {
+        #expect(FeedbackMailRouter.noMailHandlerMessage.contains(FeedbackMailRouter.recipient))
+    }
 }
