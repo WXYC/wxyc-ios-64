@@ -23,6 +23,7 @@ import MessageUI
 import MusicShareKit
 import Playlist
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 import Wallpaper
 import WXUI
@@ -130,6 +131,9 @@ struct StationView: View {
             MailComposerView(subject: Self.feedbackSubject)
         }
         .alert("No mail app set up", isPresented: $showingNoMailFallback) {
+            Button("Copy address") {
+                UIPasteboard.general.string = FeedbackMailRouter.recipient
+            }
             Button("OK", role: .cancel) {}
         } message: {
             Text(FeedbackMailRouter.noMailHandlerMessage)
