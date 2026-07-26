@@ -24,6 +24,10 @@ import AnalyticsTesting
 @testable import Playback
 @testable import PlaybackCore
 @testable import RadioPlayerModule
+#if !os(watchOS)
+@testable import MP3StreamerModule
+@testable import HLSPlayerModule
+#endif
 
 @Suite("AudioPlayerController Tests")
 @MainActor
@@ -198,6 +202,68 @@ struct AudioPlayerControllerTests {
         )
 
         #expect(controller.outputLatency == 0)
+    }
+
+    // MARK: - Double-Count Regression Tests (#669)
+
+    /// `makePlayer(for:)` is what `AudioPlayerController.shared` calls in
+    /// production for every player-experiment arm. Before #669, the
+    /// `.radioPlayer` and `.hlsPlayer` arms wrapped a player whose OWN
+    /// analytics sink defaulted to the real, shared PostHog service, so
+    /// `play()` reported "play" twice: once from this controller and once
+    /// from the wrapped player. `.mp3Streamer` was never affected — its sink
+    /// already defaulted to nil.
+    ///
+    /// The redundant emission targets the live `StructuredPostHogAnalytics`
+    /// singleton, not this test's injected `MockStructuredAnalytics` — so a
+    /// `count == 1` assertion against the mock alone can't tell "the
+    /// controller emitted once" apart from "the controller emitted once AND
+    /// the wrapped player quietly emitted a second, unobserved 'play' to the
+    /// real service." The `hasAnalyticsSink` assertion below closes that gap
+    /// by inspecting the actual invariant #669 establishes: the wrapped
+    /// player must carry no analytics sink at all, so it is structurally
+    /// incapable of emitting, regardless of what the controller's own sink
+    /// happens to be. Together the two assertions pin "controller emits
+    /// exactly one, wrapped player emits none."
+    @Test(
+        "makePlayer wires every experiment arm with a nil-analytics wrapped player, so the controller alone emits exactly one play event (#669)",
+        arguments: PlayerControllerType.allCases
+    )
+    func makePlayerNeverDoubleCountsPlay(type: PlayerControllerType) throws {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockAnalytics = MockStructuredAnalytics()
+
+        let player = AudioPlayerController.makePlayer(for: type)
+
+        switch type {
+        case .mp3Streamer:
+            let mp3Streamer = try #require(player as? MP3Streamer, "makePlayer(for: .mp3Streamer) should return an MP3Streamer")
+            #expect(mp3Streamer.hasAnalyticsSink == false, "MP3Streamer must carry no analytics sink — the controller is the sole emitter")
+        case .radioPlayer:
+            let radioPlayer = try #require(player as? RadioPlayer, "makePlayer(for: .radioPlayer) should return a RadioPlayer")
+            #expect(radioPlayer.hasAnalyticsSink == false, "RadioPlayer must carry no analytics sink — the controller is the sole emitter")
+        case .hlsPlayer:
+            let hlsPlayer = try #require(player as? HLSPlayer, "makePlayer(for: .hlsPlayer) should return an HLSPlayer")
+            #expect(hlsPlayer.hasAnalyticsSink == false, "HLSPlayer must carry no analytics sink — the controller is the sole emitter")
+        }
+
+        let controller = AudioPlayerController(
+            player: player,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: mockAnalytics
+        )
+
+        controller.play(reason: .test)
+
+        #expect(
+            mockAnalytics.startedEvents.count == 1,
+            "\(type.rawValue) produced \(mockAnalytics.startedEvents.count) play events, expected 1"
+        )
+
+        controller.stop(reason: .test)
     }
 
     // MARK: - Remote Command Center Tests

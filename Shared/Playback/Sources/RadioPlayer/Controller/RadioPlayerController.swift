@@ -48,6 +48,13 @@ public final class RadioPlayerController: PlaybackController {
         false
     }
 
+    // Note: the wrapped `RadioPlayer` is always constructed with its own
+    // analytics sink explicitly nil — this controller is the sole emitter of
+    // playback analytics. `RadioPlayer`'s convenience init previously
+    // defaulted to the real, shared analytics service, which double-counted
+    // every "play" on top of this controller's own capture — the root cause
+    // of watchOS always double-counting plays, since the watch app
+    // exclusively uses this controller. See #669.
     #if os(iOS) || os(tvOS)
     public convenience init(
         audioSession: AudioSessionProtocol = AVAudioSession.sharedInstance(),
@@ -55,7 +62,7 @@ public final class RadioPlayerController: PlaybackController {
         remoteCommandCenter: MPRemoteCommandCenter = .shared()
     ) {
         self.init(
-            radioPlayer: RadioPlayer(),
+            radioPlayer: RadioPlayer(analytics: nil),
             audioSession: audioSession,
             notificationCenter: notificationCenter,
             analytics: StructuredPostHogAnalytics.shared,
@@ -67,7 +74,7 @@ public final class RadioPlayerController: PlaybackController {
         notificationCenter: NotificationCenter = .default
     ) {
         self.init(
-            radioPlayer: RadioPlayer(),
+            radioPlayer: RadioPlayer(analytics: nil),
             notificationCenter: notificationCenter,
             analytics: StructuredPostHogAnalytics.shared
         )
@@ -76,7 +83,7 @@ public final class RadioPlayerController: PlaybackController {
 
     #if os(iOS) || os(tvOS)
     init(
-        radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
+        radioPlayer: any AudioPlayerProtocol = RadioPlayer(analytics: nil),
         audioSession: AudioSessionProtocol = AVAudioSession.sharedInstance(),
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
@@ -94,7 +101,7 @@ public final class RadioPlayerController: PlaybackController {
     }
     #else
     init(
-        radioPlayer: any AudioPlayerProtocol = RadioPlayer(),
+        radioPlayer: any AudioPlayerProtocol = RadioPlayer(analytics: nil),
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default
@@ -293,7 +300,11 @@ public final class RadioPlayerController: PlaybackController {
 
     // MARK: Private
 
-    private let radioPlayer: any AudioPlayerProtocol
+    /// `internal` (not `private`) so tests (`@testable import`) can downcast
+    /// to the concrete player type and assert `hasAnalyticsSink == false` —
+    /// this controller is expected to be the sole emitter of playback
+    /// analytics (#669).
+    let radioPlayer: any AudioPlayerProtocol
     private let notificationCenter: NotificationCenter
     #if os(iOS) || os(tvOS)
     private var interruptionObservation: (any NSObjectProtocol)?

@@ -51,7 +51,10 @@ public final class AudioPlayerController {
     )
     #elseif os(watchOS)
     public static let shared = AudioPlayerController(
-        player: RadioPlayer(),
+        // The wrapped RadioPlayer's own analytics sink is explicitly nil —
+        // this controller is the sole emitter of playback analytics. See
+        // `makePlayer(for:)` below and #669.
+        player: RadioPlayer(analytics: nil),
         notificationCenter: .default,
         analytics: StructuredPostHogAnalytics.shared,
         reachability: NWPathMonitorReachability()
@@ -68,14 +71,21 @@ public final class AudioPlayerController {
     // MARK: - Player Factory
 
     #if !os(watchOS)
+    /// Builds the underlying player for the given experiment arm. Every arm is
+    /// constructed with its own analytics sink explicitly nil — this
+    /// controller (the caller) is the sole emitter of playback analytics.
+    /// MP3Streamer already defaulted its sink to nil; RadioPlayer and
+    /// HLSPlayer previously defaulted to the real, shared analytics service,
+    /// which double-counted every "play" alongside this controller's own
+    /// capture. See #669.
     static func makePlayer(for type: PlayerControllerType) -> any AudioPlayerProtocol {
         switch type {
         case .mp3Streamer:
             MP3Streamer(configuration: MP3StreamerConfiguration(url: RadioStation.WXYC.streamURL))
         case .radioPlayer:
-            RadioPlayer()
+            RadioPlayer(analytics: nil)
         case .hlsPlayer:
-            HLSPlayer(url: HLSEnvironment.loadActive().url)
+            HLSPlayer(url: HLSEnvironment.loadActive().url, analytics: nil)
         }
     }
     #endif

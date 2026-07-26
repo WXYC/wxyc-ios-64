@@ -113,6 +113,12 @@ public final class MP3Streamer {
     private let analytics: AnalyticsService?
     @ObservationIgnored
     private var playbackTimer = Timer.start()
+    /// Whether this instance holds a live analytics sink. `internal`, not part
+    /// of the public API — exposed so tests (`@testable import`) can assert
+    /// that a controller-wrapped instance was constructed with `analytics:
+    /// nil`, since the wrapping `AudioPlayerController` is expected to be the
+    /// sole emitter of playback analytics (#669).
+    var hasAnalyticsSink: Bool { analytics != nil }
     /// Whether the `.firstAudio` success event has already been emitted for the
     /// current playback session. Set once when buffering first crosses into
     /// `.playing`; it deliberately survives reconnect recovery (so a reconnect

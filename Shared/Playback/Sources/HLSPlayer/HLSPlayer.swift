@@ -39,6 +39,13 @@ public final class HLSPlayer: Sendable {
     private var failureObservation: (any NSObjectProtocol)?
     private var timePositionTask: Task<Void, Never>?
 
+    /// Whether this instance holds a live analytics sink. `internal`, not part
+    /// of the public API — exposed so tests (`@testable import`) can assert
+    /// that a controller-wrapped instance was constructed with `analytics:
+    /// nil`, since the wrapping `AudioPlayerController` is expected to be the
+    /// sole emitter of playback analytics (#669).
+    var hasAnalyticsSink: Bool { analytics != nil }
+
     // MARK: - State
 
     public private(set) var state: PlayerState = .idle {
@@ -87,10 +94,17 @@ public final class HLSPlayer: Sendable {
 
     // MARK: - Initialization
 
-    public convenience init(url: URL) {
+    /// - Parameter analytics: The analytics sink `play()` reports to. Defaults
+    ///   to `nil` so a fresh `HLSPlayer(url:)` never emits on its own — a
+    ///   wrapping `AudioPlayerController` is expected to be the sole emitter
+    ///   of playback analytics; passing a live sink here on top of that would
+    ///   double-count every "play" (#669). Callers that genuinely want this
+    ///   player to report its own analytics standalone may still pass one
+    ///   explicitly.
+    public convenience init(url: URL, analytics: AnalyticsService? = nil) {
         self.init(
             player: AVPlayerHLSAdapter(url: url),
-            analytics: StructuredPostHogAnalytics.shared,
+            analytics: analytics,
             notificationCenter: .default
         )
     }
