@@ -20,15 +20,31 @@ enum BackgroundRefreshController {
     static let taskIdentifier = "com.wxyc.refresh"
 
     /// Submits a new `BGAppRefreshTaskRequest` for ~15 minutes from now.
-    static func scheduleNext() {
+    ///
+    /// - Parameters:
+    ///   - scheduler: Where to submit the request. Defaults to the shared
+    ///     system scheduler; tests inject a fake to exercise both the
+    ///     unavailable-platform and genuine-failure paths.
+    ///   - errorReporter: Where to send genuine scheduling failures. Defaults
+    ///     to the global ``ErrorReporting/shared`` reporter.
+    static func scheduleNext(
+        scheduler: any BackgroundTaskScheduling = BGTaskScheduler.shared,
+        errorReporter: any ErrorReporter = ErrorReporting.shared
+    ) {
         let request = BGAppRefreshTaskRequest(identifier: taskIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
 
         do {
-            try BGTaskScheduler.shared.submit(request)
+            try scheduler.submit(request)
             Log(.info, category: .general, "Scheduled background refresh for 15 minutes from now")
+        } catch let error as BGTaskScheduler.Error where error.code == .unavailable || error.code == .notPermitted {
+            // Expected on the Simulator, on macOS ("Designed for iPad" on
+            // Apple Silicon), and anywhere else BGTaskScheduler isn't
+            // supported or permitted. Not a bug in our app, so log it for
+            // local diagnosis but don't forward it to Sentry (Sentry IOS-20).
+            Log(.info, category: .general, "BGTaskScheduler unavailable on this platform (\(error.code)); skipping background refresh scheduling")
         } catch {
-            ErrorReporting.shared.report(error, context: "BackgroundRefreshController.scheduleNext")
+            errorReporter.report(error, context: "BackgroundRefreshController.scheduleNext")
         }
     }
 
