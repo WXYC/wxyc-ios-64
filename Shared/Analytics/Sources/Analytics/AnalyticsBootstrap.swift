@@ -12,6 +12,9 @@
 
 import Foundation
 import PostHog
+#if os(watchOS)
+import WatchKit
+#endif
 
 /// Namespace for analytics bootstrap APIs. Apps interact with the analytics vendor only through this surface.
 ///
@@ -34,6 +37,12 @@ public enum AnalyticsBootstrap {
 
         let buildType = (Bundle.main.infoDictionary?["WXYC_BUILD_TYPE"] as? String) ?? "unknown"
         PostHogSDK.shared.register(["Build Configuration": buildType])
+
+        #if os(watchOS)
+        PostHogSDK.shared.register(
+            watchOSOSSuperProperties(systemVersion: WKInterfaceDevice.current().systemVersion)
+        )
+        #endif
     }
 
     /// Asks the analytics SDK to send any buffered events. Fire-and-forget: the actual network
@@ -41,5 +50,30 @@ public enum AnalyticsBootstrap {
     /// by the time this returns.
     public static func flush() {
         PostHogSDK.shared.flush()
+    }
+
+    /// The `$os`/`$os_name`/`$os_version` super-properties to register on watchOS (#670).
+    ///
+    /// The vendored PostHog SDK (v3.59.2) only populates these keys inside
+    /// `PostHogContext.theStaticContext`'s `#if os(iOS) || os(tvOS) || os(visionOS)` and
+    /// `#elseif os(macOS)` branches — there is no `#elseif os(watchOS)` branch. Every event sent
+    /// from the watch app therefore resolves to `$os = None` in PostHog even though the events
+    /// themselves arrive correctly (verified: 93 play/pause events over 180 days, all carrying
+    /// Apple-Watch `$device_model` values). The events are mislabeled, not missing.
+    ///
+    /// All three keys are registered, not just `$os_name`, because different PostHog insights and
+    /// dashboards break down on different ones of the three; registering all three guarantees the
+    /// watch shows up regardless of which key a given insight uses. Super-properties registered via
+    /// `PostHogSDK.register` take precedence over the SDK's static context on key conflict, but
+    /// there is no conflict here — the static context never sets these keys on watchOS.
+    ///
+    /// Deliberately free of `#if os(watchOS)` and platform APIs so it is unit-testable from any
+    /// host; the platform gate lives at the call site in `start(apiKey:host:)`, which is the only
+    /// place that needs `WKInterfaceDevice`.
+    ///
+    /// - Parameter systemVersion: The watch's system version, e.g. `WKInterfaceDevice.current().systemVersion`.
+    /// - Returns: The `$os`, `$os_name`, and `$os_version` super-properties to register.
+    static func watchOSOSSuperProperties(systemVersion: String) -> [String: String] {
+        ["$os": "watchOS", "$os_name": "watchOS", "$os_version": systemVersion]
     }
 }
