@@ -61,12 +61,23 @@ public final class RadioPlayer: Sendable {
 
     // MARK: - Initialization
 
-    public convenience init(streamURL: URL = RadioStation.WXYC.streamURL) {
+    /// - Parameter analytics: The analytics sink `play()` reports to. Defaults
+    ///   to `nil` so a fresh `RadioPlayer()` never emits on its own — a
+    ///   controller wrapping this player (`RadioPlayerController`,
+    ///   `AudioPlayerController`) is expected to be the sole emitter of
+    ///   playback analytics; passing a live sink here on top of that would
+    ///   double-count every "play" (#669). Callers that genuinely want this
+    ///   player to report its own analytics standalone may still pass one
+    ///   explicitly.
+    public convenience init(
+        streamURL: URL = RadioStation.WXYC.streamURL,
+        analytics: AnalyticsService? = nil
+    ) {
         let asset = AVURLAsset(url: streamURL, options: Self.streamingAssetOptions)
         self.init(
             streamURL: streamURL,
             player: AVPlayer(playerItem: AVPlayerItem(asset: asset)),
-            analytics: StructuredPostHogAnalytics.shared,
+            analytics: analytics,
             notificationCenter: .default
         )
     }

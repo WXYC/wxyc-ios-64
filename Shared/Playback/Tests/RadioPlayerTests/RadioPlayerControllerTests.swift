@@ -159,6 +159,46 @@ struct RadioPlayerControllerTests {
         #expect(controller.isPlaying == true)
     }
 
+    // MARK: - Double-Count Regression Tests (#669)
+
+    /// Constructs a controller with only the analytics sink (a mock, so the
+    /// test can observe capture counts without touching the real PostHog
+    /// singleton) and, on iOS/tvOS, the audio session substituted — the
+    /// wrapped `radioPlayer` is left at its default, exactly as both the
+    /// public convenience init `RadioPlayerController.shared` resolves to
+    /// (production's watchOS path) and this designated init construct it.
+    /// That default is what the production defect (#669) was about: it
+    /// previously defaulted to the real, shared analytics service and
+    /// emitted its own "play" alongside this controller's — double-counting
+    /// every play on watchOS, which exclusively uses `RadioPlayerController`.
+    @Test("The convenience init's default RadioPlayer never double-emits play — the controller is the sole source of a single play event (#669)")
+    func defaultConstructionEmitsPlayExactlyOnce() throws {
+        let mockAnalytics = MockStructuredAnalytics()
+
+        #if os(iOS) || os(tvOS)
+        let controller = RadioPlayerController(
+            audioSession: MockAudioSession(),
+            notificationCenter: NotificationCenter(),
+            analytics: mockAnalytics,
+            remoteCommandCenter: .shared()
+        )
+        #else
+        let controller = RadioPlayerController(
+            notificationCenter: NotificationCenter(),
+            analytics: mockAnalytics
+        )
+        #endif
+
+        try controller.play(reason: .test)
+
+        #expect(
+            mockAnalytics.startedEvents.count == 1,
+            "Expected exactly one play event, got \(mockAnalytics.startedEvents.count)"
+        )
+
+        controller.stop(reason: .test)
+    }
+
     // MARK: - Error Handling Tests
 
     @Test("Handles audio session activation errors gracefully")

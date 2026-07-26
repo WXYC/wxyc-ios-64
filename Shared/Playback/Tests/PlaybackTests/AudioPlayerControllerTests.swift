@@ -200,6 +200,44 @@ struct AudioPlayerControllerTests {
         #expect(controller.outputLatency == 0)
     }
 
+    // MARK: - Double-Count Regression Tests (#669)
+
+    /// `makePlayer(for:)` is what `AudioPlayerController.shared` calls in
+    /// production for every player-experiment arm. Before #669, the
+    /// `.radioPlayer` and `.hlsPlayer` arms wrapped a player whose OWN
+    /// analytics sink defaulted to the real, shared PostHog service, so
+    /// `play()` reported "play" twice: once from this controller and once
+    /// from the wrapped player. `.mp3Streamer` was never affected — its sink
+    /// already defaulted to nil. This asserts every arm now reports "play"
+    /// exactly once.
+    @Test(
+        "makePlayer wires every experiment arm so exactly one play event is captured per play() (#669)",
+        arguments: PlayerControllerType.allCases
+    )
+    func makePlayerNeverDoubleCountsPlay(type: PlayerControllerType) {
+        let mockSession = MockAudioSession()
+        let mockCommandCenter = MockRemoteCommandCenter()
+        let mockAnalytics = MockStructuredAnalytics()
+
+        let player = AudioPlayerController.makePlayer(for: type)
+        let controller = AudioPlayerController(
+            player: player,
+            audioSession: mockSession,
+            remoteCommandCenter: mockCommandCenter,
+            notificationCenter: .default,
+            analytics: mockAnalytics
+        )
+
+        controller.play(reason: .test)
+
+        #expect(
+            mockAnalytics.startedEvents.count == 1,
+            "\(type.rawValue) produced \(mockAnalytics.startedEvents.count) play events, expected 1"
+        )
+
+        controller.stop(reason: .test)
+    }
+
     // MARK: - Remote Command Center Tests
 
     @Test("Remote commands are configured correctly")

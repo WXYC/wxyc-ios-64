@@ -87,10 +87,17 @@ public final class HLSPlayer: Sendable {
 
     // MARK: - Initialization
 
-    public convenience init(url: URL) {
+    /// - Parameter analytics: The analytics sink `play()` reports to. Defaults
+    ///   to `nil` so a fresh `HLSPlayer(url:)` never emits on its own — a
+    ///   wrapping `AudioPlayerController` is expected to be the sole emitter
+    ///   of playback analytics; passing a live sink here on top of that would
+    ///   double-count every "play" (#669). Callers that genuinely want this
+    ///   player to report its own analytics standalone may still pass one
+    ///   explicitly.
+    public convenience init(url: URL, analytics: AnalyticsService? = nil) {
         self.init(
             player: AVPlayerHLSAdapter(url: url),
-            analytics: StructuredPostHogAnalytics.shared,
+            analytics: analytics,
             notificationCenter: .default
         )
     }

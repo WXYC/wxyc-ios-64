@@ -428,13 +428,18 @@ struct HLSPlayerTests {
 
     // MARK: - Analytics
 
-    @Test("Play captures analytics event")
+    @Test("Play captures a PlaybackStartedEvent with the hlsPlayer reason when given a live analytics sink")
     func playAnalytics() {
-        let (player, _, _) = makePlayer()
+        let mock = MockHLSAVPlayer()
+        let mockAnalytics = MockStructuredAnalytics()
+        let player = HLSPlayer(player: mock, analytics: mockAnalytics, notificationCenter: NotificationCenter())
 
         player.play()
 
         #expect(player.state == .loading)
+        let startedEvents = mockAnalytics.events.compactMap { $0 as? PlaybackStartedEvent }
+        #expect(startedEvents.count == 1)
+        #expect(startedEvents.first?.reason == "hlsPlayer play")
     }
 
     // MARK: - Helpers
