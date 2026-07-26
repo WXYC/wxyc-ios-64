@@ -132,6 +132,62 @@ public struct PlaybackStoppedEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Event capturing that playback is still actively rendering audio, emitted
+/// on a fixed cadence for the duration of a listen (#666).
+///
+/// `play`/`pause` alone under-measure total listening time: the longest
+/// sessions — the app swiped away, OS-terminated in the background, or
+/// crashed — never fire a `pause`, so they contribute zero recorded
+/// duration and skew the duration metric toward clean stops
+/// (survivorship bias). This event closes that gap: listening-hours and a
+/// killed session's duration can both be reconstructed from
+/// `max(cumulative_seconds)` grouped by `session_id`, with no `pause`
+/// required.
+///
+/// Fires only while the controller considers itself genuinely playing (not
+/// while loading, stalled, or stopped) — see `AudioPlayerController` /
+/// `RadioPlayerController` for exactly which state transitions start and
+/// stop the cadence.
+public struct PlaybackHeartbeatEvent: PlaybackAnalyticsEvent {
+    public static let name = "playback_heartbeat"
+    /// The stable per-listen identifier (#665) this heartbeat belongs to, so
+    /// a run of heartbeats (and, for a killed session, the last one before
+    /// the process disappears) can be grouped back into the listen they
+    /// measure.
+    public let sessionID: String?
+    /// Elapsed playing time since the play intent, read from the same
+    /// monotonic `Core.Timer` (`ContinuousClock`) source as `pause.duration`
+    /// (#667) — so the two metrics agree, and the last heartbeat before a
+    /// kill is directly usable as that listen's duration.
+    public let cumulativeSeconds: TimeInterval
+    /// Whether the app was foregrounded or backgrounded when this heartbeat fired.
+    public let context: PlaybackContext
+    /// The player implementation producing the audio.
+    public let playerType: PlayerControllerType
+
+    public var properties: [String: Any]? {
+        var props: [String: Any] = [
+            "cumulative_seconds": cumulativeSeconds,
+            "context": context.rawValue,
+            "player_type": playerType.rawValue
+        ]
+        if let sessionID { props["session_id"] = sessionID }
+        return props
+    }
+
+    public init(
+        sessionID: String?,
+        cumulativeSeconds: TimeInterval,
+        context: PlaybackContext,
+        playerType: PlayerControllerType
+    ) {
+        self.sessionID = sessionID
+        self.cumulativeSeconds = cumulativeSeconds
+        self.context = context
+        self.playerType = playerType
+    }
+}
+
 /// Reason why playback stalled.
 public enum StallReason: String, Sendable, Equatable {
     case bufferUnderrun = "buffer_underrun"

@@ -88,13 +88,15 @@ public final class RadioPlayerController: PlaybackController {
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared(),
-        backoffTimer: ExponentialBackoff = .default
+        backoffTimer: ExponentialBackoff = .default,
+        heartbeatInterval: Duration = .seconds(60)
     ) {
         self.radioPlayer = radioPlayer
         self.audioSession = audioSession
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
+        self.heartbeatInterval = heartbeatInterval
 
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: remoteCommandCenter)
         setUpPlayerStateObservation()
@@ -104,12 +106,14 @@ public final class RadioPlayerController: PlaybackController {
         radioPlayer: any AudioPlayerProtocol = RadioPlayer(analytics: nil),
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
-        backoffTimer: ExponentialBackoff = .default
+        backoffTimer: ExponentialBackoff = .default,
+        heartbeatInterval: Duration = .seconds(60)
     ) {
         self.radioPlayer = radioPlayer
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
+        self.heartbeatInterval = heartbeatInterval
 
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: nil)
         setUpPlayerStateObservation()
@@ -128,6 +132,7 @@ public final class RadioPlayerController: PlaybackController {
         if let foregroundObservation { notificationCenter.removeObserver(foregroundObservation) }
         #endif
         reconnectTask?.cancel()
+        heartbeatTask?.cancel()
     }
 
     private func setUpObservations(
@@ -191,7 +196,18 @@ public final class RadioPlayerController: PlaybackController {
 
                 // Map PlayerState to PlaybackState
                 // PlayerState doesn't include .interrupted (controller-level concern)
-                self.state = playerState.asPlaybackState
+                let mappedState = playerState.asPlaybackState
+                self.state = mappedState
+
+                // Start/stop the `playback_heartbeat` cadence (#666) off the
+                // same mapped state: only `.playing` means audio is actually
+                // rendering, so a stall, error, or idle transition stops the
+                // cadence, and a later recovery to `.playing` resumes it.
+                if mappedState == .playing {
+                    self.startHeartbeat()
+                } else {
+                    self.stopHeartbeat()
+                }
             }
         }
     }
@@ -257,6 +273,9 @@ public final class RadioPlayerController: PlaybackController {
         reconnectTask?.cancel()
         reconnectTask = nil
         backoffTimer.reset()
+        // Immediate cancellation guarantee (#666), rather than waiting on the
+        // async state-stream round-trip below to notice the player went idle.
+        stopHeartbeat()
         self.playbackIntended = false
         if reason != .routeDisconnected {
             self.wasPlayingBeforeRouteDisconnect = false
@@ -336,6 +355,24 @@ public final class RadioPlayerController: PlaybackController {
     /// route-disconnect reasons, which stop playback only as a prelude to an
     /// imminent auto-resume and must preserve the id (see `stop(reason:)`).
     private var sessionID: String?
+    /// Cadence at which `playback_heartbeat` fires while playing (#666). See
+    /// `AudioPlayerController.heartbeatInterval` for the interval choice and
+    /// budget rationale, which applies identically here.
+    private let heartbeatInterval: Duration
+    private var heartbeatTask: Task<Void, Never>?
+    /// Whether the app is foregrounded, read by `emitHeartbeat()` for the
+    /// heartbeat's `context` field. Updated only where this controller has
+    /// lifecycle wiring — the `#if os(iOS)` `UIApplication` notification
+    /// handlers below. On watchOS, where this controller is actually used in
+    /// production (`RadioPlayerController.shared` backs `WatchXYCApp`),
+    /// nothing ever sets this to `false`: `AppDidEnterBackgroundMessage` /
+    /// `AppWillEnterForegroundMessage` are themselves `#if os(iOS)`-gated
+    /// (see `UIApplicationMessages.swift`), since they're backed by
+    /// `UIApplication`, which doesn't exist on watchOS. So a watchOS
+    /// heartbeat always reports `.foreground` — closing that gap needs a
+    /// watchOS-native lifecycle signal (`WKExtension` / SwiftUI
+    /// `scenePhase`) and is out of scope here; see the PR description.
+    private var isForegrounded = true
 }
 
 private extension RadioPlayerController {
@@ -352,6 +389,14 @@ private extension RadioPlayerController {
         // here double-counted the same elapsed seconds into the `pause.duration`
         // average once per stall in a stally session. The reliability signal
         // already lives in `StallRecoveryEvent` / `StreamErrorEvent`.
+        //
+        // Stop the heartbeat explicitly (#666) rather than relying solely on
+        // `radioPlayer.stateStream`: `radioPlayer.stop()` below only pushes a
+        // state-stream update when the underlying player's auto-update is
+        // enabled, so listener-side silence must cancel the cadence here
+        // directly. `startHeartbeat()` resumes it once a genuine recovery
+        // reaches `.playing` again via the state stream.
+        stopHeartbeat()
         self.radioPlayer.stop()
         self.attemptReconnectWithExponentialBackoff()
     }
@@ -471,10 +516,56 @@ private extension RadioPlayerController {
         self.stallStartTime = nil
     }
 
+    // MARK: - Playback Heartbeat (#666)
+
+    /// Starts (or restarts) the periodic `playback_heartbeat` cadence. Called
+    /// only when the observed player state maps to `.playing` (see
+    /// `setUpPlayerStateObservation()`), mirroring
+    /// `AudioPlayerController.startHeartbeat()` — see that type for the full
+    /// design rationale (interval choice, budget, idempotency).
+    func startHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self, interval = heartbeatInterval] in
+            while true {
+                do {
+                    try await Task.sleep(for: interval)
+                } catch {
+                    // Cancelled mid-sleep.
+                    return
+                }
+                guard !Task.isCancelled, let self else { return }
+                self.emitHeartbeat()
+            }
+        }
+    }
+
+    /// Stops the heartbeat cadence and cancels its task. Idempotent. Called
+    /// on every transition away from `.playing` in
+    /// `setUpPlayerStateObservation()`, and explicitly from `stop(reason:)`
+    /// for an immediate cancellation guarantee.
+    func stopHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+    }
+
+    /// Captures one `PlaybackHeartbeatEvent` using the same monotonic
+    /// `playbackTimer` duration as `pause.duration` and the same `sessionID`
+    /// threaded onto every other playback event.
+    private func emitHeartbeat() {
+        analytics.capture(PlaybackHeartbeatEvent(
+            sessionID: sessionID,
+            cumulativeSeconds: playbackTimer.duration(),
+            context: isForegrounded ? .foreground : .background,
+            playerType: .radioPlayer
+        ))
+    }
+
     // MARK: External playback command handlers
 
 #if os(iOS)
     func handleApplicationDidEnterBackground() {
+        isForegrounded = false
+
         guard !self.radioPlayer.isPlaying else {
             return
         }
@@ -488,6 +579,8 @@ private extension RadioPlayerController {
     }
 
     func handleApplicationWillEnterForeground() {
+        isForegrounded = true
+
         if self.radioPlayer.isPlaying {
             try? self.play(reason: .foregroundToggle)
         } else {
