@@ -120,13 +120,13 @@ struct StationView: View {
                 showingBugReport = true
             }
             Button("S'all good") {
-                showingMailComposer = true
+                sendPlainFeedback()
             }
         } message: {
             Text("If you're reporting a bug, we'll attach some debug logs to help us figure out what's going wrong. They don't include any personal info.")
         }
         .sheet(isPresented: $showingMailComposer) {
-            MailComposerView()
+            MailComposerView(subject: Self.feedbackSubject)
         }
         .sheet(isPresented: $showingBugReport) {
             BugReportView(
@@ -134,6 +134,27 @@ struct StationView: View {
                 analytics: StructuredPostHogAnalytics.shared,
                 logsProvider: collectBugReportLogs
             )
+        }
+    }
+
+    /// The subject shared by both feedback paths (in-app composer and the
+    /// mailto: fallback), so the two read identically.
+    static let feedbackSubject = "Feedback on the \(RadioStation.WXYC.name) app"
+
+    /// Routes the "S'all good" (not-a-bug) feedback tap. Presenting the in-app
+    /// `MFMailComposeViewController` when the device has no configured Mail
+    /// account crashes on iOS 26, so we only present it when `canSendMail()` is
+    /// true and otherwise hand off to a `mailto:` URL (which the Mail app, or any
+    /// third-party mail client, can open — even to prompt an account set-up).
+    private func sendPlainFeedback() {
+        switch FeedbackMailRouter.route(
+            canSendMail: MFMailComposeViewController.canSendMail(),
+            subject: Self.feedbackSubject
+        ) {
+        case .inAppComposer:
+            showingMailComposer = true
+        case .externalMailto(let url):
+            openURL(url)
         }
     }
 
@@ -268,7 +289,15 @@ struct StationRow: View {
 
 // MARK: - Mail Composer
 
+/// Wraps `MFMailComposeViewController` for SwiftUI presentation.
+///
+/// - Important: Only present this when `MFMailComposeViewController.canSendMail()`
+///   is `true`. Presenting the composer on a device with no configured Mail
+///   account crashes on iOS 26 (a null dynamic-cast inside SwiftUI's sheet
+///   hosting); ``FeedbackMailRouter`` gates the Station tab's usage.
 struct MailComposerView: UIViewControllerRepresentable {
+    let subject: String
+
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
@@ -276,8 +305,8 @@ struct MailComposerView: UIViewControllerRepresentable {
 
         let mailComposerVC = MFMailComposeViewController()
         mailComposerVC.mailComposeDelegate = context.coordinator
-        mailComposerVC.setToRecipients(["feedback@wxyc.org"])
-        mailComposerVC.setSubject("Feedback on the \(RadioStation.WXYC.name) app")
+        mailComposerVC.setToRecipients([FeedbackMailRouter.recipient])
+        mailComposerVC.setSubject(subject)
 
         return mailComposerVC
     }
