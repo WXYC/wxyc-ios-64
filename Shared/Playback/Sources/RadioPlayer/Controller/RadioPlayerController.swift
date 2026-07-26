@@ -530,6 +530,7 @@ private extension RadioPlayerController {
                 do {
                     try await Task.sleep(for: interval)
                 } catch {
+                    // Cancelled mid-sleep.
                     return
                 }
                 guard !Task.isCancelled, let self else { return }
