@@ -190,6 +190,124 @@ struct PlaycutMetadataServiceV2FallbackTests {
         #expect(result.streaming.spotifyURL?.absoluteString == "https://open.spotify.com/search/Chuquimamani-Condori")
     }
 
+    // MARK: - Terminal-row short-circuit (#685 Gate 2)
+
+    @Test("Terminal row with genres-only inline metadata (no streaming) never hits the proxy")
+    func terminalGenresOnlyRowSkipsProxy() async throws {
+        // Load-bearing regression for #685 Gate 2: a Gate-1-only fix (hasV2Metadata
+        // alone) still lets this row reach fetchMetadata with empty inline.streaming,
+        // and the old Gate-2 check (`inline.streaming.hasAny`) would fall through to
+        // the proxy anyway. The terminal status must short-circuit here too.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut(
+            id: 685,
+            hour: 1000,
+            chronOrderID: 685,
+            timeCreated: 1000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            genres: ["Rock"],
+            metadataStatus: .failedNoRetry
+        )
+        let inline = PlaycutMetadata(
+            artist: .empty,
+            album: AlbumMetadata(label: "Sonamos", genres: ["Rock"]),
+            streaming: .empty
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then
+        #expect(mockSession.requestCount == 0, "Terminal row must short-circuit even with empty streaming")
+        #expect(result.album.genres == ["Rock"])
+    }
+
+    @Test(
+        "Terminal row carrying only one non-streaming field skips the proxy",
+        arguments: [
+            "appleMusicURL", "youtubeMusicURL", "bandcampURL", "soundcloudURL",
+            "releaseYear", "genres", "styles", "artistBio",
+        ]
+    )
+    func terminalRowSingleNonStreamingFieldSkipsProxy(field: String) async throws {
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+        let url = URL(string: "https://example.com")!
+
+        let playcut: Playcut
+        let inline: PlaycutMetadata
+        switch field {
+        case "appleMusicURL":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", appleMusicURL: url, metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: .empty, streaming: StreamingLinks(appleMusicURL: url))
+        case "youtubeMusicURL":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", youtubeMusicURL: url, metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: .empty, streaming: StreamingLinks(youtubeMusicURL: url))
+        case "bandcampURL":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", bandcampURL: url, metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: .empty, streaming: StreamingLinks(bandcampURL: url))
+        case "soundcloudURL":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", soundcloudURL: url, metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: .empty, streaming: StreamingLinks(soundcloudURL: url))
+        case "releaseYear":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", releaseYear: 2022, metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: AlbumMetadata(releaseYear: 2022), streaming: .empty)
+        case "genres":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", genres: ["Rock"], metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: AlbumMetadata(genres: ["Rock"]), streaming: .empty)
+        case "styles":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", styles: ["Folk"], metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: .empty, album: AlbumMetadata(styles: ["Folk"]), streaming: .empty)
+        case "artistBio":
+            playcut = Playcut(id: 685, hour: 1000, chronOrderID: 685, timeCreated: 1000, songTitle: "s", labelName: nil, artistName: "a", releaseTitle: "r", artistBio: "Bio.", metadataStatus: .failedNoRetry)
+            inline = PlaycutMetadata(artist: ArtistMetadata(bio: "Bio."), album: .empty, streaming: .empty)
+        default:
+            fatalError("unhandled field \(field)")
+        }
+
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        #expect(mockSession.requestCount == 0, "Terminal row with only \(field) must not hit the proxy")
+        #expect(result == inline)
+    }
+
+    @Test("Terminal row with zero enriched fields renders base-only, no proxy")
+    func terminalEmptyRowSkipsProxy() async throws {
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut(
+            id: 685,
+            hour: 1000,
+            chronOrderID: 685,
+            timeCreated: 1000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            metadataStatus: .failedNoRetry
+        )
+        let inline = PlaycutMetadata(artist: .empty, album: .empty, streaming: .empty)
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then
+        #expect(mockSession.requestCount == 0)
+        #expect(result.streaming.hasAny == false)
+    }
+
     @Test("No inline V2 metadata behaves identically to fetchMetadata(for:)")
     func noInlineFallsBackToProxyFetch() async throws {
         // Given

@@ -195,9 +195,11 @@ struct PlaycutDetailView: View {
     private func loadMetadata() async {
         // Build inline metadata from the V2 flowsheet row when present. The
         // service decides whether to also hit /proxy/metadata/album: it skips
-        // the call when inline streaming is non-empty, and falls through when
-        // the V2 writer landed everything except the streaming side (Tragic
-        // Magic shape — #303).
+        // the call for a terminal metadataStatus row (enrichment is done, even
+        // with zero inline fields — #685) or when inline streaming is
+        // non-empty, and falls through when the row is still mid-enrichment
+        // and the V2 writer landed everything except the streaming side
+        // (Tragic Magic shape — #303).
         let inline = playcut.hasV2Metadata ? PlaycutMetadata(
             artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
             album: AlbumMetadata(
@@ -205,7 +207,8 @@ struct PlaycutDetailView: View {
                 releaseYear: playcut.releaseYear,
                 discogsURL: playcut.discogsURL,
                 genres: playcut.genres,
-                styles: playcut.styles
+                styles: playcut.styles,
+                artworkURL: playcut.artworkURL
             ),
             streaming: StreamingLinks(
                 spotifyURL: playcut.spotifyURL,

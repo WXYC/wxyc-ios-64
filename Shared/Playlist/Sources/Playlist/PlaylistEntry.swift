@@ -286,8 +286,29 @@ public struct Playcut: PlaylistEntry, Hashable {
     public let metadataStatus: MetadataStatus?
 
     /// Whether this playcut carries inline metadata from the v2 flowsheet API.
+    ///
+    /// True when the row's `metadataStatus` is terminal (`enrichedMatch`/
+    /// `enrichedNoMatch`/`failedNoRetry` — enrichment is done, so render from
+    /// whatever inline fields exist, even zero of them, rather than issuing a
+    /// degradable `/proxy/metadata/album` fetch) OR when any of the 12 inline
+    /// enriched fields is present. `artistId` (a likes key) and `upcomingShow`
+    /// (a touring CTA) are excluded — neither is playcut-detail metadata. See
+    /// #685: checking only artwork/Discogs/Spotify classified sparse-but-valid
+    /// terminal rows as "no metadata."
     public var hasV2Metadata: Bool {
-        artworkURL != nil || discogsURL != nil || spotifyURL != nil
+        metadataStatus?.isTerminal == true
+            || artworkURL != nil
+            || discogsURL != nil
+            || releaseYear != nil
+            || spotifyURL != nil
+            || appleMusicURL != nil
+            || youtubeMusicURL != nil
+            || bandcampURL != nil
+            || soundcloudURL != nil
+            || artistBio != nil
+            || artistWikipediaURL != nil
+            || !(genres ?? []).isEmpty
+            || !(styles ?? []).isEmpty
     }
 
     private enum CodingKeys: String, CodingKey {

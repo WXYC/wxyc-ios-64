@@ -84,20 +84,25 @@ public actor PlaycutMetadataService {
 
     /// Fetches metadata, optionally seeded by an inline V2 flowsheet row.
     ///
-    /// When `inline` is non-nil and already carries at least one streaming URL,
-    /// the inline metadata is returned directly with no network call. When the
-    /// inline row exists but every streaming URL is nil (Tragic Magic shape —
-    /// the V2 writer landed the artwork/Discogs columns but no streaming side),
-    /// the service falls through to `/proxy/metadata/album` so the BS read path
-    /// can fill the streaming gap. Inline album- and artist-level fields are
-    /// preserved when the proxy omits them.
+    /// When `inline` is non-nil, the inline metadata is returned directly with
+    /// no network call whenever the row's `metadataStatus` is terminal
+    /// (`enrichedMatch`/`enrichedNoMatch`/`failedNoRetry` — Backend has already
+    /// given up or finished enrichment, so a proxy round-trip can't add
+    /// anything, even when inline streaming is sparse or empty; see #685) or
+    /// when `inline` already carries at least one streaming URL. When the
+    /// inline row exists but every streaming URL is nil and the status isn't
+    /// terminal (Tragic Magic shape — the V2 writer landed the artwork/Discogs
+    /// columns but no streaming side, mid-enrichment), the service falls
+    /// through to `/proxy/metadata/album` so the BS read path can fill the
+    /// streaming gap. Inline album- and artist-level fields are preserved when
+    /// the proxy omits them.
     ///
     /// - Parameters:
     ///   - playcut: The playcut to resolve metadata for.
     ///   - inline: Optional inline metadata constructed from the V2 flowsheet
     ///     response. Pass `nil` to behave like the V1 path.
     public func fetchMetadata(for playcut: Playcut, inline: PlaycutMetadata?) async -> PlaycutMetadata {
-        if let inline, inline.streaming.hasAny {
+        if let inline, playcut.metadataStatus?.isTerminal == true || inline.streaming.hasAny {
             return inline
         }
 
