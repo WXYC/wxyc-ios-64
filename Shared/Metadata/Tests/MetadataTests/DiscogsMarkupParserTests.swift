@@ -820,9 +820,57 @@ struct DropNormalizationTests {
 
     @Test("Does not alter a bio with no ID-based references at all")
     func leavesBioWithNoIDReferencesUntouched() {
-        let input = "Written by [a=John Lennon] and [a=Paul McCartney]. Released on [l=Apple Records] in 1969."
+        let input = "Written by [a=Juana Molina] and [a=Stereolab]. Released on [l=Drag City] in 2013."
         let result = DiscogsMarkupParser.parse(input)
-        #expect(String(result.characters) == "Written by John Lennon and Paul McCartney. Released on Apple Records in 1969.")
+        #expect(String(result.characters) == "Written by Juana Molina and Stereolab. Released on Drag City in 2013.")
+    }
+
+    @Test("Collapses a duplicated list separator around a single dropped middle item")
+    func collapsesDuplicatedSeparatorAroundDroppedItem() {
+        // Stereolab and Cat Power resolve; the middle ID reference drops -- the two ", "
+        // separators that sandwiched it must not leave a doubled comma ("Stereolab,, Cat Power").
+        let input = "[a=Stereolab], [a1], [a=Cat Power]"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "Stereolab, Cat Power")
+    }
+
+    @Test("Does not accumulate separators across a run of consecutive dropped references")
+    func doesNotAccumulateSeparatorsAcrossDroppedRun() {
+        // A fully-dropped member list degrades gracefully: no run of doubled commas
+        // (pre-fix this produced "Members:,,.").
+        let input = "Members: [a1], [a2], [a3]."
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "Members:,.")
+    }
+
+    @Test("Hugs a closing parenthesis left orphaned by a dropped reference")
+    func hugsClosingParenthesis() {
+        let input = "band (aka [a1]) toured"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "band (aka) toured")
+    }
+
+    @Test("Coalesces punctuation when the token before the drop is a resolved link, not plainText")
+    func coalescesWhenPreviousTokenIsLink() {
+        // [a=Cat Power] resolves to a link and directly abuts the dropped reference, so the
+        // orphaned " , solo" must still hug the link: "Cat Power, solo".
+        let input = "[a=Cat Power][a1] , solo work"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "Cat Power, solo work")
+    }
+
+    @Test("Drops orphaned leading punctuation when the bio opens with a dropped reference")
+    func dropsLeadingOrphanPunctuation() {
+        let input = "[a1], and her sibling formed the band"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "and her sibling formed the band")
+    }
+
+    @Test("Preserves a paragraph break when a drop sits next to a newline")
+    func preservesParagraphBreakAcrossDrop() {
+        let input = "end of paragraph [a1]\n\nNext paragraph"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "end of paragraph\nNext paragraph")
     }
 }
 
