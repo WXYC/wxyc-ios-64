@@ -109,10 +109,14 @@ struct PlaycutDetailView: View {
                         .foregroundStyle(.white)
                 }
 
-                // Critic reviews — attributed snippet cards (ADR 0012). Gates
-                // solely on its own non-empty array, independent of the metadata
-                // card's hasMetadataSectionContent.
-                if metadata.album.hasCriticReviews {
+                // Critic reviews — attributed snippet cards (ADR 0012). Gated by
+                // the CriticReviewsFeature runtime flag (PostHog in Release, on by
+                // default in Debug/TestFlight) AND its own non-empty array,
+                // independent of the metadata card's hasMetadataSectionContent.
+                if CriticReviewsFeature.shouldShowReviews(
+                    isEnabled: CriticReviewsFeature.isEnabled(featureFlagProvider: appState.featureFlagProvider),
+                    hasReviews: metadata.album.hasCriticReviews
+                ) {
                     ReviewsSection(
                         reviews: metadata.album.criticReviews ?? [],
                         onLinkTapped: { source in
