@@ -97,11 +97,29 @@ public actor PlaycutMetadataService {
     /// streaming gap. Inline album- and artist-level fields are preserved when
     /// the proxy omits them.
     ///
+    /// Deliberate tradeoff: the terminal short-circuit means a terminal row
+    /// with no streaming links no longer falls through to the proxy, so it
+    /// also gives up whatever the proxy alone can supply — `discogsArtistId`,
+    /// `fullReleaseDate`, `criticReviews` (`AlbumMetadata`), and pre-parsed
+    /// `bioTokens` (`ArtistMetadata`) — none of which the V2 flowsheet row
+    /// carries. This is accepted as the cost of never spending a degradable
+    /// LML round-trip on a row Backend already gave up on (#685); Backend-
+    /// Service#1827 ("assemble base metadata before enrichment") is meant to
+    /// narrow this gap by ensuring terminal rows carry richer inline data
+    /// before they're marked terminal.
+    ///
     /// - Parameters:
     ///   - playcut: The playcut to resolve metadata for.
     ///   - inline: Optional inline metadata constructed from the V2 flowsheet
     ///     response. Pass `nil` to behave like the V1 path.
     public func fetchMetadata(for playcut: Playcut, inline: PlaycutMetadata?) async -> PlaycutMetadata {
+        // The `metadataStatus?.isTerminal` check here is intentionally NOT
+        // simplified to "trust hasV2Metadata already decided this" — this is a
+        // public actor API and `inline` could in principle come from any
+        // caller, not just `PlaycutDetailView`. Keeping the terminal check
+        // independent of `inline`'s shape means Gate 2 stays correct even if a
+        // future caller builds `inline` differently than `hasV2Metadata`
+        // (`Shared/Playlist/Sources/Playlist/PlaylistEntry.swift`) does.
         if let inline, playcut.metadataStatus?.isTerminal == true || inline.streaming.hasAny {
             return inline
         }

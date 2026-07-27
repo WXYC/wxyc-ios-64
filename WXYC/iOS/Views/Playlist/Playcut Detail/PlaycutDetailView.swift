@@ -200,6 +200,13 @@ struct PlaycutDetailView: View {
         // non-empty, and falls through when the row is still mid-enrichment
         // and the V2 writer landed everything except the streaming side
         // (Tragic Magic shape — #303).
+        //
+        // This field list must be kept in sync by hand with two other
+        // enumerations of the same 12 inline fields: Playcut's CodingKeys/
+        // init(from:) (Shared/Playlist/Sources/Playlist/PlaylistEntry.swift)
+        // and Playcut.hasV2Metadata's OR-chain in the same file. There's no
+        // compiler-enforced link — #685 itself patched one drift here
+        // (artworkURL was missing from this construction).
         let inline = playcut.hasV2Metadata ? PlaycutMetadata(
             artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
             album: AlbumMetadata(

@@ -295,6 +295,14 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// (a touring CTA) are excluded — neither is playcut-detail metadata. See
     /// #685: checking only artwork/Discogs/Spotify classified sparse-but-valid
     /// terminal rows as "no metadata."
+    ///
+    /// This field list is duplicated by hand in two other places that must be
+    /// kept in sync when a field is added or removed: the `Playcut` decoder's
+    /// `CodingKeys`/`init(from:)` above, and the inline `PlaycutMetadata`
+    /// construction in `PlaycutDetailView.loadMetadata()`. There's no
+    /// compiler-enforced link between the three — #685 itself was partly a fix
+    /// for one such drift (`artworkURL` was in this predicate but missing from
+    /// the `PlaycutDetailView` builder).
     public var hasV2Metadata: Bool {
         metadataStatus?.isTerminal == true
             || artworkURL != nil
