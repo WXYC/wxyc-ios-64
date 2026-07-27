@@ -409,26 +409,30 @@ extension DiscogsMarkupParser {
                 continue
             }
 
-            guard pendingDrop, case .plainText(let nextText) = resolved else {
-                result.append(resolved)
+            if pendingDrop {
                 pendingDrop = false
-                continue
+                if case .plainText(let nextText) = resolved {
+                    if case .plainText(let prevText)? = result.last {
+                        // Both neighbours are plainText -- merge them, coalescing the gap.
+                        result[result.count - 1] = .plainText(mergeAcrossDrop(prevText, nextText))
+                    } else if result.isEmpty {
+                        // The drop opened the bio -- trim leading whitespace and any orphaned
+                        // leading punctuation the dropped reference used to precede.
+                        let trimmed = trimLeadingOrphan(nextText)
+                        if !trimmed.isEmpty {
+                            result.append(.plainText(trimmed))
+                        }
+                    } else {
+                        // The previous kept token isn't plainText (e.g. a resolved link or a
+                        // bold run) -- clean only the following text's leading gap.
+                        result.append(.plainText(cleanLeadingAfterDrop(nextText)))
+                    }
+                    continue
+                }
+                // The next kept token isn't plainText (a link/bold/etc.) -- nothing to coalesce.
             }
 
-            if case .plainText(let prevText)? = result.last {
-                result[result.count - 1] = .plainText(coalesceDropBoundary(prevText: prevText, nextText: nextText))
-            } else if result.isEmpty {
-                // The drop was the very first token -- left-trim the text that follows it.
-                let trimmed = trimLeadingWhitespace(nextText)
-                if !trimmed.isEmpty {
-                    result.append(.plainText(trimmed))
-                }
-            } else {
-                // The previous kept token isn't plain text (e.g. a bold run or a resolved
-                // link) -- there's no drop-induced whitespace to clean at this boundary.
-                result.append(.plainText(nextText))
-            }
-            pendingDrop = false
+            result.append(resolved)
         }
 
         // The drop was the very last token -- right-trim the text that preceded it.
@@ -439,46 +443,73 @@ extension DiscogsMarkupParser {
         return result
     }
 
-    private static let dropBoundaryClosingPunctuation: Set<Character> = [",", ".", ";", ":", "!", "?"]
+    private static let dropBoundaryClosingPunctuation: Set<Character> = [",", ".", ";", ":", "!", "?", ")", "]", "}"]
 
-    /// Coalesces the boundary between the plainText spans that sandwiched a dropped token.
-    private static func coalesceDropBoundary(prevText: String, nextText: String) -> String {
-        guard let lastPrevChar = prevText.last, lastPrevChar.isWhitespace else {
-            return prevText + nextText
+    /// Merges the two plainText spans that sandwiched a dropped token into one, coalescing the
+    /// whitespace/punctuation the drop left behind so the sentence reads as though the reference
+    /// had never been there.
+    private static func mergeAcrossDrop(_ left: String, _ right: String) -> String {
+        let leftHadTrailingWhitespace = left.last?.isWhitespace ?? false
+        let rightHadLeadingWhitespace = right.first?.isWhitespace ?? false
+        // Preserve a paragraph break: if the removed gap spanned a newline, rejoin with one.
+        let boundarySpannedNewline = left.reversed().prefix(while: \.isWhitespace).contains(where: \.isNewline)
+            || right.prefix(while: \.isWhitespace).contains(where: \.isNewline)
+
+        let leftTrimmed = trimTrailingWhitespace(left)
+        var rightTrimmed = trimLeadingWhitespace(right)
+
+        // Collapse a duplicated list separator: "...," around a dropped item next to ", ..."
+        // must not become "...,, ..." -- keep a single separator.
+        if let lastLeft = leftTrimmed.last, let firstRight = rightTrimmed.first,
+           lastLeft == firstRight, dropBoundaryClosingPunctuation.contains(firstRight) {
+            rightTrimmed = trimLeadingWhitespace(String(rightTrimmed.dropFirst()))
         }
 
-        // Rule: nextText (optionally after one leading space of its own) starts with closing
-        // punctuation -- drop the gap so the punctuation hugs the previous word.
-        var candidateNext = Substring(nextText)
-        if candidateNext.first == " " {
-            candidateNext.removeFirst()
-        }
-        if let firstChar = candidateNext.first, dropBoundaryClosingPunctuation.contains(firstChar) {
-            return trimTrailingWhitespace(prevText) + candidateNext
+        // Closing punctuation hugs the previous word -- no separating space.
+        if let firstChar = rightTrimmed.first, dropBoundaryClosingPunctuation.contains(firstChar) {
+            return leftTrimmed + rightTrimmed
         }
 
-        // Rule: the drop left two whitespace runs back to back -- collapse them to one space.
-        if let firstNextChar = nextText.first, firstNextChar.isWhitespace {
-            return trimTrailingWhitespace(prevText) + " " + trimLeadingWhitespace(nextText)
+        // The reference was whitespace-separated from at least one neighbour -- keep exactly one
+        // separator (a newline if the gap contained one, otherwise a space).
+        if leftHadTrailingWhitespace || rightHadLeadingWhitespace {
+            return leftTrimmed + (boundarySpannedNewline ? "\n" : " ") + rightTrimmed
         }
 
-        return prevText + nextText
+        // The reference abutted both neighbours with no whitespace -- concatenate.
+        return leftTrimmed + rightTrimmed
+    }
+
+    /// Cleans the leading gap of the text following a drop whose previous kept token is not
+    /// plainText (a resolved link, bold run, etc.), so leading punctuation hugs that token and a
+    /// stray whitespace run collapses to a single space.
+    private static func cleanLeadingAfterDrop(_ text: String) -> String {
+        let trimmed = trimLeadingWhitespace(text)
+        if let firstChar = trimmed.first, dropBoundaryClosingPunctuation.contains(firstChar) {
+            return trimmed
+        }
+        if text.first?.isWhitespace == true {
+            return " " + trimmed
+        }
+        return text
+    }
+
+    /// Trims leading whitespace, plus one run of orphaned closing punctuation the dropped
+    /// reference used to precede (e.g. a bio opening with "[a123], who ..." -> "who ...").
+    private static func trimLeadingOrphan(_ text: String) -> String {
+        let trimmed = trimLeadingWhitespace(text)
+        if let firstChar = trimmed.first, dropBoundaryClosingPunctuation.contains(firstChar) {
+            return trimLeadingWhitespace(String(trimmed.dropFirst()))
+        }
+        return trimmed
     }
 
     private static func trimLeadingWhitespace(_ text: String) -> String {
-        var text = text
-        while let first = text.first, first.isWhitespace {
-            text.removeFirst()
-        }
-        return text
+        String(text.drop(while: \.isWhitespace))
     }
 
     private static func trimTrailingWhitespace(_ text: String) -> String {
-        var text = text
-        while let last = text.last, last.isWhitespace {
-            text.removeLast()
-        }
-        return text
+        String(text.reversed().drop(while: \.isWhitespace).reversed())
     }
 }
 
