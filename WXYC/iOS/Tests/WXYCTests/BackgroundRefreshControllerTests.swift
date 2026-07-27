@@ -71,9 +71,28 @@ struct BackgroundRefreshControllerTests {
         #expect(scheduler.submittedRequests.count == 1)
         #expect(reporter.reportedErrors.isEmpty)
     }
+
+    /// Guards against Info.plist/code drift: if `taskIdentifier` is ever
+    /// renamed here without updating `BGTaskSchedulerPermittedIdentifiers`,
+    /// every `submit(_:)` call would throw `.notPermitted` in production —
+    /// which, after this fix, is suppressed from Sentry as an expected
+    /// no-op. Without this test that misconfiguration would silently kill
+    /// background refresh for all users rather than surface anywhere.
+    @Test("Info.plist declares taskIdentifier as a permitted background task")
+    func taskIdentifierIsInInfoPlistPermittedIdentifiers() throws {
+        // WXYCTests is host-app-tested (TEST_HOST = WXYC.app), so Bundle.main
+        // here resolves to the running WXYC app's bundle, not the test bundle.
+        let permittedIdentifiers = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String]
+        )
+
+        #expect(permittedIdentifiers.contains(BackgroundRefreshController.taskIdentifier))
+    }
 }
 
 // MARK: - Test Doubles
+
+// The fakes below throw Swift-constructed `BGTaskScheduler.Error` values (e.g. `BGTaskScheduler.Error(.unavailable)`); the real framework only ever produces these as bridged `NSError`s from an actual failed submission, which isn't reproducible in-process, so a green suite here demonstrates the catch-matching logic, not the exact error shape `BGTaskScheduler` itself hands back.
 
 /// Fake `BackgroundTaskScheduling` that records submitted requests and can be
 /// configured to throw, standing in for the real `BGTaskScheduler`, which

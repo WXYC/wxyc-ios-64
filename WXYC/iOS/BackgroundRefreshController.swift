@@ -42,7 +42,8 @@ enum BackgroundRefreshController {
             // Apple Silicon), and anywhere else BGTaskScheduler isn't
             // supported or permitted. Not a bug in our app, so log it for
             // local diagnosis but don't forward it to Sentry (Sentry IOS-20).
-            Log(.info, category: .general, "BGTaskScheduler unavailable on this platform (\(error.code)); skipping background refresh scheduling")
+            let reason = error.code == .unavailable ? "unavailable" : "notPermitted"
+            Log(.info, category: .general, "BGTaskScheduler \(reason) on this platform (code \(error.code.rawValue)); skipping background refresh scheduling")
         } catch {
             errorReporter.report(error, context: "BackgroundRefreshController.scheduleNext")
         }
