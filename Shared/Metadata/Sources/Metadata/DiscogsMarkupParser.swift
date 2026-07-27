@@ -276,11 +276,13 @@ extension DiscogsMarkupParser {
 // MARK: - Phase 2: Resolve
     
 extension DiscogsMarkupParser {
-    
-    /// Resolves tokens without a resolver (skips ID-based tokens)
+
+    /// Resolves tokens without a resolver. ID-based tokens are always dropped, and the
+    /// whitespace/punctuation left behind by each drop is coalesced (see
+    /// ``normalizeAfterDrops(_:resolvedIds:)``).
     static func resolve(_ tokens: [DiscogsToken]) -> [ResolvedToken] {
         let emptyIds: [String: String] = [:]
-        return tokens.compactMap { resolveToken($0, resolvedIds: emptyIds) }
+        return normalizeAfterDrops(tokens, resolvedIds: emptyIds)
     }
     
     /// Resolves tokens with a resolver (fetches ID-based data)
@@ -333,10 +335,11 @@ extension DiscogsMarkupParser {
             return results
         }
         
-        // Rebuild with resolved values
-        return tokens.compactMap { resolveToken($0, resolvedIds: resolvedIds) }
+        // Rebuild with resolved values, coalescing whitespace/punctuation around anything
+        // that's still unresolved (missing from the map, or the resolver threw for it).
+        return normalizeAfterDrops(tokens, resolvedIds: resolvedIds)
     }
-    
+
     /// Resolves a single token using the resolved ID map
     private static func resolveToken(_ token: DiscogsToken, resolvedIds: [String: String]) -> ResolvedToken? {
         switch token {
@@ -387,6 +390,95 @@ extension DiscogsMarkupParser {
             let url = URL(string: urlString)
             return .urlLink(url, content)
         }
+    }
+
+    /// Resolves every token, then coalesces the whitespace/punctuation around any ID-based
+    /// reference that didn't resolve (no resolver, the resolver didn't have that ID, or the
+    /// resolver threw) so a dropped `[aNNNN]`/`[rNNNN]`/`[mNNNN]` reference doesn't leave the
+    /// sentence reading "duo , formed" -- it reads "duo, formed", as though the reference had
+    /// never been there. Operates at the token level, merging the plainText neighbors that
+    /// sandwiched the drop, rather than regex-scrubbing the rendered AttributedString -- that
+    /// would risk shredding attribute runs belonging to tokens that *did* resolve.
+    private static func normalizeAfterDrops(_ tokens: [DiscogsToken], resolvedIds: [String: String]) -> [ResolvedToken] {
+        var result: [ResolvedToken] = []
+        var pendingDrop = false
+
+        for token in tokens {
+            guard let resolved = resolveToken(token, resolvedIds: resolvedIds) else {
+                pendingDrop = true
+                continue
+            }
+
+            guard pendingDrop, case .plainText(let nextText) = resolved else {
+                result.append(resolved)
+                pendingDrop = false
+                continue
+            }
+
+            if case .plainText(let prevText)? = result.last {
+                result[result.count - 1] = .plainText(coalesceDropBoundary(prevText: prevText, nextText: nextText))
+            } else if result.isEmpty {
+                // The drop was the very first token -- left-trim the text that follows it.
+                let trimmed = trimLeadingWhitespace(nextText)
+                if !trimmed.isEmpty {
+                    result.append(.plainText(trimmed))
+                }
+            } else {
+                // The previous kept token isn't plain text (e.g. a bold run or a resolved
+                // link) -- there's no drop-induced whitespace to clean at this boundary.
+                result.append(.plainText(nextText))
+            }
+            pendingDrop = false
+        }
+
+        // The drop was the very last token -- right-trim the text that preceded it.
+        if pendingDrop, case .plainText(let text)? = result.last {
+            result[result.count - 1] = .plainText(trimTrailingWhitespace(text))
+        }
+
+        return result
+    }
+
+    private static let dropBoundaryClosingPunctuation: Set<Character> = [",", ".", ";", ":", "!", "?"]
+
+    /// Coalesces the boundary between the plainText spans that sandwiched a dropped token.
+    private static func coalesceDropBoundary(prevText: String, nextText: String) -> String {
+        guard let lastPrevChar = prevText.last, lastPrevChar.isWhitespace else {
+            return prevText + nextText
+        }
+
+        // Rule: nextText (optionally after one leading space of its own) starts with closing
+        // punctuation -- drop the gap so the punctuation hugs the previous word.
+        var candidateNext = Substring(nextText)
+        if candidateNext.first == " " {
+            candidateNext.removeFirst()
+        }
+        if let firstChar = candidateNext.first, dropBoundaryClosingPunctuation.contains(firstChar) {
+            return trimTrailingWhitespace(prevText) + candidateNext
+        }
+
+        // Rule: the drop left two whitespace runs back to back -- collapse them to one space.
+        if let firstNextChar = nextText.first, firstNextChar.isWhitespace {
+            return trimTrailingWhitespace(prevText) + " " + trimLeadingWhitespace(nextText)
+        }
+
+        return prevText + nextText
+    }
+
+    private static func trimLeadingWhitespace(_ text: String) -> String {
+        var text = text
+        while let first = text.first, first.isWhitespace {
+            text.removeFirst()
+        }
+        return text
+    }
+
+    private static func trimTrailingWhitespace(_ text: String) -> String {
+        var text = text
+        while let last = text.last, last.isWhitespace {
+            text.removeLast()
+        }
+        return text
     }
 }
 

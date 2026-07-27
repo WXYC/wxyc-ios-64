@@ -497,6 +497,12 @@ struct OlofDreijerBioReproTests {
 
     static let expected = "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo The Knife, formed with his sibling Karin Dreijer."
 
+    /// What renders when neither artist reference resolves: the names are still missing
+    /// (the resolver never provided them), but the drop-normalization pass in
+    /// `DiscogsMarkupParser` coalesces the whitespace/punctuation the drops left behind,
+    /// so the sentence reads as though the references had never been there.
+    static let expectedWithReferencesUnresolved = "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo, formed with his sibling."
+
     @Test("server bioTokens map + render includes both artist names")
     func serverTokensRenderBothNames() throws {
         let response = try JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
@@ -505,11 +511,11 @@ struct OlofDreijerBioReproTests {
         #expect(rendered == Self.expected)
     }
 
-    @Test("client sync string-parse drops ID references, orphaning punctuation")
-    func syncParseDropsIDReferences() {
+    @Test("client sync string-parse coalesces dropped ID references instead of orphaning punctuation")
+    func syncParseCoalescesIDReferences() {
         let response = try! JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
         let rendered = String(DiscogsMarkupParser.parse(response.bio!).characters)
-        #expect(rendered == "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo , formed with his sibling .")
+        #expect(rendered == Self.expectedWithReferencesUnresolved)
     }
 
     @Test("client async parse with an authenticated resolver renders both artist names")
@@ -524,7 +530,7 @@ struct OlofDreijerBioReproTests {
         #expect(rendered == Self.expected)
     }
 
-    @Test("client async parse with a failing resolver (simulating an unauthenticated 401) still drops references")
+    @Test("client async parse with a failing resolver (simulating an unauthenticated 401) still drops references, but gracefully")
     func asyncParseWithThrowingResolverDropsReferences() async {
         let response = try! JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
         var resolver = MockDiscogsEntityResolver()
@@ -532,7 +538,7 @@ struct OlofDreijerBioReproTests {
 
         let rendered = String(await DiscogsMarkupParser.parse(response.bio!, resolver: resolver).characters)
 
-        #expect(rendered == "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo , formed with his sibling .")
+        #expect(rendered == Self.expectedWithReferencesUnresolved)
     }
 }
 

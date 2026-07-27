@@ -101,11 +101,11 @@ struct ArtistTagTests {
         #expect(String(result.characters) == "")
     }
     
-    @Test("Preserves text around artist ID link")
+    @Test("Preserves text around artist ID link, collapsing the drop to a single space")
     func preservesTextAroundArtistIdLink() {
         let input = "See [a12345] for more"
         let result = DiscogsMarkupParser.parse(input)
-        #expect(String(result.characters) == "See  for more")
+        #expect(String(result.characters) == "See for more")
     }
     
     @Test("Artist link has correct URL")
@@ -357,18 +357,18 @@ struct IDTagTests {
         #expect(String(result.characters) == "")
     }
 
-    @Test("Preserves text around release ID")
+    @Test("Preserves text around release ID, collapsing the drop to a single space")
     func preservesTextAroundReleaseId() {
         let input = "See release [r99999] for details"
         let result = DiscogsMarkupParser.parse(input)
-        #expect(String(result.characters) == "See release  for details")
+        #expect(String(result.characters) == "See release for details")
     }
 
-    @Test("Preserves text around master ID")
+    @Test("Preserves text around master ID, collapsing the drop to a single space")
     func preservesTextAroundMasterId() {
         let input = "Master [m456] version"
         let result = DiscogsMarkupParser.parse(input)
-        #expect(String(result.characters) == "Master  version")
+        #expect(String(result.characters) == "Master version")
     }
 }
 
@@ -430,7 +430,7 @@ struct EdgeCaseTests {
     func handlesRealWorldDiscogsText() {
         let input = "Written by [a=John Lennon] and [a=Paul McCartney]. Released on [l=Apple Records] in 1969. See [r123456] for more info."
         let result = DiscogsMarkupParser.parse(input)
-        #expect(String(result.characters) == "Written by John Lennon and Paul McCartney. Released on Apple Records in 1969. See  for more info.")
+        #expect(String(result.characters) == "Written by John Lennon and Paul McCartney. Released on Apple Records in 1969. See for more info.")
     }
     
     @Test("Handles text with only brackets")
@@ -644,25 +644,25 @@ struct EntityResolutionTests {
         #expect(String(result.characters) == "John Lennon collaborated with Yoko Ono")
     }
     
-    @Test("Skips unresolvable IDs gracefully")
+    @Test("Skips unresolvable IDs gracefully, collapsing the drop to a single space")
     func skipsUnresolvableIds() async {
         let input = "See [a99999999] for more"
         let resolver = MockDiscogsEntityResolver()
-        
+
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
-        #expect(String(result.characters) == "See  for more")
+
+        #expect(String(result.characters) == "See for more")
     }
-    
-    @Test("Handles resolver errors gracefully")
+
+    @Test("Handles resolver errors gracefully, left-trimming a drop at the start of the bio")
     func handlesResolverErrors() async {
         let input = "[a123] was great"
         var resolver = MockDiscogsEntityResolver()
         resolver.shouldThrowError = true
-        
+
         let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
-        
-        #expect(String(result.characters) == " was great")
+
+        #expect(String(result.characters) == "was great")
     }
     
     @Test("Resolves complex real-world text")
@@ -750,6 +750,79 @@ struct EntityResolutionTests {
 
         #expect(String(result1.characters) == "Album Title (2)")
         #expect(String(result2.characters) == "Master Title (Remastered) (3)")
+    }
+}
+
+// MARK: - Drop Normalization Tests
+
+/// Covers the silent-drop hardening: when an ID-based reference ([aNNNN], [rNNNN],
+/// [mNNNN]) can't be resolved -- no resolver, resolver doesn't have the ID, or the
+/// resolver throws -- the whitespace/punctuation left behind by the drop is coalesced
+/// so the sentence reads as though the reference had never been there, instead of
+/// orphaning a stray space or leaving punctuation floating after a gap.
+@Suite("Drop Normalization Tests")
+struct DropNormalizationTests {
+
+    @Test("Coalesces closing punctuation directly abutting a dropped reference")
+    func coalescesClosingPunctuation() {
+        let input = "Member of the electronica duo [a87717], formed with his sibling [a325359]."
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "Member of the electronica duo, formed with his sibling.")
+    }
+
+    @Test("Coalesces closing punctuation that has its own leading space before a dropped reference")
+    func coalescesClosingPunctuationWithLeadingSpace() {
+        let input = "duo [a87717] , formed"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "duo, formed")
+    }
+
+    @Test("Collapses a double space left by a dropped reference between two words")
+    func collapsesDoubleSpace() {
+        let input = "with [a1] and"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "with and")
+    }
+
+    @Test("Left-trims when the drop is the very first token")
+    func leftTrimsDropAtStart() {
+        let input = "[a1] leads the sentence"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "leads the sentence")
+    }
+
+    @Test("Right-trims when the drop is the very last token")
+    func rightTrimsDropAtEnd() {
+        let input = "the sentence ends with [a1]"
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "the sentence ends with")
+    }
+
+    @Test("Coalesces around a drop under the async resolver API too, not just sync parse")
+    func coalescesUnderAsyncResolverAPI() async {
+        let input = "Member of the electronica duo [a87717], formed with his sibling [a325359]."
+        let resolver = MockDiscogsEntityResolver() // neither id registered -> both drop
+        let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
+        #expect(String(result.characters) == "Member of the electronica duo, formed with his sibling.")
+    }
+
+    @Test("Does not touch whitespace in a bio where every reference resolves")
+    func leavesFullyResolvedBioUntouched() async {
+        let input = "Member of the electronica duo [a87717], formed with his sibling [a325359]."
+        var resolver = MockDiscogsEntityResolver()
+        resolver.artists[87717] = "The Knife"
+        resolver.artists[325359] = "Karin Dreijer"
+
+        let result = await DiscogsMarkupParser.parse(input, resolver: resolver)
+
+        #expect(String(result.characters) == "Member of the electronica duo The Knife, formed with his sibling Karin Dreijer.")
+    }
+
+    @Test("Does not alter a bio with no ID-based references at all")
+    func leavesBioWithNoIDReferencesUntouched() {
+        let input = "Written by [a=John Lennon] and [a=Paul McCartney]. Released on [l=Apple Records] in 1969."
+        let result = DiscogsMarkupParser.parse(input)
+        #expect(String(result.characters) == "Written by John Lennon and Paul McCartney. Released on Apple Records in 1969.")
     }
 }
 
