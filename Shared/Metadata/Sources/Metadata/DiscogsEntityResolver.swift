@@ -53,7 +53,12 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     /// the app's existing `PlaycutMetadataService(tokenProvider:)` pattern.
     /// `baseURL`, `session`, and `cache` keep their package-internal defaults.
     public convenience init(tokenProvider: SessionTokenProvider?) {
-        self.init(tokenProvider: tokenProvider)
+        // The extra `session:` argument disambiguates this delegation to the
+        // designated `init(baseURL:tokenProvider:session:cache:)`. Without it,
+        // `self.init(tokenProvider:)` resolves to THIS convenience initializer
+        // (an exact-arity match Swift prefers over the designated init, which
+        // would need three defaults applied), recursing until it crashes.
+        self.init(tokenProvider: tokenProvider, session: URLSession.shared)
     }
 
     public func resolveArtist(id: Int) async throws -> String {
