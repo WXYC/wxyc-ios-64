@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Metadata
+import MusicShareKit
 import WXUI
 
 struct ArtistBioSection: View {
@@ -24,7 +25,12 @@ struct ArtistBioSection: View {
     @State private var isTruncated: Bool = false
     @State private var parsedBio: AttributedString?
 
-    private let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver.shared
+    // Authenticated, mirroring `PlaycutMetadataService(tokenProvider: MusicShareKit.authService)`
+    // in PlaycutDetailView. `DiscogsAPIEntityResolver.shared` sends no
+    // `Authorization` header, so `proxy/entity/resolve` 401s and every
+    // ID-based artist reference in the bio (e.g. `[a87717]`) silently drops,
+    // orphaning the surrounding punctuation.
+    private let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(tokenProvider: MusicShareKit.authService)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

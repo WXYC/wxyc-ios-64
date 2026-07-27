@@ -469,6 +469,73 @@ struct ResolvedBioTokenWireMappingTests {
     }
 }
 
+// MARK: - Olof Dreijer end-to-end repro
+
+/// Reproduces the "formed with his sibling ." bug from the Playcut detail bio.
+/// Uses the exact payload returned by `GET /proxy/metadata/artist?artistId=402904`.
+@Suite("Olof Dreijer bio end-to-end")
+struct OlofDreijerBioReproTests {
+
+    /// Verbatim server response (captured 2026-07-27). Artist references are
+    /// ID-based in the raw `bio` (`[a87717]` = The Knife, `[a325359]` = Karin
+    /// Dreijer) but the server has already resolved them into `bioTokens`.
+    static let serverJSON = #"""
+    {
+      "discogsArtistId": 402904,
+      "bio": "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo [a87717], formed with his sibling [a325359].",
+      "bioTokens": [
+        {"type": "plainText", "text": "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo "},
+        {"type": "artistLink", "name": "The Knife", "display_name": "The Knife", "url": "https://www.discogs.com/artist/87717"},
+        {"type": "plainText", "text": ", formed with his sibling "},
+        {"type": "artistLink", "name": "Karin Dreijer", "display_name": "Karin Dreijer", "url": "https://www.discogs.com/artist/325359"},
+        {"type": "plainText", "text": "."}
+      ],
+      "wikipediaUrl": "https://en.wikipedia.org/wiki/Olof_Dreijer",
+      "imageUrl": null
+    }
+    """#
+
+    static let expected = "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo The Knife, formed with his sibling Karin Dreijer."
+
+    @Test("server bioTokens map + render includes both artist names")
+    func serverTokensRenderBothNames() throws {
+        let response = try JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
+        let mapped = try #require(response.bioTokens).compactMap(ResolvedBioToken.init)
+        let rendered = String(ResolvedBioToken.render(mapped).characters)
+        #expect(rendered == Self.expected)
+    }
+
+    @Test("client sync string-parse drops ID references, orphaning punctuation")
+    func syncParseDropsIDReferences() {
+        let response = try! JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
+        let rendered = String(DiscogsMarkupParser.parse(response.bio!).characters)
+        #expect(rendered == "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo , formed with his sibling .")
+    }
+
+    @Test("client async parse with an authenticated resolver renders both artist names")
+    func asyncParseWithResolverRendersBothNames() async {
+        let response = try! JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
+        var resolver = MockDiscogsEntityResolver()
+        resolver.artists[87717] = "The Knife"
+        resolver.artists[325359] = "Karin Dreijer"
+
+        let rendered = String(await DiscogsMarkupParser.parse(response.bio!, resolver: resolver).characters)
+
+        #expect(rendered == Self.expected)
+    }
+
+    @Test("client async parse with a failing resolver (simulating an unauthenticated 401) still drops references")
+    func asyncParseWithThrowingResolverDropsReferences() async {
+        let response = try! JSONDecoder().decode(WXYCAPIModels.ArtistMetadataResponse.self, from: Data(Self.serverJSON.utf8))
+        var resolver = MockDiscogsEntityResolver()
+        resolver.shouldThrowError = true
+
+        let rendered = String(await DiscogsMarkupParser.parse(response.bio!, resolver: resolver).characters)
+
+        #expect(rendered == "Swedish music producer, DJ and musician, born 27 November 1981. Member of the electronica duo , formed with his sibling .")
+    }
+}
+
 // MARK: - Helpers
 
 private func decode(_ json: String) throws -> ResolvedBioToken {

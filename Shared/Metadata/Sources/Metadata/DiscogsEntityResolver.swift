@@ -29,7 +29,11 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     /// Cache lifespan: 30 days (entity names essentially never change)
     private static let cacheLifespan: TimeInterval = 60 * 60 * 24 * 30
 
-    /// Shared instance for convenience
+    /// Shared instance for convenience. Unauthenticated — carries no
+    /// `Authorization` header, so `proxy/entity/resolve` calls made through it
+    /// 401. Callers that have a session (i.e. an app target with
+    /// `MusicShareKit.authService`) should construct their own instance via
+    /// ``init(tokenProvider:)`` instead of reaching for `shared`.
     public static let shared = DiscogsAPIEntityResolver()
 
     init(
@@ -42,6 +46,14 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
         self.tokenProvider = tokenProvider
         self.session = session
         self.cache = cache
+    }
+
+    /// Creates a resolver that authenticates its `proxy/entity/resolve`
+    /// requests with the given token provider, so calls don't 401. Mirrors
+    /// the app's existing `PlaycutMetadataService(tokenProvider:)` pattern.
+    /// `baseURL`, `session`, and `cache` keep their package-internal defaults.
+    public convenience init(tokenProvider: SessionTokenProvider?) {
+        self.init(tokenProvider: tokenProvider)
     }
 
     public func resolveArtist(id: Int) async throws -> String {
