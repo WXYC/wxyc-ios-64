@@ -190,6 +190,64 @@ struct PlaycutMetadataServiceV2FallbackTests {
         #expect(result.streaming.spotifyURL?.absoluteString == "https://open.spotify.com/search/Chuquimamani-Condori")
     }
 
+    // MARK: - Non-terminal sparse-field rows reach the merge path (#685 follow-up)
+
+    @Test("Non-terminal row with only genres inline (no streaming, no other fields) merges inline genres when the proxy omits them")
+    func nonTerminalGenresOnlyRowMergesInlineGenres() async throws {
+        // #685 widened hasV2Metadata to 12 fields unconditionally on
+        // metadataStatus, so PlaycutDetailView now builds a non-nil `inline`
+        // for a pending/enriching row carrying only genres — where before,
+        // hasV2Metadata (artwork/discogs/spotify only) would have been false
+        // and `inline` would have been nil. That routes fetchMetadata through
+        // the merge branch (mergeAlbum) instead of the old pure-proxy
+        // early-return, so this row's inline genres now survive a proxy
+        // response that doesn't return genres itself. Locking in that this is
+        // the actual, intended behavior (proxy wins when present, inline is a
+        // fallback), not an untested accident.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Call Your Name",
+            artistName: "Chuquimamani-Condori",
+            releaseTitle: "Edits",
+            genres: ["Electronic"]
+            // metadataStatus defaults to nil (non-terminal)
+        )
+        let inline = PlaycutMetadata(
+            artist: .empty,
+            album: AlbumMetadata(genres: ["Electronic"]),
+            streaming: .empty
+        )
+
+        // Proxy resolves streaming but says nothing about genres
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": "https://open.spotify.com/search/Chuquimamani-Condori",
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then — proxy fetch happened (this row is non-terminal with no inline
+        // streaming), and the merge path preserved the inline genres the
+        // proxy didn't supply
+        #expect(mockSession.requestCount >= 1, "Non-terminal sparse row must still hit the proxy")
+        #expect(result.album.genres == ["Electronic"], "Inline genres should survive when the proxy omits them")
+        #expect(result.streaming.spotifyURL?.absoluteString == "https://open.spotify.com/search/Chuquimamani-Condori")
+    }
+
     // MARK: - Terminal-row short-circuit (#685 Gate 2)
 
     @Test("Terminal row with genres-only inline metadata (no streaming) never hits the proxy")
