@@ -42,6 +42,21 @@ ln -s ../../scripts/hooks/pre-push .git/hooks/pre-push
 
 Skip a single push with `git push --no-verify`, or globally with `git config wxyc.skipTests true`.
 
+### Running the full plan directly (mind the two flags)
+
+Prefer `scripts/test-affected.sh --full` over invoking `xcodebuild test -scheme WXYC` by hand. A bare `xcodebuild test -scheme WXYC` is a trap: it runs the whole `WXYC.xctestplan`, including tests the sanctioned runs deliberately exclude, so it fails with confusing "environmental" errors that aren't real defects. To match what CI and `test-affected.sh` actually run, pass both:
+
+```bash
+TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES=1 xcodebuild test -scheme WXYC \
+    -destination 'platform=iOS Simulator,id=<UUID>' \
+    -skip-testing:WXYCUITests
+```
+
+- `TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES=1` — skips tests that require a Keychain entitlement the SPM unit-test bundle lacks on the simulator (`errSecMissingEntitlement`) and other known-flaky suites (#371). xcodebuild strips the `TEST_RUNNER_` prefix when forwarding to the simulator test runner, so the plain env var reaches the tests. Without it, `KeychainTokenStorageTests` / `DeviceFingerprintTests` fail on every run.
+- `-skip-testing:WXYCUITests` — the UI tests need live-stream network egress and a foregrounded app; they are not part of the default batch. Both CI and `test-affected.sh` skip them. Run them explicitly per the [UI Tests](#ui-tests) section below.
+
+Note that `scripts/test-affected.sh` does **not** set `WXYC_SKIP_KNOWN_FLAKES` itself — only CI does. When its affected set includes an xcodebuild-path package (MusicShareKit, PartyHorn, PlayerHeaderView, Wallpaper, AppServices) or you pass `--full`, export the var yourself first (`export WXYC_SKIP_KNOWN_FLAKES=1`) or the Keychain/DeviceFingerprint tests hit the same `errSecMissingEntitlement` failures. It already handles `-skip-testing:WXYCUITests` for you.
+
 ## Building
 
 ```bash
