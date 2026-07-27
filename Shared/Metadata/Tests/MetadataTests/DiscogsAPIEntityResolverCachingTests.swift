@@ -298,3 +298,28 @@ struct DiscogsAPIEntityResolverCachingTests {
         #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "master", id: 3)))
     }
 }
+
+// MARK: - Authenticated Init Regression Tests
+
+/// Guards the public `init(tokenProvider:)` convenience initializer -- the one
+/// `ArtistBioSection` constructs for every bio it renders. It must delegate to the
+/// designated initializer; if it delegates to itself (an exact-arity match Swift's
+/// overload resolution prefers over the designated init) it recurses until the stack
+/// overflows. Merely constructing an instance without crashing is the assertion.
+@Suite("DiscogsAPIEntityResolver Authenticated Init")
+struct DiscogsAPIEntityResolverAuthInitTests {
+
+    @Test("Authenticated convenience init delegates instead of recursing")
+    func authenticatedInitDoesNotRecurse() {
+        let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(
+            tokenProvider: MockTokenProvider(tokenValue: "test-token")
+        )
+        #expect(resolver is DiscogsAPIEntityResolver)
+    }
+
+    @Test("Convenience init with a nil provider delegates instead of recursing")
+    func nilProviderInitDoesNotRecurse() {
+        let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(tokenProvider: nil)
+        #expect(resolver is DiscogsAPIEntityResolver)
+    }
+}
