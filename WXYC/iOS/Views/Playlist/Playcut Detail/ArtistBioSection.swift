@@ -29,8 +29,24 @@ struct ArtistBioSection: View {
     // in PlaycutDetailView. `DiscogsAPIEntityResolver.shared` sends no
     // `Authorization` header, so `proxy/entity/resolve` 401s and every
     // ID-based artist reference in the bio (e.g. `[a87717]`) silently drops,
-    // orphaning the surrounding punctuation.
-    private let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(tokenProvider: MusicShareKit.authService)
+    // orphaning the surrounding punctuation. Injectable (default is the
+    // authenticated resolver) so this path is covered by real behavioral tests
+    // against `DiscogsFormatter.resolvedBio` -- see `DiscogsFormatterTests.swift`.
+    private let resolver: DiscogsEntityResolver
+
+    init(
+        bio: String,
+        bioTokens: [ResolvedBioToken]?,
+        expandedBio: Binding<Bool>,
+        showsHeader: Bool = true,
+        resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(tokenProvider: MusicShareKit.authService)
+    ) {
+        self.bio = bio
+        self.bioTokens = bioTokens
+        self._expandedBio = expandedBio
+        self.showsHeader = showsHeader
+        self.resolver = resolver
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -62,15 +78,7 @@ struct ArtistBioSection: View {
             }
         }
         .task {
-            if let bioTokens {
-                // Use pre-parsed tokens from the server (no network calls needed)
-                parsedBio = DiscogsFormatter.applyLinkStyling(
-                    to: ResolvedBioToken.render(bioTokens)
-                )
-            } else {
-                // Fall back to client-side parsing with async entity resolution
-                parsedBio = await DiscogsFormatter.parseToAttributedString(bio, resolver: resolver)
-            }
+            parsedBio = await DiscogsFormatter.resolvedBio(bio: bio, bioTokens: bioTokens, resolver: resolver)
         }
     }
 

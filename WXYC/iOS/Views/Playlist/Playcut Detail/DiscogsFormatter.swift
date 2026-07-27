@@ -41,7 +41,23 @@ struct DiscogsFormatter {
     static func parseToAttributedString(_ text: String, resolver: DiscogsEntityResolver) async -> AttributedString {
         applyLinkStyling(to: await DiscogsMarkupParser.parse(text, resolver: resolver))
     }
-    
+
+    // MARK: - Bio Resolution Seam
+
+    /// Decides how to render an artist bio: pre-parsed server `bioTokens` when present
+    /// (no network calls, `resolver` untouched), or a client-side parse of the raw `bio`
+    /// against `resolver` when they're `nil` -- e.g. a stale disk-cache entry from before
+    /// server-side token resolution landed. Extracted from `ArtistBioSection.task` so the
+    /// decision (and, transitively, the resolver it's given) is unit-testable without a
+    /// SwiftUI test harness.
+    static func resolvedBio(bio: String, bioTokens: [ResolvedBioToken]?, resolver: DiscogsEntityResolver) async -> AttributedString {
+        if let bioTokens {
+            return applyLinkStyling(to: ResolvedBioToken.render(bioTokens))
+        } else {
+            return await parseToAttributedString(bio, resolver: resolver)
+        }
+    }
+
     // MARK: - Private
     
     /// Applies SwiftUI-specific styling to links (secondary foreground color)
