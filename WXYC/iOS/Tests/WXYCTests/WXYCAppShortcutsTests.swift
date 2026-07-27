@@ -26,14 +26,16 @@ import Testing
 @Suite("WXYCAppShortcuts")
 struct WXYCAppShortcutsTests {
     /// The discoverable shortcuts we register: WhatsPlayingOnWXYC, PlayWXYC,
-    /// MakeARequest, OpenPlaycut (#428), and OpenConcert (#624). Unlike
+    /// MakeARequest, OpenPlaycut (#428), OpenConcert (#624), ToursNearMe
+    /// (OT-C2), and AddConcertToCalendarIntent (OT-C7). Unlike
     /// `openPlaycutIntentIsRegistered()` and `openConcertIntentIsRegistered()`
     /// below, this count isn't SDK-fragile — it only changes when someone
     /// deliberately adds or removes an `AppShortcut` in `WXYCAppShortcuts`,
-    /// not when Apple restructures `AppShortcut`'s private storage.
-    @Test("appShortcuts registers exactly five shortcuts")
-    func registersFiveShortcuts() {
-        #expect(WXYCAppShortcuts.appShortcuts.count == 5)
+    /// not when Apple restructures `AppShortcut`'s private storage. Bump this
+    /// count (and the test name) whenever you add or remove a shortcut.
+    @Test("appShortcuts registers exactly seven shortcuts")
+    func registersSevenShortcuts() {
+        #expect(WXYCAppShortcuts.appShortcuts.count == 7)
     }
 
     @Test("OpenPlaycut (#428) is specifically registered, not merely a 4th intent")
@@ -94,7 +96,7 @@ struct WXYCAppShortcutsTests {
 // `ObjectIdentifier(OpenPlaycut.self)`-keyed token, etc.). If no reachable
 // signal survives at all, the documented fallback is to drop
 // `openPlaycutIntentIsRegistered()` and rely solely on
-// `registersFourShortcuts()` above, noting the loss of per-intent specificity
+// `registersSevenShortcuts()` above, noting the loss of per-intent specificity
 // in that test's doc comment.
 
 /// Recursively searches `value`'s reflection tree for a stored value whose
