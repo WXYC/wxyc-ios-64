@@ -9,14 +9,20 @@
 //
 
 import Foundation
+import Logger
 
 /// Represents the type of a flowsheet entry, determined from the `entry_type` field
 /// with a fallback to the legacy `message`-based heuristic.
 ///
 /// Every case here renders as timeline content. Rows that don't — guest-DJ
-/// `dj_join`/`dj_leave` markers and any `entry_type` this build doesn't
-/// recognize — have no case; `from(_:)` returns `nil` for them instead, and
-/// ``FlowsheetConverter`` drops the row rather than minting a case for it.
+/// `dj_join`/`dj_leave` markers, freeform `message` rows, and any `entry_type`
+/// this build doesn't recognize — have no case; `from(_:)` returns `nil` for
+/// them instead, and ``FlowsheetConverter`` drops the row rather than minting
+/// a case for it. This "no case renders nothing" invariant is specific to the
+/// `entry_type` path: the legacy `from(message:)` fallback below intentionally
+/// keeps its always-render-as-playcut default, since a nil/unrecognized
+/// `message` on a pre-`entry_type` (v1-shaped) row is, by that format's
+/// semantics, a track.
 enum FlowsheetEntryType: Equatable, Sendable {
     case playcut
     case talkset
@@ -31,8 +37,8 @@ enum FlowsheetEntryType: Equatable, Sendable {
     ///
     /// - Parameter entry: A raw flowsheet entry.
     /// - Returns: The detected entry type, or `nil` when the entry carries no
-    ///   content a listener surface should render (see the `dj_join`/`dj_leave`
-    ///   and `default` cases below).
+    ///   content a listener surface should render (see the `dj_join`/`dj_leave`,
+    ///   `message`, and `default` cases below).
     static func from(_ entry: FlowsheetEntry) -> FlowsheetEntryType? {
         if let entryType = entry.entry_type {
             switch entryType {
@@ -53,13 +59,32 @@ enum FlowsheetEntryType: Equatable, Sendable {
                 // used to mint an "Unknown / Unknown" card (#693). Mirrors
                 // tubafrenzy, which never surfaces these rows either.
                 return nil
+            case "message":
+                // Backend-Service's transformToV2 emits this today for freeform
+                // DJ messages that aren't a pre-classified "Talkset"/"Breakpoint"
+                // text — a live contract variant (see
+                // WXYCAPIModels.FlowsheetEntryType.message /
+                // FlowsheetV2MessageEntry), not a future addition. This is a
+                // DELIBERATE drop: the listener app has no rendering surface for
+                // freeform messages, and routing a "message" row through
+                // `from(message:)` would resurrect #693-style "Unknown / Unknown"
+                // cards, since that fallback's own default mints `.playcut` for
+                // text it doesn't recognize — which a genuinely freeform message
+                // never will.
+                return nil
             default:
-                // An `entry_type` this build doesn't recognize (a future server
-                // addition). Dropping is the safe default: minting `.playcut` here
-                // is what produced the #693 "Unknown / Unknown" cards for
-                // dj_join/dj_leave before they got their own cases above, and any
-                // future non-track marker type is more likely to look like that
-                // than like a song play.
+                // An `entry_type` this build genuinely doesn't recognize yet — a
+                // future server addition, distinct from the known-but-unrendered
+                // "message" case above. Dropping is the safe default: minting
+                // `.playcut` here is what produced the #693 "Unknown / Unknown"
+                // cards for dj_join/dj_leave before they got their own cases, and
+                // any future non-track marker type is more likely to look like
+                // that than like a song play. Logged (unlike the designed-drop
+                // cases above) because an unrecognized value is itself signal —
+                // either a contract addition this build hasn't caught up to, or a
+                // server-side bug — worth surfacing without spamming every poll
+                // for a marker type this build already knows to expect and drop.
+                Log(.warning, category: .network, "Unrecognized flowsheet entry_type '\(entryType)' on entry \(entry.id); dropping row")
                 return nil
             }
         }
