@@ -195,4 +195,42 @@ struct FlowsheetEntryTypeTests {
         )
         #expect(FlowsheetEntryType.from(entry) == .talkset)
     }
+
+    // MARK: - dj_join / dj_leave markers are dropped (#693)
+
+    @Test("entry_type 'dj_join'/'dj_leave' has no renderable type", arguments: ["dj_join", "dj_leave"])
+    func djJoinAndDjLeaveAreDropped(entryType: String) {
+        // Real wire shape captured from prod (2026-07-28): only
+        // id/show_id/play_order/add_time/entry_type/dj_name — no track/artist/
+        // album fields, which is what used to mint an "Unknown / Unknown" playcut.
+        let entry = FlowsheetEntry(
+            id: 5298092, show_id: 1950704, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 39, add_time: "2026-07-28T20:31:58.258Z",
+            entry_type: entryType, dj_name: "DJ will"
+        )
+        #expect(FlowsheetEntryType.from(entry) == nil)
+    }
+
+    @Test("Decoding the real dj_join wire shape from JSON yields no renderable type")
+    func decodedDjJoinFromWireIsDropped() throws {
+        let json = """
+        {"id": 5298092, "show_id": 1950704, "play_order": 39, "add_time": "2026-07-28T20:31:58.258Z", "entry_type": "dj_join", "dj_name": "DJ will"}
+        """
+        let entry = try JSONDecoder().decode(FlowsheetEntry.self, from: Data(json.utf8))
+        #expect(FlowsheetEntryType.from(entry) == nil)
+    }
+
+    @Test("Unrecognized future entry_type has no renderable type")
+    func unrecognizedFutureEntryTypeIsDropped() {
+        let entry = FlowsheetEntry(
+            id: 8, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 8, add_time: "2026-07-28T20:31:58.258Z",
+            entry_type: "some_future_type"
+        )
+        #expect(FlowsheetEntryType.from(entry) == nil)
+    }
 }
