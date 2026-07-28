@@ -592,6 +592,87 @@ struct FlowsheetConverterTests {
         #expect(breakpoint.timeCreated == expectedAddTime)
     }
 
+    // MARK: - dj_join / dj_leave markers are dropped (#693)
+
+    @Test(
+        "dj_join/dj_leave rows produce no playcut, talkset, breakpoint, or showMarker",
+        arguments: ["dj_join", "dj_leave"]
+    )
+    func djJoinAndDjLeaveProduceNoTimelineContent(entryType: String) {
+        // Real wire shape captured from prod (2026-07-28): only
+        // id/show_id/play_order/add_time/entry_type/dj_name.
+        let marker = FlowsheetEntry(
+            id: 5298092, show_id: 1950704, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 39, add_time: "2026-07-28T20:31:58.258Z",
+            entry_type: entryType, dj_name: "DJ will"
+        )
+        let track = FlowsheetEntry(
+            id: 5298093, show_id: 1950704, album_id: nil,
+            artist_name: "Jessica Pratt", album_title: "On Your Own Love Again",
+            track_title: "Back, Baby", record_label: "Drag City",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 40, add_time: "2026-07-28T20:32:58.258Z",
+            entry_type: "track"
+        )
+
+        let playlist = FlowsheetConverter.convert([marker, track])
+
+        #expect(playlist.playcuts.count == 1, "only the real track row should become a playcut")
+        #expect(playlist.playcuts.first?.artistName == "Jessica Pratt")
+        #expect(playlist.talksets.isEmpty)
+        #expect(playlist.breakpoints.isEmpty)
+        #expect(playlist.showMarkers.isEmpty)
+        #expect(playlist.entries.allSatisfy { $0.id != UInt64(marker.id) })
+    }
+
+    @Test("Decoding the real dj_join wire shape and converting it alone yields an empty playlist")
+    func decodedDjJoinFromWireProducesEmptyPlaylist() throws {
+        let json = """
+        {"id": 5298092, "show_id": 1950704, "play_order": 39, "add_time": "2026-07-28T20:31:58.258Z", "entry_type": "dj_join", "dj_name": "DJ will"}
+        """
+        let entry = try JSONDecoder().decode(FlowsheetEntry.self, from: Data(json.utf8))
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.isContentEmpty)
+    }
+
+    @Test("Unrecognized future entry_type produces no timeline content")
+    func unrecognizedFutureEntryTypeProducesNoTimelineContent() {
+        let entry = FlowsheetEntry(
+            id: 9, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 9, add_time: "2026-07-28T20:31:58.258Z",
+            entry_type: "some_future_type"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.isContentEmpty)
+    }
+
+    @Test("Regression: entry_type == nil still routes through the message-based fallback")
+    func nilEntryTypeStillUsesMessageFallback() {
+        // Guards against a broad "drop when entry_type doesn't match a known
+        // case" refactor accidentally swallowing the legacy nil-entry_type path
+        // that old servers/fixtures rely on.
+        let entry = FlowsheetEntry(
+            id: 10, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: "Start of Show: DJ Cool joined the set at 10/14/2025 2:00 PM",
+            play_order: 10, add_time: "2026-07-28T20:31:58.258Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.showMarkers.count == 1)
+        #expect(playlist.showMarkers.first?.djName == "DJ Cool")
+    }
+
     // MARK: - Cross-show ordering (regression test for #265)
 
     @Test("Sorts entries chronologically across shows when play_order resets")

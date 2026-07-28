@@ -28,7 +28,12 @@ enum FlowsheetConverter {
         var showMarkers: [ShowMarker] = []
 
         for entry in entries {
-            let entryType = FlowsheetEntryType.from(entry)
+            // `nil` means the row carries no renderable content — a dj_join/
+            // dj_leave marker or an unrecognized future `entry_type` (#693) —
+            // so it's dropped entirely: no playcut, no marker, no downstream
+            // artwork lookup or Spotlight donation (both are driven off the
+            // `playcuts` array built below).
+            guard let entryType = FlowsheetEntryType.from(entry) else { continue }
             let hour = parseHour(from: entry.add_time)
             // `play_order` resets to 1 per show, so it can't act as a global
             // chronological key — see #265. `flowsheet.id` is a Postgres serial,

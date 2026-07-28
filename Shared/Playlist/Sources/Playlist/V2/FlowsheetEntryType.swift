@@ -12,6 +12,11 @@ import Foundation
 
 /// Represents the type of a flowsheet entry, determined from the `entry_type` field
 /// with a fallback to the legacy `message`-based heuristic.
+///
+/// Every case here renders as timeline content. Rows that don't — guest-DJ
+/// `dj_join`/`dj_leave` markers and any `entry_type` this build doesn't
+/// recognize — have no case; `from(_:)` returns `nil` for them instead, and
+/// ``FlowsheetConverter`` drops the row rather than minting a case for it.
 enum FlowsheetEntryType: Equatable, Sendable {
     case playcut
     case talkset
@@ -25,8 +30,10 @@ enum FlowsheetEntryType: Equatable, Sendable {
     /// legacy `message`-based heuristic when `entry_type` is absent.
     ///
     /// - Parameter entry: A raw flowsheet entry.
-    /// - Returns: The detected entry type.
-    static func from(_ entry: FlowsheetEntry) -> FlowsheetEntryType {
+    /// - Returns: The detected entry type, or `nil` when the entry carries no
+    ///   content a listener surface should render (see the `dj_join`/`dj_leave`
+    ///   and `default` cases below).
+    static func from(_ entry: FlowsheetEntry) -> FlowsheetEntryType? {
         if let entryType = entry.entry_type {
             switch entryType {
             case "track":
@@ -39,8 +46,21 @@ enum FlowsheetEntryType: Equatable, Sendable {
                 return .showStart(djName: entry.dj_name?.nilIfEmpty)
             case "show_end":
                 return .showEnd(djName: entry.dj_name?.nilIfEmpty)
+            case "dj_join", "dj_leave":
+                // Guest-DJ joins/leaves an in-progress show. These marker rows
+                // carry only id/show_id/play_order/add_time/entry_type/dj_name —
+                // no track/artist/album fields — so classifying them as `.playcut`
+                // used to mint an "Unknown / Unknown" card (#693). Mirrors
+                // tubafrenzy, which never surfaces these rows either.
+                return nil
             default:
-                return .playcut
+                // An `entry_type` this build doesn't recognize (a future server
+                // addition). Dropping is the safe default: minting `.playcut` here
+                // is what produced the #693 "Unknown / Unknown" cards for
+                // dj_join/dj_leave before they got their own cases above, and any
+                // future non-track marker type is more likely to look like that
+                // than like a song play.
+                return nil
             }
         }
 
