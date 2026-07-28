@@ -233,4 +233,27 @@ struct FlowsheetEntryTypeTests {
         )
         #expect(FlowsheetEntryType.from(entry) == nil)
     }
+
+    // MARK: - entry_type 'message' markers are dropped (review follow-up on #694)
+
+    @Test("entry_type 'message' has no renderable type")
+    func entryTypeMessageIsDropped() {
+        // "message" is a live contract variant, not a hypothetical future one:
+        // Backend-Service's transformToV2 emits it for freeform DJ text that
+        // isn't a pre-classified "Talkset"/"Breakpoint" string, and the
+        // generated WXYCAPIModels.FlowsheetEntryType declares `case message`.
+        // The listener app has no rendering surface for freeform messages, so
+        // this must drop rather than fall through to `from(message:)` (whose
+        // own default mints `.playcut` and would resurrect #693-style
+        // "Unknown / Unknown" cards).
+        let entry = FlowsheetEntry(
+            id: 11, show_id: nil, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: "Dedicating this next one to the overnight crew",
+            play_order: 11, add_time: "2026-07-28T20:31:58.258Z",
+            entry_type: "message"
+        )
+        #expect(FlowsheetEntryType.from(entry) == nil)
+    }
 }
