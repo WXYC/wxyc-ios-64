@@ -82,6 +82,7 @@ struct HTTPStreamClientTests {
         let data = HTTPStreamEvent.data(Data([0x01, 0x02]))
         let disconnected = HTTPStreamEvent.disconnected
         let error = HTTPStreamEvent.error(HTTPStreamError.timeout)
+        let waitingForConnectivity = HTTPStreamEvent.waitingForConnectivity
 
         // Verify event cases
         if case .connected = connected {
@@ -107,6 +108,41 @@ struct HTTPStreamClientTests {
         } else {
             Issue.record("Expected error event")
         }
+
+        if case .waitingForConnectivity = waitingForConnectivity {
+            // Success
+        } else {
+            Issue.record("Expected waitingForConnectivity event")
+        }
+    }
+
+    /// #697: `URLSession`'s `taskIsWaitingForConnectivity` delegate callback must
+    /// surface a distinct signal from the connect layer — not silence, and not a
+    /// generic error — so a genuinely offline/parked connect can be told apart
+    /// from a connected-but-starved one further up the stack.
+    @Test("taskIsWaitingForConnectivity surfaces a distinct waitingForConnectivity event")
+    func testTaskIsWaitingForConnectivitySurfacesDistinctEvent() async {
+        var continuation: AsyncStream<HTTPStreamEvent>.Continuation!
+        let stream = AsyncStream<HTTPStreamEvent>(bufferingPolicy: .unbounded) { continuation = $0 }
+        let delegate = StreamingDataDelegate(continuation: continuation)
+
+        let session = URLSession(configuration: .default)
+        defer { session.invalidateAndCancel() }
+        let task = session.dataTask(with: makeTestURL())
+
+        delegate.urlSession(session, taskIsWaitingForConnectivity: task)
+        continuation.finish()
+
+        var events: [HTTPStreamEvent] = []
+        for await event in stream {
+            events.append(event)
+        }
+
+        guard let first = events.first, case .waitingForConnectivity = first else {
+            Issue.record("Expected a single waitingForConnectivity event, got \(events)")
+            return
+        }
+        #expect(events.count == 1)
     }
 }
 

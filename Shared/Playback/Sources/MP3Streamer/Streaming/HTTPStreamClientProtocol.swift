@@ -20,6 +20,13 @@ public enum HTTPStreamEvent: Sendable {
     case disconnected
     /// An error occurred
     case error(Error)
+    /// The underlying task is parked waiting for network connectivity — offline,
+    /// mid-handover, or otherwise unable to reach the host right now.
+    /// `URLSession` delivers this instead of failing outright when
+    /// `waitsForConnectivity` is enabled; the task stays alive and resumes on
+    /// its own once a route appears, so this is a distinct "still trying"
+    /// signal, not a failure. See WXYC/wxyc-ios-64#697.
+    case waitingForConnectivity
 }
 
 /// Protocol for HTTP stream clients, enabling dependency injection for testing

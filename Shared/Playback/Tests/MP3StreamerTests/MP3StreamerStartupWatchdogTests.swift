@@ -401,6 +401,170 @@ struct MP3StreamerStartupWatchdogTests {
         #expect(mockHTTP.connectCallCount == connectsBefore,
                 "No new connect must be issued after stop() cancels the replay Task")
     }
+    // MARK: - #697: Waiting-for-Connectivity Gate
+
+    /// Drains the streamer's internal event stream and records every `.error`
+    /// event, mirroring `MP3StreamerErrorEventTests`'s collector. Used here to
+    /// prove that a legitimately offline/parked connect emits no `startup_timeout`
+    /// (or any other) error while the watchdog is gated.
+    private final class InternalEventErrorCollector {
+        var errors: [Error] = []
+        var count: Int { errors.count }
+    }
+
+    private func drainErrors(from streamer: MP3Streamer, into collector: InternalEventErrorCollector) -> Task<Void, Never> {
+        Task { @MainActor in
+            for await event in streamer.eventStreamInternal {
+                if case .error(let error) = event {
+                    collector.errors.append(error)
+                }
+            }
+        }
+    }
+
+    /// The core #697 regression: a task legitimately parked waiting for network
+    /// connectivity must not be torn down by the startup watchdog. Tearing it
+    /// down and reconnecting only parks a fresh task on the same dead network,
+    /// producing repeated `startup_timeout`s instead of letting the original
+    /// task self-resume once connectivity returns.
+    @Test("Does not tear down a task waiting for connectivity; emits no startup_timeout")
+    func doesNotTearDownTaskWaitingForConnectivity() async throws {
+        // `connectionTimeout: 0` keeps the config's startupTimeout clamp
+        // (`max(startupTimeout, connectionTimeout + 1)`) at its 1.0s floor, so the
+        // watchdog fires quickly instead of at the default connectionTimeout + 1
+        // — the same clamp `escalatesWhenBufferingStarves` relies on, and this
+        // test's poll budget below is sized against that same ~1.0s deadline.
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        // The connect is issued but never resolves — simulating a real
+        // `waitsForConnectivity` park where neither `.connected` nor `.error`
+        // ever arrives for the outstanding task. `nextConnectDelay` holds the
+        // mock's own `connect()` from auto-yielding `.connected`, so the only
+        // signal the streamer ever sees is the manually-yielded
+        // `.waitingForConnectivity` below — matching a real parked task, which
+        // never reaches `didReceive response` while offline.
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil
+        mockHTTP.nextConnectDelay = .seconds(5)
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        let collector = InternalEventErrorCollector()
+        let drain = drainErrors(from: streamer, into: collector)
+        defer { drain.cancel() }
+
+        streamer.play()
+
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if mockHTTP.connectCallCount >= 1 { break }
+        }
+        #expect(mockHTTP.connectCallCount == 1, "Precondition: the initial connect was issued")
+
+        // Simulate the OS reporting the outstanding task is parked offline.
+        mockHTTP.yield(.waitingForConnectivity)
+
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if streamer.isWaitingForConnectivity { break }
+        }
+        #expect(streamer.isWaitingForConnectivity,
+                "Precondition: the streamer observed the waiting-for-connectivity signal")
+
+        // `startupTimeout: 0.1` is clamped up to the config's ~1.0s floor
+        // (`max(startupTimeout, connectionTimeout + 1)`, see
+        // `MP3StreamerConfiguration.swift`) — the watchdog actually arms for
+        // ~1.0s, not 0.1s. Budget generously past that (mirroring
+        // `escalatesWhenBufferingStarves`'s 120×25ms poll for the same clamped
+        // floor) so the deadline genuinely fires at least once — twice, given the
+        // ~0.5s default backoff — WHILE the task is still parked. Without the
+        // gate this loop would observe `connectCallCount` reach 2 well inside the
+        // budget; with it, the loop exhausts its full 3s never seeing that.
+        for _ in 0..<120 {
+            try await Task.sleep(for: .milliseconds(25))
+            if mockHTTP.connectCallCount >= 2 { break }
+        }
+
+        #expect(mockHTTP.connectCallCount == 1,
+                "A task known to be waiting for connectivity must not be reconnected")
+        #expect(mockHTTP.disconnectCallCount == 0,
+                "A task known to be waiting for connectivity must not be torn down")
+        #expect(streamer.streamingState == .connecting,
+                "State must stay parked at .connecting, not escalate to .error")
+        #expect(collector.count == 0,
+                "No startup_timeout (or any other) error should be emitted for a legitimately offline park")
+    }
+
+    /// A parked task must self-resume — not be reconnected into a second park —
+    /// once connectivity actually returns and the original task's response
+    /// finally arrives.
+    @Test("Self-resumes on the original task once connectivity returns")
+    func selfResumesOnOriginalTaskOnceConnectivityReturns() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        // Hold the mock's own `connect()` from auto-yielding `.connected` so the
+        // manual `.waitingForConnectivity` / `.connected` yields below are the
+        // only signals the streamer observes — see the comment in
+        // `doesNotTearDownTaskWaitingForConnectivity` above.
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil
+        mockHTTP.nextConnectDelay = .seconds(5)
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if mockHTTP.connectCallCount >= 1 { break }
+        }
+
+        mockHTTP.yield(.waitingForConnectivity)
+
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if streamer.isWaitingForConnectivity { break }
+        }
+        #expect(streamer.isWaitingForConnectivity)
+
+        // Let the ~1.0s clamped watchdog deadline elapse — and re-elapse, given
+        // the ~0.5s default backoff — while still parked, before connectivity
+        // returns. Same budget/rationale as `doesNotTearDownTaskWaitingForConnectivity`.
+        for _ in 0..<120 {
+            try await Task.sleep(for: .milliseconds(25))
+            if mockHTTP.connectCallCount >= 2 { break }
+        }
+        #expect(mockHTTP.connectCallCount == 1, "Precondition: still parked on the original connect")
+
+        // Connectivity returns and the SAME task's response finally arrives.
+        mockHTTP.yield(.connected)
+
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if !streamer.isWaitingForConnectivity { break }
+        }
+
+        #expect(!streamer.isWaitingForConnectivity,
+                "The waiting-for-connectivity flag must clear once the park resolves")
+        guard case .buffering = streamer.streamingState else {
+            Issue.record("Expected .buffering after the parked task's response arrived, got \(streamer.streamingState)")
+            return
+        }
+        #expect(mockHTTP.connectCallCount == 1,
+                "Connectivity returning must resume the SAME task, not issue a fresh connect")
+    }
 }
 
 extension Tag {

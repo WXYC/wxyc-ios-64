@@ -126,6 +126,17 @@ public final class MP3Streamer {
     /// `stop()`. See issue #513.
     @ObservationIgnored
     private var hasEmittedFirstAudio = false
+    /// Whether the HTTP layer's outstanding task is currently parked waiting for
+    /// network connectivity (`URLSession`'s `taskIsWaitingForConnectivity`
+    /// delegate callback, surfaced as `HTTPStreamEvent.waitingForConnectivity`).
+    /// Gates the startup watchdog: a task known to be parked on a down network
+    /// is left alone to self-resume rather than torn down and reconnected into
+    /// another park. Cleared whenever the outstanding task resolves one way or
+    /// another (`.connected`/`.disconnected`/`.error`) or a fresh session begins
+    /// (`play()`/`stop()`). `internal`, not part of the public API — exposed so
+    /// tests (`@testable import`) can assert the gate. See issue #697.
+    @ObservationIgnored
+    internal private(set) var isWaitingForConnectivity = false
 
     // Output format for decoded audio
     private static let outputFormat: AVAudioFormat = {
@@ -265,6 +276,7 @@ public final class MP3Streamer {
         // Fresh session: the next buffering→playing crossing should count as a
         // new successful start.
         hasEmittedFirstAudio = false
+        isWaitingForConnectivity = false
         streamingState = .connecting
 
         // Supersede any deferred connect Task still pending from a prior play(),
@@ -319,6 +331,7 @@ public final class MP3Streamer {
         backoffTimer.reset()
         // The session is over; the next play() starts a fresh first-audio window.
         hasEmittedFirstAudio = false
+        isWaitingForConnectivity = false
     }
 
     /// Tears down the active stream I/O — disconnects HTTP, stops the audio engine,
@@ -348,16 +361,28 @@ public final class MP3Streamer {
         switch event {
         case .connected:
             Log(.info, category: .playback, "HTTP connected, starting buffering")
+            // Whatever park the task was in has resolved into a real connection.
+            isWaitingForConnectivity = false
             streamingState = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
 
         case .data(let data):
             mp3Decoder.decode(data: data)
+
+        case .waitingForConnectivity:
+            // The connect layer's authoritative "offline, not stalled" signal
+            // (#697): the outstanding task is parked by the OS, not abandoned.
+            // Recorded so the startup watchdog can tell this apart from a
+            // connected-but-starved stream (Sentry IOS-31) and let the task
+            // self-resume instead of tearing it down.
+            Log(.warning, category: .playback, "Waiting for network connectivity")
+            isWaitingForConnectivity = true
 
         case .disconnected:
             // Only reconnect from states where an unexpected disconnect is meaningful.
             // States like .connecting, .reconnecting, .idle, .paused, and .error must
             // not trigger reconnect — this prevents spurious reconnects from stale
             // .disconnected events that arrive after stop()/play() recovery cycles.
+            isWaitingForConnectivity = false
             switch streamingState {
             case .playing, .buffering, .stalled:
                 Log(.warning, category: .playback, "HTTP disconnected unexpectedly")
@@ -368,6 +393,7 @@ public final class MP3Streamer {
 
         case .error(let error):
             Log(.error, category: .playback, "HTTP error: \(error)")
+            isWaitingForConnectivity = false
             streamingState = .error(error)
             // Deliberately NOT yielded to the internal event stream (#486): this is
             // the transient pre-reconnect drop that usually recovers on the next
@@ -513,10 +539,22 @@ public final class MP3Streamer {
     /// from a pre-playing state; emits a `startup_timeout` stream error (so the
     /// failure is visible in analytics/Sentry, where it was previously silent) and
     /// attempts a fresh reconnect.
+    ///
+    /// Gated on `isWaitingForConnectivity` (#697): a task the OS has told us is
+    /// parked waiting for network connectivity is not "starved" in the IOS-31
+    /// sense (connected, but no data) — it never connected, and tearing it down
+    /// only parks a fresh task on the same dead network. Deferring here excludes
+    /// the offline park from the `startup_timeout` metric and re-arms so a
+    /// genuine post-resume starve is still caught.
     private func handleStartupTimeout() {
         startupWatchdogTask = nil
         switch streamingState {
         case .connecting, .buffering:
+            if isWaitingForConnectivity {
+                Log(.info, category: .playback, "Startup watchdog fired while waiting for connectivity; deferring so the parked task can self-resume")
+                armStartupWatchdog()
+                return
+            }
             let error = StreamStartupError.timedOut(seconds: configuration.startupTimeout)
             Log(.error, category: .playback, "Startup watchdog fired: playback did not begin within \(configuration.startupTimeout)s (state: \(streamingState)); escalating to reconnect")
             streamingState = .error(error)

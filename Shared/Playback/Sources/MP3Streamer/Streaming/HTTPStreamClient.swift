@@ -88,7 +88,12 @@ final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
 
 /// Delegate that receives streaming data in OS-sized chunks rather than byte-by-byte.
 /// This dramatically reduces CPU overhead compared to AsyncBytes iteration.
-private final class StreamingDataDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+///
+/// Internal rather than `private` so `MP3StreamerTests` can construct it directly
+/// (via `@testable import`) and drive `urlSession(_:taskIsWaitingForConnectivity:)`
+/// without a real network — that delegate callback cannot be triggered through
+/// `HTTPStreamClient.connect()` in a deterministic unit test. See #697.
+final class StreamingDataDelegate: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private let continuation: AsyncStream<HTTPStreamEvent>.Continuation
     private var hasConnected = false
 
@@ -128,6 +133,17 @@ private final class StreamingDataDelegate: NSObject, URLSessionDataDelegate, @un
         // Data arrives in chunks (typically 16KB-64KB from the network stack)
         // No per-byte async overhead - this is the key optimization
         continuation.yield(.data(data))
+    }
+
+    /// Fires when the task cannot proceed right now for lack of network
+    /// connectivity but `waitsForConnectivity` (set on this client's session
+    /// configuration) keeps it alive rather than failing it outright. This is
+    /// the connect layer's one authoritative "offline, not stalled" signal —
+    /// without it, a parked task and a connected-but-starved one look
+    /// identical from the outside. See #697.
+    func urlSession(_ session: URLSession, taskIsWaitingForConnectivity task: URLSessionTask) {
+        Log(.warning, category: .playback, "Task waiting for network connectivity")
+        continuation.yield(.waitingForConnectivity)
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
