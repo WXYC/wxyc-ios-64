@@ -207,6 +207,23 @@ struct NowPlayingGetterAvoidanceTests {
         #expect(spy.storedInfo?[MPMediaItemPropertyArtist] as? String == "Artist 1")
     }
 
+    @Test("handleNowPlayingItem commits metadata and artwork in a single info-center write")
+    func handleNowPlayingItemCommitsOnce() {
+        let spy = GetterCountingNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: spy,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Song 1", artistName: "Artist 1"))
+
+        // Setting MPNowPlayingInfoCenter.nowPlayingInfo is a synchronous XPC round-trip;
+        // metadata and artwork must land in one assignment, not two.
+        #expect(spy.setterWriteCount == 1)
+        #expect(spy.storedInfo?[MPMediaItemPropertyTitle] as? String == "Song 1")
+        #expect(spy.storedInfo?[MPMediaItemPropertyArtwork] is MPMediaItemArtwork)
+    }
+
     @Test("Repeated handleNowPlayingItem calls never read the getter")
     func repeatedHandleAvoidsGetter() {
         let spy = GetterCountingNowPlayingInfoCenter()
@@ -266,6 +283,7 @@ struct NowPlayingGetterAvoidanceTests {
         #expect(spy.getterReadCount == 0)
         #expect(spy.storedInfo?[MPNowPlayingInfoPropertyIsLiveStream] as? Bool == true)
         #expect(spy.storedInfo?[MPMediaItemPropertyPlaybackDuration] == nil)
+        #expect(spy.storedInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] == nil)
     }
 }
 

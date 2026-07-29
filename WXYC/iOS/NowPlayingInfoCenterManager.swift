@@ -60,12 +60,26 @@ final class NowPlayingInfoCenterManager {
         infoCenter.nowPlayingInfo = info
     }
 
+    /// Seed a mutable copy from the cache, apply `body`, and commit the result in a
+    /// single info-center write. Centralizes the read-modify-write the getter used to
+    /// perform so every mutation stays one XPC round-trip on the main thread.
+    private func mutate(_ body: (inout [String: Any]) -> Void) {
+        var info = cachedInfo ?? [:]
+        body(&info)
+        commit(info)
+    }
+
     // MARK: - Public API
 
     /// Update the track metadata and artwork in the Now Playing info center.
+    ///
+    /// Metadata and artwork land in a single `commit`, so a track change is one
+    /// info-center write rather than two back-to-back XPC round-trips on the main thread.
     func handleNowPlayingItem(_ item: NowPlayingItem) {
-        update(playcut: item.playcut)
-        update(artwork: item.artwork)
+        mutate { info in
+            info.update(with: item.playcut.playcutMediaItems)
+            info[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: item.artwork, boundsSize: self.boundsSize)
+        }
     }
 
     /// Reflect the current playback state in MPNowPlayingInfoCenter.
@@ -75,21 +89,19 @@ final class NowPlayingInfoCenterManager {
     /// way it does on iOS. Without it, Control Center's Now Playing widget stays
     /// empty and the Music app receives the media keys instead.
     func setPlaybackState(isPlaying: Bool) {
-        var info = cachedInfo ?? [:]
-        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
-        commit(info)
+        mutate { $0[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0 }
         infoCenter.playbackState = isPlaying ? .playing : .paused
     }
 
     /// Update the playback position for the Lock Screen scrub bar.
     /// Setting `isLiveStream` to false enables the scrub bar in Control Center and Lock Screen.
     func updatePlaybackPosition(secondsBehindLive: TimeInterval, maxLookback: TimeInterval) {
-        var info = cachedInfo ?? [:]
-        info[MPMediaItemPropertyPlaybackDuration] = maxLookback
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = maxLookback - secondsBehindLive
-        info[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
-        info[MPNowPlayingInfoPropertyIsLiveStream] = false
-        commit(info)
+        mutate { info in
+            info[MPMediaItemPropertyPlaybackDuration] = maxLookback
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = maxLookback - secondsBehindLive
+            info[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
+            info[MPNowPlayingInfoPropertyIsLiveStream] = false
+        }
     }
 
     /// Reset to live stream mode (no scrub bar).
@@ -106,19 +118,6 @@ final class NowPlayingInfoCenterManager {
 
     // MARK: - Private
 
-    private func update(playcut: Playcut) {
-        var info = cachedInfo ?? [:]
-        info.update(with: playcut.playcutMediaItems)
-        commit(info)
-    }
-
-    private func update(artwork: UIImage?) {
-        let artwork = artwork ?? UIImage.placeholder
-        var info = cachedInfo ?? [:]
-        info[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
-        commit(info)
-    }
-    
     private func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
         // Capture the resolved image on MainActor before creating the artwork.
         // The closure will be called by the system on an arbitrary queue.
