@@ -38,7 +38,7 @@ struct AppLifecycleModifier: ViewModifier {
             .onOpenURL { url in
                 handleURL(url)
             }
-            .onContinueUserActivity("org.wxyc.iphoneapp.play") { userActivity in
+            .onContinueUserActivity(WXYCUserActivity.play) { userActivity in
                 handleUserActivity(userActivity)
             }
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
@@ -90,7 +90,7 @@ struct AppLifecycleModifier: ViewModifier {
 
     private func setUpQuickActions() {
         let playShortcut = UIApplicationShortcutItem(
-            type: "org.wxyc.iphoneapp.play",
+            type: WXYCUserActivity.play,
             localizedTitle: RadioStation.WXYC.name,
             localizedSubtitle: nil,
             icon: UIApplicationShortcutIcon(type: .play),
@@ -136,8 +136,11 @@ struct AppLifecycleModifier: ViewModifier {
                     subject: nil
                 )
             }
-        } else if userActivity.activityType == "org.wxyc.iphoneapp.play" {
-            AudioPlayerController.shared.play(reason: .quickAction)
+        } else if let reason = WXYCUserActivity.continuationReason(
+            activityType: userActivity.activityType,
+            userInfo: userActivity.userInfo
+        ) {
+            AudioPlayerController.shared.play(reason: reason)
         } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
             AudioPlayerController.shared.play(reason: .siriIntent)
             StructuredPostHogAnalytics.shared.capture(HandleINIntent(

@@ -293,10 +293,16 @@ struct WXYCApp: App {
             do {
                 try await interaction.donate()
 
-                let activity = NSUserActivity(activityType: "org.wxyc.iphoneapp.play")
+                let activity = NSUserActivity(activityType: WXYCUserActivity.play)
                 activity.title = "Play \(RadioStation.WXYC.name)"
                 activity.isEligibleForPrediction = true
                 activity.isEligibleForSearch = true
+                // Defaults to true; without this, this launch-time activity —
+                // becomeCurrent() with nothing playing yet — would advertise a
+                // premature Handoff banner once NSUserActivityTypes declares
+                // the type. HandoffActivityManager is the sole, playback-gated
+                // source of the Handoff banner for this activity type.
+                activity.isEligibleForHandoff = false
                 activity.suggestedInvocationPhrase = "Play \(RadioStation.WXYC.name)"
                 activity.userInfo = ["origin": "donateSiriIntent"]
                 activity.becomeCurrent()
