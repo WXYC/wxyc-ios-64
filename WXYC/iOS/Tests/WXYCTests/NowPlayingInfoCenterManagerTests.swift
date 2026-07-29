@@ -26,6 +26,35 @@ final class MockNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {
     var nowPlayingInfo: [String: Any]?
     var playbackState: MPNowPlayingPlaybackState = .unknown
 }
+
+/// Spy that counts reads of the `nowPlayingInfo` getter.
+///
+/// Reading `MPNowPlayingInfoCenter.nowPlayingInfo` is a synchronous cross-process
+/// (XPC) round-trip to `mediaserverd` that can block the main thread for seconds
+/// under contention (Sentry IOS-3P AppHang). `NowPlayingInfoCenterManager` must
+/// therefore never read the getter on the main thread; it compares against a local
+/// cache instead. `storedInfo` exposes the last value written through the setter so
+/// tests can assert on the result without inflating `getterReadCount`.
+@MainActor
+final class GetterCountingNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {
+    private(set) var getterReadCount = 0
+    private(set) var setterWriteCount = 0
+    /// The last value written through the setter, readable without counting a getter read.
+    private(set) var storedInfo: [String: Any]?
+
+    var nowPlayingInfo: [String: Any]? {
+        get {
+            getterReadCount += 1
+            return storedInfo
+        }
+        set {
+            setterWriteCount += 1
+            storedInfo = newValue
+        }
+    }
+
+    var playbackState: MPNowPlayingPlaybackState = .unknown
+}
     
 // MARK: - Test Helpers
 
@@ -150,6 +179,93 @@ struct NowPlayingInfoTests {
         manager.handleNowPlayingItem(item2)
         #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Song 2")
         #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyArtist] as? String == "Artist 2")
+    }
+}
+
+// MARK: - Getter Avoidance Tests (IOS-3P)
+
+/// Regression coverage for Sentry IOS-3P: an AppHang (>=2s, main thread) whose
+/// culprit was `MPNowPlayingInfoCenter.nowPlayingInfo.getter` — a synchronous XPC
+/// round-trip to `mediaserverd`. The manager must never read that getter on the
+/// main thread; it compares against a locally cached copy of what it last set.
+@Suite("Now Playing getter avoidance (IOS-3P)")
+@MainActor
+struct NowPlayingGetterAvoidanceTests {
+
+    @Test("handleNowPlayingItem never reads the nowPlayingInfo getter but still sets info")
+    func handleNowPlayingItemAvoidsGetter() {
+        let spy = GetterCountingNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: spy,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Song 1", artistName: "Artist 1"))
+
+        #expect(spy.getterReadCount == 0)
+        #expect(spy.storedInfo?[MPMediaItemPropertyTitle] as? String == "Song 1")
+        #expect(spy.storedInfo?[MPMediaItemPropertyArtist] as? String == "Artist 1")
+    }
+
+    @Test("Repeated handleNowPlayingItem calls never read the getter")
+    func repeatedHandleAvoidsGetter() {
+        let spy = GetterCountingNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: spy,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Song 1"))
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Song 2"))
+
+        #expect(spy.getterReadCount == 0)
+        #expect(spy.storedInfo?[MPMediaItemPropertyTitle] as? String == "Song 2")
+    }
+
+    @Test("setPlaybackState never reads the getter")
+    func setPlaybackStateAvoidsGetter() {
+        let spy = GetterCountingNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: spy,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.setPlaybackState(isPlaying: true)
+
+        #expect(spy.getterReadCount == 0)
+        #expect(spy.storedInfo?[MPNowPlayingInfoPropertyPlaybackRate] as? Double == 1.0)
+    }
+
+    @Test("updatePlaybackPosition never reads the getter")
+    func updatePlaybackPositionAvoidsGetter() {
+        let spy = GetterCountingNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: spy,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        manager.updatePlaybackPosition(secondsBehindLive: 30, maxLookback: 300)
+
+        #expect(spy.getterReadCount == 0)
+        #expect(spy.storedInfo?[MPNowPlayingInfoPropertyIsLiveStream] as? Bool == false)
+        #expect(spy.storedInfo?[MPMediaItemPropertyPlaybackDuration] as? Double == 300)
+    }
+
+    @Test("clearPlaybackPosition never reads the getter")
+    func clearPlaybackPositionAvoidsGetter() {
+        let spy = GetterCountingNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: spy,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+
+        // Establish some position first, then clear it.
+        manager.updatePlaybackPosition(secondsBehindLive: 30, maxLookback: 300)
+        manager.clearPlaybackPosition()
+
+        #expect(spy.getterReadCount == 0)
+        #expect(spy.storedInfo?[MPNowPlayingInfoPropertyIsLiveStream] as? Bool == true)
+        #expect(spy.storedInfo?[MPMediaItemPropertyPlaybackDuration] == nil)
     }
 }
 

@@ -35,12 +35,29 @@ final class NowPlayingInfoCenterManager {
     private var infoCenter: NowPlayingInfoCenterProtocol
     private let boundsSize: CGSize
 
+    /// Local mirror of the dictionary this manager last wrote to `infoCenter`.
+    ///
+    /// Reading `MPNowPlayingInfoCenter.nowPlayingInfo` is a synchronous cross-process
+    /// (XPC) round-trip to `mediaserverd` that can block the main thread for seconds
+    /// under contention — the cause of the IOS-3P AppHang. Because this manager is the
+    /// sole writer of the app's Now Playing info, mutating this cache and writing it back
+    /// is equivalent to the read-modify-write the getter used to perform, without ever
+    /// blocking the main thread on the getter.
+    private var cachedInfo: [String: Any]?
+
     init(
         infoCenter: NowPlayingInfoCenterProtocol = MPNowPlayingInfoCenter.default(),
         boundsSize: CGSize
     ) {
         self.infoCenter = infoCenter
         self.boundsSize = boundsSize
+    }
+
+    /// Write `info` to both the local cache and the system info center in one place,
+    /// so the two never diverge and the getter is never consulted.
+    private func commit(_ info: [String: Any]) {
+        cachedInfo = info
+        infoCenter.nowPlayingInfo = info
     }
 
     // MARK: - Public API
@@ -58,52 +75,48 @@ final class NowPlayingInfoCenterManager {
     /// way it does on iOS. Without it, Control Center's Now Playing widget stays
     /// empty and the Music app receives the media keys instead.
     func setPlaybackState(isPlaying: Bool) {
-        if infoCenter.nowPlayingInfo == nil {
-            infoCenter.nowPlayingInfo = [:]
-        }
-        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        var info = cachedInfo ?? [:]
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        commit(info)
         infoCenter.playbackState = isPlaying ? .playing : .paused
     }
 
     /// Update the playback position for the Lock Screen scrub bar.
     /// Setting `isLiveStream` to false enables the scrub bar in Control Center and Lock Screen.
     func updatePlaybackPosition(secondsBehindLive: TimeInterval, maxLookback: TimeInterval) {
-        if infoCenter.nowPlayingInfo == nil {
-            infoCenter.nowPlayingInfo = [:]
-        }
-        infoCenter.nowPlayingInfo?[MPMediaItemPropertyPlaybackDuration] = maxLookback
-        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] = maxLookback - secondsBehindLive
-        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
-        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyIsLiveStream] = false
+        var info = cachedInfo ?? [:]
+        info[MPMediaItemPropertyPlaybackDuration] = maxLookback
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = maxLookback - secondsBehindLive
+        info[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
+        info[MPNowPlayingInfoPropertyIsLiveStream] = false
+        commit(info)
     }
 
     /// Reset to live stream mode (no scrub bar).
+    ///
+    /// Mirrors the previous optional-chained semantics: if nothing has been set yet,
+    /// there is no position to clear, so this is a no-op.
     func clearPlaybackPosition() {
-        infoCenter.nowPlayingInfo?[MPNowPlayingInfoPropertyIsLiveStream] = true
-        infoCenter.nowPlayingInfo?.removeValue(forKey: MPMediaItemPropertyPlaybackDuration)
-        infoCenter.nowPlayingInfo?.removeValue(forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime)
+        guard var info = cachedInfo else { return }
+        info[MPNowPlayingInfoPropertyIsLiveStream] = true
+        info.removeValue(forKey: MPMediaItemPropertyPlaybackDuration)
+        info.removeValue(forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime)
+        commit(info)
     }
-        
+
     // MARK: - Private
-        
+
     private func update(playcut: Playcut) {
-        let playcutMediaItems = playcut.playcutMediaItems
-        
-        if infoCenter.nowPlayingInfo == nil {
-            infoCenter.nowPlayingInfo = [:]
-        }
-        
-        infoCenter.nowPlayingInfo?.update(with: playcutMediaItems)
+        var info = cachedInfo ?? [:]
+        info.update(with: playcut.playcutMediaItems)
+        commit(info)
     }
 
     private func update(artwork: UIImage?) {
         let artwork = artwork ?? UIImage.placeholder
-        if infoCenter.nowPlayingInfo == nil {
-            infoCenter.nowPlayingInfo = [:]
-        }
-
-        infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork] =
-            self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
+        var info = cachedInfo ?? [:]
+        info[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: artwork, boundsSize: boundsSize)
+        commit(info)
     }
     
     private func mediaItemArtwork(from image: UIImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
