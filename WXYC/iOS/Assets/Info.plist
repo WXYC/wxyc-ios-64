@@ -79,6 +79,7 @@
 		<string>NSUserActivityTypeBrowsingWeb</string>
 		<string>INPlayMediaIntent</string>
 		<string>INSearchForMediaIntent</string>
+		<string>org.wxyc.iphoneapp.play</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
