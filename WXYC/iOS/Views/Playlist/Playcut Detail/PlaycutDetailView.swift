@@ -211,6 +211,12 @@ struct PlaycutDetailView: View {
         // and Playcut.hasV2Metadata's OR-chain in the same file. There's no
         // compiler-enforced link — #685 itself patched one drift here
         // (artworkURL was missing from this construction).
+        //
+        // `criticReviews` below is NOT one of the 12 — like `artistId` and
+        // `upcomingShow`, it's excluded from `hasV2Metadata`'s predicate (see
+        // that doc comment) — but it still needs to ride through to
+        // `AlbumMetadata` here so a terminal row's `ReviewsSection` renders
+        // from feed data alone (#695).
         let inline = playcut.hasV2Metadata ? PlaycutMetadata(
             artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
             album: AlbumMetadata(
@@ -219,7 +225,8 @@ struct PlaycutDetailView: View {
                 discogsURL: playcut.discogsURL,
                 genres: playcut.genres,
                 styles: playcut.styles,
-                artworkURL: playcut.artworkURL
+                artworkURL: playcut.artworkURL,
+                criticReviews: playcut.criticReviews
             ),
             streaming: StreamingLinks(
                 spotifyURL: playcut.spotifyURL,

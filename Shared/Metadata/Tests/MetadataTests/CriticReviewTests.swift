@@ -10,6 +10,7 @@
 
 import Testing
 import Foundation
+import Playlist
 @testable import Metadata
 
 @Suite("CriticReview Tests")

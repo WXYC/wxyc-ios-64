@@ -67,6 +67,95 @@ struct FlowsheetConverterTests {
         #expect(playlist.playcuts.first?.upcomingShow == nil)
     }
 
+    // MARK: - Embedded critic_reviews (#695)
+
+    @Test("Carries feed-inline critic_reviews through to the playcut")
+    func carriesCriticReviews() {
+        let review = CriticReview(
+            source: "The Quietus",
+            url: URL(string: "https://thequietus.com/articles/juana-molina-doga")!,
+            snippet: "A restless, shape-shifting record that never settles.",
+            author: "Jane Critic",
+            publishedDate: "2024-03-15",
+            rating: "8.0"
+        )
+        let entry = FlowsheetEntry(
+            id: 125,
+            show_id: 456,
+            album_id: 660123,
+            artist_name: "Juana Molina",
+            album_title: "DOGA",
+            track_title: "la paradoja",
+            record_label: "Sonamos",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 3,
+            add_time: "2026-04-17T22:53:48.500Z",
+            critic_reviews: [TolerantCriticReviewItem(review: review)]
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.playcuts.count == 1)
+        #expect(playlist.playcuts.first?.criticReviews == [review])
+    }
+
+    @Test("Playcut has no criticReviews when the entry omits it")
+    func noCriticReviewsWhenAbsent() {
+        let entry = FlowsheetEntry(
+            id: 126,
+            show_id: 456,
+            album_id: nil,
+            artist_name: "Juana Molina",
+            album_title: "DOGA",
+            track_title: "la paradoja",
+            record_label: "Sonamos",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 4,
+            add_time: "2026-04-17T22:53:48.500Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        #expect(playlist.playcuts.first?.criticReviews == nil)
+    }
+
+    @Test("A malformed critic_reviews item does not drop the surviving reviews")
+    func oneMalformedCriticReviewItemIsDropped() {
+        let survivor = CriticReview(
+            source: "The Quietus",
+            url: URL(string: "https://thequietus.com/articles/second")!,
+            snippet: "Required-fields-only card."
+        )
+        let entry = FlowsheetEntry(
+            id: 127,
+            show_id: 456,
+            album_id: nil,
+            artist_name: "Juana Molina",
+            album_title: "DOGA",
+            track_title: "la paradoja",
+            record_label: "Sonamos",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 5,
+            add_time: "2026-04-17T22:53:48.500Z",
+            // The wrapper's own decode already dropped the malformed item, so
+            // this simulates the post-decode shape: one nil (dropped), one
+            // survivor. The actual JSON-decode-time drop is covered by
+            // FlowsheetResponseOnAirTests's per-item robustness suite.
+            critic_reviews: [TolerantCriticReviewItem(review: nil), TolerantCriticReviewItem(review: survivor)]
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        #expect(playlist.playcuts.first?.criticReviews == [survivor])
+    }
+
     @Test("Converts playcut entry correctly when message is nil")
     func convertsPlaycutEntry() {
         let entry = FlowsheetEntry(

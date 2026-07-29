@@ -148,6 +148,65 @@ struct FlowsheetResponseOnAirTests {
         #expect(playlist.playcuts.first?.upcomingShow?.status == .soldOut)
     }
 
+    // MARK: - Robustness: a malformed critic_reviews item must not nuke the feed (#695)
+
+    // A minimal v2 track entry carrying an embedded `critic_reviews` array. One
+    // item is malformed, so a per-item tolerant decode must drop just that item
+    // rather than throwing and failing the whole atomic `[FlowsheetEntry]`
+    // decode — the same discipline as `upcoming_show` above, applied per array
+    // element instead of per optional field.
+    private func entryWithCriticReviews(_ criticReviewsLiteral: String) -> String {
+        #"{"id":8,"play_order":1,"add_time":"2024-01-15T14:00:00Z","artist_name":"Juana Molina","critic_reviews":\#(criticReviewsLiteral)}"#
+    }
+
+    private let wellFormedReview = #"{"source":"The Quietus","url":"https://thequietus.com/a/1","snippet":"Great."}"#
+
+    @Test("an array containing one malformed critic_reviews item keeps the well-formed one, drops only the bad one")
+    func oneMalformedItemIsDroppedFromTheArray() throws {
+        // First item is missing the required `url`; second is well-formed.
+        let criticReviewsLiteral = #"[{"source":"The Quietus","snippet":"Great."}, \#(wellFormedReview)]"#
+        let response = try decode(#"{"entries":[\#(entryWithCriticReviews(criticReviewsLiteral))]}"#)
+        #expect(response.entries.count == 1)   // the feed is never nuked by a bad review item
+        #expect(response.entries.first?.id == 8)
+        #expect(response.entries.first?.criticReviews?.count == 1)
+        #expect(response.entries.first?.criticReviews?.first?.url.absoluteString == "https://thequietus.com/a/1")
+
+        // …and the survivor reaches the playcut through the converter.
+        let playlist = FlowsheetConverter.convert(response.entries, onAir: response.onAir)
+        #expect(playlist.playcuts.first?.criticReviews?.count == 1)
+    }
+
+    @Test(
+        "an item with a blank/unparseable url is dropped by the shared URL-validation policy, not a decode failure",
+        arguments: [
+            #"[{"source":"The Quietus","url":"","snippet":"Great."}]"#,
+            #"[{"source":"The Quietus","url":"   ","snippet":"Great."}]"#,
+        ]
+    )
+    func itemWithBadURLIsDropped(_ criticReviewsLiteral: String) throws {
+        let response = try decode(#"{"entries":[\#(entryWithCriticReviews(criticReviewsLiteral))]}"#)
+        #expect(response.entries.count == 1)
+        // Every item was structurally decodable but failed URL validation, so
+        // the filtered result is empty — which collapses to nil, not [].
+        #expect(response.entries.first?.criticReviews == nil)
+    }
+
+    @Test("absent critic_reviews decodes to nil")
+    func absentCriticReviewsDecodesToNil() throws {
+        let response = try decode(#"{"entries":[\#(oneEntry)]}"#)
+        #expect(response.entries.first?.criticReviews == nil)
+    }
+
+    @Test("a well-formed critic_reviews array survives the atomic feed decode and reaches the playcut")
+    func wellFormedCriticReviewsReachesPlaycut() throws {
+        let response = try decode(#"{"entries":[\#(entryWithCriticReviews("[\(wellFormedReview)]"))]}"#)
+        #expect(response.entries.first?.criticReviews?.count == 1)
+        #expect(response.entries.first?.criticReviews?.first?.source == "The Quietus")
+
+        let playlist = FlowsheetConverter.convert(response.entries, onAir: response.onAir)
+        #expect(playlist.playcuts.first?.criticReviews?.first?.snippet == "Great.")
+    }
+
     // MARK: - Playlist cache back-compat
 
     @Test("Playlist decoded without onAir defaults to .unknown (v1 / legacy cache)")

@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Playlist
 
 // MARK: - Artist Metadata
 
@@ -43,49 +44,13 @@ public struct ArtistMetadata: Sendable, Equatable, Codable {
 }
 
 // MARK: - Critic Review
-
-/// A single attributed external critic-review snippet for an album (ADR 0012).
-///
-/// Mirrors the `CriticReviewItem` contract in `wxyc-shared/api.yaml`. The app
-/// only ever holds the short excerpt plus its mandatory attribution and
-/// link-out — never the full review body. `url` is non-optional precisely
-/// because a card without a working link-out must not render (the attribution
-/// guardrail); the service drops any served review whose URL can't be parsed.
-public struct CriticReview: Sendable, Equatable, Codable {
-    /// Publication name, e.g. "The Quietus". Always shown as attribution.
-    public let source: String
-
-    /// Link to the original review on the publisher's site (mandatory link-out).
-    public let url: URL
-
-    /// Short attributed excerpt (<= ~300 chars); never the full review body.
-    public let snippet: String
-
-    /// Review author, when available.
-    public let author: String?
-
-    /// Review publication date when available (e.g. "2024-03-15").
-    public let publishedDate: String?
-
-    /// Source-native rating string when available (e.g. "8.0").
-    public let rating: String?
-
-    public init(
-        source: String,
-        url: URL,
-        snippet: String,
-        author: String? = nil,
-        publishedDate: String? = nil,
-        rating: String? = nil
-    ) {
-        self.source = source
-        self.url = url
-        self.snippet = snippet
-        self.author = author
-        self.publishedDate = publishedDate
-        self.rating = rating
-    }
-}
+//
+// `CriticReview` itself lives in `Playlist` (`CriticReview.swift`), not here —
+// hoisted out for #695 so `Playcut.criticReviews` (Playlist) and
+// `AlbumMetadata.criticReviews` (below) share exactly one type. `Playlist`
+// doesn't depend on `Metadata`, so the type had to move down to the package
+// both sides can see; this file re-exposes it simply by importing `Playlist`
+// above. See that file's doc comment for the full rationale.
 
 // MARK: - Album Metadata
 

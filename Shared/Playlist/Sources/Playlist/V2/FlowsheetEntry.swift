@@ -150,6 +150,73 @@ struct FlowsheetEntry: Codable, Sendable {
     /// ``TolerantConcert`` so a present-but-malformed embed degrades to `nil`
     /// instead of throwing — see that type's doc comment.
     var upcoming_show: TolerantConcert? = nil
+
+    /// Attributed external critic-review snippets for this track's resolved
+    /// album, attached server-side at feed-assembly time (api.yaml 1.23.0,
+    /// wxyc-shared "add critic_reviews to FlowsheetV2TrackEntry"). Present
+    /// only on the enriched v2 feed once Backend's critic-reviews attach is
+    /// on; decodes to `nil` on older feeds, exactly like ``upcoming_show``.
+    /// Carried through to ``Playcut/criticReviews`` by `FlowsheetConverter`,
+    /// letting a terminal (`enriched_match`) row render `ReviewsSection` from
+    /// feed data alone with zero `/proxy/metadata/album` fetches (#695).
+    ///
+    /// Reuses the same `CriticReviewItem` wire shape the metadata proxy
+    /// already serves (ADR 0012), decoded per-item tolerantly: a malformed
+    /// item degrades to `nil` and is dropped from the array — see
+    /// ``TolerantCriticReviewItem`` — rather than failing the whole
+    /// `[FlowsheetEntry]` decode the way a plain `[CriticReview]` would. Read
+    /// via ``criticReviews`` for the filtered, nil-collapsed accessor
+    /// `FlowsheetConverter` actually uses.
+    ///
+    /// `WXYCAPIModels.FlowsheetV2TrackEntry` does not carry this field yet —
+    /// the vendored contract predates the wxyc-shared commit that added it —
+    /// so it is intentionally absent from `FlowsheetContractParityTests`'s
+    /// `consumedWireFields` until a regen catches the generated model up.
+    var critic_reviews: [TolerantCriticReviewItem]? = nil
+}
+
+/// Decodes a single feed-inline critic-review item tolerantly: a
+/// present-but-malformed item (a missing required sub-field, a type
+/// mismatch) degrades to `nil` instead of throwing, so a `compactMap` over
+/// the array drops just that item rather than failing the whole atomic
+/// `[FlowsheetEntry]` decode — the same degrade-don't-throw discipline as
+/// ``TolerantConcert``, scoped to one array element instead of one optional
+/// field.
+///
+/// The URL-validation itself (trim, non-empty, parseable) is not duplicated
+/// here — it lives once in `CriticReview.validated(_:)`, which this wrapper
+/// calls after a structurally-valid decode.
+struct TolerantCriticReviewItem: Codable, Sendable, Equatable {
+    let review: CriticReview?
+
+    init(review: CriticReview?) { self.review = review }
+
+    init(from decoder: Decoder) throws {
+        review = (try? Wire(from: decoder)).flatMap(CriticReview.validated)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let review {
+            try container.encode(review)
+        } else {
+            try container.encodeNil()
+        }
+    }
+
+    /// Raw wire shape of one `critic_reviews` item — the same field names
+    /// `WXYCAPIModels.CriticReviewItem` declares (`source`, `url`, `snippet`,
+    /// `author`, `publishedDate`, `rating`; camelCase even though the parent
+    /// flowsheet entry's own fields are snake_case, since this schema is
+    /// reused verbatim from the `/proxy/metadata/album` response).
+    private struct Wire: Decodable, CriticReviewItemWire {
+        let source: String
+        let url: String
+        let snippet: String
+        let author: String?
+        let publishedDate: String?
+        let rating: String?
+    }
 }
 
 /// Decodes an embedded `Concert` tolerantly: a present-but-malformed embed
@@ -189,6 +256,17 @@ extension FlowsheetEntry {
     /// safe default for forward-compat with future Backend enum extensions.
     var metadataStatus: MetadataStatus? {
         metadata_status.flatMap(MetadataStatus.init(rawValue:))
+    }
+
+    /// The successfully-decoded critic reviews from ``critic_reviews``, with
+    /// per-item decode failures already dropped by ``TolerantCriticReviewItem``.
+    /// `nil` when the field was absent, or when every item that did decode
+    /// failed URL validation — matching `CriticReview.parsed(from:)`'s "no
+    /// reviews attached" vs. "empty after filtering" nuance, both of which
+    /// collapse to `nil` here.
+    var criticReviews: [CriticReview]? {
+        let reviews = (critic_reviews ?? []).compactMap(\.review)
+        return reviews.isEmpty ? nil : reviews
     }
 }
 

@@ -35,6 +35,8 @@ extension Playcut {
     ///   - artistId: Resolved WXYC catalog artist id (the `artists.id` keyspace
     ///     shared with `Concert.headliningArtistId`). Defaults to nil, matching
     ///     free-text plays with no catalog link.
+    ///   - criticReviews: Optional feed-inline critic-review snippets (ADR 0012).
+    ///     Defaults to nil.
     ///   - metadataStatus: Optional enrichment lifecycle state. Defaults to nil.
     public static func stub(
         id: UInt64 = 1,
@@ -51,6 +53,7 @@ extension Playcut {
         styles: [String]? = nil,
         artistId: Int? = nil,
         upcomingShow: Concert? = nil,
+        criticReviews: [CriticReview]? = nil,
         metadataStatus: MetadataStatus? = nil
     ) -> Playcut {
         Playcut(
@@ -68,6 +71,7 @@ extension Playcut {
             styles: styles,
             artistId: artistId,
             upcomingShow: upcomingShow,
+            criticReviews: criticReviews,
             metadataStatus: metadataStatus
         )
     }
