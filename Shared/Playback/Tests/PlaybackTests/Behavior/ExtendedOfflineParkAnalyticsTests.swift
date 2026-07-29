@@ -27,7 +27,9 @@ import Core
 @MainActor
 struct ExtendedOfflineParkAnalyticsTests {
 
-    private func makeHarness() -> (AudioPlayerController, MockAudioPlayer, MockStructuredAnalytics) {
+    private func makeHarness(
+        startupWatchdogDeadline: Duration = .seconds(15)
+    ) -> (AudioPlayerController, MockAudioPlayer, MockStructuredAnalytics) {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         let mockPlayer = MockAudioPlayer(url: streamURL)
         let mockAnalytics = MockStructuredAnalytics()
@@ -36,13 +38,18 @@ struct ExtendedOfflineParkAnalyticsTests {
             audioSession: MockAudioSession(),
             remoteCommandCenter: MockRemoteCommandCenter(),
             notificationCenter: NotificationCenter(),
-            analytics: mockAnalytics
+            analytics: mockAnalytics,
+            startupWatchdogDeadline: startupWatchdogDeadline
         )
         return (controller, mockPlayer, mockAnalytics)
     }
 
     private func parkEvents(_ analytics: MockStructuredAnalytics) -> [ExtendedOfflineParkEvent] {
         analytics.typedEvents(ofType: ExtendedOfflineParkEvent.self)
+    }
+
+    private func silentStartups(_ analytics: MockStructuredAnalytics) -> [StreamErrorEvent] {
+        analytics.typedEvents(ofType: StreamErrorEvent.self).filter { $0.errorType == .silentStartup }
     }
 
     @Test("Controller captures ExtendedOfflineParkEvent when player reports an extended park")
@@ -97,6 +104,57 @@ struct ExtendedOfflineParkAnalyticsTests {
         for _ in 0..<32 { await Task.yield() }
 
         #expect(parkEvents(mockAnalytics).isEmpty)
+    }
+
+    /// The crux of #699's option-A fix: while the player reports itself parked
+    /// waiting for connectivity, the controller's `silent_startup` watchdog must
+    /// DEFER (re-arm) rather than escalate — escalating would emit a
+    /// `silent_startup` and kick the reconnect ramp that restarts the parked
+    /// streamer, defeating #697 one layer up. The player never reaches `.playing`
+    /// here (`shouldAutoUpdateState = false`), so the only thing keeping the
+    /// deadline from firing a `silent_startup` is the park deferral.
+    @Test("Controller defers the startup watchdog while the player is parked (no silent_startup)")
+    func defersStartupWatchdogWhileParked() async throws {
+        let (controller, mockPlayer, mockAnalytics) = makeHarness(startupWatchdogDeadline: .milliseconds(100))
+        mockPlayer.shouldAutoUpdateState = false
+
+        controller.play(reason: .test)
+        mockPlayer.simulateConnectivityWaitChanged(isWaiting: true)
+        // Let the park edge land before the first deadline elapses.
+        for _ in 0..<32 { await Task.yield() }
+
+        // Span several 100ms deadlines while still parked.
+        try await Task.sleep(for: .milliseconds(500))
+
+        #expect(silentStartups(mockAnalytics).isEmpty,
+                "A parked player must not escalate a silent_startup — the watchdog defers while offline (#699)")
+    }
+
+    /// The deferral must not latch: once the park resolves (connectivity edge
+    /// goes false) and the player is still not producing audio, the very same
+    /// watchdog must escalate `silent_startup` — the deferral bounds the offline
+    /// window, it does not disable the fully-silent-startup detector forever.
+    @Test("After the park resolves, the startup watchdog escalates silent_startup")
+    func escalatesAfterParkResolves() async throws {
+        let (controller, mockPlayer, mockAnalytics) = makeHarness(startupWatchdogDeadline: .milliseconds(100))
+        mockPlayer.shouldAutoUpdateState = false
+
+        controller.play(reason: .test)
+        mockPlayer.simulateConnectivityWaitChanged(isWaiting: true)
+        for _ in 0..<32 { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(silentStartups(mockAnalytics).isEmpty, "Precondition: deferred while parked")
+
+        // Park resolves but audio still hasn't started — a genuine post-resume
+        // starve the watchdog must now catch.
+        mockPlayer.simulateConnectivityWaitChanged(isWaiting: false)
+
+        var escalated = false
+        for _ in 0..<40 {
+            try await Task.sleep(for: .milliseconds(25))
+            if !silentStartups(mockAnalytics).isEmpty { escalated = true; break }
+        }
+        #expect(escalated, "Once the park resolves, a still-silent start must escalate silent_startup (#699)")
     }
 }
 

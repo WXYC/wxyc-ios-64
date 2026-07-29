@@ -69,13 +69,22 @@ public enum AudioPlayerInternalEvent: Sendable {
     /// The connect-path startup watchdog has deferred repeatedly while the
     /// outstanding task is known to be parked waiting for network connectivity
     /// (the #697 gate) — long enough to call the park "extended" rather than a
-    /// brief blip. Fired exactly once per park episode, carrying the elapsed
-    /// seconds since the park began. Deliberately distinct from `.error`: this
-    /// is NOT a `startup_timeout`/stream-error signal (that exclusion is the
-    /// whole point of #697) — it is a low-rate observability event so an
-    /// extended offline park is queryable without inflating those counts. See
-    /// issue #699.
+    /// brief blip. Fired at most once per park episode (zero if the park
+    /// resolves before the threshold), carrying the elapsed seconds since the
+    /// park began. Deliberately distinct from `.error`: this is NOT a
+    /// `startup_timeout`/stream-error signal (that exclusion is the whole point
+    /// of #697) — it is a low-rate observability event so an extended offline
+    /// park is queryable without inflating those counts. See issue #699.
     case extendedOfflinePark(duration: TimeInterval)
+    /// The player's connectivity-wait state changed: `true` when the outstanding
+    /// connect task begins parking on a down network (the #697 gate), `false`
+    /// when that park resolves (connected, disconnected, errored, or a fresh
+    /// session). Unlike `.extendedOfflinePark`, this is a control signal, not an
+    /// analytics event — it lets the controller mirror the streamer's #697 gate
+    /// at its own layer, deferring the `silent_startup` watchdog (#518) while the
+    /// player is legitimately offline rather than escalating and restarting the
+    /// parked task. See issue #699.
+    case connectivityWaitChanged(isWaiting: Bool)
 }
 
 // MARK: - Concurrency

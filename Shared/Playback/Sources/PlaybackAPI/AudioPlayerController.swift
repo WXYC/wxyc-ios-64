@@ -228,6 +228,12 @@ public final class AudioPlayerController {
     /// disarms this outer watchdog first. Injected so tests can trigger it fast.
     private let startupWatchdogDeadline: Duration
     @ObservationIgnored private var startupWatchdogTask: Task<Void, Never>?
+    /// Mirrors the player's connectivity-wait state, driven by the streamer's
+    /// `.connectivityWaitChanged` edges (#699). While `true`, the startup
+    /// watchdog defers instead of escalating a `silent_startup`: the task is
+    /// legitimately parked offline (#697), not silently starved, and escalating
+    /// would restart the parked streamer one layer up and defeat the gate.
+    @ObservationIgnored private var isPlayerWaitingForConnectivity = false
 
     #if os(iOS) || os(tvOS)
     // Bounded deferral for audio-session activation that fails with
@@ -392,6 +398,10 @@ public final class AudioPlayerController {
         playbackIntended = true
         wasPlayingBeforeRouteDisconnect = false
         stallStartTime = nil
+        // Fresh session: clear any stale park state from a prior listen so the
+        // startup watchdog doesn't defer against a park that already resolved.
+        // The streamer re-announces a real park via `.connectivityWaitChanged`. #699.
+        isPlayerWaitingForConnectivity = false
         playbackTimer = playbackTimer ?? Core.Timer.start()
         sessionID = sessionID ?? UUID().uuidString
         // Arm the play-intent → first-audio watchdog (#518). Placed before the
@@ -1109,6 +1119,12 @@ extension AudioPlayerController {
                     handleFirstAudio(timeToAudio: timeToAudio)
                 case .extendedOfflinePark(let duration):
                     handleExtendedOfflinePark(duration: duration)
+                case .connectivityWaitChanged(let isWaiting):
+                    // Mirror the streamer's #697 park gate so the startup
+                    // watchdog can defer rather than escalate while offline. No
+                    // arm/disarm here — the flag is consulted at watchdog fire
+                    // time — so a stray edge after stop() is harmless. See #699.
+                    self.isPlayerWaitingForConnectivity = isWaiting
                 case .error(let error):
                     // The inner layer surfaced a signal, so the fully-silent
                     // hypothesis is disproven — disarm the startup watchdog so it
@@ -1294,6 +1310,20 @@ extension AudioPlayerController {
     /// The play-intent → first-audio deadline elapsed with no audio and no other
     /// signal: the fully-silent startup class (Sentry IOS-31 / IOS-35).
     private func handleStartupWatchdogTimeout() {
+        // Mirror the streamer's #697 gate at this layer (#699): a task the
+        // player reports parked waiting for connectivity is offline, not
+        // silently starved. Escalating here would emit a `silent_startup` AND
+        // kick the reconnect ramp — which restarts the parked streamer and
+        // resets its own park tracking, defeating #697 one layer up (and
+        // starving `.extendedOfflinePark` of the ~2×startupTimeout it needs to
+        // fire). Defer instead: re-arm so a genuine post-resume starve is still
+        // caught once the park resolves, and let the low-rate
+        // `.extendedOfflinePark` own the offline-park signal.
+        if isPlayerWaitingForConnectivity {
+            Log(.info, category: .playback, "Startup watchdog fired while the player is parked waiting for connectivity; deferring (#699)")
+            armStartupWatchdog()
+            return
+        }
         Log(.error, category: .playback, "Play intent produced no audio within the startup deadline; escalating silent-startup recovery")
         escalateSilentStartup(description: "No audio or error within the play-intent→first-audio deadline")
     }

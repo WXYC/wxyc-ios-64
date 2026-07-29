@@ -155,7 +155,10 @@ struct MP3StreamerOfflineParkTelemetryTests {
 
         streamer.play()
 
-        for _ in 0..<40 {
+        // The startup watchdog is clamped to max(0.1, connectionTimeout + 1) =
+        // 1.0s, so budget well past it (up to ~4s) rather than racing the ~1.0s
+        // deadline with a ~1.0s wait window.
+        for _ in 0..<160 {
             try await Task.sleep(for: .milliseconds(25))
             if !collector.errors.isEmpty { break }
         }
@@ -205,12 +208,20 @@ struct MP3StreamerOfflineParkTelemetryTests {
         }
         #expect(!streamer.isWaitingForConnectivity, "Precondition: the first park resolved")
 
+        // Snapshot the connect count before restarting so the second episode's
+        // fresh connect is measured as a delta. Resolving via `.connected` leaves
+        // the startup watchdog armed in `.buffering`; it can escalate a
+        // `startup_timeout` and kick a reconnect before `stop()` cancels it, so a
+        // bare `>= 2` gate could be satisfied by that reconnect rather than the
+        // intended second `play()`.
+        let connectsBeforeSecondPlay = mockHTTP.connectCallCount
+
         // Force a second, independent connect attempt by restarting.
         streamer.stop()
         streamer.play()
         for _ in 0..<40 {
             try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 2 { break }
+            if mockHTTP.connectCallCount > connectsBeforeSecondPlay { break }
         }
 
         mockHTTP.yield(.waitingForConnectivity)
