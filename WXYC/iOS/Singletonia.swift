@@ -33,6 +33,7 @@ final class Singletonia {
     static let shared = Singletonia()
 
     let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
+    let handoffActivityManager: HandoffActivityManager
     let playlistService = PlaylistService()
     let artworkService = MultisourceArtworkService()
     let artworkLoader: ArtworkLoader
@@ -192,7 +193,7 @@ final class Singletonia {
     }
 
     private var nowPlayingObservationTask: Task<Void, Never>?
-    private var nowPlayingPlaybackStateTask: Task<Void, Never>?
+    private var playbackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?
     private var spotlightMetadataEnrichmentTask: Task<Void, Never>?
     private var concertSpotlightDonationTask: Task<Void, Never>?
@@ -239,6 +240,7 @@ final class Singletonia {
         nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
             boundsSize: CGSize(width: screenWidth, height: screenWidth)
         )
+        handoffActivityManager = HandoffActivityManager()
 
         // Configure artwork cache to use half-screen-width scaled HEIF images.
         // Artwork is displayed at ~40% of screen width in playlist rows, so half-screen
@@ -250,7 +252,7 @@ final class Singletonia {
             artworkService: artworkService
         )
         startNowPlayingObservation(nowPlayingService: nowPlayingService)
-        startNowPlayingPlaybackStateObservation()
+        startPlaybackStateObservation()
         startSpotlightDonation()
         startSpotlightMetadataEnrichmentReDonation()
         startConcertSpotlightDonation()
@@ -503,13 +505,16 @@ final class Singletonia {
         }
     }
 
-    /// Mirror AudioPlayerController.isPlaying into MPNowPlayingInfoCenter.
+    /// Fan `AudioPlayerController.isPlaying` transitions out to both
+    /// MPNowPlayingInfoCenter and the Handoff activity.
     ///
-    /// Required so the system promotes WXYC to the active Now Playing app on
-    /// macOS / Mac Catalyst — without an explicit playbackState, Control Center
-    /// stays empty and media keys are routed to other apps.
-    private func startNowPlayingPlaybackStateObservation() {
-        nowPlayingPlaybackStateTask = Task { [weak self] in
+    /// The NowPlayingInfoCenter side is required so the system promotes WXYC
+    /// to the active Now Playing app on macOS / Mac Catalyst — without an
+    /// explicit playbackState, Control Center stays empty and media keys are
+    /// routed to other apps. The Handoff side keeps the cross-device Handoff
+    /// banner advertised only while this device is actually playing.
+    private func startPlaybackStateObservation() {
+        playbackStateTask = Task { [weak self] in
             // Dedupe: Observations re-yields on every tracked-property change, but isPlaying
             // collapses several player states (loading, stalled, error) to one Bool, so most
             // transitions repeat the previous value. Each MPNowPlayingInfoCenter write is an
@@ -524,6 +529,7 @@ final class Singletonia {
                 guard isPlaying != last else { continue }
                 last = isPlaying
                 self?.nowPlayingInfoCenterManager.setPlaybackState(isPlaying: isPlaying)
+                self?.handoffActivityManager.setPlaybackState(isPlaying: isPlaying)
             }
         }
     }
