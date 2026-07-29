@@ -338,6 +338,50 @@ struct PlaycutMetadataServiceV2FallbackTests {
         #expect(result == inline)
     }
 
+    @Test("Terminal row with inline critic reviews returns them with zero proxy fetches (#695)")
+    func terminalRowWithInlineCriticReviewsSkipsProxy() async throws {
+        // Load-bearing for #695: a terminal row whose V2 flowsheet feed carried
+        // critic_reviews must render ReviewsSection from feed data alone —
+        // the review must survive `fetchMetadata`'s terminal short-circuit
+        // (#685/#691, unmodified by this change) with no proxy round-trip.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let review = CriticReview(
+            source: "The Quietus",
+            url: URL(string: "https://thequietus.com/articles/juana-molina-doga")!,
+            snippet: "A restless, shape-shifting record that never settles.",
+            author: "Jane Critic",
+            publishedDate: "2024-03-15",
+            rating: "8.0"
+        )
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            criticReviews: [review],
+            metadataStatus: .enrichedMatch
+        )
+        // Same construction PlaycutDetailView.loadMetadata() performs for an
+        // inline V2 row, including criticReviews threaded through #695.
+        let inline = PlaycutMetadata(
+            artist: .empty,
+            album: AlbumMetadata(label: "Sonamos", criticReviews: [review]),
+            streaming: .empty
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then
+        #expect(mockSession.requestCount == 0, "Terminal row must short-circuit even with reviews present")
+        #expect(result.album.criticReviews == [review])
+        #expect(result.album.hasCriticReviews == true)
+    }
+
     @Test("Terminal row with zero enriched fields renders base-only, no proxy")
     func terminalEmptyRowSkipsProxy() async throws {
         let mockCache = PlaycutMetadataMockCache()

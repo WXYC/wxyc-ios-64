@@ -278,6 +278,20 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// ``artistBio`` metadata precedent above.
     public let upcomingShow: Concert?
 
+    /// Attributed external critic-review snippets for this play's resolved
+    /// album (ADR 0012), embedded on the flowsheet feed by Backend-Service at
+    /// feed-assembly time (`FlowsheetEntry.critic_reviews`, api.yaml 1.23.0).
+    /// `nil` when the resolved album has no reviews, when Backend's
+    /// critic-reviews attach is off, or when decoding a feed that predates
+    /// the field. Reuses the same `CriticReviewItem` wire shape the metadata
+    /// proxy already serves, so iOS decodes one ``CriticReview`` domain type
+    /// across both surfaces — see `PlaycutMetadataService.mapCriticReviews`,
+    /// which applies the identical URL-validation policy via
+    /// `CriticReview.validated(_:)`. This is what lets a terminal
+    /// (`enrichedMatch`) row render `ReviewsSection` straight from the feed,
+    /// with no `/proxy/metadata/album` round-trip (#695).
+    public let criticReviews: [CriticReview]?
+
     /// Server-side enrichment lifecycle for this row (`FlowsheetEntry.metadata_status`,
     /// `MetadataStatus`). `nil` for the v1 API, feeds that predate the field, and rows
     /// the backend hasn't attempted enrichment on yet in a way that emitted the field.
@@ -291,10 +305,13 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// `enrichedNoMatch`/`failedNoRetry` — enrichment is done, so render from
     /// whatever inline fields exist, even zero of them, rather than issuing a
     /// degradable `/proxy/metadata/album` fetch) OR when any of the 12 inline
-    /// enriched fields is present. `artistId` (a likes key) and `upcomingShow`
-    /// (a touring CTA) are excluded — neither is playcut-detail metadata. See
-    /// #685: checking only artwork/Discogs/Spotify classified sparse-but-valid
-    /// terminal rows as "no metadata."
+    /// enriched fields is present. `artistId` (a likes key), `upcomingShow`
+    /// (a touring CTA), and `criticReviews` (gated independently by
+    /// `AlbumMetadata.hasCriticReviews` / `CriticReviewsFeature.shouldShowReviews`
+    /// — #695) are excluded — none of the three is playcut-detail metadata in
+    /// the sense this predicate cares about. See #685: checking only
+    /// artwork/Discogs/Spotify classified sparse-but-valid terminal rows as
+    /// "no metadata."
     ///
     /// This field list is duplicated by hand in two other places that must be
     /// kept in sync when a field is added or removed: the `Playcut` decoder's
@@ -302,7 +319,13 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// construction in `PlaycutDetailView.loadMetadata()`. There's no
     /// compiler-enforced link between the three — #685 itself was partly a fix
     /// for one such drift (`artworkURL` was in this predicate but missing from
-    /// the `PlaycutDetailView` builder).
+    /// the `PlaycutDetailView` builder). `artistId` and `upcomingShow` are
+    /// decoded onto `Playcut` (so they do appear in the decoder) but have no
+    /// `PlaycutMetadata`/`AlbumMetadata` counterpart, so they never appear in
+    /// the `PlaycutDetailView` builder either. `criticReviews` is different:
+    /// `AlbumMetadata` *does* have a `criticReviews` field, so it rides along
+    /// in the decoder AND the `PlaycutDetailView` builder (#695) — it's just
+    /// excluded from this predicate specifically, exactly like the other two.
     public var hasV2Metadata: Bool {
         metadataStatus?.isTerminal == true
             || artworkURL != nil
@@ -346,6 +369,9 @@ public struct Playcut: PlaylistEntry, Hashable {
         // camelCase legacy playcut keys around it. Named to match the contract so
         // the value round-trips through `Concert`'s own snake_case Codable.
         case upcomingShow = "upcoming_show"
+        // Same rationale as `upcomingShow` above: matches the flowsheet's
+        // snake_case `critic_reviews` wire key so this round-trips consistently.
+        case criticReviews = "critic_reviews"
         case metadataStatus
     }
 
@@ -373,6 +399,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         styles: [String]? = nil,
         artistId: Int? = nil,
         upcomingShow: Concert? = nil,
+        criticReviews: [CriticReview]? = nil,
         metadataStatus: MetadataStatus? = nil
     ) {
         self.id = id
@@ -398,6 +425,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.styles = styles
         self.artistId = artistId
         self.upcomingShow = upcomingShow
+        self.criticReviews = criticReviews
         self.metadataStatus = metadataStatus
     }
 
@@ -446,6 +474,15 @@ public struct Playcut: PlaylistEntry, Hashable {
             // catches the throw, mirroring the `onAir` degrade-don't-throw
             // discipline in `FlowsheetResponse.init(from:)`.
             self.upcomingShow = (try? container.decodeIfPresent(Concert.self, forKey: .upcomingShow)) ?? nil
+            // Same degrade-don't-throw discipline as `upcomingShow` above, but
+            // per-item rather than per-field: `CriticReview`'s own Codable is
+            // strict (its `url` is a non-optional `URL`), so decoding straight
+            // into `[CriticReview]?` would let one malformed review fail this
+            // whole playcut decode. Decoding through the tolerant wrapper first
+            // and dropping `nil`s keeps a single bad review from doing that.
+            let reviewItems = (try? container.decodeIfPresent([TolerantCriticReviewItem].self, forKey: .criticReviews)) ?? nil
+            let reviews = reviewItems?.compactMap(\.review) ?? []
+            self.criticReviews = reviews.isEmpty ? nil : reviews
             // Forward-compat with unrecognized future enum values: an unknown raw
             // string degrades to `nil` rather than failing the whole playcut decode,
             // mirroring `FlowsheetEntry.metadataStatus`'s tolerance.

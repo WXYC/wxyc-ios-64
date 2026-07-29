@@ -13,7 +13,7 @@
 
 import SwiftUI
 import UIKit
-import Metadata
+import Playlist
 import WXUI
 
 struct ReviewsSection: View {

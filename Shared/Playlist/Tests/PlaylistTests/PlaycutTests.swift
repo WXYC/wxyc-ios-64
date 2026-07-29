@@ -399,6 +399,9 @@ struct HasV2MetadataTests {
         artistWikipediaURL: URL? = nil,
         genres: [String]? = nil,
         styles: [String]? = nil,
+        artistId: Int? = nil,
+        upcomingShow: Concert? = nil,
+        criticReviews: [CriticReview]? = nil,
         metadataStatus: MetadataStatus? = nil
     ) -> Playcut {
         Playcut(
@@ -422,6 +425,9 @@ struct HasV2MetadataTests {
             artistWikipediaURL: artistWikipediaURL,
             genres: genres,
             styles: styles,
+            artistId: artistId,
+            upcomingShow: upcomingShow,
+            criticReviews: criticReviews,
             metadataStatus: metadataStatus
         )
     }
@@ -493,5 +499,51 @@ struct HasV2MetadataTests {
     @Test("terminal status with a single non-streaming field (genres only) is true")
     func terminalStatusGenresOnlyIsTrue() {
         #expect(playcut(genres: ["Rock"], metadataStatus: .failedNoRetry).hasV2Metadata == true)
+    }
+
+    // MARK: - Excluded fields (artistId, upcomingShow, criticReviews — #695)
+
+    /// `artistId`, `upcomingShow`, and `criticReviews` are real, additive
+    /// inline fields — decoded onto `Playcut` and (for `criticReviews`) also
+    /// folded into the `PlaycutDetailView` inline builder — but none of them
+    /// is part of the 12-field predicate. Each is gated by its own
+    /// independent mechanism instead: `artistId` by the likes feature,
+    /// `upcomingShow` by the Box Office CTA, and `criticReviews` by
+    /// `AlbumMetadata.hasCriticReviews` / `CriticReviewsFeature.shouldShowReviews`.
+    @Test(
+        "nil status, exactly one excluded field alone is still false",
+        arguments: ["artistId", "upcomingShow", "criticReviews"]
+    )
+    func excludedFieldAloneIsFalse(field: String) {
+        let p: Playcut
+        switch field {
+        case "artistId":
+            p = playcut(artistId: 812)
+        case "upcomingShow":
+            p = playcut(upcomingShow: .stub())
+        case "criticReviews":
+            let review = CriticReview(
+                source: "The Quietus",
+                url: URL(string: "https://thequietus.com/a/1")!,
+                snippet: "Great."
+            )
+            p = playcut(criticReviews: [review])
+        default:
+            fatalError("unhandled field \(field)")
+        }
+        #expect(p.hasV2Metadata == false)
+    }
+
+    @Test("terminal status with only criticReviews (no other inline fields) is still true — the terminal-status arm, not the field")
+    func terminalStatusCriticReviewsOnlyIsTrueViaTerminalArm() {
+        let review = CriticReview(
+            source: "The Quietus",
+            url: URL(string: "https://thequietus.com/a/1")!,
+            snippet: "Great."
+        )
+        // True here comes from `metadataStatus.isTerminal`, not from
+        // `criticReviews` — proven by `excludedFieldAloneIsFalse` above, which
+        // holds `metadataStatus` nil and shows criticReviews alone is false.
+        #expect(playcut(criticReviews: [review], metadataStatus: .failedNoRetry).hasV2Metadata == true)
     }
 }

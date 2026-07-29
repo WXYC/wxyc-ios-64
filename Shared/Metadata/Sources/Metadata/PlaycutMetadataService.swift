@@ -16,6 +16,19 @@ import Caching
 import Playlist
 import WXYCAPIModels
 
+// MARK: - CriticReviewItemWire conformance
+
+/// Lets the generated proxy DTO feed straight into `CriticReview.validated(_:)`
+/// / `CriticReview.parsed(from:)` (`Playlist`) without a field-by-field
+/// adapter — `WXYCAPIModels.CriticReviewItem` already has exactly the wire
+/// shape `CriticReviewItemWire` describes (`source`, `url`, `snippet`,
+/// `author`, `publishedDate`, `rating`). Declared here, not in `WXYCAPIModels`
+/// or `Playlist`: the generated model can't depend on `Playlist` (wrong
+/// dependency direction), and `Playlist` doesn't depend on `WXYCAPIModels` in
+/// its shipping target (see `docs/code-generation.md`) — `Metadata` is the
+/// one package that already imports both.
+extension WXYCAPIModels.CriticReviewItem: @retroactive CriticReviewItemWire {}
+
 // MARK: - PlaycutMetadataService
 
 /// Service for fetching extended metadata about a playcut from the backend proxy.
@@ -100,13 +113,20 @@ public actor PlaycutMetadataService {
     /// Deliberate tradeoff: the terminal short-circuit means a terminal row
     /// with no streaming links no longer falls through to the proxy, so it
     /// also gives up whatever the proxy alone can supply — `discogsArtistId`,
-    /// `fullReleaseDate`, `criticReviews` (`AlbumMetadata`), and pre-parsed
-    /// `bioTokens` (`ArtistMetadata`) — none of which the V2 flowsheet row
-    /// carries. This is accepted as the cost of never spending a degradable
-    /// LML round-trip on a row Backend already gave up on (#685); Backend-
-    /// Service#1827 ("assemble base metadata before enrichment") is meant to
-    /// narrow this gap by ensuring terminal rows carry richer inline data
-    /// before they're marked terminal.
+    /// `fullReleaseDate` (`AlbumMetadata`), and pre-parsed `bioTokens`
+    /// (`ArtistMetadata`) — none of which the V2 flowsheet row carries. This
+    /// is accepted as the cost of never spending a degradable LML round-trip
+    /// on a row Backend already gave up on (#685); Backend-Service#1827
+    /// ("assemble base metadata before enrichment") is meant to narrow this
+    /// gap by ensuring terminal rows carry richer inline data before they're
+    /// marked terminal.
+    ///
+    /// `criticReviews` used to be on this casualty list too, but isn't
+    /// anymore (#695): the V2 flowsheet feed now carries `critic_reviews`
+    /// inline, `FlowsheetConverter` threads it onto `Playcut.criticReviews`,
+    /// and `PlaycutDetailView.loadMetadata()` folds it into the inline
+    /// `AlbumMetadata` it builds — so a terminal row's reviews survive the
+    /// short-circuit without ever touching the proxy.
     ///
     /// - Parameters:
     ///   - playcut: The playcut to resolve metadata for.
@@ -165,28 +185,20 @@ public actor PlaycutMetadataService {
         )
     }
 
-    /// Maps served critic-review items into domain `CriticReview`s, dropping any
-    /// whose `url` can't be parsed so the mandatory link-out guarantee holds.
-    /// Returns `nil` when nothing was served (field absent) so the domain
-    /// preserves the "no reviews attached" vs. "empty after filtering" nuance —
-    /// both hide the section, but `nil` avoids caching an empty array.
+    /// Maps served critic-review items into domain `CriticReview`s, applying
+    /// `CriticReview.validated(_:)`'s URL-validation policy (Playlist package)
+    /// so the mandatory link-out guarantee (ADR 0012) holds. Returns `nil` when
+    /// nothing was served, when the served array is empty, or when every item
+    /// was dropped for a bad URL — the domain preserves "no reviews attached"
+    /// vs. "empty after filtering" as an equivalent `nil`, avoiding caching a
+    /// pointless empty array.
+    ///
+    /// A thin wrapper, not a duplicate: the actual policy lives once in
+    /// `CriticReview.parsed(from:)`, reused verbatim by the V2 flowsheet feed's
+    /// inline `critic_reviews` decode (`FlowsheetEntry`/`TolerantCriticReviewItem`,
+    /// #695) via the same `CriticReviewItemWire` conformance point.
     private static func mapCriticReviews(_ dtos: [WXYCAPIModels.CriticReviewItem]?) -> [CriticReview]? {
-        guard let dtos else { return nil }
-        return dtos.compactMap { dto in
-            // `URL(string:)` is lenient on modern Foundation (it will encode a
-            // string with spaces), so an empty/whitespace URL is the realistic
-            // bad-data case to reject — a card must carry a working link-out.
-            let trimmed = dto.url.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, let url = URL(string: trimmed) else { return nil }
-            return CriticReview(
-                source: dto.source,
-                url: url,
-                snippet: dto.snippet,
-                author: dto.author,
-                publishedDate: dto.publishedDate,
-                rating: dto.rating
-            )
-        }
+        CriticReview.parsed(from: dtos)
     }
 
     // MARK: - Granular Caching Methods
