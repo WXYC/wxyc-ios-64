@@ -349,6 +349,42 @@ public struct StreamErrorEvent: PlaybackAnalyticsEvent {
     }
 }
 
+/// Event capturing that the connect-path startup watchdog deferred repeatedly
+/// while parked waiting for network connectivity (the #697 gate) — an extended
+/// offline park rather than a brief blip. Deliberately distinct from
+/// `StreamErrorEvent`/`startup_timeout`: #697's whole point is that a
+/// legitimately offline park is NOT a stream error, but that traded a
+/// mislabeled failure for a totally silent multi-minute hang. This event
+/// closes that observability gap without inflating the error/timeout signals.
+/// Low-rate by construction: fired at most once per park episode, not once
+/// per watchdog re-arm (~every `startupTimeout` seconds). See #699.
+public struct ExtendedOfflineParkEvent: PlaybackAnalyticsEvent {
+    public static let name = "extended_offline_park"
+    /// The player that observed the park.
+    public let playerType: PlayerControllerType
+    /// Seconds elapsed since the park began, as of the moment this event fired
+    /// (not necessarily the park's total length — the park may still be
+    /// ongoing).
+    public let parkDuration: TimeInterval
+    /// The stable per-listen identifier (#665) active when this event fired.
+    public let sessionID: String?
+
+    public var properties: [String: Any]? {
+        var props: [String: Any] = [
+            "player_type": playerType.rawValue,
+            "park_duration": parkDuration
+        ]
+        if let sessionID { props["session_id"] = sessionID }
+        return props
+    }
+
+    public init(playerType: PlayerControllerType, parkDuration: TimeInterval, sessionID: String? = nil) {
+        self.playerType = playerType
+        self.parkDuration = parkDuration
+        self.sessionID = sessionID
+    }
+}
+
 /// Event capturing an audio session interruption.
 public struct InterruptionEvent: PlaybackAnalyticsEvent {
     public static let name = "interruption"

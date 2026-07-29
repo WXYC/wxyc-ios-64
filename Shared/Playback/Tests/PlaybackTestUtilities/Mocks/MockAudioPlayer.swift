@@ -137,6 +137,12 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     public func simulateFirstAudio(timeToAudio: TimeInterval = 1.0) {
         eventContinuation?.yield(.firstAudio(timeToAudio: timeToAudio))
     }
+
+    /// Simulate the player's inner startup watchdog re-arming enough times while
+    /// parked waiting for connectivity to call the park "extended" (issue #699).
+    public func simulateExtendedOfflinePark(duration: TimeInterval = 24.0) {
+        eventContinuation?.yield(.extendedOfflinePark(duration: duration))
+    }
 }
 
 // MARK: - Test Errors

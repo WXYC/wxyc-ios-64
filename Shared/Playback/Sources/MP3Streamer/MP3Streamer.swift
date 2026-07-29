@@ -137,6 +137,27 @@ public final class MP3Streamer {
     /// tests (`@testable import`) can assert the gate. See issue #697.
     @ObservationIgnored
     internal private(set) var isWaitingForConnectivity = false
+    /// Monotonic clock started the moment the current park episode began (the
+    /// first `.waitingForConnectivity` observed since the last resolution).
+    /// `nil` when not parked. Backs the `duration` reported on
+    /// `.extendedOfflinePark`. See issue #699.
+    @ObservationIgnored
+    private var offlineParkTimer: Core.Timer?
+    /// Number of times `handleStartupTimeout()` has deferred while parked for
+    /// the current episode. Reset alongside `offlineParkTimer`. See issue #699.
+    @ObservationIgnored
+    private var offlineParkReArmCount = 0
+    /// Whether `.extendedOfflinePark` has already fired for the current park
+    /// episode. Keeps the signal to at most one emission per episode — not one
+    /// per ~`startupTimeout`-second re-arm — so it stays low-rate. See #699.
+    @ObservationIgnored
+    private var hasEmittedExtendedOfflinePark = false
+    /// Number of watchdog re-arms while parked before `.extendedOfflinePark`
+    /// fires. Two re-arms means the park has outlasted roughly two
+    /// `startupTimeout` windows — long enough to call it "extended" rather
+    /// than the brief park a route handover or a momentary Wi-Fi drop
+    /// produces. See issue #699.
+    private static let extendedParkReArmThreshold = 2
 
     // Output format for decoded audio
     private static let outputFormat: AVAudioFormat = {
@@ -276,7 +297,7 @@ public final class MP3Streamer {
         // Fresh session: the next buffering→playing crossing should count as a
         // new successful start.
         hasEmittedFirstAudio = false
-        isWaitingForConnectivity = false
+        resetOfflineParkTracking()
         streamingState = .connecting
 
         // Supersede any deferred connect Task still pending from a prior play(),
@@ -331,7 +352,7 @@ public final class MP3Streamer {
         backoffTimer.reset()
         // The session is over; the next play() starts a fresh first-audio window.
         hasEmittedFirstAudio = false
-        isWaitingForConnectivity = false
+        resetOfflineParkTracking()
     }
 
     /// Tears down the active stream I/O — disconnects HTTP, stops the audio engine,
@@ -355,6 +376,18 @@ public final class MP3Streamer {
         startDecoderConsumer()
     }
 
+    /// Clears `isWaitingForConnectivity` together with the park-episode
+    /// tracking it gates (`offlineParkTimer`, `offlineParkReArmCount`,
+    /// `hasEmittedExtendedOfflinePark`) — they all describe the same episode
+    /// and must go stale in lockstep, so a resolved park (or a fresh session)
+    /// always starts the next episode from a clean slate. See issue #699.
+    private func resetOfflineParkTracking() {
+        isWaitingForConnectivity = false
+        offlineParkTimer = nil
+        offlineParkReArmCount = 0
+        hasEmittedExtendedOfflinePark = false
+    }
+
     // MARK: - Event Handlers
 
     private func handleHTTPEvent(_ event: HTTPStreamEvent) async {
@@ -362,7 +395,7 @@ public final class MP3Streamer {
         case .connected:
             Log(.info, category: .playback, "HTTP connected, starting buffering")
             // Whatever park the task was in has resolved into a real connection.
-            isWaitingForConnectivity = false
+            resetOfflineParkTracking()
             streamingState = .buffering(bufferedCount: 0, requiredCount: configuration.minimumBuffersBeforePlayback)
 
         case .data(let data):
@@ -375,6 +408,12 @@ public final class MP3Streamer {
             // connected-but-starved stream (Sentry IOS-31) and let the task
             // self-resume instead of tearing it down.
             Log(.warning, category: .playback, "Waiting for network connectivity")
+            // The OS may redeliver this callback more than once for the same
+            // still-parked task; only the first observation starts a fresh
+            // episode's clock (#699).
+            if !isWaitingForConnectivity {
+                offlineParkTimer = Timer.start()
+            }
             isWaitingForConnectivity = true
 
         case .disconnected:
@@ -382,7 +421,7 @@ public final class MP3Streamer {
             // States like .connecting, .reconnecting, .idle, .paused, and .error must
             // not trigger reconnect — this prevents spurious reconnects from stale
             // .disconnected events that arrive after stop()/play() recovery cycles.
-            isWaitingForConnectivity = false
+            resetOfflineParkTracking()
             switch streamingState {
             case .playing, .buffering, .stalled:
                 Log(.warning, category: .playback, "HTTP disconnected unexpectedly")
@@ -393,7 +432,7 @@ public final class MP3Streamer {
 
         case .error(let error):
             Log(.error, category: .playback, "HTTP error: \(error)")
-            isWaitingForConnectivity = false
+            resetOfflineParkTracking()
             streamingState = .error(error)
             // Deliberately NOT yielded to the internal event stream (#486): this is
             // the transient pre-reconnect drop that usually recovers on the next
@@ -552,6 +591,17 @@ public final class MP3Streamer {
         case .connecting, .buffering:
             if isWaitingForConnectivity {
                 Log(.info, category: .playback, "Startup watchdog fired while waiting for connectivity; deferring so the parked task can self-resume")
+                offlineParkReArmCount += 1
+                // Distinct, low-rate signal for a park extended enough to call
+                // it more than a brief blip — fired at most once per episode,
+                // not once per re-arm, so it stays observable without piling
+                // onto the `startup_timeout`/stream-error counts #697
+                // deliberately excludes this case from. See issue #699.
+                if !hasEmittedExtendedOfflinePark && offlineParkReArmCount >= Self.extendedParkReArmThreshold {
+                    hasEmittedExtendedOfflinePark = true
+                    let duration = offlineParkTimer?.duration() ?? 0
+                    eventContinuationInternal.yield(.extendedOfflinePark(duration: duration))
+                }
                 armStartupWatchdog()
                 return
             }

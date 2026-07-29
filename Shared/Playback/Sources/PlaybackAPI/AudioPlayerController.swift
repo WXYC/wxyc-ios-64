@@ -1107,6 +1107,8 @@ extension AudioPlayerController {
                     handleRecovery()
                 case .firstAudio(let timeToAudio):
                     handleFirstAudio(timeToAudio: timeToAudio)
+                case .extendedOfflinePark(let duration):
+                    handleExtendedOfflinePark(duration: duration)
                 case .error(let error):
                     // The inner layer surfaced a signal, so the fully-silent
                     // hypothesis is disproven — disarm the startup watchdog so it
@@ -1184,6 +1186,22 @@ extension AudioPlayerController {
         analytics.capture(PlaybackFirstAudioEvent(
             playerType: playerType,
             timeToFirstAudio: timeToAudio,
+            sessionID: sessionID
+        ))
+    }
+
+    /// Captures the low-rate `ExtendedOfflineParkEvent` forwarded by the player
+    /// as an `AudioPlayerInternalEvent.extendedOfflinePark`. Deliberately does
+    /// NOT disarm any watchdog or touch playback intent — the park is still
+    /// ongoing (the player's inner watchdog re-armed rather than escalating),
+    /// so this is a mid-flight observability signal, not a terminal outcome
+    /// like `.error`/`.firstAudio`. See issue #699.
+    private func handleExtendedOfflinePark(duration: TimeInterval) {
+        let playerType = resolvedPlayerType
+        Log(.info, category: .playback, "Extended offline park after \(String(format: "%.2f", duration))s (\(playerType.rawValue))")
+        analytics.capture(ExtendedOfflineParkEvent(
+            playerType: playerType,
+            parkDuration: duration,
             sessionID: sessionID
         ))
     }
