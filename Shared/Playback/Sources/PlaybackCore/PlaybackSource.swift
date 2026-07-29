@@ -127,9 +127,11 @@ extension PlaybackReason {
         case PlaybackReason.carPlay.rawValue:
             return .carPlay
 
-        // Home Screen quick action / deep link — both launch the app to play.
+        // Home Screen quick action / deep link / Handoff — all three launch
+        // the app to play.
         case PlaybackReason.quickAction.rawValue,
-             PlaybackReason.deepLink.rawValue:
+             PlaybackReason.deepLink.rawValue,
+             PlaybackReason.handoff.rawValue:
             return .app
 
         // Siri / Shortcuts / App Intents.
