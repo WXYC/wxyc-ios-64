@@ -37,6 +37,7 @@ struct PlaybackSourceTests {
         (PlaybackReason.carPlay, PlaybackSource.carPlay),
         (PlaybackReason.quickAction, PlaybackSource.app),
         (PlaybackReason.deepLink, PlaybackSource.app),
+        (PlaybackReason.handoff, PlaybackSource.app),
 
         // Siri / Shortcuts / App Intents.
         (PlaybackReason.siriIntent, PlaybackSource.siri),

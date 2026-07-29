@@ -68,6 +68,10 @@ extension PlaybackReason {
     public static let quickAction = PlaybackReason(rawValue: "quick action")
     public static let deepLink = PlaybackReason(rawValue: "deep link")
     public static let siriIntent = PlaybackReason(rawValue: "Siri intent")
+    /// A Handoff continuation from another device's WXYC app
+    /// (`HandoffActivityManager`), distinct from `.quickAction` so a
+    /// cross-device handoff is distinguishable in analytics.
+    public static let handoff = PlaybackReason(rawValue: "handoff")
 
     // Intents
     public static let playIntent = PlaybackReason(rawValue: "PlayWXYC intent")
