@@ -66,6 +66,16 @@ public enum AudioPlayerInternalEvent: Sendable {
     /// `AudioPlayerProtocol` implementation can emit it so the start-success rate
     /// is comparable across player types.
     case firstAudio(timeToAudio: TimeInterval)
+    /// The connect-path startup watchdog has deferred repeatedly while the
+    /// outstanding task is known to be parked waiting for network connectivity
+    /// (the #697 gate) — long enough to call the park "extended" rather than a
+    /// brief blip. Fired exactly once per park episode, carrying the elapsed
+    /// seconds since the park began. Deliberately distinct from `.error`: this
+    /// is NOT a `startup_timeout`/stream-error signal (that exclusion is the
+    /// whole point of #697) — it is a low-rate observability event so an
+    /// extended offline park is queryable without inflating those counts. See
+    /// issue #699.
+    case extendedOfflinePark(duration: TimeInterval)
 }
 
 // MARK: - Concurrency
