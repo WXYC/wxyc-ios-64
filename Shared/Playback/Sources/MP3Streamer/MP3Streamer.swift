@@ -381,11 +381,20 @@ public final class MP3Streamer {
     /// `hasEmittedExtendedOfflinePark`) — they all describe the same episode
     /// and must go stale in lockstep, so a resolved park (or a fresh session)
     /// always starts the next episode from a clean slate. See issue #699.
+    ///
+    /// When it clears an in-progress park it also announces the falling park
+    /// edge to the controller (`.connectivityWaitChanged(isWaiting: false)`), so
+    /// the controller re-arms its deferred `silent_startup` watchdog and a
+    /// genuine post-resume starve is caught rather than deferred forever.
     private func resetOfflineParkTracking() {
+        let wasParked = isWaitingForConnectivity
         isWaitingForConnectivity = false
         offlineParkTimer = nil
         offlineParkReArmCount = 0
         hasEmittedExtendedOfflinePark = false
+        if wasParked {
+            eventContinuationInternal.yield(.connectivityWaitChanged(isWaiting: false))
+        }
     }
 
     // MARK: - Event Handlers
@@ -410,9 +419,11 @@ public final class MP3Streamer {
             Log(.warning, category: .playback, "Waiting for network connectivity")
             // The OS may redeliver this callback more than once for the same
             // still-parked task; only the first observation starts a fresh
-            // episode's clock (#699).
+            // episode's clock and announces the rising park edge to the
+            // controller so it can defer its own watchdog (#699).
             if !isWaitingForConnectivity {
                 offlineParkTimer = Timer.start()
+                eventContinuationInternal.yield(.connectivityWaitChanged(isWaiting: true))
             }
             isWaitingForConnectivity = true
 

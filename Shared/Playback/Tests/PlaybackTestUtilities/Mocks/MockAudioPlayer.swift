@@ -143,6 +143,13 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
     public func simulateExtendedOfflinePark(duration: TimeInterval = 24.0) {
         eventContinuation?.yield(.extendedOfflinePark(duration: duration))
     }
+
+    /// Simulate the streamer announcing a connectivity-wait edge: `true` when its
+    /// connect task begins parking on a down network, `false` when that park
+    /// resolves. Drives the controller's startup-watchdog deferral (issue #699).
+    public func simulateConnectivityWaitChanged(isWaiting: Bool) {
+        eventContinuation?.yield(.connectivityWaitChanged(isWaiting: isWaiting))
+    }
 }
 
 // MARK: - Test Errors
