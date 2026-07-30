@@ -61,10 +61,11 @@ struct OnAirBannerTheme: Equatable {
 
     // MARK: - Handle grade wave
 
-    /// Whether the DJ handle plays its one-shot grade "wave" — a lightening crest
+    /// Whether the DJ handle plays its one-shot "wave" — a lightening crest
     /// sweeping across the letters — when it appears or changes to a new DJ. The
-    /// wave moves only the metric-neutral grade axis, so the handle's width is
-    /// unchanged and the string starts and ends at its normal display metrics.
+    /// crest dips each letter's grade and weight, but the fixed per-letter cells
+    /// hold the handle's width constant, and the string starts and ends at its
+    /// normal display metrics.
     var waveEnabled: Bool = true
 
     /// Duration of one handle-wave sweep, in seconds.
