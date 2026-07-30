@@ -143,4 +143,72 @@ struct HandleGradeWaveTests {
             }
         }
     }
+
+    // MARK: - Spacing / overlap
+
+    /// The number of contiguous runs of lit (below-base) letters at an instant —
+    /// one per crest currently on the string.
+    private func litRunCount(_ wave: HandleGradeWave, count: Int, progress: Double) -> Int {
+        var runs = 0
+        var inRun = false
+        for index in 0..<count {
+            let lit = wave.grade(characterIndex: index, count: count, progress: progress) < base - 0.5
+            if lit && !inRun { runs += 1 }
+            inRun = lit
+        }
+        return runs
+    }
+
+    @Test("Spacing 1 keeps the sweeps sequential — never two crests on the string at once")
+    func spacingOneIsSequential() {
+        let wave = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.2, repetitions: 4, spacing: 1)
+        let count = 24
+        for step in 0...80 {
+            #expect(litRunCount(wave, count: count, progress: Double(step) / 80) <= 1)
+        }
+    }
+
+    @Test("Overlapping spacing puts several crests on the string at the same time")
+    func overlapProducesSimultaneousCrests() {
+        let count = 24
+        let sequential = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.15, repetitions: 4, spacing: 1)
+        let overlapping = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.15, repetitions: 4, spacing: 0.35)
+
+        func maxSimultaneousRuns(_ wave: HandleGradeWave) -> Int {
+            (0...100).map { litRunCount(wave, count: count, progress: Double($0) / 100) }.max() ?? 0
+        }
+        #expect(maxSimultaneousRuns(sequential) == 1)
+        #expect(maxSimultaneousRuns(overlapping) >= 2)
+    }
+
+    @Test("The animation rests at both ends for any spacing")
+    func spacingRestsAtEnds() {
+        let wave = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.3, repetitions: 4, spacing: 0.3)
+        let count = 10
+        for index in 0..<count {
+            #expect(abs(wave.grade(characterIndex: index, count: count, progress: 0) - base) < 0.0001)
+            #expect(abs(wave.grade(characterIndex: index, count: count, progress: 1) - base) < 0.0001)
+        }
+    }
+
+    @Test("Spacing is clamped: an over-range value behaves like the nearest bound")
+    func spacingClamped() {
+        let count = 16
+        let atMax = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.2, repetitions: 3, spacing: 1)
+        let overMax = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.2, repetitions: 3, spacing: 2)
+        for step in 0...40 {
+            let progress = Double(step) / 40
+            for index in 0..<count {
+                #expect(overMax.grade(characterIndex: index, count: count, progress: progress)
+                    == atMax.grade(characterIndex: index, count: count, progress: progress))
+            }
+        }
+    }
+
+    @Test("Normalized span grows by the spacing for each extra repetition")
+    func normalizedSpanScales() {
+        #expect(HandleGradeWave(baseGrade: base, repetitions: 1, spacing: 0.4).normalizedSpan == 1)
+        #expect(abs(HandleGradeWave(baseGrade: base, repetitions: 3, spacing: 1).normalizedSpan - 3) < 0.0001)
+        #expect(abs(HandleGradeWave(baseGrade: base, repetitions: 3, spacing: 0.5).normalizedSpan - 2) < 0.0001)
+    }
 }

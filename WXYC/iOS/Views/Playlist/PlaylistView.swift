@@ -305,6 +305,7 @@ struct PlaylistView: View {
             waveDepth: debug.waveDepth,
             waveCrestHalfWidth: debug.waveCrestHalfWidth,
             waveRepetitions: Int(debug.waveRepetitions.rounded()),
+            waveSpacing: debug.waveSpacing,
             waveReplayToken: debug.waveReplayToken
         )
     }
