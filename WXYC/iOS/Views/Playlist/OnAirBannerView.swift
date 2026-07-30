@@ -151,8 +151,9 @@ struct OnAirBannerView: View {
     private var handleContent: some View {
         if theme.waveEnabled, let waveStart {
             let width = effectiveWidthAxis
-            let characters = Array(headline.uppercased())
-            let advances = handleCharacterAdvances(for: headline.uppercased(), font: handleCTFont(width: width))
+            let uppercased = headline.uppercased()
+            let characters = Array(uppercased)
+            let advances = handleCharacterAdvances(for: uppercased, font: handleCTFont(width: width))
             TimelineView(.animation) { context in
                 wavingHandle(
                     characters: characters,
@@ -203,12 +204,10 @@ struct OnAirBannerView: View {
         }
     }
 
-    /// The grade wave configured from the theme, resting at the handle's own grade
-    /// so the animation begins and ends at the normal display look.
+    /// The wave shape configured from the theme's crest parameters. The view maps
+    /// its per-letter intensity onto the grade and weight axes.
     private var wave: HandleGradeWave {
         HandleGradeWave(
-            baseGrade: theme.handleVariation.grade,
-            depth: theme.waveDepth,
             crestHalfWidth: theme.waveCrestHalfWidth,
             repetitions: theme.waveRepetitions,
             spacing: theme.waveSpacing
