@@ -20,12 +20,14 @@ public struct OnAirBannerDebugView: View {
     @Bindable private var state = OnAirDebugState.shared
     @Environment(\.dismiss) private var dismiss
 
-    @State private var indicatorExpanded = true
-    @State private var handleExpanded = true
-    @State private var adaptiveExpanded = true
-    @State private var waveExpanded = true
-    @State private var requestLineExpanded = true
-    @State private var spacingExpanded = true
+    // Disclosure-group open/closed state persists across presentations so the
+    // panel reopens the way it was left, rather than resetting every time.
+    @AppStorage("OnAirDebug.disclosure.indicator") private var indicatorExpanded = true
+    @AppStorage("OnAirDebug.disclosure.handle") private var handleExpanded = true
+    @AppStorage("OnAirDebug.disclosure.adaptive") private var adaptiveExpanded = true
+    @AppStorage("OnAirDebug.disclosure.wave") private var waveExpanded = true
+    @AppStorage("OnAirDebug.disclosure.requestLine") private var requestLineExpanded = true
+    @AppStorage("OnAirDebug.disclosure.spacing") private var spacingExpanded = true
 
     public init() {}
 
