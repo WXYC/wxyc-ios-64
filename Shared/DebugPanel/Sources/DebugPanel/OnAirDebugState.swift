@@ -143,6 +143,12 @@ public final class OnAirDebugState {
         didSet { UserDefaults.standard.set(waveCrestHalfWidth, forKey: "OnAirDebug.waveCrestHalfWidth") }
     }
 
+    /// How many times the crest sweeps across the handle per animation, `1...5`.
+    /// Stored as a `Double` for the slider; the banner rounds it to a whole count.
+    public var waveRepetitions: Double {
+        didSet { UserDefaults.standard.set(waveRepetitions, forKey: "OnAirDebug.waveRepetitions") }
+    }
+
     /// A transient replay token bumped by the debug "Play wave" button to re-run
     /// the animation on demand. Not persisted — it's a one-shot UI event.
     public var waveReplayToken: Int = 0
@@ -168,5 +174,6 @@ public final class OnAirDebugState {
         self.waveDuration = defaults.object(forKey: "OnAirDebug.waveDuration") as? Double ?? 0.9
         self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 336
         self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.35
+        self.waveRepetitions = defaults.object(forKey: "OnAirDebug.waveRepetitions") as? Double ?? 1
     }
 }

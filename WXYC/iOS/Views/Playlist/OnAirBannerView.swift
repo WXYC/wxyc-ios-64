@@ -205,14 +205,23 @@ struct OnAirBannerView: View {
         HandleGradeWave(
             baseGrade: theme.handleVariation.grade,
             depth: theme.waveDepth,
-            crestHalfWidth: theme.waveCrestHalfWidth
+            crestHalfWidth: theme.waveCrestHalfWidth,
+            repetitions: theme.waveRepetitions
         )
     }
 
-    /// Elapsed fraction of the wave, clamped to `0...1`.
+    /// The full run time of the wave: one ``OnAirBannerTheme/waveDuration``-long
+    /// sweep per repetition, so adding repetitions lengthens the animation rather
+    /// than speeding each sweep up.
+    private var waveTotalDuration: TimeInterval {
+        theme.waveDuration * Double(max(1, theme.waveRepetitions))
+    }
+
+    /// Elapsed fraction of the whole (possibly repeating) wave, clamped to `0...1`.
+    /// The wave model folds this into the individual sweeps.
     private func waveProgress(now: Date, start: Date) -> Double {
-        guard theme.waveDuration > 0 else { return 1 }
-        return min(max(now.timeIntervalSince(start) / theme.waveDuration, 0), 1)
+        guard waveTotalDuration > 0 else { return 1 }
+        return min(max(now.timeIntervalSince(start) / waveTotalDuration, 0), 1)
     }
 
     /// Starts the one-shot wave: mark it running so the handle renders per-letter,
@@ -228,7 +237,7 @@ struct OnAirBannerView: View {
         waveStart = .now
         waveStopTask?.cancel()
         waveStopTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(theme.waveDuration))
+            try? await Task.sleep(for: .seconds(waveTotalDuration))
             // Only retire this run — a newer replay may already be playing.
             if waveRunID == runID { waveStart = nil }
         }

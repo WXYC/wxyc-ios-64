@@ -79,6 +79,11 @@ struct OnAirBannerTheme: Equatable {
     /// lights more letters at once; smaller is a tighter, crisper highlight.
     var waveCrestHalfWidth: Double = 0.35
 
+    /// How many times the crest sweeps across the handle per animation, `>= 1`.
+    /// The sweeps run back to back and each ``waveDuration`` long, so the total
+    /// run time is `waveDuration × waveRepetitions`.
+    var waveRepetitions: Int = 1
+
     /// A replay token: bumping it re-triggers the wave. The debug controls drive
     /// this; nothing changes it in release, so the wave only plays on appear and
     /// on handle changes there.

@@ -40,14 +40,22 @@ public struct HandleGradeWave: Hashable, Sendable {
     /// tighter band (a crisp highlight sweeping letter to letter).
     public var crestHalfWidth: Double
 
+    /// How many times the crest sweeps across the handle over one animation, `>= 1`.
+    /// The sweeps run back to back; because each one enters and exits off the ends
+    /// at rest, the seams between them — and the two global endpoints — all sit at
+    /// ``baseGrade``, so the handle still begins and ends at its normal metrics.
+    public var repetitions: Int
+
     public init(
         baseGrade: Double = SFProFontAxis.grade.defaultValue,
         depth: Double = 336,
-        crestHalfWidth: Double = 0.35
+        crestHalfWidth: Double = 0.35,
+        repetitions: Int = 1
     ) {
         self.baseGrade = baseGrade
         self.depth = depth
         self.crestHalfWidth = crestHalfWidth
+        self.repetitions = repetitions
     }
 
     /// The grade for the letter at `index` (of `count` letters) at animation
@@ -71,13 +79,22 @@ public struct HandleGradeWave: Hashable, Sendable {
         let progress = min(max(progress, 0), 1)
         let halfWidth = max(crestHalfWidth, .ulpOfOne)
 
+        // Fold the whole animation into `repetitions` back-to-back sweeps: the
+        // fractional part of (progress × repetitions) is the phase within the
+        // current sweep. At a seam it lands on 0 (a fresh sweep about to enter
+        // from the left), and at the global end progress × repetitions is a whole
+        // number, so the phase is 0 — every boundary rests at the base grade.
+        let repetitions = max(1, self.repetitions)
+        let scaled = progress * Double(repetitions)
+        let sweepProgress = scaled - scaled.rounded(.down)
+
         // The letter's position along the string, 0 (first) ... 1 (last). A
         // single-letter handle sits at 0.
         let position = count <= 1 ? 0 : Double(index) / Double(count - 1)
 
         // Sweep the crest from -halfWidth (before the first letter) to
         // 1 + halfWidth (past the last), so the ends are always at rest.
-        let crestCenter = -halfWidth + progress * (1 + 2 * halfWidth)
+        let crestCenter = -halfWidth + sweepProgress * (1 + 2 * halfWidth)
 
         // Normalized distance from the crest, in half-widths. Beyond one
         // half-width the letter is untouched.

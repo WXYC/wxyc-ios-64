@@ -79,7 +79,8 @@ public struct OnAirBannerDebugView: View {
                     labeledSlider("Duration (s)", value: $state.waveDuration, in: 0.2...3.0)
                     labeledSlider("Depth", value: $state.waveDepth, in: 0...536, format: "%.0f")
                     labeledSlider("Crest Width", value: $state.waveCrestHalfWidth, in: 0.1...1.0)
-                    Text("Sweeps a lightening crest across the DJ handle once by dipping only SF Pro's grade axis — which is metric-neutral, so the handle's width never changes. Depth is how far the grade drops at the crest (0 is off); crest width is how many letters light at once. Plays on appear and whenever the handle changes; \"Play wave\" replays it.")
+                    labeledSlider("Repetitions", value: $state.waveRepetitions, in: 1...5, format: "%.0f", step: 1)
+                    Text("Sweeps a lightening crest across the DJ handle by dipping only SF Pro's grade axis — which is metric-neutral, so the handle's width never changes. Depth is how far the grade drops at the crest (0 is off); crest width is how many letters light at once; repetitions is how many back-to-back sweeps play (each one \"Duration\" long). Plays on appear and whenever the handle changes; \"Play wave\" replays it.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -118,13 +119,15 @@ public struct OnAirBannerDebugView: View {
         return Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
     }
 
-    /// A labeled slider with a trailing value readout.
+    /// A labeled slider with a trailing value readout. Pass `step` to snap the
+    /// slider to discrete increments (e.g. `1` for an integer count).
     @ViewBuilder
     private func labeledSlider(
         _ title: String,
         value: Binding<Double>,
         in range: ClosedRange<Double>,
-        format: String = "%.2f"
+        format: String = "%.2f",
+        step: Double? = nil
     ) -> some View {
         HStack {
             Text(title)
@@ -132,7 +135,11 @@ public struct OnAirBannerDebugView: View {
             Text(String(format: format, value.wrappedValue))
                 .foregroundStyle(.secondary)
         }
-        Slider(value: value, in: range)
+        if let step {
+            Slider(value: value, in: range, step: step)
+        } else {
+            Slider(value: value, in: range)
+        }
     }
 }
 #endif
