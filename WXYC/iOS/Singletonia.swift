@@ -199,6 +199,29 @@ final class Singletonia {
     private var concertSpotlightDonationTask: Task<Void, Never>?
     private var likedSongsHealingTask: Task<Void, Never>?
 
+    #if DEBUG
+    /// Dev-only: posts a lock-screen alert when the on-air artist has an upcoming
+    /// show. Retained as a stored property (not a task-local) because the
+    /// scheduler it owns is the `UNUserNotificationCenter` delegate, which the
+    /// center holds *weakly* — a task-only capture would let it deallocate and
+    /// silently stop presenting foreground banners.
+    private let tourAlertCoordinator = TourAlertCoordinator(
+        scheduler: UserNotificationTourAlertScheduler(),
+        // Honor the "Mock ticket on first item" debug toggle so the same
+        // affordance that fakes the Box Office ticket also drives a test
+        // notification for each new now-playing artist. The playcut handed in is
+        // always the on-air row, so — unlike the row-scoped
+        // `DebugUpcomingShowResolver` — no `firstPlaycutID` check is needed.
+        resolveUpcomingShow: { playcut in
+            if let embedded = playcut.upcomingShow { return embedded }
+            return OnTourShowsDebugState.shared.mockFirstItemEnabled
+                ? DebugUpcomingShowResolver.mockShow(for: playcut)
+                : nil
+        }
+    )
+    private var tourNotificationTask: Task<Void, Never>?
+    #endif
+
     private init() {
         // F3 (#427): register PlaycutHistoryStore and the Spotlight reindex
         // seam before anything else runs, so both are in place before any
@@ -260,6 +283,9 @@ final class Singletonia {
         startLikedSongsHealing()
 
         #if DEBUG
+        // Dev-only: post a lock-screen alert when the on-air artist is on tour.
+        startTourNotificationObservation()
+
         // UI-test isolation + determinism: `-uiTestResetForYou` clears the
         // dismissed-shows set AND forces the For You loved seed on (via the
         // runtime-only `seedForcedForTesting`, NOT the persisted toggle — so the
@@ -357,6 +383,31 @@ final class Singletonia {
             }
         }
     }
+
+    #if DEBUG
+    /// Dev-only: post a lock-screen alert when the on-air artist has an embedded
+    /// upcoming show while the stream is playing (once per show per session).
+    ///
+    /// Subscribes to `playlistService.updates()` rather than `NowPlayingService`
+    /// for the same reason `startSpotlightDonation()` does: the now-playing
+    /// iterator awaits an artwork fetch per yield that this feature never uses.
+    /// `isPlaying` is read synchronously off the main-actor player at each tick,
+    /// so the alert only fires while the stream is actually playing.
+    ///
+    /// `tourAlertCoordinator` is captured strongly on purpose — its lifetime is
+    /// bound to `Singletonia.shared` (a static let), so there is no cycle.
+    private func startTourNotificationObservation() {
+        tourNotificationTask = Task { [tourAlertCoordinator, playlistService] in
+            for await playlist in playlistService.updates() {
+                guard !Task.isCancelled else { break }
+                await tourAlertCoordinator.ingest(
+                    playcut: playlist.playcuts.first,
+                    isPlaying: AudioPlayerController.shared.isPlaying
+                )
+            }
+        }
+    }
+    #endif
 
     /// Re-donates a single playcut to Spotlight when its `metadata_status`
     /// lands in a terminal enriched state (issue #443).

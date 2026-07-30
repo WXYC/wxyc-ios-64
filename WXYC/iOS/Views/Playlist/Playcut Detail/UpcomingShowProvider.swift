@@ -55,14 +55,15 @@ struct DebugUpcomingShowResolver: UpcomingShowResolving {
         guard debug.mockFirstItemEnabled, debug.firstPlaycutID == playcut.id else {
             return nil
         }
-        return Concert.mock(for: playcut)
+        return Self.mockShow(for: playcut)
     }
-}
 
-private extension Concert {
     /// A plausible on-sale show at Cat's Cradle, titled after the played artist so
     /// the mock reads coherently ("Playing Near You" for whoever is on now).
-    static func mock(for playcut: Playcut) -> Concert {
+    ///
+    /// Shared with the dev-only tour-notification wiring (`Singletonia`) so a test
+    /// notification points at the same fabricated show the Box Office ticket shows.
+    static func mockShow(for playcut: Playcut) -> Concert {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
         let startsOn = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))
