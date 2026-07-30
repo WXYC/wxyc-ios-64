@@ -149,6 +149,12 @@ public final class OnAirDebugState {
         didSet { UserDefaults.standard.set(waveRepetitions, forKey: "OnAirDebug.waveRepetitions") }
     }
 
+    /// The launch interval between consecutive crests, as a fraction of one sweep,
+    /// `0.1...1`. Lower values overlap the crests for a snappier train.
+    public var waveSpacing: Double {
+        didSet { UserDefaults.standard.set(waveSpacing, forKey: "OnAirDebug.waveSpacing") }
+    }
+
     /// A transient replay token bumped by the debug "Play wave" button to re-run
     /// the animation on demand. Not persisted — it's a one-shot UI event.
     public var waveReplayToken: Int = 0
@@ -175,5 +181,6 @@ public final class OnAirDebugState {
         self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 336
         self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.35
         self.waveRepetitions = defaults.object(forKey: "OnAirDebug.waveRepetitions") as? Double ?? 1
+        self.waveSpacing = defaults.object(forKey: "OnAirDebug.waveSpacing") as? Double ?? 1
     }
 }

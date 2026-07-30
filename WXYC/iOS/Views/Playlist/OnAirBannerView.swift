@@ -206,15 +206,17 @@ struct OnAirBannerView: View {
             baseGrade: theme.handleVariation.grade,
             depth: theme.waveDepth,
             crestHalfWidth: theme.waveCrestHalfWidth,
-            repetitions: theme.waveRepetitions
+            repetitions: theme.waveRepetitions,
+            spacing: theme.waveSpacing
         )
     }
 
-    /// The full run time of the wave: one ``OnAirBannerTheme/waveDuration``-long
-    /// sweep per repetition, so adding repetitions lengthens the animation rather
-    /// than speeding each sweep up.
+    /// The full run time of the wave: each crest's sweep stays
+    /// ``OnAirBannerTheme/waveDuration`` long, and the crest train spans
+    /// ``HandleGradeWave/normalizedSpan`` sweeps — so extra repetitions lengthen
+    /// the animation while tighter spacing (overlap) shortens it.
     private var waveTotalDuration: TimeInterval {
-        theme.waveDuration * Double(max(1, theme.waveRepetitions))
+        theme.waveDuration * wave.normalizedSpan
     }
 
     /// Elapsed fraction of the whole (possibly repeating) wave, clamped to `0...1`.
