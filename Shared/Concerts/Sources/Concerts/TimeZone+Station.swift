@@ -22,7 +22,10 @@ extension TimeZone {
     /// The station's broadcast time zone. WXYC broadcasts from Chapel Hill, NC
     /// (US Eastern). The `?? .gmt` fallback is unreachable for this fixed,
     /// always-known identifier but keeps the declaration force-unwrap-free.
-    static let wxycStation = TimeZone(identifier: "America/New_York") ?? .gmt
+    ///
+    /// `public` so other packages (e.g. `AppServices`) can pin a `starts_on`
+    /// label to the station zone without re-deriving the identifier.
+    public static let wxycStation = TimeZone(identifier: "America/New_York") ?? .gmt
 }
 
 extension Calendar {
@@ -40,7 +43,10 @@ extension DateFormatter {
     /// Builds a station-zone, fixed-`en_US_POSIX`-locale `DateFormatter` for a
     /// single format string, so a label renders identically regardless of the
     /// device's zone or locale.
-    static func station(_ format: String) -> DateFormatter {
+    ///
+    /// `public` so other packages (e.g. `AppServices`) can render a `starts_on`
+    /// day label with the same zone/locale contract the Box Office ticket uses.
+    public static func station(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .wxycStation
