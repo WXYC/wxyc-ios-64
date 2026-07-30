@@ -91,4 +91,56 @@ struct HandleGradeWaveTests {
             #expect(wave.grade(characterIndex: 2, count: 6, progress: Double(step) / 10) == base)
         }
     }
+
+    @Test("With multiple repetitions the handle rests at the global ends and every sweep boundary")
+    func repetitionsRestAtBoundaries() {
+        let repetitions = 4
+        let wave = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.3, repetitions: repetitions)
+        let count = 8
+        // Progress k/repetitions is the seam between sweep k and k+1 (and the two
+        // global endpoints); the crest is off the string there, so all letters rest.
+        for boundary in 0...repetitions {
+            let progress = Double(boundary) / Double(repetitions)
+            for index in 0..<count {
+                #expect(abs(wave.grade(characterIndex: index, count: count, progress: progress) - base) < 0.0001)
+            }
+        }
+    }
+
+    @Test("Each repetition is a full left-to-right sweep of the crest")
+    func repetitionsSweepEachPass() {
+        let repetitions = 3
+        let wave = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.2, repetitions: repetitions)
+        let count = 20
+
+        func mostLightenedIndex(at progress: Double) -> Int {
+            (0..<count).min { lhs, rhs in
+                wave.grade(characterIndex: lhs, count: count, progress: progress)
+                    < wave.grade(characterIndex: rhs, count: count, progress: progress)
+            }!
+        }
+
+        // Sampling early vs. late within each individual sweep shows the crest
+        // advancing left to right on every pass, not just the first.
+        for sweep in 0..<repetitions {
+            let start = Double(sweep) / Double(repetitions)
+            let early = start + 0.15 / Double(repetitions)
+            let late = start + 0.85 / Double(repetitions)
+            #expect(mostLightenedIndex(at: early) < mostLightenedIndex(at: late))
+        }
+    }
+
+    @Test("A non-positive repetition count is handled defensively as a single sweep")
+    func repetitionsDefensive() {
+        let count = 8
+        let single = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.3, repetitions: 1)
+        let zero = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.3, repetitions: 0)
+        for step in 0...20 {
+            let progress = Double(step) / 20
+            for index in 0..<count {
+                #expect(zero.grade(characterIndex: index, count: count, progress: progress)
+                    == single.grade(characterIndex: index, count: count, progress: progress))
+            }
+        }
+    }
 }
