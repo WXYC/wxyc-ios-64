@@ -59,5 +59,30 @@ struct OnAirBannerTheme: Equatable {
     /// Line spacing applied to the DJ handle, in points.
     var handleLineSpacing: CGFloat = 0
 
+    // MARK: - Handle grade wave
+
+    /// Whether the DJ handle plays its one-shot grade "wave" — a lightening crest
+    /// sweeping across the letters — when it appears or changes to a new DJ. The
+    /// wave moves only the metric-neutral grade axis, so the handle's width is
+    /// unchanged and the string starts and ends at its normal display metrics.
+    var waveEnabled: Bool = true
+
+    /// Duration of one handle-wave sweep, in seconds.
+    var waveDuration: TimeInterval = 0.9
+
+    /// How far, in grade units, the wave lightens a letter at the crest's peak.
+    /// `0` disables the effect. The handle rests near the top of the grade range,
+    /// so the wave lightens rather than darkens.
+    var waveDepth: Double = 336
+
+    /// The wave crest's half-width as a fraction of the handle, `(0, 1]`. Larger
+    /// lights more letters at once; smaller is a tighter, crisper highlight.
+    var waveCrestHalfWidth: Double = 0.35
+
+    /// A replay token: bumping it re-triggers the wave. The debug controls drive
+    /// this; nothing changes it in release, so the wave only plays on appear and
+    /// on handle changes there.
+    var waveReplayToken: Int = 0
+
     static let `default` = OnAirBannerTheme()
 }

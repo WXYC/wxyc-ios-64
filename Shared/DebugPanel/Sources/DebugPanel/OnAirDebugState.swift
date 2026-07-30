@@ -121,6 +121,32 @@ public final class OnAirDebugState {
         didSet { UserDefaults.standard.set(handleLineSpacing, forKey: "OnAirDebug.handleLineSpacing") }
     }
 
+    // MARK: - DJ handle grade wave
+
+    /// Whether the handle plays its one-shot grade wave on appear / handle change.
+    public var waveEnabled: Bool {
+        didSet { UserDefaults.standard.set(waveEnabled, forKey: "OnAirDebug.waveEnabled") }
+    }
+
+    /// Duration of one handle-wave sweep, in seconds.
+    public var waveDuration: Double {
+        didSet { UserDefaults.standard.set(waveDuration, forKey: "OnAirDebug.waveDuration") }
+    }
+
+    /// How far the wave lightens a letter's grade at the crest peak (`0` is off).
+    public var waveDepth: Double {
+        didSet { UserDefaults.standard.set(waveDepth, forKey: "OnAirDebug.waveDepth") }
+    }
+
+    /// The wave crest's half-width as a fraction of the handle, `(0, 1]`.
+    public var waveCrestHalfWidth: Double {
+        didSet { UserDefaults.standard.set(waveCrestHalfWidth, forKey: "OnAirDebug.waveCrestHalfWidth") }
+    }
+
+    /// A transient replay token bumped by the debug "Play wave" button to re-run
+    /// the animation on demand. Not persisted — it's a one-shot UI event.
+    public var waveReplayToken: Int = 0
+
     private init() {
         let defaults = UserDefaults.standard
         self.forceOnAir = defaults.bool(forKey: "OnAirDebug.forceOnAir")
@@ -138,5 +164,9 @@ public final class OnAirDebugState {
         self.handleGrade = defaults.object(forKey: "OnAirDebug.handleGrad") as? Double ?? SFProFontAxis.grade.defaultValue
         self.onAirSpacing = defaults.object(forKey: "OnAirDebug.onAirSpacing") as? Double ?? 0.0
         self.handleLineSpacing = defaults.object(forKey: "OnAirDebug.handleLineSpacing") as? Double ?? 0.0
+        self.waveEnabled = defaults.object(forKey: "OnAirDebug.waveEnabled") as? Bool ?? true
+        self.waveDuration = defaults.object(forKey: "OnAirDebug.waveDuration") as? Double ?? 0.9
+        self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 336
+        self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.35
     }
 }
