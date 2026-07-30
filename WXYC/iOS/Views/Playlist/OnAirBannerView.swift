@@ -140,27 +140,46 @@ struct OnAirBannerView: View {
             .onChange(of: theme.waveReplayToken) { playWave() }
     }
 
-    /// The handle's letters: a single `Text` at rest, or a per-letter row driven
-    /// by the wave while it plays. The animated row pins each letter to its kerned
-    /// base-metric advance, so it totals the resting `Text`'s width and nothing
-    /// reflows when the two swap — the width is held by the fixed cells, not by the
-    /// axes the wave moves (grade is metric-neutral, but weight is not). The
-    /// resting `Text` keeps SwiftUI's kerning and wrapping. Advances are measured
-    /// once here at the base metrics, not per frame, since the cells don't change
-    /// as the wave plays.
+    /// The handle's letters. When the wave is on and each character shapes to a
+    /// single glyph, the handle renders as a per-letter row — one `Text` per glyph,
+    /// each pinned to its kerned base-metric advance so the row totals the resting
+    /// handle's width. The *same* row is used both while the wave plays (driven by
+    /// `TimelineView`) and at rest (frozen at the settled frame, where every
+    /// letter's intensity is 0), so nothing shifts when the animation stops.
+    /// Dropping to a natively-laid-out `Text` at rest would nudge every glyph by
+    /// the centered-in-cell vs. shaped-line delta — same total width, but each
+    /// letter a hair off — which reads as a snap on the final frame. A long handle
+    /// animates on one line: the adaptive width narrows it to fit, and a per-letter
+    /// row can't wrap, so the wave must not be gated on fit or long handles would
+    /// silently stop animating. The native `Text` is the fallback only when the
+    /// wave is off or the handle doesn't shape one glyph per character. Advances are
+    /// measured once here at the base metrics, not per frame, since the cells don't
+    /// change as the wave plays.
     @ViewBuilder
     private var handleContent: some View {
-        if theme.waveEnabled, let waveStart {
-            let width = effectiveWidthAxis
-            let uppercased = headline.uppercased()
+        let width = effectiveWidthAxis
+        let uppercased = headline.uppercased()
+        let advances = handleCharacterAdvances(for: uppercased, font: handleCTFont(width: width))
+        if theme.waveEnabled, let advances {
             let characters = Array(uppercased)
-            let advances = handleCharacterAdvances(for: uppercased, font: handleCTFont(width: width))
-            TimelineView(.animation) { context in
+            if let waveStart {
+                TimelineView(.animation) { context in
+                    wavingHandle(
+                        characters: characters,
+                        widthAxis: width,
+                        advances: advances,
+                        progress: waveProgress(now: context.date, start: waveStart)
+                    )
+                }
+            } else {
+                // The settled frame: the same row at zero intensity, so the resting
+                // handle is byte-for-byte the row's final animation frame — no
+                // representation swap, nothing to snap to.
                 wavingHandle(
                     characters: characters,
                     widthAxis: width,
                     advances: advances,
-                    progress: waveProgress(now: context.date, start: waveStart)
+                    progress: 1
                 )
             }
         } else {
