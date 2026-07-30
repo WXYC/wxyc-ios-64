@@ -299,7 +299,12 @@ struct PlaylistView: View {
             handleWidthFloor: debug.handleWidthFloor,
             requestLineTintOpacity: debug.requestLineTintOpacity,
             onAirSpacing: CGFloat(debug.onAirSpacing),
-            handleLineSpacing: CGFloat(debug.handleLineSpacing)
+            handleLineSpacing: CGFloat(debug.handleLineSpacing),
+            waveEnabled: debug.waveEnabled,
+            waveDuration: debug.waveDuration,
+            waveDepth: debug.waveDepth,
+            waveCrestHalfWidth: debug.waveCrestHalfWidth,
+            waveReplayToken: debug.waveReplayToken
         )
     }
 

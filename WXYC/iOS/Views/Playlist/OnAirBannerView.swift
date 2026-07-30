@@ -50,6 +50,19 @@ struct OnAirBannerView: View {
     /// minus the say-hi chip and its gap. Drives the adaptive width solve.
     @State private var handleAvailableWidth: CGFloat = 0
 
+    /// When the current one-shot grade wave began, or `nil` when the handle is at
+    /// rest. While set, the handle renders per-letter and animates; the stop task
+    /// clears it once the wave completes so the resting handle costs nothing.
+    @State private var waveStart: Date?
+
+    /// Identifies the active wave run so a stale stop task can't clear a newer
+    /// replay's animation out from under it.
+    @State private var waveRunID = 0
+
+    /// The pending "return to rest" task for the active wave, cancelled when a new
+    /// wave supersedes it.
+    @State private var waveStopTask: Task<Void, Never>?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             eyebrow
@@ -112,8 +125,7 @@ struct OnAirBannerView: View {
     }
 
     private var handle: some View {
-        Text(headline)
-            .font(handleFont)
+        handleContent
             .textCase(.uppercase)
             .foregroundStyle(.white)
             .lineSpacing(theme.handleLineSpacing)
@@ -121,6 +133,105 @@ struct OnAirBannerView: View {
             // so long it overflows even at the width floor.
             .lineLimit(theme.adaptiveWidth ? 2 : nil)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Play the wave once when the handle first appears and again whenever
+            // it changes to a new DJ. `waveReplayToken` is the debug replay hook.
+            .onAppear { playWave() }
+            .onChange(of: headline) { playWave() }
+            .onChange(of: theme.waveReplayToken) { playWave() }
+    }
+
+    /// The handle's letters: a single `Text` at rest, or a per-letter row driven
+    /// by the grade wave while it plays. The wave touches only the metric-neutral
+    /// grade axis, so both paths lay out at the same width — the resting `Text`
+    /// keeps SwiftUI's kerning and wrapping, and the animated row pins each letter
+    /// to its kerned advance so it matches that width and nothing reflows when the
+    /// two swap. Advances are measured once here, not per frame, since grade
+    /// leaves them unchanged.
+    @ViewBuilder
+    private var handleContent: some View {
+        if theme.waveEnabled, let waveStart {
+            let width = effectiveWidthAxis
+            let characters = Array(headline.uppercased())
+            let advances = handleCharacterAdvances(for: headline.uppercased(), font: handleCTFont(width: width))
+            TimelineView(.animation) { context in
+                wavingHandle(
+                    characters: characters,
+                    widthAxis: width,
+                    advances: advances,
+                    progress: waveProgress(now: context.date, start: waveStart)
+                )
+            }
+        } else {
+            Text(headline)
+                .font(handleFont)
+        }
+    }
+
+    /// The handle rendered one `Text` per character, each at its own grade for the
+    /// given wave `progress`. Every letter shares `widthAxis` (and every other
+    /// axis) so only grade differs, and each cell is pinned to its kerned
+    /// `advance`, so the row's total width equals the resting handle's — the wave
+    /// can't make it breathe. When advances are unavailable (a handle that doesn't
+    /// shape one glyph per character), the cells fall back to their natural widths.
+    private func wavingHandle(
+        characters: [Character],
+        widthAxis: Double,
+        advances: [CGFloat]?,
+        progress: Double
+    ) -> some View {
+        HStack(spacing: 0) {
+            ForEach(characters.indices, id: \.self) { index in
+                Text(String(characters[index]))
+                    .font(Font(handleCTFont(
+                        width: widthAxis,
+                        grade: wave.grade(
+                            characterIndex: index,
+                            count: characters.count,
+                            progress: progress
+                        )
+                    )))
+                    // Draw the glyph at its natural size, but reserve exactly its
+                    // kerned advance for layout, so a grade-thinned letter can't
+                    // shrink its cell and shift the row.
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(width: advances.map { $0[index] }, alignment: .leading)
+            }
+        }
+    }
+
+    /// The grade wave configured from the theme, resting at the handle's own grade
+    /// so the animation begins and ends at the normal display look.
+    private var wave: HandleGradeWave {
+        HandleGradeWave(
+            baseGrade: theme.handleVariation.grade,
+            depth: theme.waveDepth,
+            crestHalfWidth: theme.waveCrestHalfWidth
+        )
+    }
+
+    /// Elapsed fraction of the wave, clamped to `0...1`.
+    private func waveProgress(now: Date, start: Date) -> Double {
+        guard theme.waveDuration > 0 else { return 1 }
+        return min(max(now.timeIntervalSince(start) / theme.waveDuration, 0), 1)
+    }
+
+    /// Starts the one-shot wave: mark it running so the handle renders per-letter,
+    /// then schedule a return to the resting `Text` once the duration elapses.
+    /// A no-op when the wave is disabled or has no duration.
+    private func playWave() {
+        guard theme.waveEnabled, theme.waveDuration > 0 else {
+            waveStart = nil
+            return
+        }
+        waveRunID += 1
+        let runID = waveRunID
+        waveStart = .now
+        waveStopTask?.cancel()
+        waveStopTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(theme.waveDuration))
+            // Only retire this run — a newer replay may already be playing.
+            if waveRunID == runID { waveStart = nil }
+        }
     }
 
     /// The DJ handle font, rendered across SF Pro's four variable-font axes from
@@ -157,15 +268,19 @@ struct OnAirBannerView: View {
         return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 
-    /// A `CTFont` for the handle at the given width axis, holding the theme's
-    /// other three axes fixed.
+    /// A `CTFont` for the handle at the given width axis (and, for the wave, an
+    /// overridden grade), holding the theme's other axes fixed.
     ///
     /// SwiftUI exposes only discrete `Font.Weight`, so we set the raw
     /// `kCTFontVariationAttribute` on a copy of the system font to drive weight,
     /// width, optical size, and grade continuously, then bridge to SwiftUI.
-    private func handleCTFont(width: Double) -> CTFont {
+    ///
+    /// - Parameter grade: A per-letter grade for the wave; `nil` keeps the theme's
+    ///   grade (the resting look and the width-fit measurement).
+    private func handleCTFont(width: Double, grade: Double? = nil) -> CTFont {
         var variation = theme.handleVariation
         variation.width = width
+        if let grade { variation.grade = grade }
         let base = CTFontCreateUIFontForLanguage(.system, Self.handleFontSize, nil)
             ?? CTFontCreateWithName("SFPro-Regular" as CFString, Self.handleFontSize, nil)
         let attributes: [CFString: Any] = [kCTFontVariationAttribute: variation.variationDictionary]

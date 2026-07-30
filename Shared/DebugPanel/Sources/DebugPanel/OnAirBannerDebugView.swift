@@ -23,6 +23,7 @@ public struct OnAirBannerDebugView: View {
     @State private var indicatorExpanded = true
     @State private var handleExpanded = true
     @State private var adaptiveExpanded = true
+    @State private var waveExpanded = true
     @State private var requestLineExpanded = true
     @State private var spacingExpanded = true
 
@@ -67,6 +68,18 @@ public struct OnAirBannerDebugView: View {
                     Toggle("Condense to fit", isOn: $state.adaptiveWidth)
                     labeledSlider("Width Floor", value: $state.handleWidthFloor, in: SFProFontAxis.width.range, format: "%.0f")
                     Text("When on, the handle narrows its width axis (down to the floor) so a long name stays on one line beside the say-hi chip, without shrinking the point size. \"Width\" above is the base (expanded) width used when the name already fits.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                DisclosureGroup("Handle Wave", isExpanded: $waveExpanded) {
+                    Toggle("Enable wave", isOn: $state.waveEnabled)
+                    Button("Play wave") { state.waveReplayToken += 1 }
+                        .disabled(!state.waveEnabled)
+                    labeledSlider("Duration (s)", value: $state.waveDuration, in: 0.2...3.0)
+                    labeledSlider("Depth", value: $state.waveDepth, in: 0...536, format: "%.0f")
+                    labeledSlider("Crest Width", value: $state.waveCrestHalfWidth, in: 0.1...1.0)
+                    Text("Sweeps a lightening crest across the DJ handle once by dipping only SF Pro's grade axis — which is metric-neutral, so the handle's width never changes. Depth is how far the grade drops at the crest (0 is off); crest width is how many letters light at once. Plays on appear and whenever the handle changes; \"Play wave\" replays it.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
