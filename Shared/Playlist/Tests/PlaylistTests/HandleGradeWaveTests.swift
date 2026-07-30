@@ -211,4 +211,45 @@ struct HandleGradeWaveTests {
         #expect(abs(HandleGradeWave(baseGrade: base, repetitions: 3, spacing: 1).normalizedSpan - 3) < 0.0001)
         #expect(abs(HandleGradeWave(baseGrade: base, repetitions: 3, spacing: 0.5).normalizedSpan - 2) < 0.0001)
     }
+
+    // MARK: - Intensity (the axis-agnostic shape)
+
+    @Test("Intensity rests at 0 at both ends and peaks at 1 under a crest center")
+    func intensityShape() {
+        let wave = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.5)
+        for index in 0..<6 {
+            #expect(wave.intensity(characterIndex: index, count: 6, progress: 0) == 0)
+            #expect(wave.intensity(characterIndex: index, count: 6, progress: 1) == 0)
+        }
+        // Single letter with the crest dead-center at progress 0.25 → full intensity.
+        #expect(abs(wave.intensity(characterIndex: 0, count: 1, progress: 0.25) - 1) < 0.0001)
+    }
+
+    @Test("Intensity stays within 0...1 for any letter, progress, and spacing")
+    func intensityBounds() {
+        let wave = HandleGradeWave(baseGrade: base, depth: 300, crestHalfWidth: 0.25, repetitions: 4, spacing: 0.3)
+        let count = 18
+        for step in 0...60 {
+            let progress = Double(step) / 60
+            for index in 0..<count {
+                let intensity = wave.intensity(characterIndex: index, count: count, progress: progress)
+                #expect(intensity >= 0)
+                #expect(intensity <= 1 + 0.0001)
+            }
+        }
+    }
+
+    @Test("Grade is the base lightened by depth in proportion to intensity")
+    func gradeTracksIntensity() {
+        let wave = HandleGradeWave(baseGrade: base, depth: 420, crestHalfWidth: 0.3, repetitions: 3, spacing: 0.4)
+        let count = 14
+        for step in 0...30 {
+            let progress = Double(step) / 30
+            for index in 0..<count {
+                let intensity = wave.intensity(characterIndex: index, count: count, progress: progress)
+                let grade = wave.grade(characterIndex: index, count: count, progress: progress)
+                #expect(abs(grade - (base - 420 * intensity)) < 0.0001)
+            }
+        }
+    }
 }

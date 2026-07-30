@@ -100,7 +100,27 @@ public struct HandleGradeWave: Hashable, Sendable {
     ///   - progress: The animation phase, clamped into `0...1`.
     /// - Returns: The grade-axis value for that letter at that instant.
     public func grade(characterIndex index: Int, count: Int, progress: Double) -> Double {
-        guard count > 0 else { return baseGrade }
+        baseGrade - depth * intensity(characterIndex: index, count: count, progress: progress)
+    }
+
+    /// The wave's intensity for the letter at `index` — how strongly the crest
+    /// train lights it at animation `progress`, `0` (untouched) ... `1` (a crest
+    /// centered dead on it).
+    ///
+    /// This is the pure spatial/temporal shape of the wave, independent of any
+    /// font axis: ``grade(characterIndex:count:progress:)`` maps it onto the grade
+    /// axis, and a caller can map the same value onto others (e.g. weight, for a
+    /// thinner crest) since the handle's fixed per-letter cells keep the total
+    /// width constant whatever axis moves.
+    ///
+    /// - Parameters:
+    ///   - index: The letter's position, `0..<count`.
+    ///   - count: The number of letters in the handle. Non-positive counts return
+    ///     `0` defensively.
+    ///   - progress: The animation phase, clamped into `0...1`.
+    /// - Returns: The lighting intensity for that letter at that instant, `0...1`.
+    public func intensity(characterIndex index: Int, count: Int, progress: Double) -> Double {
+        guard count > 0 else { return 0 }
 
         let progress = min(max(progress, 0), 1)
         let halfWidth = max(crestHalfWidth, .ulpOfOne)
@@ -115,7 +135,7 @@ public struct HandleGradeWave: Hashable, Sendable {
         // `normalizedSpan` over the animation; crest i launches `spacing` sweeps
         // after crest i-1, so when spacing < 1 several are mid-sweep at once. A
         // crest is on the string only while its phase is in (0, 1), so both global
-        // endpoints — where none is mid-sweep — rest at the base grade.
+        // endpoints — where none is mid-sweep — rest (intensity 0).
         let sweepTime = progress * normalizedSpan
         var peak = 0.0
         for crest in 0..<repetitions {
@@ -129,10 +149,10 @@ public struct HandleGradeWave: Hashable, Sendable {
             guard abs(distance) < 1 else { continue }
 
             // Raised cosine: 1 at the crest center, easing to 0 at its edges.
-            // Where crests overlap a letter the deepest wins, so the dip never
-            // exceeds `depth`.
+            // Where crests overlap a letter the strongest wins, so intensity
+            // never exceeds 1.
             peak = max(peak, 0.5 * (1 + cos(.pi * distance)))
         }
-        return baseGrade - depth * peak
+        return peak
     }
 }

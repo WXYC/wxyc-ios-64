@@ -181,20 +181,24 @@ struct OnAirBannerView: View {
     ) -> some View {
         HStack(spacing: 0) {
             ForEach(characters.indices, id: \.self) { index in
+                // One wave intensity per letter drives both axes: grade for a
+                // subtle, metric-neutral dip and weight for a much thinner crest.
+                let intensity = wave.intensity(
+                    characterIndex: index,
+                    count: characters.count,
+                    progress: progress
+                )
                 Text(String(characters[index]))
                     .font(Font(handleCTFont(
                         width: widthAxis,
-                        grade: wave.grade(
-                            characterIndex: index,
-                            count: characters.count,
-                            progress: progress
-                        )
+                        grade: theme.handleVariation.grade - theme.waveDepth * intensity,
+                        weight: theme.handleVariation.weight - theme.waveWeightDepth * intensity
                     )))
-                    // Draw the glyph at its natural size, but reserve exactly its
-                    // kerned advance for layout, so a grade-thinned letter can't
-                    // shrink its cell and shift the row.
+                    // Draw the glyph at its natural size, centered in exactly its
+                    // kerned base-width cell — so a thinned letter keeps the row's
+                    // total width and stays centered as its strokes narrow.
                     .fixedSize(horizontal: true, vertical: false)
-                    .frame(width: advances.map { $0[index] }, alignment: .leading)
+                    .frame(width: advances.map { $0[index] }, alignment: .center)
             }
         }
     }
@@ -286,12 +290,18 @@ struct OnAirBannerView: View {
     /// `kCTFontVariationAttribute` on a copy of the system font to drive weight,
     /// width, optical size, and grade continuously, then bridge to SwiftUI.
     ///
-    /// - Parameter grade: A per-letter grade for the wave; `nil` keeps the theme's
-    ///   grade (the resting look and the width-fit measurement).
-    private func handleCTFont(width: Double, grade: Double? = nil) -> CTFont {
+    /// - Parameters:
+    ///   - grade: A per-letter grade for the wave; `nil` keeps the theme's grade
+    ///     (the resting look and the width-fit measurement).
+    ///   - weight: A per-letter weight for the wave, used to thin a letter under
+    ///     the crest past what grade alone can; `nil` keeps the theme's weight.
+    ///     The handle's fixed per-letter cells absorb the width change, so the
+    ///     total stays constant.
+    private func handleCTFont(width: Double, grade: Double? = nil, weight: Double? = nil) -> CTFont {
         var variation = theme.handleVariation
         variation.width = width
         if let grade { variation.grade = grade }
+        if let weight { variation.weight = weight }
         let base = CTFontCreateUIFontForLanguage(.system, Self.handleFontSize, nil)
             ?? CTFontCreateWithName("SFPro-Regular" as CFString, Self.handleFontSize, nil)
         let attributes: [CFString: Any] = [kCTFontVariationAttribute: variation.variationDictionary]
