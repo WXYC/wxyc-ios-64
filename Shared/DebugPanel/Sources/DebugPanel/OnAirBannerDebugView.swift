@@ -80,10 +80,11 @@ public struct OnAirBannerDebugView: View {
                         .disabled(!state.waveEnabled)
                     labeledSlider("Duration (s)", value: $state.waveDuration, in: 0.2...3.0)
                     labeledSlider("Depth", value: $state.waveDepth, in: 0...536, format: "%.0f")
+                    labeledSlider("Thinning", value: $state.waveWeightDepth, in: 0...647, format: "%.0f")
                     labeledSlider("Crest Width", value: $state.waveCrestHalfWidth, in: 0.1...1.0)
                     labeledSlider("Repetitions", value: $state.waveRepetitions, in: 1...5, format: "%.0f", step: 1)
                     labeledSlider("Spacing", value: $state.waveSpacing, in: 0.1...1.0)
-                    Text("Sweeps a lightening crest across the DJ handle by dipping only SF Pro's grade axis — which is metric-neutral, so the handle's width never changes. Depth is how far the grade drops at the crest (0 is off); crest width is how many letters light at once; repetitions is how many crests sweep across. Spacing sets how far apart they launch — 1 plays them one at a time, lower values overlap several at once so the animation reads snappier. Plays on appear and whenever the handle changes; \"Play wave\" replays it.")
+                    Text("Sweeps a lightening crest across the DJ handle. Depth dips the grade axis (metric-neutral, subtle) and thinning dips the weight axis for a much thinner, near-hairline crest — the fixed per-letter cells absorb the width change so the handle's total width never moves. Crest width is how many letters light at once; repetitions is how many crests sweep across. Spacing sets how far apart they launch — 1 plays them one at a time, lower values overlap several at once so the animation reads snappier. Plays on appear and whenever the handle changes; \"Play wave\" replays it.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

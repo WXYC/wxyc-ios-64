@@ -303,6 +303,7 @@ struct PlaylistView: View {
             waveEnabled: debug.waveEnabled,
             waveDuration: debug.waveDuration,
             waveDepth: debug.waveDepth,
+            waveWeightDepth: debug.waveWeightDepth,
             waveCrestHalfWidth: debug.waveCrestHalfWidth,
             waveRepetitions: Int(debug.waveRepetitions.rounded()),
             waveSpacing: debug.waveSpacing,

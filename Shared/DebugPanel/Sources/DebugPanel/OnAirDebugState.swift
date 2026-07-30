@@ -138,6 +138,12 @@ public final class OnAirDebugState {
         didSet { UserDefaults.standard.set(waveDepth, forKey: "OnAirDebug.waveDepth") }
     }
 
+    /// How far the wave also thins a letter's weight at the crest peak, for a much
+    /// thinner crest than grade alone reaches (`0` leaves weight alone).
+    public var waveWeightDepth: Double {
+        didSet { UserDefaults.standard.set(waveWeightDepth, forKey: "OnAirDebug.waveWeightDepth") }
+    }
+
     /// The wave crest's half-width as a fraction of the handle, `(0, 1]`.
     public var waveCrestHalfWidth: Double {
         didSet { UserDefaults.standard.set(waveCrestHalfWidth, forKey: "OnAirDebug.waveCrestHalfWidth") }
@@ -179,6 +185,7 @@ public final class OnAirDebugState {
         self.waveEnabled = defaults.object(forKey: "OnAirDebug.waveEnabled") as? Bool ?? true
         self.waveDuration = defaults.object(forKey: "OnAirDebug.waveDuration") as? Double ?? 0.9
         self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 336
+        self.waveWeightDepth = defaults.object(forKey: "OnAirDebug.waveWeightDepth") as? Double ?? 0
         self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.35
         self.waveRepetitions = defaults.object(forKey: "OnAirDebug.waveRepetitions") as? Double ?? 1
         self.waveSpacing = defaults.object(forKey: "OnAirDebug.waveSpacing") as? Double ?? 1

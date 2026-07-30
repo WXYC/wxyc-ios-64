@@ -75,6 +75,13 @@ struct OnAirBannerTheme: Equatable {
     /// so the wave lightens rather than darkens.
     var waveDepth: Double = 336
 
+    /// How far, in weight (`wght`) units, the wave *also* thins a letter at the
+    /// crest's peak — grade bottoms out well short of hairline, so weight carries
+    /// the crest the rest of the way. `0` leaves weight alone (grade-only wave).
+    /// Weight changes a glyph's advance, but the fixed per-letter cells absorb it,
+    /// so the handle's total width stays constant.
+    var waveWeightDepth: Double = 0
+
     /// The wave crest's half-width as a fraction of the handle, `(0, 1]`. Larger
     /// lights more letters at once; smaller is a tighter, crisper highlight.
     var waveCrestHalfWidth: Double = 0.35
