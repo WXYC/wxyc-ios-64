@@ -1,0 +1,67 @@
+WXYC iOS — Release Notes
+Version 3.2
+Range: v3.1 (2026-01-23) → v3.2
+
+The complete, public-facing notes for 3.2, combining everything from RC1–RC3 and the post-RC3 work folded into the shipping build. Only changes a listener actually experiences are included.
+
+
+========================================================================
+WHAT'S NEW IN 3.2 (scannable)
+========================================================================
+
+A refreshed playlist — The playlist tab leads with an on-air banner showing who's currently on the air, with a wave that sweeps across the DJ's name as they come on; tap it to open the DJ's controls. Each track is stamped with the time it played, talksets and breakpoints fold into a single "mic break" marker, and album artwork loads the moment you open the app instead of waiting for you to scroll.
+
+On Tour — A new tab for discovering upcoming Triangle-area concerts by the artists WXYC plays. Browse a poster-first list grouped by month, filter by date, venue, and genre, and open a detail view with a venue map, an artist bio, and a ticket link. Share any show as a link or add it straight to your calendar. A "Heard on WXYC" shelf highlights shows by artists in the station's rotation, and a Box Office ticket appears in the playlist when an artist you're hearing has a show coming up.
+
+Spotlight & Siri — Search WXYC concerts, venues, artists, and now-playing tracks right from Spotlight, ask Siri about tours near you, and add a show to your calendar by voice.
+
+Liked Songs — Tap the heart on any track to save it. Your new Liked tab keeps everything you've liked, on your device.
+
+More reliable streaming — The audio engine has been overhauled for far fewer dropouts: the stream now reconnects when it stalls, recovers from silent buffering, and handles switching between headphones, CarPlay, and Bluetooth more gracefully. With Handoff, you can move the live stream from your iPhone to your Mac or iPad — or back — with a tap.
+
+Plus a tab bar tinted to your theme, a smooth crossfade between light and dark mode, more reliable album artwork in your widgets, and a range of stability fixes.
+
+
+========================================================================
+EVERYTHING IN 3.2
+========================================================================
+
+NEW
+- New plasma app icon across iPhone, iPad, Mac, and Apple TV.
+- Handoff — move the live stream between your Apple devices; a Handoff banner appears while you're listening and continues the stream on the device you pick up.
+- On Tour tab — upcoming Triangle-area concerts by WXYC-played artists: a poster-first list grouped by month, date/venue/genre filters, and a concert detail with a parallax poster, venue map, artist bio, and ticket link.
+- "Heard on WXYC" shelf — On Tour shows by artists in the station's rotation.
+- Box Office ticket — a show reminder that appears in the playlist and now-playing when an artist you're hearing has a concert coming up.
+- Share a show — send any concert as a link that opens straight to its poster (or to a keepsake if the show has already passed).
+- Add to Calendar — add a concert to your calendar from the show detail or a list row.
+- Spotlight & Siri — search WXYC concerts, venues, artists, and now-playing tracks from Spotlight; ask Siri about tours near you; add a show to your calendar or open one by voice; opening a track result jumps the playlist straight to it.
+- Liked Songs — heart any track and keep them all in a new on-device Liked tab.
+- Station tab + Request Line — submit a request anonymously, with the WXYC logo above the tab.
+- On-air banner — the current DJ (or Auto DJ) pinned above the playlist; tap to open DJ controls.
+- Siri "Play WXYC" — a voice intent that actually starts the stream.
+- A standard tab bar, tinted with your theme accent, replacing the old paged layout.
+- A clock in playlist rows showing each track's play time.
+- "Mic break" seams — back-to-back talksets and breakpoints between songs coalesce into a single "mic break" marker in the playlist, retiring the old "Talkset" label and the separate breakpoint rows.
+
+IMPROVED
+- Streaming reliability: auto-reconnect on a stall or drop, a startup watchdog for silent buffering, reconnection held across app background/foreground, retry instead of giving up, and smoother handling when you switch between headphones, CarPlay, and Bluetooth.
+- Widgets: album art loads reliably, Smart Stack and Spotlight relevance hints, and a play-button fix.
+- Theming: a crossfade between light and dark mode, configurable LCD segment brightness, theme-picker keyboard shortcuts, and a tab tint that follows the LCD's active brightness.
+- Playlist artwork loads on launch without needing to scroll.
+- On-air banner: the DJ's name plays a one-shot "grade wave" — a single lightening crest sweeps across the letters when the banner appears or the DJ changes, without shifting the name's width.
+- On Tour: months as section headers, "Not interested" to dismiss a show from the shelf, and tidier equal-height cards.
+- Liked rows now match the look of the playlist.
+
+FIXED
+- The on-air banner no longer falsely shows "AUTO DJ" while a human DJ is live.
+- The party horn is no longer silenced when your ringer is off.
+- The visualizer no longer freezes after pause/resume or a second play session.
+- More reliable anonymous sign-in.
+- Shared links and web links now open the right screen in the app.
+- The Box Office ticket no longer overlaps the headliner's name on the concert detail.
+- Artist bios on the track and concert detail render cleanly — no orphaned references or stray punctuation, and they load reliably.
+- The playlist no longer shows blank "Unknown / Unknown" rows for guest-DJ join/leave markers.
+- The stream no longer reports a false failure when your connection briefly drops and reconnects.
+- Fixed a lock-screen hang when updating now-playing info.
+- The Request Line now shows an address you can copy when no Mail app is set up.
+- Numerous CarPlay, playback, and artwork-caching stability fixes.
