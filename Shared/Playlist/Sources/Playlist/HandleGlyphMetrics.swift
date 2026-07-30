@@ -3,10 +3,10 @@
 //  Playlist
 //
 //  Measures how much horizontal space each character of the on-air DJ handle
-//  occupies in its real, shaped line — kerning included — so the handle's grade
-//  wave can be drawn letter-by-letter without widening.
+//  occupies in its real, shaped line — kerning included — so the handle's wave
+//  can be drawn letter-by-letter without widening.
 //
-//  The wave varies each letter's grade, which a single `Text` can't do, so the
+//  The wave varies each letter's font axes, which a single `Text` can't do, so the
 //  animating handle is a row of one `Text` per character. An `HStack` of `Text`s
 //  lays each glyph at its own advance with no kerning between them, so the row is
 //  a touch wider than the kerned single `Text` it swaps with — the handle appears

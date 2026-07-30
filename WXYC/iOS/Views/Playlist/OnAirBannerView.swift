@@ -141,12 +141,13 @@ struct OnAirBannerView: View {
     }
 
     /// The handle's letters: a single `Text` at rest, or a per-letter row driven
-    /// by the grade wave while it plays. The wave touches only the metric-neutral
-    /// grade axis, so both paths lay out at the same width — the resting `Text`
-    /// keeps SwiftUI's kerning and wrapping, and the animated row pins each letter
-    /// to its kerned advance so it matches that width and nothing reflows when the
-    /// two swap. Advances are measured once here, not per frame, since grade
-    /// leaves them unchanged.
+    /// by the wave while it plays. The animated row pins each letter to its kerned
+    /// base-metric advance, so it totals the resting `Text`'s width and nothing
+    /// reflows when the two swap — the width is held by the fixed cells, not by the
+    /// axes the wave moves (grade is metric-neutral, but weight is not). The
+    /// resting `Text` keeps SwiftUI's kerning and wrapping. Advances are measured
+    /// once here at the base metrics, not per frame, since the cells don't change
+    /// as the wave plays.
     @ViewBuilder
     private var handleContent: some View {
         if theme.waveEnabled, let waveStart {
@@ -168,19 +169,21 @@ struct OnAirBannerView: View {
         }
     }
 
-    /// The handle rendered one `Text` per character, each at its own grade for the
-    /// given wave `progress`. Every letter shares `widthAxis` (and every other
-    /// axis) so only grade differs, and each cell is pinned to its kerned
-    /// `advance`, so the row's total width equals the resting handle's — the wave
-    /// can't make it breathe. When advances are unavailable (a handle that doesn't
-    /// shape one glyph per character), the cells fall back to their natural widths.
+    /// The handle rendered one `Text` per character, each carrying the wave's
+    /// per-letter grade and weight (from ``HandleWaveAxes``) for the given
+    /// `progress`. Every letter shares `widthAxis`; each cell is pinned to its
+    /// kerned base-metric `advance`, so the row's total width equals the resting
+    /// handle's — the wave can't make it breathe, even though weight changes a
+    /// glyph's advance. When advances are unavailable (a handle that doesn't shape
+    /// one glyph per character), the cells fall back to their natural widths.
     private func wavingHandle(
         characters: [Character],
         widthAxis: Double,
         advances: [CGFloat]?,
         progress: Double
     ) -> some View {
-        HStack(spacing: 0) {
+        let axes = waveAxes
+        return HStack(spacing: 0) {
             ForEach(characters.indices, id: \.self) { index in
                 // One wave intensity per letter drives both axes: grade for a
                 // subtle, metric-neutral dip and weight for a much thinner crest.
@@ -192,8 +195,8 @@ struct OnAirBannerView: View {
                 Text(String(characters[index]))
                     .font(Font(handleCTFont(
                         width: widthAxis,
-                        grade: theme.handleVariation.grade - theme.waveDepth * intensity,
-                        weight: theme.handleVariation.weight - theme.waveWeightDepth * intensity
+                        grade: axes.grade(atIntensity: intensity),
+                        weight: axes.weight(atIntensity: intensity)
                     )))
                     // Draw the glyph at its natural size, centered in exactly its
                     // kerned base-width cell — so a thinned letter keeps the row's
@@ -214,6 +217,17 @@ struct OnAirBannerView: View {
         )
     }
 
+    /// The per-letter axis mapping: dips the handle's resting grade and weight
+    /// toward a lighter, thinner glyph in proportion to the wave intensity.
+    private var waveAxes: HandleWaveAxes {
+        HandleWaveAxes(
+            restingGrade: theme.handleVariation.grade,
+            gradeDepth: theme.waveDepth,
+            restingWeight: theme.handleVariation.weight,
+            weightDepth: theme.waveWeightDepth
+        )
+    }
+
     /// The full run time of the wave: each crest's sweep stays
     /// ``OnAirBannerTheme/waveDuration`` long, and the crest train spans
     /// ``HandleGradeWave/normalizedSpan`` sweeps — so extra repetitions lengthen
@@ -225,8 +239,7 @@ struct OnAirBannerView: View {
     /// Elapsed fraction of the whole (possibly repeating) wave, clamped to `0...1`.
     /// The wave model folds this into the individual sweeps.
     private func waveProgress(now: Date, start: Date) -> Double {
-        guard waveTotalDuration > 0 else { return 1 }
-        return min(max(now.timeIntervalSince(start) / waveTotalDuration, 0), 1)
+        handleWaveProgress(elapsed: now.timeIntervalSince(start), totalDuration: waveTotalDuration)
     }
 
     /// Starts the one-shot wave: mark it running so the handle renders per-letter,
@@ -282,8 +295,8 @@ struct OnAirBannerView: View {
         return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 
-    /// A `CTFont` for the handle at the given width axis (and, for the wave, an
-    /// overridden grade), holding the theme's other axes fixed.
+    /// A `CTFont` for the handle at the given width axis (and, for the wave,
+    /// overridden grade and weight), holding the theme's other axes fixed.
     ///
     /// SwiftUI exposes only discrete `Font.Weight`, so we set the raw
     /// `kCTFontVariationAttribute` on a copy of the system font to drive weight,
