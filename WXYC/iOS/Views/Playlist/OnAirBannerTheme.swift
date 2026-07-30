@@ -68,23 +68,23 @@ struct OnAirBannerTheme: Equatable {
     var waveEnabled: Bool = true
 
     /// Duration of one handle-wave sweep, in seconds.
-    var waveDuration: TimeInterval = 0.9
+    var waveDuration: TimeInterval = 2
 
     /// How far, in grade units, the wave lightens a letter at the crest's peak.
     /// `0` disables the effect. The handle rests near the top of the grade range,
     /// so the wave lightens rather than darkens.
-    var waveDepth: Double = 336
+    var waveDepth: Double = 536
 
     /// How far, in weight (`wght`) units, the wave *also* thins a letter at the
     /// crest's peak — grade bottoms out well short of hairline, so weight carries
     /// the crest the rest of the way. `0` leaves weight alone (grade-only wave).
     /// Weight changes a glyph's advance, but the fixed per-letter cells absorb it,
     /// so the handle's total width stays constant.
-    var waveWeightDepth: Double = 0
+    var waveWeightDepth: Double = 647
 
     /// The wave crest's half-width as a fraction of the handle, `(0, 1]`. Larger
     /// lights more letters at once; smaller is a tighter, crisper highlight.
-    var waveCrestHalfWidth: Double = 0.35
+    var waveCrestHalfWidth: Double = 0.75
 
     /// How many crests sweep across the handle per animation, `>= 1`.
     var waveRepetitions: Int = 1
@@ -92,7 +92,7 @@ struct OnAirBannerTheme: Equatable {
     /// The launch interval between consecutive crests, as a fraction of one sweep,
     /// `(0, 1]`. `1` keeps the sweeps sequential; below `1` they overlap — several
     /// ride the handle at once and the animation finishes sooner (snappier).
-    var waveSpacing: Double = 1
+    var waveSpacing: Double = 0.66
 
     /// A replay token: bumping it re-triggers the wave. The debug controls drive
     /// this; nothing changes it in release, so the wave only plays on appear and

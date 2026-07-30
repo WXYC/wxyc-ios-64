@@ -183,11 +183,11 @@ public final class OnAirDebugState {
         self.onAirSpacing = defaults.object(forKey: "OnAirDebug.onAirSpacing") as? Double ?? 0.0
         self.handleLineSpacing = defaults.object(forKey: "OnAirDebug.handleLineSpacing") as? Double ?? 0.0
         self.waveEnabled = defaults.object(forKey: "OnAirDebug.waveEnabled") as? Bool ?? true
-        self.waveDuration = defaults.object(forKey: "OnAirDebug.waveDuration") as? Double ?? 0.9
-        self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 336
-        self.waveWeightDepth = defaults.object(forKey: "OnAirDebug.waveWeightDepth") as? Double ?? 0
-        self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.35
+        self.waveDuration = defaults.object(forKey: "OnAirDebug.waveDuration") as? Double ?? 2
+        self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 536
+        self.waveWeightDepth = defaults.object(forKey: "OnAirDebug.waveWeightDepth") as? Double ?? 647
+        self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.75
         self.waveRepetitions = defaults.object(forKey: "OnAirDebug.waveRepetitions") as? Double ?? 1
-        self.waveSpacing = defaults.object(forKey: "OnAirDebug.waveSpacing") as? Double ?? 1
+        self.waveSpacing = defaults.object(forKey: "OnAirDebug.waveSpacing") as? Double ?? 0.66
     }
 }
