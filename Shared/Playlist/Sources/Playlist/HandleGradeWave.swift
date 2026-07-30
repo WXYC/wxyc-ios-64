@@ -2,17 +2,19 @@
 //  HandleGradeWave.swift
 //  Playlist
 //
-//  A one-shot "wave" for the on-air DJ handle: a single lightening crest that
-//  sweeps across the letters once when the handle appears or changes.
+//  A one-shot "wave" for the on-air DJ handle: a train of lightening crests that
+//  sweep across the letters once when the handle appears or changes.
 //
-//  The wave modulates only SF Pro's grade (`GRAD`) axis. Grade is metric-neutral
-//  — it changes a glyph's apparent weight without changing its advance width — so
-//  the handle's total horizontal width is unchanged while the wave plays. Every
-//  letter rests at ``baseGrade`` at progress 0 and 1, so the string starts and
-//  ends at its normal display metrics and the animation reads as a single pass.
+//  This model is the wave's pure *shape* — for each letter, at each moment, how
+//  strongly a crest lights it (``intensity``), from 0 (untouched) to 1 (a crest
+//  centered dead on it). It knows nothing about fonts: the view maps that
+//  intensity onto SF Pro axes (grade for a subtle, metric-neutral dip; weight for
+//  a thinner crest). Every letter rests at intensity 0 at progress 0 and 1, so the
+//  handle starts and ends at its normal look and the animation reads as a single
+//  pass.
 //
-//  The model is pure (no font, no view, no clock), so the crest shape and its
-//  boundary behavior are unit-tested without a device.
+//  Being pure (no font, no view, no clock), the crest shape and its boundary
+//  behavior are unit-tested without a device.
 //
 //  Created by Jake Bromberg on 07/29/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -20,21 +22,12 @@
 
 import Foundation
 
-/// A single lightening crest that sweeps across the DJ handle's letters exactly
-/// once by lowering SF Pro's grade axis, then returns every letter to its resting
-/// grade. Because only grade moves, the handle's width is unaffected.
+/// The shape of the on-air handle's lightening "wave": a train of raised-cosine
+/// crests that sweep across the letters and return them to rest. It reports a
+/// per-letter ``intensity(characterIndex:count:progress:)`` in `0...1` that the
+/// view maps onto whatever font axes thin a glyph; because the handle pins each
+/// letter to a fixed cell, the total width is unchanged whatever axis moves.
 public struct HandleGradeWave: Hashable, Sendable {
-    /// The resting grade — the value every letter holds at progress 0 and 1, and
-    /// the value the crest lightens *away from*. Set to the handle's display grade
-    /// so the wave begins and ends at the normal look.
-    public var baseGrade: Double
-
-    /// How far, in grade units, the crest lightens a letter at its peak. The most
-    /// affected letter reaches `baseGrade − depth`. The handle ships near the top
-    /// of the grade range, so the wave lightens (dips grade) rather than darkens —
-    /// there's far more travel below the resting grade than above it.
-    public var depth: Double
-
     /// The crest's half-width as a fraction of the whole string, `(0, 1]`. Larger
     /// values light more letters at once (a broad swell); smaller values light a
     /// tighter band (a crisp highlight sweeping letter to letter).
@@ -42,8 +35,8 @@ public struct HandleGradeWave: Hashable, Sendable {
 
     /// How many crests sweep across the handle over one animation, `>= 1`. Because
     /// each crest enters and exits off the ends at rest, the two global endpoints
-    /// sit at ``baseGrade``, so the handle still begins and ends at its normal
-    /// metrics however the crests are spaced.
+    /// sit at intensity 0, so the handle still begins and ends at its normal look
+    /// however the crests are spaced.
     public var repetitions: Int
 
     /// The launch interval between consecutive crests, as a fraction of one
@@ -55,14 +48,10 @@ public struct HandleGradeWave: Hashable, Sendable {
     public var spacing: Double
 
     public init(
-        baseGrade: Double = SFProFontAxis.grade.defaultValue,
-        depth: Double = 336,
         crestHalfWidth: Double = 0.35,
         repetitions: Int = 1,
         spacing: Double = 1
     ) {
-        self.baseGrade = baseGrade
-        self.depth = depth
         self.crestHalfWidth = crestHalfWidth
         self.repetitions = repetitions
         self.spacing = spacing
@@ -75,43 +64,27 @@ public struct HandleGradeWave: Hashable, Sendable {
 
     /// The animation's length in single-sweep units: `1` for a lone crest, growing
     /// by ``spacing`` for each additional crest. The view scales the per-sweep
-    /// ``HandleGradeWave`` duration by this, so overlapping crests (spacing < 1)
-    /// finish in proportionally less time.
+    /// duration by this, so overlapping crests (spacing < 1) finish in
+    /// proportionally less time.
     public var normalizedSpan: Double {
         Double(max(1, repetitions) - 1) * clampedSpacing + 1
     }
 
-    /// The grade for the letter at `index` (of `count` letters) at animation
-    /// `progress` in `0...1`.
+    /// The wave's intensity for the letter at `index` (of `count` letters) at
+    /// animation `progress` in `0...1` — how strongly the crest train lights it,
+    /// `0` (untouched) ... `1` (a crest centered dead on it).
     ///
     /// A train of ``repetitions`` crests sweeps across the string, each launching
     /// ``spacing`` sweeps after the last. A crest's center travels from just before
-    /// the first letter to just past the last, lightening the letters within a
-    /// ``crestHalfWidth`` of it by a raised-cosine bump that peaks at
-    /// `baseGrade − depth` dead-center. At both endpoints no crest is mid-sweep, so
-    /// the whole string sits at ``baseGrade``; when ``spacing`` is below `1` several
-    /// crests overlap the string at once, and where two cover the same letter the
-    /// deeper lightening wins so the dip never exceeds ``depth``.
+    /// the first letter to just past the last, lighting the letters within a
+    /// ``crestHalfWidth`` of it by a raised-cosine bump that peaks at `1`
+    /// dead-center. At both endpoints no crest is mid-sweep, so the whole string
+    /// rests at `0`; when ``spacing`` is below `1` several crests overlap the
+    /// string at once, and where two cover the same letter the stronger wins so
+    /// intensity never exceeds `1`.
     ///
-    /// - Parameters:
-    ///   - index: The letter's position, `0..<count`.
-    ///   - count: The number of letters in the handle. Non-positive counts return
-    ///     ``baseGrade`` defensively.
-    ///   - progress: The animation phase, clamped into `0...1`.
-    /// - Returns: The grade-axis value for that letter at that instant.
-    public func grade(characterIndex index: Int, count: Int, progress: Double) -> Double {
-        baseGrade - depth * intensity(characterIndex: index, count: count, progress: progress)
-    }
-
-    /// The wave's intensity for the letter at `index` — how strongly the crest
-    /// train lights it at animation `progress`, `0` (untouched) ... `1` (a crest
-    /// centered dead on it).
-    ///
-    /// This is the pure spatial/temporal shape of the wave, independent of any
-    /// font axis: ``grade(characterIndex:count:progress:)`` maps it onto the grade
-    /// axis, and a caller can map the same value onto others (e.g. weight, for a
-    /// thinner crest) since the handle's fixed per-letter cells keep the total
-    /// width constant whatever axis moves.
+    /// The view maps this onto SF Pro axes (grade, weight); it's the pure
+    /// spatial/temporal shape of the wave, independent of any font.
     ///
     /// - Parameters:
     ///   - index: The letter's position, `0..<count`.
