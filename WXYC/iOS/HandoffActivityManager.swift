@@ -31,7 +31,6 @@ extension NSUserActivity: CurrentActivityControlling {}
 final class HandoffActivityManager {
     private let makeActivity: () -> CurrentActivityControlling
     private var currentActivity: CurrentActivityControlling?
-    private var isCurrentlyPlaying = false
 
     init(makeActivity: @escaping () -> CurrentActivityControlling = { HandoffActivityManager.makeDefaultActivity() }) {
         self.makeActivity = makeActivity
@@ -47,8 +46,10 @@ final class HandoffActivityManager {
 
     /// Advertise a Handoff activity only while the stream is actually playing.
     func setPlaybackState(isPlaying: Bool) {
-        guard isPlaying != isCurrentlyPlaying else { return }
-        isCurrentlyPlaying = isPlaying
+        // `currentActivity != nil` is the single source of truth for "currently
+        // advertising a Handoff activity", so the transition guard reads it
+        // directly rather than mirroring it into a second stored flag.
+        guard isPlaying != (currentActivity != nil) else { return }
         if isPlaying {
             let activity = makeActivity()
             activity.becomeCurrent()
