@@ -21,15 +21,27 @@ public protocol SessionTokenProvider: Sendable {
     /// Returns a valid session token, performing authentication if needed.
     func token() async throws -> String
 
-    /// Forces a fresh session token, discarding any cached/stored one.
+    /// Forces a fresh session token, discarding any cached/stored one that
+    /// still matches `previousToken`.
     ///
     /// Callers reach for this after a server rejects the token `token()`
     /// returned (a 401 response) — the cached token is stale or was revoked
     /// server-side, so retrying with the same value would just 401 again.
-    /// The concrete `AuthenticationService` (MusicShareKit) implements this
-    /// by clearing its cached/keychain session and signing in fresh; it's
-    /// declared here, on the protocol, so callers in `Concerts` and
+    /// `previousToken` is the exact value that was rejected; conformers use
+    /// it to tell "nobody has refreshed since I got 401'd" (do the work)
+    /// apart from "another caller already refreshed past this" (hand back
+    /// what's cached now, no redundant network round trip).
+    ///
+    /// This is a concurrency-sensitive method: a burst of authed calls that
+    /// all 401 on the same rejected token (e.g. several proxy fetches firing
+    /// at once on a cold launch with a stale session) must produce exactly
+    /// one fresh sign-in, and every caller must receive that same fresh
+    /// token — none should see a spurious cancellation just because another
+    /// caller's recovery ran first. The concrete `AuthenticationService`
+    /// (MusicShareKit) implements this by coalescing concurrent callers onto
+    /// a single in-flight sign-in rather than cancelling and restarting one
+    /// another. Declared here, on the protocol, so callers in `Concerts` and
     /// `Metadata` can trigger that recovery without depending on
     /// MusicShareKit directly.
-    func reauthenticate() async throws -> String
+    func reauthenticate(previousToken: String) async throws -> String
 }
