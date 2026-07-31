@@ -21,6 +21,27 @@ public final actor PlaylistService: Sendable {
     private let cacheCoordinator: CacheCoordinator
     private static let cacheKey = PlaylistCacheKey.playlist
     private static let cacheLifespan: TimeInterval = 15 * 60 // 15 minutes
+
+    // MARK: - Live updates (SSE)
+
+    /// The `live-fs-topic` SSE source, or `nil` when live updates aren't enabled
+    /// for this instance (the default — watchOS/tvOS/widgets stay poll-only).
+    /// When present, `PlaylistService` opens a subscription while foregrounded
+    /// and applies `insert`/`update` events between reconciliation polls. See
+    /// WXYC/wxyc-ios-64#269.
+    private let liveEventSource: (any LiveFsEventSource)?
+
+    /// The running SSE consume loop, or `nil` when backgrounded / not enabled.
+    private var liveUpdatesTask: Task<Void, Never>?
+
+    /// The app's current foreground state. The SSE subscription is opened only
+    /// while foregrounded and torn down on background — a long-lived socket in
+    /// the background is wasteful and the OS reclaims it anyway.
+    private var isForegrounded = false
+
+    /// Reconnect backoff bounds for the SSE consume loop.
+    private static let minReconnectBackoff: Duration = .seconds(1)
+    private static let maxReconnectBackoff: Duration = .seconds(30)
     
     /// Collection of continuations for broadcasting to multiple observers
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
@@ -38,20 +59,47 @@ public final actor PlaylistService: Sendable {
     /// on subsequent subscriptions.
     private var cacheLoaded = false
 
-    public init(
+    /// Designated initializer. Takes the live-updates source directly so tests
+    /// can inject a scripted `MockLiveFsEventSource`; app code uses the
+    /// `liveUpdatesEnabled` convenience initializer below instead.
+    init(
         fetcher: PlaylistFetcherProtocol = PlaylistFetcher(),
         interval: TimeInterval = 30,
-        cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist
+        cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist,
+        liveEventSource: (any LiveFsEventSource)?
     ) {
         self.fetcher = fetcher
         self.interval = interval
         self.cacheCoordinator = cacheCoordinator
-        
+        self.liveEventSource = liveEventSource
+
         // Start loading cached playlist immediately.
         // Observers will await this task before receiving their first value.
         cacheLoadTask = Task { [self] in
             await self.loadCachedPlaylist()
         }
+    }
+
+    /// Creates a `PlaylistService`.
+    ///
+    /// - Parameter liveUpdatesEnabled: When `true`, the service opens a
+    ///   `live-fs-topic` SSE subscription while foregrounded (see
+    ///   ``setForegrounded(_:)``) and applies `insert`/`update` events between
+    ///   reconciliation polls, so a caller should pair it with a long `interval`
+    ///   (e.g. 300 s). Defaults to `false`, preserving the poll-only behavior
+    ///   for watchOS/tvOS/widgets. Only the iOS app enables it.
+    public init(
+        fetcher: PlaylistFetcherProtocol = PlaylistFetcher(),
+        interval: TimeInterval = 30,
+        cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist,
+        liveUpdatesEnabled: Bool = false
+    ) {
+        self.init(
+            fetcher: fetcher,
+            interval: interval,
+            cacheCoordinator: cacheCoordinator,
+            liveEventSource: liveUpdatesEnabled ? FlowsheetLiveEventSource() : nil
+        )
     }
     
     /// Load cached playlist if available and not expired.
@@ -174,7 +222,27 @@ public final actor PlaylistService: Sendable {
             ensureFetchTaskRunning()
         }
     }
-            
+
+    /// Opens or closes the `live-fs-topic` SSE subscription in response to the
+    /// app's foreground state.
+    ///
+    /// Called from the iOS scene-phase handler: `true` on `.active`, `false` on
+    /// `.inactive`/`.background`. A no-op when live updates aren't enabled for
+    /// this instance (watchOS/tvOS/widgets), so those platforms keep their
+    /// poll-only behavior untouched. While foregrounded the service applies
+    /// `insert`/`update` events as they arrive; the periodic `interval` poll
+    /// stays running underneath as a reconciliation backstop.
+    public func setForegrounded(_ foregrounded: Bool) {
+        guard liveEventSource != nil else { return }
+        isForegrounded = foregrounded
+        if foregrounded {
+            ensureLiveUpdatesRunning()
+        } else {
+            liveUpdatesTask?.cancel()
+            liveUpdatesTask = nil
+        }
+    }
+
     /// Returns an AsyncStream that yields playlist updates.
     /// If a cached playlist exists, it's yielded immediately.
     /// Otherwise, observers wait for the first fetch to complete.
@@ -313,6 +381,7 @@ public final actor PlaylistService: Sendable {
             continuation.finish()
         }
         fetchTask?.cancel()
+        liveUpdatesTask?.cancel()
     }
 
     /// Ensure the fetch task is running
@@ -322,6 +391,96 @@ public final actor PlaylistService: Sendable {
         fetchTask = Task {
             await startFetching()
         }
+    }
+
+    // MARK: - Live updates (SSE)
+
+    /// Ensure the live-updates consume loop is running (foregrounded + enabled).
+    private func ensureLiveUpdatesRunning() {
+        guard liveEventSource != nil, isForegrounded, liveUpdatesTask == nil else { return }
+        liveUpdatesTask = Task { await self.consumeLiveEvents() }
+    }
+
+    /// Consumes the SSE stream while foregrounded, reconnecting with exponential
+    /// backoff (capped at ``maxReconnectBackoff``) when the connection drops.
+    ///
+    /// Each ``LiveFsEventSource/connect()`` models one connection attempt whose
+    /// stream finishes when the socket ends; this loop reopens it. The backoff
+    /// resets to ``minReconnectBackoff`` as soon as a connection delivers an
+    /// event, and grows only when an attempt produced nothing (a hard failure,
+    /// distinct from a healthy connection that simply closed).
+    private func consumeLiveEvents() async {
+        guard let source = liveEventSource else { return }
+
+        // Splice events into the cache-loaded baseline, not the `.empty`
+        // pre-load state a racing early event would otherwise be overwritten on.
+        await waitForCacheLoad()
+
+        var backoff = Self.minReconnectBackoff
+        while !Task.isCancelled && isForegrounded {
+            var sawEvent = false
+            for await event in source.connect() {
+                if Task.isCancelled { break }
+                sawEvent = true
+                backoff = Self.minReconnectBackoff
+                await applyLiveEvent(event)
+            }
+
+            guard !Task.isCancelled, isForegrounded else { break }
+
+            // Connection closed — wait, then reconnect. Grow the backoff only
+            // when the attempt yielded nothing.
+            try? await Task.sleep(for: backoff)
+            if !sawEvent {
+                backoff = min(backoff * 2, Self.maxReconnectBackoff)
+            }
+        }
+    }
+
+    /// Applies one decoded live event to the in-memory playlist.
+    private func applyLiveEvent(_ event: LiveFsEvent) async {
+        switch event {
+        case .insert(let playcut), .update(let playcut):
+            // Both reduce to an upsert-by-id: an insert appends a new row, an
+            // update replaces the existing one (the payload is the full
+            // post-enrichment row, so a replace is the merge). Upserting also
+            // makes a duplicate insert or an out-of-order update idempotent.
+            await upsertPlaycut(playcut)
+        case .refetch:
+            // A bulk state change makes targeted patches unreliable; fall back
+            // to a full reconciliation fetch.
+            _ = await fetchAndCachePlaylist()
+        }
+    }
+
+    /// Inserts or replaces a playcut by `id`, then caches and broadcasts.
+    ///
+    /// The `playcuts` array order is irrelevant — `Playlist.entries` re-sorts by
+    /// `chronOrderID` — so an insert simply appends. An identical replay is a
+    /// no-op so it doesn't churn observers or the cache.
+    private func upsertPlaycut(_ playcut: Playcut) async {
+        var playcuts = currentPlaylist.playcuts
+        if let index = playcuts.firstIndex(where: { $0.id == playcut.id }) {
+            guard playcuts[index] != playcut else { return }
+            playcuts[index] = playcut
+        } else {
+            playcuts.append(playcut)
+        }
+
+        // Row inserts/updates never change who's on the air, so `onAir` (and the
+        // non-track arrays) carry through untouched; the periodic poll refreshes
+        // them on its own cadence.
+        let updated = Playlist(
+            playcuts: playcuts,
+            breakpoints: currentPlaylist.breakpoints,
+            talksets: currentPlaylist.talksets,
+            showMarkers: currentPlaylist.showMarkers,
+            onAir: currentPlaylist.onAir
+        )
+
+        currentPlaylist = updated
+        await cacheCoordinator.set(value: updated, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+        broadcast(updated)
     }
 
     /// Single background fetch loop shared by all observers.
