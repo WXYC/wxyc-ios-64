@@ -104,26 +104,22 @@ public actor AppConfiguration {
 
     /// Fetches third-party API credentials from the authenticated `/config/secrets` endpoint.
     ///
-    /// Requires a valid session token. Returns `nil` on failure (no auth session,
-    /// network error, or backend hasn't been updated yet).
+    /// Goes through `URLSession.authedData(for:tokenProvider:)`, the shared
+    /// authed-request seam: a stale-token 401 (the #715 cold-launch
+    /// condition) reauthenticates and retries once instead of silently
+    /// collapsing to `nil` — which would leave the Discogs artwork fallback
+    /// disabled for the whole session.
+    ///
+    /// Returns `nil` on failure (no auth session, network error, persistent
+    /// non-2xx, or backend hasn't been updated yet).
     public func fetchSecrets(tokenProvider: SessionTokenProvider) async -> AppSecrets? {
         do {
-            let token = try await tokenProvider.token()
             let url = URL(string: "\(Self.apiBaseUrl)/config/secrets")!
-            var request = URLRequest(url: url)
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-            let (data, response) = try await session.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                Log(.warning, category: .general, "AppConfiguration: non-200 response from /config/secrets")
-                return nil
-            }
-
+            let request = URLRequest(url: url)
+            let (data, _) = try await session.authedData(for: request, tokenProvider: tokenProvider)
             return try JSONDecoder.shared.decode(AppSecrets.self, from: data)
         } catch {
-            Log(.warning, category: .general, "AppConfiguration: failed to fetch /config/secrets: \(error.localizedDescription)")
+            Log(.warning, category: .general, "AppConfiguration: failed to fetch /config/secrets: \(error)")
             return nil
         }
     }

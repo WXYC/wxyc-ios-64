@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Testing
 @testable import AppServices
@@ -157,9 +158,95 @@ struct AppConfigurationTests {
 
         #expect(config == AppConfiguration.defaults)
     }
+
+    // MARK: - Secrets Fetch
+
+    @Test("fetchSecrets recovers from a stale-token 401 by reauthenticating and retrying once")
+    func fetchSecretsRetriesOn401() async throws {
+        // The exact #715 cold-launch condition: the cached JWT was rejected
+        // server-side. fetchSecrets must go through the shared authedData
+        // seam — reauthenticate, retry once with the fresh token — instead
+        // of collapsing the 401 to nil (secrets silently missing for the
+        // whole session).
+        nonisolated(unsafe) var capturedAuthorizationHeaders: [String?] = []
+        let session = MockURLProtocol.session { request in
+            capturedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
+            if capturedAuthorizationHeaders.count == 1 {
+                return (Data(), HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 401,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!)
+            }
+            let body = #"{"discogsApiKey": "test-key", "discogsApiSecret": "test-secret"}"#
+            return (Data(body.utf8), HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!)
+        }
+
+        let tokenProvider = RecordingTokenProvider(
+            initialToken: "stale-token",
+            refreshedToken: "fresh-token"
+        )
+        let configuration = AppConfiguration(session: session)
+        let secrets = await configuration.fetchSecrets(tokenProvider: tokenProvider)
+
+        #expect(secrets?.discogsApiKey == "test-key")
+        #expect(secrets?.discogsApiSecret == "test-secret")
+        #expect(await tokenProvider.reauthenticateCallCount == 1)
+        #expect(capturedAuthorizationHeaders.count == 2)
+        #expect(capturedAuthorizationHeaders[0] == "Bearer stale-token")
+        #expect(capturedAuthorizationHeaders[1] == "Bearer fresh-token")
+    }
+
+    @Test("fetchSecrets returns nil on a persistent non-2xx response")
+    func fetchSecretsReturnsNilOnServerError() async {
+        let session = MockURLProtocol.session { request in
+            (Data(), HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: nil
+            )!)
+        }
+
+        let tokenProvider = RecordingTokenProvider(
+            initialToken: "stale-token",
+            refreshedToken: "fresh-token"
+        )
+        let configuration = AppConfiguration(session: session)
+        let secrets = await configuration.fetchSecrets(tokenProvider: tokenProvider)
+
+        #expect(secrets == nil)
+    }
 }
 
 // MARK: - Test Helpers
+
+/// A `SessionTokenProvider` returning a distinct `initialToken` from `token()`
+/// and `refreshedToken` from `reauthenticate(previousToken:)`, recording the
+/// reauthentication count so 401-retry tests can assert "exactly once".
+private actor RecordingTokenProvider: SessionTokenProvider {
+    private(set) var reauthenticateCallCount = 0
+    private let initialToken: String
+    private let refreshedToken: String
+
+    init(initialToken: String, refreshedToken: String) {
+        self.initialToken = initialToken
+        self.refreshedToken = refreshedToken
+    }
+
+    func token() async throws -> String { initialToken }
+
+    func reauthenticate(previousToken: String) async throws -> String {
+        reauthenticateCallCount += 1
+        return refreshedToken
+    }
+}
 
 /// A URLProtocol subclass that intercepts requests and returns mock responses.
 final class MockURLProtocol: URLProtocol, @unchecked Sendable {
