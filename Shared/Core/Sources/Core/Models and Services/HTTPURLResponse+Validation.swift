@@ -40,3 +40,21 @@ public struct HTTPStatusError: Error, Equatable {
         self.statusCode = statusCode
     }
 }
+
+/// Diagnostics-sink bridging: without these conformances, the NSError bridge
+/// collapses every status to `code 1` with a generic message — which is what
+/// PostHog's `ErrorEvent` (`nsError.code`/`nsError.domain`) and Sentry event
+/// titles record, re-creating the very 401-vs-503 blindness this type exists
+/// to fix. `errorCode` carries the HTTP status so those sinks can group and
+/// filter on it.
+extension HTTPStatusError: CustomNSError, LocalizedError {
+    /// Matches the default Swift-runtime bridge domain, so pre-conformance
+    /// events keep grouping with post-conformance ones.
+    public static let errorDomain = "Core.HTTPStatusError"
+
+    public var errorCode: Int { statusCode }
+
+    public var errorDescription: String? {
+        "HTTP \(statusCode)"
+    }
+}
