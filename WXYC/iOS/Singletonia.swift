@@ -34,7 +34,12 @@ final class Singletonia {
 
     let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
     let handoffActivityManager: HandoffActivityManager
-    let playlistService = PlaylistService()
+    // iOS is the only platform that subscribes to the `live-fs-topic` SSE
+    // stream: track inserts and metadata updates arrive as push events while
+    // foregrounded (see `setForegrounded(_:)`), so the periodic poll drops to a
+    // 300 s reconciliation backstop instead of the 30 s default. See
+    // WXYC/wxyc-ios-64#269.
+    let playlistService = PlaylistService(interval: 300, liveUpdatesEnabled: true)
     let artworkService = MultisourceArtworkService()
     let artworkLoader: ArtworkLoader
     let widgetStateService: WidgetStateService
@@ -588,6 +593,10 @@ final class Singletonia {
     /// Update the foreground state (called when scene phase changes)
     func setForegrounded(_ foregrounded: Bool) {
         widgetStateService.setForegrounded(foregrounded)
+        // Open the live-fs SSE subscription while foregrounded, close it on
+        // background (#269). The service ignores this when live updates aren't
+        // enabled, so it's a no-op on any non-iOS PlaylistService instance.
+        Task { await playlistService.setForegrounded(foregrounded) }
     }
 
     /// Start the widget state service to observe playback and playlist updates
