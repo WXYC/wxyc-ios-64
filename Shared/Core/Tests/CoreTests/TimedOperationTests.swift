@@ -115,13 +115,32 @@ struct TimedOperationTests {
             additionalData: ["api_version": "v2"]
         ) {
             throw URLError(.badServerResponse)
-            return 42
         }
 
         let data = reporter.allReportedErrors.first?.additionalData
         #expect(data?["api_version"] == "v2")
         // The internally-measured duration is still present next to the extras.
         #expect(data?["duration"] != nil)
+    }
+
+    @Test("returns fallback on URLError(.cancelled) without reporting")
+    func returnsFallbackOnURLCancellationWithoutReporting() async {
+        // URLSession surfaces cancellation as URLError(.cancelled), which does not
+        // bridge to CancellationError. It must be treated as cancellation (silent
+        // fallback, no error report), not as a reportable failure.
+        let reporter = MockErrorReporter()
+
+        let result = await timedOperation(
+            context: "fetchPlaylist(API v2)",
+            category: .network,
+            fallback: 0,
+            errorReporter: reporter
+        ) {
+            throw URLError(.cancelled)
+        }
+
+        #expect(result == 0)
+        #expect(reporter.allReportedErrors.isEmpty)
     }
 
     @Test("passes through the return type correctly for non-optional types")
