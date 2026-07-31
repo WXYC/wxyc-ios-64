@@ -71,7 +71,7 @@ final class Singletonia {
     /// fixture model), so opening the tab shows the already-loaded window rather
     /// than triggering a second fetch — `OnTourModel`'s single-flight `load()`
     /// coalesces the launch load with the tab's `.task` load.
-    let onTourModel = OnTourModel(fetcher: ConcertsFetcher(tokenProvider: MusicShareKit.authService))
+    let onTourModel = OnTourModel(fetcher: ConcertsFetcher(tokenProvider: DeferredSessionTokenProvider { MusicShareKit.authService }))
 
     let playcutHistoryStore = PlaycutHistoryStore()
 
@@ -247,13 +247,17 @@ final class Singletonia {
         AppDependencyManager.shared.add(dependency: reindexAnalytics)
 
         // OT-F3 (#622): same registration shape as the playcut reindex seam
-        // above, for `ConcertEntityQuery`'s reindex handlers.
-        // `tokenProvider: MusicShareKit.authService` matches
-        // `AppIntentServices.concertsFetcher()` (WXYC/iOS/Intents.swift) —
-        // the same anonymous-session wiring `ToursNearMe` already uses — so
-        // a Spotlight-driven reindex fetch is authenticated exactly like the
-        // Siri "touring near me" query.
-        let concertsFetching: any ConcertsFetching = ConcertsFetcher(tokenProvider: MusicShareKit.authService)
+        // above, for `ConcertEntityQuery`'s reindex handlers. Authenticated
+        // the same way `AppIntentServices.concertsFetcher()`
+        // (WXYC/iOS/Intents.swift) authenticates `ToursNearMe` — but wrapped
+        // in `DeferredSessionTokenProvider` rather than reading
+        // `MusicShareKit.authService` directly: `Singletonia` is constructed
+        // from a stored-property initializer, which runs before
+        // `WXYCApp.init()` calls `MusicShareKit.configure(...)`, so a direct
+        // read here would capture `nil` permanently. `Intents.swift`'s site
+        // doesn't need the wrapper because it reads `authService` live, at
+        // invocation time, well after launch has configured it.
+        let concertsFetching: any ConcertsFetching = ConcertsFetcher(tokenProvider: DeferredSessionTokenProvider { MusicShareKit.authService })
         AppDependencyManager.shared.add(dependency: concertsFetching)
         let concertReindexer: any ConcertReindexer = CoreSpotlightConcertIndexer()
         AppDependencyManager.shared.add(dependency: concertReindexer)

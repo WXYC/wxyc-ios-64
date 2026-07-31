@@ -45,3 +45,22 @@ public protocol SessionTokenProvider: Sendable {
     /// MusicShareKit directly.
     func reauthenticate(previousToken: String) async throws -> String
 }
+
+/// A `SessionTokenProvider` was asked for a token before one was configured.
+///
+/// Thrown by ``DeferredSessionTokenProvider`` when its resolver closure
+/// still returns `nil` at call time — e.g. a proxy request fires before
+/// `MusicShareKit.configure(...)` has wired up the real
+/// `AuthenticationService`.
+public enum SessionTokenProviderError: Error, Equatable {
+    case notConfigured
+}
+
+extension SessionTokenProviderError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .notConfigured:
+            "No session token provider is configured yet."
+        }
+    }
+}
