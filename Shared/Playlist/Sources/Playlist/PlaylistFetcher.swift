@@ -146,9 +146,24 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// Sampling policy (resolving the old `// TODO: move to PostHog server-side
     /// sampling`): empty results and failures are rare and high-signal, so they
     /// are always captured. Only the high-volume, low-signal healthy (non-empty)
-    /// success path keeps the legacy 1-in-10 client sample. To recover a true
-    /// success rate in PostHog, weight the non-empty `succeeded = true` count by
-    /// 10 before dividing.
+    /// success path keeps the legacy 1-in-10 client sample.
+    ///
+    /// That means TWO of the three outcomes carry `succeeded = true` but are
+    /// sampled at different rates, so a naive `count(succeeded)` is biased two
+    /// ways at once: non-empty successes are under-counted 10x, empty successes
+    /// are not. `result_count` separates them — it is `entries.count`, which is 0
+    /// exactly when the playlist is content-empty (the sampler gates on
+    /// `isContentEmpty`, and `entries` is the same four arrays it inspects). To
+    /// recover a true per-variant weighted success count in PostHog (filter on
+    /// `api_version`):
+    ///
+    ///     weighted_success = 10 * count(succeeded && result_count > 0)   // sampled 1-in-10
+    ///                      +      count(succeeded && result_count == 0)  // unsampled, ×1
+    ///
+    /// The ×10 applies ONLY to non-empty successes; empty successes are already
+    /// full-rate and must be added back at ×1, not multiplied and not dropped.
+    /// The success rate is then
+    /// `weighted_success / (weighted_success + count(succeeded == false))`.
     private func captureFetchEvent(playlist: Playlist, succeeded: Bool, duration: TimeInterval) {
         let isHealthySuccess = succeeded && !playlist.isContentEmpty
         guard !isHealthySuccess || healthySuccessSampler() else { return }
