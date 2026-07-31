@@ -428,7 +428,7 @@ struct AuthenticationServiceTests {
 
     // MARK: - reauthenticate Tests
 
-    @Test("Reauthenticate clears cache and fetches fresh token")
+    @Test("Reauthenticate clears cache and fetches a fresh, server-validated token")
     func reauthenticateClearsCacheAndRefetches() async throws {
         let storage = InMemoryTokenStorage()
 
@@ -436,9 +436,7 @@ struct AuthenticationServiceTests {
         let initialSession = makeValidSession()
         try storage.save(initialSession)
 
-        // Fresh session from reauthentication (will go through network)
-        let freshSession = makeSignInResult()
-        let networkClient = makeNetworkClient(signInResult: freshSession)
+        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
 
         let service = makeService(storage: storage, networkClient: networkClient)
 
@@ -446,10 +444,11 @@ struct AuthenticationServiceTests {
         let token1 = try await service.ensureAuthenticated()
         #expect(token1 == initialSession.jwt)
 
-        // Now reauthenticate
+        // Now reauthenticate: the still-valid stored session means recovery
+        // is a /auth/token mint (no sign-in), never the rejected JWT back.
         let token2 = try await service.reauthenticate(reason: .unauthorized)
         #expect(token2 != initialSession.jwt)
-        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.signInCallCount == 0)
         #expect(networkClient.fetchJWTCallCount == 1)
     }
 
@@ -469,7 +468,8 @@ struct AuthenticationServiceTests {
 
         let token2 = try await tokenProvider.reauthenticate(previousToken: token1)
         #expect(token2 != initialSession.jwt)
-        #expect(networkClient.signInCallCount == 1)
+        // Mint-preserving recovery: no sign-in while the session is valid.
+        #expect(networkClient.signInCallCount == 0)
         #expect(networkClient.fetchJWTCallCount == 1)
     }
 
@@ -485,17 +485,70 @@ struct AuthenticationServiceTests {
         let service = makeService(storage: storage, networkClient: networkClient)
         let tokenProvider: SessionTokenProvider = service
 
-        // Someone else already recovered from the 401 and refreshed the cache.
+        // Someone else already recovered from the 401 and refreshed the cache
+        // (a mint against the still-valid stored session).
         _ = try await service.reauthenticate(reason: .unauthorized)
-        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
 
         // A caller that's still holding the OLD (now-superseded) token asks
         // to recover from it — it should get the already-fresh cached JWT
         // straight back, with no second network round trip.
         let token = try await tokenProvider.reauthenticate(previousToken: initialSession.jwt)
         #expect(token != initialSession.jwt)
-        #expect(networkClient.signInCallCount == 1, "Must not trigger a redundant sign-in")
+        #expect(networkClient.signInCallCount == 0, "Must not trigger a redundant sign-in")
         #expect(networkClient.fetchJWTCallCount == 1, "Must not trigger a redundant JWT exchange")
+    }
+
+    @Test("Forced reauthentication with a still-valid stored session mints via /auth/token and preserves the session identity")
+    func reauthenticatePreservesSessionViaMint() async throws {
+        let storage = InMemoryTokenStorage()
+        let initialSession = makeValidSession()
+        try storage.save(initialSession)
+
+        let networkClient = makeNetworkClient()
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        // Warm the cache with the (about-to-be-rejected) stored JWT.
+        let staleToken = try await service.ensureAuthenticated()
+        #expect(staleToken == initialSession.jwt)
+
+        let token = try await service.reauthenticate(reason: .unauthorized)
+
+        #expect(token != initialSession.jwt)
+        // KEY: recovery from a rejected JWT whose underlying session token is
+        // still valid must be a one-round-trip /auth/token mint — NOT a fresh
+        // anonymous sign-in, which would change the anonymous userId and
+        // orphan the old session server-side.
+        #expect(networkClient.signInCallCount == 0)
+        #expect(networkClient.fetchJWTCallCount == 1)
+        #expect(networkClient.fetchJWTSessionTokens == [initialSession.sessionToken])
+        #expect(await service.currentUserId() == initialSession.userId)
+    }
+
+    @Test("Forced reauthentication falls back to a fresh sign-in when the mint 401s (session revoked)")
+    func reauthenticateFallsBackToSignInWhenMintRejected() async throws {
+        let storage = InMemoryTokenStorage()
+        let initialSession = makeValidSession()
+        try storage.save(initialSession)
+
+        // The mint attempt 401s (session deleted/banned server-side); the
+        // post-sign-in mint succeeds.
+        let networkClient = SequentialJWTMock()
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.fetchJWTOutcomes = [
+            .failure(AuthenticationError.serverError(statusCode: 401)),
+            .success(makeTestJWT())
+        ]
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        _ = try await service.ensureAuthenticated()
+
+        let token = try await service.reauthenticate(reason: .unauthorized)
+
+        #expect(token.contains("."))
+        // Dead session → the existing 401/404 fall-through signs in fresh.
+        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 2)
     }
 
     // MARK: - Concurrent reauthenticate Coalescing (H1, #414/#415)
@@ -512,7 +565,7 @@ struct AuthenticationServiceTests {
     /// `CancellationError`, which `OnTourModel.performLoad()` swallows
     /// while `.loading`, leaving the tab spinning forever.
     @Test(
-        "A burst of concurrent 401 recoveries for the same rejected token coalesces onto one sign-in; every caller gets the fresh token",
+        "A burst of concurrent 401 recoveries for the same rejected token coalesces onto one network refresh; every caller gets the fresh token",
         .timeLimit(.minutes(1))
     )
     func concurrentReauthenticateCoalescesOntoOneSignIn() async throws {
@@ -558,8 +611,10 @@ struct AuthenticationServiceTests {
 
         #expect(tokens.count == callerCount)
         #expect(tokens.allSatisfy { $0 == mintedJWT }, "Every caller must receive the fresh token, not throw CancellationError")
-        // Critical: exactly one sign-in and one JWT exchange, not `callerCount`.
-        #expect(networkClient.signInCallCount == 1)
+        // Critical: exactly one JWT exchange, not `callerCount` — and the
+        // still-valid stored session means recovery is a mint, so no
+        // sign-in (and no new anonymous user) at all.
+        #expect(networkClient.signInCallCount == 0)
         #expect(networkClient.fetchJWTCallCount == 1)
     }
 

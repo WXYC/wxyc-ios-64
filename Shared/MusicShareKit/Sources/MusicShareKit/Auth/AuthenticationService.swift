@@ -97,14 +97,14 @@ public actor AuthenticationService: SessionTokenProvider {
         // atomic between suspension points.
         let task = Task<String, Error> { [weak self] in
             guard let self else { throw AuthenticationError.notConfigured }
-            return try await self.performRefreshAndClear()
+            return try await self.performRefreshAndClear(trustStoredJWT: true)
         }
         inFlightAuth = task
         return try await task.value
     }
 
-    /// Forces reauthentication, clearing cached and stored sessions, then
-    /// obtaining a fresh JWT.
+    /// Forces a fresh JWT after the server rejected the current one,
+    /// preserving the stored session identity when it is still valid.
     ///
     /// Live, concurrently-invoked path: `RequestService` calls it directly
     /// on a request 401, and every authed call in `Concerts`/`Metadata`
@@ -123,27 +123,36 @@ public actor AuthenticationService: SessionTokenProvider {
     /// Task — on a cold launch that's `OnTourModel.performLoad()`, which
     /// swallows cancellation while `.loading`, leaving the On Tour tab
     /// spinning forever (#414/#415).
+    ///
+    /// The keychain session is deliberately NOT cleared up front: a rejected
+    /// JWT usually belongs to a session token that is still valid (benign
+    /// expiry, key rotation), which `performRefresh()`'s `/auth/token` mint
+    /// recovers in one round trip while preserving the anonymous `userId`.
+    /// Wiping first would foreclose that branch and force a full anonymous
+    /// sign-in — a second network round trip plus one more orphaned
+    /// server-side anonymous user per benign 401. What guarantees the
+    /// rejected token can't be handed straight back is skipping the
+    /// client-side-freshness fast paths (`trustStoredJWT: false`) — the
+    /// cache is cleared and the keychain copy is distrusted, so the refresh
+    /// must produce a server-validated JWT. A genuinely dead session still
+    /// converges on `freshSignIn()` via the mint's 401/404 fall-through.
     public func reauthenticate(reason: TokenRefreshReason) async throws -> String {
         if let existing = inFlightAuth {
             return try await existing.value
         }
 
-        // Nothing in flight: clear the cache/keychain first so the
-        // `ensureAuthenticated()` call below can't just hand the same
-        // rejected token straight back from its fast path — client-side
-        // `jwtIsStale` has no way to know the server already rejected it.
+        // Clear only the in-memory cache; the stored session must survive so
+        // performRefresh() can attempt the identity-preserving mint.
         cachedSession = nil
-        do {
-            try storage.delete()
-        } catch {
-            analytics.capture(RequestLineAuthFailedEvent(
-                error: error.localizedDescription,
-                phase: .keychain
-            ))
+
+        let task = Task<String, Error> { [weak self] in
+            guard let self else { throw AuthenticationError.notConfigured }
+            return try await self.performRefreshAndClear(trustStoredJWT: false)
         }
+        inFlightAuth = task
 
         do {
-            let token = try await ensureAuthenticated()
+            let token = try await task.value
             analytics.capture(RequestLineTokenRefreshedEvent(reason: reason, success: true))
             return token
         } catch {
@@ -202,8 +211,18 @@ public actor AuthenticationService: SessionTokenProvider {
     /// — handing it back directly with no network call and nothing to
     /// coalesce onto. Otherwise delegates to ``reauthenticate(reason:)``
     /// with `.unauthorized`, which coalesces concurrent forced-refreshes
-    /// onto a single in-flight sign-in; see its doc for the full concurrency
+    /// onto a single in-flight refresh; see its doc for the full concurrency
     /// contract this satisfies.
+    ///
+    /// Accepted trade-off: the short-circuit judges freshness client-side
+    /// only. In the narrow race where a proactive refresh minted a newer JWT
+    /// from the same session and the server then revoked that whole session,
+    /// the newer JWT is handed back unvalidated, the caller's single retry
+    /// 401s, and that one fetch fails — the NEXT call passes the newer JWT
+    /// as `previousToken`, takes the full path, and recovers. Self-healing
+    /// within one request, and strictly better than pre-#716 (no recovery
+    /// at all), so we prefer it over paying a validation round trip on every
+    /// short-circuit.
     public func reauthenticate(previousToken: String) async throws -> String {
         if let cachedSession,
            cachedSession.jwt != previousToken,
@@ -215,29 +234,36 @@ public actor AuthenticationService: SessionTokenProvider {
 
     // MARK: - Private Refresh Flow
 
-    /// Wraps `performRefresh()` with the cleanup invariant for `inFlightAuth`.
+    /// Wraps `performRefresh(trustStoredJWT:)` with the cleanup invariant for
+    /// `inFlightAuth`.
     ///
     /// Actor-isolated, so `defer` runs on the actor's executor at function
     /// exit (success or throw). This is the ONLY site that clears
     /// `inFlightAuth`; the outer `ensureAuthenticated()` body never clears it.
-    private func performRefreshAndClear() async throws -> String {
+    private func performRefreshAndClear(trustStoredJWT: Bool) async throws -> String {
         defer { inFlightAuth = nil }
-        return try await performRefresh()
+        return try await performRefresh(trustStoredJWT: trustStoredJWT)
     }
 
     /// The actual refresh flow: Keychain → `/auth/token` → re-sign-in.
+    ///
+    /// - Parameter trustStoredJWT: When `false` (a forced reauthentication —
+    ///   the server just rejected a JWT that may look fresh client-side),
+    ///   the keychain fast path (3a) is skipped so the flow always produces
+    ///   a server-validated JWT: a `/auth/token` mint when the stored
+    ///   session token is still valid, else a fresh sign-in.
     ///
     /// Emits exactly one matched `RequestLineAuthStartedEvent` /
     /// `RequestLineAuthCompletedEvent` pair per call, sourced from the
     /// branch that actually serves the JWT. The 401/404 fallthrough is a
     /// single logical "network" auth even though it spans both
     /// `/auth/token` and `/sign-in/anonymous`.
-    private func performRefresh() async throws -> String {
+    private func performRefresh(trustStoredJWT: Bool) async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
         let loaded = loadFromKeychain()
 
         // 3a. Keychain hit on a fresh JWT — fast path.
-        if let session = loaded, !session.jwtIsStale(margin: Self.freshnessMargin) {
+        if trustStoredJWT, let session = loaded, !session.jwtIsStale(margin: Self.freshnessMargin) {
             trackAuthStarted(source: .keychain)
             cachedSession = session
             trackAuthCompleted(source: .keychain, startTime: startTime, success: true)
