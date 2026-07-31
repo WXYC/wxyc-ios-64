@@ -1,0 +1,187 @@
+//
+//  AuthedDataTests.swift
+//  Core
+//
+//  Tests for `URLSession.authedData(for:tokenProvider:)`: the shared
+//  authed-request seam that attaches a bearer token and retries once on a
+//  401 after forcing a fresh token. Uses a queued stub `URLProtocol` so
+//  successive requests can return different status codes without touching
+//  the network.
+//
+//  Created by Jake Bromberg on 07/31/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Foundation
+import Testing
+import os
+@testable import Core
+
+// MARK: - Stub URLProtocol
+
+/// Replays one queued `(statusCode, body)` response per request, in order.
+/// A request past the end of the queue repeats the last entry.
+private final class SequencedStubURLProtocol: URLProtocol, @unchecked Sendable {
+    private struct State {
+        var responses: [(statusCode: Int, body: Data)] = [(200, Data())]
+        var captured: [URLRequest] = []
+    }
+
+    private static let stateLock = OSAllocatedUnfairLock(initialState: State())
+
+    /// Sets the queue of responses and clears the captured-request log.
+    static func setResponses(_ responses: [(statusCode: Int, body: Data)]) {
+        stateLock.withLock {
+            $0.responses = responses
+            $0.captured = []
+        }
+    }
+
+    /// Every request issued since the last `setResponses(_:)` call, in order.
+    static func capturedRequests() -> [URLRequest] {
+        stateLock.withLock { $0.captured }
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let snapshot = request
+        let entry = Self.stateLock.withLock { state -> (statusCode: Int, body: Data) in
+            state.captured.append(snapshot)
+            let index = min(state.captured.count - 1, state.responses.count - 1)
+            return state.responses[index]
+        }
+        let response = HTTPURLResponse(
+            url: snapshot.url ?? URL(string: "https://example.invalid")!,
+            statusCode: entry.statusCode,
+            httpVersion: "HTTP/1.1",
+            headerFields: nil
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: entry.body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
+// MARK: - Stub token provider
+
+/// Returns a fixed `token()` and a fixed (different) `reauthenticate()`
+/// value, so tests can assert the retried request carried the *new* token.
+/// Tracks call counts for assertions.
+private actor StubTokenProvider: SessionTokenProvider {
+    private(set) var reauthenticateCallCount = 0
+    private let initialToken: String
+    private let refreshedToken: String
+
+    init(initialToken: String = "initial-token", refreshedToken: String = "refreshed-token") {
+        self.initialToken = initialToken
+        self.refreshedToken = refreshedToken
+    }
+
+    func token() async throws -> String {
+        initialToken
+    }
+
+    func reauthenticate() async throws -> String {
+        reauthenticateCallCount += 1
+        return refreshedToken
+    }
+}
+
+// MARK: - Tests
+
+@Suite("URLSession.authedData", .serialized)
+struct AuthedDataTests {
+
+    private static func makeSession() -> URLSession {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [SequencedStubURLProtocol.self]
+        return URLSession(configuration: config)
+    }
+
+    private static let resourceURL = URL(string: "https://api.wxyc.test/resource")!
+
+    @Test("A 200 response with a token provider attaches the bearer token and issues no retry")
+    func successAttachesTokenNoRetry() async throws {
+        SequencedStubURLProtocol.setResponses([(200, Data("ok".utf8))])
+        let tokenProvider = StubTokenProvider()
+        let session = Self.makeSession()
+
+        let (data, response) = try await session.authedData(
+            for: URLRequest(url: Self.resourceURL),
+            tokenProvider: tokenProvider
+        )
+
+        #expect(String(data: data, encoding: .utf8) == "ok")
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+
+        let requests = SequencedStubURLProtocol.capturedRequests()
+        #expect(requests.count == 1)
+        #expect(requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer initial-token")
+        #expect(await tokenProvider.reauthenticateCallCount == 0)
+    }
+
+    @Test("A 401 reauthenticates once and retries with the fresh token")
+    func retriesOnceOn401ThenSucceeds() async throws {
+        SequencedStubURLProtocol.setResponses([
+            (401, Data()),
+            (200, Data("ok".utf8)),
+        ])
+        let tokenProvider = StubTokenProvider()
+        let session = Self.makeSession()
+
+        let (data, response) = try await session.authedData(
+            for: URLRequest(url: Self.resourceURL),
+            tokenProvider: tokenProvider
+        )
+
+        #expect(String(data: data, encoding: .utf8) == "ok")
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+        #expect(await tokenProvider.reauthenticateCallCount == 1)
+
+        let requests = SequencedStubURLProtocol.capturedRequests()
+        #expect(requests.count == 2)
+        #expect(requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer initial-token")
+        #expect(requests[1].value(forHTTPHeaderField: "Authorization") == "Bearer refreshed-token")
+    }
+
+    @Test("Two consecutive 401s surface HTTPStatusError(401) without a second retry")
+    func doesNotRetryTwice() async throws {
+        SequencedStubURLProtocol.setResponses([
+            (401, Data()),
+            (401, Data()),
+        ])
+        let tokenProvider = StubTokenProvider()
+        let session = Self.makeSession()
+
+        await #expect(throws: HTTPStatusError(statusCode: 401)) {
+            _ = try await session.authedData(
+                for: URLRequest(url: Self.resourceURL),
+                tokenProvider: tokenProvider
+            )
+        }
+
+        #expect(SequencedStubURLProtocol.capturedRequests().count == 2)
+        #expect(await tokenProvider.reauthenticateCallCount == 1)
+    }
+
+    @Test("A nil token provider sends no Authorization header and never retries")
+    func nilTokenProviderSkipsAuthAndRetry() async throws {
+        SequencedStubURLProtocol.setResponses([(401, Data())])
+        let session = Self.makeSession()
+
+        await #expect(throws: HTTPStatusError(statusCode: 401)) {
+            _ = try await session.authedData(
+                for: URLRequest(url: Self.resourceURL),
+                tokenProvider: nil
+            )
+        }
+
+        let requests = SequencedStubURLProtocol.capturedRequests()
+        #expect(requests.count == 1)
+        #expect(requests[0].value(forHTTPHeaderField: "Authorization") == nil)
+    }
+}

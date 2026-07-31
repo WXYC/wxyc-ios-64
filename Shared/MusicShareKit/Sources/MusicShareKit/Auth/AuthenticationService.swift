@@ -171,10 +171,20 @@ public actor AuthenticationService: SessionTokenProvider {
 
     // MARK: - SessionTokenProvider
 
-    /// Conforms to `SessionTokenProvider` so services in Artwork and Metadata
-    /// packages can obtain a Bearer token without depending on MusicShareKit.
+    /// Conforms to `SessionTokenProvider` so services in Artwork, Concerts,
+    /// and Metadata packages can obtain a Bearer token without depending on
+    /// MusicShareKit.
     public func token() async throws -> String {
         try await ensureAuthenticated()
+    }
+
+    /// Forces a fresh session token, for `SessionTokenProvider` conformance.
+    ///
+    /// Delegates to ``reauthenticate(reason:)`` with `.unauthorized` — every
+    /// caller reaching for this protocol method does so because the server
+    /// just rejected the token `token()` returned.
+    public func reauthenticate() async throws -> String {
+        try await reauthenticate(reason: .unauthorized)
     }
 
     // MARK: - Private Refresh Flow

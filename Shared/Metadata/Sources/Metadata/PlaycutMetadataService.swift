@@ -342,11 +342,8 @@ public actor PlaycutMetadataService {
         }
 
         if let tokenProvider {
-            let token = try await tokenProvider.token()
-            var request = URLRequest(url: url)
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let (data, response) = try await urlSession.data(for: request)
-            try (response as? HTTPURLResponse)?.validateSuccessStatus()
+            let request = URLRequest(url: url)
+            let (data, _) = try await urlSession.authedData(for: request, tokenProvider: tokenProvider)
             return data
         } else {
             return try await session.data(from: url)

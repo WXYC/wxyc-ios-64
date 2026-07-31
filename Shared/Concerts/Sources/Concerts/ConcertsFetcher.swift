@@ -7,7 +7,10 @@
 //  the request-building + anonymous-session-auth convention used by
 //  `Metadata.PlaycutMetadataService`: an optional `SessionTokenProvider` supplies
 //  the `Authorization: Bearer <token>` header for the anonymous session the
-//  endpoint requires (`requirePermissions({})` on the backend).
+//  endpoint requires (`requirePermissions({})` on the backend). Requests go
+//  through `Core`'s `URLSession.authedData(for:tokenProvider:)` seam, which
+//  reauthenticates and retries once on a 401 (a rejected/stale cached token)
+//  instead of repeating the same doomed request.
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -91,14 +94,8 @@ public final class ConcertsFetcher: Sendable {
             throw ConcertsError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        if let tokenProvider {
-            let token = try await tokenProvider.token()
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await session.data(for: request)
-        try (response as? HTTPURLResponse)?.validateSuccessStatus()
+        let request = URLRequest(url: url)
+        let (data, _) = try await session.authedData(for: request, tokenProvider: tokenProvider)
         return try JSONDecoder.shared.decode(ConcertsResponse.self, from: data)
     }
 
@@ -118,14 +115,8 @@ public final class ConcertsFetcher: Sendable {
             .appending(path: "concerts")
             .appending(path: String(id))
 
-        var request = URLRequest(url: url)
-        if let tokenProvider {
-            let token = try await tokenProvider.token()
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-
-        let (data, response) = try await session.data(for: request)
-        try (response as? HTTPURLResponse)?.validateSuccessStatus()
+        let request = URLRequest(url: url)
+        let (data, _) = try await session.authedData(for: request, tokenProvider: tokenProvider)
         return try JSONDecoder.shared.decode(Concert.self, from: data)
     }
 

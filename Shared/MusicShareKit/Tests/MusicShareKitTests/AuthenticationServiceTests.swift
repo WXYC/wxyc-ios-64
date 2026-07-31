@@ -9,6 +9,7 @@
 //
 
 import AnalyticsTesting
+import Core
 import Foundation
 import Security
 import Testing
@@ -447,6 +448,26 @@ struct AuthenticationServiceTests {
 
         // Now reauthenticate
         let token2 = try await service.reauthenticate(reason: .unauthorized)
+        #expect(token2 != initialSession.jwt)
+        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
+    }
+
+    @Test("SessionTokenProvider.reauthenticate() delegates to reauthenticate(reason: .unauthorized)")
+    func sessionTokenProviderReauthenticateDelegates() async throws {
+        let storage = InMemoryTokenStorage()
+        let initialSession = makeValidSession()
+        try storage.save(initialSession)
+
+        let freshSession = makeSignInResult()
+        let networkClient = makeNetworkClient(signInResult: freshSession)
+
+        let tokenProvider: SessionTokenProvider = makeService(storage: storage, networkClient: networkClient)
+
+        let token1 = try await tokenProvider.token()
+        #expect(token1 == initialSession.jwt)
+
+        let token2 = try await tokenProvider.reauthenticate()
         #expect(token2 != initialSession.jwt)
         #expect(networkClient.signInCallCount == 1)
         #expect(networkClient.fetchJWTCallCount == 1)
