@@ -48,6 +48,13 @@ final class MockURLProtocol: URLProtocol, @unchecked Sendable {
 
 // MARK: - Mock Token Provider
 
+/// A fixed-token `SessionTokenProvider` for request-shape tests.
+///
+/// ⚠️ Tests exercising the 401-retry path MUST pass a distinct
+/// `reauthenticateValue` — the default returns the SAME token from
+/// `reauthenticate(previousToken:)`, which violates the protocol's
+/// "forces a fresh token" contract and would let a same-token-retry
+/// regression pass unnoticed if a retry test relied on it.
 struct MockTokenProvider: SessionTokenProvider {
     let tokenValue: String
     let reauthenticateValue: String?
@@ -71,8 +78,8 @@ struct MockTokenProvider: SessionTokenProvider {
 @Suite("PlaycutMetadataService HTTP Status Validation", .serialized)
 struct PlaycutMetadataServiceHTTPTests {
 
-    @Test("Throws httpError when proxy returns 502 Bad Gateway")
-    func throwsOnBadGateway() async throws {
+    @Test("Falls back to flowsheet metadata when the proxy returns 502 Bad Gateway")
+    func fallsBackOnBadGateway() async throws {
         // Given
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockURLProtocol.self]
@@ -121,8 +128,8 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(result.streaming == .empty, "Should have empty streaming links on HTTP error")
     }
 
-    @Test("Throws httpError when proxy returns 404 Not Found")
-    func throwsOnNotFound() async throws {
+    @Test("Falls back to flowsheet metadata when the proxy returns 404 Not Found")
+    func fallsBackOnNotFound() async throws {
         // Given
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockURLProtocol.self]

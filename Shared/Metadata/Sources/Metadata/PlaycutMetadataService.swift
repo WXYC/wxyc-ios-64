@@ -356,6 +356,5 @@ public actor PlaycutMetadataService {
 extension PlaycutMetadataService {
     enum MetadataError: Error {
         case invalidURL
-        case httpError(statusCode: Int)
     }
 }
