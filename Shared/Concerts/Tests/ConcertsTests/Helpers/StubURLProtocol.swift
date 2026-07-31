@@ -52,6 +52,7 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     /// request past the end of the queue repeats the last entry. Drives
     /// multi-request scenarios such as a 401 followed by a retried 200.
     static func setResponseQueue(_ responses: [(body: Data, statusCode: Int)]) {
+        precondition(!responses.isEmpty, "setResponseQueue requires at least one response — an empty queue would trap on the first request")
         stateLock.withLock {
             $0.responses = responses
             $0.captured = []

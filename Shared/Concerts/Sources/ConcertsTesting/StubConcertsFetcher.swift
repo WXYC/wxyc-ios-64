@@ -10,6 +10,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Synchronization
 import Concerts
@@ -98,8 +99,10 @@ public final class StubConcertsFetcher: ConcertsFetching {
         guard let concert = concertsByID[id] else {
             // Mimic the endpoint's 404 for an unknown id, matching the concrete
             // fetcher's `validateSuccessStatus()` failure so the ladder degrades
-            // to `.missed` the same way in tests as in production.
-            throw URLError(.badServerResponse)
+            // to `.missed` the same way in tests as in production — and so any
+            // consumer that branches on `HTTPStatusError` sees the same error
+            // shape against stub and production.
+            throw HTTPStatusError(statusCode: 404)
         }
         return concert
     }
