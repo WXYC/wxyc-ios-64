@@ -501,6 +501,77 @@ struct PlaycutMetadataServiceV2FallbackTests {
         )
     }
 
+    // MARK: - Explicit metadataStatus branch gates the proxy fetch (#270)
+
+    @Test(
+        "Every terminal-vs-non-terminal MetadataStatus value gates fetchMetadata's proxy call exactly per MetadataStatus.isTerminal",
+        arguments: [
+            MetadataStatus.pending, .enriching, .enrichedMatch, .enrichedNoMatch, .failedNoRetry,
+        ]
+    )
+    func fetchMetadataStatusGatesProxyCall(status: MetadataStatus) async throws {
+        try await assertMetadataStatusGatesProxyCall(status: status, expectsProxyCall: !status.isTerminal)
+    }
+
+    @Test("fetchMetadata falls back to the proxy when metadataStatus is nil — V1 rows and decoder-absent feeds (#270)")
+    func fetchMetadataNilStatusFallsBackToProxy() async throws {
+        try await assertMetadataStatusGatesProxyCall(status: nil, expectsProxyCall: true)
+    }
+
+    /// Shared body for the `#270` status-gating tests above: holds inline
+    /// streaming empty across every case so `metadataStatus` alone drives
+    /// whether `fetchMetadata` reaches `/proxy/metadata/album` — a populated
+    /// inline streaming URL would short-circuit independent of status (see
+    /// "Inline V2 with at least one streaming URL skips the proxy fetch"
+    /// above), which would confound a status-only assertion. This mirrors
+    /// the decision `PlaycutDetailView.loadMetadata()`'s explicit
+    /// `metadataStatus` switch now makes structurally (it never calls
+    /// `fetchMetadata` at all for the three terminal statuses); asserting
+    /// here at the `PlaycutMetadataService` boundary because `loadMetadata`
+    /// lives in the app target and isn't reachable from a package unit test.
+    private func assertMetadataStatusGatesProxyCall(status: MetadataStatus?, expectsProxyCall: Bool) async throws {
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            metadataStatus: status
+        )
+        let inline = PlaycutMetadata(
+            artist: ArtistMetadata(bio: "Argentine singer-songwriter."),
+            album: AlbumMetadata(label: "Sonamos"),
+            streaming: .empty
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": "https://open.spotify.com/search/Juana%20Molina",
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        if expectsProxyCall {
+            #expect(mockSession.requestCount >= 1, "status \(String(describing: status)) must fall back to the proxy")
+        } else {
+            #expect(mockSession.requestCount == 0, "status \(String(describing: status)) must short-circuit to inline, no proxy call")
+            #expect(result == inline)
+        }
+    }
+
     @Test("Populated streaming response keeps the seven-day TTL")
     func populatedStreamingKeepsSevenDayTTL() async throws {
         // Given
