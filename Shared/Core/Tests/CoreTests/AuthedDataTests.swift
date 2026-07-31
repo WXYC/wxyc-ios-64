@@ -68,11 +68,12 @@ private final class SequencedStubURLProtocol: URLProtocol, @unchecked Sendable {
 
 // MARK: - Stub token provider
 
-/// Returns a fixed `token()` and a fixed (different) `reauthenticate()`
+/// Returns a fixed `token()` and a fixed (different) `reauthenticate(previousToken:)`
 /// value, so tests can assert the retried request carried the *new* token.
-/// Tracks call counts for assertions.
+/// Tracks call counts and the `previousToken` it was given for assertions.
 private actor StubTokenProvider: SessionTokenProvider {
     private(set) var reauthenticateCallCount = 0
+    private(set) var lastPreviousToken: String?
     private let initialToken: String
     private let refreshedToken: String
 
@@ -85,7 +86,8 @@ private actor StubTokenProvider: SessionTokenProvider {
         initialToken
     }
 
-    func reauthenticate() async throws -> String {
+    func reauthenticate(previousToken: String) async throws -> String {
+        lastPreviousToken = previousToken
         reauthenticateCallCount += 1
         return refreshedToken
     }
@@ -141,6 +143,7 @@ struct AuthedDataTests {
         #expect(String(data: data, encoding: .utf8) == "ok")
         #expect((response as? HTTPURLResponse)?.statusCode == 200)
         #expect(await tokenProvider.reauthenticateCallCount == 1)
+        #expect(await tokenProvider.lastPreviousToken == "initial-token")
 
         let requests = SequencedStubURLProtocol.capturedRequests()
         #expect(requests.count == 2)

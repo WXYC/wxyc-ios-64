@@ -61,7 +61,7 @@ struct MockTokenProvider: SessionTokenProvider {
         tokenValue
     }
 
-    func reauthenticate() async throws -> String {
+    func reauthenticate(previousToken: String) async throws -> String {
         reauthenticateValue ?? tokenValue
     }
 }

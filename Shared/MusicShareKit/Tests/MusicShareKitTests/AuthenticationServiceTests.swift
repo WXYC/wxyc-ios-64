@@ -453,7 +453,7 @@ struct AuthenticationServiceTests {
         #expect(networkClient.fetchJWTCallCount == 1)
     }
 
-    @Test("SessionTokenProvider.reauthenticate() delegates to reauthenticate(reason: .unauthorized)")
+    @Test("SessionTokenProvider.reauthenticate(previousToken:) delegates to reauthenticate(reason: .unauthorized) when nothing has refreshed yet")
     func sessionTokenProviderReauthenticateDelegates() async throws {
         let storage = InMemoryTokenStorage()
         let initialSession = makeValidSession()
@@ -467,8 +467,98 @@ struct AuthenticationServiceTests {
         let token1 = try await tokenProvider.token()
         #expect(token1 == initialSession.jwt)
 
-        let token2 = try await tokenProvider.reauthenticate()
+        let token2 = try await tokenProvider.reauthenticate(previousToken: token1)
         #expect(token2 != initialSession.jwt)
+        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
+    }
+
+    @Test("SessionTokenProvider.reauthenticate(previousToken:) short-circuits when the cache already moved past previousToken")
+    func sessionTokenProviderReauthenticateShortCircuitsOnStaleToken() async throws {
+        let storage = InMemoryTokenStorage()
+        let initialSession = makeValidSession()
+        try storage.save(initialSession)
+
+        let freshSession = makeSignInResult()
+        let networkClient = makeNetworkClient(signInResult: freshSession)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        let tokenProvider: SessionTokenProvider = service
+
+        // Someone else already recovered from the 401 and refreshed the cache.
+        _ = try await service.reauthenticate(reason: .unauthorized)
+        #expect(networkClient.signInCallCount == 1)
+
+        // A caller that's still holding the OLD (now-superseded) token asks
+        // to recover from it — it should get the already-fresh cached JWT
+        // straight back, with no second network round trip.
+        let token = try await tokenProvider.reauthenticate(previousToken: initialSession.jwt)
+        #expect(token != initialSession.jwt)
+        #expect(networkClient.signInCallCount == 1, "Must not trigger a redundant sign-in")
+        #expect(networkClient.fetchJWTCallCount == 1, "Must not trigger a redundant JWT exchange")
+    }
+
+    // MARK: - Concurrent reauthenticate Coalescing (H1, #414/#415)
+
+    /// Regression guard for the On-Tour-tab-spins-forever bug: a burst of
+    /// concurrent authed calls (playlist artwork, On Tour fetch, etc. on a
+    /// cold launch) that all discover the same cached JWT is server-side
+    /// rejected must produce exactly ONE fresh sign-in, and every caller
+    /// must receive that fresh token — none should see a spurious
+    /// `CancellationError` just because another caller's recovery ran
+    /// first. Before this fix, `reauthenticate(reason:)` cancelled
+    /// `inFlightAuth` and restarted, so concurrent callers raced to cancel
+    /// each other; only the last one survived; the rest threw
+    /// `CancellationError`, which `OnTourModel.performLoad()` swallows
+    /// while `.loading`, leaving the tab spinning forever.
+    @Test(
+        "A burst of concurrent 401 recoveries for the same rejected token coalesces onto one sign-in; every caller gets the fresh token",
+        .timeLimit(.minutes(1))
+    )
+    func concurrentReauthenticateCoalescesOntoOneSignIn() async throws {
+        let storage = InMemoryTokenStorage()
+        let initialSession = makeValidSession()
+        try storage.save(initialSession)
+
+        let networkClient = GatedNetworkMock()
+        networkClient.mockSignInResult = makeSignInResult()
+        networkClient.gateJWT = true
+        let mintedJWT = makeTestJWT()
+        networkClient.jwtToReturn = mintedJWT
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        let tokenProvider: SessionTokenProvider = service
+
+        // Warm the cache so every caller below is recovering from the exact
+        // same rejected token, mirroring a cold-launch burst that all fired
+        // with the one cached (but server-rejected) JWT.
+        let staleToken = try await service.ensureAuthenticated()
+        #expect(staleToken == initialSession.jwt)
+
+        let callerCount = 5
+        let callers: [Task<String, Error>] = (0..<callerCount).map { _ in
+            Task { try await tokenProvider.reauthenticate(previousToken: staleToken) }
+        }
+
+        // Wait for the race to settle at the gate, then confirm only ONE
+        // caller reached the network — the rest coalesced onto it instead
+        // of each independently starting (and cancelling) a sign-in.
+        while networkClient.waiterCount == 0 {
+            await Task.yield()
+        }
+        for _ in 0..<20 { await Task.yield() }
+        #expect(networkClient.waiterCount == 1)
+
+        networkClient.releaseJWT()
+
+        var tokens: [String] = []
+        for task in callers {
+            tokens.append(try await task.value)
+        }
+
+        #expect(tokens.count == callerCount)
+        #expect(tokens.allSatisfy { $0 == mintedJWT }, "Every caller must receive the fresh token, not throw CancellationError")
+        // Critical: exactly one sign-in and one JWT exchange, not `callerCount`.
         #expect(networkClient.signInCallCount == 1)
         #expect(networkClient.fetchJWTCallCount == 1)
     }

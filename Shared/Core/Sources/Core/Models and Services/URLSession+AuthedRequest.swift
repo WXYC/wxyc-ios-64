@@ -4,13 +4,16 @@
 //
 //  Shared request seam for backend proxy endpoints that require the
 //  anonymous-session bearer token: attaches the token, and on a 401 response
-//  forces a fresh token via `SessionTokenProvider.reauthenticate()` and
-//  retries the request exactly once. `Concerts.ConcertsFetcher` and the
+//  forces a fresh token via `SessionTokenProvider.reauthenticate(previousToken:)`
+//  and retries the request exactly once. `Concerts.ConcertsFetcher` and the
 //  `Metadata` package's proxy calls depend on `Core` but not on
 //  `MusicShareKit` (the concrete `AuthenticationService`), so the retry
 //  capability is expressed entirely through the `SessionTokenProvider`
 //  protocol. Mirrors the reauthenticate-then-retry-once pattern in
 //  `MusicShareKit.RequestService`, minus its bespoke 403 shadow-ban handling.
+//  Passing the rejected token through lets a concurrency-safe conformer
+//  coalesce a burst of concurrent 401s onto one fresh sign-in instead of
+//  each caller racing its own.
 //
 //  Created by Jake Bromberg on 07/31/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -46,21 +49,27 @@ extension URLSession {
         tokenProvider: SessionTokenProvider?
     ) async throws -> (Data, URLResponse) {
         var authedRequest = request
+        var usedToken: String?
         if let tokenProvider {
             let token = try await tokenProvider.token()
+            usedToken = token
             authedRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
         let (responseData, response) = try await self.data(for: authedRequest)
 
         guard let tokenProvider,
+              let usedToken,
               let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 401 else {
             try (response as? HTTPURLResponse)?.validateSuccessStatus()
             return (responseData, response)
         }
 
-        let freshToken = try await tokenProvider.reauthenticate()
+        // Passing the exact token that got rejected lets the provider tell
+        // "nobody has recovered from this yet" apart from "another
+        // concurrent caller already did" — see `SessionTokenProvider`'s doc.
+        let freshToken = try await tokenProvider.reauthenticate(previousToken: usedToken)
         var retryRequest = request
         retryRequest.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
 

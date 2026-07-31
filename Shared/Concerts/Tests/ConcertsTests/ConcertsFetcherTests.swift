@@ -17,21 +17,23 @@ import Core
 @testable import Concerts
 
 /// A `SessionTokenProvider` returning a fixed token, so the fetcher's bearer
-/// header can be asserted. `reauthenticate()` also returns `value` — tests
-/// exercising the 401-retry path use ``RecordingTokenProvider`` instead, so
-/// they can distinguish the initial token from the refreshed one.
+/// header can be asserted. `reauthenticate(previousToken:)` also returns
+/// `value` — tests exercising the 401-retry path use ``RecordingTokenProvider``
+/// instead, so they can distinguish the initial token from the refreshed one.
 private struct FixedTokenProvider: SessionTokenProvider {
     let value: String
     func token() async throws -> String { value }
-    func reauthenticate() async throws -> String { value }
+    func reauthenticate(previousToken: String) async throws -> String { value }
 }
 
 /// A `SessionTokenProvider` that returns a distinct `initialToken` from
-/// `token()` and `refreshedToken` from `reauthenticate()`, and records how
-/// many times `reauthenticate()` was called — so 401-retry tests can assert
-/// both "reauthenticated exactly once" and "the retry carried the new token".
+/// `token()` and `refreshedToken` from `reauthenticate(previousToken:)`, and
+/// records how many times — and with what `previousToken` — it was called,
+/// so 401-retry tests can assert both "reauthenticated exactly once" and
+/// "the retry carried the new token".
 private actor RecordingTokenProvider: SessionTokenProvider {
     private(set) var reauthenticateCallCount = 0
+    private(set) var lastPreviousToken: String?
     private let initialToken: String
     private let refreshedToken: String
 
@@ -42,7 +44,8 @@ private actor RecordingTokenProvider: SessionTokenProvider {
 
     func token() async throws -> String { initialToken }
 
-    func reauthenticate() async throws -> String {
+    func reauthenticate(previousToken: String) async throws -> String {
+        lastPreviousToken = previousToken
         reauthenticateCallCount += 1
         return refreshedToken
     }
@@ -192,6 +195,7 @@ struct ConcertsFetcherTests {
 
         #expect(response.concerts.count == 1)
         #expect(await tokenProvider.reauthenticateCallCount == 1)
+        #expect(await tokenProvider.lastPreviousToken == "stale-token")
 
         let requests = StubURLProtocol.capturedRequests()
         #expect(requests.count == 2)

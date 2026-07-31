@@ -103,19 +103,35 @@ public actor AuthenticationService: SessionTokenProvider {
         return try await task.value
     }
 
-    /// Forces reauthentication, clearing cached and stored sessions.
+    /// Forces reauthentication, clearing cached and stored sessions, then
+    /// obtaining a fresh JWT.
     ///
-    /// Currently dead path on the happy-path because ROM strips 401s, but
-    /// kept defensively for any future call site (e.g., a manual
-    /// "sign out + back in" UI).
+    /// Live, concurrently-invoked path: `RequestService` calls it directly
+    /// on a request 401, and every authed call in `Concerts`/`Metadata`
+    /// (via `URLSession.authedData(for:tokenProvider:)`) reaches it through
+    /// `reauthenticate(previousToken:)` below. A cold launch can fire
+    /// several of those at once against the same stale/rejected session, so
+    /// this coalesces concurrent callers onto a single in-flight refresh —
+    /// sharing `ensureAuthenticated()`'s `inFlightAuth` handle — instead of
+    /// each cancelling the last one's work. `performRefresh()`'s 401/404
+    /// fall-through means any refresh already in flight, proactive or
+    /// forced, converges on a fresh sign-in on its own once it discovers its
+    /// session is server-side invalid, so sharing it here is safe even when
+    /// it started before this call's caller knew its token was bad. Prior to
+    /// this coalescing, forcing a restart here (`inFlightAuth?.cancel()`)
+    /// surfaced as `CancellationError` to every other caller sharing that
+    /// Task — on a cold launch that's `OnTourModel.performLoad()`, which
+    /// swallows cancellation while `.loading`, leaving the On Tour tab
+    /// spinning forever (#414/#415).
     public func reauthenticate(reason: TokenRefreshReason) async throws -> String {
-        // Cancel any in-flight refresh and clear the dedup handle BEFORE
-        // re-entering ensureAuthenticated — otherwise the dedup branch
-        // (`if let existing = inFlightAuth`) would return the stale Task's
-        // JWT, defeating the "force fresh" contract.
-        inFlightAuth?.cancel()
-        inFlightAuth = nil
+        if let existing = inFlightAuth {
+            return try await existing.value
+        }
 
+        // Nothing in flight: clear the cache/keychain first so the
+        // `ensureAuthenticated()` call below can't just hand the same
+        // rejected token straight back from its fast path — client-side
+        // `jwtIsStale` has no way to know the server already rejected it.
         cachedSession = nil
         do {
             try storage.delete()
@@ -178,13 +194,23 @@ public actor AuthenticationService: SessionTokenProvider {
         try await ensureAuthenticated()
     }
 
-    /// Forces a fresh session token, for `SessionTokenProvider` conformance.
+    /// Forces a fresh session token after `previousToken` was rejected, for
+    /// `SessionTokenProvider` conformance.
     ///
-    /// Delegates to ``reauthenticate(reason:)`` with `.unauthorized` — every
-    /// caller reaching for this protocol method does so because the server
-    /// just rejected the token `token()` returned.
-    public func reauthenticate() async throws -> String {
-        try await reauthenticate(reason: .unauthorized)
+    /// Short-circuits when another concurrent caller already refreshed past
+    /// `previousToken` — `cachedSession` holds a different, still-fresh JWT
+    /// — handing it back directly with no network call and nothing to
+    /// coalesce onto. Otherwise delegates to ``reauthenticate(reason:)``
+    /// with `.unauthorized`, which coalesces concurrent forced-refreshes
+    /// onto a single in-flight sign-in; see its doc for the full concurrency
+    /// contract this satisfies.
+    public func reauthenticate(previousToken: String) async throws -> String {
+        if let cachedSession,
+           cachedSession.jwt != previousToken,
+           !cachedSession.jwtIsStale(margin: Self.freshnessMargin) {
+            return cachedSession.jwt
+        }
+        return try await reauthenticate(reason: .unauthorized)
     }
 
     // MARK: - Private Refresh Flow
