@@ -143,18 +143,9 @@ public final actor MultisourceArtworkService: ArtworkService {
                 let artwork = try await fetcher.fetchArtwork(for: playcut)
                 await self.cacheCoordinator.set(artwork: artwork, for: cacheKey, lifespan: artworkLifespan)
                 return artwork
-            } catch let error as URLError where Self.isTransient(error) {
+            } catch let error where Self.isTransient(error) {
                 // Server-side or networking blip — retry next time, don't poison the cache.
                 Log(.warning, category: .artwork, "Transient error for \(cacheKey) using fetcher \(fetcher): \(error)")
-                hadTransientError = true
-            } catch let error as HTTPStatusError {
-                // A non-2xx response from `WebSession.data(from:)` — the same
-                // condition that used to surface as `URLError(.badServerResponse)`
-                // (unconditionally transient in `isTransient` below) before
-                // `HTTPURLResponse.validateSuccessStatus()` started carrying the
-                // real status code. Treated the same way: retry next time,
-                // don't poison the negative cache.
-                Log(.warning, category: .artwork, "Transient HTTP error for \(cacheKey) using fetcher \(fetcher): \(error)")
                 hadTransientError = true
             } catch ServiceError.notAttempted {
                 // Fetcher had no input to act on (e.g. no artwork URL yet because backend
@@ -200,10 +191,20 @@ public final actor MultisourceArtworkService: ArtworkService {
         return nil
     }
 
-    /// URLError codes that represent transient conditions which should NOT be cached
-    /// as a definitive "no artwork available" verdict.
-    private static func isTransient(_ error: URLError) -> Bool {
-        switch error.code {
+    /// Errors that represent transient conditions which should NOT be cached
+    /// as a definitive "no artwork available" verdict. The single home for
+    /// transient-vs-conclusive classification — new error types belong here,
+    /// not in extra catch arms.
+    private static func isTransient(_ error: any Swift.Error) -> Bool {
+        // A non-2xx response from `WebSession.data(from:)` — the same
+        // condition that used to surface as `URLError(.badServerResponse)`
+        // (unconditionally transient below) before
+        // `HTTPURLResponse.validateSuccessStatus()` started carrying the
+        // real status code. Treated the same way: retry next time, don't
+        // poison the negative cache.
+        if error is HTTPStatusError { return true }
+        guard let urlError = error as? URLError else { return false }
+        return switch urlError.code {
         case .badServerResponse,
              .timedOut,
              .cancelled,
