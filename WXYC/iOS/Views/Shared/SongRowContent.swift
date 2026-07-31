@@ -48,7 +48,12 @@ struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View
                     LoadedArtworkView(artwork: image, shadowYOffset: shadowYOffset)
                 case .unloaded, .loading:
                     LoadingArtworkView(shadowYOffset: shadowYOffset)
-                case .failed:
+                case .failed, .notOnDiscogs:
+                    // Same placeholder for both: a row thumbnail has no room
+                    // for the MD note (#390), so "couldn't load" and
+                    // "deliberately not on Discogs" render identically here.
+                    // The detail view has room and surfaces the note — see
+                    // PlaycutMetadataSection.
                     PlaceholderArtworkView(
                         cornerRadius: ArtworkStyle.cornerRadius,
                         shadowYOffset: shadowYOffset,

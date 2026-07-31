@@ -220,7 +220,13 @@ struct PlaycutDetailView: View {
                 genres: playcut.genres,
                 styles: playcut.styles,
                 artworkURL: playcut.artworkURL,
-                criticReviews: playcut.criticReviews
+                criticReviews: playcut.criticReviews,
+                // Like criticReviews above, discogsUnavailable isn't one of
+                // the 12 hasV2Metadata fields (see that predicate's doc
+                // comment) but still rides along here so the artwork-fetch
+                // gate below can see it (#390).
+                discogsUnavailable: playcut.discogsUnavailable,
+                discogsUnavailableNote: playcut.discogsUnavailableNote
             ),
             streaming: StreamingLinks(
                 spotifyURL: playcut.spotifyURL,
@@ -257,8 +263,14 @@ struct PlaycutDetailView: View {
             }
         }
 
-        // If we still have no artwork and metadata provided an artwork URL, fetch it
-        if artwork == nil, let artworkURL = resolvedMetadata.album.artworkURL {
+        // If we still have no artwork and metadata provided an artwork URL, fetch it.
+        // Skipped when the MD has flagged the release "Not on Discogs" (#390):
+        // the URL, if present at all, is a preserved false match the flag
+        // exists specifically to stop rendering — PlaycutHeaderSection falls
+        // back to PlaceholderArtworkView whenever `artwork` stays nil.
+        if artwork == nil,
+           let artworkURL = resolvedMetadata.album.artworkURL,
+           !resolvedMetadata.album.isDiscogsUnavailable {
             await loadArtwork(from: artworkURL)
         }
     }

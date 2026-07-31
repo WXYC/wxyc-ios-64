@@ -38,6 +38,9 @@ extension Playcut {
     ///   - criticReviews: Optional feed-inline critic-review snippets (ADR 0012).
     ///     Defaults to nil.
     ///   - metadataStatus: Optional enrichment lifecycle state. Defaults to nil.
+    ///   - discogsUnavailable: MD-set "Not on Discogs" flag (#390). Defaults to nil.
+    ///   - discogsUnavailableNote: Optional free-text reason for `discogsUnavailable`.
+    ///     Defaults to nil.
     public static func stub(
         id: UInt64 = 1,
         hour: UInt64 = 1000,
@@ -54,7 +57,9 @@ extension Playcut {
         artistId: Int? = nil,
         upcomingShow: Concert? = nil,
         criticReviews: [CriticReview]? = nil,
-        metadataStatus: MetadataStatus? = nil
+        metadataStatus: MetadataStatus? = nil,
+        discogsUnavailable: Bool? = nil,
+        discogsUnavailableNote: String? = nil
     ) -> Playcut {
         Playcut(
             id: id,
@@ -72,7 +77,9 @@ extension Playcut {
             artistId: artistId,
             upcomingShow: upcomingShow,
             criticReviews: criticReviews,
-            metadataStatus: metadataStatus
+            metadataStatus: metadataStatus,
+            discogsUnavailable: discogsUnavailable,
+            discogsUnavailableNote: discogsUnavailableNote
         )
     }
 }

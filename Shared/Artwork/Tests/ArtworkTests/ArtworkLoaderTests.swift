@@ -222,6 +222,58 @@ struct ArtworkLoaderTests {
                 "coincident load() during a retry must coalesce on .loading")
     }
 
+    // MARK: - discogsUnavailable (#390)
+
+    @Test("load short-circuits to .notOnDiscogs without calling the service")
+    func loadShortCircuitsForDiscogsUnavailable() async throws {
+        let service = MockArtworkService()
+        service.artworkToReturn = CGImage.testImageWithColor(.red)
+
+        let loader = ArtworkLoader(service: service)
+        let playcut = Playcut.stub(artistName: UUID().uuidString, discogsUnavailable: true, discogsUnavailableNote: "embargo")
+
+        loader.load(playcut)
+
+        #expect(loader.state(for: playcut) == .notOnDiscogs(note: "embargo"))
+        #expect(service.fetchCount == 0, "a flagged playcut must never reach the artwork service")
+    }
+
+    @Test("retryFailures does not touch .notOnDiscogs entries")
+    func retryFailuresLeavesNotOnDiscogsAlone() async throws {
+        let service = MockArtworkService()
+        let loader = ArtworkLoader(service: service)
+        let playcut = Playcut.stub(artistName: UUID().uuidString, discogsUnavailable: true)
+
+        loader.load(playcut)
+        #expect(loader.state(for: playcut) == .notOnDiscogs(note: nil))
+
+        loader.retryFailures()
+
+        #expect(loader.state(for: playcut) == .notOnDiscogs(note: nil))
+        #expect(service.fetchCount == 0, "retryFailures must not re-fetch a deliberately-suppressed entry")
+    }
+
+    @Test("load re-fetches once the flag is cleared (dj-site unflag restores artwork)")
+    func loadRefetchesAfterFlagCleared() async throws {
+        let service = MockArtworkService()
+        service.artworkToReturn = CGImage.testImageWithColor(.systemTeal)
+
+        let loader = ArtworkLoader(service: service)
+        let artistName = UUID().uuidString
+        let flagged = Playcut.stub(artistName: artistName, discogsUnavailable: true)
+
+        loader.load(flagged)
+        #expect(loader.state(for: flagged) == .notOnDiscogs(note: nil))
+        #expect(service.fetchCount == 0)
+
+        // Same artwork-cache key, flag now cleared — mirrors a fresh poll
+        // after the MD flips discogsUnavailable off in dj-site.
+        let unflagged = Playcut.stub(artistName: artistName, discogsUnavailable: nil)
+        loader.load(unflagged)
+        try await waitForState(loader, of: unflagged) { $0.isLoaded }
+        #expect(service.fetchCount == 1, "clearing the flag must trigger a real fetch")
+    }
+
     @Test("prune drops entries whose keys are not in the keep-set")
     func pruneDropsAbsentKeys() async throws {
         let service = MockArtworkService()

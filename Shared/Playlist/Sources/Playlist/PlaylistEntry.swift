@@ -299,6 +299,27 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// `PlaylistService.terminalMetadataTransitions()` (issue #443).
     public let metadataStatus: MetadataStatus?
 
+    /// MD-set marker indicating this release is intentionally not on Discogs
+    /// (embargoed promo, audience-segment release, etc.) — the "Not on
+    /// Discogs" flag epic (Backend-Service#1280, `wxyc-shared` `Album`
+    /// schema). When `true`, artwork rendering should suppress the
+    /// Discogs-derived artwork/URL and fall back to a placeholder rather than
+    /// keep showing a preserved false match (issue #390).
+    ///
+    /// `nil` today on every real feed: Backend-Service does not yet emit this
+    /// field on the V2 flowsheet-entry embed (only on the on-demand
+    /// `/proxy/metadata/album` response, which has its own gap — see
+    /// `PlaycutMetadataService.fetchAlbumAndStreaming`). This property exists
+    /// so the decoder and the render-gate are ready the moment Backend wires
+    /// the flag onto this surface; see `FlowsheetConverter` for where it
+    /// would be threaded from a future `FlowsheetEntry.discogs_unavailable`.
+    public let discogsUnavailable: Bool?
+
+    /// Optional free-text reason for ``discogsUnavailable``, surfaced as
+    /// secondary text alongside the placeholder when present. Same
+    /// currently-always-`nil` caveat as ``discogsUnavailable`` above.
+    public let discogsUnavailableNote: String?
+
     /// Whether this playcut carries inline metadata from the v2 flowsheet API.
     ///
     /// True when the row's `metadataStatus` is terminal (`enrichedMatch`/
@@ -326,6 +347,11 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// `AlbumMetadata` *does* have a `criticReviews` field, so it rides along
     /// in the decoder AND the `PlaycutDetailView` builder (#695) — it's just
     /// excluded from this predicate specifically, exactly like the other two.
+    /// `discogsUnavailable`/`discogsUnavailableNote` (#390) follow the
+    /// `criticReviews` shape exactly: they ride the decoder and the
+    /// `PlaycutDetailView` builder (so the render gate can see them) but are
+    /// excluded here too — a suppression flag isn't "does this row have
+    /// enrichment metadata" in the sense this predicate cares about.
     public var hasV2Metadata: Bool {
         metadataStatus?.isTerminal == true
             || artworkURL != nil
@@ -373,6 +399,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         // snake_case `critic_reviews` wire key so this round-trips consistently.
         case criticReviews = "critic_reviews"
         case metadataStatus
+        case discogsUnavailable
+        case discogsUnavailableNote
     }
 
     public init(
@@ -400,7 +428,9 @@ public struct Playcut: PlaylistEntry, Hashable {
         artistId: Int? = nil,
         upcomingShow: Concert? = nil,
         criticReviews: [CriticReview]? = nil,
-        metadataStatus: MetadataStatus? = nil
+        metadataStatus: MetadataStatus? = nil,
+        discogsUnavailable: Bool? = nil,
+        discogsUnavailableNote: String? = nil
     ) {
         self.id = id
         self.hour = hour
@@ -427,6 +457,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.upcomingShow = upcomingShow
         self.criticReviews = criticReviews
         self.metadataStatus = metadataStatus
+        self.discogsUnavailable = discogsUnavailable
+        self.discogsUnavailableNote = discogsUnavailableNote
     }
 
     public init(from decoder: Decoder) throws {
@@ -487,6 +519,11 @@ public struct Playcut: PlaylistEntry, Hashable {
             // string degrades to `nil` rather than failing the whole playcut decode,
             // mirroring `FlowsheetEntry.metadataStatus`'s tolerance.
             self.metadataStatus = (try? container.decodeIfPresent(MetadataStatus.self, forKey: .metadataStatus)) ?? nil
+            // Additive and nullable, exactly like the fields above — absent on
+            // every real feed today (see the property's doc comment), decoded
+            // here so the render gate is ready once Backend wires it.
+            self.discogsUnavailable = try container.decodeIfPresent(Bool.self, forKey: .discogsUnavailable)
+            self.discogsUnavailableNote = try container.decodeIfPresent(String.self, forKey: .discogsUnavailableNote)
         } catch {
             ErrorReporting.shared.report(error, context: "Playcut init", category: .network)
             throw error

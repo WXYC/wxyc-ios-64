@@ -30,7 +30,7 @@ public struct LibraryCatalogItem: Sendable, Codable, Hashable {
     public var label: String?
     /** Full call number for shelf lookup, e.g. \"Rock CD ABC 123/45\". Computed from genre, format, call_letters, artist_call_number, and release_call_number.  */
     public var callNumber: String
-    /** URL to view this release in the WXYC library */
+    /** Per-release dj.wxyc.org permalink for this release. Points at the dj-site legacy front door `/dashboard/album/legacy/{id}`, which resolves the legacy library `id` to the canonical release route server-side and 308-redirects. Empty string for a row-less result (`id == 0`).  */
     public var libraryUrl: String
     /** True if this release is available on at least one streaming service. False means only available in the WXYC physical library. Null if unknown. */
     public var onStreaming: Bool?
