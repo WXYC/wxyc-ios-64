@@ -31,6 +31,8 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
     public var tracklist: [TrackListItem]?
     /** Attributed external critic-review snippets, each linking out to the original */
     public var criticReviews: [CriticReviewItem]?
+    /** Consented WXYC DJ album reviews (social_consent = true) for this album. Reviewer identity is never included. */
+    public var wxycReviews: [WxycReviewItem]?
     /** Spotify URL for the album or track */
     public var spotifyUrl: String?
     /** Apple Music URL for the album or track */
@@ -42,7 +44,7 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
     /** SoundCloud search URL */
     public var soundcloudUrl: String?
 
-    public init(discogsReleaseId: Int? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, artworkUrl: String? = nil, genres: [String]? = nil, styles: [String]? = nil, label: String? = nil, discogsArtistId: Int? = nil, fullReleaseDate: String? = nil, tracklist: [TrackListItem]? = nil, criticReviews: [CriticReviewItem]? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil) {
+    public init(discogsReleaseId: Int? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, artworkUrl: String? = nil, genres: [String]? = nil, styles: [String]? = nil, label: String? = nil, discogsArtistId: Int? = nil, fullReleaseDate: String? = nil, tracklist: [TrackListItem]? = nil, criticReviews: [CriticReviewItem]? = nil, wxycReviews: [WxycReviewItem]? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil) {
         self.discogsReleaseId = discogsReleaseId
         self.discogsUrl = discogsUrl
         self.releaseYear = releaseYear
@@ -54,6 +56,7 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
         self.fullReleaseDate = fullReleaseDate
         self.tracklist = tracklist
         self.criticReviews = criticReviews
+        self.wxycReviews = wxycReviews
         self.spotifyUrl = spotifyUrl
         self.appleMusicUrl = appleMusicUrl
         self.youtubeMusicUrl = youtubeMusicUrl
@@ -73,6 +76,7 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
         case fullReleaseDate
         case tracklist
         case criticReviews
+        case wxycReviews
         case spotifyUrl
         case appleMusicUrl
         case youtubeMusicUrl
@@ -95,6 +99,7 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
         try container.encodeIfPresent(fullReleaseDate, forKey: .fullReleaseDate)
         try container.encodeIfPresent(tracklist, forKey: .tracklist)
         try container.encodeIfPresent(criticReviews, forKey: .criticReviews)
+        try container.encodeIfPresent(wxycReviews, forKey: .wxycReviews)
         try container.encodeIfPresent(spotifyUrl, forKey: .spotifyUrl)
         try container.encodeIfPresent(appleMusicUrl, forKey: .appleMusicUrl)
         try container.encodeIfPresent(youtubeMusicUrl, forKey: .youtubeMusicUrl)

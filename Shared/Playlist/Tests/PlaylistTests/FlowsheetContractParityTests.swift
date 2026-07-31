@@ -77,6 +77,7 @@ struct FlowsheetContractParityTests {
         "genres",
         "styles",
         "upcoming_show",
+        "critic_reviews",
     ]
 
     /// Wire fields ``WXYCAPIModels/FlowsheetV2TrackEntry`` declares that the
@@ -142,6 +143,7 @@ struct FlowsheetContractParityTests {
         #expect(generated.metadataStatus == .enrichedMatch)
         #expect(generated.rotationBin == .h)
         #expect(generated.upcomingShow?.headliningArtistRaw == "Jessica Pratt")
+        #expect(generated.criticReviews?.first?.source == "The Quietus")
 
         // App struct — the tolerant runtime decoder, unchanged.
         let appEntry = try JSONDecoder().decode(FlowsheetEntry.self, from: rowData)
@@ -172,6 +174,7 @@ struct FlowsheetContractParityTests {
         #expect(entry.styles == ["Folk, World, & Country"])
         #expect(entry.metadataStatus == .enrichedMatch)
         #expect(entry.upcoming_show?.concert?.headliningArtistRaw == "Jessica Pratt")
+        #expect(entry.criticReviews?.first?.source == "The Quietus")
 
         // And the converter projects them onto the Playcut.
         let playlist = FlowsheetConverter.convert([entry])
@@ -179,6 +182,7 @@ struct FlowsheetContractParityTests {
         #expect(playcut.artistId == 812)
         #expect(playcut.genres == ["Rock"])
         #expect(playcut.upcomingShow?.headliningArtistRaw == "Jessica Pratt")
+        #expect(playcut.criticReviews?.first?.source == "The Quietus")
     }
 
     // MARK: - Date strategy

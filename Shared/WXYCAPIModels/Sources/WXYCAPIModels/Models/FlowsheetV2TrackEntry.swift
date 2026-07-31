@@ -51,8 +51,10 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
     public var styles: [String]?
     /** An optional embedded upcoming Triangle-area concert whose headliner is this track's resolved catalog artist, attached server-side at feed-assembly time so the iOS \"On Tour\" Box Office CTA renders inline with no second round-trip.  Match rule (mirrors `GET /concerts?curated=true`): the track's resolved artist — `flowsheet.album_id → library.artist_id` — is matched against `concerts.headlining_artist_id` on curated, non-tombstoned, upcoming rows (`headlining_artist_id IS NOT NULL`, `removed_at IS NULL`, `starts_on >= today` America/New_York). When an artist has several upcoming dates the **soonest** wins (`ORDER BY starts_on ASC LIMIT 1`), so at most one concert rides each playcut.  Absent/null when the track has no resolved artist (free-form entries with no `album_id`, or an `album_id` whose library row has no matched artist) or when that artist has no curated upcoming date. The field is additive and optional — older app builds that don't decode it are unaffected. Reuses the `Concert` schema verbatim so iOS decodes one type across the On Tour tab and the playcut CTA; the `BoxOfficeTicketPresenter` reads `id`, `title` / `headlining_artist_raw`, `venue` (name + city), `starts_on`, `doors_at`, `status`, `price_min` / `price_max`, `ticket_url`, and `image_url` off it.  */
     public var upcomingShow: Concert?
+    /** An optional array of attributed external critic-review snippets for this track's resolved album, attached server-side at feed-assembly time so the iOS Reviews card can render inline for enriched playcuts with no second round-trip — iOS skips the `/proxy/metadata/album` fetch for terminal rows (wxyc-ios-64#685/#691).  Populated only on `track` entries whose linked `album_id` has rows in Backend-Service's `album_critic_reviews` table; attached via one batched query per page (no per-row lookups). Capped at 5 items (`CRITIC_REVIEWS_LIMIT`), ordered `published_at DESC NULLS LAST`. Absent — never `null` or empty — when the track has no matching album, when the attach is skipped, or on servers where Backend's `CRITIC_REVIEWS_ENABLED` env flag (ADR 0012) is off, including older servers that predate this field. Reuses the `CriticReviewItem` schema verbatim — the same shape `AlbumMetadataResponse.criticReviews` already serves — so clients decode one type across both surfaces.  */
+    public var criticReviews: [CriticReviewItem]?
 
-    public init(id: Int, showId: Int?, playOrder: Int, addTime: Date, entryType: EntryType, albumId: Int? = nil, rotationId: Int? = nil, artistId: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, trackTitle: String? = nil, trackPosition: String? = nil, recordLabel: String? = nil, requestFlag: Bool, segue: Bool? = nil, rotationBin: RotationBin? = nil, artworkUrl: String? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, artistBio: String? = nil, artistWikipediaUrl: String? = nil, onStreaming: Bool? = nil, metadataStatus: MetadataStatus? = nil, genres: [String]? = nil, styles: [String]? = nil, upcomingShow: Concert? = nil) {
+    public init(id: Int, showId: Int?, playOrder: Int, addTime: Date, entryType: EntryType, albumId: Int? = nil, rotationId: Int? = nil, artistId: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, trackTitle: String? = nil, trackPosition: String? = nil, recordLabel: String? = nil, requestFlag: Bool, segue: Bool? = nil, rotationBin: RotationBin? = nil, artworkUrl: String? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, artistBio: String? = nil, artistWikipediaUrl: String? = nil, onStreaming: Bool? = nil, metadataStatus: MetadataStatus? = nil, genres: [String]? = nil, styles: [String]? = nil, upcomingShow: Concert? = nil, criticReviews: [CriticReviewItem]? = nil) {
         self.id = id
         self.showId = showId
         self.playOrder = playOrder
@@ -84,6 +86,7 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
         self.genres = genres
         self.styles = styles
         self.upcomingShow = upcomingShow
+        self.criticReviews = criticReviews
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -118,6 +121,7 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
         case genres
         case styles
         case upcomingShow = "upcoming_show"
+        case criticReviews = "critic_reviews"
     }
 
     // Encodable protocol methods
@@ -155,6 +159,7 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
         try container.encodeIfPresent(genres, forKey: .genres)
         try container.encodeIfPresent(styles, forKey: .styles)
         try container.encodeIfPresent(upcomingShow, forKey: .upcomingShow)
+        try container.encodeIfPresent(criticReviews, forKey: .criticReviews)
     }
 }
 

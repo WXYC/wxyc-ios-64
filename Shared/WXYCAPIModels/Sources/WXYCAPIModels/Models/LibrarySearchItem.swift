@@ -23,7 +23,7 @@ public struct LibrarySearchItem: Sendable, Codable, Hashable {
     public var onStreaming: Bool?
     /** Computed call number (e.g. \"Rock CD S 1/1\") */
     public var callNumber: String?
-    /** URL to the release on wxyc.info */
+    /** Per-release dj.wxyc.org permalink for this release. Points at the dj-site legacy front door `/dashboard/album/legacy/{id}`, which resolves the legacy library `id` to the canonical release route server-side and 308-redirects. Null when unavailable.  */
     public var libraryUrl: String?
     /** Populated when a track-title match drove this release into the results (catalog-track-search plan §5.1). Empty or absent when the release matched on artist / title normally. Backward-compatible — existing consumers ignore the field.  */
     public var matchedVia: [TrackMatchHint]?

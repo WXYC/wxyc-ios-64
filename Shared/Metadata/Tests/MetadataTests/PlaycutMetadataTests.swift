@@ -246,7 +246,7 @@ struct PlaycutMetadataTests {
 
     @Test(
         "hasMetadataSectionContent is true when any single gated field is populated",
-        arguments: ["label", "releaseYear", "genres", "styles", "artistBio"]
+        arguments: ["label", "releaseYear", "genres", "styles", "artistBio", "discogsUnavailable"]
     )
     func hasMetadataSectionContentPerField(field: String) {
         let metadata: PlaycutMetadata
@@ -261,12 +261,24 @@ struct PlaycutMetadataTests {
             metadata = PlaycutMetadata(album: AlbumMetadata(styles: ["IDM"]))
         case "artistBio":
             metadata = PlaycutMetadata(artist: ArtistMetadata(bio: "Bio"))
+        case "discogsUnavailable":
+            metadata = PlaycutMetadata(album: AlbumMetadata(discogsUnavailable: true))
         default:
             Issue.record("Unhandled field \(field)")
             return
         }
 
         #expect(metadata.hasMetadataSectionContent == true, "field \(field) should gate the section open")
+    }
+
+    // MARK: - discogsUnavailable (#390)
+
+    @Test("isDiscogsUnavailable is true only when discogsUnavailable == true")
+    func isDiscogsUnavailableGate() {
+        #expect(AlbumMetadata(discogsUnavailable: true).isDiscogsUnavailable == true)
+        #expect(AlbumMetadata(discogsUnavailable: false).isDiscogsUnavailable == false)
+        #expect(AlbumMetadata(discogsUnavailable: nil).isDiscogsUnavailable == false)
+        #expect(AlbumMetadata.empty.isDiscogsUnavailable == false)
     }
 
     @Test("hasMetadataSectionContent ignores fields that do not mount in PlaycutMetadataSection")

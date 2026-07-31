@@ -168,10 +168,10 @@ struct FlowsheetEntry: Codable, Sendable {
     /// via ``criticReviews`` for the filtered, nil-collapsed accessor
     /// `FlowsheetConverter` actually uses.
     ///
-    /// `WXYCAPIModels.FlowsheetV2TrackEntry` does not carry this field yet —
-    /// the vendored contract predates the wxyc-shared commit that added it —
-    /// so it is intentionally absent from `FlowsheetContractParityTests`'s
-    /// `consumedWireFields` until a regen catches the generated model up.
+    /// `WXYCAPIModels.FlowsheetV2TrackEntry` now carries this field too (#390's
+    /// codegen-sync regen, `contract-version.json` bumped to wxyc-shared
+    /// `580b511`), so it is present in `FlowsheetContractParityTests`'s
+    /// `consumedWireFields`.
     var critic_reviews: [TolerantCriticReviewItem]? = nil
 }
 

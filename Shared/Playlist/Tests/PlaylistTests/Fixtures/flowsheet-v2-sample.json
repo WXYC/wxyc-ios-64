@@ -122,7 +122,17 @@
                 "station_recommended": true,
                 "station_recommended_rank": 3,
                 "artist_bio": "Jessica Pratt is an American singer-songwriter from Los Angeles."
-            }
+            },
+            "critic_reviews": [
+                {
+                    "source": "The Quietus",
+                    "url": "https://thequietus.com/reviews/jessica-pratt-on-your-own-love-again",
+                    "snippet": "Pratt's most fully-realized record yet, hazy and hook-laden in equal measure.",
+                    "author": "Frances Morgan",
+                    "publishedDate": "2015-01-20",
+                    "rating": "8.2"
+                }
+            ]
         }
     ]
 }

@@ -46,6 +46,19 @@ struct PlaycutMetadataSection: View {
                 GenreTagsView(tags: tags)
             }
 
+            // "Not on Discogs" (#390) — the MD flag that also suppresses the
+            // artwork above. The note is optional free text; when absent, the
+            // label alone still tells the listener why artwork is missing
+            // instead of leaving it unexplained.
+            if metadata.album.isDiscogsUnavailable {
+                Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
+                    GridRow {
+                        MetadataLabel(title: "Discogs")
+                        MetadataValue(value: metadata.album.discogsUnavailableNote ?? "Not on Discogs")
+                    }
+                }
+            }
+
             // Artist Bio
             if let bio = metadata.artistBio, !bio.isEmpty {
                 ArtistBioSection(bio: bio, bioTokens: metadata.artist.bioTokens, expandedBio: $expandedBio)

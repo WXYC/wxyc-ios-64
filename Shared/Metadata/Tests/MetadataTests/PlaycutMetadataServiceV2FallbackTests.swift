@@ -190,6 +190,57 @@ struct PlaycutMetadataServiceV2FallbackTests {
         #expect(result.streaming.spotifyURL?.absoluteString == "https://open.spotify.com/search/Chuquimamani-Condori")
     }
 
+    @Test("Inline V2 fallthrough preserves inline discogsUnavailable when the proxy response can't carry it (#390)")
+    func inlineV2FallthroughPreservesDiscogsUnavailable() async throws {
+        // Given — an inline row the MD has flagged "Not on Discogs", with
+        // empty streaming so the service still falls through to the proxy
+        // (Tragic Magic shape). The proxy response below is a real
+        // /proxy/metadata/album payload shape; it cannot carry
+        // discogsUnavailable today (WXYCAPIModels.AlbumMetadataResponse
+        // doesn't declare the field — see the NOTE in
+        // PlaycutMetadataService.fetchAlbumAndStreaming), so the merge must
+        // fall back to the inline value rather than silently dropping it.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(session: mockSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Reckoner",
+            labelName: "self-released",
+            artistName: "Tragic Magic",
+            releaseTitle: "Tragic Magic"
+        )
+        let inline = PlaycutMetadata(
+            artist: .empty,
+            album: AlbumMetadata(label: "self-released", discogsUnavailable: true, discogsUnavailableNote: "embargo"),
+            streaming: .empty
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": "https://open.spotify.com/search/Tragic%20Magic",
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then — the flag and note survive the merge, and the proxy streaming
+        // URL still fills the gap the inline row left empty.
+        #expect(result.album.isDiscogsUnavailable == true)
+        #expect(result.album.discogsUnavailableNote == "embargo")
+        #expect(result.streaming.spotifyURL?.absoluteString == "https://open.spotify.com/search/Tragic%20Magic")
+    }
+
     // MARK: - Non-terminal sparse-field rows reach the merge path (#685 follow-up)
 
     @Test("Non-terminal row with only genres inline (no streaming, no other fields) merges inline genres when the proxy omits them")

@@ -181,7 +181,14 @@ public actor PlaycutMetadataService {
             styles: proxy.styles ?? inline.styles,
             fullReleaseDate: proxy.fullReleaseDate ?? inline.fullReleaseDate,
             artworkURL: proxy.artworkURL ?? inline.artworkURL,
-            criticReviews: proxy.criticReviews ?? inline.criticReviews
+            criticReviews: proxy.criticReviews ?? inline.criticReviews,
+            // `proxy.discogsUnavailable` is always nil today — the proxy fetch
+            // below can't populate it (see the comment there) — so this falls
+            // back to whatever the inline V2 row carried. Still written as a
+            // `??` merge, not a straight `inline.discogsUnavailable`, so this
+            // starts working automatically the day the proxy gap closes.
+            discogsUnavailable: proxy.discogsUnavailable ?? inline.discogsUnavailable,
+            discogsUnavailableNote: proxy.discogsUnavailableNote ?? inline.discogsUnavailableNote
         )
     }
 
@@ -278,6 +285,17 @@ public actor PlaycutMetadataService {
             let data = try await fetchFromProxy(path: "proxy/metadata/album", queryItems: queryItems)
             let apiResult = try JSONDecoder.shared.decode(WXYCAPIModels.AlbumMetadataResponse.self, from: data)
 
+            // NOTE (#390): `apiResult.discogsUnavailable` doesn't exist — BS
+            // already emits `discogsUnavailable`/`discogsUnavailableNote` on
+            // this same `/proxy/metadata/album` response (BS#1901), but
+            // `WXYCAPIModels.AlbumMetadataResponse` doesn't declare the field:
+            // wxyc-shared's `api.yaml` only added the trio to the `Album`
+            // schema, not `AlbumMetadataResponse`. Decoding straight into the
+            // generated type is deliberate here (see docs/code-generation.md
+            // "Drift guards-of-record") — it's not worked around with a
+            // parallel hand-decode. `album.discogsUnavailable` below is left
+            // at its default `nil` until a wxyc-shared contract fix adds the
+            // field and this repo regenerates.
             let album = cachedAlbum ?? AlbumMetadata(
                 label: apiResult.label ?? playcut.labelName,
                 releaseYear: apiResult.releaseYear,

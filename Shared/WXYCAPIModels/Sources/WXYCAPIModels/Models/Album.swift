@@ -9,6 +9,7 @@ import Foundation
 
 public struct Album: Sendable, Codable, Hashable {
 
+    public static let discogsUnavailableNoteRule = StringRule(minLength: nil, maxLength: 500, pattern: nil)
     public var id: Int
     public var artistId: Int
     public var albumTitle: String
@@ -22,8 +23,14 @@ public struct Album: Sendable, Codable, Hashable {
     public var alternateArtistName: String?
     /** Credited album artist for compilations (e.g., \"Kruder & Dorfmeister\" on a DJ-Kicks release filed under Various Artists). */
     public var albumArtist: String?
+    /** MD-set marker indicating this release is intentionally not on Discogs (embargoed promo, audience-segment release, etc.). When true, the LML runtime-lookup chokepoint does not attempt Discogs resolution for this release. See WXYC/wiki plans/rotation-discogs-unavailable.md.  */
+    public var discogsUnavailable: Bool?
+    /** Optional free-text reason for `discogsUnavailable`. */
+    public var discogsUnavailableNote: String?
+    /** Stamped on every recheck attempt by the `library-discogs-unavailable-recheck` cron. Read-only from the client side.  */
+    public var lastDiscogsRecheckAt: Date?
 
-    public init(id: Int, artistId: Int, albumTitle: String, codeNumber: Int, genreId: Int, formatId: Int, label: String? = nil, labelId: Int? = nil, addDate: Date? = nil, discQuantity: Int? = nil, alternateArtistName: String? = nil, albumArtist: String? = nil) {
+    public init(id: Int, artistId: Int, albumTitle: String, codeNumber: Int, genreId: Int, formatId: Int, label: String? = nil, labelId: Int? = nil, addDate: Date? = nil, discQuantity: Int? = nil, alternateArtistName: String? = nil, albumArtist: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil) {
         self.id = id
         self.artistId = artistId
         self.albumTitle = albumTitle
@@ -36,6 +43,9 @@ public struct Album: Sendable, Codable, Hashable {
         self.discQuantity = discQuantity
         self.alternateArtistName = alternateArtistName
         self.albumArtist = albumArtist
+        self.discogsUnavailable = discogsUnavailable
+        self.discogsUnavailableNote = discogsUnavailableNote
+        self.lastDiscogsRecheckAt = lastDiscogsRecheckAt
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -51,6 +61,9 @@ public struct Album: Sendable, Codable, Hashable {
         case discQuantity = "disc_quantity"
         case alternateArtistName = "alternate_artist_name"
         case albumArtist = "album_artist"
+        case discogsUnavailable
+        case discogsUnavailableNote
+        case lastDiscogsRecheckAt
     }
 
     // Encodable protocol methods
@@ -69,6 +82,9 @@ public struct Album: Sendable, Codable, Hashable {
         try container.encodeIfPresent(discQuantity, forKey: .discQuantity)
         try container.encodeIfPresent(alternateArtistName, forKey: .alternateArtistName)
         try container.encodeIfPresent(albumArtist, forKey: .albumArtist)
+        try container.encodeIfPresent(discogsUnavailable, forKey: .discogsUnavailable)
+        try container.encodeIfPresent(discogsUnavailableNote, forKey: .discogsUnavailableNote)
+        try container.encodeIfPresent(lastDiscogsRecheckAt, forKey: .lastDiscogsRecheckAt)
     }
 }
 

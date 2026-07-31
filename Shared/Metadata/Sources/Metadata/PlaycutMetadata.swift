@@ -86,6 +86,22 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// `hasMetadataSectionContent`.
     public let criticReviews: [CriticReview]?
 
+    /// MD-set marker indicating this release is intentionally not on Discogs
+    /// (the "Not on Discogs" flag epic, Backend-Service#1280). When `true`,
+    /// artwork rendering suppresses the Discogs-derived artwork/URL and falls
+    /// back to a placeholder — see `isDiscogsUnavailable` and `PlaycutDetailView.
+    /// loadMetadata()`'s artwork-fetch gate. Currently only ever populated from
+    /// the inline V2 flowsheet row (`Playcut.discogsUnavailable`, itself always
+    /// `nil` on real feeds today); the `/proxy/metadata/album` decode path
+    /// cannot yet carry it — `WXYCAPIModels.AlbumMetadataResponse` doesn't
+    /// declare the field because wxyc-shared's `api.yaml` schema for it hasn't
+    /// added the trio the `Album` schema already has. See issue #390.
+    public let discogsUnavailable: Bool?
+
+    /// Optional free-text reason for ``discogsUnavailable``, surfaced as
+    /// secondary text alongside the placeholder when present.
+    public let discogsUnavailableNote: String?
+
     public init(
         label: String? = nil,
         releaseYear: Int? = nil,
@@ -95,7 +111,9 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         styles: [String]? = nil,
         fullReleaseDate: String? = nil,
         artworkURL: URL? = nil,
-        criticReviews: [CriticReview]? = nil
+        criticReviews: [CriticReview]? = nil,
+        discogsUnavailable: Bool? = nil,
+        discogsUnavailableNote: String? = nil
     ) {
         self.label = label
         self.releaseYear = releaseYear
@@ -106,6 +124,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         self.fullReleaseDate = fullReleaseDate
         self.artworkURL = artworkURL
         self.criticReviews = criticReviews
+        self.discogsUnavailable = discogsUnavailable
+        self.discogsUnavailableNote = discogsUnavailableNote
     }
 
     public static let empty = AlbumMetadata()
@@ -116,6 +136,13 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// `hasMetadataSectionContent`.
     public var hasCriticReviews: Bool {
         !(criticReviews ?? []).isEmpty
+    }
+
+    /// Whether Discogs-derived artwork should be suppressed in favor of the
+    /// "Not on Discogs" placeholder. `false` (not just `nil`-coalesced) reads
+    /// more clearly than `discogsUnavailable == true` at every call site.
+    public var isDiscogsUnavailable: Bool {
+        discogsUnavailable == true
     }
 }
 
@@ -261,14 +288,15 @@ public struct PlaycutMetadata: Sendable, Equatable, Codable {
     /// Check if any streaming links are available
     public var hasStreamingLinks: Bool { streaming.hasAny }
 
-    /// Whether the playcut metadata section card (label, year, genre/style tags, artist bio)
-    /// has any field worth rendering. Gates `PlaycutMetadataSection` in the detail view —
-    /// keep in sync with that view's rendered fields.
+    /// Whether the playcut metadata section card (label, year, genre/style tags, artist bio,
+    /// the "Not on Discogs" row) has any field worth rendering. Gates `PlaycutMetadataSection`
+    /// in the detail view — keep in sync with that view's rendered fields.
     public var hasMetadataSectionContent: Bool {
         label?.isEmpty == false
             || releaseYear != nil
             || album.genres?.isEmpty == false
             || album.styles?.isEmpty == false
             || artistBio?.isEmpty == false
+            || album.isDiscogsUnavailable
     }
 }

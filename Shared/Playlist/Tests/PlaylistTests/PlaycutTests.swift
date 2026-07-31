@@ -376,6 +376,60 @@ struct PlaycutArtistIdTests {
     }
 }
 
+// MARK: - discogsUnavailable (#390)
+
+@Suite("Playcut discogsUnavailable Tests")
+struct PlaycutDiscogsUnavailableTests {
+
+    @Test("Decoder reads discogsUnavailable and discogsUnavailableNote when present")
+    func decodesDiscogsUnavailable() throws {
+        let json = """
+        {
+            "id": 390, "hour": 1000, "chronOrderID": 1, "timeCreated": 1000,
+            "songTitle": "la paradoja", "artistName": "Juana Molina",
+            "discogsUnavailable": true, "discogsUnavailableNote": "embargo"
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.discogsUnavailable == true)
+        #expect(playcut.discogsUnavailableNote == "embargo")
+    }
+
+    @Test("discogsUnavailable and discogsUnavailableNote are nil when absent (unflagged payload decodes unchanged)")
+    func discogsUnavailableNilWhenAbsent() throws {
+        let json = """
+        {
+            "id": 391, "hour": 1000, "chronOrderID": 1, "timeCreated": 1000,
+            "songTitle": "Back, Baby", "artistName": "Jessica Pratt"
+        }
+        """
+        let playcut = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(playcut.discogsUnavailable == nil)
+        #expect(playcut.discogsUnavailableNote == nil)
+    }
+
+    @Test("discogsUnavailable survives an encode/decode round-trip (disk-cached playlists)")
+    func discogsUnavailableRoundTrip() throws {
+        let original = Playcut(
+            id: 390,
+            hour: 1000,
+            chronOrderID: 390,
+            timeCreated: 1000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            discogsUnavailable: true,
+            discogsUnavailableNote: "audience-segment release"
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Playcut.self, from: data)
+        #expect(decoded.discogsUnavailable == true)
+        #expect(decoded.discogsUnavailableNote == "audience-segment release")
+        #expect(decoded == original)
+    }
+}
+
 // MARK: - hasV2Metadata (#685)
 
 /// Tests for `Playcut.hasV2Metadata`. The predicate must be the union of "any
@@ -402,7 +456,8 @@ struct HasV2MetadataTests {
         artistId: Int? = nil,
         upcomingShow: Concert? = nil,
         criticReviews: [CriticReview]? = nil,
-        metadataStatus: MetadataStatus? = nil
+        metadataStatus: MetadataStatus? = nil,
+        discogsUnavailable: Bool? = nil
     ) -> Playcut {
         Playcut(
             id: 685,
@@ -428,7 +483,8 @@ struct HasV2MetadataTests {
             artistId: artistId,
             upcomingShow: upcomingShow,
             criticReviews: criticReviews,
-            metadataStatus: metadataStatus
+            metadataStatus: metadataStatus,
+            discogsUnavailable: discogsUnavailable
         )
     }
 
@@ -501,18 +557,21 @@ struct HasV2MetadataTests {
         #expect(playcut(genres: ["Rock"], metadataStatus: .failedNoRetry).hasV2Metadata == true)
     }
 
-    // MARK: - Excluded fields (artistId, upcomingShow, criticReviews — #695)
+    // MARK: - Excluded fields (artistId, upcomingShow, criticReviews — #695; discogsUnavailable — #390)
 
-    /// `artistId`, `upcomingShow`, and `criticReviews` are real, additive
-    /// inline fields — decoded onto `Playcut` and (for `criticReviews`) also
-    /// folded into the `PlaycutDetailView` inline builder — but none of them
-    /// is part of the 12-field predicate. Each is gated by its own
-    /// independent mechanism instead: `artistId` by the likes feature,
-    /// `upcomingShow` by the Box Office CTA, and `criticReviews` by
-    /// `AlbumMetadata.hasCriticReviews` / `CriticReviewsFeature.shouldShowReviews`.
+    /// `artistId`, `upcomingShow`, `criticReviews`, and `discogsUnavailable`
+    /// are real, additive inline fields — decoded onto `Playcut` and (except
+    /// `artistId`/`upcomingShow`) also folded into the `PlaycutDetailView`
+    /// inline builder — but none of them is part of the 12-field predicate.
+    /// Each is gated by its own independent mechanism instead: `artistId` by
+    /// the likes feature, `upcomingShow` by the Box Office CTA,
+    /// `criticReviews` by `AlbumMetadata.hasCriticReviews` /
+    /// `CriticReviewsFeature.shouldShowReviews`, and `discogsUnavailable` by
+    /// the artwork-rendering gate (`ArtworkLoader`, `PlaycutDetailView`'s
+    /// artwork fetch).
     @Test(
         "nil status, exactly one excluded field alone is still false",
-        arguments: ["artistId", "upcomingShow", "criticReviews"]
+        arguments: ["artistId", "upcomingShow", "criticReviews", "discogsUnavailable"]
     )
     func excludedFieldAloneIsFalse(field: String) {
         let p: Playcut
@@ -528,6 +587,8 @@ struct HasV2MetadataTests {
                 snippet: "Great."
             )
             p = playcut(criticReviews: [review])
+        case "discogsUnavailable":
+            p = playcut(discogsUnavailable: true)
         default:
             fatalError("unhandled field \(field)")
         }

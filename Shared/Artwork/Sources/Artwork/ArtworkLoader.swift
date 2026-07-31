@@ -35,6 +35,14 @@ public final class ArtworkLoader {
         case loading
         case loaded(UIImage)
         case failed
+        /// The MD has flagged this release "Not on Discogs" (#390), so the
+        /// loader never attempted a fetch. Distinct from `.failed` — this is
+        /// a deliberate suppression, not a lookup that came back empty, so
+        /// `retryFailures()` must not touch it (retrying would be pointless
+        /// and could churn the state on a coincidentally-resolvable stale
+        /// URL). Carries the optional MD note so a view with room to show it
+        /// can.
+        case notOnDiscogs(note: String?)
 
         public var isLoaded: Bool {
             if case .loaded = self { true } else { false }
@@ -62,12 +70,29 @@ public final class ArtworkLoader {
 
     /// Schedule a fetch for `playcut`. No-op when already `.loaded` or `.loading`.
     /// Transitions `.unloaded`/`.failed` -> `.loading` -> `.loaded`/`.failed`.
+    ///
+    /// Short-circuits to `.notOnDiscogs` without ever calling `service` when
+    /// `playcut.discogsUnavailable == true` (#390) — suppressing the fetch
+    /// entirely, not just its result, since the MD flag means any resolvable
+    /// artwork URL is a preserved false match the flag exists to stop
+    /// rendering.
     public func load(_ playcut: Playcut) {
         let key = playcut.artworkCacheKey
+
+        if playcut.discogsUnavailable == true {
+            switch entries[key]?.state {
+            case .notOnDiscogs:
+                return
+            default:
+                entries[key] = Entry(state: .notOnDiscogs(note: playcut.discogsUnavailableNote), playcut: playcut)
+                return
+            }
+        }
+
         switch entries[key]?.state ?? .unloaded {
         case .loaded, .loading:
             return
-        case .unloaded, .failed:
+        case .unloaded, .failed, .notOnDiscogs:
             entries[key] = Entry(state: .loading, playcut: playcut)
         }
 
