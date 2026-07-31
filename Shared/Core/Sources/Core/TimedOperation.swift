@@ -27,6 +27,11 @@ import struct Logger.Category
 ///   - fallback: The value to return when the operation fails or is cancelled.
 ///   - errorReporter: Where to send non-cancellation errors. Defaults to the
 ///     global ``ErrorReporting/shared`` reporter.
+///   - additionalData: Extra structured key-value pairs to attach to the error
+///     report (in addition to the internally-measured `"duration"`). Lets callers
+///     surface context — e.g. an API version — as a real, queryable property
+///     rather than only inside the free-text `context` string. The measured
+///     `"duration"` always wins on a key collision. Defaults to empty.
 ///   - operation: The async throwing closure to execute.
 /// - Returns: The operation's result on success, or `fallback` on failure.
 public func timedOperation<T: Sendable>(
@@ -34,6 +39,7 @@ public func timedOperation<T: Sendable>(
     category: Category,
     fallback: T,
     errorReporter: any ErrorReporter = ErrorReporting.shared,
+    additionalData: [String: String] = [:],
     operation: sending () async throws -> T
 ) async -> T {
     Log(.info, category: category, "\(context): starting")
@@ -48,11 +54,13 @@ public func timedOperation<T: Sendable>(
         return fallback
     } catch {
         let duration = timer.duration()
+        var reportData = additionalData
+        reportData["duration"] = "\(duration)"
         errorReporter.report(
             error,
             context: context,
             category: category,
-            additionalData: ["duration": "\(duration)"]
+            additionalData: reportData
         )
         return fallback
     }

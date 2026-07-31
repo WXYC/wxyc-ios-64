@@ -121,6 +121,122 @@ struct PlaylistFetcherTests {
     }
 }
 
+// MARK: - PlaylistFetcher Analytics Tests (#414 / #415)
+
+/// Verifies that every playlist fetch outcome (success, empty, failure) emits a
+/// `fetch_playlist_event` tagged with the resolved API version, and that the
+/// success-only 10% sampling now covers only the healthy, non-empty success
+/// path — empty results and failures are always captured.
+@Suite("PlaylistFetcher Analytics Tests", .serialized)
+struct PlaylistFetcherAnalyticsTests {
+    /// The properties of the single captured `fetch_playlist_event`, if any.
+    private func fetchEventProperties(_ analytics: MockStructuredAnalytics) -> [String: Any]? {
+        analytics.events(named: FetchPlaylistEvent.name).first?.properties
+    }
+
+    @Test(
+        "emits a fetch_playlist_event on an empty (but successful) result, tagged with the API version",
+        arguments: [PlaylistAPIVersion.v1, .v2]
+    )
+    func emitsEventOnEmptyResult(version: PlaylistAPIVersion) async {
+        let dataSource = MockPlaylistDataSource() // returns .empty without throwing
+        let analytics = MockStructuredAnalytics()
+        let fetcher = PlaylistFetcher(
+            apiVersion: version,
+            dataSource: dataSource,
+            errorReporter: MockErrorReporter(),
+            analytics: analytics,
+            // Gate closed: proves empty results are never sampled away.
+            healthySuccessSampler: { false }
+        )
+
+        _ = await fetcher.fetchPlaylist()
+
+        let props = fetchEventProperties(analytics)
+        #expect(props?["api_version"] as? String == version.rawValue)
+        #expect(props?["result_count"] as? Int == 0)
+        #expect(props?["succeeded"] as? Bool == true)
+    }
+
+    @Test(
+        "emits a fetch_playlist_event on failure, tagged with the API version",
+        arguments: [PlaylistAPIVersion.v1, .v2]
+    )
+    func emitsEventOnFailure(version: PlaylistAPIVersion) async {
+        let dataSource = MockPlaylistDataSource()
+        dataSource.errorToThrow = NSError(domain: "TestDomain", code: 123, userInfo: nil)
+        let analytics = MockStructuredAnalytics()
+        let reporter = MockErrorReporter()
+        let fetcher = PlaylistFetcher(
+            apiVersion: version,
+            dataSource: dataSource,
+            errorReporter: reporter,
+            analytics: analytics,
+            // Gate closed: proves failures are never sampled away.
+            healthySuccessSampler: { false }
+        )
+
+        _ = await fetcher.fetchPlaylist()
+
+        let props = fetchEventProperties(analytics)
+        #expect(props?["api_version"] as? String == version.rawValue)
+        #expect(props?["result_count"] as? Int == 0)
+        #expect(props?["succeeded"] as? Bool == false)
+
+        // #414: the version also rides the error report as a structured property,
+        // not just inside the free-text context string.
+        #expect(reporter.allReportedErrors.first?.additionalData["api_version"] == version.rawValue)
+    }
+
+    @Test(
+        "emits a non-empty success event carrying the result count when the sample gate is open",
+        arguments: [PlaylistAPIVersion.v1, .v2]
+    )
+    func emitsNonEmptySuccessWhenSampled(version: PlaylistAPIVersion) async {
+        let playlist = Playlist.stub(playcuts: [
+            .stub(id: 1, songTitle: "la paradoja", artistName: "Juana Molina"),
+            .stub(id: 2, songTitle: "Back, Baby", artistName: "Jessica Pratt"),
+        ])
+        let dataSource = MockPlaylistDataSource()
+        dataSource.playlistToReturn = playlist
+        let analytics = MockStructuredAnalytics()
+        let fetcher = PlaylistFetcher(
+            apiVersion: version,
+            dataSource: dataSource,
+            errorReporter: MockErrorReporter(),
+            analytics: analytics,
+            healthySuccessSampler: { true }
+        )
+
+        _ = await fetcher.fetchPlaylist()
+
+        let props = fetchEventProperties(analytics)
+        #expect(props?["api_version"] as? String == version.rawValue)
+        #expect(props?["succeeded"] as? Bool == true)
+        #expect(props?["result_count"] as? Int == playlist.entries.count)
+    }
+
+    @Test("suppresses the non-empty success event when the sample gate is closed")
+    func suppressesNonEmptySuccessWhenGateClosed() async {
+        let dataSource = MockPlaylistDataSource()
+        dataSource.playlistToReturn = Playlist.stub(playcuts: [
+            .stub(id: 1, songTitle: "la paradoja", artistName: "Juana Molina"),
+        ])
+        let analytics = MockStructuredAnalytics()
+        let fetcher = PlaylistFetcher(
+            apiVersion: .v1,
+            dataSource: dataSource,
+            errorReporter: MockErrorReporter(),
+            analytics: analytics,
+            healthySuccessSampler: { false }
+        )
+
+        _ = await fetcher.fetchPlaylist()
+
+        #expect(analytics.events(named: FetchPlaylistEvent.name).isEmpty)
+    }
+}
+
 // MARK: - Mojibake Repair Tests
 
 @Suite("Data Mojibake Repair Tests")

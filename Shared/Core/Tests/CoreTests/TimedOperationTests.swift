@@ -103,6 +103,27 @@ struct TimedOperationTests {
         #expect(duration != nil)
     }
 
+    @Test("forwards caller-supplied additionalData into the error report alongside duration")
+    func forwardsCallerAdditionalDataOnError() async {
+        let reporter = MockErrorReporter()
+
+        let _ = await timedOperation(
+            context: "fetchPlaylist(API v2)",
+            category: .network,
+            fallback: 0,
+            errorReporter: reporter,
+            additionalData: ["api_version": "v2"]
+        ) {
+            throw URLError(.badServerResponse)
+            return 42
+        }
+
+        let data = reporter.allReportedErrors.first?.additionalData
+        #expect(data?["api_version"] == "v2")
+        // The internally-measured duration is still present next to the extras.
+        #expect(data?["duration"] != nil)
+    }
+
     @Test("passes through the return type correctly for non-optional types")
     func worksWithNonOptionalTypes() async {
         let result: Int = await timedOperation(

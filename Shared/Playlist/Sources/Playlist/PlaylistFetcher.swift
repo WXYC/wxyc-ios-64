@@ -54,6 +54,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     private let errorReporter: any ErrorReporter
     private let analytics: any AnalyticsService
     private let apiVersion: PlaylistAPIVersion
+    private let healthySuccessSampler: @Sendable () -> Bool
 
     /// Creates a new PlaylistFetcher.
     ///
@@ -62,17 +63,24 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     ///   - dataSource: Custom data source. If nil, creates one based on apiVersion.
     ///   - errorReporter: Error reporter for failure tracking. Defaults to the global reporter.
     ///   - analytics: Analytics service for event tracking.
+    ///   - healthySuccessSampler: Decides whether a healthy (non-empty) success
+    ///     emits its `fetch_playlist_event`. Defaults to a per-call 1-in-10 coin
+    ///     flip so the high-volume, low-signal success path stays sampled. Empty
+    ///     results and failures ignore this gate and are always captured. Injected
+    ///     for deterministic tests.
     public init(
         apiVersion: PlaylistAPIVersion? = nil,
         dataSource: PlaylistDataSource? = nil,
         errorReporter: any ErrorReporter = ErrorReporting.shared,
-        analytics: any AnalyticsService = StructuredPostHogAnalytics.shared
+        analytics: any AnalyticsService = StructuredPostHogAnalytics.shared,
+        healthySuccessSampler: @escaping @Sendable () -> Bool = { Int.random(in: 1...10) == 1 }
     ) {
         let resolvedVersion = apiVersion ?? PlaylistAPIVersion.loadActive()
         self.apiVersion = resolvedVersion
         self.dataSource = dataSource ?? Self.createDataSource(for: resolvedVersion)
         self.errorReporter = errorReporter
         self.analytics = analytics
+        self.healthySuccessSampler = healthySuccessSampler
     }
 
     /// Creates the appropriate data source for the given API version.
@@ -90,20 +98,51 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     public func fetchPlaylist() async -> Playlist {
         let timer = Core.Timer.start()
 
-        let playlist = await timedOperation(
+        // Fetch through an optional so success is distinguishable from the
+        // failure/cancellation fallback: `timedOperation` returns `.some` only
+        // when the operation completes, and `nil` when it throws or is cancelled.
+        // The version rides `additionalData` so a reported failure carries a
+        // structured `api_version` property, not just the free-text context.
+        let fetched: Playlist? = await timedOperation(
             context: "fetchPlaylist(API \(apiVersion.rawValue))",
             category: .network,
-            fallback: .empty,
-            errorReporter: errorReporter
+            fallback: nil,
+            errorReporter: errorReporter,
+            additionalData: ["api_version": apiVersion.rawValue]
         ) {
             try await self.dataSource.getPlaylist()
         }
 
-        // TODO: move to PostHog server-side sampling
-        if playlist != .empty, Int.random(in: 1...10) == 1 {
-            analytics.capture(FetchPlaylistEvent(duration: timer.duration()))
+        let playlist = fetched ?? .empty
+        let succeeded = fetched != nil
+
+        // A cancelled fetch (normal task teardown) also returns nil but is not a
+        // real outcome — `timedOperation` swallows `CancellationError` without
+        // reporting it. Keep it out of the success/failure denominator.
+        if succeeded || !Task.isCancelled {
+            captureFetchEvent(playlist: playlist, succeeded: succeeded, duration: timer.duration())
         }
 
         return playlist
+    }
+
+    /// Emits a `FetchPlaylistEvent` for a terminal fetch outcome.
+    ///
+    /// Sampling policy (resolving the old `// TODO: move to PostHog server-side
+    /// sampling`): empty results and failures are rare and high-signal, so they
+    /// are always captured. Only the high-volume, low-signal healthy (non-empty)
+    /// success path keeps the legacy 1-in-10 client sample. To recover a true
+    /// success rate in PostHog, weight the non-empty `succeeded = true` count by
+    /// 10 before dividing.
+    private func captureFetchEvent(playlist: Playlist, succeeded: Bool, duration: TimeInterval) {
+        let isHealthySuccess = succeeded && !playlist.isContentEmpty
+        guard !isHealthySuccess || healthySuccessSampler() else { return }
+
+        analytics.capture(FetchPlaylistEvent(
+            duration: duration,
+            apiVersion: apiVersion.rawValue,
+            resultCount: playlist.entries.count,
+            succeeded: succeeded
+        ))
     }
 }
