@@ -62,6 +62,101 @@ struct RequestServiceTests {
         #expect(recordedURL.absoluteString == "https://example.com/request")
         #expect(await session.invocationCount == 1)
     }
+
+    @Test("A 401 whose token was already superseded retries with the refreshed JWT without a redundant sign-in")
+    func retryAfter401ReusesAlreadyRefreshedSession() async throws {
+        let storage = InMemoryTokenStorage()
+        let initialSession = AuthSession(
+            sessionToken: "request-session-token",
+            jwt: makeRequestTestJWT(sub: "initial"),
+            userId: "request-user",
+            createdAt: Date(),
+            expiresAt: Date().addingTimeInterval(3600)
+        )
+        try storage.save(initialSession)
+
+        let networkClient = MockAuthNetworkClient()
+        networkClient.mockJWT = makeRequestTestJWT(sub: "refreshed")
+        let authService = AuthenticationService(
+            storage: storage,
+            networkClient: networkClient,
+            baseURL: "https://auth.example.com",
+            analytics: MockStructuredAnalytics()
+        )
+
+        // Warm the cache with the (about-to-be-rejected) stored JWT.
+        let staleToken = try await authService.ensureAuthenticated()
+        #expect(staleToken == initialSession.jwt)
+
+        let session = SupersededTokenSession(authService: authService)
+        let service = RequestService(session: session, authService: authService)
+
+        try await service.sendRequest(message: "la paradoja by Juana Molina")
+
+        // First attempt carried the stale token; the retry must carry the
+        // token the concurrent recovery minted.
+        let headers = await session.authorizationHeaders
+        let refreshedToken = try #require(await session.refreshedToken)
+        #expect(headers.count == 2)
+        #expect(headers[0] == "Bearer \(staleToken)")
+        #expect(headers[1] == "Bearer \(refreshedToken)")
+
+        // The only network auth call is the concurrent recovery's mint. The
+        // request-line 401 handler must reuse the refreshed session — not
+        // wipe it and force another refresh/sign-in of its own.
+        #expect(networkClient.fetchJWTCallCount == 1)
+        #expect(networkClient.signInCallCount == 0)
+    }
+}
+
+/// `RequestSession` that 401s the first request — but only after simulating a
+/// CONCURRENT caller recovering from the same rejected token (so the auth
+/// service's cache has already moved past it by the time the request-line 401
+/// handler runs) — and 200s the retry. Records the `Authorization` header of
+/// every request so the test can assert which token each attempt carried.
+private actor SupersededTokenSession: RequestSession {
+    private let authService: AuthenticationService
+    private(set) var authorizationHeaders: [String?] = []
+    private(set) var refreshedToken: String?
+
+    init(authService: AuthenticationService) {
+        self.authService = authService
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        authorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
+        let statusCode: Int
+        if authorizationHeaders.count == 1 {
+            // Another caller (e.g. an On Tour fetch) recovers from the same
+            // rejected token while this request's 401 is still in flight.
+            refreshedToken = try await authService.reauthenticate(reason: .unauthorized)
+            statusCode = 401
+        } else {
+            statusCode = 200
+        }
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(), response)
+    }
+}
+
+/// Creates a structurally valid JWT (decodable payload, fake signature) with
+/// a future `exp`, distinguishable by `sub` so tests can mint distinct tokens.
+private func makeRequestTestJWT(sub: String) -> String {
+    func base64urlEncode(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+    let header = base64urlEncode(Data("{\"alg\":\"HS256\"}".utf8))
+    let exp = Int(Date().addingTimeInterval(3600).timeIntervalSince1970)
+    let payload = base64urlEncode(Data("{\"sub\":\"\(sub)\",\"exp\":\(exp)}".utf8))
+    return "\(header).\(payload).fakesignature"
 }
 
 /// In-memory `RequestSession` that records the last request and returns a 200 response.

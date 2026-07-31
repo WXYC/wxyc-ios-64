@@ -47,12 +47,22 @@ public struct RequestService: Sendable {
 
     let session: any RequestSession
 
+    /// Test seam: overrides `MusicShareKit.authService` when set, and forces
+    /// the authenticated path on. Always `nil` in production, where the
+    /// global service + feature flag govern.
+    private let authServiceOverride: AuthenticationService?
+
     public init() {
         self.init(session: URLSession.shared)
     }
 
-    init(session: any RequestSession) {
+    init(session: any RequestSession, authService: AuthenticationService? = nil) {
         self.session = session
+        self.authServiceOverride = authService
+    }
+
+    private var resolvedAuthService: AuthenticationService? {
+        authServiceOverride ?? MusicShareKit.authService
     }
 
     /// Sends a request message to the WXYC request service
@@ -63,7 +73,7 @@ public struct RequestService: Sendable {
             throw RequestServiceError.emptyMessage
         }
 
-        let useAuth = MusicShareKit.isAuthEnabled()
+        let useAuth = authServiceOverride != nil || MusicShareKit.isAuthEnabled()
         try await sendRequestInternal(message: message, useAuth: useAuth, isRetry: false)
     }
 
@@ -77,10 +87,17 @@ public struct RequestService: Sendable {
         request.addValue("application/json", forHTTPHeaderField: "Content-type")
         request.addValue(UserAgentHeader.value, forHTTPHeaderField: "User-Agent")
 
-        // Add auth header if enabled
-        if useAuth, let authService = MusicShareKit.authService {
+        // Add auth header if enabled. Keep the exact token that was sent so
+        // the 401 handler below can thread it through
+        // `reauthenticate(previousToken:)` — that's what lets the auth
+        // service tell "nobody has recovered from this rejection yet" apart
+        // from "another caller already refreshed past it" (no redundant
+        // sign-in, no wiping a freshly-minted session).
+        var usedToken: String?
+        if useAuth, let authService = resolvedAuthService {
             do {
                 let token = try await authService.ensureAuthenticated()
+                usedToken = token
                 request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             } catch {
                 Log(.error, category: .network, "Failed to authenticate: \(error)")
@@ -129,10 +146,13 @@ public struct RequestService: Sendable {
                 NotificationCenter.default.post(notification)
 
             case 401 where useAuth && !isRetry:
-                // Token expired - reauthenticate and retry once
+                // Token rejected — recover and retry once. Threading the
+                // rejected token through lets the auth service short-circuit
+                // to an already-refreshed session when another caller
+                // recovered first, instead of wiping it and signing in again.
                 Log(.info, category: .network, "Got 401, reauthenticating...")
-                if let authService = MusicShareKit.authService {
-                    _ = try await authService.reauthenticate(reason: .unauthorized)
+                if let authService = resolvedAuthService, let usedToken {
+                    _ = try await authService.reauthenticate(previousToken: usedToken)
                     try await sendRequestInternal(message: message, useAuth: useAuth, isRetry: true)
                 } else {
                     throw RequestServiceError.serverError(statusCode: httpResponse.statusCode)
@@ -160,7 +180,7 @@ public struct RequestService: Sendable {
                 // MusicShareKitTests can't reliably exercise the assertion
                 // without first refactoring RequestService to take dependencies
                 // via init/parameters. The plan calls that out as follow-up.
-                let userId = await MusicShareKit.authService?.currentUserId()
+                let userId = await resolvedAuthService?.currentUserId()
                 MusicShareKit.configuration.analyticsService.capture(
                     RequestLineUserBannedEvent(userId: userId ?? "unknown")
                 )
