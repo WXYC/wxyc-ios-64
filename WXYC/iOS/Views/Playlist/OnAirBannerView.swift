@@ -151,16 +151,28 @@ struct OnAirBannerView: View {
     /// letter a hair off — which reads as a snap on the final frame. A long handle
     /// animates on one line: the adaptive width narrows it to fit, and a per-letter
     /// row can't wrap, so the wave must not be gated on fit or long handles would
-    /// silently stop animating. The native `Text` is the fallback only when the
-    /// wave is off or the handle doesn't shape one glyph per character. Advances are
-    /// measured once here at the base metrics, not per frame, since the cells don't
-    /// change as the wave plays.
+    /// silently stop animating.
+    ///
+    /// The per-letter row is rigid, though, so it must wait for the adaptive width
+    /// to resolve: on the first layout pass ``handleAvailableWidth`` is still zero
+    /// and ``effectiveWidthAxis`` sits at the unfitted base (expanded) axis, where
+    /// the row would run wide and overflow beside the say-hi chip for a frame. Until
+    /// then the handle stays the single `Text` (which wraps or compresses), and the
+    /// native `Text` is likewise the fallback when the wave is off or the handle
+    /// doesn't shape one glyph per character — see ``shouldRenderPerLetterHandle``.
+    /// Advances are measured once here at the base metrics, not per frame, since the
+    /// cells don't change as the wave plays.
     @ViewBuilder
     private var handleContent: some View {
         let width = effectiveWidthAxis
         let uppercased = headline.uppercased()
         let advances = handleCharacterAdvances(for: uppercased, font: handleCTFont(width: width))
-        if theme.waveEnabled, let advances {
+        if shouldRenderPerLetterHandle(
+            waveEnabled: theme.waveEnabled,
+            shapesOneGlyphPerCharacter: advances != nil,
+            adaptiveWidth: theme.adaptiveWidth,
+            availableWidth: handleAvailableWidth
+        ) {
             let characters = Array(uppercased)
             if let waveStart {
                 TimelineView(.animation) { context in
