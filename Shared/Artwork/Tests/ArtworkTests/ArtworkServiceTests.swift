@@ -466,6 +466,34 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 2)
     }
 
+    @Test("Does not cache HTTPStatusError so subsequent fetches retry")
+    func doesNotCacheHTTPStatusError() async throws {
+        // Regression guard: `HTTPURLResponse.validateSuccessStatus()` throws
+        // `HTTPStatusError` (carrying the real status code) instead of the old
+        // undifferentiated `URLError(.badServerResponse)`. A fetcher backed by
+        // `WebSession.data(from:)` (e.g. `URLArtworkFetcher`,
+        // `DiscogsArtworkService`) now raises this type on a non-2xx response,
+        // and it must still be treated as transient — not cached as a
+        // definitive "no artwork available" verdict — same as the old error.
+        let fetcher = MockArtworkService()
+        fetcher.errorToThrow = HTTPStatusError(statusCode: 503)
+
+        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
+        let service = MultisourceArtworkService(
+            fetchers: [fetcher],
+            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
+            errorCache: errorCache
+        )
+
+        let playcut = uniquePlaycut()
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 1)
+
+        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
+        #expect(fetcher.fetchCount == 2)
+    }
+
     @Test("Positive cache takes precedence over negative cache")
     func positiveCacheTakesPrecedenceOverNegativeCache() async throws {
         // Given: a service where all fetchers fail

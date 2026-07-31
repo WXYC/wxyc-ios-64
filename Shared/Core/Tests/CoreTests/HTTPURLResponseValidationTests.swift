@@ -37,24 +37,21 @@ struct HTTPURLResponseValidationTests {
             httpVersion: nil,
             headerFields: nil
         )!
-        #expect(throws: URLError.self) {
+        #expect(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
         }
     }
 
-    @Test
-    func thrownErrorIsBadServerResponse() throws {
+    @Test(arguments: [401, 500])
+    func thrownErrorCarriesTheStatusCode(statusCode: Int) throws {
         let response = HTTPURLResponse(
             url: HTTPURLResponseValidationTests.testURL,
-            statusCode: 500,
+            statusCode: statusCode,
             httpVersion: nil,
             headerFields: nil
         )!
-        #expect {
+        #expect(throws: HTTPStatusError(statusCode: statusCode)) {
             try response.validateSuccessStatus()
-        } throws: { error in
-            let urlError = error as? URLError
-            return urlError?.code == .badServerResponse
         }
     }
 }

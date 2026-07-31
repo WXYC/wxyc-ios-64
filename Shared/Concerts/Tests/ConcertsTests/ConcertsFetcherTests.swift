@@ -17,10 +17,35 @@ import Core
 @testable import Concerts
 
 /// A `SessionTokenProvider` returning a fixed token, so the fetcher's bearer
-/// header can be asserted.
+/// header can be asserted. `reauthenticate()` also returns `value` — tests
+/// exercising the 401-retry path use ``RecordingTokenProvider`` instead, so
+/// they can distinguish the initial token from the refreshed one.
 private struct FixedTokenProvider: SessionTokenProvider {
     let value: String
     func token() async throws -> String { value }
+    func reauthenticate() async throws -> String { value }
+}
+
+/// A `SessionTokenProvider` that returns a distinct `initialToken` from
+/// `token()` and `refreshedToken` from `reauthenticate()`, and records how
+/// many times `reauthenticate()` was called — so 401-retry tests can assert
+/// both "reauthenticated exactly once" and "the retry carried the new token".
+private actor RecordingTokenProvider: SessionTokenProvider {
+    private(set) var reauthenticateCallCount = 0
+    private let initialToken: String
+    private let refreshedToken: String
+
+    init(initialToken: String, refreshedToken: String) {
+        self.initialToken = initialToken
+        self.refreshedToken = refreshedToken
+    }
+
+    func token() async throws -> String { initialToken }
+
+    func reauthenticate() async throws -> String {
+        reauthenticateCallCount += 1
+        return refreshedToken
+    }
 }
 
 @Suite("ConcertsFetcher", .serialized)
@@ -138,16 +163,61 @@ struct ConcertsFetcherTests {
 
     // MARK: - Error path
 
-    @Test("Throws URLError(.badServerResponse) on a non-2xx response")
+    @Test("Throws HTTPStatusError(statusCode: 500) on a non-2xx response")
     func throwsOnServerError() async throws {
         StubURLProtocol.setResponse(Data("""
         {"error": "Internal Server Error"}
         """.utf8), statusCode: 500)
         let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
 
-        await #expect(throws: URLError(.badServerResponse)) {
+        await #expect(throws: HTTPStatusError(statusCode: 500)) {
             _ = try await fetcher.fetchConcerts()
         }
+    }
+
+    // MARK: - 401 reauthenticate-and-retry (#414/#415)
+
+    @Test("A 401 reauthenticates once and retries, returning the decoded page")
+    func reauthenticatesOnceAndRetriesOn401() async throws {
+        StubURLProtocol.setResponseQueue([
+            (Data("""
+            {"error": "Unauthorized"}
+            """.utf8), 401),
+            (Self.responseBody, 200),
+        ])
+        let tokenProvider = RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "fresh-token")
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession(), tokenProvider: tokenProvider)
+
+        let response = try await fetcher.fetchConcerts()
+
+        #expect(response.concerts.count == 1)
+        #expect(await tokenProvider.reauthenticateCallCount == 1)
+
+        let requests = StubURLProtocol.capturedRequests()
+        #expect(requests.count == 2)
+        #expect(requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer stale-token")
+        #expect(requests[1].value(forHTTPHeaderField: "Authorization") == "Bearer fresh-token")
+    }
+
+    @Test("Two consecutive 401s surface HTTPStatusError(401) without retrying again")
+    func doesNotRetryTwiceOnRepeated401() async throws {
+        StubURLProtocol.setResponseQueue([
+            (Data("""
+            {"error": "Unauthorized"}
+            """.utf8), 401),
+            (Data("""
+            {"error": "Unauthorized"}
+            """.utf8), 401),
+        ])
+        let tokenProvider = RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "still-bad-token")
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession(), tokenProvider: tokenProvider)
+
+        await #expect(throws: HTTPStatusError(statusCode: 401)) {
+            _ = try await fetcher.fetchConcerts()
+        }
+
+        #expect(StubURLProtocol.capturedRequests().count == 2)
+        #expect(await tokenProvider.reauthenticateCallCount == 1)
     }
 
     // MARK: - Page-level decode tolerance
@@ -242,7 +312,7 @@ struct ConcertsFetcherTests {
         """.utf8), statusCode: 404)
         let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
 
-        await #expect(throws: URLError(.badServerResponse)) {
+        await #expect(throws: HTTPStatusError(statusCode: 404)) {
             _ = try await fetcher.fetchConcert(id: 999_999)
         }
     }

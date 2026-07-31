@@ -147,6 +147,15 @@ public final actor MultisourceArtworkService: ArtworkService {
                 // Server-side or networking blip — retry next time, don't poison the cache.
                 Log(.warning, category: .artwork, "Transient error for \(cacheKey) using fetcher \(fetcher): \(error)")
                 hadTransientError = true
+            } catch let error as HTTPStatusError {
+                // A non-2xx response from `WebSession.data(from:)` — the same
+                // condition that used to surface as `URLError(.badServerResponse)`
+                // (unconditionally transient in `isTransient` below) before
+                // `HTTPURLResponse.validateSuccessStatus()` started carrying the
+                // real status code. Treated the same way: retry next time,
+                // don't poison the negative cache.
+                Log(.warning, category: .artwork, "Transient HTTP error for \(cacheKey) using fetcher \(fetcher): \(error)")
+                hadTransientError = true
             } catch ServiceError.notAttempted {
                 // Fetcher had no input to act on (e.g. no artwork URL yet because backend
                 // enrichment hasn't completed). Not a verdict about whether artwork exists —

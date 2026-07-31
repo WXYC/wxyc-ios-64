@@ -323,3 +323,54 @@ struct DiscogsAPIEntityResolverAuthInitTests {
         #expect(resolver is DiscogsAPIEntityResolver)
     }
 }
+
+// MARK: - 401 Reauthenticate-and-Retry Test (#414/#415)
+
+/// Exercises the authenticated `proxy/entity/resolve` request path against a
+/// stub `URLProtocol` on the injectable `urlSession`, so a rejected/stale
+/// cached token's 401 can be observed reauthenticating and retrying exactly
+/// once — the same seam `ConcertsFetcher` and `PlaycutMetadataService` use.
+///
+/// Declared as an extension on `PlaycutMetadataServiceHTTPTests`
+/// (`PlaycutMetadataServiceHTTPTests.swift`) rather than its own `@Suite`:
+/// `MockURLProtocol.responseHandler` is shared global mutable state, and
+/// that suite's `.serialized` trait is what keeps concurrent tests from
+/// racing on it. A separate suite would run in parallel with it despite its
+/// own `.serialized` trait — traits only serialize *within* a suite, not
+/// across suites touching the same shared resource.
+extension PlaycutMetadataServiceHTTPTests {
+
+    @Test("Reauthenticates once and retries when DiscogsAPIEntityResolver's proxy/entity/resolve returns 401")
+    func discogsEntityResolverRetriesOnceOn401ThenSucceeds() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+        let mockURLSession = URLSession(configuration: config)
+
+        let mockCache = EntityResolverMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let resolver = DiscogsAPIEntityResolver(
+            tokenProvider: MockTokenProvider(tokenValue: "stale-token", reauthenticateValue: "fresh-token"),
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        var capturedAuthorizationHeaders: [String?] = []
+        MockURLProtocol.responseHandler = { request in
+            capturedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
+            if capturedAuthorizationHeaders.count == 1 {
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (#"{"error": "Unauthorized"}"#.data(using: .utf8)!, response)
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let body = #"{"name": "Reauthenticated Artist", "type": "artist", "id": 4242}"#.data(using: .utf8)!
+            return (body, response)
+        }
+
+        let result = try await resolver.resolveArtist(id: 4242)
+
+        #expect(result == "Reauthenticated Artist")
+        #expect(capturedAuthorizationHeaders.count == 2)
+        #expect(capturedAuthorizationHeaders[0] == "Bearer stale-token")
+        #expect(capturedAuthorizationHeaders[1] == "Bearer fresh-token")
+    }
+}

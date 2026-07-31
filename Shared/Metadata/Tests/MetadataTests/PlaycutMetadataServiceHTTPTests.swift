@@ -50,9 +50,19 @@ final class MockURLProtocol: URLProtocol, @unchecked Sendable {
 
 struct MockTokenProvider: SessionTokenProvider {
     let tokenValue: String
+    let reauthenticateValue: String?
+
+    init(tokenValue: String, reauthenticateValue: String? = nil) {
+        self.tokenValue = tokenValue
+        self.reauthenticateValue = reauthenticateValue
+    }
 
     func token() async throws -> String {
         tokenValue
+    }
+
+    func reauthenticate() async throws -> String {
+        reauthenticateValue ?? tokenValue
     }
 }
 
@@ -418,5 +428,79 @@ struct PlaycutMetadataServiceHTTPTests {
 
         // Then
         #expect(capturedRequest?.value(forHTTPHeaderField: "Authorization") == "Bearer my-secret-token")
+    }
+
+    @Test("Reauthenticates once and retries when the proxy returns 401")
+    func retriesOnceOn401ThenSucceeds() async throws {
+        // Given
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+        let mockURLSession = URLSession(configuration: config)
+
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockWebSession = MetadataMockWebSession()
+
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            tokenProvider: MockTokenProvider(tokenValue: "stale-token", reauthenticateValue: "fresh-token"),
+            session: mockWebSession,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        // First request 401s (rejected cached token); the retried request,
+        // carrying the reauthenticated token, gets a 200 with real metadata.
+        var capturedAuthorizationHeaders: [String?] = []
+        MockURLProtocol.responseHandler = { request in
+            capturedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
+            if capturedAuthorizationHeaders.count == 1 {
+                let response = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 401,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+                let errorBody = #"{"error": "Unauthorized"}"#.data(using: .utf8)!
+                return (errorBody, response)
+            }
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let body = """
+            {
+                "discogsReleaseId": 12345,
+                "label": "Warp Records",
+                "releaseYear": 2001,
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.data(using: .utf8)!
+            return (body, response)
+        }
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — the retry's 200 response is what the service returns, and
+        // it carried the reauthenticated token, not the rejected one.
+        #expect(result.album.label == "Warp Records")
+        #expect(result.album.releaseYear == 2001)
+        #expect(capturedAuthorizationHeaders.count == 2)
+        #expect(capturedAuthorizationHeaders[0] == "Bearer stale-token")
+        #expect(capturedAuthorizationHeaders[1] == "Bearer fresh-token")
     }
 }

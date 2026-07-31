@@ -24,6 +24,7 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     private let baseURL: URL
     private let tokenProvider: SessionTokenProvider?
     private let session: WebSession
+    private let urlSession: URLSession
     private let cache: CacheCoordinator
 
     /// Cache lifespan: 30 days (entity names essentially never change)
@@ -40,24 +41,28 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
         baseURL: URL = URL(string: "https://api.wxyc.org")!,
         tokenProvider: SessionTokenProvider? = nil,
         session: WebSession = URLSession.shared,
+        urlSession: URLSession = .shared,
         cache: CacheCoordinator = .AlbumArt
     ) {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
         self.session = session
+        self.urlSession = urlSession
         self.cache = cache
     }
 
     /// Creates a resolver that authenticates its `proxy/entity/resolve`
     /// requests with the given token provider, so calls don't 401. Mirrors
     /// the app's existing `PlaycutMetadataService(tokenProvider:)` pattern.
-    /// `baseURL`, `session`, and `cache` keep their package-internal defaults.
+    /// `baseURL`, `session`, `urlSession`, and `cache` keep their
+    /// package-internal defaults.
     public convenience init(tokenProvider: SessionTokenProvider?) {
         // The extra `session:` argument disambiguates this delegation to the
-        // designated `init(baseURL:tokenProvider:session:cache:)`. Without it,
-        // `self.init(tokenProvider:)` resolves to THIS convenience initializer
-        // (an exact-arity match Swift prefers over the designated init, which
-        // would need three defaults applied), recursing until it crashes.
+        // designated `init(baseURL:tokenProvider:session:urlSession:cache:)`.
+        // Without it, `self.init(tokenProvider:)` resolves to THIS convenience
+        // initializer (an exact-arity match Swift prefers over the designated
+        // init, which would need four defaults applied), recursing until it
+        // crashes.
         self.init(tokenProvider: tokenProvider, session: URLSession.shared)
     }
 
@@ -93,10 +98,8 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
 
                 let data: Data
                 if let tokenProvider {
-                    let token = try await tokenProvider.token()
-                    var request = URLRequest(url: url)
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                    let (responseData, _) = try await URLSession.shared.data(for: request)
+                    let request = URLRequest(url: url)
+                    let (responseData, _) = try await urlSession.authedData(for: request, tokenProvider: tokenProvider)
                     data = responseData
                 } else {
                     data = try await session.data(from: url)
