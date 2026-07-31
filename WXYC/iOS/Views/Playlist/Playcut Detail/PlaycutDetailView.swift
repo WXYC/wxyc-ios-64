@@ -197,13 +197,7 @@ struct PlaycutDetailView: View {
     }
     
     private func loadMetadata() async {
-        // Build inline metadata from the V2 flowsheet row when present. The
-        // service decides whether to also hit /proxy/metadata/album: it skips
-        // the call for a terminal metadataStatus row (enrichment is done, even
-        // with zero inline fields — #685) or when inline streaming is
-        // non-empty, and falls through when the row is still mid-enrichment
-        // and the V2 writer landed everything except the streaming side
-        // (Tragic Magic shape — #303).
+        // Build inline metadata from the V2 flowsheet row when present.
         //
         // This field list must be kept in sync by hand with two other
         // enumerations of the same 12 inline fields: Playcut's CodingKeys/
@@ -237,16 +231,34 @@ struct PlaycutDetailView: View {
             )
         ) : nil
 
-        let fetchedMetadata = await metadataService.fetchMetadata(for: playcut, inline: inline)
+        // Explicit branch on the row's server-side enrichment lifecycle
+        // (#270), replacing the old `hasV2Metadata`-only heuristic at this
+        // call site. `enrichedMatch`/`enrichedNoMatch`/`failedNoRetry` are
+        // terminal — Backend has already finished (or given up on)
+        // enrichment — so this branch renders straight from the inline V2
+        // flowsheet fields and never calls `metadataService.fetchMetadata`:
+        // no outbound `/proxy/metadata/album` request is possible on this
+        // path. `pending`/`enriching` rows are still being enriched
+        // server-side, and `nil` covers V1 rows, pre-Epic-C Backend deploys,
+        // and feeds decoded before #280's `metadata_status` field existed —
+        // both fall back to the existing metadata service, unchanged.
+        let resolvedMetadata: PlaycutMetadata
+        switch playcut.metadataStatus {
+        case .enrichedMatch, .enrichedNoMatch, .failedNoRetry:
+            resolvedMetadata = inline ?? .empty
+        case .pending, .enriching, nil:
+            resolvedMetadata = await metadataService.fetchMetadata(for: playcut, inline: inline)
+        }
+
         await MainActor.run {
             withAnimation(.easeInOut(duration: 0.3)) {
-                self.metadata = fetchedMetadata
+                self.metadata = resolvedMetadata
                 self.isLoadingMetadata = false
             }
         }
 
         // If we still have no artwork and metadata provided an artwork URL, fetch it
-        if artwork == nil, let artworkURL = fetchedMetadata.album.artworkURL {
+        if artwork == nil, let artworkURL = resolvedMetadata.album.artworkURL {
             await loadArtwork(from: artworkURL)
         }
     }
