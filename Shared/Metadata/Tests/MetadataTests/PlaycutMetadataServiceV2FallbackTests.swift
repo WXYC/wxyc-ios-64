@@ -505,9 +505,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
 
     @Test(
         "Every terminal-vs-non-terminal MetadataStatus value gates fetchMetadata's proxy call exactly per MetadataStatus.isTerminal",
-        arguments: [
-            MetadataStatus.pending, .enriching, .enrichedMatch, .enrichedNoMatch, .failedNoRetry,
-        ]
+        arguments: MetadataStatus.allCases
     )
     func fetchMetadataStatusGatesProxyCall(status: MetadataStatus) async throws {
         try await assertMetadataStatusGatesProxyCall(status: status, expectsProxyCall: !status.isTerminal)
