@@ -36,13 +36,19 @@ extension URLSession {
     ///
     /// - Parameters:
     ///   - request: The request to send. Any existing `Authorization` header
-    ///     is overwritten when `tokenProvider` is non-nil.
+    ///     is overwritten when `tokenProvider` is non-nil. The retry rebuilds
+    ///     from this value, so use a `Data` body (`httpBody`) rather than a
+    ///     one-shot `httpBodyStream`, which the first attempt would consume.
     ///   - tokenProvider: Supplies the bearer token, and the force-fresh
     ///     token used for the 401 retry.
     /// - Returns: The response data and `URLResponse`, guaranteed to be a
     ///   2xx `HTTPURLResponse` (`validateSuccessStatus()` has already been
-    ///   applied).
-    /// - Throws: Whatever `data(for:)`, `tokenProvider`, or
+    ///   applied; a non-HTTP response throws instead of escaping
+    ///   unvalidated).
+    /// - Throws: `URLError(.badServerResponse)` if the transport yields a
+    ///   non-HTTP `URLResponse`; `CancellationError` if the caller is
+    ///   cancelled before the retry is issued; otherwise whatever
+    ///   `data(for:)`, `tokenProvider`, or
     ///   `HTTPURLResponse.validateSuccessStatus()` throw.
     public func authedData(
         for request: URLRequest,
@@ -57,12 +63,15 @@ extension URLSession {
         }
 
         let (responseData, response) = try await self.data(for: authedRequest)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            // A non-HTTP response can't be status-validated; returning it
+            // would silently break this method's 2xx guarantee (and a 401
+            // delivered this way could never trigger the retry).
+            throw URLError(.badServerResponse)
+        }
 
-        guard let tokenProvider,
-              let usedToken,
-              let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 401 else {
-            try (response as? HTTPURLResponse)?.validateSuccessStatus()
+        guard let tokenProvider, let usedToken, httpResponse.statusCode == 401 else {
+            try httpResponse.validateSuccessStatus()
             return (responseData, response)
         }
 
@@ -70,11 +79,20 @@ extension URLSession {
         // "nobody has recovered from this yet" apart from "another
         // concurrent caller already did" — see `SessionTokenProvider`'s doc.
         let freshToken = try await tokenProvider.reauthenticate(previousToken: usedToken)
+
+        // Reauthentication awaits a shared, non-cancellable refresh task —
+        // the caller may have been cancelled (view teardown) while it was in
+        // flight. Bail before paying for a retry nobody will read.
+        try Task.checkCancellation()
+
         var retryRequest = request
         retryRequest.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
 
         let (retryData, retryResponse) = try await self.data(for: retryRequest)
-        try (retryResponse as? HTTPURLResponse)?.validateSuccessStatus()
+        guard let retryHTTPResponse = retryResponse as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        try retryHTTPResponse.validateSuccessStatus()
         return (retryData, retryResponse)
     }
 }
