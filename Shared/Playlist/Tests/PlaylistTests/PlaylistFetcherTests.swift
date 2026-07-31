@@ -116,8 +116,10 @@ struct PlaylistFetcherTests {
 
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
-        // CancellationError should not trigger error reporting
+        // Cancellation must neither be reported nor counted: no error report and
+        // no phantom fetch_playlist_event in the success/failure denominator.
         #expect(mockErrorReporter.allReportedErrors.isEmpty)
+        #expect(mockAnalytics.events(named: FetchPlaylistEvent.name).isEmpty)
     }
 }
 
@@ -234,6 +236,77 @@ struct PlaylistFetcherAnalyticsTests {
         _ = await fetcher.fetchPlaylist()
 
         #expect(analytics.events(named: FetchPlaylistEvent.name).isEmpty)
+    }
+
+    @Test("a URLSession cancellation (URLError.cancelled) is neither reported nor counted, even when the task flag is unset")
+    func urlSessionCancellationIsNotAPhantomFailure() async {
+        // `URLSession.data(for:)` throws `URLError(.cancelled)` — NOT Swift's
+        // `CancellationError` — when a fetch is torn down (e.g. switchAPIVersion
+        // swapping the data source). This can surface without the surrounding
+        // task's `isCancelled` flag being set, so it must be classified from the
+        // error itself, not from `Task.isCancelled`.
+        let dataSource = MockPlaylistDataSource()
+        dataSource.errorToThrow = URLError(.cancelled)
+        let analytics = MockStructuredAnalytics()
+        let reporter = MockErrorReporter()
+        let fetcher = PlaylistFetcher(
+            apiVersion: .v2,
+            dataSource: dataSource,
+            errorReporter: reporter,
+            analytics: analytics,
+            healthySuccessSampler: { true }
+        )
+
+        let result = await fetcher.fetchPlaylist()
+
+        #expect(result == .empty)
+        #expect(reporter.allReportedErrors.isEmpty)
+        #expect(analytics.events(named: FetchPlaylistEvent.name).isEmpty)
+    }
+
+    @Test("cancelling an in-flight fetch task emits no event and reports nothing")
+    func realTaskCancellationOfInFlightFetchIsSilent() async {
+        let dataSource = HangingPlaylistDataSource()
+        let analytics = MockStructuredAnalytics()
+        let reporter = MockErrorReporter()
+        let fetcher = PlaylistFetcher(
+            apiVersion: .v2,
+            dataSource: dataSource,
+            errorReporter: reporter,
+            analytics: analytics,
+            healthySuccessSampler: { true }
+        )
+
+        let task = Task { await fetcher.fetchPlaylist() }
+        // Wait until the fetch is genuinely in-flight so the cancel can't race
+        // ahead of the network call starting.
+        while await dataSource.hasStarted == false {
+            await Task.yield()
+        }
+        task.cancel()
+        let result = await task.value
+
+        #expect(result == .empty)
+        #expect(reporter.allReportedErrors.isEmpty)
+        #expect(analytics.events(named: FetchPlaylistEvent.name).isEmpty)
+    }
+}
+
+// MARK: - Test Doubles
+
+/// A data source that suspends until its surrounding task is cancelled, then
+/// throws the way `URLSession.data(for:)` does — `URLError(.cancelled)`, not
+/// Swift's `CancellationError`. `hasStarted` lets a test await the in-flight
+/// state before cancelling. An actor gives data-race-free access to the flag.
+private actor HangingPlaylistDataSource: PlaylistDataSource {
+    private(set) var hasStarted = false
+
+    func getPlaylist() async throws -> Playlist {
+        hasStarted = true
+        while !Task.isCancelled {
+            await Task.yield()
+        }
+        throw URLError(.cancelled)
     }
 }
 

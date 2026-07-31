@@ -95,35 +95,50 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
 
     /// Fetches a playlist from the remote source.
     /// Returns an empty playlist if the fetch fails.
+    ///
+    /// Handled inline (rather than via `timedOperation`) so the success, failure,
+    /// and cancellation outcomes are all distinguishable in one place: only a
+    /// genuine failure reports to the error reporter and counts against the
+    /// success/failure denominator, and the API version is threaded onto the
+    /// report as a structured `api_version` property.
     public func fetchPlaylist() async -> Playlist {
         let timer = Core.Timer.start()
+        let context = "fetchPlaylist(API \(apiVersion.rawValue))"
 
-        // Fetch through an optional so success is distinguishable from the
-        // failure/cancellation fallback: `timedOperation` returns `.some` only
-        // when the operation completes, and `nil` when it throws or is cancelled.
-        // The version rides `additionalData` so a reported failure carries a
-        // structured `api_version` property, not just the free-text context.
-        let fetched: Playlist? = await timedOperation(
-            context: "fetchPlaylist(API \(apiVersion.rawValue))",
-            category: .network,
-            fallback: nil,
-            errorReporter: errorReporter,
-            additionalData: ["api_version": apiVersion.rawValue]
-        ) {
-            try await self.dataSource.getPlaylist()
+        do {
+            let playlist = try await dataSource.getPlaylist()
+            let duration = timer.duration()
+            Log(.info, category: .network, "\(context): succeeded in \(duration)s")
+            // A task cancelled after the data already arrived is not a real
+            // outcome; keep it out of the success/failure denominator.
+            if !Task.isCancelled {
+                captureFetchEvent(playlist: playlist, succeeded: true, duration: duration)
+            }
+            return playlist
+        } catch {
+            // `URLSession.data(for:)` throws `URLError(.cancelled)` (NOT Swift's
+            // `CancellationError`) when a fetch is torn down — e.g. switchAPIVersion
+            // swapping the data source mid-flight — and it can surface without the
+            // task's `isCancelled` flag being set. Cancellation is normal teardown:
+            // don't report it to the error reporter (Sentry) and don't count it as
+            // a failure in the rollout metric.
+            if isCancellation(error) || Task.isCancelled {
+                return .empty
+            }
+
+            let duration = timer.duration()
+            errorReporter.report(
+                error,
+                context: context,
+                category: .network,
+                additionalData: [
+                    "api_version": apiVersion.rawValue,
+                    "duration": "\(duration)",
+                ]
+            )
+            captureFetchEvent(playlist: .empty, succeeded: false, duration: duration)
+            return .empty
         }
-
-        let playlist = fetched ?? .empty
-        let succeeded = fetched != nil
-
-        // A cancelled fetch (normal task teardown) also returns nil but is not a
-        // real outcome — `timedOperation` swallows `CancellationError` without
-        // reporting it. Keep it out of the success/failure denominator.
-        if succeeded || !Task.isCancelled {
-            captureFetchEvent(playlist: playlist, succeeded: succeeded, duration: timer.duration())
-        }
-
-        return playlist
     }
 
     /// Emits a `FetchPlaylistEvent` for a terminal fetch outcome.

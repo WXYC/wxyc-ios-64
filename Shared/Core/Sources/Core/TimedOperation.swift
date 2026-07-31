@@ -16,9 +16,11 @@ import struct Logger.Category
 
 /// Executes an async throwing operation with standardized timing, logging, and error handling.
 ///
-/// On success, logs the duration and returns the result. On `CancellationError`, returns
-/// the fallback silently (task cancellation is normal during cleanup). On any other error,
-/// reports it via the error reporter with the elapsed duration and returns the fallback.
+/// On success, logs the duration and returns the result. On cancellation — either
+/// `CancellationError` or `URLError(.cancelled)` from `URLSession` (see
+/// ``isCancellation(_:)``) — returns the fallback silently, since task cancellation
+/// is normal during cleanup. On any other error, reports it via the error reporter
+/// with the elapsed duration and returns the fallback.
 ///
 /// - Parameters:
 ///   - context: A short label describing the operation (e.g., `"fetchPlaylist"`).
@@ -50,7 +52,7 @@ public func timedOperation<T: Sendable>(
         let duration = timer.duration()
         Log(.info, category: category, "\(context): succeeded in \(duration)s")
         return result
-    } catch is CancellationError {
+    } catch let error where isCancellation(error) {
         return fallback
     } catch {
         let duration = timer.duration()
