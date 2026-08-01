@@ -4,9 +4,10 @@
 //
 //  The Liked tab (#492): a newest-first list of the listener's liked songs from
 //  the on-device LikedSongsStore. Rows unlike via swipe or heart-off; tapping a
-//  row reopens the standard playcut detail card through the tab's own overlay
-//  sheet (the root's presentation state stays private to RootTabView). Likes
-//  never leave the device; the toggle analytics carry no song identity.
+//  row reopens the standard playcut detail card through the tab's own
+//  full-screen cover (the root's presentation state stays private to
+//  RootTabView). Likes never leave the device; the toggle analytics carry no
+//  song identity.
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -21,7 +22,7 @@ import WXUI
 struct LikedTabView: View {
     @Environment(Singletonia.self) private var appState
     /// The tab's own detail-card presentation, mirroring `RootTabView`'s
-    /// `selectedPlaycut` + `.overlaySheet` pattern — the root's state is
+    /// `selectedPlaycut` + `.fullScreenCover` pattern — the root's state is
     /// `private`, so this tab presents from its own.
     @State private var selectedPlaycut: PlaycutSelection?
     /// The zoom-transition namespace tying each liked row to the detail cover it
