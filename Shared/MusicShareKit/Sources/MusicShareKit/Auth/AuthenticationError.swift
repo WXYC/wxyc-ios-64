@@ -28,9 +28,6 @@ public enum AuthenticationError: Error, LocalizedError, Sendable {
     /// No stored session available and sign-in is required.
     case notAuthenticated
 
-    /// Authentication service is not configured.
-    case notConfigured
-
     public var errorDescription: String? {
         switch self {
         case .keychainError(let status):
@@ -43,8 +40,6 @@ public enum AuthenticationError: Error, LocalizedError, Sendable {
             "Invalid authentication response"
         case .notAuthenticated:
             "Not authenticated"
-        case .notConfigured:
-            "Authentication service not configured"
         }
     }
 }

@@ -28,7 +28,8 @@ public protocol AuthNetworkClient: Sendable {
     ///     the freshly-minted user.id at sign-in time. Pass `nil` to omit
     ///     the header (audit-trail data missing, request still succeeds).
     /// - Returns: The session token and user id for the new anonymous account.
-    /// - Throws: `AuthenticationError` if the sign-in fails.
+    /// - Throws: `AuthenticationError` if the sign-in fails, or
+    ///   `SessionTokenProviderError.notConfigured` if `baseURL` is malformed.
     func signInAnonymously(
         baseURL: String, deviceFingerprint: String?
     ) async throws -> AnonymousSignInResult
@@ -41,7 +42,8 @@ public protocol AuthNetworkClient: Sendable {
     ///   - deviceFingerprint: Stable per-device UUID for the audit-trail
     ///     header. Pass `nil` to omit.
     /// - Returns: A JWT string.
-    /// - Throws: `AuthenticationError` if the exchange fails.
+    /// - Throws: `AuthenticationError` if the exchange fails, or
+    ///   `SessionTokenProviderError.notConfigured` if `baseURL` is malformed.
     func fetchJWT(
         baseURL: String, sessionToken: String, deviceFingerprint: String?
     ) async throws -> String
@@ -65,7 +67,7 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
         baseURL: String, deviceFingerprint: String?
     ) async throws -> AnonymousSignInResult {
         guard let url = URL(string: "\(baseURL)/auth/sign-in/anonymous") else {
-            throw AuthenticationError.notConfigured
+            throw SessionTokenProviderError.notConfigured
         }
 
         var request = URLRequest(url: url)
@@ -107,7 +109,7 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
         baseURL: String, sessionToken: String, deviceFingerprint: String?
     ) async throws -> String {
         guard let url = URL(string: "\(baseURL)/auth/token") else {
-            throw AuthenticationError.notConfigured
+            throw SessionTokenProviderError.notConfigured
         }
 
         var request = URLRequest(url: url)
