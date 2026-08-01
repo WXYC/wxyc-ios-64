@@ -72,6 +72,9 @@ struct RootTabView: View {
 
     @State private var selectedPage = Page.playlist
     @State private var selectedPlaycut: PlaycutSelection?
+    /// The zoom-transition namespace tying each playcut row to the detail cover
+    /// it opens, mirroring `OnTourTabView`'s concert-row → concert-detail zoom.
+    @Namespace private var playcutZoom
 
     @Environment(Singletonia.self) private var appState
     @Environment(\.themeAppearance) private var appearance
@@ -83,7 +86,7 @@ struct RootTabView: View {
     var body: some View {
         TabView(selection: $selectedPage) {
             Tab(Page.playlist.title, systemImage: Page.playlist.systemImage, value: Page.playlist) {
-                PlaylistView(selectedPlaycut: $selectedPlaycut)
+                PlaylistView(selectedPlaycut: $selectedPlaycut, zoomNamespace: playcutZoom)
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
                         configuration: appState.themeConfiguration
@@ -125,13 +128,12 @@ struct RootTabView: View {
         // Selected tab item uses the LCD accent hue/saturation at the active
         // segment brightness rather than the system default tint.
         .tint(appearance.accentColor.color(brightness: Self.tabTintBrightness(for: appearance)))
-        .overlaySheet(isPresented: Binding(
-            get: { selectedPlaycut != nil },
-            set: { if !$0 { selectedPlaycut = nil } }
-        )) {
-            if let selection = selectedPlaycut {
-                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-            }
+        // The playcut detail is presented like the On Tour concert detail: a
+        // full-screen cover the tapped row zooms into, rather than the old
+        // partial-height overlay sheet.
+        .fullScreenCover(item: $selectedPlaycut) { selection in
+            PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
+                .navigationTransition(.zoom(sourceID: selection.playcut.id, in: playcutZoom))
         }
         // A shared show link arrived: switch to On Tour so the tab materializes and
         // its resolution ladder (`OnTourTabView`) can open the show. Reacting here —

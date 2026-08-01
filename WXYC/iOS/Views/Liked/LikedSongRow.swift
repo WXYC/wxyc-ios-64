@@ -23,6 +23,9 @@ import WXUI
 /// this list is liked by construction; tapping it unlikes and removes the row.
 struct LikedSongRow: View {
     let snapshot: LikedSongSnapshot
+    /// The zoom-transition namespace shared with the detail cover, so this row is
+    /// the source the `PlaycutDetailView` animates out of (mirrors `ConcertRow`).
+    let namespace: Namespace.ID
     let onSelect: (UIImage?) -> Void
     let onUnlike: () -> Void
 
@@ -37,8 +40,9 @@ struct LikedSongRow: View {
     /// flowsheet row (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
 
-    init(snapshot: LikedSongSnapshot, onSelect: @escaping (UIImage?) -> Void, onUnlike: @escaping () -> Void) {
+    init(snapshot: LikedSongSnapshot, namespace: Namespace.ID, onSelect: @escaping (UIImage?) -> Void, onUnlike: @escaping () -> Void) {
         self.snapshot = snapshot
+        self.namespace = namespace
         self.onSelect = onSelect
         self.onUnlike = onUnlike
         self.playcut = snapshot.toPlaycut()
@@ -76,6 +80,9 @@ struct LikedSongRow: View {
                     .padding(.trailing, 4)
             }
         }
+        // Source for the detail cover's zoom transition — the whole card is what
+        // animates into `PlaycutDetailView`.
+        .matchedTransitionSource(id: playcut.id, in: namespace)
         .onAppear {
             // Idempotent: coalesces with in-flight loads and short-circuits when
             // already loaded. The playlist's prune pass may evict a liked row's

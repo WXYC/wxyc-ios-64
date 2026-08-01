@@ -85,6 +85,9 @@ struct ScrollOffsetPreferenceKey: PreferenceKey {
 
 struct PlaycutRowView: View {
     let playcut: Playcut
+    /// The zoom-transition namespace shared with the detail cover, so this row is
+    /// the source the `PlaycutDetailView` animates out of (mirrors `ConcertRow`).
+    let namespace: Namespace.ID
     let onSelect: (UIImage?) -> Void
 
     @State private var shadowYOffset: CGFloat = 0
@@ -138,6 +141,9 @@ struct PlaycutRowView: View {
                 songRowPanel
             }
         }
+        // Source for the detail cover's zoom transition — the whole row (plain or
+        // ticket) is what animates into `PlaycutDetailView`.
+        .matchedTransitionSource(id: playcut.id, in: namespace)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .animation(.easeInOut(duration: 0.25), value: upcomingShow)
@@ -310,13 +316,15 @@ extension View {
 }
 
 #Preview {
-    PlaylistView(selectedPlaycut: .constant(nil))
+    @Previewable @Namespace var zoomNamespace
+    PlaylistView(selectedPlaycut: .constant(nil), zoomNamespace: zoomNamespace)
         .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
         .background(WXYCBackground())
 }
 
 #Preview {
+    @Previewable @Namespace var zoomNamespace
     PlaycutRowView(
         playcut: Playcut(
             id: 1,
@@ -328,6 +336,7 @@ extension View {
             artistName: "Laurel Halo",
             releaseTitle: "Atlas"
         ),
+        namespace: zoomNamespace,
         onSelect: { _ in }
     )
     .environment(Singletonia.shared)

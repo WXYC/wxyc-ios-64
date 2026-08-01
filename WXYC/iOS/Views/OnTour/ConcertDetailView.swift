@@ -334,14 +334,10 @@ struct ConcertDetailView: View {
         .accessibilityLabel("Share")
     }
 
-    /// The shared frosted-circle treatment for both chrome buttons.
+    /// The shared frosted-circle treatment for both chrome buttons — the same
+    /// glyph the playcut detail's close button uses (see ``DetailPresentation``).
     private func chromeGlyph(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.white)
-            .frame(width: 38, height: 38)
-            .background(.ultraThinMaterial, in: .circle)
-            .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
+        DetailPresentation.chromeGlyph(systemName)
     }
 
     private func statusPill(_ text: String) -> some View {
@@ -362,8 +358,9 @@ struct ConcertDetailView: View {
 
     /// The dark backdrop the poster sits over — the detail reads as a "moment",
     /// not the app's translucent wallpaper surface (matches the prototype's
-    /// `--page` background).
-    private static let backdrop = Color(red: 0.063, green: 0.055, blue: 0.102)
+    /// `--page` background). Shared with the playcut detail cover via
+    /// ``DetailPresentation/backdrop`` so the two "moments" stay in lockstep.
+    private static let backdrop = DetailPresentation.backdrop
 
     /// A bottom-weighted scrim so the hero text reads over any artwork.
     private static let heroScrim = LinearGradient(

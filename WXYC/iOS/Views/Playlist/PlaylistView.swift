@@ -20,9 +20,13 @@ import UIKit
 import Wallpaper
 import WXUI
 
-struct PlaycutSelection: Equatable {
+struct PlaycutSelection: Equatable, Identifiable {
     let playcut: Playcut
     let artwork: UIImage?
+
+    /// Identity is the playcut, matching `Equatable`, so `.fullScreenCover(item:)`
+    /// treats re-selecting the same row as the same presentation.
+    var id: UInt64 { playcut.id }
 
     static func == (lhs: PlaycutSelection, rhs: PlaycutSelection) -> Bool {
         lhs.playcut.id == rhs.playcut.id
@@ -31,6 +35,10 @@ struct PlaycutSelection: Equatable {
 
 struct PlaylistView: View {
     @Binding var selectedPlaycut: PlaycutSelection?
+    /// The zoom-transition namespace shared with the detail cover, so each tapped
+    /// playcut row is the source the `PlaycutDetailView` animates out of. Owned by
+    /// `RootTabView`, where the `.fullScreenCover` lives.
+    let zoomNamespace: Namespace.ID
 
     @State private var timelineItems: [TimelineItem] = []
     @State private var onAir: OnAir = .unknown
@@ -325,7 +333,7 @@ struct PlaylistView: View {
     private func playlistRow(for item: TimelineItem) -> some View {
         switch item {
         case .playcut(let playcut):
-            PlaycutRowView(playcut: playcut) { artwork in
+            PlaycutRowView(playcut: playcut, namespace: zoomNamespace) { artwork in
                 selectedPlaycut = PlaycutSelection(playcut: playcut, artwork: artwork)
             }
 
@@ -406,7 +414,8 @@ struct PlaylistSectionHeader: View {
 }
 
 #Preview {
-    PlaylistView(selectedPlaycut: .constant(nil))
+    @Previewable @Namespace var zoomNamespace
+    PlaylistView(selectedPlaycut: .constant(nil), zoomNamespace: zoomNamespace)
         .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
         .background(WXYCBackground())

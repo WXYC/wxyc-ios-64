@@ -24,6 +24,9 @@ struct LikedTabView: View {
     /// `selectedPlaycut` + `.overlaySheet` pattern — the root's state is
     /// `private`, so this tab presents from its own.
     @State private var selectedPlaycut: PlaycutSelection?
+    /// The zoom-transition namespace tying each liked row to the detail cover it
+    /// opens, mirroring the flowsheet's row → detail zoom.
+    @Namespace private var playcutZoom
 
     #if DEBUG
     /// The like-effect tuning bench, opened by tapping the "Liked" header.
@@ -33,13 +36,11 @@ struct LikedTabView: View {
     var body: some View {
         content
             .accessibilityIdentifier("likedTabView")
-            .overlaySheet(isPresented: Binding(
-                get: { selectedPlaycut != nil },
-                set: { if !$0 { selectedPlaycut = nil } }
-            )) {
-                if let selection = selectedPlaycut {
-                    PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                }
+            // Presented like the On Tour concert detail: a full-screen cover the
+            // tapped row zooms into, matching the flowsheet's playcut detail.
+            .fullScreenCover(item: $selectedPlaycut) { selection in
+                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
+                    .navigationTransition(.zoom(sourceID: selection.playcut.id, in: playcutZoom))
             }
             #if DEBUG
             .sheet(isPresented: $showEffectTuning) {
@@ -121,6 +122,7 @@ struct LikedTabView: View {
             ForEach(appState.likedSongsStore.songs) { snapshot in
                 LikedSongRow(
                     snapshot: snapshot,
+                    namespace: playcutZoom,
                     onSelect: { artwork in
                         selectedPlaycut = PlaycutSelection(playcut: snapshot.toPlaycut(), artwork: artwork)
                     },
