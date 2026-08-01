@@ -133,7 +133,7 @@ struct RootTabView: View {
         // partial-height overlay sheet.
         .fullScreenCover(item: $selectedPlaycut) { selection in
             PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                .navigationTransition(.zoom(sourceID: selection.playcut.id, in: playcutZoom))
+                .navigationTransition(.zoom(sourceID: selection.transitionID, in: playcutZoom))
         }
         // A shared show link arrived: switch to On Tour so the tab materializes and
         // its resolution ladder (`OnTourTabView`) can open the show. Reacting here —

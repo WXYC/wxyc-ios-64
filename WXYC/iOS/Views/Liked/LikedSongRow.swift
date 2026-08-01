@@ -81,8 +81,10 @@ struct LikedSongRow: View {
             }
         }
         // Source for the detail cover's zoom transition — the whole card is what
-        // animates into `PlaycutDetailView`.
-        .matchedTransitionSource(id: playcut.id, in: namespace)
+        // animates into `PlaycutDetailView`. Keyed on the snapshot's stable id,
+        // not `playcut.id`: `toPlaycut()` hardcodes id 0, so every liked row would
+        // otherwise register the same source and the zoom couldn't pick this one.
+        .matchedTransitionSource(id: snapshot.id, in: namespace)
         .onAppear {
             // Idempotent: coalesces with in-flight loads and short-circuits when
             // already loaded. The playlist's prune pass may evict a liked row's

@@ -40,7 +40,7 @@ struct LikedTabView: View {
             // tapped row zooms into, matching the flowsheet's playcut detail.
             .fullScreenCover(item: $selectedPlaycut) { selection in
                 PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                    .navigationTransition(.zoom(sourceID: selection.playcut.id, in: playcutZoom))
+                    .navigationTransition(.zoom(sourceID: selection.transitionID, in: playcutZoom))
             }
             #if DEBUG
             .sheet(isPresented: $showEffectTuning) {
@@ -124,7 +124,13 @@ struct LikedTabView: View {
                     snapshot: snapshot,
                     namespace: playcutZoom,
                     onSelect: { artwork in
-                        selectedPlaycut = PlaycutSelection(playcut: snapshot.toPlaycut(), artwork: artwork)
+                        // Key the zoom on the snapshot's stable id, not the
+                        // playcut id — `toPlaycut()` hardcodes id 0.
+                        selectedPlaycut = PlaycutSelection(
+                            playcut: snapshot.toPlaycut(),
+                            artwork: artwork,
+                            transitionID: snapshot.id
+                        )
                     },
                     onUnlike: { unlike(snapshot) }
                 )
