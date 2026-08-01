@@ -11,67 +11,11 @@
 import Testing
 import Foundation
 import Core
+import CoreTesting
 import Playlist
 import PlaylistTesting
 @testable import Caching
 @testable import Metadata
-
-// MARK: - Mock URLProtocol
-
-/// A URLProtocol subclass that returns configurable responses for testing.
-final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    nonisolated(unsafe) static var responseHandler: ((URLRequest) -> (Data, HTTPURLResponse))?
-
-    override class func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        guard let handler = MockURLProtocol.responseHandler,
-              let url = request.url else {
-            client?.urlProtocolDidFinishLoading(self)
-            return
-        }
-
-        let (data, response) = handler(request)
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: data)
-        client?.urlProtocolDidFinishLoading(self)
-    }
-
-    override func stopLoading() {}
-}
-
-// MARK: - Mock Token Provider
-
-/// A fixed-token `SessionTokenProvider` for request-shape tests.
-///
-/// ⚠️ Tests exercising the 401-retry path MUST pass a distinct
-/// `reauthenticateValue` — the default returns the SAME token from
-/// `reauthenticate(previousToken:)`, which violates the protocol's
-/// "forces a fresh token" contract and would let a same-token-retry
-/// regression pass unnoticed if a retry test relied on it.
-struct MockTokenProvider: SessionTokenProvider {
-    let tokenValue: String
-    let reauthenticateValue: String?
-
-    init(tokenValue: String, reauthenticateValue: String? = nil) {
-        self.tokenValue = tokenValue
-        self.reauthenticateValue = reauthenticateValue
-    }
-
-    func token() async throws -> String {
-        tokenValue
-    }
-
-    func reauthenticate(previousToken: String) async throws -> String {
-        reauthenticateValue ?? tokenValue
-    }
-}
 
 // MARK: - HTTP Status Code Validation Tests
 
@@ -81,9 +25,7 @@ struct PlaycutMetadataServiceHTTPTests {
     @Test("Falls back to flowsheet metadata when the proxy returns 502 Bad Gateway")
     func fallsBackOnBadGateway() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -91,14 +33,14 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
 
         // Configure mock to return 502
-        MockURLProtocol.responseHandler = { request in
+        QueuedStubURLProtocol.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 502,
@@ -131,9 +73,7 @@ struct PlaycutMetadataServiceHTTPTests {
     @Test("Falls back to flowsheet metadata when the proxy returns 404 Not Found")
     func fallsBackOnNotFound() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -141,14 +81,14 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
 
         // Configure mock to return 404
-        MockURLProtocol.responseHandler = { request in
+        QueuedStubURLProtocol.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 404,
@@ -177,9 +117,7 @@ struct PlaycutMetadataServiceHTTPTests {
     @Test("Succeeds when proxy returns 200 OK")
     func succeedsOn200() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -187,14 +125,14 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
 
         // Configure mock to return 200 with valid metadata
-        MockURLProtocol.responseHandler = { request in
+        QueuedStubURLProtocol.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -239,9 +177,7 @@ struct PlaycutMetadataServiceHTTPTests {
     @Test("Decodes criticReviews[] from a 200 response into domain review items")
     func decodesCriticReviews() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -249,7 +185,7 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
@@ -257,7 +193,7 @@ struct PlaycutMetadataServiceHTTPTests {
 
         // Response carries two reviews: one fully populated, one with only the
         // required fields, plus one with a malformed URL that must be dropped.
-        MockURLProtocol.responseHandler = { request in
+        QueuedStubURLProtocol.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -330,9 +266,7 @@ struct PlaycutMetadataServiceHTTPTests {
     @Test("Omits criticReviews when the response has no such field")
     func omitsCriticReviewsWhenAbsent() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -340,13 +274,13 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "test-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
 
-        MockURLProtocol.responseHandler = { request in
+        QueuedStubURLProtocol.setHandler { request in
             let response = HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -384,9 +318,7 @@ struct PlaycutMetadataServiceHTTPTests {
     @Test("Includes Authorization header when token provider is present")
     func includesAuthorizationHeader() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -394,35 +326,24 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "my-secret-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "my-secret-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
 
-        var capturedRequest: URLRequest?
-        MockURLProtocol.responseHandler = { request in
-            capturedRequest = request
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let body = """
-            {
-                "discogsReleaseId": null,
-                "discogsUrl": null,
-                "releaseYear": null,
-                "spotifyUrl": null,
-                "appleMusicUrl": null,
-                "youtubeMusicUrl": null,
-                "bandcampUrl": null,
-                "soundcloudUrl": null
-            }
-            """.data(using: .utf8)!
-            return (body, response)
+        QueuedStubURLProtocol.setBody(Data("""
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
         }
+        """.utf8))
 
         let playcut = Playcut.stub(
             songTitle: "Back, Baby",
@@ -434,15 +355,14 @@ struct PlaycutMetadataServiceHTTPTests {
         _ = await service.fetchMetadata(for: playcut)
 
         // Then
+        let capturedRequest = QueuedStubURLProtocol.capturedRequest()
         #expect(capturedRequest?.value(forHTTPHeaderField: "Authorization") == "Bearer my-secret-token")
     }
 
     @Test("Reauthenticates once and retries when the proxy returns 401")
     func retriesOnceOn401ThenSucceeds() async throws {
         // Given
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
@@ -450,7 +370,7 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
-            tokenProvider: MockTokenProvider(tokenValue: "stale-token", reauthenticateValue: "fresh-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "fresh-token"),
             session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
@@ -458,26 +378,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         // First request 401s (rejected cached token); the retried request,
         // carrying the reauthenticated token, gets a 200 with real metadata.
-        var capturedAuthorizationHeaders: [String?] = []
-        MockURLProtocol.responseHandler = { request in
-            capturedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
-            if capturedAuthorizationHeaders.count == 1 {
-                let response = HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 401,
-                    httpVersion: nil,
-                    headerFields: nil
-                )!
-                let errorBody = #"{"error": "Unauthorized"}"#.data(using: .utf8)!
-                return (errorBody, response)
-            }
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 200,
-                httpVersion: nil,
-                headerFields: nil
-            )!
-            let body = """
+        QueuedStubURLProtocol.setResponses([
+            (401, Data(#"{"error": "Unauthorized"}"#.utf8)),
+            (200, Data("""
             {
                 "discogsReleaseId": 12345,
                 "label": "Warp Records",
@@ -488,9 +391,8 @@ struct PlaycutMetadataServiceHTTPTests {
                 "bandcampUrl": null,
                 "soundcloudUrl": null
             }
-            """.data(using: .utf8)!
-            return (body, response)
-        }
+            """.utf8)),
+        ])
 
         let playcut = Playcut.stub(
             songTitle: "VI Scose Poise",
@@ -506,6 +408,8 @@ struct PlaycutMetadataServiceHTTPTests {
         // it carried the reauthenticated token, not the rejected one.
         #expect(result.album.label == "Warp Records")
         #expect(result.album.releaseYear == 2001)
+        let capturedAuthorizationHeaders = QueuedStubURLProtocol.capturedRequests()
+            .map { $0.value(forHTTPHeaderField: "Authorization") }
         #expect(capturedAuthorizationHeaders.count == 2)
         #expect(capturedAuthorizationHeaders[0] == "Bearer stale-token")
         #expect(capturedAuthorizationHeaders[1] == "Bearer fresh-token")

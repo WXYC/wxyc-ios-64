@@ -12,6 +12,10 @@ let package = Package(
         .library(
             name: "Core",
             targets: ["Core"]
+        ),
+        .library(
+            name: "CoreTesting",
+            targets: ["CoreTesting"]
         )
     ],
     dependencies: [
@@ -24,10 +28,17 @@ let package = Package(
                 "Logger",
             ]
         ),
+        .target(
+            name: "CoreTesting",
+            dependencies: [
+                "Core",
+            ]
+        ),
         .testTarget(
             name: "CoreTests",
             dependencies: [
                 "Core",
+                "CoreTesting",
                 .product(name: "LoggerTesting", package: "Logger"),
             ]
         ),

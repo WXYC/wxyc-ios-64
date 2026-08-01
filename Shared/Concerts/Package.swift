@@ -26,6 +26,7 @@ let package = Package(
             dependencies: [
                 "Concerts",
                 "ConcertsTesting",
+                .product(name: "CoreTesting", package: "Core"),
             ],
             resources: [.copy("Fixtures")]
         )

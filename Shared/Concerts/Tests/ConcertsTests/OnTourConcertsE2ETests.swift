@@ -19,10 +19,10 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
+import CoreTesting
 import Foundation
 import Testing
-import Core
-import os
 @testable import Concerts
 
 @Suite(
@@ -64,19 +64,6 @@ struct OnTourConcertsE2ETests {
         // pagination echo, which the endpoint always returns.
         #expect(response.pagination.page == 1)
         #expect(response.pagination.limit == 5)
-    }
-}
-
-/// Thread-safe nil-then-set holder standing in for `MusicShareKit.authService`
-/// flipping from `nil` (pre-`configure`) to a live provider. Uses a lock rather
-/// than an actor because `DeferredSessionTokenProvider`'s resolver is a
-/// synchronous `@Sendable () -> SessionTokenProvider?`.
-private final class ProviderBox: Sendable {
-    private let state = OSAllocatedUnfairLock<(any SessionTokenProvider)?>(initialState: nil)
-
-    var provider: (any SessionTokenProvider)? {
-        get { state.withLock { $0 } }
-        set { state.withLock { $0 = newValue } }
     }
 }
 

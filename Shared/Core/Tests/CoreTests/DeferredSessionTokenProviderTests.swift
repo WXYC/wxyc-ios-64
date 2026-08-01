@@ -13,8 +13,8 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import CoreTesting
 import Testing
-import os
 @testable import Core
 
 @Suite
@@ -32,7 +32,7 @@ struct DeferredSessionTokenProviderTests {
         }
 
         // Simulate `configure(...)` running later and wiring up a real provider.
-        box.provider = StubProvider(tokenValue: "post-configure-token")
+        box.provider = RecordingTokenProvider(initialToken: "post-configure-token")
 
         // The SAME wrapper instance, constructed while the box was nil, now
         // resolves successfully — proving resolution happens per call, not
@@ -61,7 +61,7 @@ struct DeferredSessionTokenProviderTests {
 
     @Test("token() forwards to the resolved provider's token()")
     func tokenForwardsToResolvedProvider() async throws {
-        let stub = StubProvider(tokenValue: "forwarded-token")
+        let stub = RecordingTokenProvider(initialToken: "forwarded-token")
         let deferred = DeferredSessionTokenProvider { stub }
 
         let token = try await deferred.token()
@@ -70,51 +70,11 @@ struct DeferredSessionTokenProviderTests {
 
     @Test("reauthenticate(previousToken:) forwards previousToken and returns the resolved provider's value")
     func reauthenticateForwardsToResolvedProvider() async throws {
-        let stub = StubProvider(reauthenticatedValue: "forwarded-reauthenticated-token")
+        let stub = RecordingTokenProvider(refreshedToken: "forwarded-reauthenticated-token")
         let deferred = DeferredSessionTokenProvider { stub }
 
         let token = try await deferred.reauthenticate(previousToken: "rejected-token")
         #expect(token == "forwarded-reauthenticated-token")
         #expect(await stub.lastPreviousToken == "rejected-token")
-    }
-}
-
-// MARK: - Mocks
-
-/// Returns fixed `token()`/`reauthenticate(previousToken:)` values and
-/// records the `previousToken` it was handed, so tests can assert
-/// `DeferredSessionTokenProvider` forwards to the resolved provider rather
-/// than doing anything itself.
-private actor StubProvider: SessionTokenProvider {
-    private(set) var lastPreviousToken: String?
-    private let tokenValue: String
-    private let reauthenticatedValue: String
-
-    init(tokenValue: String = "stub-token", reauthenticatedValue: String = "stub-reauthenticated-token") {
-        self.tokenValue = tokenValue
-        self.reauthenticatedValue = reauthenticatedValue
-    }
-
-    func token() async throws -> String {
-        tokenValue
-    }
-
-    func reauthenticate(previousToken: String) async throws -> String {
-        lastPreviousToken = previousToken
-        return reauthenticatedValue
-    }
-}
-
-/// A mutable holder the test flips between constructing the wrapper and
-/// calling it, standing in for `MusicShareKit.authService` transitioning
-/// from `nil` (pre-`configure`) to a real provider (post-`configure`). Backed
-/// by `OSAllocatedUnfairLock` rather than an actor because
-/// `DeferredSessionTokenProvider`'s resolver closure is synchronous.
-private final class ProviderBox: Sendable {
-    private let lock = OSAllocatedUnfairLock<SessionTokenProvider?>(initialState: nil)
-
-    var provider: SessionTokenProvider? {
-        get { lock.withLock { $0 } }
-        set { lock.withLock { $0 = newValue } }
     }
 }

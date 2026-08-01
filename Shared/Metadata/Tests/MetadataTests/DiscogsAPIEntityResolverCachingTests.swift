@@ -12,6 +12,7 @@
 import Testing
 import Foundation
 import Core
+import CoreTesting
 @testable import Caching
 @testable import Metadata
 
@@ -312,7 +313,7 @@ struct DiscogsAPIEntityResolverAuthInitTests {
     @Test("Authenticated convenience init delegates instead of recursing")
     func authenticatedInitDoesNotRecurse() {
         let resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(
-            tokenProvider: MockTokenProvider(tokenValue: "test-token")
+            tokenProvider: RecordingTokenProvider(initialToken: "test-token")
         )
         #expect(resolver is DiscogsAPIEntityResolver)
     }
@@ -333,7 +334,7 @@ struct DiscogsAPIEntityResolverAuthInitTests {
 ///
 /// Declared as an extension on `PlaycutMetadataServiceHTTPTests`
 /// (`PlaycutMetadataServiceHTTPTests.swift`) rather than its own `@Suite`:
-/// `MockURLProtocol.responseHandler` is shared global mutable state, and
+/// `QueuedStubURLProtocol`'s handler is shared global mutable state, and
 /// that suite's `.serialized` trait is what keeps concurrent tests from
 /// racing on it. A separate suite would run in parallel with it despite its
 /// own `.serialized` trait — traits only serialize *within* a suite, not
@@ -342,33 +343,26 @@ extension PlaycutMetadataServiceHTTPTests {
 
     @Test("Reauthenticates once and retries when DiscogsAPIEntityResolver's proxy/entity/resolve returns 401")
     func discogsEntityResolverRetriesOnceOn401ThenSucceeds() async throws {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        let mockURLSession = URLSession(configuration: config)
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
 
         let mockCache = EntityResolverMockCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(
-            tokenProvider: MockTokenProvider(tokenValue: "stale-token", reauthenticateValue: "fresh-token"),
+            tokenProvider: RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "fresh-token"),
             urlSession: mockURLSession,
             cache: cache
         )
 
-        var capturedAuthorizationHeaders: [String?] = []
-        MockURLProtocol.responseHandler = { request in
-            capturedAuthorizationHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
-            if capturedAuthorizationHeaders.count == 1 {
-                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
-                return (#"{"error": "Unauthorized"}"#.data(using: .utf8)!, response)
-            }
-            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            let body = #"{"name": "Reauthenticated Artist", "type": "artist", "id": 4242}"#.data(using: .utf8)!
-            return (body, response)
-        }
+        QueuedStubURLProtocol.setResponses([
+            (401, Data(#"{"error": "Unauthorized"}"#.utf8)),
+            (200, Data(#"{"name": "Reauthenticated Artist", "type": "artist", "id": 4242}"#.utf8)),
+        ])
 
         let result = try await resolver.resolveArtist(id: 4242)
 
         #expect(result == "Reauthenticated Artist")
+        let capturedAuthorizationHeaders = QueuedStubURLProtocol.capturedRequests()
+            .map { $0.value(forHTTPHeaderField: "Authorization") }
         #expect(capturedAuthorizationHeaders.count == 2)
         #expect(capturedAuthorizationHeaders[0] == "Bearer stale-token")
         #expect(capturedAuthorizationHeaders[1] == "Bearer fresh-token")
