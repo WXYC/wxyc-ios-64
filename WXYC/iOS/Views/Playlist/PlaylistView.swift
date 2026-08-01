@@ -23,13 +23,27 @@ import WXUI
 struct PlaycutSelection: Equatable, Identifiable {
     let playcut: Playcut
     let artwork: UIImage?
+    /// The value the detail cover's zoom transition keys on. Defaults to the
+    /// (unique) playcut id the flowsheet uses; the Liked tab overrides it with the
+    /// snapshot's stable string key, because `LikedSongSnapshot.toPlaycut()`
+    /// hardcodes id 0 — so every liked row would otherwise share source id 0 and
+    /// the zoom couldn't tell which row it left from.
+    let transitionID: AnyHashable
 
-    /// Identity is the playcut, matching `Equatable`, so `.fullScreenCover(item:)`
-    /// treats re-selecting the same row as the same presentation.
-    var id: UInt64 { playcut.id }
+    init(playcut: Playcut, artwork: UIImage?, transitionID: AnyHashable? = nil) {
+        self.playcut = playcut
+        self.artwork = artwork
+        self.transitionID = transitionID ?? AnyHashable(playcut.id)
+    }
+
+    /// Identity is the zoom key — unique on both surfaces (the flowsheet's playcut
+    /// id, the Liked tab's snapshot key), unlike `playcut.id`, which is 0 for every
+    /// liked row. So `.fullScreenCover(item:)` treats distinct rows as distinct
+    /// presentations and re-selecting the same row as the same one.
+    var id: AnyHashable { transitionID }
 
     static func == (lhs: PlaycutSelection, rhs: PlaycutSelection) -> Bool {
-        lhs.playcut.id == rhs.playcut.id
+        lhs.transitionID == rhs.transitionID
     }
 }
 
