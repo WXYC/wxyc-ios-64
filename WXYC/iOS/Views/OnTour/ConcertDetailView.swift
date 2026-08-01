@@ -356,11 +356,17 @@ struct ConcertDetailView: View {
 
     // MARK: - Palette
 
-    /// The dark backdrop the poster sits over — the detail reads as a "moment",
-    /// not the app's translucent wallpaper surface (matches the prototype's
-    /// `--page` background). Shared with the playcut detail cover via
-    /// ``DetailPresentation/backdrop`` so the two "moments" stay in lockstep.
-    private static let backdrop = DetailPresentation.backdrop
+    /// The frosted backdrop the poster sits over — the app gradient behind a
+    /// translucent material, so the detail reads as a "moment". Shared with the
+    /// playcut detail cover via ``DetailPresentation/backdrop`` so the two
+    /// "moments" stay in lockstep.
+    private static var backdrop: some View { DetailPresentation.backdrop }
+
+    /// The dark tone the hero scrim seams the poster's bottom edge into. The
+    /// backdrop is now a frosted material (no single color), so the scrim carries
+    /// its own near-opaque dark base — matching the frosted backdrop's darkness so
+    /// the poster still fades into the surface below it.
+    private static let scrimBase = Color(red: 0.063, green: 0.055, blue: 0.102)
 
     /// A bottom-weighted scrim so the hero text reads over any artwork.
     private static let heroScrim = LinearGradient(
@@ -368,7 +374,7 @@ struct ConcertDetailView: View {
             .init(color: .black.opacity(0.30), location: 0.0),
             .init(color: .black.opacity(0.0), location: 0.32),
             .init(color: .black.opacity(0.55), location: 0.78),
-            .init(color: backdrop.opacity(0.95), location: 1.0),
+            .init(color: scrimBase.opacity(0.95), location: 1.0),
         ],
         startPoint: .top, endPoint: .bottom
     )

@@ -169,9 +169,11 @@ struct PlaycutDetailView: View {
         }
         .scrollClipDisabled()
         .scrollContentBackground(.hidden)
-        // The full-screen cover's own backdrop — the overlay sheet used to supply
-        // one. Matches the concert detail so both covers read as the same "moment".
-        .background(DetailPresentation.backdrop.ignoresSafeArea())
+        // The shared frosted backdrop — the app gradient behind a translucent
+        // `.ultraThinMaterial`, like the pre-#373a7e17 overlay-sheet card that let
+        // the wallpaper show through. Shared with `ConcertDetailView` via
+        // `DetailPresentation` so the two covers stay in lockstep.
+        .background { DetailPresentation.backdrop.ignoresSafeArea() }
         // The cover's own close affordance, replacing the sheet's drag-to-dismiss.
         // Applied before the lightbox overlay below, so an expanded lightbox covers
         // it. Pinned top-leading under the safe-area inset, like the concert
