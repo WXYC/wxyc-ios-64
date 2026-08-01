@@ -130,12 +130,23 @@ public actor AuthenticationService: SessionTokenProvider {
     /// recovers in one round trip while preserving the anonymous `userId`.
     /// Wiping first would foreclose that branch and force a full anonymous
     /// sign-in — a second network round trip plus one more orphaned
-    /// server-side anonymous user per benign 401. What guarantees the
-    /// rejected token can't be handed straight back is skipping the
-    /// client-side-freshness fast paths (`trustStoredJWT: false`) — the
-    /// cache is cleared and the keychain copy is distrusted, so the refresh
-    /// must produce a server-validated JWT. A genuinely dead session still
-    /// converges on `freshSignIn()` via the mint's 401/404 fall-through.
+    /// server-side anonymous user per benign 401. When this call starts its
+    /// own refresh, skipping the client-side-freshness fast paths
+    /// (`trustStoredJWT: false`) keeps the rejected token from being handed
+    /// straight back — the cache is cleared and the keychain copy is
+    /// distrusted, so the refresh must produce a server-validated JWT. A
+    /// genuinely dead session still converges on `freshSignIn()` via the
+    /// mint's 401/404 fall-through.
+    ///
+    /// That freshness skip does NOT extend to the coalescing branch below.
+    /// A caller arriving while an `ensureAuthenticated()` refresh
+    /// (`trustStoredJWT: true`) is already in flight shares that Task's
+    /// result — which, if that refresh takes the keychain fast path on a
+    /// client-fresh-but-server-rejected JWT, can be the rejected token
+    /// itself. The caller's single retry then 401s and that one fetch fails;
+    /// the NEXT call passes the rejected JWT as `previousToken`, takes the
+    /// mint path, and recovers. Same self-healing trade-off documented on
+    /// `reauthenticate(previousToken:)`.
     public func reauthenticate(reason: TokenRefreshReason) async throws -> String {
         if let existing = inFlightAuth {
             return try await existing.value
