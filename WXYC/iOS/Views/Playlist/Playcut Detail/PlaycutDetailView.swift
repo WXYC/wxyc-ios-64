@@ -50,7 +50,7 @@ struct PlaycutDetailView: View {
         upcomingShowResolver.upcomingShow(for: playcut)
     }
 
-    private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.authService)
+    private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.tokenProvider)
     
     private var artworkGeometryID: String {
         "playcut-artwork-\(playcut.id)"

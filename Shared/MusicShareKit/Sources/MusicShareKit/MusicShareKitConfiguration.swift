@@ -10,6 +10,7 @@
 
 import Analytics
 import Caching
+import Core
 import Foundation
 
 /// Configuration for MusicShareKit services.
@@ -88,6 +89,27 @@ public enum MusicShareKit {
     /// The shared authentication service, if authentication is configured.
     public static var authService: AuthenticationService? {
         _authService
+    }
+
+    /// The canonical `SessionTokenProvider` for every consumer site, eager
+    /// or live-read.
+    ///
+    /// `Singletonia` is constructed from a SwiftUI stored-property
+    /// initializer, which runs before `WXYCApp.init()` calls
+    /// `configure(...)` — a construction site that reads `authService`
+    /// directly at that point captures `nil` permanently, and every authed
+    /// request it makes 401s with no recovery (#718). This facade resolves
+    /// `authService` at each call instead, so handing it to a service at any
+    /// construction time is safe and the nil-capture class of bug is
+    /// unrepresentable rather than avoided per-site.
+    ///
+    /// Every call forwards to the same `AuthenticationService` actor
+    /// instance, preserving its single-flight coalescing contract on
+    /// `reauthenticate(previousToken:)` — nothing is cached here. Before
+    /// `configure(...)` has run, calls throw
+    /// `SessionTokenProviderError.notConfigured`.
+    public static var tokenProvider: any SessionTokenProvider {
+        DeferredSessionTokenProvider { authService }
     }
 
     /// The stable per-device fingerprint, or `nil` if it could not be loaded.
