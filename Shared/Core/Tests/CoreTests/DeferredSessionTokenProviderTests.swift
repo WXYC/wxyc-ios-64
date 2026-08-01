@@ -110,7 +110,7 @@ private actor StubProvider: SessionTokenProvider {
 /// from `nil` (pre-`configure`) to a real provider (post-`configure`). Backed
 /// by `OSAllocatedUnfairLock` rather than an actor because
 /// `DeferredSessionTokenProvider`'s resolver closure is synchronous.
-private final class ProviderBox: @unchecked Sendable {
+private final class ProviderBox: Sendable {
     private let lock = OSAllocatedUnfairLock<SessionTokenProvider?>(initialState: nil)
 
     var provider: SessionTokenProvider? {

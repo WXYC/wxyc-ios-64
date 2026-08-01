@@ -7,8 +7,11 @@
 //  order — a `ConcertsFetcher` built with a `DeferredSessionTokenProvider`
 //  whose resolver reads `nil` at first (as `MusicShareKit.authService` does
 //  before `MusicShareKit.configure(...)` runs), then wired to a live provider —
-//  and proves an authenticated round trip decodes a 200. Guards the nil-capture
-//  regression that left every `/concerts` request unauthenticated (401).
+//  and proves an authenticated round trip decodes a 200. This guards the
+//  `DeferredSessionTokenProvider` mechanism itself — that a fetcher built before
+//  its provider is wired still authenticates — end to end against the live
+//  backend. The `Singletonia` call sites that adopt it live in the app target,
+//  which this package can't import; that wiring is covered by the app build.
 //
 //  Hits api.wxyc.org, so it is `.e2e`-tagged and skipped unless `RUN_E2E=1`.
 //
