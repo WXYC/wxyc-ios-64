@@ -71,7 +71,7 @@ final class Singletonia {
     /// fixture model), so opening the tab shows the already-loaded window rather
     /// than triggering a second fetch — `OnTourModel`'s single-flight `load()`
     /// coalesces the launch load with the tab's `.task` load.
-    let onTourModel = OnTourModel(fetcher: ConcertsFetcher(tokenProvider: DeferredSessionTokenProvider { MusicShareKit.authService }))
+    let onTourModel = OnTourModel(fetcher: ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider))
 
     let playcutHistoryStore = PlaycutHistoryStore()
 
@@ -249,15 +249,8 @@ final class Singletonia {
         // OT-F3 (#622): same registration shape as the playcut reindex seam
         // above, for `ConcertEntityQuery`'s reindex handlers. Authenticated
         // the same way `AppIntentServices.concertsFetcher()`
-        // (WXYC/iOS/Intents.swift) authenticates `ToursNearMe` — but wrapped
-        // in `DeferredSessionTokenProvider` rather than reading
-        // `MusicShareKit.authService` directly: `Singletonia` is constructed
-        // from a stored-property initializer, which runs before
-        // `WXYCApp.init()` calls `MusicShareKit.configure(...)`, so a direct
-        // read here would capture `nil` permanently. `Intents.swift`'s site
-        // doesn't need the wrapper because it reads `authService` live, at
-        // invocation time, well after launch has configured it.
-        let concertsFetching: any ConcertsFetching = ConcertsFetcher(tokenProvider: DeferredSessionTokenProvider { MusicShareKit.authService })
+        // (WXYC/iOS/Intents.swift) authenticates `ToursNearMe`.
+        let concertsFetching: any ConcertsFetching = ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider)
         AppDependencyManager.shared.add(dependency: concertsFetching)
         let concertReindexer: any ConcertReindexer = CoreSpotlightConcertIndexer()
         AppDependencyManager.shared.add(dependency: concertReindexer)
@@ -625,8 +618,7 @@ final class Singletonia {
         var delay: Duration = .seconds(5)
 
         for attempt in 1...maxAttempts {
-            guard let authService = MusicShareKit.authService,
-                  let secrets = await appConfiguration.fetchSecrets(tokenProvider: authService) else {
+            guard let secrets = await appConfiguration.fetchSecrets(tokenProvider: MusicShareKit.tokenProvider) else {
                 Log(.info, "Secrets fetch attempt \(attempt)/\(maxAttempts) failed")
 
                 guard attempt < maxAttempts else {

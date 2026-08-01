@@ -54,7 +54,7 @@ struct OnTourTabView: View {
     /// model backed by a stub fetcher.
     init(model: OnTourModel? = nil) {
         _model = State(wrappedValue: model ?? OnTourModel(
-            fetcher: ConcertsFetcher(tokenProvider: MusicShareKit.authService)
+            fetcher: ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider)
         ))
     }
 

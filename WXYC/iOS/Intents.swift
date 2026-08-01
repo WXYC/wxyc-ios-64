@@ -45,7 +45,7 @@ enum AppIntentServices {
     /// Builds a concerts fetcher exactly the way the On Tour tab does
     /// (`OnTourTabView`), so `ToursNearMe` sees the same live curated window.
     static func concertsFetcher() -> any ConcertsFetching {
-        ConcertsFetcher(tokenProvider: MusicShareKit.authService)
+        ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider)
     }
 
     /// The listener's id-bearing liked artists, read fresh from the on-device
@@ -405,7 +405,7 @@ private struct ToursNearMePosterThumbnail: View {
 /// the shipped `ConcertCalendarEvent` mapper (#538). Lives in the app target
 /// rather than `Shared/Intents` (unlike the other concert intents) because it
 /// needs `AppIntentServices.concertsFetcher()` -- the same
-/// `ConcertsFetcher(tokenProvider: MusicShareKit.authService)` wiring
+/// `ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider)` wiring
 /// `ToursNearMe` uses -- to resolve the full `Concert` behind the parameter's
 /// minimal `ConcertEntity`. A `@Dependency`-backed fetcher would avoid that
 /// app-target wiring (mirroring `ConcertEntityQuery`'s reindex seams), but

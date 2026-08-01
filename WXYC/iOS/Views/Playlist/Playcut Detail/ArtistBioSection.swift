@@ -25,7 +25,7 @@ struct ArtistBioSection: View {
     @State private var isTruncated: Bool = false
     @State private var parsedBio: AttributedString?
 
-    // Authenticated, mirroring `PlaycutMetadataService(tokenProvider: MusicShareKit.authService)`
+    // Authenticated, mirroring `PlaycutMetadataService(tokenProvider: MusicShareKit.tokenProvider)`
     // in PlaycutDetailView. `DiscogsAPIEntityResolver.shared` sends no
     // `Authorization` header, so `proxy/entity/resolve` 401s and every
     // ID-based artist reference in the bio (e.g. `[a87717]`) silently drops,
@@ -39,7 +39,7 @@ struct ArtistBioSection: View {
         bioTokens: [ResolvedBioToken]?,
         expandedBio: Binding<Bool>,
         showsHeader: Bool = true,
-        resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(tokenProvider: MusicShareKit.authService)
+        resolver: DiscogsEntityResolver = DiscogsAPIEntityResolver(tokenProvider: MusicShareKit.tokenProvider)
     ) {
         self.bio = bio
         self.bioTokens = bioTokens
