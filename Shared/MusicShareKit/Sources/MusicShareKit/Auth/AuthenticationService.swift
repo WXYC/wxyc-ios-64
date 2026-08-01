@@ -96,7 +96,7 @@ public actor AuthenticationService: SessionTokenProvider {
         // share the result via the branch above. Actor property writes are
         // atomic between suspension points.
         let task = Task<String, Error> { [weak self] in
-            guard let self else { throw AuthenticationError.notConfigured }
+            guard let self else { throw SessionTokenProviderError.notConfigured }
             return try await self.performRefreshAndClear(trustStoredJWT: true)
         }
         inFlightAuth = task
@@ -157,7 +157,7 @@ public actor AuthenticationService: SessionTokenProvider {
         cachedSession = nil
 
         let task = Task<String, Error> { [weak self] in
-            guard let self else { throw AuthenticationError.notConfigured }
+            guard let self else { throw SessionTokenProviderError.notConfigured }
             return try await self.performRefreshAndClear(trustStoredJWT: false)
         }
         inFlightAuth = task

@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Testing
 @testable import MusicShareKit
@@ -275,6 +276,18 @@ struct DefaultAuthNetworkClientTests {
         }
     }
 
+    @Test("Sign-in throws the canonical notConfigured error for a malformed baseURL")
+    func signInThrowsNotConfiguredForMalformedBaseURL() async throws {
+        let client = DefaultAuthNetworkClient()
+
+        // "http://[" (unclosed IPv6 literal) is one of the few shapes even
+        // the lenient iOS 17+ URL parser rejects, so the guard fires before
+        // any network request is attempted.
+        await #expect(throws: SessionTokenProviderError.notConfigured) {
+            _ = try await client.signInAnonymously(baseURL: "http://[", deviceFingerprint: nil)
+        }
+    }
+
     // MARK: - fetchJWT Tests
 
     @Test("fetchJWT URL uses GET /auth/token path")
@@ -369,6 +382,17 @@ struct DefaultAuthNetworkClientTests {
 
         await #expect(throws: AuthenticationError.self) {
             _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
+        }
+    }
+
+    @Test("fetchJWT throws the canonical notConfigured error for a malformed baseURL")
+    func fetchJWTThrowsNotConfiguredForMalformedBaseURL() async throws {
+        let client = DefaultAuthNetworkClient()
+
+        // See signInThrowsNotConfiguredForMalformedBaseURL for the choice
+        // of "http://[".
+        await #expect(throws: SessionTokenProviderError.notConfigured) {
+            _ = try await client.fetchJWT(baseURL: "http://[", sessionToken: "tok", deviceFingerprint: nil)
         }
     }
 }
