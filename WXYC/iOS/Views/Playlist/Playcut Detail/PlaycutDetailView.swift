@@ -37,6 +37,7 @@ struct PlaycutDetailView: View {
     @State private var hideHeaderArtwork = false
     @Namespace private var artworkNamespace
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.artworkService) private var artworkService
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.reviewRequestService) var reviewRequestService
@@ -168,7 +169,14 @@ struct PlaycutDetailView: View {
         }
         .scrollClipDisabled()
         .scrollContentBackground(.hidden)
-        .overlaySheetScrollTracking()
+        // The full-screen cover's own backdrop — the overlay sheet used to supply
+        // one. Matches the concert detail so both covers read as the same "moment".
+        .background(DetailPresentation.backdrop.ignoresSafeArea())
+        // The cover's own close affordance, replacing the sheet's drag-to-dismiss.
+        // Applied before the lightbox overlay below, so an expanded lightbox covers
+        // it. Pinned top-leading under the safe-area inset, like the concert
+        // detail's back chevron.
+        .overlay(alignment: .topLeading) { closeButton }
         .onAppear {
             StructuredPostHogAnalytics.shared.capture(PlaycutDetailViewPresented(
                 artist: playcut.artistName,
@@ -193,9 +201,22 @@ struct PlaycutDetailView: View {
                 .transition(.identity)
             }
         }
-        .overlaySheetLightboxActive(isLightboxActive)
     }
-    
+
+    /// The cover's back / close control — the same frosted-circle chevron the
+    /// concert detail uses, dismissing this `.fullScreenCover`.
+    private var closeButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            DetailPresentation.chromeGlyph("chevron.left")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Close")
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+    }
+
     private func loadMetadata() async {
         // Build inline metadata from the V2 flowsheet row when present.
         //
