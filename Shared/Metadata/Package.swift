@@ -25,6 +25,7 @@ let package = Package(
                 "Caching",
                 "Playlist",
                 "WXYCAPIModels",
+                .product(name: "CoreTesting", package: "Core"),
                 .product(name: "PlaylistTesting", package: "Playlist"),
             ]
         )

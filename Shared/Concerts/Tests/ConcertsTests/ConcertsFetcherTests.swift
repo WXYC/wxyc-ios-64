@@ -11,56 +11,16 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
+import CoreTesting
 import Foundation
 import Testing
-import Core
 @testable import Concerts
-
-/// A `SessionTokenProvider` returning a fixed token, so the fetcher's bearer
-/// header can be asserted. `reauthenticate(previousToken:)` also returns
-/// `value` — tests exercising the 401-retry path use ``RecordingTokenProvider``
-/// instead, so they can distinguish the initial token from the refreshed one.
-private struct FixedTokenProvider: SessionTokenProvider {
-    let value: String
-    func token() async throws -> String { value }
-    func reauthenticate(previousToken: String) async throws -> String { value }
-}
-
-/// A `SessionTokenProvider` that returns a distinct `initialToken` from
-/// `token()` and `refreshedToken` from `reauthenticate(previousToken:)`, and
-/// records how many times — and with what `previousToken` — it was called,
-/// so 401-retry tests can assert both "reauthenticated exactly once" and
-/// "the retry carried the new token".
-private actor RecordingTokenProvider: SessionTokenProvider {
-    private(set) var reauthenticateCallCount = 0
-    private(set) var lastPreviousToken: String?
-    private let initialToken: String
-    private let refreshedToken: String
-
-    init(initialToken: String, refreshedToken: String) {
-        self.initialToken = initialToken
-        self.refreshedToken = refreshedToken
-    }
-
-    func token() async throws -> String { initialToken }
-
-    func reauthenticate(previousToken: String) async throws -> String {
-        lastPreviousToken = previousToken
-        reauthenticateCallCount += 1
-        return refreshedToken
-    }
-}
 
 @Suite("ConcertsFetcher", .serialized)
 struct ConcertsFetcherTests {
 
     private static let base = URL(string: "https://api.wxyc.test")!
-
-    private static func makeSession() -> URLSession {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [StubURLProtocol.self]
-        return URLSession(configuration: config)
-    }
 
     private static let responseBody = Data("""
     {
@@ -87,12 +47,12 @@ struct ConcertsFetcherTests {
 
     @Test("Hits /concerts with the default pagination params")
     func defaultRequest() async throws {
-        StubURLProtocol.setBody(Self.responseBody)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        QueuedStubURLProtocol.setBody(Self.responseBody)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         _ = try await fetcher.fetchConcerts()
 
-        let request = try #require(StubURLProtocol.capturedRequest())
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.url?.path == "/concerts")
         #expect(Self.queryValue(request, "page") == "1")
         #expect(Self.queryValue(request, "limit") == "50")
@@ -104,8 +64,8 @@ struct ConcertsFetcherTests {
 
     @Test("Sends curated, from/to window, and pagination when supplied")
     func fullParams() async throws {
-        StubURLProtocol.setBody(Self.responseBody)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        QueuedStubURLProtocol.setBody(Self.responseBody)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
@@ -114,7 +74,7 @@ struct ConcertsFetcherTests {
 
         _ = try await fetcher.fetchConcerts(curated: true, from: from, to: to, page: 2, limit: 25)
 
-        let request = try #require(StubURLProtocol.capturedRequest())
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(Self.queryValue(request, "curated") == "true")
         #expect(Self.queryValue(request, "from") == "2026-08-01")
         #expect(Self.queryValue(request, "to") == "2026-08-31")
@@ -126,27 +86,27 @@ struct ConcertsFetcherTests {
 
     @Test("Sends the anonymous-session bearer token when a provider is supplied")
     func sendsBearerToken() async throws {
-        StubURLProtocol.setBody(Self.responseBody)
+        QueuedStubURLProtocol.setBody(Self.responseBody)
         let fetcher = ConcertsFetcher(
             baseURL: Self.base,
-            session: Self.makeSession(),
-            tokenProvider: FixedTokenProvider(value: "anon-token-123")
+            session: QueuedStubURLProtocol.makeSession(),
+            tokenProvider: RecordingTokenProvider(initialToken: "anon-token-123")
         )
 
         _ = try await fetcher.fetchConcerts()
 
-        let request = try #require(StubURLProtocol.capturedRequest())
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer anon-token-123")
     }
 
     @Test("Omits the Authorization header when no provider is supplied")
     func omitsAuthHeaderWithoutProvider() async throws {
-        StubURLProtocol.setBody(Self.responseBody)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        QueuedStubURLProtocol.setBody(Self.responseBody)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         _ = try await fetcher.fetchConcerts()
 
-        let request = try #require(StubURLProtocol.capturedRequest())
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
     }
 
@@ -154,8 +114,8 @@ struct ConcertsFetcherTests {
 
     @Test("Decodes the response envelope into concerts + pagination")
     func decodesResponse() async throws {
-        StubURLProtocol.setBody(Self.responseBody)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        QueuedStubURLProtocol.setBody(Self.responseBody)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         let response = try await fetcher.fetchConcerts()
 
@@ -168,10 +128,10 @@ struct ConcertsFetcherTests {
 
     @Test("Throws HTTPStatusError(statusCode: 500) on a non-2xx response")
     func throwsOnServerError() async throws {
-        StubURLProtocol.setResponse(Data("""
+        QueuedStubURLProtocol.setResponse(statusCode: 500, body: Data("""
         {"error": "Internal Server Error"}
-        """.utf8), statusCode: 500)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        """.utf8))
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         await #expect(throws: HTTPStatusError(statusCode: 500)) {
             _ = try await fetcher.fetchConcerts()
@@ -182,14 +142,14 @@ struct ConcertsFetcherTests {
 
     @Test("A 401 reauthenticates once and retries, returning the decoded page")
     func reauthenticatesOnceAndRetriesOn401() async throws {
-        StubURLProtocol.setResponseQueue([
-            (Data("""
+        QueuedStubURLProtocol.setResponses([
+            (401, Data("""
             {"error": "Unauthorized"}
-            """.utf8), 401),
-            (Self.responseBody, 200),
+            """.utf8)),
+            (200, Self.responseBody),
         ])
         let tokenProvider = RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "fresh-token")
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession(), tokenProvider: tokenProvider)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession(), tokenProvider: tokenProvider)
 
         let response = try await fetcher.fetchConcerts()
 
@@ -197,7 +157,7 @@ struct ConcertsFetcherTests {
         #expect(await tokenProvider.reauthenticateCallCount == 1)
         #expect(await tokenProvider.lastPreviousToken == "stale-token")
 
-        let requests = StubURLProtocol.capturedRequests()
+        let requests = QueuedStubURLProtocol.capturedRequests()
         #expect(requests.count == 2)
         #expect(requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer stale-token")
         #expect(requests[1].value(forHTTPHeaderField: "Authorization") == "Bearer fresh-token")
@@ -205,22 +165,22 @@ struct ConcertsFetcherTests {
 
     @Test("Two consecutive 401s surface HTTPStatusError(401) without retrying again")
     func doesNotRetryTwiceOnRepeated401() async throws {
-        StubURLProtocol.setResponseQueue([
-            (Data("""
+        QueuedStubURLProtocol.setResponses([
+            (401, Data("""
             {"error": "Unauthorized"}
-            """.utf8), 401),
-            (Data("""
+            """.utf8)),
+            (401, Data("""
             {"error": "Unauthorized"}
-            """.utf8), 401),
+            """.utf8)),
         ])
         let tokenProvider = RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "still-bad-token")
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession(), tokenProvider: tokenProvider)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession(), tokenProvider: tokenProvider)
 
         await #expect(throws: HTTPStatusError(statusCode: 401)) {
             _ = try await fetcher.fetchConcerts()
         }
 
-        #expect(StubURLProtocol.capturedRequests().count == 2)
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 2)
         #expect(await tokenProvider.reauthenticateCallCount == 1)
     }
 
@@ -256,8 +216,8 @@ struct ConcertsFetcherTests {
 
     @Test("Decodes the whole page when one concert has an empty ticket_url")
     func decodesPageWithEmptyTicketURL() async throws {
-        StubURLProtocol.setBody(Self.pageWithEmptyTicketURL)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        QueuedStubURLProtocol.setBody(Self.pageWithEmptyTicketURL)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         let response = try await fetcher.fetchConcerts()
 
@@ -283,12 +243,12 @@ struct ConcertsFetcherTests {
 
     @Test("Hits /concerts/<id> and decodes a bare concert")
     func fetchesSingleConcert() async throws {
-        StubURLProtocol.setBody(Self.singleConcertBody)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        QueuedStubURLProtocol.setBody(Self.singleConcertBody)
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         let concert = try await fetcher.fetchConcert(id: 4821)
 
-        let request = try #require(StubURLProtocol.capturedRequest())
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.url?.path == "/concerts/4821")
         #expect(concert.id == 4821)
         #expect(concert.headliningArtistRaw == "Jessica Pratt")
@@ -296,25 +256,25 @@ struct ConcertsFetcherTests {
 
     @Test("Sends the anonymous-session bearer token on the single-concert request")
     func singleConcertSendsBearerToken() async throws {
-        StubURLProtocol.setBody(Self.singleConcertBody)
+        QueuedStubURLProtocol.setBody(Self.singleConcertBody)
         let fetcher = ConcertsFetcher(
             baseURL: Self.base,
-            session: Self.makeSession(),
-            tokenProvider: FixedTokenProvider(value: "anon-token-123")
+            session: QueuedStubURLProtocol.makeSession(),
+            tokenProvider: RecordingTokenProvider(initialToken: "anon-token-123")
         )
 
         _ = try await fetcher.fetchConcert(id: 4821)
 
-        let request = try #require(StubURLProtocol.capturedRequest())
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer anon-token-123")
     }
 
     @Test("Throws on a 404 for an unknown concert id")
     func singleConcertThrowsOnNotFound() async throws {
-        StubURLProtocol.setResponse(Data("""
+        QueuedStubURLProtocol.setResponse(statusCode: 404, body: Data("""
         {"error": "Not Found"}
-        """.utf8), statusCode: 404)
-        let fetcher = ConcertsFetcher(baseURL: Self.base, session: Self.makeSession())
+        """.utf8))
+        let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         await #expect(throws: HTTPStatusError(statusCode: 404)) {
             _ = try await fetcher.fetchConcert(id: 999_999)
