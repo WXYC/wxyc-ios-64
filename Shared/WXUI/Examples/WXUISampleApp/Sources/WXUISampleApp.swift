@@ -22,12 +22,8 @@ struct WXUISampleApp: App {
 struct ContentView: View {
     var body: some View {
         NavigationStack {
-            List {
-                NavigationLink("OverlaySheet") {
-                    OverlaySheetPreview()
-                }
-            }
-            .navigationTitle("WXUI Components")
+            List {}
+                .navigationTitle("WXUI Components")
         }
     }
 }
