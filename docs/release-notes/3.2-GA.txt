@@ -2,14 +2,14 @@ WXYC iOS — Release Notes
 Version 3.2
 Range: v3.1 (2026-01-23) → v3.2
 
-The complete, public-facing notes for 3.2, combining everything from RC1–RC3 and the post-RC3 work folded into the shipping build. Only changes a listener actually experiences are included.
+The complete, public-facing notes for 3.2, combining everything from RC1–RC3 and the post-RC3 work folded into the shipping build resubmitted for App Store review on 2026-08-02. Only changes a listener actually experiences are included.
 
 
 ========================================================================
 WHAT'S NEW IN 3.2 (scannable)
 ========================================================================
 
-A refreshed playlist — The playlist tab leads with an on-air banner showing who's currently on the air, with a wave that sweeps across the DJ's name as they come on; tap it to open the DJ's controls. Each track is stamped with the time it played, talksets and breakpoints fold into a single "mic break" marker, and album artwork loads the moment you open the app instead of waiting for you to scroll.
+A refreshed playlist — The playlist tab leads with an on-air banner showing who's currently on the air, with a wave that sweeps across the DJ's name as they come on; tap it to open the DJ's controls. Each track is stamped with the time it played, talksets and breakpoints fold into a single "mic break" marker, and album artwork loads the moment you open the app instead of waiting for you to scroll. The playlist now updates in real time as tracks are logged, and tapping any track opens a full-screen detail that zooms up over the wallpaper.
 
 On Tour — A new tab for discovering upcoming Triangle-area concerts by the artists WXYC plays. Browse a poster-first list grouped by month, filter by date, venue, and genre, and open a detail view with a venue map, an artist bio, and a ticket link. Share any show as a link or add it straight to your calendar. A "Heard on WXYC" shelf highlights shows by artists in the station's rotation, and a Box Office ticket appears in the playlist when an artist you're hearing has a show coming up.
 
@@ -41,6 +41,7 @@ NEW
 - Siri "Play WXYC" — a voice intent that actually starts the stream.
 - A standard tab bar, tinted with your theme accent, replacing the old paged layout.
 - A clock in playlist rows showing each track's play time.
+- Live playlist — the playlist updates in real time as tracks are logged, instead of waiting for a timed refresh.
 - "Mic break" seams — back-to-back talksets and breakpoints between songs coalesce into a single "mic break" marker in the playlist, retiring the old "Talkset" label and the separate breakpoint rows.
 
 IMPROVED
@@ -48,6 +49,7 @@ IMPROVED
 - Widgets: album art loads reliably, Smart Stack and Spotlight relevance hints, and a play-button fix.
 - Theming: a crossfade between light and dark mode, configurable LCD segment brightness, theme-picker keyboard shortcuts, and a tab tint that follows the LCD's active brightness.
 - Playlist artwork loads on launch without needing to scroll.
+- Tapping a track now opens a full-screen detail that zooms up out of the row over a frosted view of your wallpaper — in both the playlist and Liked — replacing the old partial sheet.
 - On-air banner: the DJ's name plays a one-shot "grade wave" — a single lightening crest sweeps across the letters when the banner appears or the DJ changes, without shifting the name's width.
 - On Tour: months as section headers, "Not interested" to dismiss a show from the shelf, and tidier equal-height cards.
 - Liked rows now match the look of the playlist.
@@ -64,4 +66,7 @@ FIXED
 - The stream no longer reports a false failure when your connection briefly drops and reconnects.
 - Fixed a lock-screen hang when updating now-playing info.
 - The Request Line now shows an address you can copy when no Mail app is set up.
+- On Tour and other signed-in features now recover from an expired session and reload, instead of failing to load.
+- Album artwork no longer gets stuck on a broken state when a lookup source is briefly unavailable.
+- The on-air DJ's name no longer briefly jumps as the banner's wave settles.
 - Numerous CarPlay, playback, and artwork-caching stability fixes.
