@@ -27,9 +27,6 @@ import WXUI
 struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View {
     let song: Song
     let artworkState: ArtworkLoader.State
-    /// Scroll-driven shadow lean; the flowsheet feeds a live value, the Liked
-    /// row leaves it at rest.
-    var shadowYOffset: CGFloat = 0
     /// Built lazily: only the failed-artwork placeholder reads it, so the common
     /// loaded/loading rows never allocate a gradient (and a nil palette never
     /// regenerates its random colors on a row that isn't showing the placeholder).
@@ -45,9 +42,9 @@ struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View
             Group {
                 switch artworkState {
                 case .loaded(let image):
-                    LoadedArtworkView(artwork: image, shadowYOffset: shadowYOffset)
+                    LoadedArtworkView(artwork: image)
                 case .unloaded, .loading:
-                    LoadingArtworkView(shadowYOffset: shadowYOffset)
+                    LoadingArtworkView()
                 case .failed, .notOnDiscogs:
                     // Same placeholder for both: a row thumbnail has no room
                     // for the MD note (#390), so "couldn't load" and
@@ -56,8 +53,8 @@ struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View
                     // PlaycutMetadataSection.
                     PlaceholderArtworkView(
                         cornerRadius: ArtworkStyle.cornerRadius,
-                        shadowYOffset: shadowYOffset,
-                        meshGradient: meshGradient()
+                        meshGradient: meshGradient(),
+                        glass: false
                     )
                     .frame(
                         maxWidth: .infinity,

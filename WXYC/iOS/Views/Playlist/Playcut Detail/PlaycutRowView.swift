@@ -26,60 +26,24 @@ struct ArtworkStyle {
     static let roundedRectangle = RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
 }
 
-/// View modifier for common artwork styling
-private struct ArtworkShadowModifier: ViewModifier {
-    let shadowRadius: CGFloat
-    let shadowYOffset: CGFloat
-    
-    func body(content: Content) -> some View {
-        content
-            .glassEffectClearIfAvailable(in: ArtworkStyle.roundedRectangle)
-            .shadow(radius: shadowRadius, x: 0, y: shadowYOffset)
-    }
-}
-
-extension View {
-    fileprivate func artworkShadow(radius: CGFloat, yOffset: CGFloat) -> some View {
-        modifier(ArtworkShadowModifier(shadowRadius: radius, shadowYOffset: yOffset))
-    }
-}
-
 /// Displays loaded artwork image
 struct LoadedArtworkView: View {
     let artwork: UIImage
-    let shadowYOffset: CGFloat
-    
+
     var body: some View {
         Image(uiImage: artwork)
             .resizable()
             .aspectRatio(contentMode: .fit)
             .clipShape(ArtworkStyle.roundedRectangle)
-            .artworkShadow(radius: 3, yOffset: shadowYOffset)
             .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 
 /// Loading placeholder for artwork
 struct LoadingArtworkView: View {
-    let shadowYOffset: CGFloat
-    
     var body: some View {
         ArtworkStyle.roundedRectangle
-            .glassEffectClearTintedInteractiveIfAvailable(
-                tint: .indigo,
-                in: ArtworkStyle.roundedRectangle
-            )
-            .opacity(0.1625)
-            .artworkShadow(radius: 3, yOffset: shadowYOffset)
-    }
-}
-
-
-// Preference key to track scroll position
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+            .fill(.white.opacity(0.12))
     }
 }
 
@@ -90,14 +54,8 @@ struct PlaycutRowView: View {
     let namespace: Namespace.ID
     let onSelect: (UIImage?) -> Void
 
-    @State private var shadowYOffset: CGFloat = 0
-
     /// Stable time offset for animated mesh gradient (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
-
-    // Shadow offset configuration
-    private let shadowOffsetAtTop: CGFloat = -3
-    private let shadowOffsetAtBottom: CGFloat = 3
 
     @Environment(Singletonia.self) private var appState
     @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
@@ -149,19 +107,13 @@ struct PlaycutRowView: View {
         .animation(.easeInOut(duration: 0.25), value: upcomingShow)
     }
 
-    /// The plain playlist row: a wallpaper-blurred panel with artwork, song info,
-    /// and the like heart. Used when there's no upcoming show to attach. Shares
-    /// `SongRowPanel`'s chrome with the Liked tab row; the scroll-shadow lean is
-    /// this surface's own extra.
+    /// The plain playlist row: a wallpaper-blurred glass panel with artwork, song
+    /// info, and the like heart. Used when there's no upcoming show to attach.
+    /// Shares `SongRowPanel`'s glass chrome with the Liked tab row.
     private var songRowPanel: some View {
         SongRowPanel(onTap: { onSelect(loadedArtwork) }) { proxy in
             songRow(proxy: proxy)
         }
-        .modifier(ScrollShadowModifier(
-            shadowYOffset: $shadowYOffset,
-            top: shadowOffsetAtTop,
-            bottom: shadowOffsetAtBottom
-        ))
     }
 
     /// The row rendered as a single ticket: the song row and the on-tour stub
@@ -186,6 +138,7 @@ struct PlaycutRowView: View {
                     .frame(height: OnTourRowBadge.preferredHeight)
             }
         }
+        .glassEffectClearIfAvailable(in: shape)
         .contentShape(Rectangle())
         .onTapGesture {
             onSelect(loadedArtwork)
@@ -193,11 +146,6 @@ struct PlaycutRowView: View {
         .clipShape(shape)
         .overlay { shape.stroke(.white.opacity(0.12), lineWidth: 1) }
         .frame(maxWidth: .infinity)
-        .modifier(ScrollShadowModifier(
-            shadowYOffset: $shadowYOffset,
-            top: shadowOffsetAtTop,
-            bottom: shadowOffsetAtBottom
-        ))
     }
 
     /// The song-row content — artwork, title/artist/time, like heart — shared by
@@ -207,7 +155,6 @@ struct PlaycutRowView: View {
         SongRowContent(
             song: playcut,
             artworkState: artworkState,
-            shadowYOffset: shadowYOffset,
             meshGradient: { meshGradient },
             proxy: proxy
         ) {
@@ -243,7 +190,7 @@ struct PlaycutRowView: View {
     }
 }
 
-// MARK: - Ticket shape + scroll-shadow tracking
+// MARK: - Ticket shape
 
 /// The playlist row's ticket outline: a rounded rectangle with a circular notch
 /// cut into each side edge at the seam (`stubHeight` up from the bottom), so the
@@ -267,37 +214,6 @@ private struct TicketRowShape: Shape {
             width: diameter, height: diameter
         ))
         return shape.subtracting(left).subtracting(right)
-    }
-}
-
-/// Tracks the row's position in the scroll view and drives the artwork's shadow
-/// offset from it, so the shadow leans with the row as it scrolls. Shared by the
-/// plain row and the ticket.
-private struct ScrollShadowModifier: ViewModifier {
-    @Binding var shadowYOffset: CGFloat
-    let top: CGFloat
-    let bottom: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                GeometryReader { scrollProxy in
-                    let scrollFrame = scrollProxy.frame(in: .named("scroll"))
-
-                    return Color.clear
-                        .preference(
-                            key: ScrollOffsetPreferenceKey.self,
-                            value: scrollFrame.midY
-                        )
-                }
-            )
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
-                // Normalize the row's midY within the screen (0 at top, 1 at
-                // bottom), then interpolate the shadow offset across that range.
-                let screenHeight = UIScreen.main.bounds.height
-                let normalizedPosition = min(max(scrollPosition / screenHeight, 0), 1)
-                shadowYOffset = top + (normalizedPosition * (bottom - top))
-            }
     }
 }
 

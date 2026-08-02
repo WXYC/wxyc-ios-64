@@ -16,6 +16,7 @@
 
 import SwiftUI
 import Wallpaper
+import WXUI
 
 /// The card chrome behind a `SongRowContent`. The caller supplies the row body
 /// (via the `GeometryReader` proxy that sizes its artwork) and the tap action;
@@ -35,6 +36,7 @@ struct SongRowPanel<Content: View>: View {
                 BackgroundLayer(cornerRadius: cornerRadius)
                 content(proxy)
             }
+            .glassEffectClearIfAvailable(in: RoundedRectangle(cornerRadius: cornerRadius))
             .overlay {
                 if stroked {
                     RoundedRectangle(cornerRadius: cornerRadius)

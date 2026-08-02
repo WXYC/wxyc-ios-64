@@ -76,6 +76,7 @@ public struct PlayerHeaderView: View {
         }
         .padding(12)
         .background { BackgroundLayer() }
+        .glassEffectClearIfAvailable(in: RoundedRectangle(cornerRadius: 12))
         .clipShape(.rect(cornerRadius: 12))
         .onAppear {
             Self.controller.installRenderTap()

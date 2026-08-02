@@ -40,11 +40,8 @@ struct PlaycutHeaderSection: View {
                         .aspectRatio(contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 } else {
-                    PlaceholderArtworkView(
-                        cornerRadius: 12,
-                        shadowYOffset: 3
-                    )
-                    .aspectRatio(contentMode: .fit)
+                    PlaceholderArtworkView(cornerRadius: 12)
+                        .aspectRatio(contentMode: .fit)
                 }
             }
             .frame(maxWidth: 280, maxHeight: 280)

@@ -13,52 +13,57 @@ import SwiftUI
 /// Placeholder view with WXYC logo and animated gradient background.
 public struct PlaceholderArtworkView: View {
     let cornerRadius: CGFloat
-    let shadowYOffset: CGFloat
     let meshGradient: AnimatedMeshGradient
+    /// Whether the placeholder draws itself in glass. The detail-card header keeps
+    /// the glass treatment; the row placeholder opts out (`glass: false`) so the
+    /// artwork column reads flat, matching the loaded/loading thumbnails there.
+    let glass: Bool
 
     public init(
         cornerRadius: CGFloat = 12,
-        shadowYOffset: CGFloat = 0,
-        meshGradient: AnimatedMeshGradient = AnimatedMeshGradient()
+        meshGradient: AnimatedMeshGradient = AnimatedMeshGradient(),
+        glass: Bool = true
     ) {
         self.cornerRadius = cornerRadius
-        self.shadowYOffset = shadowYOffset
         self.meshGradient = meshGradient
+        self.glass = glass
+    }
+
+    private var tint: Color {
+        Color(hue: 248 / 360, saturation: 1, brightness: 1, opacity: 0.25)
+    }
+
+    private var backdropShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
+    }
+
+    @ViewBuilder private var backdrop: some View {
+        if glass {
+            backdropShape.glassEffectClearTintedInteractiveIfAvailable(tint: tint, in: backdropShape)
+        } else {
+            backdropShape.fill(tint)
+        }
+    }
+
+    @ViewBuilder private var logo: some View {
+        if glass {
+            WXYCLogo().glassEffectClearIfAvailable(in: WXYCLogoShape())
+        } else {
+            WXYCLogo()
+        }
     }
 
     public var body: some View {
         GeometryReader { geometry in
             ZStack {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
-                    .glassEffectClearTintedInteractiveIfAvailable(
-                        tint: Color(
-                            hue: 248 / 360,
-                            saturation: 100 / 100,
-                            brightness: 100 / 100,
-                            opacity: 0.25
-                        ),
-                        in: RoundedRectangle(
-                            cornerRadius: cornerRadius,
-                            style: .circular
-                        )
-                    )
+                backdrop
                     .frame(width: geometry.size.width * 0.8, height: geometry.size.width * 0.8)
                     .opacity(0.65)
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: cornerRadius,
-                            style: .circular
-                        )
-                    )
-                    .shadow(radius: 2, x: 0, y: shadowYOffset)
+                    .clipShape(backdropShape)
 
-                WXYCLogo()
-                    .glassEffectClearIfAvailable(in: WXYCLogoShape())
-                    .background(
-                        meshGradient.opacity(0.6)
-                    )
+                logo
+                    .background(meshGradient.opacity(0.6))
                     .clipShape(WXYCLogoShape())
-                    .shadow(radius: 2, x: 0, y: shadowYOffset)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }

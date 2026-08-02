@@ -185,7 +185,6 @@ struct PlaylistView: View {
                 // drop shadow can draw into — the margin sits inside the clip, so nothing
                 // gets shaved at the left/right edges.
                 .contentMargins(.horizontal, 12, for: .scrollContent)
-                .coordinateSpace(name: "scroll")
                 // Captured into `scrollProxy` (#434) so the deep-link scroll
                 // task below — which lives outside this closure's scope — can
                 // drive it.
